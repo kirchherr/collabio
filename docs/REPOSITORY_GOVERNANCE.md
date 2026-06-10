@@ -3,6 +3,30 @@
 Status: initial
 Date: 2026-06-10
 
+## Current Status
+
+Implemented:
+
+- Docker Compose quality gate.
+- GitHub Actions CI workflow.
+- Dependabot configuration.
+- Repository-local Deploy Key for Git push.
+
+Blocked from this workspace:
+
+- Branch Protection cannot be applied with the Deploy Key because Deploy Keys cannot change repository settings.
+- The GitHub CLI is not installed on this machine.
+- The connected GitHub app does not currently have access to `kirchherr/collabio`.
+- No `GH_TOKEN` or `GITHUB_TOKEN` is available locally.
+
+Manual fallback:
+
+1. Open `kirchherr/collabio` repository settings in GitHub.
+2. Go to Branches and add a ruleset or branch protection rule for `main`.
+3. Require status check `quality`.
+4. Require branches to be up to date before merge.
+5. Disable force pushes and branch deletion.
+
 ## Required Gates
 
 The repository quality gate is:
