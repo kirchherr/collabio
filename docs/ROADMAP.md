@@ -82,6 +82,7 @@ Bereits umgesetzt:
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
 - [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
+- [x] Architekturtests gegen direkte LLM Provider Bypaesse ausserhalb des Gateways.
 
 Noch nicht umgesetzt:
 
@@ -454,7 +455,7 @@ Aufgaben:
 - [ ] JSON Schema Validation fuer LLM Outputs implementieren.
 - [ ] Streaming Response Support vorbereiten.
 - [ ] Tests fuer Tenant Isolation ueber API, Search, Audit und Fehlerantworten.
-- [ ] Tests, die direkten Provider-BYPASS im App-Code verhindern.
+- [x] Tests, die direkten Provider-BYPASS im App-Code verhindern.
 
 Exit-Kriterien:
 
