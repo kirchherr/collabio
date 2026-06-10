@@ -125,7 +125,7 @@ class PgvectorVectorStore:
             raise ValueError("record embedding_model_version does not match this pgvector store")
 
         metadata = record.metadata
-        with psycopg.connect(self.database_dsn) as connection:
+        with psycopg.connect(self.lifecycle_database_dsn) as connection:
             self._set_tenant(connection, metadata.tenant_id)
             connection.execute(
                 """
@@ -180,6 +180,7 @@ class PgvectorVectorStore:
                     expires_at_utc = EXCLUDED.expires_at_utc,
                     audit_event_id = EXCLUDED.audit_event_id,
                     last_reindexed_at_utc = now()
+                WHERE collabio.vector_embedding_chunks.lifecycle_state IN ('active', 'reindex_pending')
                 """,
                 (
                     metadata.tenant_id,
@@ -217,11 +218,150 @@ class PgvectorVectorStore:
         lifecycle_state: VectorLifecycleState,
         audit_event_id: str | None = None,
     ) -> bool:
+        with psycopg.connect(self.lifecycle_database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            cursor = connection.execute(
+                self._lifecycle_transition_sql(
+                    where_clause="""
+                        tenant_id = %s
+                        AND source_object_id = %s
+                        AND source_version_id = %s
+                        AND chunk_id = %s
+                        AND embedding_model_id = %s
+                        AND embedding_model_version = %s
+                    """,
+                    lifecycle_state=lifecycle_state,
+                ),
+                (
+                    *self._lifecycle_transition_parameters(lifecycle_state, audit_event_id),
+                    tenant_id,
+                    source_object_id,
+                    source_version_id,
+                    chunk_id,
+                    self.embedding_model_id,
+                    self.embedding_model_version,
+                ),
+            )
+            connection.commit()
+            return cursor.rowcount == 1
+
+    def mark_source_for_reindex(
+        self,
+        *,
+        tenant_id: str,
+        source_object_id: str,
+        source_version_id: str,
+        audit_event_id: str | None = None,
+    ) -> int:
+        with psycopg.connect(self.lifecycle_database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            cursor = connection.execute(
+                """
+                UPDATE collabio.vector_embedding_chunks
+                SET
+                    lifecycle_state = 'reindex_pending'::collabio.vector_lifecycle_state,
+                    audit_event_id = COALESCE(%s, audit_event_id)
+                WHERE tenant_id = %s
+                  AND source_object_id = %s
+                  AND source_version_id = %s
+                  AND embedding_model_id = %s
+                  AND embedding_model_version = %s
+                  AND lifecycle_state = 'active'
+                """,
+                (
+                    audit_event_id,
+                    tenant_id,
+                    source_object_id,
+                    source_version_id,
+                    self.embedding_model_id,
+                    self.embedding_model_version,
+                ),
+            )
+            connection.commit()
+            return cursor.rowcount
+
+    def delete_reindex_orphans(
+        self,
+        *,
+        tenant_id: str,
+        source_object_id: str,
+        source_version_id: str,
+        keep_chunk_ids: set[str],
+        audit_event_id: str | None = None,
+    ) -> int:
+        with psycopg.connect(self.lifecycle_database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            cursor = connection.execute(
+                """
+                UPDATE collabio.vector_embedding_chunks
+                SET
+                    lifecycle_state = 'deleted'::collabio.vector_lifecycle_state,
+                    deletion_requested_at_utc = COALESCE(deletion_requested_at_utc, now()),
+                    deleted_at_utc = COALESCE(deleted_at_utc, now()),
+                    audit_event_id = COALESCE(%s, audit_event_id)
+                WHERE tenant_id = %s
+                  AND source_object_id = %s
+                  AND source_version_id = %s
+                  AND embedding_model_id = %s
+                  AND embedding_model_version = %s
+                  AND lifecycle_state = 'reindex_pending'
+                  AND NOT (chunk_id = ANY(%s::text[]))
+                """,
+                (
+                    audit_event_id,
+                    tenant_id,
+                    source_object_id,
+                    source_version_id,
+                    self.embedding_model_id,
+                    self.embedding_model_version,
+                    sorted(keep_chunk_ids),
+                ),
+            )
+            connection.commit()
+            return cursor.rowcount
+
+    def transition_source_lifecycle(
+        self,
+        *,
+        tenant_id: str,
+        source_object_id: str,
+        source_version_id: str,
+        lifecycle_state: VectorLifecycleState,
+        audit_event_id: str | None = None,
+    ) -> int:
+        if lifecycle_state == VectorLifecycleState.ACTIVE:
+            raise ValueError("source lifecycle propagation cannot reactivate chunks")
+
+        with psycopg.connect(self.lifecycle_database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            cursor = connection.execute(
+                self._lifecycle_transition_sql(
+                    where_clause="""
+                        tenant_id = %s
+                        AND source_object_id = %s
+                        AND source_version_id = %s
+                        AND embedding_model_id = %s
+                        AND embedding_model_version = %s
+                    """,
+                    lifecycle_state=lifecycle_state,
+                ),
+                (
+                    *self._lifecycle_transition_parameters(lifecycle_state, audit_event_id),
+                    tenant_id,
+                    source_object_id,
+                    source_version_id,
+                    self.embedding_model_id,
+                    self.embedding_model_version,
+                ),
+            )
+            connection.commit()
+            return cursor.rowcount
+
+    def _lifecycle_transition_sql(self, *, where_clause: str, lifecycle_state: VectorLifecycleState) -> str:
         set_clauses = [
             "lifecycle_state = %s::collabio.vector_lifecycle_state",
             "audit_event_id = COALESCE(%s, audit_event_id)",
         ]
-        parameters: list[Any] = [lifecycle_state.value, audit_event_id]
 
         if lifecycle_state == VectorLifecycleState.RESTRICTED:
             set_clauses.append("restricted_at_utc = COALESCE(restricted_at_utc, now())")
@@ -243,31 +383,18 @@ class PgvectorVectorStore:
         elif lifecycle_state == VectorLifecycleState.ACTIVE:
             set_clauses.append("last_reindexed_at_utc = now()")
 
-        with psycopg.connect(self.lifecycle_database_dsn) as connection:
-            self._set_tenant(connection, tenant_id)
-            cursor = connection.execute(
-                f"""
-                UPDATE collabio.vector_embedding_chunks
-                SET {", ".join(set_clauses)}
-                WHERE tenant_id = %s
-                  AND source_object_id = %s
-                  AND source_version_id = %s
-                  AND chunk_id = %s
-                  AND embedding_model_id = %s
-                  AND embedding_model_version = %s
-                """,
-                (
-                    *parameters,
-                    tenant_id,
-                    source_object_id,
-                    source_version_id,
-                    chunk_id,
-                    self.embedding_model_id,
-                    self.embedding_model_version,
-                ),
-            )
-            connection.commit()
-            return cursor.rowcount == 1
+        return f"""
+            UPDATE collabio.vector_embedding_chunks
+            SET {", ".join(set_clauses)}
+            WHERE {where_clause}
+        """
+
+    def _lifecycle_transition_parameters(
+        self,
+        lifecycle_state: VectorLifecycleState,
+        audit_event_id: str | None,
+    ) -> tuple[str, str | None]:
+        return lifecycle_state.value, audit_event_id
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
         connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))

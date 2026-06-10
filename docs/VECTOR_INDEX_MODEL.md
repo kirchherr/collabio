@@ -68,8 +68,8 @@ Live integration tests use:
 
 Runtime split:
 
-- `collabio_app` performs candidate-only search and active/reindex-pending upserts.
-- `collabio_worker` performs lifecycle transitions under tenant-scoped RLS.
+- `collabio_app` performs candidate-only search.
+- `collabio_worker` performs upserts, reindex state changes, stale chunk cleanup, and deletion propagation under tenant-scoped RLS.
 
 The adapter returns `VectorCandidate` objects only. It does not return embeddings, snippets, source text, prompts, or answers. Source text is still resolved later by the RAG pipeline after authoritative ACL validation.
 
@@ -78,3 +78,13 @@ Implemented operations:
 - `upsert_embedding`: writes or refreshes vector metadata for one chunk.
 - `search` / `search_by_embedding`: returns active candidates ordered by cosine similarity.
 - `transition_lifecycle`: moves chunks to `restricted`, `deleted`, `cryptoshredded`, `reindex_pending`, or `active` using the worker role.
+- `mark_source_for_reindex`: marks active chunks as `reindex_pending`.
+- `delete_reindex_orphans`: soft-deletes chunks left behind after a reindex.
+- `transition_source_lifecycle`: propagates deletion or cryptoshred state to all chunks for one source version.
+
+`app/suite/rag/vector_worker.py` exposes worker entry points:
+
+- `reindex_source`: marks existing active chunks for reindex, upserts the new chunk set, and soft-deletes stale reindex leftovers.
+- `propagate_deletion`: moves all chunks for a source version to `deleted` or `cryptoshredded`.
+
+The runtime app role has no `INSERT`, `UPDATE`, or `DELETE` grant on `collabio.vector_embedding_chunks`. This prevents API-side writes or accidental reactivation of deleted/restricted chunks.

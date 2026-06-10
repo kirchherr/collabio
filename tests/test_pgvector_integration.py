@@ -11,6 +11,7 @@ from suite.ai_control_plane.models import DataClass
 from suite.persistence.migrator import apply_migrations
 from suite.rag.models import ChunkMetadata, VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.pgvector_store import PgvectorVectorStore
+from suite.rag.vector_worker import DeletionPropagationCommand, ReindexSourceCommand, VectorIndexWorker
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,10 @@ def ensure_app_role_and_grants(migration_dsn: str) -> None:
         connection.execute("ALTER ROLE collabio_worker WITH LOGIN PASSWORD 'collabio_worker'")
         connection.execute("GRANT USAGE ON SCHEMA collabio TO collabio_app")
         connection.execute("GRANT SELECT, REFERENCES ON TABLE collabio.embedding_models TO collabio_app")
-        connection.execute(
-            "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE collabio.vector_embedding_chunks TO collabio_app"
-        )
+        connection.execute("GRANT SELECT ON TABLE collabio.vector_embedding_chunks TO collabio_app")
         connection.execute("GRANT USAGE ON SCHEMA collabio TO collabio_worker")
         connection.execute("GRANT SELECT, REFERENCES ON TABLE collabio.embedding_models TO collabio_worker")
-        connection.execute("GRANT SELECT, UPDATE ON TABLE collabio.vector_embedding_chunks TO collabio_worker")
+        connection.execute("GRANT SELECT, INSERT, UPDATE ON TABLE collabio.vector_embedding_chunks TO collabio_worker")
 
 
 @pytest.fixture(scope="module")
@@ -279,50 +278,44 @@ def test_pgvector_rls_returns_only_active_candidates_for_current_tenant(live_dat
     assert rows == [(tenant_a, f"chunk-active-{suffix}")]
 
 
-def test_pgvector_rls_blocks_cross_tenant_insert_and_hard_delete(live_database: LiveDatabase) -> None:
+def test_pgvector_runtime_app_role_cannot_write_or_hard_delete(live_database: LiveDatabase) -> None:
     suffix = uuid4().hex
     tenant_a = f"tenant-a-{suffix}"
-    tenant_b = f"tenant-b-{suffix}"
     model_id = f"embedding-model-{suffix}"
     own_chunk_id = f"chunk-own-{suffix}"
 
     with psycopg.connect(live_database.migration_dsn) as owner_connection:
         seed_embedding_model(owner_connection, model_id)
-        owner_connection.commit()
-
-    with psycopg.connect(live_database.app_dsn) as app_connection:
-        set_tenant(app_connection, tenant_a)
         insert_chunk(
-            app_connection,
+            owner_connection,
             tenant_id=tenant_a,
             source_object_id=f"doc-own-{suffix}",
             chunk_id=own_chunk_id,
             model_id=model_id,
         )
-        app_connection.commit()
+        owner_connection.commit()
 
+    with psycopg.connect(live_database.app_dsn) as app_connection:
         set_tenant(app_connection, tenant_a)
-        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="row-level security"):
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
             insert_chunk(
                 app_connection,
-                tenant_id=tenant_b,
-                source_object_id=f"doc-cross-{suffix}",
-                chunk_id=f"chunk-cross-{suffix}",
+                tenant_id=tenant_a,
+                source_object_id=f"doc-new-{suffix}",
+                chunk_id=f"chunk-new-{suffix}",
                 model_id=model_id,
             )
         app_connection.rollback()
 
         set_tenant(app_connection, tenant_a)
-        delete_cursor = app_connection.execute(
-            """
-            DELETE FROM collabio.vector_embedding_chunks
-            WHERE tenant_id = %s AND chunk_id = %s AND embedding_model_id = %s
-            """,
-            (tenant_a, own_chunk_id, model_id),
-        )
-        app_connection.commit()
-
-    assert delete_cursor.rowcount == 0
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+            app_connection.execute(
+                """
+                DELETE FROM collabio.vector_embedding_chunks
+                WHERE tenant_id = %s AND chunk_id = %s AND embedding_model_id = %s
+                """,
+                (tenant_a, own_chunk_id, model_id),
+            )
 
     with psycopg.connect(live_database.migration_dsn) as owner_connection:
         row = owner_connection.execute(
@@ -473,3 +466,193 @@ def test_pgvector_store_lifecycle_transition_hides_candidate(live_database: Live
     assert row[0] == VectorLifecycleState.RESTRICTED.value
     assert row[1] is not None
     assert row[2] == "audit-restricted"
+
+
+def test_vector_worker_reindexes_source_and_deletes_stale_chunks(live_database: LiveDatabase) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-worker-{suffix}"
+    model_id = f"embedding-model-{suffix}"
+    source_object_id = f"doc-{suffix}"
+    stale_chunk_id = f"chunk-stale-{suffix}"
+    kept_chunk_id = f"chunk-kept-{suffix}"
+    new_chunk_id = f"chunk-new-{suffix}"
+    store = pgvector_store(
+        app_dsn=live_database.app_dsn,
+        worker_dsn=live_database.worker_dsn,
+        model_id=model_id,
+        query_embedding=[1.0, 0.0, 0.0],
+    )
+    worker = VectorIndexWorker(store)
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        seed_embedding_model(owner_connection, model_id)
+        owner_connection.commit()
+
+    store.upsert_embedding(
+        embedding_record(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            chunk_id=kept_chunk_id,
+            model_id=model_id,
+            embedding=[0.0, 1.0, 0.0],
+            content_hash="sha256:old-kept",
+        )
+    )
+    store.upsert_embedding(
+        embedding_record(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            chunk_id=stale_chunk_id,
+            model_id=model_id,
+            embedding=[0.0, 0.0, 1.0],
+            content_hash="sha256:stale",
+        )
+    )
+
+    result = worker.reindex_source(
+        ReindexSourceCommand(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            source_version_id="v1",
+            chunks=(
+                embedding_record(
+                    tenant_id=tenant_id,
+                    source_object_id=source_object_id,
+                    chunk_id=kept_chunk_id,
+                    model_id=model_id,
+                    embedding=[1.0, 0.0, 0.0],
+                    content_hash="sha256:new-kept",
+                ),
+                embedding_record(
+                    tenant_id=tenant_id,
+                    source_object_id=source_object_id,
+                    chunk_id=new_chunk_id,
+                    model_id=model_id,
+                    embedding=[0.9, 0.1, 0.0],
+                    content_hash="sha256:new",
+                ),
+            ),
+            audit_event_id="audit-reindex",
+        )
+    )
+
+    candidates = store.search_by_embedding(tenant_id=tenant_id, embedding=[1.0, 0.0, 0.0], top_k=10)
+    candidate_chunk_ids = {candidate.chunk_id for candidate in candidates}
+
+    assert result.marked_reindex_pending == 2
+    assert result.upserted_chunks == 2
+    assert result.deleted_stale_chunks == 1
+    assert candidate_chunk_ids == {kept_chunk_id, new_chunk_id}
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        rows = owner_connection.execute(
+            """
+            SELECT chunk_id, lifecycle_state, content_hash, deleted_at_utc
+            FROM collabio.vector_embedding_chunks
+            WHERE tenant_id = %s
+              AND source_object_id = %s
+              AND embedding_model_id = %s
+            ORDER BY chunk_id
+            """,
+            (tenant_id, source_object_id, model_id),
+        ).fetchall()
+
+    rows_by_chunk = {str(row[0]): row for row in rows}
+    assert rows_by_chunk[kept_chunk_id][1] == VectorLifecycleState.ACTIVE.value
+    assert rows_by_chunk[kept_chunk_id][2] == "sha256:new-kept"
+    assert rows_by_chunk[new_chunk_id][1] == VectorLifecycleState.ACTIVE.value
+    assert rows_by_chunk[stale_chunk_id][1] == VectorLifecycleState.DELETED.value
+    assert rows_by_chunk[stale_chunk_id][3] is not None
+
+
+def test_vector_worker_propagates_source_deletion_and_blocks_app_reactivation(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-worker-{suffix}"
+    model_id = f"embedding-model-{suffix}"
+    source_object_id = f"doc-{suffix}"
+    chunk_id = f"chunk-delete-{suffix}"
+    store = pgvector_store(
+        app_dsn=live_database.app_dsn,
+        worker_dsn=live_database.worker_dsn,
+        model_id=model_id,
+        query_embedding=[1.0, 0.0, 0.0],
+    )
+    worker = VectorIndexWorker(store)
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        seed_embedding_model(owner_connection, model_id)
+        owner_connection.commit()
+
+    deleted_record = embedding_record(
+        tenant_id=tenant_id,
+        source_object_id=source_object_id,
+        chunk_id=chunk_id,
+        model_id=model_id,
+        embedding=[1.0, 0.0, 0.0],
+        content_hash="sha256:before-delete",
+    )
+    store.upsert_embedding(deleted_record)
+
+    result = worker.propagate_deletion(
+        DeletionPropagationCommand(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            source_version_id="v1",
+            lifecycle_state=VectorLifecycleState.DELETED,
+            audit_event_id="audit-delete",
+        )
+    )
+
+    assert result.transitioned_chunks == 1
+    assert store.search(tenant_id=tenant_id, query="hidden after deletion", top_k=5) == []
+
+    store.upsert_embedding(
+        embedding_record(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            chunk_id=chunk_id,
+            model_id=model_id,
+            embedding=[1.0, 0.0, 0.0],
+            content_hash="sha256:worker-after-delete",
+        )
+    )
+
+    app_write_store = PgvectorVectorStore(
+        database_dsn=live_database.app_dsn,
+        lifecycle_database_dsn=live_database.app_dsn,
+        embedding_model_id=model_id,
+        embedding_model_version="1",
+        query_embedder=lambda _query: [1.0, 0.0, 0.0],
+    )
+    with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+        app_write_store.upsert_embedding(
+            embedding_record(
+                tenant_id=tenant_id,
+                source_object_id=source_object_id,
+                chunk_id=chunk_id,
+                model_id=model_id,
+                embedding=[1.0, 0.0, 0.0],
+                content_hash="sha256:after-delete",
+            )
+        )
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        row = owner_connection.execute(
+            """
+            SELECT lifecycle_state, deleted_at_utc, content_hash, audit_event_id
+            FROM collabio.vector_embedding_chunks
+            WHERE tenant_id = %s
+              AND source_object_id = %s
+              AND chunk_id = %s
+              AND embedding_model_id = %s
+            """,
+            (tenant_id, source_object_id, chunk_id, model_id),
+        ).fetchone()
+
+    assert row is not None
+    assert row[0] == VectorLifecycleState.DELETED.value
+    assert row[1] is not None
+    assert row[2] == "sha256:before-delete"
+    assert row[3] == "audit-delete"

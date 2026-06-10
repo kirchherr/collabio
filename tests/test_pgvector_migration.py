@@ -25,7 +25,7 @@ def pgvector_sql() -> str:
 def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == ["0001", "0002", "0003"]
+    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005"]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
     assert "CREATE EXTENSION IF NOT EXISTS vector;" in migrations[0].sql()
@@ -93,6 +93,8 @@ def test_pgvector_embedding_schema_enables_rls_with_null_safe_tenant_setting() -
 def test_pgvector_role_policy_migrations_split_app_and_worker_permissions() -> None:
     worker_sql = normalized(get_migration("0002").sql())
     insert_policy_sql = normalized(get_migration("0003").sql())
+    update_policy_sql = normalized(get_migration("0004").sql())
+    worker_write_sql = normalized(get_migration("0005").sql())
 
     assert "create role collabio_worker login password" in worker_sql
     assert "grant select, update on table collabio.vector_embedding_chunks to collabio_worker" in worker_sql
@@ -100,6 +102,17 @@ def test_pgvector_role_policy_migrations_split_app_and_worker_permissions() -> N
     assert "to collabio_worker using (tenant_id = collabio.current_tenant_id())" in worker_sql
     assert "drop policy if exists vector_embedding_chunks_tenant_insert" in insert_policy_sql
     assert "for insert to collabio_app" in insert_policy_sql
+    assert "drop policy if exists vector_embedding_chunks_tenant_update" in update_policy_sql
+    assert "for update to collabio_app" in update_policy_sql
+    assert "lifecycle_state in ('active', 'reindex_pending')" in update_policy_sql
+    assert (
+        "revoke insert, update, delete on table collabio.vector_embedding_chunks from collabio_app" in worker_write_sql
+    )
+    assert (
+        "grant select, insert, update on table collabio.vector_embedding_chunks to collabio_worker" in worker_write_sql
+    )
+    assert "create policy vector_embedding_chunks_worker_insert" in worker_write_sql
+    assert "drop policy if exists vector_embedding_chunks_tenant_update" in worker_write_sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

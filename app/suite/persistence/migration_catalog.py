@@ -28,6 +28,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         name="pgvector_role_scoped_insert_policy",
         resource_name="0003_pgvector_role_scoped_insert_policy.sql",
     ),
+    SqlMigration(
+        version="0004",
+        name="pgvector_role_scoped_update_policy",
+        resource_name="0004_pgvector_role_scoped_update_policy.sql",
+    ),
+    SqlMigration(
+        version="0005",
+        name="pgvector_worker_write_policy",
+        resource_name="0005_pgvector_worker_write_policy.sql",
+    ),
 )
 
 

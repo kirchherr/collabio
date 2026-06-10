@@ -87,6 +87,7 @@ Bereits umgesetzt:
 - [x] Erste pgvector Embedding-Metadaten-Migration mit RLS- und Lifecycle-Tests.
 - [x] Docker-PostgreSQL/pgvector-Service mit Migrationsrunner und Live-RLS-Integrationstests.
 - [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
+- [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
 
 Noch nicht umgesetzt:
 
@@ -1030,7 +1031,8 @@ Empfohlene naechste Reihenfolge:
 12. [x] Erste pgvector Embedding-Metadaten-Migration und Tests implementieren.
 13. [x] Live PostgreSQL/pgvector Migrationsrunner und RLS-Integrationstest implementieren.
 14. [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate Search implementieren.
-15. [ ] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
+15. [x] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
+16. [ ] Source Resolver und Text Extraction Pipeline an pgvector Worker anbinden.
 
 ## Release-Strategie
 
