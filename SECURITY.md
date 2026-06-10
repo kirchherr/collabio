@@ -1,0 +1,84 @@
+# Security Policy
+
+## Security Philosophy
+
+This project treats security as a product feature and an architectural constraint. The baseline assumption is that every layer can fail, so the platform must use defense in depth:
+
+- Application-level authorization.
+- Database-level tenant defense.
+- Storage-level immutability where required.
+- KMS abstraction and envelope encryption.
+- Append-only audit with tamper detection.
+- Search and RAG post-filtering before data exposure.
+- CI/CD and supply-chain checks.
+
+## Supported Security Baseline
+
+The current repository is a development skeleton. Production security support begins only after the Phase 0 and Phase 1 gates in `docs/ROADMAP.md` are complete.
+
+Current skeleton guarantees:
+
+- AI is disabled by default unless tenant policy enables it.
+- LLM calls route through the Local LLM Gateway.
+- RAG candidates are ACL-checked before context construction.
+- Voice transcripts require explicit push-to-talk activation.
+- Tests run in Docker Compose.
+
+Not yet production-ready:
+
+- Persistent tenant auth context.
+- Persistent audit store.
+- KMS integration.
+- WORM storage enforcement.
+- OIDC/SAML integration.
+- Supply-chain signing and SBOM generation.
+
+## Reporting Security Issues
+
+Until a private vulnerability intake channel exists, do not publish sensitive findings in public issues. Track private findings in the project security register and mark them as:
+
+- `critical`
+- `high`
+- `medium`
+- `low`
+
+Each finding must include:
+
+- Affected component.
+- Tenant impact.
+- Data classes impacted.
+- Exploit preconditions.
+- Evidence.
+- Proposed mitigation.
+- Test that proves the fix.
+
+## Required Security Controls
+
+- No secrets in source control.
+- No sensitive business, document, mail, prompt, output, transcript, token, or key material in logs.
+- No API endpoint without authentication and authorization once Phase 1 starts.
+- No direct storage, KMS, search, vector DB, or LLM provider access outside approved adapters.
+- No parser or converter workload with external network access.
+- No runtime role with unnecessary UPDATE/DELETE rights on audit records.
+- No WORM bypass path in application or admin code.
+
+## Security Verification Targets
+
+Phase 0 introduces:
+
+- Linting and typing.
+- Unit and integration tests.
+- Secret scanning.
+- Dependency and license scanning.
+- Container scanning.
+- SBOM generation.
+- Prompt-injection tests.
+- RAG leakage tests.
+
+Phase 1 introduces:
+
+- Tenant isolation tests.
+- Authz bypass tests.
+- Audit hash-chain tamper tests.
+- AI Control Plane bypass tests.
+

@@ -1,0 +1,2 @@
+"""ACL-aware RAG foundation."""
+

@@ -1,0 +1,55 @@
+# ADR-0010: RAG Security Model And Candidate-Only Vector Search
+
+Status: accepted
+Date: 2026-06-10
+
+## Context
+
+RAG can leak data if search or vector stores return unauthorized text, snippets, or embeddings directly. The vector database is not an authorization source.
+
+## Decision
+
+RAG and search must follow:
+
+```text
+query
+  -> candidate ids
+    -> authoritative ACL check
+      -> source fetch
+        -> redaction
+          -> RAG context
+            -> Local LLM Gateway
+              -> answer with citations
+                -> audit
+```
+
+Vector search and keyword search may return candidate identifiers and metadata for filtering, but not final user-visible content before authorization and redaction.
+
+RAG answers must cite source object IDs and source versions. Answers without sources must be labeled unsupported.
+
+## Consequences
+
+- Retrieval quality and authorization are separate concerns.
+- Source resolver and redaction layer become mandatory.
+- Embedding deletion/reindex flows must track source lifecycle.
+
+## Alternatives Considered
+
+- Let vector DB metadata filters decide authorization: rejected because stale ACLs and metadata bugs can leak data.
+- Return search snippets directly from index: rejected because snippets can expose unauthorized content.
+- Use generic RAG framework as core orchestrator: rejected for the security-critical path; adapters may be used behind our orchestration.
+
+## Compliance Mapping
+
+- `COMPLIANCE_MATRIX.md`: CM-009, CM-010, CM-011
+- DSGVO: data minimization and access control
+- OWASP LLM/GenAI: vector and embedding weaknesses
+
+## Verification
+
+- Unauthorized candidate tests.
+- Deleted source tests.
+- Legal-hold visibility tests for authorized roles.
+- Citation tests.
+- Prompt-injection tests with hostile source text.
+

@@ -1,0 +1,83 @@
+version: 1
+status: initial
+updated_at: "2026-06-10"
+policies:
+  temporary_default:
+    description: Short-lived temporary data such as previews and transient cache.
+    data_classes:
+      - temporary
+    retention_days: 7
+    deletion_mode: hard_delete
+    legal_hold_allowed: false
+    worm_required: false
+    audit_required: false
+  working_data_default:
+    description: Drafts, CRDT deltas, and collaborative working data.
+    data_classes:
+      - working_data
+    retention_days: 365
+    deletion_mode: policy_delete_or_restrict
+    legal_hold_allowed: true
+    worm_required: false
+    audit_required: true
+  personal_data_default:
+    description: Personal data subject to DSGVO workflows.
+    data_classes:
+      - personal_data
+      - voice_transcript
+      - ai_prompt
+    retention_days: 365
+    deletion_mode: policy_delete_or_restrict
+    legal_hold_allowed: true
+    worm_required: false
+    audit_required: true
+  ai_output_default:
+    description: AI-generated draft outputs and classifications.
+    data_classes:
+      - ai_output
+    retention_days: 365
+    deletion_mode: policy_delete_or_restrict
+    legal_hold_allowed: true
+    worm_required: false
+    audit_required: true
+  business_record_gobd:
+    description: GoBD-relevant business records.
+    data_classes:
+      - gobd_record
+    retention_years: 10
+    deletion_mode: delete_after_retention_if_no_hold
+    legal_hold_allowed: true
+    worm_required: true
+    audit_required: true
+    cryptoshred_allowed_before_retention_end: false
+  security_audit_default:
+    description: Security, admin, audit, retrieval trace, and tool-call evidence.
+    data_classes:
+      - security_data
+      - retrieval_trace
+      - tool_call
+    retention_years: 10
+    deletion_mode: delete_after_retention_if_no_hold
+    legal_hold_allowed: true
+    worm_required: true
+    audit_required: true
+  embedding_default:
+    description: Vector embeddings that inherit classification from source objects.
+    data_classes:
+      - embedding
+      - rag_chunk
+    retention_mode: follows_source
+    deletion_mode: delete_or_reindex_with_source
+    legal_hold_allowed: true
+    worm_required: false
+    audit_required: true
+  export_package_default:
+    description: E-discovery and compliance export packages.
+    data_classes:
+      - export_package
+    retention_years: 10
+    deletion_mode: delete_after_retention_if_no_hold
+    legal_hold_allowed: true
+    worm_required: true
+    audit_required: true
+
