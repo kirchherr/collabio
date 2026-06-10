@@ -28,3 +28,17 @@ Embeddings are classified data. They are not anonymous by default and must follo
 `ARCHITECTURE_DECISIONS/ADR-0031-pgvector-vs-qdrant.md` selects pgvector as the first persistent vector backend.
 
 Vector search remains an adapter boundary. Qdrant is retained as the scale-out candidate if pgvector no longer meets volume, latency, throughput, or operational-isolation needs.
+
+## First Persistent Schema
+
+`app/suite/persistence/migrations/0001_pgvector_embeddings.sql` defines the first pgvector-backed metadata schema.
+
+The schema stores candidate vectors and compliance metadata only. It does not store source text, prompts, generated answers, or snippets. RAG source fetch and answer construction must still pass through authoritative ACL validation.
+
+Key guardrails:
+
+- `tenant_id` is mandatory and protected by PostgreSQL RLS using the request-scoped `app.tenant_id` setting.
+- `embedding_dimensions` must match `vector_dims(embedding)`.
+- `lifecycle_state` is soft-delete oriented: `active`, `reindex_pending`, `restricted`, `deleted`, or `cryptoshredded`.
+- hard deletes are denied by policy; deletion, restriction, reindex, legal hold, and cryptoshred workflows update lifecycle fields instead.
+- ANN indexes are deferred until a concrete embedding model, dimension, tenant distribution, and benchmark target are known.

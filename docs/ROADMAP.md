@@ -84,6 +84,7 @@ Bereits umgesetzt:
 - [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
 - [x] Architekturtests gegen direkte LLM Provider Bypaesse ausserhalb des Gateways.
 - [x] ADR-0031 pgvector vs. Qdrant als erster Vector Backend.
+- [x] Erste pgvector Embedding-Metadaten-Migration mit RLS- und Lifecycle-Tests.
 
 Noch nicht umgesetzt:
 
@@ -643,6 +644,7 @@ Aufgaben:
 - [ ] Snippet-Erzeugung erst nach Authz.
 - [ ] Persistent Vector DB Adapter.
 - [x] ADR: pgvector vs. Qdrant als erster Backend-Adapter.
+- [x] pgvector Embedding-Metadaten-Schema als erste SQL-Migration.
 - [ ] Hybrid Query Orchestration.
 - [ ] Reranker Interface.
 - [ ] Source Resolver.
@@ -1022,6 +1024,8 @@ Empfohlene naechste Reihenfolge:
 9. [x] ADR fuer pgvector vs. Qdrant vorbereiten.
 10. [x] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
 11. [x] Admin API fuer Tenant AI on/off und allowed models implementieren.
+12. [x] Erste pgvector Embedding-Metadaten-Migration und Tests implementieren.
+13. [ ] Live PostgreSQL/pgvector Migrationsrunner und RLS-Integrationstest implementieren.
 
 ## Release-Strategie
 

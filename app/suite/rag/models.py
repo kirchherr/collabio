@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from enum import StrEnum
+
+from pydantic import BaseModel, Field, model_validator
 
 from suite.ai_control_plane.models import DataClass
 
@@ -20,10 +22,35 @@ class ChunkMetadata(BaseModel):
     content_hash: str
 
 
+class VectorLifecycleState(StrEnum):
+    ACTIVE = "active"
+    REINDEX_PENDING = "reindex_pending"
+    RESTRICTED = "restricted"
+    DELETED = "deleted"
+    CRYPTOSHREDDED = "cryptoshredded"
+
+
 class VectorCandidate(BaseModel):
     chunk_id: str
     score: float
     metadata: ChunkMetadata
+
+
+class VectorEmbeddingRecord(BaseModel):
+    metadata: ChunkMetadata
+    embedding: list[float]
+    embedding_dimensions: int = Field(ge=1)
+    content_byte_length: int = Field(ge=0)
+    lifecycle_state: VectorLifecycleState = VectorLifecycleState.ACTIVE
+    indexed_at_utc: str
+    expires_at_utc: str | None = None
+    audit_event_id: str | None = None
+
+    @model_validator(mode="after")
+    def require_dimensions_match(self) -> "VectorEmbeddingRecord":
+        if self.embedding_dimensions != len(self.embedding):
+            raise ValueError("embedding_dimensions must match embedding length")
+        return self
 
 
 class SourceDocument(BaseModel):
