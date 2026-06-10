@@ -86,6 +86,7 @@ Bereits umgesetzt:
 - [x] ADR-0031 pgvector vs. Qdrant als erster Vector Backend.
 - [x] Erste pgvector Embedding-Metadaten-Migration mit RLS- und Lifecycle-Tests.
 - [x] Docker-PostgreSQL/pgvector-Service mit Migrationsrunner und Live-RLS-Integrationstests.
+- [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
 
 Noch nicht umgesetzt:
 
@@ -643,7 +644,7 @@ Aufgaben:
 - [ ] Index-Rebuild Pipeline.
 - [ ] Search Audit Events.
 - [ ] Snippet-Erzeugung erst nach Authz.
-- [ ] Persistent Vector DB Adapter.
+- [x] Persistent Vector DB Adapter.
 - [x] ADR: pgvector vs. Qdrant als erster Backend-Adapter.
 - [x] pgvector Embedding-Metadaten-Schema als erste SQL-Migration.
 - [x] Live pgvector RLS-Integrationstest gegen PostgreSQL.
@@ -1028,7 +1029,8 @@ Empfohlene naechste Reihenfolge:
 11. [x] Admin API fuer Tenant AI on/off und allowed models implementieren.
 12. [x] Erste pgvector Embedding-Metadaten-Migration und Tests implementieren.
 13. [x] Live PostgreSQL/pgvector Migrationsrunner und RLS-Integrationstest implementieren.
-14. [ ] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate Search implementieren.
+14. [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate Search implementieren.
+15. [ ] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
 
 ## Release-Strategie
 

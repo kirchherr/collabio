@@ -22,11 +22,12 @@ Current sprint:
 12. [x] ADR for pgvector vs. Qdrant.
 13. [x] First pgvector embedding metadata migration and tests.
 14. [x] PostgreSQL/pgvector dev service, migration runner, and live RLS tests.
+15. [x] pgvector adapter for upsert, lifecycle transitions, and candidate-only search.
 
 ## Next Engineering Step
 
-After the PostgreSQL/pgvector dev service and live RLS tests are in place:
+After the pgvector adapter is in place:
 
-- Implement a pgvector adapter behind the vector search boundary.
-- Add repository methods for vector upsert, lifecycle transitions, and candidate-only search.
 - Add API or worker entrypoints for reindex and deletion propagation.
+- Add source resolver and text extraction pipeline feeding the pgvector adapter.
+- Add benchmark fixtures for exact search before ANN index decisions.

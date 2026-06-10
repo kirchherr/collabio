@@ -1,5 +1,11 @@
+from typing import Protocol
+
 from suite.ai_control_plane.models import DataClass, UserContext
 from suite.rag.models import ChunkMetadata, SourceDocument, VectorCandidate
+
+
+class VectorStore(Protocol):
+    def search(self, *, tenant_id: str, query: str, top_k: int) -> list[VectorCandidate]: ...
 
 
 class InMemoryVectorStore:

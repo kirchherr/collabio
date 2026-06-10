@@ -28,6 +28,7 @@ services:
       PYTHONPATH: /workspace/app
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
 
@@ -63,6 +64,7 @@ services:
       SUITE_DATA_DIR: /tmp/collabio-test-data
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -107,6 +109,7 @@ services:
       SUITE_DATA_DIR: /tmp/collabio-test-data
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests

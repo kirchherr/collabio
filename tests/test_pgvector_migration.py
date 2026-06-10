@@ -25,7 +25,7 @@ def pgvector_sql() -> str:
 def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == sorted(migration.version for migration in migrations)
+    assert [migration.version for migration in migrations] == ["0001", "0002", "0003"]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
     assert "CREATE EXTENSION IF NOT EXISTS vector;" in migrations[0].sql()
@@ -88,6 +88,18 @@ def test_pgvector_embedding_schema_enables_rls_with_null_safe_tenant_setting() -
     assert "create policy vector_embedding_chunks_no_hard_delete" in sql
     assert "using (false)" in sql
     assert "grant select, insert, update, delete on table collabio.vector_embedding_chunks to collabio_app" in sql
+
+
+def test_pgvector_role_policy_migrations_split_app_and_worker_permissions() -> None:
+    worker_sql = normalized(get_migration("0002").sql())
+    insert_policy_sql = normalized(get_migration("0003").sql())
+
+    assert "create role collabio_worker login password" in worker_sql
+    assert "grant select, update on table collabio.vector_embedding_chunks to collabio_worker" in worker_sql
+    assert "create policy vector_embedding_chunks_worker_select" in worker_sql
+    assert "to collabio_worker using (tenant_id = collabio.current_tenant_id())" in worker_sql
+    assert "drop policy if exists vector_embedding_chunks_tenant_insert" in insert_policy_sql
+    assert "for insert to collabio_app" in insert_policy_sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

@@ -2,7 +2,7 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, InferenceRequest, Purpose, TenantPolicy, UserContext
 from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.rag.models import RagQuery, RagResponse, RagSource
-from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
+from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, VectorStore
 
 
 def render_authorized_source_block(document_id: str, version_id: str, chunk_id: str, text: str) -> str:
@@ -19,7 +19,7 @@ class RagPipeline:
     def __init__(
         self,
         *,
-        vector_store: InMemoryVectorStore,
+        vector_store: VectorStore,
         source_repository: InMemorySourceRepository,
         acl_authorizer: InMemoryAclAuthorizer,
         llm_gateway: LocalLLMGateway,

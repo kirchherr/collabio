@@ -3,5 +3,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'collabio_app') THEN
         CREATE ROLE collabio_app LOGIN PASSWORD 'collabio_app';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'collabio_worker') THEN
+        CREATE ROLE collabio_worker LOGIN PASSWORD 'collabio_worker';
+    END IF;
 END
 $$;

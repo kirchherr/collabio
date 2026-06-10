@@ -61,3 +61,20 @@ Live integration tests use:
 - `SUITE_DATABASE_DSN` for the non-owner `collabio_app` runtime role.
 
 `tests/test_pgvector_integration.py` proves the first migration installs pgvector, records migration state, enforces tenant-scoped RLS, hides non-active lifecycle states from candidate reads, blocks cross-tenant inserts, and denies hard deletes.
+
+## Adapter Boundary
+
+`app/suite/rag/pgvector_store.py` implements the first persistent vector adapter.
+
+Runtime split:
+
+- `collabio_app` performs candidate-only search and active/reindex-pending upserts.
+- `collabio_worker` performs lifecycle transitions under tenant-scoped RLS.
+
+The adapter returns `VectorCandidate` objects only. It does not return embeddings, snippets, source text, prompts, or answers. Source text is still resolved later by the RAG pipeline after authoritative ACL validation.
+
+Implemented operations:
+
+- `upsert_embedding`: writes or refreshes vector metadata for one chunk.
+- `search` / `search_by_embedding`: returns active candidates ordered by cosine similarity.
+- `transition_lifecycle`: moves chunks to `restricted`, `deleted`, `cryptoshredded`, `reindex_pending`, or `active` using the worker role.
