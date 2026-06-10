@@ -1,19 +1,191 @@
 {
-  "schema_version": "backup_failover_policy.v1",
+  "schema_version": "backup_failover_policy.v2",
   "owner": "platform-operations",
   "default_timezone": "UTC",
   "principles": [
     "Backups count only after checksum and restore verification.",
     "RPO and RTO are explicit for every protected target.",
+    "Every new durable component must be added to this policy before production use.",
     "Failover is manual and rehearsed before it is automated.",
     "Backups containing tenant data are classified data.",
     "Restore drill evidence is part of release evidence."
   ],
+  "change_control_rules": [
+    "Any new persistent table, object bucket, queue, search index, model artifact, KMS dependency, mail store, office store, or audit sink must add or update a continuity domain in this policy.",
+    "Any schema, retention, legal-hold, KMS, parser, search, mail, office, or AI-control-plane change must update restore evidence expectations if recovery steps change.",
+    "A release cannot claim production readiness when a roadmap component stores state but has no continuity domain, backup target, restore drill, and failover mode.",
+    "Rebuildable indexes still need recovery strategy, rebuild order, freshness target, and integrity checks.",
+    "Secrets and key material are never treated as ordinary dumps; recovery must use the approved secret manager or KMS backup mechanism."
+  ],
+  "continuity_domains": [
+    {
+      "domain_id": "tenant_iam_authz",
+      "description": "Tenant context, IAM mappings, roles, policies, authorization metadata, and admin settings.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore metadata before API traffic resumes; verify tenant isolation and admin policy checks",
+      "state_artifacts": ["tenant policies", "principal mappings", "role grants", "authorization policies"]
+    },
+    {
+      "domain_id": "postgres_metadata",
+      "description": "Core PostgreSQL metadata, migration history, registries, and relational domain state.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "PITR or latest verified logical dump; run migration checksum verification after restore",
+      "state_artifacts": ["schema migrations", "policy registries", "domain tables", "metadata tables"]
+    },
+    {
+      "domain_id": "audit_evidence",
+      "description": "Append-only audit chain, audit checkpoints, audit snapshots, and verification evidence.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore audit tables and WORM snapshots; verify hash chain before declaring service recovered",
+      "state_artifacts": ["audit events", "audit hashes", "verification checkpoints", "WORM audit snapshots"]
+    },
+    {
+      "domain_id": "object_storage_records",
+      "description": "Durable object store records for documents, mail attachments, exports, snapshots, and evidence packages.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "critical",
+      "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
+      "state_artifacts": ["object manifests", "content hashes", "retention metadata", "legal hold metadata", "object versions"]
+    },
+    {
+      "domain_id": "kms_key_metadata",
+      "description": "KMS configuration, key references, wrapped data keys, rotation state, and destruction evidence.",
+      "primary_target_id": "kms_and_secrets",
+      "criticality": "critical",
+      "recovery_strategy": "recover through approved KMS/HSM/secret-manager mechanism; never restore plaintext key material from ordinary dumps",
+      "state_artifacts": ["key references", "wrapped data keys", "rotation manifests", "destruction evidence", "KMS configuration"]
+    },
+    {
+      "domain_id": "secrets_configuration",
+      "description": "Runtime secrets, connection credentials, signing keys, webhook secrets, and deployment-specific configuration.",
+      "primary_target_id": "kms_and_secrets",
+      "criticality": "critical",
+      "recovery_strategy": "restore from secret manager backup or sealed secret source; rotate exposed secrets before traffic resumes",
+      "state_artifacts": ["secret references", "sealed secrets", "deployment env manifests", "rotation evidence"]
+    },
+    {
+      "domain_id": "office_documents",
+      "description": "Office drafts, collaborative state, saved versions, business records, and WORM evidence records.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "critical",
+      "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
+      "state_artifacts": ["draft state", "saved versions", "business records", "WORM evidence records", "collaboration manifests"]
+    },
+    {
+      "domain_id": "mail_messages_threads",
+      "description": "Mail accounts, RFC messages, journal records, threads, delivery state, team inbox state, and mail security evidence.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore metadata and message journal; verify RFC object immutability, idempotent delivery state, and security evidence",
+      "state_artifacts": ["mail accounts", "message metadata", "thread state", "journal records", "SPF/DKIM/DMARC/MTA-STS evidence"]
+    },
+    {
+      "domain_id": "mail_attachments",
+      "description": "Mail attachment source objects, scan evidence, parser results, and attachment manifests.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "critical",
+      "recovery_strategy": "restore object data and attachment metadata; rerun or verify scan/parser evidence before preview/search",
+      "state_artifacts": ["attachment objects", "attachment manifests", "scan results", "parser artifacts"]
+    },
+    {
+      "domain_id": "parser_worker_artifacts",
+      "description": "Parser input/output manifests, extracted text artifacts, parser versions, warnings, and sandbox evidence.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "important",
+      "recovery_strategy": "restore parser artifacts when retained; otherwise rebuild from source objects using pinned parser versions",
+      "state_artifacts": ["parser manifests", "extracted text hashes", "parser version IDs", "sandbox policy evidence"]
+    },
+    {
+      "domain_id": "search_indexes",
+      "description": "Keyword and hybrid search indexes derived from authorized source metadata and parser output.",
+      "primary_target_id": "search_and_vector_derivatives",
+      "criticality": "rebuildable",
+      "recovery_strategy": "rebuild from source objects and metadata; keep snapshots only when rebuild exceeds RTO",
+      "state_artifacts": ["index version", "source checkpoint", "ACL checkpoint", "rebuild cursor"]
+    },
+    {
+      "domain_id": "vector_indexes",
+      "description": "pgvector/Qdrant vector chunks, embedding metadata, lifecycle state, and model-version checkpoints.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "important",
+      "recovery_strategy": "restore vector metadata with Postgres; rebuild derived vectors when model or index snapshots are stale",
+      "state_artifacts": ["vector chunks", "embedding model IDs", "ACL versions", "lifecycle state", "reindex checkpoints"]
+    },
+    {
+      "domain_id": "ai_control_plane",
+      "description": "Model registry, prompt registry, tool permissions, tenant AI policy, inference audit references, and approval policy.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore registries and policy before enabling AI features; verify deny-by-default behavior",
+      "state_artifacts": ["model registry", "prompt registry", "tool permissions", "tenant AI policy", "approval policy"]
+    },
+    {
+      "domain_id": "model_artifacts",
+      "description": "Local model manifests, checksums, license metadata, tokenizer assets, and deployment references.",
+      "primary_target_id": "model_and_release_artifacts",
+      "criticality": "important",
+      "recovery_strategy": "restore signed artifacts or re-fetch from verified source; validate checksums before serving",
+      "state_artifacts": ["model manifests", "checksums", "license metadata", "tokenizer assets", "deployment manifests"]
+    },
+    {
+      "domain_id": "voice_transcripts",
+      "description": "Voice transcripts, command audit references, classification, and retention metadata. Raw audio is not stored by default.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "important",
+      "recovery_strategy": "restore transcript records and audit links; verify raw-audio-disabled policy remains intact",
+      "state_artifacts": ["voice transcripts", "classification metadata", "command audit references", "retention metadata"]
+    },
+    {
+      "domain_id": "ediscovery_exports",
+      "description": "E-discovery query definitions, export packages, chain-of-custody manifests, and disclosure evidence.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "critical",
+      "recovery_strategy": "restore export packages and manifests; verify chain of custody and hash manifests before disclosure",
+      "state_artifacts": ["export packages", "EDRM manifests", "chain-of-custody records", "disclosure approvals"]
+    },
+    {
+      "domain_id": "observability_operational_logs",
+      "description": "Redacted operational logs, metrics, traces, alerts, and incident timelines without prompt/output/body leakage.",
+      "primary_target_id": "observability_evidence",
+      "criticality": "important",
+      "recovery_strategy": "restore retained observability evidence; verify redaction and incident timeline continuity",
+      "state_artifacts": ["redacted logs", "metrics", "traces", "alert history", "incident timelines"]
+    },
+    {
+      "domain_id": "repository_and_configuration",
+      "description": "Source code, migrations, infrastructure definitions, policy files, and release evidence.",
+      "primary_target_id": "repository_and_configuration",
+      "criticality": "critical",
+      "recovery_strategy": "restore from git remote and signed release artifacts; verify policy snapshot and migration catalog",
+      "state_artifacts": ["git commits", "migration files", "infrastructure definitions", "policy files", "release evidence"]
+    },
+    {
+      "domain_id": "background_jobs_queues",
+      "description": "Outbox events, indexing jobs, lifecycle jobs, retry state, and idempotency markers.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "important",
+      "recovery_strategy": "restore durable queue/outbox state; resume workers only after idempotency and tenant checks pass",
+      "state_artifacts": ["outbox events", "job cursors", "retry state", "idempotency keys", "worker checkpoints"]
+    }
+  ],
   "targets": [
     {
       "target_id": "postgres_primary",
-      "description": "PostgreSQL metadata, tenant policies, registries, audit rows, migration history, and vector metadata.",
-      "data_classes": ["internal", "personal", "confidential", "embedding", "ai_prompt", "ai_output"],
+      "description": "PostgreSQL metadata, tenant policies, registries, audit rows, migration history, vector metadata, mail metadata, and durable job state.",
+      "covered_domains": [
+        "tenant_iam_authz",
+        "postgres_metadata",
+        "audit_evidence",
+        "mail_messages_threads",
+        "vector_indexes",
+        "ai_control_plane",
+        "voice_transcripts",
+        "background_jobs_queues"
+      ],
+      "data_classes": ["internal", "personal", "confidential", "embedding", "ai_prompt", "ai_output", "voice_transcript"],
       "rpo_minutes": 15,
       "rto_hours": 4,
       "backup_methods": ["production_pitr_wal_archive", "daily_logical_dump", "development_pg_dump"],
@@ -23,30 +195,110 @@
         "monthly": 12
       },
       "restore_drill_frequency_days": 30,
-      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification"],
+      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification", "tenant_isolation_smoke_test"],
       "failover_mode": "manual promotion until HA ADR and production drills are passing",
       "current_dev_commands": ["docker compose run --rm backup", "docker compose run --rm backup-verify"]
     },
     {
       "target_id": "object_storage_records",
-      "description": "Future office documents, mail attachments, WORM records, export packages, and audit snapshots.",
+      "description": "Office documents, mail attachments, WORM records, parser artifacts, e-discovery export packages, object manifests, and audit snapshots.",
+      "covered_domains": [
+        "object_storage_records",
+        "office_documents",
+        "mail_attachments",
+        "parser_worker_artifacts",
+        "ediscovery_exports"
+      ],
       "data_classes": ["public", "internal", "personal", "confidential", "gobd", "legal_hold", "voice_transcript"],
       "rpo_minutes": 60,
       "rto_hours": 8,
-      "backup_methods": ["versioned_object_storage", "object_lock_retention", "cross_bucket_replication"],
+      "backup_methods": ["versioned_object_storage", "object_lock_retention", "cross_bucket_replication", "manifest_export"],
       "retention": {
         "daily": 30,
         "weekly": 12,
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["object_manifest_hash", "retention_policy_check", "legal_hold_check"],
+      "integrity_checks": ["object_manifest_hash", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
       "failover_mode": "manual bucket endpoint switch until storage ADR is implemented",
+      "current_dev_commands": []
+    },
+    {
+      "target_id": "kms_and_secrets",
+      "description": "KMS metadata, key references, wrapped data keys, secret-manager state, sealed deployment secrets, and rotation evidence.",
+      "covered_domains": ["kms_key_metadata", "secrets_configuration"],
+      "data_classes": ["internal", "confidential"],
+      "rpo_minutes": 15,
+      "rto_hours": 4,
+      "backup_methods": ["kms_provider_backup", "hsm_cluster_replication", "sealed_secret_gitops", "rotation_evidence_export"],
+      "retention": {
+        "daily": 14,
+        "weekly": 8,
+        "monthly": 12
+      },
+      "restore_drill_frequency_days": 30,
+      "integrity_checks": ["key_reference_check", "sealed_secret_integrity_check", "rotation_manifest_check", "no_plaintext_key_export_check"],
+      "failover_mode": "manual KMS endpoint switch and secret rotation until KMS ADR is implemented",
+      "current_dev_commands": []
+    },
+    {
+      "target_id": "search_and_vector_derivatives",
+      "description": "Rebuildable keyword, hybrid, and scale-out vector indexes when they are not stored in PostgreSQL.",
+      "covered_domains": ["search_indexes"],
+      "data_classes": ["internal", "personal", "confidential", "embedding"],
+      "rpo_minutes": 60,
+      "rto_hours": 8,
+      "backup_methods": ["index_snapshot_if_rebuild_exceeds_rto", "source_checkpoint_export", "rebuild_from_source_pipeline"],
+      "retention": {
+        "daily": 7,
+        "weekly": 4,
+        "monthly": 3
+      },
+      "restore_drill_frequency_days": 60,
+      "integrity_checks": ["recall_baseline_check", "acl_filter_smoke_test", "source_checkpoint_match"],
+      "failover_mode": "degraded search mode or rebuild from source until search HA ADR is implemented",
+      "current_dev_commands": []
+    },
+    {
+      "target_id": "model_and_release_artifacts",
+      "description": "Signed release artifacts, local AI model artifacts, checksums, tokenizer files, and deployment manifests.",
+      "covered_domains": ["model_artifacts"],
+      "data_classes": ["internal"],
+      "rpo_minutes": 1440,
+      "rto_hours": 24,
+      "backup_methods": ["artifact_registry_replication", "signed_release_artifacts", "verified_model_manifest_export"],
+      "retention": {
+        "daily": 7,
+        "weekly": 8,
+        "monthly": 12
+      },
+      "restore_drill_frequency_days": 90,
+      "integrity_checks": ["artifact_signature_check", "model_checksum_check", "license_manifest_check"],
+      "failover_mode": "restore from artifact registry or verified offline artifact set",
+      "current_dev_commands": []
+    },
+    {
+      "target_id": "observability_evidence",
+      "description": "Redacted logs, metrics, traces, incident timelines, alerts, and operational evidence.",
+      "covered_domains": ["observability_operational_logs"],
+      "data_classes": ["internal"],
+      "rpo_minutes": 60,
+      "rto_hours": 24,
+      "backup_methods": ["retained_log_export", "metrics_snapshot", "incident_timeline_export"],
+      "retention": {
+        "daily": 14,
+        "weekly": 8,
+        "monthly": 6
+      },
+      "restore_drill_frequency_days": 90,
+      "integrity_checks": ["redaction_check", "timeline_hash_check", "alert_history_check"],
+      "failover_mode": "restore retained evidence after primary service recovery",
       "current_dev_commands": []
     },
     {
       "target_id": "repository_and_configuration",
       "description": "Source code, migrations, infrastructure definitions, policy files, and release evidence.",
+      "covered_domains": ["repository_and_configuration"],
       "data_classes": ["internal"],
       "rpo_minutes": 1440,
       "rto_hours": 24,
@@ -68,6 +320,10 @@
     "accidental tenant data modification or deletion",
     "audit chain verification failure",
     "object manifest verification failure",
+    "KMS or secret-manager recovery risk",
+    "mail delivery or journal consistency risk",
+    "office record or WORM integrity risk",
+    "search or vector index cannot be rebuilt within RTO",
     "RPO or RTO threshold at risk"
   ],
   "restore_drill_evidence": [
@@ -77,8 +333,11 @@
     "date_utc",
     "source commit",
     "migration versions",
+    "policy version",
+    "continuity domains covered",
     "verification command output",
     "restore target",
+    "tenant and data scope",
     "approval reference"
   ]
 }

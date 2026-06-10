@@ -7,17 +7,40 @@ POLICY_PATH = REPO_ROOT / "docs" / "operations" / "backup_failover_policy.json"
 RUNBOOK_PATH = REPO_ROOT / "docs" / "operations" / "BACKUP_FAILOVER.md"
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
 
+REQUIRED_CONTINUITY_DOMAINS = {
+    "tenant_iam_authz",
+    "postgres_metadata",
+    "audit_evidence",
+    "object_storage_records",
+    "kms_key_metadata",
+    "secrets_configuration",
+    "office_documents",
+    "mail_messages_threads",
+    "mail_attachments",
+    "parser_worker_artifacts",
+    "search_indexes",
+    "vector_indexes",
+    "ai_control_plane",
+    "model_artifacts",
+    "voice_transcripts",
+    "ediscovery_exports",
+    "observability_operational_logs",
+    "repository_and_configuration",
+    "background_jobs_queues",
+}
+
 
 def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     policy = load_backup_failover_policy(POLICY_PATH)
 
-    assert policy.schema_version == "backup_failover_policy.v1"
+    assert policy.schema_version == "backup_failover_policy.v2"
     assert policy.owner == "platform-operations"
-    assert len(policy.targets) == 3
+    assert len(policy.targets) == 7
     assert backup_policy_summary(policy) == {
-        "schema_version": "backup_failover_policy.v1",
+        "schema_version": "backup_failover_policy.v2",
         "owner": "platform-operations",
-        "target_count": 3,
+        "target_count": 7,
+        "continuity_domain_count": len(REQUIRED_CONTINUITY_DOMAINS),
         "strictest_rpo_minutes": 15,
         "strictest_rto_hours": 4,
     }
@@ -32,18 +55,56 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
 
     for target in policy.targets:
+        assert target.covered_domains
         assert target.backup_methods
         assert target.integrity_checks
         assert target.failover_mode
         assert target.restore_drill_frequency_days <= 90
 
 
+def test_backup_failover_policy_covers_future_suite_domains() -> None:
+    policy = load_backup_failover_policy(POLICY_PATH)
+    domain_ids = {domain.domain_id for domain in policy.continuity_domains}
+    covered_domain_ids = {domain_id for target in policy.targets for domain_id in target.covered_domains}
+    target_ids = {target.target_id for target in policy.targets}
+
+    assert domain_ids >= REQUIRED_CONTINUITY_DOMAINS
+    assert covered_domain_ids >= REQUIRED_CONTINUITY_DOMAINS
+
+    for domain in policy.continuity_domains:
+        assert domain.primary_target_id in target_ids
+        assert domain.criticality in {"critical", "important", "rebuildable"}
+        assert domain.recovery_strategy
+        assert domain.state_artifacts
+
+    assert policy.domain("kms_key_metadata").primary_target_id == "kms_and_secrets"
+    assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
+    assert policy.domain("search_indexes").criticality == "rebuildable"
+    assert policy.domain("office_documents").criticality == "critical"
+    assert policy.domain("mail_messages_threads").criticality == "critical"
+
+
+def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
+    policy = load_backup_failover_policy(POLICY_PATH)
+    rules = " ".join(policy.change_control_rules)
+
+    assert "new persistent table" in rules
+    assert "object bucket" in rules
+    assert "search index" in rules
+    assert "mail store" in rules
+    assert "office store" in rules
+    assert "continuity domain" in rules
+
+
 def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     runbook = RUNBOOK_PATH.read_text(encoding="utf-8")
 
     assert "a backup does not count until it has a checksum" in runbook
+    assert "every new durable component must update this continuity model" in runbook
     assert "docker compose run --rm backup" in runbook
     assert "docker compose run --rm backup-verify" in runbook
+    assert "Continuity Domains" in runbook
+    assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook
     assert "RTO" in runbook
     assert "Failover" in runbook

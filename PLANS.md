@@ -27,7 +27,7 @@ Current sprint:
 17. [x] Source resolver and text extraction pipeline feeding the pgvector worker.
 18. [x] Vector worker audit events and exact-search benchmark fixtures.
 19. [x] Office/mail core architecture and parser worker boundary behind text extraction.
-20. [x] Practical backup/failover culture, policy, and dev backup verification commands.
+20. [x] Suite-wide backup/failover continuity culture, policy, and dev backup verification commands.
 
 ## Next Engineering Step
 

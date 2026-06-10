@@ -118,7 +118,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Parser worker boundary for plain text and RFC822 mail extraction behind the TextExtractor interface
 - Hash-chained audit events for vector worker jobs
 - Deterministic exact-search benchmark fixtures for pgvector recall baselines
-- Practical backup/failover policy, runbook, and Docker backup verification commands
+- Suite-wide backup/failover continuity policy, runbook, and Docker backup verification commands
 - Prompt-injection and unauthorized-RAG-output regression tests
 - Architecture guards that prevent direct LLM provider bypasses outside the gateway
 - Voice transcript classification and no-raw-audio default
