@@ -5,6 +5,16 @@ from suite.rag.models import RagQuery, RagResponse, RagSource
 from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
 
 
+def render_authorized_source_block(document_id: str, version_id: str, chunk_id: str, text: str) -> str:
+    return (
+        f'<authorized_source object_id="{document_id}" version_id="{version_id}" chunk_id="{chunk_id}">\n'
+        "UNTRUSTED_SOURCE_TEXT_BEGIN\n"
+        f"{text}\n"
+        "UNTRUSTED_SOURCE_TEXT_END\n"
+        "</authorized_source>"
+    )
+
+
 class RagPipeline:
     def __init__(
         self,
@@ -58,7 +68,14 @@ class RagPipeline:
                     access_checked=True,
                 )
             )
-            context_blocks.append(f"[{document.object_id}@{document.version_id}] {document.text}")
+            context_blocks.append(
+                render_authorized_source_block(
+                    document_id=document.object_id,
+                    version_id=document.version_id,
+                    chunk_id=candidate.chunk_id,
+                    text=document.text,
+                )
+            )
 
         source_object_ids = [source.object_id for source in allowed_sources]
         retrieval_audit = self.audit_logger.record(

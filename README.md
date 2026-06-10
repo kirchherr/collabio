@@ -101,6 +101,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - File-backed tenant policy, model, prompt, tool-permission, and audit stores
 - Append-only audit hash chain with verifier
 - Mock LLM provider for local tests
-- RAG flow with candidate retrieval, ACL checks, citations, and audit
+- RAG flow with candidate retrieval, ACL checks, untrusted source framing, citations, and audit
+- Prompt-injection and unauthorized-RAG-output regression tests
 - Voice transcript classification and no-raw-audio default
 - Governance documents for Phase -1

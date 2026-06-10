@@ -81,6 +81,7 @@ Bereits umgesetzt:
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
+- [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
 
 Noch nicht umgesetzt:
 
@@ -381,7 +382,8 @@ Aufgaben:
 - [ ] Compliance-Matrix als YAML/Markdown-Quelle versionieren.
 - [ ] Test-Fixtures fuer Tenants, Rollen, Dokumente, Mails, Holds und AI Policies anlegen.
 - [ ] Prompt-Lint einfuehren.
-- [ ] Prompt-Injection-Testkorpus anlegen.
+- [ ] Prompt-Injection-Testkorpus ausbauen.
+- [x] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
 - [ ] RAG-Retrieval-Qualitaetstests anlegen.
 - [ ] Source-Citation-Tests anlegen.
 - [ ] Model-License- und Checksum-Checks anlegen.
@@ -1016,7 +1018,7 @@ Empfohlene naechste Reihenfolge:
 7. [x] Request-scoped Tenant Context implementieren.
 8. [x] Append-only Audit Event Model mit Hash Chain implementieren.
 9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.
-10. [ ] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
+10. [x] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
 11. [x] Admin API fuer Tenant AI on/off und allowed models implementieren.
 
 ## Release-Strategie

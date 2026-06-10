@@ -17,11 +17,12 @@ Current sprint:
 7. [x] Append-only audit model.
 8. [x] File-backed policy, registry, and audit stores.
 9. [x] Admin API for tenant AI settings and allowed models.
+10. [x] Prompt-injection and unauthorized-RAG-output tests.
 
 ## Next Engineering Step
 
-After the admin API for tenant AI settings is in place:
+After the first RAG security regression tests are in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
-- Add prompt-injection and unauthorized-RAG-output tests.
+- Add tests that prevent direct LLM provider bypasses outside the AI Control Plane.
 - Design PostgreSQL schema and migrations for production persistence.
