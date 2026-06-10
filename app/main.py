@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 
-from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.audit import JsonlAuditLogger
 from suite.ai_control_plane.models import (
     InferenceRequest,
     InferenceResponse,
@@ -14,13 +14,17 @@ from suite.ai_control_plane.registries import (
     InMemoryModelRegistry,
     InMemoryPromptRegistry,
     InMemoryToolPermissionRegistry,
+    JsonFileModelRegistry,
+    JsonFilePromptRegistry,
+    JsonFileToolPermissionRegistry,
 )
 from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.llm_gateway.providers.mock import MockLLMProvider
 from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.platform.context import TenantRequestContext
-from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
+from suite.platform.storage_paths import suite_data_dir
+from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.rag.models import RagQuery, RagResponse
 from suite.rag.pipeline import RagPipeline
 from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
@@ -70,10 +74,22 @@ def get_tenant_request_context(
 def build_app() -> FastAPI:
     app = FastAPI(title="Compliance-First Enterprise Suite", version="0.1.0")
 
-    audit_logger = InMemoryAuditLogger()
-    model_registry = InMemoryModelRegistry.default()
-    prompt_registry = InMemoryPromptRegistry.default()
-    tool_permission_registry = InMemoryToolPermissionRegistry.default()
+    data_dir = suite_data_dir()
+    registry_dir = data_dir / "registries"
+
+    audit_logger = JsonlAuditLogger.load(data_dir / "audit" / "events.jsonl")
+    model_registry = JsonFileModelRegistry.load_or_seed(
+        registry_dir / "models.json",
+        seed=InMemoryModelRegistry.default(),
+    )
+    prompt_registry = JsonFilePromptRegistry.load_or_seed(
+        registry_dir / "prompts.json",
+        seed=InMemoryPromptRegistry.default(),
+    )
+    tool_permission_registry = JsonFileToolPermissionRegistry.load_or_seed(
+        registry_dir / "tool_permissions.json",
+        seed=InMemoryToolPermissionRegistry.default(),
+    )
     policy_engine = PolicyEngine(
         model_registry=model_registry,
         tool_permission_registry=tool_permission_registry,
@@ -97,7 +113,10 @@ def build_app() -> FastAPI:
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
-    tenant_policy_repository = InMemoryTenantPolicyRepository.default()
+    tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(
+        registry_dir / "tenant_policies.json",
+        seed=InMemoryTenantPolicyRepository.default(),
+    )
 
     @app.get("/health")
     def health() -> dict[str, str]:

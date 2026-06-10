@@ -2,6 +2,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from suite.ai_control_plane.models import AuditEvent, UserContext
@@ -91,8 +92,39 @@ class InMemoryAuditLogger:
             event_hash="",
         )
         event.event_hash = audit_event_hash(event)
-        self._events.append(event)
+        self._append(event)
         return event
+
+    def _append(self, event: AuditEvent) -> None:
+        self._events.append(event)
 
     def verify(self) -> AuditChainVerificationResult:
         return verify_audit_chain(self.events)
+
+
+class JsonlAuditLogger(InMemoryAuditLogger):
+    def __init__(self, path: Path, events: Sequence[AuditEvent] = ()) -> None:
+        super().__init__()
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._events = list(events)
+        verification = self.verify()
+        if not verification.ok:
+            raise ValueError(f"Audit chain verification failed: {verification.failure}")
+
+    @classmethod
+    def load(cls, path: Path) -> "JsonlAuditLogger":
+        if not path.exists():
+            return cls(path=path)
+        events = [
+            AuditEvent.model_validate_json(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        return cls(path=path, events=events)
+
+    def _append(self, event: AuditEvent) -> None:
+        with self.path.open("a", encoding="utf-8") as audit_file:
+            audit_file.write(event.model_dump_json() + "\n")
+            audit_file.flush()
+        self._events.append(event)

@@ -1,4 +1,15 @@
+import json
+from pathlib import Path
+from typing import Any
+
 from suite.ai_control_plane.models import DataClass, ModelConfig, PromptTemplate, Purpose, RiskLevel, ToolPermission
+
+
+def write_json_array(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(rows, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temp_path.replace(path)
 
 
 class InMemoryModelRegistry:
@@ -26,6 +37,19 @@ class InMemoryModelRegistry:
             return self._models[model_id]
         except KeyError as exc:
             raise LookupError(f"Unknown model: {model_id}") from exc
+
+    def rows(self) -> list[dict[str, Any]]:
+        return [model.model_dump(mode="json") for model in self._models.values()]
+
+
+class JsonFileModelRegistry(InMemoryModelRegistry):
+    @classmethod
+    def load_or_seed(cls, path: Path, seed: InMemoryModelRegistry) -> "JsonFileModelRegistry":
+        if not path.exists():
+            write_json_array(path, seed.rows())
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        models = {row["model_id"]: ModelConfig.model_validate(row) for row in rows}
+        return cls(models=models)
 
 
 class InMemoryToolPermissionRegistry:
@@ -59,6 +83,19 @@ class InMemoryToolPermissionRegistry:
             return self._permissions[tool_name]
         except KeyError as exc:
             raise LookupError(f"Unknown tool permission: {tool_name}") from exc
+
+    def rows(self) -> list[dict[str, Any]]:
+        return [permission.model_dump(mode="json") for permission in self._permissions.values()]
+
+
+class JsonFileToolPermissionRegistry(InMemoryToolPermissionRegistry):
+    @classmethod
+    def load_or_seed(cls, path: Path, seed: InMemoryToolPermissionRegistry) -> "JsonFileToolPermissionRegistry":
+        if not path.exists():
+            write_json_array(path, seed.rows())
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        permissions = {row["tool_name"]: ToolPermission.model_validate(row) for row in rows}
+        return cls(permissions=permissions)
 
 
 class InMemoryPromptRegistry:
@@ -102,3 +139,16 @@ class InMemoryPromptRegistry:
             return self._prompts[prompt_template_id]
         except KeyError as exc:
             raise LookupError(f"Unknown prompt template: {prompt_template_id}") from exc
+
+    def rows(self) -> list[dict[str, Any]]:
+        return [prompt.model_dump(mode="json") for prompt in self._prompts.values()]
+
+
+class JsonFilePromptRegistry(InMemoryPromptRegistry):
+    @classmethod
+    def load_or_seed(cls, path: Path, seed: InMemoryPromptRegistry) -> "JsonFilePromptRegistry":
+        if not path.exists():
+            write_json_array(path, seed.rows())
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        prompts = {row["prompt_template_id"]: PromptTemplate.model_validate(row) for row in rows}
+        return cls(prompts=prompts)

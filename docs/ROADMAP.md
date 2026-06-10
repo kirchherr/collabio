@@ -79,6 +79,7 @@ Bereits umgesetzt:
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
+- [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 
 Noch nicht umgesetzt:
 
@@ -86,7 +87,7 @@ Noch nicht umgesetzt:
 - [x] ADR-Struktur.
 - [ ] Persistente Datenbank.
 - [ ] Vollstaendiger IAM/OIDC Auth Context.
-- [ ] Persistenter Hash-chain Audit Storage.
+- [ ] Produktionsfaehiger Audit Storage mit DB-Rollen, WORM Snapshots und Checkpoints.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery- und Admin-Module.
 
@@ -419,6 +420,8 @@ Bereits erledigt:
 - [x] In-memory Append-only Audit Event Schema.
 - [x] Audit Hash Chain Verifier.
 - [x] Manipulationstests fuer geaenderte und entfernte Audit Events.
+- [x] File-backed JSON Stores fuer Tenant Policies, Model Registry, Prompt Registry und Tool Permissions.
+- [x] JSONL Audit Store mit Reload und Chain-Verifikation.
 
 Aufgaben:
 
@@ -429,14 +432,15 @@ Aufgaben:
 - [ ] MFA/FIDO2/WebAuthn als Zielarchitektur dokumentieren.
 - [ ] PostgreSQL mit Migrationen und Runtime-Rollen einfuehren.
 - [ ] RLS als Defense-in-depth planen und testen.
-- [ ] Persistente Tenant Policy Stores implementieren.
-- [ ] Persistente Model-, Prompt- und Tool-Registries implementieren.
+- [x] Persistente Tenant Policy Stores implementieren.
+- [x] Persistente Model-, Prompt- und Tool-Registries implementieren.
 - [ ] Admin API fuer AI on/off pro Tenant.
 - [ ] Admin API fuer erlaubte Modelle pro Tenant, Rolle und Datenklasse.
 - [x] Append-only Audit Event Schema implementieren.
 - [x] Audit Hash Chain implementieren.
 - [ ] Audit Verification Command implementieren.
-- [ ] Persistente Audit Storage Abstraktion implementieren.
+- [x] Persistente Audit Storage Abstraktion implementieren.
+- [ ] PostgreSQL-Backed Stores mit Migrationen implementieren.
 - [ ] Outbox fuer Audit- und Domain-Events implementieren.
 - [ ] Break-glass Zugriff technisch modellieren.
 - [ ] Human Approval API fuer kritische Aktionen implementieren.
@@ -1004,7 +1008,7 @@ Empfohlene naechste Reihenfolge:
 3. [x] `ARCHITECTURE_DECISIONS/` mit ADR-Template und ADRs fuer Tenancy, WORM, KMS und Audit anlegen.
 4. [x] `DATA_CLASSIFICATION.md`, `RETENTION_POLICIES.yaml` und `LEGAL_HOLD_MODEL.md` anlegen.
 5. [x] `pyproject.toml` mit Ruff, Typpruefung und Pytest-Konfiguration einfuehren.
-6. [ ] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
+6. [x] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
 7. [x] Request-scoped Tenant Context implementieren.
 8. [x] Append-only Audit Event Model mit Hash Chain implementieren.
 9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.

@@ -15,11 +15,12 @@ Current sprint:
 5. [x] Phase 0 engineering tooling.
 6. [x] Request-scoped tenant context.
 7. [x] Append-only audit model.
+8. [x] File-backed policy, registry, and audit stores.
 
 ## Next Engineering Step
 
-After the in-memory audit hash chain is in place:
+After the file-backed policy, registry, and audit stores are in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
-- Introduce persistent append-only audit storage.
-- Replace in-memory tenant policies with persistent tenant policy storage.
+- Design PostgreSQL schema and migrations for production persistence.
+- Add admin APIs for tenant AI settings and allowed models.

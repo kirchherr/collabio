@@ -1,4 +1,15 @@
+import json
+from pathlib import Path
+from typing import Any
+
 from suite.ai_control_plane.models import DataClass, TenantPolicy
+
+
+def write_json_array(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(rows, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temp_path.replace(path)
 
 
 class InMemoryTenantPolicyRepository:
@@ -23,3 +34,16 @@ class InMemoryTenantPolicyRepository:
             return self._policies[tenant_id]
         except KeyError as exc:
             raise LookupError(f"Unknown tenant policy: {tenant_id}") from exc
+
+    def rows(self) -> list[dict[str, Any]]:
+        return [policy.model_dump(mode="json") for policy in self._policies.values()]
+
+
+class JsonFileTenantPolicyRepository(InMemoryTenantPolicyRepository):
+    @classmethod
+    def load_or_seed(cls, path: Path, seed: InMemoryTenantPolicyRepository) -> "JsonFileTenantPolicyRepository":
+        if not path.exists():
+            write_json_array(path, seed.rows())
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        policies = {row["tenant_id"]: TenantPolicy.model_validate(row) for row in rows}
+        return cls(policies=policies)

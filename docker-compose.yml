@@ -6,11 +6,13 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /workspace/data
     ports:
       - "8000:8000"
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./data:/workspace/data
 
   test:
     build:
@@ -19,6 +21,7 @@ services:
     command: pytest -q
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-test-data
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -31,6 +34,7 @@ services:
     command: sh -lc "ruff check . && ruff format --check ."
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-test-data
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -43,6 +47,7 @@ services:
     command: mypy app tests
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-test-data
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -55,6 +60,7 @@ services:
     command: sh -lc "ruff check . && ruff format --check . && mypy app tests && pytest -q"
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-test-data
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
