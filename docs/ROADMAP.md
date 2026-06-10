@@ -1036,7 +1036,8 @@ Empfohlene naechste Reihenfolge:
 17. [x] Benchmark Fixtures fuer exakte Vector Search und Audit Events fuer Worker Jobs ergaenzen.
 18. [x] Office/Mail Core als Produktoberflaechen auf demselben Compliance-Core festschreiben.
 19. [x] Parser Worker Boundary hinter Text Extraction Interface anbinden.
-20. [ ] Isolierte Rich-Document Parser Container fuer DOCX, ODF und PDF anbinden.
+20. [x] Zweckmaessige Backup-/Failover-Kultur mit Policy, Runbook und Dev-Backup-Verifikation einfuehren.
+21. [ ] Isolierte Rich-Document Parser Container fuer DOCX, ODF und PDF anbinden.
 
 ## Release-Strategie
 

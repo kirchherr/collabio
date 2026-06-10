@@ -24,6 +24,7 @@ docs/RESEARCH_BASELINE.md
 docs/OPEN_SOURCE_STACK.md
 docs/ADR_BACKLOG.md
 docs/OFFICE_MAIL_CORE.md
+docs/operations/BACKUP_FAILOVER.md
 ```
 
 Phase -1 foundation:
@@ -50,12 +51,16 @@ docker compose run --rm lint
 docker compose run --rm typecheck
 docker compose run --rm test
 docker compose run --rm migrate
+docker compose run --rm backup
+docker compose run --rm backup-verify
 docker compose up api
 ```
 
 The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
 
 The Compose stack includes PostgreSQL 18 with pgvector on host port `5433`. `migrate` applies packaged SQL migrations with the owner DSN; application and integration tests use the non-owner `collabio_app` role to exercise RLS.
+
+Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
 
 API:
 
@@ -113,6 +118,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Parser worker boundary for plain text and RFC822 mail extraction behind the TextExtractor interface
 - Hash-chained audit events for vector worker jobs
 - Deterministic exact-search benchmark fixtures for pgvector recall baselines
+- Practical backup/failover policy, runbook, and Docker backup verification commands
 - Prompt-injection and unauthorized-RAG-output regression tests
 - Architecture guards that prevent direct LLM provider bypasses outside the gateway
 - Voice transcript classification and no-raw-audio default

@@ -32,6 +32,37 @@ services:
     volumes:
       - ./app:/workspace/app
 
+  backup:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: collabio_owner
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "set -eu;
+      mkdir -p /backups;
+      ts=$$(date -u +%Y%m%dT%H%M%SZ);
+      file=/backups/collabio-$${ts}.dump;
+      pg_dump -h postgres -U collabio_owner -d collabio -Fc -f $${file};
+      sha256sum $${file} > $${file}.sha256;
+      echo Created $${file}"
+    volumes:
+      - ./backups:/backups
+
+  backup-verify:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "set -eu;
+      latest=$$(ls -1t /backups/*.dump | head -n 1);
+      sha256sum -c $${latest}.sha256;
+      pg_restore --list $${latest} > /dev/null;
+      echo Verified $${latest}"
+    volumes:
+      - ./backups:/backups
+
   api:
     build:
       context: .
@@ -68,7 +99,9 @@ services:
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./docs:/workspace/docs
       - ./pyproject.toml:/workspace/pyproject.toml
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
   lint:
     build:
@@ -81,7 +114,9 @@ services:
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./docs:/workspace/docs
       - ./pyproject.toml:/workspace/pyproject.toml
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
   typecheck:
     build:
@@ -113,7 +148,9 @@ services:
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./docs:/workspace/docs
       - ./pyproject.toml:/workspace/pyproject.toml
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 volumes:
   postgres18_data:

@@ -27,10 +27,11 @@ Current sprint:
 17. [x] Source resolver and text extraction pipeline feeding the pgvector worker.
 18. [x] Vector worker audit events and exact-search benchmark fixtures.
 19. [x] Office/mail core architecture and parser worker boundary behind text extraction.
+20. [x] Practical backup/failover culture, policy, and dev backup verification commands.
 
 ## Next Engineering Step
 
-After the office/mail parser boundary is in place:
+After the backup/failover baseline is in place:
 
 - Add isolated rich-document parser container adapters for DOCX, ODF, and PDF.
 - Add benchmark thresholds and reporting before ANN index decisions.
