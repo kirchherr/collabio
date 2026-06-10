@@ -1,0 +1,124 @@
+# Source Object Model
+
+Source objects are the common storage and indexing boundary for office, mail, attachments, comments, wiki content, and procedure documentation.
+
+The rule: no durable object enters storage, parser workers, search, vector indexing, RAG, export, or e-discovery without authoritative metadata.
+
+## Required Metadata
+
+Every source object version carries:
+
+- `tenant_id`
+- `object_id`
+- `object_type`
+- `version_id`
+- `title`
+- `owner_principal_id`
+- `created_by`
+- `created_at_utc`
+- `updated_at_utc`
+- `classification`
+- `retention_policy_id`
+- `legal_hold_state`
+- `kms_key_ref`
+- `manifest_hash`
+- `audit_chain_ref`
+- `source_system`
+- `schema_version`
+- `mime_type`
+- `acl_hash`
+- `acl_version`
+- `content_hash`
+- `content_byte_length`
+- `lifecycle_state`
+
+Attachments and comments must also carry `parent_object_id`. Mail objects use `message/rfc822` and may carry `thread_id`.
+
+## Supported Types
+
+The initial model defines:
+
+```text
+document
+mail
+attachment
+comment
+wiki
+procedure_doc
+```
+
+These values are intentionally identical to the source-type metadata used by parser workers, vector chunks, RAG source resolution, audit evidence, and later e-discovery exports.
+
+## Lifecycle
+
+The initial lifecycle states are:
+
+```text
+working
+saved_version
+business_record
+worm_evidence
+restricted
+deleted
+cryptoshredded
+```
+
+Legal hold is enforced at the model boundary: an object under active hold cannot enter `deleted` or `cryptoshredded`.
+
+This is not the full retention engine yet. It is the minimum invariant that prevents later storage adapters, mail processors, editors, and AI flows from inventing incompatible object semantics.
+
+## RAG And Parser Boundary
+
+`SourceObjectResolver` converts a versioned source object into the existing `ResolvedSource` shape used by source indexing.
+
+The resolver preserves:
+
+- source object type
+- classification
+- retention policy
+- legal-hold state
+- ACL hash and version
+- MIME type
+- native content bytes when present
+
+Vector indexes remain derived data. They receive metadata and chunks, but not permission authority.
+
+## Current Implementation
+
+Code:
+
+```text
+app/suite/storage/source_objects.py
+```
+
+Tests:
+
+```text
+tests/test_source_objects.py
+```
+
+Implemented now:
+
+- Pydantic source object metadata model.
+- Versioned source object record wrapper.
+- Tenant/version-scoped in-memory repository.
+- RAG-compatible source resolver.
+- SourceDocument bridge for existing demo and parser flows.
+- Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
+
+Not implemented yet:
+
+- PostgreSQL-backed source metadata tables.
+- S3/MinIO-compatible content store.
+- WORM/object-lock manifests.
+- Retention engine.
+- KMS adapter and envelope encryption.
+- Full storage write API.
+
+## Continuity
+
+Source object metadata is owned by the `postgres_metadata` continuity domain.
+
+Native content, manifests, WORM records, attachments, parser artifacts, and export packages are owned by `object_storage_records`.
+
+Any change that adds a new durable source object field must update backup/failover evidence if restore verification changes.

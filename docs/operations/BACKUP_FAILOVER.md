@@ -12,7 +12,7 @@ This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, migration history, and vector metadata.
 - File-backed development policy and registry data.
-- Object storage, WORM records, office documents, collaborative state, mail messages, attachments, parser artifacts, export packages, and audit snapshots.
+- Source object metadata, object manifests, object storage, WORM records, office documents, collaborative state, mail messages, attachments, parser artifacts, export packages, and audit snapshots.
 - KMS references, secret-manager state, key rotation evidence, and destruction evidence.
 - Search indexes, vector indexes, indexing checkpoints, and rebuild cursors.
 - AI control-plane registries, model artifacts, prompt/tool policy, and approval policy.
@@ -40,7 +40,7 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - tenant IAM and authorization
 - PostgreSQL metadata
 - audit evidence
-- object storage records
+- source object metadata and object storage records
 - KMS metadata and secrets configuration
 - office documents and collaboration state
 - mail messages, threads, attachments, and security evidence

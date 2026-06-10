@@ -337,6 +337,7 @@ Deliverables:
 - [x] `docs/VOICE_PRIVACY_MODEL.md`
 - [x] `docs/RAG_SECURITY_MODEL.md`
 - [x] `docs/VECTOR_INDEX_MODEL.md`
+- [x] `docs/SOURCE_OBJECT_MODEL.md`
 - [x] `docs/UX_PRINCIPLES.md`
 - [x] `docs/AI_RISK_REGISTER.md`
 - [x] `docs/MODEL_REGISTRY.md`
@@ -487,8 +488,8 @@ Epics:
 
 Aufgaben:
 
-- [ ] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
-- [ ] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` erlauben.
+- [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
+- [ ] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 - [ ] S3/MinIO-kompatiblen Storage Adapter planen.
 - [ ] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
 - [ ] Retention Defaults und Retention Manifest definieren.
@@ -1038,7 +1039,8 @@ Empfohlene naechste Reihenfolge:
 19. [x] Parser Worker Boundary hinter Text Extraction Interface anbinden.
 20. [x] Suite-weite Backup-/Failover-Kultur mit Continuity-Domains, Policy, Runbook und Dev-Backup-Verifikation einfuehren.
 21. [x] Isolierten Rich-Document Parser Service fuer DOCX, ODT und einfache Text-PDFs anbinden.
-22. [ ] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
+22. [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
+23. [ ] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 
 ## Release-Strategie
 

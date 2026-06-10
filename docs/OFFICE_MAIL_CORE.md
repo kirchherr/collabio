@@ -62,6 +62,7 @@ Parser workers must enforce:
 
 Current implementation:
 
+- `app/suite/storage/source_objects.py` defines the shared source object metadata model, tenant/version-scoped in-memory repository, and RAG-compatible resolver for documents, mail, attachments, comments, wiki content, and procedure documentation.
 - `app/suite/rag/parser_worker.py` defines the parser worker request, result, sandbox policy, and `ParserWorkerTextExtractor`.
 - `PolicyEnforcedParserWorker` supports `text/plain`, `text/markdown`, and safe `message/rfc822` plain-text extraction for tests and local development.
 - `app/suite/rag/rich_document_parser.py` supports DOCX, ODT, and basic text PDF extraction without network access or external processes.

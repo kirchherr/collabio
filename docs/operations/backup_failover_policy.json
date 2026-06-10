@@ -28,11 +28,11 @@
     },
     {
       "domain_id": "postgres_metadata",
-      "description": "Core PostgreSQL metadata, migration history, registries, and relational domain state.",
+      "description": "Core PostgreSQL metadata, source object metadata, migration history, registries, and relational domain state.",
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "PITR or latest verified logical dump; run migration checksum verification after restore",
-      "state_artifacts": ["schema migrations", "policy registries", "domain tables", "metadata tables"]
+      "state_artifacts": ["schema migrations", "policy registries", "source object metadata", "domain tables", "metadata tables"]
     },
     {
       "domain_id": "audit_evidence",
@@ -44,11 +44,11 @@
     },
     {
       "domain_id": "object_storage_records",
-      "description": "Durable object store records for documents, mail attachments, exports, snapshots, and evidence packages.",
+      "description": "Durable object store records for documents, mail attachments, source object manifests, exports, snapshots, and evidence packages.",
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
-      "state_artifacts": ["object manifests", "content hashes", "retention metadata", "legal hold metadata", "object versions"]
+      "state_artifacts": ["source object manifests", "object manifests", "content hashes", "retention metadata", "legal hold metadata", "object versions"]
     },
     {
       "domain_id": "kms_key_metadata",
@@ -174,7 +174,7 @@
   "targets": [
     {
       "target_id": "postgres_primary",
-      "description": "PostgreSQL metadata, tenant policies, registries, audit rows, migration history, vector metadata, mail metadata, and durable job state.",
+      "description": "PostgreSQL metadata, source object metadata, tenant policies, registries, audit rows, migration history, vector metadata, mail metadata, and durable job state.",
       "covered_domains": [
         "tenant_iam_authz",
         "postgres_metadata",
@@ -201,7 +201,7 @@
     },
     {
       "target_id": "object_storage_records",
-      "description": "Office documents, mail attachments, WORM records, parser artifacts, e-discovery export packages, object manifests, and audit snapshots.",
+      "description": "Office documents, mail attachments, WORM records, parser artifacts, e-discovery export packages, source object manifests, object manifests, and audit snapshots.",
       "covered_domains": [
         "object_storage_records",
         "office_documents",

@@ -29,11 +29,12 @@ Current sprint:
 19. [x] Office/mail core architecture and parser worker boundary behind text extraction.
 20. [x] Suite-wide backup/failover continuity culture, policy, and dev backup verification commands.
 21. [x] Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction.
+22. [x] Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation.
 
 ## Next Engineering Step
 
-After the isolated rich-document parser service is in place:
+After the source object model is in place:
 
-- Define the source object metadata model for documents, mails, attachments, comments, and procedure documentation.
+- Enforce storage writes through a single guard that requires tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.
