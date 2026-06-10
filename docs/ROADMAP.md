@@ -83,6 +83,7 @@ Bereits umgesetzt:
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
 - [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
 - [x] Architekturtests gegen direkte LLM Provider Bypaesse ausserhalb des Gateways.
+- [x] ADR-0031 pgvector vs. Qdrant als erster Vector Backend.
 
 Noch nicht umgesetzt:
 
@@ -641,7 +642,7 @@ Aufgaben:
 - [ ] Search Audit Events.
 - [ ] Snippet-Erzeugung erst nach Authz.
 - [ ] Persistent Vector DB Adapter.
-- [ ] ADR: pgvector vs. Qdrant als erster Backend-Adapter.
+- [x] ADR: pgvector vs. Qdrant als erster Backend-Adapter.
 - [ ] Hybrid Query Orchestration.
 - [ ] Reranker Interface.
 - [ ] Source Resolver.
@@ -1018,7 +1019,7 @@ Empfohlene naechste Reihenfolge:
 6. [x] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
 7. [x] Request-scoped Tenant Context implementieren.
 8. [x] Append-only Audit Event Model mit Hash Chain implementieren.
-9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.
+9. [x] ADR fuer pgvector vs. Qdrant vorbereiten.
 10. [x] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
 11. [x] Admin API fuer Tenant AI on/off und allowed models implementieren.
 

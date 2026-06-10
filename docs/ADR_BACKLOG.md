@@ -78,7 +78,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [ ] ADR-0028: Dev KMS and enterprise KMS adapter strategy.
 - [ ] ADR-0029: Text extraction and parser sandbox model.
 - [ ] ADR-0030: Embedding metadata schema.
-- [ ] ADR-0031: pgvector vs. Qdrant first vector backend.
+- [x] ADR-0031: pgvector vs. Qdrant first vector backend.
 
 ## Phase 3 ADRs
 
@@ -127,5 +127,5 @@ Start with:
 3. [x] ADR-0004 Audit event model.
 4. [x] ADR-0003 KMS key hierarchy.
 5. [x] ADR-0002 WORM storage.
-6. [ ] ADR-0031 pgvector vs. Qdrant.
+6. [x] ADR-0031 pgvector vs. Qdrant.
 7. [ ] ADR-0017 IAM strategy.

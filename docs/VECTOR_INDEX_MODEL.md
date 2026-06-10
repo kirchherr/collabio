@@ -23,3 +23,8 @@ Every chunk must carry metadata equivalent to:
 
 Embeddings are classified data. They are not anonymous by default and must follow tenant isolation, retention, legal hold, deletion, and audit policies.
 
+## Backend Decision
+
+`ARCHITECTURE_DECISIONS/ADR-0031-pgvector-vs-qdrant.md` selects pgvector as the first persistent vector backend.
+
+Vector search remains an adapter boundary. Qdrant is retained as the scale-out candidate if pgvector no longer meets volume, latency, throughput, or operational-isolation needs.

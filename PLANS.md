@@ -19,11 +19,12 @@ Current sprint:
 9. [x] Admin API for tenant AI settings and allowed models.
 10. [x] Prompt-injection and unauthorized-RAG-output tests.
 11. [x] Direct LLM provider bypass architecture guards.
+12. [x] ADR for pgvector vs. Qdrant.
 
 ## Next Engineering Step
 
-After the AI Control Plane bypass guards are in place:
+After the pgvector vs. Qdrant ADR is in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
 - Design PostgreSQL schema and migrations for production persistence.
-- Add ADR for pgvector vs. Qdrant.
+- Start pgvector-backed vector metadata schema design.
