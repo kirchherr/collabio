@@ -25,11 +25,12 @@ Current sprint:
 15. [x] pgvector adapter for upsert, lifecycle transitions, and candidate-only search.
 16. [x] Vector reindex and deletion-propagation worker entry points.
 17. [x] Source resolver and text extraction pipeline feeding the pgvector worker.
+18. [x] Vector worker audit events and exact-search benchmark fixtures.
 
 ## Next Engineering Step
 
-After the source indexing pipeline is in place:
+After vector worker audit and exact-search benchmark fixtures are in place:
 
-- Add benchmark fixtures for exact search before ANN index decisions.
-- Add audit event emission around vector worker jobs.
 - Add sandboxed binary/document parser workers behind the text extraction interface.
+- Add benchmark thresholds and reporting before ANN index decisions.
+- Wire vector worker audit events to durable deployment audit storage.

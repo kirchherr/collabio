@@ -2,9 +2,15 @@ from dataclasses import dataclass, field
 
 import pytest
 
+from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass
 from suite.rag.models import ChunkMetadata, VectorEmbeddingRecord, VectorLifecycleState
-from suite.rag.vector_worker import DeletionPropagationCommand, ReindexSourceCommand, VectorIndexWorker
+from suite.rag.vector_worker import (
+    AuditLoggerVectorWorkerAuditSink,
+    DeletionPropagationCommand,
+    ReindexSourceCommand,
+    VectorIndexWorker,
+)
 
 
 def record(
@@ -110,6 +116,54 @@ def test_reindex_source_marks_upserts_and_deletes_orphans() -> None:
     assert store.deleted_orphans == [("tenant-1", "doc-1", "v1", {"chunk-1", "chunk-2"}, "audit-reindex")]
 
 
+def test_reindex_source_emits_hash_chained_audit_events_without_raw_embeddings() -> None:
+    store = FakeVectorIndexStore()
+    audit_logger = InMemoryAuditLogger()
+    worker = VectorIndexWorker(
+        store,
+        audit_sink=AuditLoggerVectorWorkerAuditSink(audit_logger),
+    )
+
+    worker.reindex_source(
+        ReindexSourceCommand(
+            tenant_id="tenant-1",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            chunks=(record(chunk_id="chunk-1"), record(chunk_id="chunk-2")),
+            audit_event_id="audit-upstream",
+        )
+    )
+
+    assert audit_logger.verify().ok
+    assert [event.event_type for event in audit_logger.events] == [
+        "vector.reindex.started",
+        "vector.reindex.completed",
+    ]
+    assert audit_logger.events[0].tenant_id == "tenant-1"
+    assert audit_logger.events[0].user_id == "vector-index-worker"
+    assert audit_logger.events[0].source_object_ids == ["doc-1"]
+    assert audit_logger.events[0].input_hash is None
+    assert audit_logger.events[0].output_hash is None
+    assert audit_logger.events[0].metadata == {
+        "source_version_id": "v1",
+        "requested_chunk_count": 2,
+        "requested_audit_event_id": "audit-upstream",
+        "embedding_models": [
+            {
+                "embedding_model_id": "mock-embedding",
+                "embedding_model_version": "1",
+            }
+        ],
+    }
+    assert audit_logger.events[1].metadata == {
+        "source_version_id": "v1",
+        "marked_reindex_pending": 2,
+        "upserted_chunks": 2,
+        "deleted_stale_chunks": 1,
+        "requested_audit_event_id": "audit-upstream",
+    }
+
+
 def test_reindex_source_rejects_mismatched_or_duplicate_chunks() -> None:
     worker = VectorIndexWorker(FakeVectorIndexStore())
 
@@ -170,3 +224,40 @@ def test_deletion_propagation_allows_only_delete_states() -> None:
                 lifecycle_state=VectorLifecycleState.RESTRICTED,
             )
         )
+
+
+def test_deletion_propagation_emits_worker_audit_events() -> None:
+    store = FakeVectorIndexStore()
+    audit_logger = InMemoryAuditLogger()
+    worker = VectorIndexWorker(
+        store,
+        audit_sink=AuditLoggerVectorWorkerAuditSink(audit_logger),
+    )
+
+    result = worker.propagate_deletion(
+        DeletionPropagationCommand(
+            tenant_id="tenant-1",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            lifecycle_state=VectorLifecycleState.DELETED,
+            audit_event_id="audit-delete",
+        )
+    )
+
+    assert result.transitioned_chunks == 3
+    assert audit_logger.verify().ok
+    assert [event.event_type for event in audit_logger.events] == [
+        "vector.deletion_propagation.started",
+        "vector.deletion_propagation.completed",
+    ]
+    assert audit_logger.events[0].metadata == {
+        "source_version_id": "v1",
+        "target_lifecycle_state": "deleted",
+        "requested_audit_event_id": "audit-delete",
+    }
+    assert audit_logger.events[1].metadata == {
+        "source_version_id": "v1",
+        "target_lifecycle_state": "deleted",
+        "transitioned_chunks": 3,
+        "requested_audit_event_id": "audit-delete",
+    }

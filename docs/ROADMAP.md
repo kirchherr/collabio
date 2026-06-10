@@ -1033,7 +1033,8 @@ Empfohlene naechste Reihenfolge:
 14. [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate Search implementieren.
 15. [x] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
 16. [x] Source Resolver und Text Extraction Pipeline an pgvector Worker anbinden.
-17. [ ] Benchmark Fixtures fuer exakte Vector Search und Audit Events fuer Worker Jobs ergaenzen.
+17. [x] Benchmark Fixtures fuer exakte Vector Search und Audit Events fuer Worker Jobs ergaenzen.
+18. [ ] Sandboxed Binary/Document Parser Worker hinter Text Extraction Interface anbinden.
 
 ## Release-Strategie
 

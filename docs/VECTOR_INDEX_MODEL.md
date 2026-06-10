@@ -87,6 +87,8 @@ Implemented operations:
 - `reindex_source`: marks existing active chunks for reindex, upserts the new chunk set, and soft-deletes stale reindex leftovers.
 - `propagate_deletion`: moves all chunks for a source version to `deleted` or `cryptoshredded`.
 
+The worker can receive an optional `VectorWorkerAuditSink`. `AuditLoggerVectorWorkerAuditSink` writes hash-chained audit events for started, completed, and failed reindex or deletion-propagation jobs. These events carry source IDs, source version, lifecycle targets, counts, model IDs, and upstream audit IDs only. They do not include raw source text, prompts, generated answers, or raw embedding vectors.
+
 The runtime app role has no `INSERT`, `UPDATE`, or `DELETE` grant on `collabio.vector_embedding_chunks`. This prevents API-side writes or accidental reactivation of deleted/restricted chunks.
 
 ## Source Indexing Pipeline
@@ -104,3 +106,13 @@ It separates the pipeline into replaceable contracts:
 The live integration test proves that the pipeline feeds the pgvector worker and that a later source reindex soft-deletes stale chunks while keeping candidate search source-text-free.
 
 Binary and rich document formats must be added behind `TextExtractor` through sandboxed parser workers, not inside the API or pgvector adapter.
+
+## Exact Search Benchmarks
+
+`app/suite/rag/vector_benchmarks.py` provides deterministic exact-search fixtures:
+
+- `build_exact_search_benchmark_fixture`: creates stable embedding records and query expectations.
+- `rank_exact_vectors`: computes an in-process cosine ranking oracle.
+- `assert_exact_search_fixture_consistency`: proves that every expected query result is the exact top result.
+
+The live pgvector integration test loads the fixture through the worker-write path and verifies recall-at-1 against exact pgvector search. ANN indexes remain deferred until benchmark thresholds, tenant distributions, and model dimensions are explicit.

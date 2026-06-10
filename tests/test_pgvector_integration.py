@@ -20,6 +20,7 @@ from suite.rag.source_indexing import (
     SourceIndexCommand,
     SourceIndexingPipeline,
 )
+from suite.rag.vector_benchmarks import build_exact_search_benchmark_fixture
 from suite.rag.vector_worker import DeletionPropagationCommand, ReindexSourceCommand, VectorIndexWorker
 
 
@@ -784,3 +785,36 @@ def test_source_indexing_pipeline_feeds_pgvector_worker_and_deletes_stale_chunks
     assert rows_by_chunk["chunk-0000"][2] == "audit-second-index"
     assert rows_by_chunk["chunk-0001"][1] == VectorLifecycleState.DELETED.value
     assert rows_by_chunk["chunk-0002"][1] == VectorLifecycleState.DELETED.value
+
+
+def test_pgvector_exact_search_benchmark_fixture_preserves_recall_at_one(live_database: LiveDatabase) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-benchmark-{suffix}"
+    model_id = f"embedding-model-{suffix}"
+    fixture = build_exact_search_benchmark_fixture(
+        tenant_id=tenant_id,
+        embedding_model_id=model_id,
+        record_count=6,
+        query_count=3,
+        dimensions=3,
+    )
+    store = PgvectorVectorStore(
+        database_dsn=live_database.app_dsn,
+        lifecycle_database_dsn=live_database.worker_dsn,
+        embedding_model_id=model_id,
+        embedding_model_version="1",
+        query_embedder=lambda _query: list(fixture.queries[0].embedding),
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        seed_embedding_model(owner_connection, model_id)
+        owner_connection.commit()
+
+    for record in fixture.records:
+        store.upsert_embedding(record)
+
+    for query in fixture.queries:
+        candidates = store.search_by_embedding(tenant_id=tenant_id, embedding=query.embedding, top_k=3)
+        assert candidates
+        assert candidates[0].chunk_id == query.expected_chunk_id
+        assert candidates[0].score == pytest.approx(1.0)
