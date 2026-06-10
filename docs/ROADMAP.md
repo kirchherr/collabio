@@ -501,13 +501,13 @@ Aufgaben:
 - [ ] Cryptographic Shredding Simulation implementieren.
 - [ ] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
 - [ ] Restore-Test-Framework anlegen.
-- [ ] Text Extraction Interface fuer Office/Mail/Attachments.
-- [ ] Chunker Interface.
-- [ ] Embedding Provider Interface.
+- [x] Text Extraction Interface fuer Office/Mail/Attachments.
+- [x] Chunker Interface.
+- [x] Embedding Provider Interface.
 - [ ] Vector Metadata Schema validieren.
 - [ ] ACL-Versionen in Vector Metadata uebernehmen.
-- [ ] Delete Propagation Worker.
-- [ ] Reindex Worker.
+- [x] Delete Propagation Worker.
+- [x] Reindex Worker.
 - [ ] Embedding Model Versioning.
 
 Exit-Kriterien:
@@ -1034,7 +1034,9 @@ Empfohlene naechste Reihenfolge:
 15. [x] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
 16. [x] Source Resolver und Text Extraction Pipeline an pgvector Worker anbinden.
 17. [x] Benchmark Fixtures fuer exakte Vector Search und Audit Events fuer Worker Jobs ergaenzen.
-18. [ ] Sandboxed Binary/Document Parser Worker hinter Text Extraction Interface anbinden.
+18. [x] Office/Mail Core als Produktoberflaechen auf demselben Compliance-Core festschreiben.
+19. [x] Parser Worker Boundary hinter Text Extraction Interface anbinden.
+20. [ ] Isolierte Rich-Document Parser Container fuer DOCX, ODF und PDF anbinden.
 
 ## Release-Strategie
 

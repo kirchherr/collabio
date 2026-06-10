@@ -59,6 +59,7 @@ class SourceDocument(BaseModel):
     title: str
     text: str
     classification: DataClass
+    mime_type: str = "text/plain"
 
 
 class RagQuery(BaseModel):

@@ -26,11 +26,12 @@ Current sprint:
 16. [x] Vector reindex and deletion-propagation worker entry points.
 17. [x] Source resolver and text extraction pipeline feeding the pgvector worker.
 18. [x] Vector worker audit events and exact-search benchmark fixtures.
+19. [x] Office/mail core architecture and parser worker boundary behind text extraction.
 
 ## Next Engineering Step
 
-After vector worker audit and exact-search benchmark fixtures are in place:
+After the office/mail parser boundary is in place:
 
-- Add sandboxed binary/document parser workers behind the text extraction interface.
+- Add isolated rich-document parser container adapters for DOCX, ODF, and PDF.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

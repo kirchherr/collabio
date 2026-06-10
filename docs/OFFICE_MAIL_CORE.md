@@ -1,0 +1,82 @@
+# Office And Mail Core
+
+The suite is not a document editor with compliance added later.
+
+Office, mail, search, RAG, voice, e-discovery, and admin surfaces must all sit on the same compliance core:
+
+- tenant context
+- IAM and authoritative authorization
+- object metadata, versions, manifests, and content hashes
+- retention, legal hold, WORM, and cryptoshred lifecycle
+- KMS references and encryption policy
+- append-only audit evidence
+- source resolving, parser isolation, text extraction, chunking, and indexing
+- candidate-only search and vector retrieval
+
+## Product Surfaces
+
+Office and mail are product surfaces, not separate storage or AI worlds.
+
+Office modules will add editors, spreadsheets, import/export, comments, collaborative drafts, saved versions, business records, and WORM evidence records.
+
+Mail modules will add accounts, messages, threads, attachments, team inboxes, delivery/submission workflows, security evidence, and AI-assisted triage or drafting.
+
+Both surfaces must write and read through the same compliance APIs. No editor, mail client, previewer, or assistant may bypass object metadata, retention, authz, parser isolation, audit, or source indexing.
+
+## Source Object Types
+
+The indexing model already treats source type as metadata:
+
+```text
+document
+mail
+attachment
+comment
+wiki
+procedure_doc
+```
+
+These types are used by source resolvers, parser policies, vector metadata, audit events, and later e-discovery/export flows.
+
+## Mail Boundary
+
+RFC mail objects are immutable evidence inputs. Team comments, assignments, labels, workflow state, and internal notes must be separate domain objects and must never be written into the RFC message.
+
+Attachments are separate source objects with their own classification, retention policy, content hash, legal hold state, parser result, and index lifecycle.
+
+Mail AI can draft or classify, but sending mail is a separate explicit action with policy and human confirmation.
+
+## Parser Boundary
+
+Parser code is security-sensitive. Production parsers must run outside the API process in isolated workers.
+
+Parser workers must enforce:
+
+- MIME and source-type allowlists.
+- maximum input and output sizes.
+- no network access by default.
+- no direct storage mutation.
+- no direct vector writes.
+- separate handling of attachments.
+- hash-only audit metadata outside authorized source text flows.
+
+Current implementation:
+
+- `app/suite/rag/parser_worker.py` defines the parser worker request, result, sandbox policy, and `ParserWorkerTextExtractor`.
+- `PolicyEnforcedParserWorker` supports `text/plain`, `text/markdown`, and safe `message/rfc822` plain-text extraction for tests and local development.
+- DOCX, ODF, PDF, and other binary formats intentionally remain unsupported until dedicated isolated parser containers are wired behind the same interface.
+
+## Indexing Flow
+
+```text
+Office/Mail source object
+  -> authoritative source resolver
+  -> parser worker boundary
+  -> extracted text artifact
+  -> deterministic chunker
+  -> embedding provider
+  -> vector worker
+  -> candidate-only vector store
+```
+
+Source text is resolved again later by the RAG pipeline after ACL validation. Vector search never returns source text, snippets, prompts, answers, or raw embeddings.

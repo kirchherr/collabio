@@ -105,7 +105,15 @@ It separates the pipeline into replaceable contracts:
 
 The live integration test proves that the pipeline feeds the pgvector worker and that a later source reindex soft-deletes stale chunks while keeping candidate search source-text-free.
 
-Binary and rich document formats must be added behind `TextExtractor` through sandboxed parser workers, not inside the API or pgvector adapter.
+`app/suite/rag/parser_worker.py` adds the parser worker boundary behind `TextExtractor`.
+
+Current local parser support is intentionally narrow:
+
+- `text/plain`
+- `text/markdown`
+- `message/rfc822` plain-text mail body extraction with attachments skipped
+
+Binary and rich document formats must be added behind the same interface through isolated parser worker containers, not inside the API or pgvector adapter.
 
 ## Exact Search Benchmarks
 

@@ -23,6 +23,7 @@ Research and implementation baseline:
 docs/RESEARCH_BASELINE.md
 docs/OPEN_SOURCE_STACK.md
 docs/ADR_BACKLOG.md
+docs/OFFICE_MAIL_CORE.md
 ```
 
 Phase -1 foundation:
@@ -109,6 +110,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - pgvector adapter for candidate-only search, upsert, and lifecycle transitions
 - Worker entry points for vector reindex and deletion propagation
 - Source resolver, text extraction, deterministic chunking, and source-to-vector indexing pipeline
+- Parser worker boundary for plain text and RFC822 mail extraction behind the TextExtractor interface
 - Hash-chained audit events for vector worker jobs
 - Deterministic exact-search benchmark fixtures for pgvector recall baselines
 - Prompt-injection and unauthorized-RAG-output regression tests
