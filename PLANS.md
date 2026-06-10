@@ -14,12 +14,12 @@ Current sprint:
 4. [x] ADR template and initial ADRs.
 5. [x] Phase 0 engineering tooling.
 6. [x] Request-scoped tenant context.
-7. [ ] Append-only audit model.
+7. [x] Append-only audit model.
 
 ## Next Engineering Step
 
-After the request-scoped tenant context is in place:
+After the in-memory audit hash chain is in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
-- Introduce append-only audit chain storage.
+- Introduce persistent append-only audit storage.
 - Replace in-memory tenant policies with persistent tenant policy storage.

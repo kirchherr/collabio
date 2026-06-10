@@ -110,6 +110,8 @@ class InferenceResponse(BaseModel):
 
 class AuditEvent(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid4()))
+    schema_version: str = "audit_event.v1"
+    sequence_number: int
     tenant_id: str
     user_id: str
     event_type: str
@@ -119,3 +121,5 @@ class AuditEvent(BaseModel):
     input_hash: str | None = None
     output_hash: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+    previous_event_hash: str
+    event_hash: str

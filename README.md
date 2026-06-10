@@ -98,6 +98,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Deny-by-default policy engine
 - Request-scoped tenant context for tenant data endpoints
 - In-memory model and prompt registries
+- In-memory append-only audit hash chain with verifier
 - Mock LLM provider for local tests
 - RAG flow with candidate retrieval, ACL checks, citations, and audit
 - Voice transcript classification and no-raw-audio default

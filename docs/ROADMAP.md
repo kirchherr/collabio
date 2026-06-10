@@ -78,6 +78,7 @@ Bereits umgesetzt:
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
+- [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 
 Noch nicht umgesetzt:
 
@@ -85,7 +86,7 @@ Noch nicht umgesetzt:
 - [x] ADR-Struktur.
 - [ ] Persistente Datenbank.
 - [ ] Vollstaendiger IAM/OIDC Auth Context.
-- [ ] Hash-chain Audit.
+- [ ] Persistenter Hash-chain Audit Storage.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery- und Admin-Module.
 
@@ -415,6 +416,9 @@ Bereits erledigt:
 - [x] Inference Audit Events als In-memory-Skeleton.
 - [x] Request Context Dependency fuer Tenant, Principal und Tenant Policy.
 - [x] API-Tests fuer fehlenden und unbekannten Tenant Context.
+- [x] In-memory Append-only Audit Event Schema.
+- [x] Audit Hash Chain Verifier.
+- [x] Manipulationstests fuer geaenderte und entfernte Audit Events.
 
 Aufgaben:
 
@@ -429,9 +433,10 @@ Aufgaben:
 - [ ] Persistente Model-, Prompt- und Tool-Registries implementieren.
 - [ ] Admin API fuer AI on/off pro Tenant.
 - [ ] Admin API fuer erlaubte Modelle pro Tenant, Rolle und Datenklasse.
-- [ ] Append-only Audit Event Schema implementieren.
-- [ ] Audit Hash Chain implementieren.
+- [x] Append-only Audit Event Schema implementieren.
+- [x] Audit Hash Chain implementieren.
 - [ ] Audit Verification Command implementieren.
+- [ ] Persistente Audit Storage Abstraktion implementieren.
 - [ ] Outbox fuer Audit- und Domain-Events implementieren.
 - [ ] Break-glass Zugriff technisch modellieren.
 - [ ] Human Approval API fuer kritische Aktionen implementieren.
@@ -445,7 +450,7 @@ Exit-Kriterien:
 
 - [ ] Kein API-Handler laeuft ohne Principal, Tenant und Policy-Kontext.
 - [ ] Tenant-Daten koennen nicht tenant-uebergreifend gelesen werden.
-- [ ] Audit Events sind hash-verkettet und Manipulation wird erkannt.
+- [x] Audit Events sind hash-verkettet und Manipulation wird erkannt.
 - [ ] Jede AI-Anfrage hat Tenant Policy, Model ID, Prompt ID, Quellenstatus und Audit ID.
 - [ ] High-Risk-Aktionen erzeugen Human Approval.
 
@@ -1001,7 +1006,7 @@ Empfohlene naechste Reihenfolge:
 5. [x] `pyproject.toml` mit Ruff, Typpruefung und Pytest-Konfiguration einfuehren.
 6. [ ] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
 7. [x] Request-scoped Tenant Context implementieren.
-8. [ ] Append-only Audit Event Model mit Hash Chain implementieren.
+8. [x] Append-only Audit Event Model mit Hash Chain implementieren.
 9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.
 10. [ ] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
 11. [ ] Admin API fuer Tenant AI on/off und allowed models implementieren.
