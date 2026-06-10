@@ -87,6 +87,7 @@ def test_pgvector_embedding_schema_enables_rls_with_null_safe_tenant_setting() -
     assert "lifecycle_state = 'active'" in sql
     assert "create policy vector_embedding_chunks_no_hard_delete" in sql
     assert "using (false)" in sql
+    assert "grant select, insert, update, delete on table collabio.vector_embedding_chunks to collabio_app" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

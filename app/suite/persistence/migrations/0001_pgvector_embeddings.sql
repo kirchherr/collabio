@@ -194,5 +194,15 @@ CREATE POLICY vector_embedding_chunks_no_hard_delete
     FOR DELETE
     USING (false);
 
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'collabio_app') THEN
+        EXECUTE 'GRANT USAGE ON SCHEMA collabio TO collabio_app';
+        EXECUTE 'GRANT SELECT, REFERENCES ON TABLE collabio.embedding_models TO collabio_app';
+        EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE collabio.vector_embedding_chunks TO collabio_app';
+    END IF;
+END
+$$;
+
 -- ANN indexes are intentionally model- and dimension-specific. Add partial HNSW/IVFFlat
 -- indexes only after benchmarking a concrete embedding model and tenant distribution.

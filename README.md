@@ -48,10 +48,13 @@ docker compose run --rm quality
 docker compose run --rm lint
 docker compose run --rm typecheck
 docker compose run --rm test
+docker compose run --rm migrate
 docker compose up api
 ```
 
 The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
+
+The Compose stack includes PostgreSQL 18 with pgvector on host port `5433`. `migrate` applies packaged SQL migrations with the owner DSN; application and integration tests use the non-owner `collabio_app` role to exercise RLS.
 
 API:
 
@@ -102,6 +105,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Append-only audit hash chain with verifier
 - Mock LLM provider for local tests
 - RAG flow with candidate retrieval, ACL checks, untrusted source framing, citations, and audit
+- pgvector/PostgreSQL dev service with live migration runner and vector RLS integration tests
 - Prompt-injection and unauthorized-RAG-output regression tests
 - Architecture guards that prevent direct LLM provider bypasses outside the gateway
 - Voice transcript classification and no-raw-audio default

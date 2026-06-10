@@ -42,3 +42,22 @@ Key guardrails:
 - `lifecycle_state` is soft-delete oriented: `active`, `reindex_pending`, `restricted`, `deleted`, or `cryptoshredded`.
 - hard deletes are denied by policy; deletion, restriction, reindex, legal hold, and cryptoshred workflows update lifecycle fields instead.
 - ANN indexes are deferred until a concrete embedding model, dimension, tenant distribution, and benchmark target are known.
+
+## Live Migration Path
+
+Docker Compose provides PostgreSQL 18 with pgvector through the `postgres` service. The database is exposed locally on port `5433` for development diagnostics.
+
+Run migrations with:
+
+```bash
+docker compose run --rm migrate
+```
+
+The migration runner records applied SQL files in `collabio.schema_migrations` with a SHA-256 checksum. If a previously applied migration changes, the runner fails instead of silently rewriting history.
+
+Live integration tests use:
+
+- `SUITE_MIGRATION_DATABASE_DSN` for owner-level migration/setup work.
+- `SUITE_DATABASE_DSN` for the non-owner `collabio_app` runtime role.
+
+`tests/test_pgvector_integration.py` proves the first migration installs pgvector, records migration state, enforces tenant-scoped RLS, hides non-active lifecycle states from candidate reads, blocks cross-tenant inserts, and denies hard deletes.

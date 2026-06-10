@@ -21,11 +21,12 @@ Current sprint:
 11. [x] Direct LLM provider bypass architecture guards.
 12. [x] ADR for pgvector vs. Qdrant.
 13. [x] First pgvector embedding metadata migration and tests.
+14. [x] PostgreSQL/pgvector dev service, migration runner, and live RLS tests.
 
 ## Next Engineering Step
 
-After the first pgvector embedding schema migration is in place:
+After the PostgreSQL/pgvector dev service and live RLS tests are in place:
 
-- Add a migration runner and PostgreSQL/pgvector dev service for live migration tests.
 - Implement a pgvector adapter behind the vector search boundary.
-- Add live RLS tests proving tenant isolation against PostgreSQL.
+- Add repository methods for vector upsert, lifecycle transitions, and candidate-only search.
+- Add API or worker entrypoints for reindex and deletion propagation.

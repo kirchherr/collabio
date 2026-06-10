@@ -1,12 +1,48 @@
 services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres18_data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
+  migrate:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.persistence.migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app
+
   api:
     build:
       context: .
       target: dev
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /workspace/data
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
     ports:
       - "8000:8000"
     volumes:
@@ -19,9 +55,14 @@ services:
       context: .
       target: dev
     command: pytest -q
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -58,10 +99,18 @@ services:
       context: .
       target: dev
     command: sh -lc "ruff check . && ruff format --check . && mypy app tests && pytest -q"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./pyproject.toml:/workspace/pyproject.toml
+
+volumes:
+  postgres18_data:
