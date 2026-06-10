@@ -83,6 +83,7 @@ app/
   suite/
     ai_control_plane/
     llm_gateway/
+    platform/
     rag/
     voice/
 docs/
@@ -95,6 +96,7 @@ tests/
 This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 
 - Deny-by-default policy engine
+- Request-scoped tenant context for tenant data endpoints
 - In-memory model and prompt registries
 - Mock LLM provider for local tests
 - RAG flow with candidate retrieval, ACL checks, citations, and audit

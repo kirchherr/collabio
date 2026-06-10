@@ -77,13 +77,14 @@ Bereits umgesetzt:
 - [x] Initiale API- und Policy-Tests.
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
+- [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 
 Noch nicht umgesetzt:
 
 - [x] Master-Compliance-Dokumente.
 - [x] ADR-Struktur.
 - [ ] Persistente Datenbank.
-- [ ] Request-scoped Auth/Tenant Context.
+- [ ] Vollstaendiger IAM/OIDC Auth Context.
 - [ ] Hash-chain Audit.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery- und Admin-Module.
@@ -412,11 +413,13 @@ Bereits erledigt:
 - [x] Tool Permission Registry Skeleton.
 - [x] LLM Gateway Skeleton.
 - [x] Inference Audit Events als In-memory-Skeleton.
+- [x] Request Context Dependency fuer Tenant, Principal und Tenant Policy.
+- [x] API-Tests fuer fehlenden und unbekannten Tenant Context.
 
 Aufgaben:
 
-- [ ] Demo-User durch request-scoped Auth Context ersetzen.
-- [ ] Tenant Context Middleware implementieren.
+- [x] Demo-User durch request-scoped Tenant Context ersetzen.
+- [x] Tenant Context Dependency fuer Tenant-Daten-Endpunkte implementieren.
 - [ ] Principal-, Role- und Permission-Modelle implementieren.
 - [ ] OIDC-Claims-Mapping vorbereiten.
 - [ ] MFA/FIDO2/WebAuthn als Zielarchitektur dokumentieren.
@@ -997,7 +1000,7 @@ Empfohlene naechste Reihenfolge:
 4. [x] `DATA_CLASSIFICATION.md`, `RETENTION_POLICIES.yaml` und `LEGAL_HOLD_MODEL.md` anlegen.
 5. [x] `pyproject.toml` mit Ruff, Typpruefung und Pytest-Konfiguration einfuehren.
 6. [ ] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
-7. [ ] Request-scoped Tenant Context implementieren.
+7. [x] Request-scoped Tenant Context implementieren.
 8. [ ] Append-only Audit Event Model mit Hash Chain implementieren.
 9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.
 10. [ ] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.

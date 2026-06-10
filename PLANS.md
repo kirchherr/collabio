@@ -13,13 +13,13 @@ Current sprint:
 3. [x] Data classification, retention policies, legal hold model.
 4. [x] ADR template and initial ADRs.
 5. [x] Phase 0 engineering tooling.
-6. [ ] Request-scoped tenant context.
+6. [x] Request-scoped tenant context.
 7. [ ] Append-only audit model.
 
 ## Next Engineering Step
 
-After the Phase 0 tooling and CI gate are in place:
+After the request-scoped tenant context is in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
-- Start request-scoped tenant context implementation.
 - Introduce append-only audit chain storage.
+- Replace in-memory tenant policies with persistent tenant policy storage.
