@@ -1,6 +1,5 @@
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, InferenceRequest, Purpose, TenantPolicy, UserContext
-from suite.ai_control_plane.policy import PolicyEngine
 from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.rag.models import RagQuery, RagResponse, RagSource
 from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
@@ -97,4 +96,3 @@ class RagPipeline:
             retrieval_policy_id="acl_first_v1",
             audit_event_id=retrieval_audit.event_id,
         )
-

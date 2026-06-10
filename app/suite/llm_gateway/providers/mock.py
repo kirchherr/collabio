@@ -3,4 +3,3 @@ class MockLLMProvider:
         normalized = " ".join(prompt.split())
         preview = normalized[:180]
         return f"[mock:{model_id}] {preview}"
-

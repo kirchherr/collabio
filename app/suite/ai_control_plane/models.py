@@ -50,9 +50,7 @@ class TenantPolicy(BaseModel):
     raw_audio_storage_allowed: bool = False
     allowed_model_ids: set[str] = Field(default_factory=set)
     allowed_data_classes: set[DataClass] = Field(default_factory=set)
-    human_approval_required_for: set[RiskLevel] = Field(
-        default_factory=lambda: {RiskLevel.HIGH, RiskLevel.CRITICAL}
-    )
+    human_approval_required_for: set[RiskLevel] = Field(default_factory=lambda: {RiskLevel.HIGH, RiskLevel.CRITICAL})
 
 
 class ModelConfig(BaseModel):

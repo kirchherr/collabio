@@ -15,4 +15,3 @@ class VoiceTranscriptResponse(BaseModel):
     classification: DataClass
     raw_audio_stored: bool
     audit_event_id: str
-

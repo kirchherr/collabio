@@ -12,15 +12,14 @@ Current sprint:
 2. [x] Product charter, security policy, threat model, compliance matrix.
 3. [x] Data classification, retention policies, legal hold model.
 4. [x] ADR template and initial ADRs.
-5. [ ] Phase 0 engineering tooling.
+5. [x] Phase 0 engineering tooling.
 6. [ ] Request-scoped tenant context.
 7. [ ] Append-only audit model.
 
 ## Next Engineering Step
 
-After the Phase -1 documents and ADRs are in place:
+After the Phase 0 tooling and CI gate are in place:
 
-- Add `pyproject.toml`.
-- Add lint/type/test commands.
 - Add compliance tests that assert persistent models declare classification and retention fields.
 - Start request-scoped tenant context implementation.
+- Introduce append-only audit chain storage.

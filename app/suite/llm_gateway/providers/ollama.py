@@ -15,4 +15,3 @@ class OllamaProvider:
         response.raise_for_status()
         payload = response.json()
         return str(payload.get("response", ""))
-

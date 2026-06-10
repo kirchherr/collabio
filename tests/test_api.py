@@ -2,7 +2,6 @@ from fastapi.testclient import TestClient
 
 from main import app
 
-
 client = TestClient(app)
 
 
@@ -39,4 +38,3 @@ def test_voice_requires_push_to_talk() -> None:
         json={"transcript": "Fasse diese Mail zusammen.", "push_to_talk_active": False},
     )
     assert response.status_code == 403
-

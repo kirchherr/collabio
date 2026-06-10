@@ -57,4 +57,3 @@ class LocalLLMGateway:
             requires_human_approval=self.policy_engine.requires_human_approval(request, tenant_policy),
             source_object_ids=request.source_object_ids,
         )
-

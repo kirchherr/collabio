@@ -55,7 +55,9 @@ class PolicyEngine:
             return True
         if request.requested_tool:
             permission = self.tool_permission_registry.get(request.requested_tool)
-            return permission.requires_human_approval or permission.risk_level in tenant_policy.human_approval_required_for
+            return (
+                permission.requires_human_approval or permission.risk_level in tenant_policy.human_approval_required_for
+            )
         return False
 
     def authorize_tool(self, *, requested_tool: str, user_context: UserContext) -> None:

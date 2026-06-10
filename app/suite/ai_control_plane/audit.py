@@ -1,4 +1,5 @@
 from hashlib import sha256
+from typing import Any
 
 from suite.ai_control_plane.models import AuditEvent, UserContext
 
@@ -21,7 +22,7 @@ class InMemoryAuditLogger:
         source_object_ids: list[str] | None = None,
         input_text: str | None = None,
         output_text: str | None = None,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AuditEvent:
         event = AuditEvent(
             tenant_id=user_context.tenant_id,
@@ -36,4 +37,3 @@ class InMemoryAuditLogger:
         )
         self.events.append(event)
         return event
-

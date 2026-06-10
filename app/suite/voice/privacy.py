@@ -44,4 +44,3 @@ class VoicePrivacyGuard:
             raw_audio_stored=False,
             audit_event_id=audit_event.event_id,
         )
-

@@ -44,9 +44,14 @@ All development commands are meant to run through Docker Compose.
 
 ```bash
 docker compose build
+docker compose run --rm quality
+docker compose run --rm lint
+docker compose run --rm typecheck
 docker compose run --rm test
 docker compose up api
 ```
+
+The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
 
 API:
 
@@ -82,6 +87,7 @@ app/
     voice/
 docs/
 tests/
+.github/
 ```
 
 ## Current scope

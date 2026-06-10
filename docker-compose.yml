@@ -1,6 +1,8 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: dev
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       PYTHONPATH: /workspace/app
@@ -11,11 +13,49 @@ services:
       - ./tests:/workspace/tests
 
   test:
-    build: .
+    build:
+      context: .
+      target: dev
     command: pytest -q
     environment:
       PYTHONPATH: /workspace/app
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./pyproject.toml:/workspace/pyproject.toml
 
+  lint:
+    build:
+      context: .
+      target: dev
+    command: sh -lc "ruff check . && ruff format --check ."
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app
+      - ./tests:/workspace/tests
+      - ./pyproject.toml:/workspace/pyproject.toml
+
+  typecheck:
+    build:
+      context: .
+      target: dev
+    command: mypy app tests
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app
+      - ./tests:/workspace/tests
+      - ./pyproject.toml:/workspace/pyproject.toml
+
+  quality:
+    build:
+      context: .
+      target: dev
+    command: sh -lc "ruff check . && ruff format --check . && mypy app tests && pytest -q"
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app
+      - ./tests:/workspace/tests
+      - ./pyproject.toml:/workspace/pyproject.toml

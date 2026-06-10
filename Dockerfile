@@ -9,8 +9,14 @@ WORKDIR /workspace
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+FROM base AS dev
+
+COPY requirements-dev.txt .
+RUN pip install -r requirements-dev.txt
+
 COPY app ./app
 COPY tests ./tests
+COPY pyproject.toml .
 
 ENV PYTHONPATH=/workspace/app
 
@@ -18,3 +24,12 @@ EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+FROM base AS runtime
+
+COPY app ./app
+
+ENV PYTHONPATH=/workspace/app
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

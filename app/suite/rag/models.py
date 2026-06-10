@@ -56,4 +56,3 @@ class RagResponse(BaseModel):
     prompt_template_id: str
     retrieval_policy_id: str
     audit_event_id: str
-

@@ -76,6 +76,7 @@ Bereits umgesetzt:
 - [x] Phase--1 AI/Voice/RAG-Governance-Dokumente.
 - [x] Initiale API- und Policy-Tests.
 - [x] Strukturierte Roadmap-Datei.
+- [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
 
 Noch nicht umgesetzt:
 
@@ -363,9 +364,9 @@ Epics:
 
 Aufgaben:
 
-- [ ] `pyproject.toml` mit Ruff, MyPy/Pyright, Pytest und Coverage anlegen.
+- [x] `pyproject.toml` mit Ruff, MyPy/Pyright und Pytest anlegen.
 - [ ] TypeScript-/Frontend-Tooling vorbereiten.
-- [ ] CI fuer Tests, Lint, Typpruefung und Docker Build anlegen.
+- [x] CI fuer Tests, Lint, Typpruefung und Docker Build anlegen.
 - [ ] Secret Scan integrieren.
 - [ ] Dependency Scan integrieren.
 - [ ] License Scan integrieren.
@@ -994,7 +995,7 @@ Empfohlene naechste Reihenfolge:
 2. [x] `PRODUCT_CHARTER.md`, `SECURITY.md`, `THREAT_MODEL.md` und `COMPLIANCE_MATRIX.md` anlegen.
 3. [x] `ARCHITECTURE_DECISIONS/` mit ADR-Template und ADRs fuer Tenancy, WORM, KMS und Audit anlegen.
 4. [x] `DATA_CLASSIFICATION.md`, `RETENTION_POLICIES.yaml` und `LEGAL_HOLD_MODEL.md` anlegen.
-5. [ ] `pyproject.toml` mit Ruff, Typpruefung und Pytest-Konfiguration einfuehren.
+5. [x] `pyproject.toml` mit Ruff, Typpruefung und Pytest-Konfiguration einfuehren.
 6. [ ] Persistente Tenant Policy, Model Registry, Prompt Registry und Audit Storage designen.
 7. [ ] Request-scoped Tenant Context implementieren.
 8. [ ] Append-only Audit Event Model mit Hash Chain implementieren.

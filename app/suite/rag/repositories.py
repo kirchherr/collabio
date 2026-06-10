@@ -96,4 +96,3 @@ class InMemoryAclAuthorizer:
 
     def can_read(self, *, user_context: UserContext, object_id: str, acl_version: int) -> bool:
         return object_id in self._allowed_by_user.get(user_context.user_id, set())
-

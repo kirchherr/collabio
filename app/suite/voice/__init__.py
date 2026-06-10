@@ -1,2 +1,1 @@
 """Privacy-first voice layer."""
-
