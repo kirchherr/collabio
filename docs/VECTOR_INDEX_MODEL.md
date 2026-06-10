@@ -112,8 +112,11 @@ Current local parser support is intentionally narrow:
 - `text/plain`
 - `text/markdown`
 - `message/rfc822` plain-text mail body extraction with attachments skipped
+- DOCX text extraction via `word/document.xml`
+- ODT text extraction via `content.xml`
+- basic text PDF stream extraction
 
-Binary and rich document formats must be added behind the same interface through isolated parser worker containers, not inside the API or pgvector adapter.
+Rich document parsing stays behind the same `TextExtractor` and parser worker boundary. Complex PDFs, scanned PDFs, macros, password-protected documents, and high-fidelity Office compatibility must be handled by dedicated isolated parser worker containers, not inside the API or pgvector adapter.
 
 ## Exact Search Benchmarks
 

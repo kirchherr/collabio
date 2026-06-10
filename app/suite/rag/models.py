@@ -60,6 +60,7 @@ class SourceDocument(BaseModel):
     text: str
     classification: DataClass
     mime_type: str = "text/plain"
+    content_bytes: bytes | None = None
 
 
 class RagQuery(BaseModel):

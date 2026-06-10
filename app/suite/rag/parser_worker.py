@@ -198,6 +198,7 @@ class ParserWorkerTextExtractor:
         self.worker = worker
 
     def extract_text(self, source: ResolvedSource) -> ExtractedText:
+        content = source.content_bytes if source.content_bytes is not None else source.text.encode("utf-8")
         artifact = self.worker.parse(
             ParserWorkerRequest(
                 tenant_id=source.tenant_id,
@@ -205,7 +206,7 @@ class ParserWorkerTextExtractor:
                 source_version_id=source.version_id,
                 source_object_type=source.source_object_type,
                 mime_type=source.mime_type,
-                content=source.text.encode("utf-8"),
+                content=content,
             )
         )
         return ExtractedText(text=artifact.text)

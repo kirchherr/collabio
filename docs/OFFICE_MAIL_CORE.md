@@ -64,7 +64,9 @@ Current implementation:
 
 - `app/suite/rag/parser_worker.py` defines the parser worker request, result, sandbox policy, and `ParserWorkerTextExtractor`.
 - `PolicyEnforcedParserWorker` supports `text/plain`, `text/markdown`, and safe `message/rfc822` plain-text extraction for tests and local development.
-- DOCX, ODF, PDF, and other binary formats intentionally remain unsupported until dedicated isolated parser containers are wired behind the same interface.
+- `app/suite/rag/rich_document_parser.py` supports DOCX, ODT, and basic text PDF extraction without network access or external processes.
+- `rich-document-parser` in Docker Compose runs the parser manifest command in a read-only, no-network, no-new-privileges container.
+- Complex PDFs, scanned PDFs, macro-bearing files, password-protected files, and high-fidelity Office compatibility still require dedicated hardened parser engines and malicious-file test corpora.
 
 ## Indexing Flow
 

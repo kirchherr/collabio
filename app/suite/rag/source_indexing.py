@@ -61,6 +61,7 @@ class ResolvedSource:
     acl_version: int
     created_at_utc: str
     mime_type: str = "text/plain"
+    content_bytes: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -147,6 +148,7 @@ class RepositorySourceResolver:
             acl_version=self.acl_version,
             created_at_utc=self.created_at_clock(),
             mime_type=document.mime_type,
+            content_bytes=document.content_bytes,
         )
 
 

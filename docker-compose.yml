@@ -63,6 +63,24 @@ services:
     volumes:
       - ./backups:/backups
 
+  rich-document-parser:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.rag.rich_document_parser_service --describe
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+
   api:
     build:
       context: .

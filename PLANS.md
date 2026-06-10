@@ -28,11 +28,12 @@ Current sprint:
 18. [x] Vector worker audit events and exact-search benchmark fixtures.
 19. [x] Office/mail core architecture and parser worker boundary behind text extraction.
 20. [x] Suite-wide backup/failover continuity culture, policy, and dev backup verification commands.
+21. [x] Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction.
 
 ## Next Engineering Step
 
-After the backup/failover baseline is in place:
+After the isolated rich-document parser service is in place:
 
-- Add isolated rich-document parser container adapters for DOCX, ODF, and PDF.
+- Define the source object metadata model for documents, mails, attachments, comments, and procedure documentation.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

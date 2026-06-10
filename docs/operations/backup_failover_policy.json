@@ -96,7 +96,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "important",
       "recovery_strategy": "restore parser artifacts when retained; otherwise rebuild from source objects using pinned parser versions",
-      "state_artifacts": ["parser manifests", "extracted text hashes", "parser version IDs", "sandbox policy evidence"]
+      "state_artifacts": ["parser manifests", "rich document parser manifests", "extracted text hashes", "parser version IDs", "sandbox policy evidence"]
     },
     {
       "domain_id": "search_indexes",

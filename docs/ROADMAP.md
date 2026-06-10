@@ -1037,7 +1037,8 @@ Empfohlene naechste Reihenfolge:
 18. [x] Office/Mail Core als Produktoberflaechen auf demselben Compliance-Core festschreiben.
 19. [x] Parser Worker Boundary hinter Text Extraction Interface anbinden.
 20. [x] Suite-weite Backup-/Failover-Kultur mit Continuity-Domains, Policy, Runbook und Dev-Backup-Verifikation einfuehren.
-21. [ ] Isolierte Rich-Document Parser Container fuer DOCX, ODF und PDF anbinden.
+21. [x] Isolierten Rich-Document Parser Service fuer DOCX, ODT und einfache Text-PDFs anbinden.
+22. [ ] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
 
 ## Release-Strategie
 
