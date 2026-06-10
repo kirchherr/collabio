@@ -38,12 +38,27 @@ class InMemoryTenantPolicyRepository:
     def rows(self) -> list[dict[str, Any]]:
         return [policy.model_dump(mode="json") for policy in self._policies.values()]
 
+    def update(self, policy: TenantPolicy) -> TenantPolicy:
+        if policy.tenant_id not in self._policies:
+            raise LookupError(f"Unknown tenant policy: {policy.tenant_id}")
+        self._policies[policy.tenant_id] = policy
+        return policy
+
 
 class JsonFileTenantPolicyRepository(InMemoryTenantPolicyRepository):
+    def __init__(self, policies: dict[str, TenantPolicy], path: Path) -> None:
+        super().__init__(policies=policies)
+        self.path = path
+
     @classmethod
     def load_or_seed(cls, path: Path, seed: InMemoryTenantPolicyRepository) -> "JsonFileTenantPolicyRepository":
         if not path.exists():
             write_json_array(path, seed.rows())
         rows = json.loads(path.read_text(encoding="utf-8"))
         policies = {row["tenant_id"]: TenantPolicy.model_validate(row) for row in rows}
-        return cls(policies=policies)
+        return cls(policies=policies, path=path)
+
+    def update(self, policy: TenantPolicy) -> TenantPolicy:
+        updated = super().update(policy)
+        write_json_array(self.path, self.rows())
+        return updated

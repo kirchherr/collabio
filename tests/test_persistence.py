@@ -38,11 +38,19 @@ def test_json_registries_seed_and_reload(tmp_path: Path) -> None:
     assert tool_registry.get("legal_hold.set").requires_human_approval
     assert tenant_repository.get("tenant-demo").ai_enabled
 
+    updated_policy = tenant_repository.get("tenant-demo").model_copy(update={"external_ai_enabled": True})
+    tenant_repository.update(updated_policy)
+
     reloaded_models = JsonFileModelRegistry.load_or_seed(
         registry_dir / "models.json",
         seed=InMemoryModelRegistry(models={}),
     )
+    reloaded_tenants = JsonFileTenantPolicyRepository.load_or_seed(
+        registry_dir / "tenant_policies.json",
+        seed=InMemoryTenantPolicyRepository(policies={}),
+    )
     assert reloaded_models.get("mock-summarizer").checksum == "sha256:mock"
+    assert reloaded_tenants.get("tenant-demo").external_ai_enabled
 
 
 def test_jsonl_audit_logger_persists_and_reloads_chain(tmp_path: Path) -> None:

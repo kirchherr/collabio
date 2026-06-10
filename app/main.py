@@ -7,6 +7,7 @@ from suite.ai_control_plane.audit import JsonlAuditLogger
 from suite.ai_control_plane.models import (
     InferenceRequest,
     InferenceResponse,
+    TenantPolicy,
     UserContext,
 )
 from suite.ai_control_plane.policy import PolicyEngine, PolicyViolation
@@ -22,6 +23,7 @@ from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.llm_gateway.providers.mock import MockLLMProvider
 from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
+from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
@@ -69,6 +71,20 @@ def get_tenant_request_context(
         ),
         tenant_policy=tenant_policy,
     )
+
+
+ADMIN_ROLE_IDS = {"tenant-admin", "security-admin"}
+
+
+def require_tenant_admin(
+    context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+) -> TenantRequestContext:
+    if context.user_context.role_ids.isdisjoint(ADMIN_ROLE_IDS):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant admin role required",
+        )
+    return context
 
 
 def build_app() -> FastAPI:
@@ -122,6 +138,58 @@ def build_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
+    def get_tenant_policy(
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantPolicy:
+        return context.tenant_policy
+
+    @app.patch("/v1/admin/tenant-policy/ai-settings", response_model=TenantPolicy)
+    def update_tenant_ai_settings(
+        update: TenantAiPolicyUpdate,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantPolicy:
+        update_fields = update.model_dump(exclude_unset=True)
+        if not update_fields:
+            return context.tenant_policy
+
+        requested_model_ids = update.allowed_model_ids
+        if requested_model_ids is not None:
+            for model_id in requested_model_ids:
+                try:
+                    model_registry.get(model_id)
+                except LookupError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Unknown model: {model_id}",
+                    ) from exc
+
+        policy_repository: InMemoryTenantPolicyRepository = request.app.state.tenant_policy_repository
+        updated_policy = context.tenant_policy.model_copy(update=update_fields)
+        try:
+            persisted_policy = policy_repository.update(updated_policy)
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant policy is not available",
+            ) from exc
+
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="tenant_policy.ai_settings.update",
+            source_object_ids=[persisted_policy.tenant_id],
+            metadata={
+                "changed_fields": sorted(update_fields),
+                "ai_enabled": persisted_policy.ai_enabled,
+                "rag_enabled": persisted_policy.rag_enabled,
+                "voice_enabled": persisted_policy.voice_enabled,
+                "external_ai_enabled": persisted_policy.external_ai_enabled,
+                "allowed_model_count": len(persisted_policy.allowed_model_ids),
+            },
+        )
+        return persisted_policy
+
     @app.post("/v1/ai/inference", response_model=InferenceResponse)
     def infer(
         inference_request: InferenceRequest,
@@ -166,6 +234,7 @@ def build_app() -> FastAPI:
 
     app.state.audit_logger = audit_logger
     app.state.llm_gateway = llm_gateway
+    app.state.model_registry = model_registry
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard

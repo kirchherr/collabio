@@ -97,6 +97,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 
 - Deny-by-default policy engine
 - Request-scoped tenant context for tenant data endpoints
+- Role-gated admin API for tenant AI settings and allowed models
 - File-backed tenant policy, model, prompt, tool-permission, and audit stores
 - Append-only audit hash chain with verifier
 - Mock LLM provider for local tests

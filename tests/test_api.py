@@ -10,6 +10,10 @@ DEMO_HEADERS = {
     "X-Role-Ids": "knowledge-worker",
     "X-Readable-Object-Ids": "doc-1,mail-1",
 }
+DEMO_ADMIN_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Role-Ids": "tenant-admin",
+}
 
 
 def test_health() -> None:
@@ -32,6 +36,50 @@ def test_unknown_tenant_policy_is_blocked() -> None:
     )
     assert response.status_code == 403
     assert response.json()["detail"] == "Tenant policy is not available"
+
+
+def test_admin_tenant_policy_requires_admin_role() -> None:
+    response = client.get("/v1/admin/tenant-policy", headers=DEMO_HEADERS)
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Tenant admin role required"
+
+
+def test_admin_tenant_policy_rejects_unknown_allowed_model() -> None:
+    response = client.patch(
+        "/v1/admin/tenant-policy/ai-settings",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"allowed_model_ids": ["unknown-model"]},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unknown model: unknown-model"
+
+
+def test_admin_can_update_tenant_ai_settings() -> None:
+    response = client.patch(
+        "/v1/admin/tenant-policy/ai-settings",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "ai_enabled": True,
+            "rag_enabled": True,
+            "voice_enabled": True,
+            "external_ai_enabled": False,
+            "allowed_model_ids": ["mock-summarizer"],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["ai_enabled"] is True
+    assert body["rag_enabled"] is True
+    assert body["voice_enabled"] is True
+    assert body["external_ai_enabled"] is False
+    assert set(body["allowed_model_ids"]) == {"mock-summarizer"}
+
+    matching_audit_events = [
+        event for event in app.state.audit_logger.events if event.event_type == "tenant_policy.ai_settings.update"
+    ]
+    assert matching_audit_events
+    assert matching_audit_events[-1].metadata["allowed_model_count"] == 1
 
 
 def test_inference_writes_untrusted_output() -> None:

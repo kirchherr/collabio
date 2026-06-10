@@ -80,6 +80,7 @@ Bereits umgesetzt:
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
+- [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
 
 Noch nicht umgesetzt:
 
@@ -422,6 +423,8 @@ Bereits erledigt:
 - [x] Manipulationstests fuer geaenderte und entfernte Audit Events.
 - [x] File-backed JSON Stores fuer Tenant Policies, Model Registry, Prompt Registry und Tool Permissions.
 - [x] JSONL Audit Store mit Reload und Chain-Verifikation.
+- [x] Admin API fuer Tenant AI Settings und Allowed Models mit Rollenpruefung.
+- [x] Audit Events fuer Tenant Policy Updates.
 
 Aufgaben:
 
@@ -434,8 +437,9 @@ Aufgaben:
 - [ ] RLS als Defense-in-depth planen und testen.
 - [x] Persistente Tenant Policy Stores implementieren.
 - [x] Persistente Model-, Prompt- und Tool-Registries implementieren.
-- [ ] Admin API fuer AI on/off pro Tenant.
-- [ ] Admin API fuer erlaubte Modelle pro Tenant, Rolle und Datenklasse.
+- [x] Admin API fuer AI on/off pro Tenant.
+- [x] Admin API fuer erlaubte Modelle pro Tenant.
+- [ ] Role- und Datenklassen-spezifische Modellfreigaben administrierbar machen.
 - [x] Append-only Audit Event Schema implementieren.
 - [x] Audit Hash Chain implementieren.
 - [ ] Audit Verification Command implementieren.
@@ -1013,7 +1017,7 @@ Empfohlene naechste Reihenfolge:
 8. [x] Append-only Audit Event Model mit Hash Chain implementieren.
 9. [ ] ADR fuer pgvector vs. Qdrant vorbereiten.
 10. [ ] Erste Prompt-Injection- und unauthorized-RAG-output Tests schreiben.
-11. [ ] Admin API fuer Tenant AI on/off und allowed models implementieren.
+11. [x] Admin API fuer Tenant AI on/off und allowed models implementieren.
 
 ## Release-Strategie
 

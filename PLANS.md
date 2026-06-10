@@ -16,11 +16,12 @@ Current sprint:
 6. [x] Request-scoped tenant context.
 7. [x] Append-only audit model.
 8. [x] File-backed policy, registry, and audit stores.
+9. [x] Admin API for tenant AI settings and allowed models.
 
 ## Next Engineering Step
 
-After the file-backed policy, registry, and audit stores are in place:
+After the admin API for tenant AI settings is in place:
 
 - Add compliance tests that assert persistent models declare classification and retention fields.
+- Add prompt-injection and unauthorized-RAG-output tests.
 - Design PostgreSQL schema and migrations for production persistence.
-- Add admin APIs for tenant AI settings and allowed models.
