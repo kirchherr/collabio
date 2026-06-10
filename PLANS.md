@@ -24,11 +24,12 @@ Current sprint:
 14. [x] PostgreSQL/pgvector dev service, migration runner, and live RLS tests.
 15. [x] pgvector adapter for upsert, lifecycle transitions, and candidate-only search.
 16. [x] Vector reindex and deletion-propagation worker entry points.
+17. [x] Source resolver and text extraction pipeline feeding the pgvector worker.
 
 ## Next Engineering Step
 
-After vector reindex and deletion-propagation worker entry points are in place:
+After the source indexing pipeline is in place:
 
-- Add source resolver and text extraction pipeline feeding the pgvector adapter.
 - Add benchmark fixtures for exact search before ANN index decisions.
 - Add audit event emission around vector worker jobs.
+- Add sandboxed binary/document parser workers behind the text extraction interface.

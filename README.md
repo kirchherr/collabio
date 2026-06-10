@@ -108,6 +108,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - pgvector/PostgreSQL dev service with live migration runner and vector RLS integration tests
 - pgvector adapter for candidate-only search, upsert, and lifecycle transitions
 - Worker entry points for vector reindex and deletion propagation
+- Source resolver, text extraction, deterministic chunking, and source-to-vector indexing pipeline
 - Prompt-injection and unauthorized-RAG-output regression tests
 - Architecture guards that prevent direct LLM provider bypasses outside the gateway
 - Voice transcript classification and no-raw-audio default

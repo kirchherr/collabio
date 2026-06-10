@@ -88,3 +88,19 @@ Implemented operations:
 - `propagate_deletion`: moves all chunks for a source version to `deleted` or `cryptoshredded`.
 
 The runtime app role has no `INSERT`, `UPDATE`, or `DELETE` grant on `collabio.vector_embedding_chunks`. This prevents API-side writes or accidental reactivation of deleted/restricted chunks.
+
+## Source Indexing Pipeline
+
+`app/suite/rag/source_indexing.py` is the first source-to-vector orchestration layer.
+
+It separates the pipeline into replaceable contracts:
+
+- `SourceResolver`: resolves tenant, source, version, ACL hash, classification, retention, legal-hold, and source type metadata.
+- `TextExtractor`: extracts text from the resolved source. The current implementation handles plain text only.
+- `TextChunker`: creates deterministic chunk IDs, content hashes, and byte lengths.
+- `EmbeddingProvider`: produces vectors. The current deterministic hash embedder is for local development and tests only.
+- `SourceIndexingPipeline`: converts extracted chunks into `VectorEmbeddingRecord` objects and sends them to `VectorIndexWorker.reindex_source`.
+
+The live integration test proves that the pipeline feeds the pgvector worker and that a later source reindex soft-deletes stale chunks while keeping candidate search source-text-free.
+
+Binary and rich document formats must be added behind `TextExtractor` through sandboxed parser workers, not inside the API or pgvector adapter.

@@ -9,8 +9,17 @@ import pytest
 
 from suite.ai_control_plane.models import DataClass
 from suite.persistence.migrator import apply_migrations
-from suite.rag.models import ChunkMetadata, VectorEmbeddingRecord, VectorLifecycleState
+from suite.rag.models import ChunkMetadata, SourceDocument, VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.pgvector_store import PgvectorVectorStore
+from suite.rag.repositories import InMemorySourceRepository
+from suite.rag.source_indexing import (
+    DeterministicHashEmbeddingProvider,
+    FixedSizeTextChunker,
+    PlainTextExtractor,
+    RepositorySourceResolver,
+    SourceIndexCommand,
+    SourceIndexingPipeline,
+)
 from suite.rag.vector_worker import DeletionPropagationCommand, ReindexSourceCommand, VectorIndexWorker
 
 
@@ -656,3 +665,122 @@ def test_vector_worker_propagates_source_deletion_and_blocks_app_reactivation(
     assert row[1] is not None
     assert row[2] == "sha256:before-delete"
     assert row[3] == "audit-delete"
+
+
+def test_source_indexing_pipeline_feeds_pgvector_worker_and_deletes_stale_chunks(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-source-{suffix}"
+    model_id = f"embedding-model-{suffix}"
+    source_object_id = f"doc-{suffix}"
+    embedder = DeterministicHashEmbeddingProvider(dimensions=3)
+    store = PgvectorVectorStore(
+        database_dsn=live_database.app_dsn,
+        lifecycle_database_dsn=live_database.worker_dsn,
+        embedding_model_id=model_id,
+        embedding_model_version="1",
+        query_embedder=embedder.embed,
+    )
+    worker = VectorIndexWorker(store)
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        seed_embedding_model(owner_connection, model_id)
+        owner_connection.commit()
+
+    first_pipeline = SourceIndexingPipeline(
+        resolver=RepositorySourceResolver(
+            InMemorySourceRepository(
+                documents={
+                    source_object_id: SourceDocument(
+                        object_id=source_object_id,
+                        version_id="v1",
+                        title="Indexable source",
+                        text=(
+                            "First policy paragraph requires citation. "
+                            "Second policy paragraph requires approval. "
+                            "Third policy paragraph requires retention."
+                        ),
+                        classification=DataClass.INTERNAL,
+                    )
+                }
+            ),
+            created_at_clock=lambda: "2026-06-10T00:00:00Z",
+        ),
+        text_extractor=PlainTextExtractor(),
+        chunker=FixedSizeTextChunker(max_characters=48),
+        embedding_provider=embedder,
+        worker=worker,
+        embedding_model_id=model_id,
+        embedding_model_version="1",
+        indexed_at_clock=lambda: "2026-06-10T00:01:00Z",
+    )
+    first_result = first_pipeline.index_source(
+        SourceIndexCommand(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            source_version_id="v1",
+            audit_event_id="audit-first-index",
+        )
+    )
+
+    second_text = "Replacement policy paragraph requires citation."
+    second_pipeline = SourceIndexingPipeline(
+        resolver=RepositorySourceResolver(
+            InMemorySourceRepository(
+                documents={
+                    source_object_id: SourceDocument(
+                        object_id=source_object_id,
+                        version_id="v1",
+                        title="Indexable source",
+                        text=second_text,
+                        classification=DataClass.INTERNAL,
+                    )
+                }
+            ),
+            created_at_clock=lambda: "2026-06-10T00:00:00Z",
+        ),
+        text_extractor=PlainTextExtractor(),
+        chunker=FixedSizeTextChunker(max_characters=48),
+        embedding_provider=embedder,
+        worker=worker,
+        embedding_model_id=model_id,
+        embedding_model_version="1",
+        indexed_at_clock=lambda: "2026-06-10T00:02:00Z",
+    )
+    second_result = second_pipeline.index_source(
+        SourceIndexCommand(
+            tenant_id=tenant_id,
+            source_object_id=source_object_id,
+            source_version_id="v1",
+            audit_event_id="audit-second-index",
+        )
+    )
+
+    candidates = store.search_by_embedding(tenant_id=tenant_id, embedding=embedder.embed(second_text), top_k=10)
+
+    assert first_result.chunk_count == 3
+    assert second_result.chunk_count == 1
+    assert second_result.reindex_result.marked_reindex_pending == 3
+    assert second_result.reindex_result.deleted_stale_chunks == 2
+    assert {candidate.chunk_id for candidate in candidates} == {"chunk-0000"}
+    assert candidates[0].metadata.classification == DataClass.INTERNAL
+
+    with psycopg.connect(live_database.migration_dsn) as owner_connection:
+        rows = owner_connection.execute(
+            """
+            SELECT chunk_id, lifecycle_state, audit_event_id
+            FROM collabio.vector_embedding_chunks
+            WHERE tenant_id = %s
+              AND source_object_id = %s
+              AND embedding_model_id = %s
+            ORDER BY chunk_id
+            """,
+            (tenant_id, source_object_id, model_id),
+        ).fetchall()
+
+    rows_by_chunk = {str(row[0]): row for row in rows}
+    assert rows_by_chunk["chunk-0000"][1] == VectorLifecycleState.ACTIVE.value
+    assert rows_by_chunk["chunk-0000"][2] == "audit-second-index"
+    assert rows_by_chunk["chunk-0001"][1] == VectorLifecycleState.DELETED.value
+    assert rows_by_chunk["chunk-0002"][1] == VectorLifecycleState.DELETED.value

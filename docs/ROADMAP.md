@@ -1032,7 +1032,8 @@ Empfohlene naechste Reihenfolge:
 13. [x] Live PostgreSQL/pgvector Migrationsrunner und RLS-Integrationstest implementieren.
 14. [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate Search implementieren.
 15. [x] Reindex- und Deletion-Propagation Worker Entry Points implementieren.
-16. [ ] Source Resolver und Text Extraction Pipeline an pgvector Worker anbinden.
+16. [x] Source Resolver und Text Extraction Pipeline an pgvector Worker anbinden.
+17. [ ] Benchmark Fixtures fuer exakte Vector Search und Audit Events fuer Worker Jobs ergaenzen.
 
 ## Release-Strategie
 
