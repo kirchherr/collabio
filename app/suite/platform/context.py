@@ -7,14 +7,19 @@ import json
 import os
 from collections.abc import Callable
 from datetime import UTC, datetime
+from enum import StrEnum
 from hashlib import sha256
+from pathlib import Path
 from time import time
 from typing import Any, Protocol, Self, cast
+from urllib.error import URLError
+from urllib.request import urlopen
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import TenantPolicy, UserContext
 from suite.platform.runtime import is_production_environment, suite_auth_mode
+from suite.platform.storage_paths import suite_data_dir
 
 DEFAULT_JWT_ISSUER = "https://issuer.collabio.local"
 DEFAULT_JWT_AUDIENCE = "collabio-api"
@@ -69,23 +74,92 @@ class JwtVerifier(Protocol):
     def verify(self, token: str) -> VerifiedJwtClaims: ...
 
 
-class JwtReplayGuard:
+class JwtReplayStore(Protocol):
+    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool: ...
+
+    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None: ...
+
+
+class InMemoryJwtReplayStore:
     def __init__(self) -> None:
         self._seen_jti_by_issuer: dict[tuple[str, str], int] = {}
 
-    def require_not_replayed(self, claims: VerifiedJwtClaims, *, now_epoch: int) -> None:
-        if claims.jwt_id is None:
-            return
+    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool:
         self._purge_expired(now_epoch)
-        key = (claims.issuer, claims.jwt_id)
-        if key in self._seen_jti_by_issuer:
-            raise JwtAuthenticationError("JWT replay detected")
-        self._seen_jti_by_issuer[key] = claims.expires_at_epoch
+        return (issuer, jwt_id) in self._seen_jti_by_issuer
+
+    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None:
+        self._purge_expired(now_epoch)
+        self._seen_jti_by_issuer[(issuer, jwt_id)] = expires_at_epoch
 
     def _purge_expired(self, now_epoch: int) -> None:
         expired = [key for key, expires_at in self._seen_jti_by_issuer.items() if expires_at <= now_epoch]
         for key in expired:
             del self._seen_jti_by_issuer[key]
+
+
+class JsonFileJwtReplayStore:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool:
+        records = self._read_records(now_epoch)
+        return (issuer, jwt_id) in records
+
+    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None:
+        records = self._read_records(now_epoch)
+        records[(issuer, jwt_id)] = expires_at_epoch
+        self._write_records(records)
+
+    def _read_records(self, now_epoch: int) -> dict[tuple[str, str], int]:
+        if not self.path.exists():
+            return {}
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise JwtAuthenticationError("JWT replay store is not valid JSON") from exc
+        raw_records = payload.get("records")
+        if not isinstance(raw_records, list):
+            raise JwtAuthenticationError("JWT replay store records must be a list")
+        records: dict[tuple[str, str], int] = {}
+        for record in raw_records:
+            if not isinstance(record, dict):
+                raise JwtAuthenticationError("JWT replay store record must be an object")
+            issuer = _required_string_claim(record, "issuer")
+            jwt_id = _required_string_claim(record, "jwt_id")
+            expires_at_epoch = _required_int_claim(record, "expires_at_epoch")
+            if expires_at_epoch > now_epoch:
+                records[(issuer, jwt_id)] = expires_at_epoch
+        if len(records) != len(raw_records):
+            self._write_records(records)
+        return records
+
+    def _write_records(self, records: dict[tuple[str, str], int]) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        rows = [
+            {"issuer": issuer, "jwt_id": jwt_id, "expires_at_epoch": expires_at_epoch}
+            for (issuer, jwt_id), expires_at_epoch in sorted(records.items())
+        ]
+        temp_path = self.path.with_suffix(self.path.suffix + ".tmp")
+        temp_path.write_text(json.dumps({"records": rows}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temp_path.replace(self.path)
+
+
+class JwtReplayGuard:
+    def __init__(self, store: JwtReplayStore | None = None) -> None:
+        self.store = store or InMemoryJwtReplayStore()
+
+    def require_not_replayed(self, claims: VerifiedJwtClaims, *, now_epoch: int) -> None:
+        if claims.jwt_id is None:
+            return
+        if self.store.contains(issuer=claims.issuer, jwt_id=claims.jwt_id, now_epoch=now_epoch):
+            raise JwtAuthenticationError("JWT replay detected")
+        self.store.record(
+            issuer=claims.issuer,
+            jwt_id=claims.jwt_id,
+            expires_at_epoch=claims.expires_at_epoch,
+            now_epoch=now_epoch,
+        )
 
 
 class OidcIssuerConfig(BaseModel):
@@ -107,6 +181,66 @@ class OidcVerifierHealth(BaseModel):
     key_count: int
     allowed_algorithms: set[str]
     replay_guard_enabled: bool
+    refreshed_issuer_count: int = 0
+    stale_issuer_count: int = 0
+    last_error_count: int = 0
+
+
+class OidcOutagePolicy(StrEnum):
+    FAIL_CLOSED = "fail_closed"
+    USE_STALE_KEYS = "use_stale_keys"
+
+
+class OidcDiscoveryIssuerConfig(BaseModel):
+    issuer: str
+    audiences: set[str] = Field(min_length=1)
+    discovery_url: str
+    refresh_interval_seconds: int = Field(default=300, ge=1)
+    stale_grace_seconds: int = Field(default=3600, ge=0)
+    outage_policy: OidcOutagePolicy = OidcOutagePolicy.FAIL_CLOSED
+
+    @field_validator("issuer", "discovery_url")
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("field must not be empty")
+        return normalized
+
+
+class OidcDiscoveryDocument(BaseModel):
+    issuer: str
+    jwks_uri: str
+    id_token_signing_alg_values_supported: list[str] = Field(default_factory=list)
+
+    @field_validator("issuer", "jwks_uri")
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("field must not be empty")
+        return normalized
+
+
+class JsonFetcher(Protocol):
+    def fetch_json(self, url: str) -> dict[str, Any]: ...
+
+
+class UrllibJsonFetcher:
+    def __init__(self, *, timeout_seconds: float = 5.0) -> None:
+        self.timeout_seconds = timeout_seconds
+
+    def fetch_json(self, url: str) -> dict[str, Any]:
+        if not url.startswith("https://"):
+            raise JwtAuthenticationError("OIDC discovery and JWKS URLs must use https")
+        try:
+            with urlopen(url, timeout=self.timeout_seconds) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (OSError, URLError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise JwtAuthenticationError("OIDC JSON fetch failed") from exc
+        if not isinstance(payload, dict):
+            raise JwtAuthenticationError("OIDC JSON response must be an object")
+        return cast(dict[str, Any], payload)
 
 
 class JwksRs256Key(BaseModel):
@@ -114,6 +248,160 @@ class JwksRs256Key(BaseModel):
     issuer: str
     modulus: int = Field(gt=0)
     exponent: int = Field(gt=0)
+
+
+class DynamicOidcJwksVerifier:
+    def __init__(
+        self,
+        *,
+        issuers: list[OidcDiscoveryIssuerConfig],
+        fetcher: JsonFetcher,
+        now_epoch: Callable[[], float] = time,
+        allowed_clock_skew_seconds: int = 30,
+        replay_guard: JwtReplayGuard | None = None,
+    ) -> None:
+        if not issuers:
+            raise JwtAuthenticationError("At least one OIDC discovery issuer is required")
+        self._issuer_configs = {issuer.issuer: issuer for issuer in issuers}
+        self._audiences_by_issuer = {issuer.issuer: issuer.audiences for issuer in issuers}
+        self._keys: dict[tuple[str, str], JwksRs256Key] = {}
+        self._refreshed_at_by_issuer: dict[str, int] = {}
+        self._last_error_by_issuer: dict[str, str] = {}
+        self.fetcher = fetcher
+        self.now_epoch = now_epoch
+        self.allowed_clock_skew_seconds = allowed_clock_skew_seconds
+        self.replay_guard = replay_guard or JwtReplayGuard()
+
+    def verify(self, token: str) -> VerifiedJwtClaims:
+        header, payload, signature = _split_compact_jwt(token)
+        header_data = _decode_json_object(header, "JWT header")
+        algorithm = header_data.get("alg")
+        if algorithm != "RS256":
+            raise JwtAuthenticationError("Unsupported JWT alg")
+        key_id = _required_header_string(header_data, "kid")
+        claims_data = _decode_json_object(payload, "JWT claims")
+        issuer = _required_string_claim(claims_data, "iss")
+        key = self._key_for(issuer=issuer, key_id=key_id)
+        signing_input = f"{header}.{payload}".encode("ascii")
+        if not _verify_rs256_signature(
+            key=key,
+            signing_input=signing_input,
+            signature=_base64url_decode(signature),
+        ):
+            raise JwtAuthenticationError("JWT signature verification failed")
+
+        claims = VerifiedJwtClaims(
+            issuer=issuer,
+            subject=_required_string_claim(claims_data, "sub"),
+            audience=_audience_claim(claims_data),
+            tenant_id=_required_string_claim(claims_data, "tenant_id"),
+            expires_at_epoch=_required_int_claim(claims_data, "exp"),
+            issued_at_epoch=_optional_int_claim(claims_data, "iat"),
+            not_before_epoch=_optional_int_claim(claims_data, "nbf"),
+            jwt_id=_optional_string_claim(claims_data, "jti"),
+        )
+        self._validate_registered_claims(claims)
+        self.replay_guard.require_not_replayed(claims, now_epoch=int(self.now_epoch()))
+        return claims
+
+    def health(self) -> OidcVerifierHealth:
+        now = int(self.now_epoch())
+        stale_issuer_count = sum(
+            1
+            for issuer in self._issuer_configs
+            if issuer not in self._refreshed_at_by_issuer or self._refresh_due(issuer, now_epoch=now)
+        )
+        return OidcVerifierHealth(
+            issuer_count=len(self._issuer_configs),
+            key_count=len(self._keys),
+            allowed_algorithms={"RS256"},
+            replay_guard_enabled=True,
+            refreshed_issuer_count=len(self._refreshed_at_by_issuer),
+            stale_issuer_count=stale_issuer_count,
+            last_error_count=len(self._last_error_by_issuer),
+        )
+
+    def refresh_all(self) -> None:
+        for issuer in self._issuer_configs:
+            self._refresh_issuer(issuer)
+
+    def _key_for(self, *, issuer: str, key_id: str) -> JwksRs256Key:
+        if issuer not in self._issuer_configs:
+            raise JwtAuthenticationError("JWT issuer is not trusted")
+        now = int(self.now_epoch())
+        self._ensure_fresh_keys(issuer, now_epoch=now)
+        key = self._keys.get((issuer, key_id))
+        if key is None:
+            self._try_refresh_for_key_rotation(issuer, now_epoch=now)
+            key = self._keys.get((issuer, key_id))
+        if key is None:
+            raise JwtAuthenticationError("JWT signing key is not trusted")
+        return key
+
+    def _ensure_fresh_keys(self, issuer: str, *, now_epoch: int) -> None:
+        if issuer not in self._refreshed_at_by_issuer or self._refresh_due(issuer, now_epoch=now_epoch):
+            try:
+                self._refresh_issuer(issuer)
+            except JwtAuthenticationError as exc:
+                self._handle_refresh_failure(issuer, now_epoch=now_epoch, exc=exc)
+
+    def _try_refresh_for_key_rotation(self, issuer: str, *, now_epoch: int) -> None:
+        try:
+            self._refresh_issuer(issuer)
+        except JwtAuthenticationError as exc:
+            self._handle_refresh_failure(issuer, now_epoch=now_epoch, exc=exc)
+
+    def _refresh_due(self, issuer: str, *, now_epoch: int) -> bool:
+        refreshed_at = self._refreshed_at_by_issuer.get(issuer)
+        if refreshed_at is None:
+            return True
+        return now_epoch - refreshed_at >= self._issuer_configs[issuer].refresh_interval_seconds
+
+    def _refresh_issuer(self, issuer: str) -> None:
+        config = self._issuer_configs[issuer]
+        discovery = OidcDiscoveryDocument.model_validate(self.fetcher.fetch_json(config.discovery_url))
+        if discovery.issuer != config.issuer:
+            raise JwtAuthenticationError("OIDC discovery issuer mismatch")
+        if discovery.id_token_signing_alg_values_supported and (
+            "RS256" not in discovery.id_token_signing_alg_values_supported
+        ):
+            raise JwtAuthenticationError("OIDC discovery does not advertise RS256")
+        jwks = self.fetcher.fetch_json(discovery.jwks_uri)
+        key_index = _build_rs256_jwks_key_index(
+            [OidcIssuerConfig(issuer=config.issuer, audiences=config.audiences, jwks=jwks)]
+        )
+        if not key_index:
+            raise JwtAuthenticationError("OIDC JWKS refresh returned no RS256 signing keys")
+        self._keys = {key: value for key, value in self._keys.items() if key[0] != issuer}
+        self._keys.update(key_index)
+        self._refreshed_at_by_issuer[issuer] = int(self.now_epoch())
+        self._last_error_by_issuer.pop(issuer, None)
+
+    def _handle_refresh_failure(self, issuer: str, *, now_epoch: int, exc: JwtAuthenticationError) -> None:
+        self._last_error_by_issuer[issuer] = str(exc)
+        refreshed_at = self._refreshed_at_by_issuer.get(issuer)
+        if refreshed_at is None:
+            raise JwtAuthenticationError("OIDC JWKS refresh failed and no cached keys are available") from exc
+
+        config = self._issuer_configs[issuer]
+        if config.outage_policy == OidcOutagePolicy.FAIL_CLOSED:
+            raise JwtAuthenticationError("OIDC JWKS refresh failed") from exc
+        if now_epoch - refreshed_at > config.refresh_interval_seconds + config.stale_grace_seconds:
+            raise JwtAuthenticationError("OIDC JWKS cache expired") from exc
+
+    def _validate_registered_claims(self, claims: VerifiedJwtClaims) -> None:
+        now = int(self.now_epoch())
+        trusted_audiences = self._audiences_by_issuer.get(claims.issuer)
+        if trusted_audiences is None:
+            raise JwtAuthenticationError("JWT issuer is not trusted")
+        if claims.audience.isdisjoint(trusted_audiences):
+            raise JwtAuthenticationError("JWT audience is not trusted")
+        if claims.expires_at_epoch <= now - self.allowed_clock_skew_seconds:
+            raise JwtAuthenticationError("JWT is expired")
+        if claims.not_before_epoch is not None and claims.not_before_epoch > now + self.allowed_clock_skew_seconds:
+            raise JwtAuthenticationError("JWT is not valid yet")
+        if claims.issued_at_epoch is not None and claims.issued_at_epoch > now + self.allowed_clock_skew_seconds:
+            raise JwtAuthenticationError("JWT issued_at is in the future")
 
 
 class StaticOidcJwksVerifier:
@@ -432,7 +720,18 @@ def build_default_principal_resolver() -> JwtPrincipalResolver:
     auth_mode = suite_auth_mode()
     verifier: JwtVerifier
     if auth_mode == "oidc":
-        verifier = StaticOidcJwksVerifier(issuers=_load_oidc_issuer_configs_from_env())
+        replay_guard = _default_replay_guard()
+        if _oidc_dynamic_discovery_configured():
+            verifier = DynamicOidcJwksVerifier(
+                issuers=_load_oidc_discovery_issuer_configs_from_env(),
+                fetcher=UrllibJsonFetcher(),
+                replay_guard=replay_guard,
+            )
+        else:
+            verifier = StaticOidcJwksVerifier(
+                issuers=_load_oidc_issuer_configs_from_env(),
+                replay_guard=replay_guard,
+            )
     else:
         issuer = os.getenv("SUITE_JWT_ISSUER", DEFAULT_JWT_ISSUER)
         audience = os.getenv("SUITE_JWT_AUDIENCE", DEFAULT_JWT_AUDIENCE)
@@ -448,6 +747,48 @@ def build_default_principal_resolver() -> JwtPrincipalResolver:
         verifier=verifier,
         directory=InMemoryPrincipalDirectory.default(),
     )
+
+
+def _default_replay_guard() -> JwtReplayGuard:
+    replay_store_path = Path(
+        os.getenv(
+            "SUITE_JWT_REPLAY_STORE_PATH",
+            str(suite_data_dir() / "auth" / "jwt_replay_store.json"),
+        )
+    )
+    return JwtReplayGuard(store=JsonFileJwtReplayStore(replay_store_path))
+
+
+def _oidc_dynamic_discovery_configured() -> bool:
+    return bool(os.getenv("SUITE_OIDC_DISCOVERY_ISSUERS_JSON") or os.getenv("SUITE_OIDC_DISCOVERY_URL"))
+
+
+def _load_oidc_discovery_issuer_configs_from_env() -> list[OidcDiscoveryIssuerConfig]:
+    config_json = os.getenv("SUITE_OIDC_DISCOVERY_ISSUERS_JSON")
+    if config_json:
+        try:
+            raw_config = json.loads(config_json)
+        except json.JSONDecodeError as exc:
+            raise JwtAuthenticationError("SUITE_OIDC_DISCOVERY_ISSUERS_JSON must be valid JSON") from exc
+        if not isinstance(raw_config, list):
+            raise JwtAuthenticationError("SUITE_OIDC_DISCOVERY_ISSUERS_JSON must be a JSON array")
+        return [OidcDiscoveryIssuerConfig.model_validate(entry) for entry in raw_config]
+
+    issuer = os.getenv("SUITE_OIDC_ISSUER", "").strip()
+    audience = os.getenv("SUITE_OIDC_AUDIENCE", DEFAULT_JWT_AUDIENCE).strip()
+    discovery_url = os.getenv("SUITE_OIDC_DISCOVERY_URL", "").strip()
+    if not issuer or not discovery_url:
+        raise JwtAuthenticationError("OIDC discovery auth requires SUITE_OIDC_ISSUER and SUITE_OIDC_DISCOVERY_URL")
+    return [
+        OidcDiscoveryIssuerConfig(
+            issuer=issuer,
+            audiences={audience},
+            discovery_url=discovery_url,
+            refresh_interval_seconds=int(os.getenv("SUITE_OIDC_REFRESH_INTERVAL_SECONDS", "300")),
+            stale_grace_seconds=int(os.getenv("SUITE_OIDC_STALE_GRACE_SECONDS", "3600")),
+            outage_policy=OidcOutagePolicy(os.getenv("SUITE_OIDC_OUTAGE_POLICY", "fail_closed")),
+        )
+    ]
 
 
 def _load_oidc_issuer_configs_from_env() -> list[OidcIssuerConfig]:

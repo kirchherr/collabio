@@ -2,6 +2,7 @@ import base64
 import hmac
 import json
 from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,13 +12,19 @@ from suite.platform.context import (
     DEFAULT_JWT_AUDIENCE,
     DEFAULT_JWT_ISSUER,
     OIDC_RS256_DIGEST_INFO_PREFIX,
+    DynamicOidcJwksVerifier,
     HmacJwtVerifier,
     InMemoryPrincipalDirectory,
+    JsonFileJwtReplayStore,
     JwtAuthenticationError,
     JwtPrincipalResolver,
+    JwtReplayGuard,
+    OidcDiscoveryIssuerConfig,
     OidcIssuerConfig,
+    OidcOutagePolicy,
     PrincipalResolutionError,
     StaticOidcJwksVerifier,
+    VerifiedJwtClaims,
 )
 
 OIDC_TEST_KID = "oidc-test-key-1"
@@ -35,6 +42,32 @@ OIDC_TEST_PRIVATE_EXPONENT_B64 = (
     "1hz9kNwxP8v0XjkBt3BXCUaRyJxCc8WrvquuJM15TzOvUlTcgMgzVjwEvN28q9T-NOBhWRV-wDTBtpKuyMXxn"
     "XBIlF6pOOa8PjzKJz4YzZBLs-lyYACVZtCBOvNYMoLK9Pw_4UMlrrxSnAR3pLT1TEbkP-_4JFN7mwHqiBtFFQ"
 )
+OIDC_DISCOVERY_URL = "https://issuer.collabio.local/.well-known/openid-configuration"
+OIDC_JWKS_URL = "https://issuer.collabio.local/jwks.json"
+
+
+class MutableClock:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def __call__(self) -> float:
+        return float(self.value)
+
+
+class FakeJsonFetcher:
+    def __init__(self, responses: dict[str, list[dict[str, Any] | Exception]]) -> None:
+        self.responses = responses
+        self.calls: list[str] = []
+
+    def fetch_json(self, url: str) -> dict[str, Any]:
+        self.calls.append(url)
+        if url not in self.responses:
+            raise JwtAuthenticationError(f"unexpected fetch url: {url}")
+        queue = self.responses[url]
+        response = queue.pop(0) if len(queue) > 1 else queue[0]
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def signed_jwt(claims: dict[str, Any], *, secret: str = DEFAULT_DEV_JWT_SECRET) -> str:
@@ -126,6 +159,55 @@ def oidc_verifier() -> StaticOidcJwksVerifier:
     )
 
 
+def oidc_discovery_config(
+    *,
+    refresh_interval_seconds: int = 10,
+    stale_grace_seconds: int = 30,
+    outage_policy: OidcOutagePolicy = OidcOutagePolicy.FAIL_CLOSED,
+) -> OidcDiscoveryIssuerConfig:
+    return OidcDiscoveryIssuerConfig(
+        issuer=DEFAULT_JWT_ISSUER,
+        audiences={DEFAULT_JWT_AUDIENCE},
+        discovery_url=OIDC_DISCOVERY_URL,
+        refresh_interval_seconds=refresh_interval_seconds,
+        stale_grace_seconds=stale_grace_seconds,
+        outage_policy=outage_policy,
+    )
+
+
+def oidc_discovery_document() -> dict[str, Any]:
+    return {
+        "issuer": DEFAULT_JWT_ISSUER,
+        "jwks_uri": OIDC_JWKS_URL,
+        "id_token_signing_alg_values_supported": ["RS256"],
+    }
+
+
+def oidc_jwks(*, include_rotated_key: bool = False) -> dict[str, Any]:
+    keys = [
+        {
+            "kty": "RSA",
+            "kid": OIDC_TEST_KID,
+            "alg": "RS256",
+            "use": "sig",
+            "n": OIDC_TEST_MODULUS_B64,
+            "e": OIDC_TEST_EXPONENT_B64,
+        }
+    ]
+    if include_rotated_key:
+        keys.append(
+            {
+                "kty": "RSA",
+                "kid": OIDC_TEST_ROTATED_KID,
+                "alg": "RS256",
+                "use": "sig",
+                "n": OIDC_TEST_MODULUS_B64,
+                "e": OIDC_TEST_EXPONENT_B64,
+            }
+        )
+    return {"keys": keys}
+
+
 def test_hmac_jwt_verifier_accepts_signed_oidc_style_claims() -> None:
     verified = verifier().verify(signed_jwt(claims()))
 
@@ -204,3 +286,88 @@ def test_static_oidc_jwks_verifier_rejects_replay_untrusted_audience_and_unknown
 
     with pytest.raises(JwtAuthenticationError, match="signing key"):
         verifier.verify(signed_rs256_jwt({**claims(), "jti": "jwt-kid"}, kid="unknown-key"))
+
+
+def test_dynamic_oidc_verifier_discovers_jwks_and_refreshes_for_key_rotation() -> None:
+    clock = MutableClock(1_000)
+    fetcher = FakeJsonFetcher(
+        {
+            OIDC_DISCOVERY_URL: [oidc_discovery_document(), oidc_discovery_document()],
+            OIDC_JWKS_URL: [oidc_jwks(), oidc_jwks(include_rotated_key=True)],
+        }
+    )
+    verifier = DynamicOidcJwksVerifier(
+        issuers=[oidc_discovery_config()],
+        fetcher=fetcher,
+        now_epoch=clock,
+    )
+
+    first = verifier.verify(signed_rs256_jwt({**claims(exp=2_000), "jti": "dynamic-1"}))
+    rotated = verifier.verify(signed_rs256_jwt({**claims(exp=2_000), "jti": "dynamic-2"}, kid=OIDC_TEST_ROTATED_KID))
+    health = verifier.health()
+
+    assert first.jwt_id == "dynamic-1"
+    assert rotated.jwt_id == "dynamic-2"
+    assert fetcher.calls == [OIDC_DISCOVERY_URL, OIDC_JWKS_URL, OIDC_DISCOVERY_URL, OIDC_JWKS_URL]
+    assert health.key_count == 2
+    assert health.refreshed_issuer_count == 1
+    assert health.last_error_count == 0
+
+
+def test_dynamic_oidc_verifier_uses_stale_keys_during_idp_outage_until_grace_expires() -> None:
+    clock = MutableClock(1_000)
+    fetcher = FakeJsonFetcher(
+        {
+            OIDC_DISCOVERY_URL: [
+                oidc_discovery_document(),
+                JwtAuthenticationError("idp outage"),
+                JwtAuthenticationError("idp still down"),
+            ],
+            OIDC_JWKS_URL: [oidc_jwks()],
+        }
+    )
+    verifier = DynamicOidcJwksVerifier(
+        issuers=[
+            oidc_discovery_config(
+                refresh_interval_seconds=10,
+                stale_grace_seconds=30,
+                outage_policy=OidcOutagePolicy.USE_STALE_KEYS,
+            )
+        ],
+        fetcher=fetcher,
+        now_epoch=clock,
+    )
+
+    verifier.verify(signed_rs256_jwt({**claims(exp=2_000), "jti": "stale-1"}))
+    clock.value = 1_012
+    accepted_with_stale_key = verifier.verify(signed_rs256_jwt({**claims(exp=2_000), "jti": "stale-2"}))
+
+    assert accepted_with_stale_key.jwt_id == "stale-2"
+    assert verifier.health().last_error_count == 1
+
+    clock.value = 1_041
+    with pytest.raises(JwtAuthenticationError, match="cache expired"):
+        verifier.verify(signed_rs256_jwt({**claims(exp=2_000), "jti": "stale-3"}))
+
+
+def test_json_file_jwt_replay_store_persists_replayed_token_ids(tmp_path: Path) -> None:
+    store_path = tmp_path / "jwt_replay_store.json"
+    claims_with_jti = VerifiedJwtClaims(
+        issuer=DEFAULT_JWT_ISSUER,
+        subject="user-demo",
+        audience={DEFAULT_JWT_AUDIENCE},
+        tenant_id="tenant-demo",
+        expires_at_epoch=2_000,
+        jwt_id="persistent-jti",
+    )
+
+    JwtReplayGuard(store=JsonFileJwtReplayStore(store_path)).require_not_replayed(
+        claims_with_jti,
+        now_epoch=1_000,
+    )
+
+    with pytest.raises(JwtAuthenticationError, match="replay"):
+        JwtReplayGuard(store=JsonFileJwtReplayStore(store_path)).require_not_replayed(
+            claims_with_jti,
+            now_epoch=1_001,
+        )

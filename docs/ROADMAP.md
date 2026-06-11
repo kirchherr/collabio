@@ -80,6 +80,7 @@ Bereits umgesetzt:
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung.
 - [x] Statischer OIDC/JWKS Verifier mit RS256, `kid`-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting.
+- [x] Dynamische OIDC Discovery mit JWKS Refresh, Key-Cache Expiry, IdP-Outage-Policy und persistentem Replay Store.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
@@ -493,7 +494,7 @@ Aufgaben:
 - [x] Signed JWT PrincipalResolver mit serverseitiger Tenant Membership, Rollen, Gruppen und Object ACLs implementieren.
 - [ ] Principal-, Role- und Permission-Modelle implementieren.
 - [x] Statischen OIDC/JWKS Verifier mit Issuer/Audience Allowlist, RS256, `kid`-Rotation, Replay Guard und Health Checks vorbereiten.
-- [ ] Dynamische OIDC Discovery, JWKS Refresh, Key-Cache Expiry, IdP-Outage-Policy und persistente Replay Stores implementieren.
+- [x] Dynamische OIDC Discovery, JWKS Refresh, Key-Cache Expiry, IdP-Outage-Policy und persistente Replay Stores implementieren.
 - [ ] MFA/FIDO2/WebAuthn als Zielarchitektur dokumentieren.
 - [x] PostgreSQL mit Migrationen und Runtime-Rollen einfuehren.
 - [x] RLS als Defense-in-depth planen und testen.
@@ -1208,7 +1209,7 @@ Empfohlene naechste Reihenfolge:
 57. [x] Review-Kritik aufnehmen und P0-Soforthaertungen fuer dev-only Header Auth, RAG DataClass Propagation und lokale Dev-Krypto umsetzen.
 58. [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung implementieren.
 59. [x] Statischen OIDC/JWKS Verifier mit RS256-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting implementieren.
-60. [ ] Dynamische OIDC Discovery, JWKS Refresh Scheduling, Key-Cache Expiry, IdP-Outage-Policy und persistenten Replay Store implementieren.
+60. [x] Dynamische OIDC Discovery, JWKS Refresh Scheduling, Key-Cache Expiry, IdP-Outage-Policy und persistenten Replay Store implementieren.
 61. [ ] PrincipalResolver, Tenant Membership, Rollen, Gruppen, ACL und ABAC Stores in PostgreSQL mit RLS und Audit Events persistieren.
 62. [ ] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
 63. [ ] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.

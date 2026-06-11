@@ -36,7 +36,9 @@ Optional validated claims:
 - `nbf`
 - `jti`
 
-`jwt` mode uses a local HS256 verifier for signed development and integration tests. `oidc` mode uses a static OIDC/JWKS verifier that supports:
+`jwt` mode uses a local HS256 verifier for signed development and integration tests. `oidc` mode supports both static and discovery-backed OIDC/JWKS verification.
+
+Static OIDC/JWKS verification supports:
 
 - trusted issuer allowlists
 - audience allowlists
@@ -45,12 +47,19 @@ Optional validated claims:
 - `jti` replay detection
 - verifier health reporting
 
-`oidc` mode requires either:
+Static `oidc` mode requires either:
 
 - `SUITE_OIDC_ISSUERS_JSON`, a JSON array of issuer configs with `issuer`, `audiences`, and `jwks`
 - or `SUITE_OIDC_ISSUER`, `SUITE_OIDC_AUDIENCE`, and `SUITE_OIDC_JWKS_JSON`
 
-The current OIDC boundary is intentionally networkless and deterministic. Production still needs dynamic `.well-known/openid-configuration` discovery, JWKS refresh scheduling, key-cache expiry, IdP outage policy, and persistent replay storage.
+Discovery-backed `oidc` mode is enabled with either:
+
+- `SUITE_OIDC_DISCOVERY_ISSUERS_JSON`, a JSON array of issuer configs with `issuer`, `audiences`, `discovery_url`, refresh settings, stale-grace settings, and outage policy
+- or `SUITE_OIDC_ISSUER`, `SUITE_OIDC_AUDIENCE`, and `SUITE_OIDC_DISCOVERY_URL`
+
+The discovery-backed verifier fetches `.well-known/openid-configuration`, validates the issuer, fetches JWKS, refreshes keys on schedule, refreshes again when an unknown `kid` appears, and can either fail closed or use stale keys during an IdP outage until the configured grace period expires.
+
+`jti` replay detection can use a JSON file store through `SUITE_JWT_REPLAY_STORE_PATH`; by default it stores under `SUITE_DATA_DIR/auth/jwt_replay_store.json`. Production should move replay state to PostgreSQL or another durable low-latency store with tenant-aware audit events.
 
 ## Server-Side Authorization
 

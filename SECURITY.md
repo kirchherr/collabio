@@ -24,6 +24,7 @@ Current skeleton guarantees:
 - RAG inference policy receives `ai_prompt` plus the classifications of authorized sources.
 - Dev header tenant context is disabled outside `SUITE_AUTH_MODE=dev` and in production environments.
 - `jwt` and `oidc` auth modes resolve the request context from signed bearer tokens and server-side membership/ACL state.
+- OIDC verification supports RS256 JWKS, key refresh, IdP outage policy, and replay detection.
 - Local dev KMS and envelope encryption adapters are disabled in production environments.
 - Voice transcripts require explicit push-to-talk activation.
 - Tests run in Docker Compose.
