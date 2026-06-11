@@ -26,7 +26,7 @@ from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.admin_models import TenantAiPolicyUpdate
-from suite.platform.context import TenantRequestContext
+from suite.platform.context import DevHeaderAuthError, TenantRequestContext, require_dev_header_auth_allowed
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -75,6 +75,14 @@ def get_tenant_request_context(
     role_ids: Annotated[str | None, Header(alias="X-Role-Ids")] = None,
     readable_object_ids: Annotated[str | None, Header(alias="X-Readable-Object-Ids")] = None,
 ) -> TenantRequestContext:
+    try:
+        require_dev_header_auth_allowed()
+    except DevHeaderAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
     if not tenant_id or not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

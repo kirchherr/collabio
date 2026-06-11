@@ -10,6 +10,7 @@ from typing import Protocol, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import DataClass
+from suite.platform.runtime import is_production_environment
 from suite.storage.content_hash import compute_content_hash
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
@@ -351,6 +352,8 @@ class KmsAdapter(Protocol):
 
 class LocalKmsAdapter:
     def __init__(self, policy: KmsAdapterPolicy, *, provider_profile: str | None = None) -> None:
+        if is_production_environment():
+            raise KmsPolicyViolation("LocalKmsAdapter is disabled in production")
         self.policy = policy
         self.provider_profile = provider_profile or policy.default_provider_profile
         if self.provider_profile not in policy.provider_profiles:

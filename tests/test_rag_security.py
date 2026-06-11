@@ -1,6 +1,8 @@
+import pytest
+
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, TenantPolicy, UserContext
-from suite.ai_control_plane.policy import PolicyEngine
+from suite.ai_control_plane.policy import PolicyEngine, PolicyViolation
 from suite.ai_control_plane.registries import (
     InMemoryModelRegistry,
     InMemoryPromptRegistry,
@@ -22,7 +24,13 @@ class CapturingProvider:
         return self.response if self.response is not None else prompt
 
 
-def candidate_for(object_id: str, chunk_id: str, score: float) -> VectorCandidate:
+def candidate_for(
+    object_id: str,
+    chunk_id: str,
+    score: float,
+    *,
+    classification: DataClass = DataClass.INTERNAL,
+) -> VectorCandidate:
     return VectorCandidate(
         chunk_id=chunk_id,
         score=score,
@@ -32,7 +40,7 @@ def candidate_for(object_id: str, chunk_id: str, score: float) -> VectorCandidat
             source_object_type="document",
             source_version_id="v1",
             chunk_id=chunk_id,
-            classification=DataClass.INTERNAL,
+            classification=classification,
             retention_policy_id="rp-standard",
             legal_hold_state="none",
             acl_hash=f"sha256:acl-{object_id}",
@@ -64,7 +72,7 @@ def build_rag_pipeline(provider: CapturingProvider, *, readable_object_ids: set[
         vector_store=InMemoryVectorStore(
             candidates=[
                 candidate_for("doc-injected", "chunk-injected", 0.99),
-                candidate_for("secret-1", "chunk-secret", 0.98),
+                candidate_for("secret-1", "chunk-secret", 0.98, classification=DataClass.CONFIDENTIAL),
             ]
         ),
         source_repository=InMemorySourceRepository(
@@ -97,7 +105,7 @@ def tenant_policy() -> TenantPolicy:
         ai_enabled=True,
         rag_enabled=True,
         allowed_model_ids={"mock-summarizer"},
-        allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL},
+        allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL, DataClass.AI_PROMPT},
     )
 
 
@@ -145,3 +153,34 @@ def test_rag_output_does_not_include_unauthorized_source_content_even_with_echo_
     assert "secret-1" not in response.answer
     assert "Unauthorized payroll note" not in response.answer
     assert "confidential payroll code" not in response.answer
+
+
+def test_rag_inference_policy_uses_authorized_source_classification() -> None:
+    provider = CapturingProvider(response="should not be called")
+    pipeline = build_rag_pipeline(provider, readable_object_ids={"secret-1"})
+
+    with pytest.raises(PolicyViolation, match="data classes"):
+        pipeline.answer(
+            query=RagQuery(question="Summarize authorized confidential material.", top_k=2),
+            user_context=user_context(readable_object_ids={"secret-1"}),
+            tenant_policy=tenant_policy(),
+        )
+
+    assert provider.prompts == []
+
+
+def test_rag_inference_policy_treats_user_question_as_ai_prompt_data() -> None:
+    provider = CapturingProvider(response="should not be called")
+    pipeline = build_rag_pipeline(provider, readable_object_ids={"doc-injected"})
+    restricted_policy = tenant_policy().model_copy(
+        update={"allowed_data_classes": {DataClass.INTERNAL, DataClass.PERSONAL}}
+    )
+
+    with pytest.raises(PolicyViolation, match="data classes"):
+        pipeline.answer(
+            query=RagQuery(question="What is the policy?", top_k=1),
+            user_context=user_context(readable_object_ids={"doc-injected"}),
+            tenant_policy=restricted_policy,
+        )
+
+    assert provider.prompts == []

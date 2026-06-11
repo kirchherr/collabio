@@ -150,6 +150,14 @@ def test_local_envelope_encryption_roundtrip_produces_manifest_and_kms_evidence(
     assert decrypted.kms_evidence.key_use == KmsKeyUse.ENVELOPE_DECRYPTION
 
 
+def test_local_envelope_encryption_service_is_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    kms_adapter = LocalKmsAdapter(load_kms_adapter_policy(POLICY_PATH))
+    monkeypatch.setenv("SUITE_ENV", "production")
+
+    with pytest.raises(EnvelopeEncryptionError, match="disabled in production"):
+        LocalEnvelopeEncryptionService(kms_adapter)
+
+
 def test_envelope_manifest_does_not_expose_raw_key_material() -> None:
     service, _kms_adapter = service_for_tests()
 

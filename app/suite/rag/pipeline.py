@@ -78,6 +78,7 @@ class RagPipeline:
             )
 
         source_object_ids = [source.object_id for source in allowed_sources]
+        context_data_classes = {source.classification for source in allowed_sources}
         retrieval_audit = self.audit_logger.record(
             user_context=user_context,
             event_type="rag.retrieval",
@@ -86,6 +87,7 @@ class RagPipeline:
             metadata={
                 "candidate_count": len(candidates),
                 "authorized_source_count": len(allowed_sources),
+                "authorized_source_data_classes": sorted(data_class.value for data_class in context_data_classes),
                 "retrieval_policy_id": "acl_first_v1",
             },
         )
@@ -95,7 +97,7 @@ class RagPipeline:
             model_id="mock-summarizer",
             purpose=Purpose.RAG,
             input_text=query.question,
-            data_classes={DataClass.INTERNAL},
+            data_classes={DataClass.AI_PROMPT, *context_data_classes},
             source_object_ids=source_object_ids,
         )
         response = self.llm_gateway.infer(

@@ -77,6 +77,8 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 
 It intentionally does not expose raw keys.
 
+It is disabled when `SUITE_ENV` is `prod` or `production`. Production deployments must provide an approved KMS/HSM/cloud/OpenBao-compatible adapter behind the same boundary.
+
 `LocalEnvelopeEncryptionService` is the local development implementation for object-byte encryption. It validates KMS key references, creates envelope encryption manifests, authenticates ciphertext with AAD, rejects tampering, and refuses decryption when the referenced key version has been destroyed.
 
 It also supports envelope rewrap for rotation drills. Rewrap verifies the existing manifest, ciphertext hash, AAD hash, current KMS key reference, and authentication tag before rotating the key reference and replacing only the wrapped data key plus rotation evidence fields.

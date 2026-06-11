@@ -22,7 +22,7 @@ class InMemoryTenantPolicyRepository:
             tenant_id="tenant-demo",
             ai_enabled=True,
             allowed_model_ids={"mock-summarizer"},
-            allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL},
+            allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL, DataClass.AI_PROMPT},
             rag_enabled=True,
             voice_enabled=True,
             raw_audio_storage_allowed=False,

@@ -26,7 +26,7 @@ The MVP model registry is implemented in code as an in-memory registry. Producti
   "deployment": "local",
   "license": "internal-test-only",
   "checksum": "sha256:mock",
-  "allowed_data_classes": ["internal", "personal"],
+  "allowed_data_classes": ["internal", "personal", "ai_prompt"],
   "max_context_tokens": 4096,
   "supports_json_mode": true,
   "approved_for": ["summarization", "drafting", "rag"],
@@ -41,6 +41,8 @@ The code also includes provider adapters for:
 - `vllm`: OpenAI-compatible HTTP API, suitable for vLLM
 
 Only models explicitly allowed by tenant policy can be used.
+
+RAG and other AI requests must include `ai_prompt` for the user instruction itself. Source-derived classes are added separately from authorized sources, so a model that is only approved for `internal` content cannot receive a `confidential` source through RAG.
 
 ## Embedding model versions
 

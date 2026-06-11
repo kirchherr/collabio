@@ -138,6 +138,8 @@ The rewrapped manifest records the previous manifest hash, the previous KMS key 
 
 This implementation is intentionally scoped to development and tests. Production must use an approved KMS/HSM/cloud/OpenBao-compatible provider behind this boundary.
 
+`LocalEnvelopeEncryptionService` is disabled when `SUITE_ENV` is `prod` or `production`.
+
 ## Continuity
 
 Backup/failover evidence must include:

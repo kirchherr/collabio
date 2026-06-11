@@ -1,6 +1,7 @@
 from typing import Annotated
 from uuid import uuid4
 
+import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
@@ -105,6 +106,25 @@ def test_tenant_data_endpoints_require_request_context() -> None:
     response = client.post("/v1/ai/inference", json={"input_text": "Bitte zusammenfassen."})
     assert response.status_code == 401
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_dev_header_tenant_context_is_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUITE_ENV", "production")
+    monkeypatch.setenv("SUITE_AUTH_MODE", "dev")
+
+    response = client.get("/v1/platform/modules", headers=DEMO_HEADERS)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Dev header tenant context is disabled in production"
+
+
+def test_dev_header_tenant_context_requires_dev_auth_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUITE_AUTH_MODE", "oidc")
+
+    response = client.get("/v1/platform/modules", headers=DEMO_HEADERS)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Dev header tenant context requires SUITE_AUTH_MODE=dev"
 
 
 def test_unknown_tenant_policy_is_blocked() -> None:

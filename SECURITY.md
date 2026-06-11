@@ -21,6 +21,9 @@ Current skeleton guarantees:
 - AI is disabled by default unless tenant policy enables it.
 - LLM calls route through the Local LLM Gateway.
 - RAG candidates are ACL-checked before context construction.
+- RAG inference policy receives `ai_prompt` plus the classifications of authorized sources.
+- Dev header tenant context is disabled outside `SUITE_AUTH_MODE=dev` and in production environments.
+- Local dev KMS and envelope encryption adapters are disabled in production environments.
 - Voice transcripts require explicit push-to-talk activation.
 - Tests run in Docker Compose.
 
@@ -81,4 +84,3 @@ Phase 1 introduces:
 - Authz bypass tests.
 - Audit hash-chain tamper tests.
 - AI Control Plane bypass tests.
-

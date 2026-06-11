@@ -136,6 +136,13 @@ def test_local_kms_adapter_validates_key_reference_without_raw_key_material() ->
     assert evidence.evidence_hash == build_kms_operation_evidence_hash(evidence)
 
 
+def test_local_kms_adapter_is_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUITE_ENV", "production")
+
+    with pytest.raises(KmsPolicyViolation, match="disabled in production"):
+        adapter_for_tests()
+
+
 def test_local_kms_adapter_rejects_tenant_or_data_class_mismatch() -> None:
     adapter = adapter_for_tests()
 

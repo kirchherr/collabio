@@ -61,14 +61,17 @@ Current sprint:
 51. [x] Isolated SQL Server metadata adapter worker with connector policy, secret-reference boundary, and metadata-only query plan.
 52. [x] CRM/ERP legacy mapping evidence for discovered tables, target object candidates, `legacy.row` fallbacks, and quarantine decisions.
 53. [x] CRM/ERP subfeature registry for accounts, contacts, activities, products, suppliers, orders, invoices, import, export, Legal Hold, RAG, and AI assist gates.
+54. [x] Review intake P0 hardening: dev header auth production block, RAG source data-class propagation, and local dev KMS/envelope production block.
 
 ## Next Engineering Step
 
-After module provisioning and legacy SQL discovery evidence are in place:
+After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
 
-- Add keyword indexer boundary with candidate-only results and search audit events.
-- Start hybrid search orchestration boundary after keyword indexer design.
-- Plan CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
+- Replace dev header auth with a signed OIDC/JWT PrincipalResolver and server-side tenant membership, role, group, ACL, and ABAC resolution.
+- Create a canonical DataClass registry and validate runtime enum, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
+- Implement persistent append-only audit storage with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
+- Introduce authorized ChunkRepository retrieval so RAG passes exact chunks instead of whole source documents.
+- Then resume keyword indexer, hybrid search, and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
 
 ## Module Expansion Stance
 

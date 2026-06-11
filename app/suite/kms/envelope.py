@@ -20,6 +20,7 @@ from suite.kms.adapter import (
     KmsOperationEvidence,
     KmsRotateKeyCommand,
 )
+from suite.platform.runtime import is_production_environment
 from suite.storage.content_hash import compute_content_hash
 
 AUTH_TAG_BYTES = 32
@@ -259,6 +260,8 @@ class LocalEnvelopeEncryptionService:
         data_key_generator: Callable[[int], bytes] = secrets.token_bytes,
         nonce_generator: Callable[[int], bytes] = secrets.token_bytes,
     ) -> None:
+        if is_production_environment():
+            raise EnvelopeEncryptionError("LocalEnvelopeEncryptionService is disabled in production")
         self.kms_adapter = kms_adapter
         self.provider_secret = provider_secret
         self.data_key_generator = data_key_generator
