@@ -83,6 +83,7 @@ The guard requires:
 It also verifies:
 
 - `kms_key_ref` uses the `kms://` scheme.
+- `kms_key_ref` is canonical and matches the source object tenant and data class.
 - `content_hash` is canonical and matches the stored text or native bytes through the shared content hash verifier.
 - `manifest_hash` matches the canonical source object metadata payload.
 
@@ -115,6 +116,13 @@ Legal Hold transitions are documented in:
 ```text
 ARCHITECTURE_DECISIONS/ADR-0026-legal-hold-api-and-reevaluation.md
 docs/LEGAL_HOLD_API.md
+```
+
+KMS adapter rules are documented in:
+
+```text
+docs/KMS_ADAPTER.md
+docs/kms_adapter_policy.json
 ```
 
 ## RAG And Parser Boundary
@@ -152,7 +160,7 @@ Implemented now:
 - Pydantic source object metadata model.
 - Versioned source object record wrapper.
 - Tenant/version-scoped in-memory repository.
-- Storage write guard for required metadata, KMS references, shared content hash verification, and canonical manifest hashes.
+- Storage write guard for required metadata, tenant/data-class matching KMS references, shared content hash verification, and canonical manifest hashes.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.

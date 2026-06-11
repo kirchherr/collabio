@@ -32,6 +32,7 @@ It is intentionally lightweight. The current repository implements development b
 - Audit and backup evidence must be hashable and exportable.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Storage object restores must prove storage manifest hash, object version ID, bucket profile, KMS reference, object-lock configuration, and legal-hold evidence.
+- KMS restores must prove adapter policy, key-reference evidence hashes, rotation evidence, destruction evidence, and no plaintext key export.
 - Content hash verification must use the shared verifier so write, read, restore, parser, and export checks produce comparable evidence.
 - Retention manifest restores must prove retain-until, policy snapshot hash, WORM requirement, Object Lock mode, and Legal Hold state.
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
@@ -102,6 +103,7 @@ Production target:
 - PostgreSQL PITR with WAL archiving
 - object storage versioning and object lock for record/evidence classes
 - KMS/secret-manager recovery path with no plaintext key export
+- KMS adapter policy and key-usage evidence verification before encrypted object restore is trusted
 - search/vector degraded mode and rebuild plan
 - mail journal consistency checks
 - office record/WORM integrity checks

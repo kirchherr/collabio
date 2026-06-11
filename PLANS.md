@@ -36,11 +36,12 @@ Current sprint:
 26. [x] Legal Hold API boundary for source object versioning and retention-manifest re-evaluation.
 27. [x] Reusable content hash verification for source object writes, reads, restore drills, parser inputs, and exports.
 28. [x] Storage object manifest model and restore verification for object records.
+29. [x] KMS adapter boundary, canonical key references, rotation evidence, and destruction guards.
 
 ## Next Engineering Step
 
-After the storage manifest boundary is in place:
+After the KMS adapter boundary is in place:
 
-- Implement the KMS adapter boundary before envelope encryption.
+- Implement envelope encryption API on top of the KMS adapter.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

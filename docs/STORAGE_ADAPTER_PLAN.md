@@ -10,6 +10,8 @@ Content hash verification is defined in `docs/CONTENT_HASH_VERIFICATION.md` and 
 
 Storage manifests are defined in `docs/STORAGE_MANIFEST.md` and must be produced for every object-store write before the future adapter serves restored content.
 
+KMS adapter rules are defined in `docs/KMS_ADAPTER.md` and must validate tenant/data-class key references before envelope encryption is introduced.
+
 ## First Decision
 
 ADR:
@@ -40,6 +42,7 @@ SourceObjectRecord
   -> content hash verifier
   -> Storage adapter policy
   -> object bucket profile
+  -> KMS key reference validation
   -> retention manifest
   -> storage object manifest
   -> encrypted object write
@@ -90,6 +93,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 - Record/evidence buckets require Object Lock compliance mode.
 - Object-lock buckets support legal hold.
 - Every write carries KMS reference metadata.
+- KMS references must be canonical and match tenant plus data class before object writes.
 - Restore cannot serve content until storage object manifest hash, source object manifest hash, retention manifest hash, Object Lock evidence, legal-hold state, and shared content hash verification pass.
 - Deleting metadata must not delete WORM object versions.
 - Cryptoshred must be policy-gated and must not apply to GoBD or legal-hold records.

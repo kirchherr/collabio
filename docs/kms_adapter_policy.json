@@ -1,0 +1,137 @@
+{
+  "schema_version": "kms_adapter_policy.v1",
+  "owner": "platform-security",
+  "default_provider_profile": "local-dev-software-kms",
+  "provider_profiles": [
+    "local-dev-software-kms",
+    "openbao-compatible",
+    "pkcs11-hsm",
+    "cloud-kms"
+  ],
+  "required_key_hierarchy": [
+    "tenant_master_key",
+    "data_class_key",
+    "object_encryption_key",
+    "version_envelope_key"
+  ],
+  "forbidden_operations": [
+    "raw_key_material_export",
+    "feature_code_direct_crypto_call",
+    "plaintext_key_backup",
+    "destroy_key_without_human_approval",
+    "destroy_gobd_or_legal_hold_key"
+  ],
+  "required_evidence_fields": [
+    "tenant_id",
+    "data_class",
+    "kms_key_ref",
+    "key_version",
+    "provider_profile",
+    "requested_by",
+    "audit_chain_ref",
+    "occurred_at_utc",
+    "key_use",
+    "evidence_hash"
+  ],
+  "data_class_key_policies": [
+    {
+      "data_class": "public",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 180,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": false
+    },
+    {
+      "data_class": "internal",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    },
+    {
+      "data_class": "personal",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    },
+    {
+      "data_class": "confidential",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 60,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    },
+    {
+      "data_class": "gobd",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 365,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": false
+    },
+    {
+      "data_class": "legal_hold",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 365,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": false
+    },
+    {
+      "data_class": "ai_prompt",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    },
+    {
+      "data_class": "ai_output",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    },
+    {
+      "data_class": "rag_chunk",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": false
+    },
+    {
+      "data_class": "embedding",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": false
+    },
+    {
+      "data_class": "voice_transcript",
+      "key_hierarchy_level": "data_class_key",
+      "min_key_version": 1,
+      "rotation_required": true,
+      "rotation_period_days": 90,
+      "destruction_requires_human_approval": true,
+      "cryptoshred_allowed": true
+    }
+  ]
+}

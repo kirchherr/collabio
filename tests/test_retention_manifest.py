@@ -53,7 +53,7 @@ def record_for(
         classification=classification,
         retention_policy_id=retention_policy_id,
         legal_hold_state=legal_hold_state,
-        kms_key_ref="kms://tenant-1/internal/v1",
+        kms_key_ref=f"kms://tenant-1/{classification.value}/v1",
         manifest_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
         audit_chain_ref="audit:chain-1",
         source_system="collabio",

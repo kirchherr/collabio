@@ -1,0 +1,107 @@
+# KMS Adapter Boundary
+
+The KMS adapter is the only allowed boundary for key references, key-usage evidence, rotation evidence, and key-destruction evidence.
+
+The current implementation does not perform envelope encryption yet. It creates the control plane that envelope encryption must use next.
+
+## Files
+
+Runtime model:
+
+```text
+app/suite/kms/adapter.py
+```
+
+Policy:
+
+```text
+docs/kms_adapter_policy.json
+```
+
+Tests:
+
+```text
+tests/test_kms_adapter.py
+tests/test_source_objects.py
+tests/test_storage_manifest.py
+tests/test_architecture_guards.py
+tests/test_backup_failover.py
+```
+
+## Key Reference Format
+
+Canonical key references use:
+
+```text
+kms://<tenant_id>/<data_class>/v<positive integer>
+```
+
+Examples:
+
+```text
+kms://tenant-1/internal/v1
+kms://tenant-1/gobd/v1
+kms://tenant-1/legal_hold/v1
+```
+
+The parser rejects non-`kms://` refs, unknown data classes, malformed versions, non-canonical refs, tenant mismatches, and classification mismatches.
+
+## Boundary Rules
+
+- Business code may pass `kms_key_ref`, never raw key material.
+- Source object writes must use a KMS ref matching the source tenant and data class.
+- Storage manifests must use KMS refs matching the source tenant and data class.
+- KMS operations produce hashable evidence.
+- Raw key material export is forbidden by policy and evidence validation.
+- Key destruction requires human approval evidence.
+- Active legal hold blocks key destruction.
+- GoBD and legal-hold data classes block key destruction.
+- Business-record and WORM-evidence lifecycle states block key destruction.
+
+## Current Adapter
+
+`LocalKmsAdapter` is a development-safe boundary:
+
+- validates key references
+- records key-usage evidence
+- simulates key-reference rotation by incrementing the version
+- records key-destruction evidence for policy-allowed classes
+- blocks future use of destroyed key versions
+
+It intentionally does not expose raw keys and does not implement encryption. Envelope encryption will use this boundary in the next step.
+
+## Policy
+
+The machine-readable policy declares:
+
+- provider profiles
+- required key hierarchy
+- forbidden operations
+- required evidence fields
+- per-data-class rotation and cryptoshred permissions
+
+Every `DataClass` must have a policy entry.
+
+## Evidence
+
+KMS operation evidence includes:
+
+- tenant ID
+- data class
+- KMS key reference
+- key version
+- provider profile
+- requested-by principal
+- optional approver and approval reference
+- audit chain reference
+- operation time
+- key use
+- previous/new key references where relevant
+- destruction flag where relevant
+- evidence hash
+
+The evidence model rejects `raw_key_material_exposed=true`.
+
+## Next Work
+
+Envelope encryption must use this adapter boundary to request wrapped data keys and produce encryption manifests. It must not introduce direct crypto or provider calls in feature code.

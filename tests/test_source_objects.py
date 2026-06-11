@@ -68,6 +68,8 @@ class CapturingVectorIndexStore:
 
 def metadata_for(
     *,
+    tenant_id: str = "tenant-1",
+    classification: DataClass = DataClass.INTERNAL,
     object_type: SourceObjectType = SourceObjectType.DOCUMENT,
     object_id: str = "doc-1",
     version_id: str = "v1",
@@ -81,7 +83,7 @@ def metadata_for(
 ) -> SourceObjectMetadata:
     content = text.encode("utf-8")
     draft = SourceObjectMetadata(
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         object_id=object_id,
         object_type=object_type,
         version_id=version_id,
@@ -90,10 +92,10 @@ def metadata_for(
         created_by="user-creator",
         created_at_utc="2026-06-10T00:00:00Z",
         updated_at_utc="2026-06-10T00:01:00Z",
-        classification=DataClass.INTERNAL,
+        classification=classification,
         retention_policy_id="rp-standard",
         legal_hold_state=legal_hold_state,
-        kms_key_ref="kms://tenant-1/internal/v1",
+        kms_key_ref=f"kms://{tenant_id}/{classification.value}/v1",
         manifest_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
         audit_chain_ref="audit:chain-1",
         source_system="collabio",
@@ -253,6 +255,17 @@ def test_source_object_repository_rejects_non_kms_key_reference_before_write() -
     repository = InMemorySourceObjectRepository()
 
     with pytest.raises(SourceObjectWriteDeniedError, match="kms_key_ref"):
+        repository.add(tampered)
+
+
+def test_source_object_repository_rejects_mismatched_kms_key_reference_before_write() -> None:
+    record = record_for()
+    metadata = record.metadata.model_copy(update={"kms_key_ref": "kms://tenant-2/internal/v1"})
+    metadata = metadata.model_copy(update={"manifest_hash": build_source_object_manifest_hash(metadata)})
+    tampered = SourceObjectRecord(metadata=metadata, text=record.text)
+    repository = InMemorySourceObjectRepository()
+
+    with pytest.raises(SourceObjectWriteDeniedError, match="tenant_id"):
         repository.add(tampered)
 
 

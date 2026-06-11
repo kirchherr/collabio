@@ -56,7 +56,7 @@
       "primary_target_id": "kms_and_secrets",
       "criticality": "critical",
       "recovery_strategy": "recover through approved KMS/HSM/secret-manager mechanism; never restore plaintext key material from ordinary dumps",
-      "state_artifacts": ["key references", "wrapped data keys", "rotation manifests", "destruction evidence", "KMS configuration"]
+      "state_artifacts": ["key references", "wrapped data keys", "rotation manifests", "destruction evidence", "KMS adapter policy", "key usage evidence", "KMS configuration"]
     },
     {
       "domain_id": "secrets_configuration",
@@ -227,7 +227,7 @@
       "target_id": "kms_and_secrets",
       "description": "KMS metadata, key references, wrapped data keys, secret-manager state, sealed deployment secrets, and rotation evidence.",
       "covered_domains": ["kms_key_metadata", "secrets_configuration"],
-      "data_classes": ["internal", "confidential"],
+      "data_classes": ["internal", "personal", "confidential", "gobd", "legal_hold", "ai_prompt", "ai_output", "rag_chunk", "embedding", "voice_transcript"],
       "rpo_minutes": 15,
       "rto_hours": 4,
       "backup_methods": ["kms_provider_backup", "hsm_cluster_replication", "sealed_secret_gitops", "rotation_evidence_export"],
@@ -237,7 +237,7 @@
         "monthly": 12
       },
       "restore_drill_frequency_days": 30,
-      "integrity_checks": ["key_reference_check", "sealed_secret_integrity_check", "rotation_manifest_check", "no_plaintext_key_export_check"],
+      "integrity_checks": ["kms_adapter_policy_check", "key_reference_check", "key_usage_evidence_hash_check", "sealed_secret_integrity_check", "rotation_manifest_check", "key_destruction_policy_check", "no_plaintext_key_export_check"],
       "failover_mode": "manual KMS endpoint switch and secret rotation until KMS ADR is implemented",
       "current_dev_commands": []
     },

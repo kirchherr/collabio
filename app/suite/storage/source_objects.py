@@ -9,6 +9,7 @@ from typing import Protocol, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import DataClass
+from suite.kms.adapter import KmsKeyReference, KmsKeyReferenceError
 from suite.rag.models import SourceDocument
 from suite.rag.source_indexing import ResolvedSource
 from suite.storage.content_hash import ContentHashVerificationError, compute_content_hash, verify_content_hash
@@ -226,7 +227,7 @@ class SourceObjectWriteGuard:
     def validate_before_write(self, record: SourceObjectRecord) -> None:
         metadata = record.metadata
         self._require_write_metadata(metadata)
-        self._require_kms_reference(metadata.kms_key_ref)
+        self._require_kms_reference(metadata)
         self._require_content_hash_match(record)
         self._require_manifest_hash_match(metadata)
 
@@ -238,9 +239,15 @@ class SourceObjectWriteGuard:
             if isinstance(value, str) and not value.strip():
                 raise SourceObjectWriteDeniedError(f"{field_name} is required for storage write")
 
-    def _require_kms_reference(self, kms_key_ref: str) -> None:
-        if not kms_key_ref.startswith("kms://"):
-            raise SourceObjectWriteDeniedError("kms_key_ref must use kms://")
+    def _require_kms_reference(self, metadata: SourceObjectMetadata) -> None:
+        try:
+            key_ref = KmsKeyReference.parse(metadata.kms_key_ref)
+        except KmsKeyReferenceError as exc:
+            raise SourceObjectWriteDeniedError(f"kms_key_ref invalid: {exc}") from exc
+        if key_ref.tenant_id != metadata.tenant_id:
+            raise SourceObjectWriteDeniedError("kms_key_ref tenant_id does not match source object")
+        if key_ref.data_class != metadata.classification:
+            raise SourceObjectWriteDeniedError("kms_key_ref data_class does not match source object")
 
     def _require_content_hash_match(self, record: SourceObjectRecord) -> None:
         try:

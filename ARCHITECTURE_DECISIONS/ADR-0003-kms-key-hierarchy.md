@@ -25,6 +25,8 @@ Business services may store and pass key references, but never raw key material.
 
 Cryptographic shredding is policy-controlled and must be blocked for active Legal Hold and GoBD-retained records.
 
+The first implementation is a KMS adapter boundary with canonical `kms://<tenant>/<data_class>/v<version>` references, per-data-class policy, hashable operation evidence, rotation evidence, and destruction guards. Envelope encryption is intentionally the next layer, not mixed into the boundary.
+
 ## Consequences
 
 - The codebase needs a KMS adapter even before production KMS selection.
@@ -48,7 +50,8 @@ Cryptographic shredding is policy-controlled and must be blocked for active Lega
 ## Verification
 
 - Tests fail if business code imports forbidden crypto primitives directly after the adapter exists.
+- KMS policy tests cover all data classes and forbidden operations.
+- Source object and storage manifest tests reject tenant/data-class mismatched KMS refs.
 - Key rotation test preserves readability.
 - Key destruction simulation makes allowed objects unreadable.
 - Legal Hold and GoBD tests block forbidden cryptoshred.
-

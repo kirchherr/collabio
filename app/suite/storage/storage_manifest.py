@@ -8,6 +8,7 @@ from typing import Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import DataClass
+from suite.kms.adapter import KmsKeyReference, KmsKeyReferenceError
 from suite.storage.adapter_policy import BucketProfile, ObjectLockMode
 from suite.storage.content_hash import (
     ContentHashVerificationError,
@@ -168,6 +169,7 @@ def build_storage_object_manifest(
     storage_provider: str = "s3-compatible",
 ) -> StorageObjectManifest:
     _require_source_matches_retention(record, retention_manifest)
+    _require_kms_reference_matches_source(record)
     _require_bucket_matches_retention(bucket_profile, retention_manifest)
     try:
         verify_content_hash(
@@ -284,6 +286,18 @@ def _require_source_matches_retention(record: SourceObjectRecord, retention_mani
         raise StorageManifestError(f"retention manifest does not match source object: {', '.join(mismatches)}")
     if retention_manifest.source_manifest_hash != metadata.manifest_hash:
         raise StorageManifestError("retention manifest source_manifest_hash does not match source object")
+
+
+def _require_kms_reference_matches_source(record: SourceObjectRecord) -> None:
+    metadata = record.metadata
+    try:
+        key_ref = KmsKeyReference.parse(metadata.kms_key_ref)
+    except KmsKeyReferenceError as exc:
+        raise StorageManifestError(f"kms_key_ref invalid: {exc}") from exc
+    if key_ref.tenant_id != metadata.tenant_id:
+        raise StorageManifestError("kms_key_ref tenant_id does not match source object")
+    if key_ref.data_class != metadata.classification:
+        raise StorageManifestError("kms_key_ref data_class does not match source object")
 
 
 def _require_bucket_matches_retention(bucket_profile: BucketProfile, retention_manifest: RetentionManifest) -> None:

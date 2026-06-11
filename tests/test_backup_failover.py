@@ -63,6 +63,11 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "content_hash_verifier_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
 
+    kms = policy.target("kms_and_secrets")
+    assert "kms_adapter_policy_check" in kms.integrity_checks
+    assert "key_usage_evidence_hash_check" in kms.integrity_checks
+    assert "no_plaintext_key_export_check" in kms.integrity_checks
+
     for target in policy.targets:
         assert target.covered_domains
         assert target.backup_methods
@@ -88,6 +93,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
 
     assert policy.domain("kms_key_metadata").primary_target_id == "kms_and_secrets"
     assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
+    assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"

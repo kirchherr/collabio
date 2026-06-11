@@ -27,6 +27,7 @@ docs/SOURCE_OBJECT_MODEL.md
 docs/CONTENT_HASH_VERIFICATION.md
 docs/RETENTION_MANIFEST.md
 docs/STORAGE_ADAPTER_PLAN.md
+docs/KMS_ADAPTER.md
 docs/operations/BACKUP_FAILOVER.md
 ```
 
@@ -75,6 +76,7 @@ It rejects manifests when:
 - the retention manifest does not match the source object
 - the bucket profile does not match the retention manifest
 - the bucket profile does not allow the source object type or lifecycle state
+- the KMS key reference does not match the source tenant and data class
 - WORM retention is mapped to a non-object-lock bucket
 - active legal hold cannot be represented by an object-lock bucket when object lock is required
 - content hash verification fails
@@ -90,6 +92,7 @@ It rejects manifests when:
 - content hash with context `restore`
 - object-lock configuration
 - legal-hold evidence
+- KMS key reference alignment with source metadata
 
 Restore verification returns structured evidence with the manifest hash, source manifest hash, retention manifest hash, content hash, bucket, object key, object version ID, checks performed, and content hash verification result.
 
@@ -101,6 +104,7 @@ The future S3/MinIO adapter must treat this model as the acceptance boundary:
 source object
   -> retention manifest
   -> bucket profile
+  -> KMS key reference validation
   -> content hash verifier
   -> storage object manifest
   -> encrypted object write
