@@ -119,6 +119,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Parser worker boundary for plain text and RFC822 mail extraction behind the TextExtractor interface
 - Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction
 - Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation
+- Storage write guard for mandatory compliance metadata, KMS references, content hashes, and manifest hashes
 - Hash-chained audit events for vector worker jobs
 - Deterministic exact-search benchmark fixtures for pgvector recall baselines
 - Suite-wide backup/failover continuity policy, runbook, and Docker backup verification commands

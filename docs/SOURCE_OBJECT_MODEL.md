@@ -67,6 +67,27 @@ Legal hold is enforced at the model boundary: an object under active hold cannot
 
 This is not the full retention engine yet. It is the minimum invariant that prevents later storage adapters, mail processors, editors, and AI flows from inventing incompatible object semantics.
 
+## Storage Write Guard
+
+Every repository write is checked by `SourceObjectWriteGuard`.
+
+The guard requires:
+
+- `tenant_id`
+- `classification`
+- `retention_policy_id`
+- `kms_key_ref`
+- `manifest_hash`
+- `content_hash`
+
+It also verifies:
+
+- `kms_key_ref` uses the `kms://` scheme.
+- `content_hash` matches the stored text or native bytes.
+- `manifest_hash` matches the canonical source object metadata payload.
+
+This guard is the current shared entry point for storage writes. Future PostgreSQL, S3/MinIO, WORM, and KMS adapters must call the same guard or an equivalent stricter policy before accepting object data.
+
 ## RAG And Parser Boundary
 
 `SourceObjectResolver` converts a versioned source object into the existing `ResolvedSource` shape used by source indexing.
@@ -102,6 +123,7 @@ Implemented now:
 - Pydantic source object metadata model.
 - Versioned source object record wrapper.
 - Tenant/version-scoped in-memory repository.
+- Storage write guard for required metadata, KMS references, content hashes, and canonical manifest hashes.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
@@ -113,7 +135,7 @@ Not implemented yet:
 - WORM/object-lock manifests.
 - Retention engine.
 - KMS adapter and envelope encryption.
-- Full storage write API.
+- Full production storage write API.
 
 ## Continuity
 

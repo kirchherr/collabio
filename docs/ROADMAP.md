@@ -489,7 +489,7 @@ Epics:
 Aufgaben:
 
 - [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
-- [ ] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
+- [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 - [ ] S3/MinIO-kompatiblen Storage Adapter planen.
 - [ ] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
 - [ ] Retention Defaults und Retention Manifest definieren.
@@ -1040,7 +1040,8 @@ Empfohlene naechste Reihenfolge:
 20. [x] Suite-weite Backup-/Failover-Kultur mit Continuity-Domains, Policy, Runbook und Dev-Backup-Verifikation einfuehren.
 21. [x] Isolierten Rich-Document Parser Service fuer DOCX, ODT und einfache Text-PDFs anbinden.
 22. [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
-23. [ ] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
+23. [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
+24. [ ] S3/MinIO-kompatiblen Storage Adapter mit Versioning, Object-Lock/WORM-Haltung und Manifest-Restore-Checks planen.
 
 ## Release-Strategie
 

@@ -195,7 +195,7 @@
         "monthly": 12
       },
       "restore_drill_frequency_days": 30,
-      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification", "tenant_isolation_smoke_test"],
+      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification", "source_object_metadata_smoke_test", "tenant_isolation_smoke_test"],
       "failover_mode": "manual promotion until HA ADR and production drills are passing",
       "current_dev_commands": ["docker compose run --rm backup", "docker compose run --rm backup-verify"]
     },
@@ -219,7 +219,7 @@
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["object_manifest_hash", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
+      "integrity_checks": ["source_object_manifest_hash_check", "object_manifest_hash", "content_hash_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
       "failover_mode": "manual bucket endpoint switch until storage ADR is implemented",
       "current_dev_commands": []
     },

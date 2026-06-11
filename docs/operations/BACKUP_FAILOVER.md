@@ -30,6 +30,7 @@ It is intentionally lightweight. The current repository implements development b
 - Backups containing tenant data are classified data.
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
+- Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.
 

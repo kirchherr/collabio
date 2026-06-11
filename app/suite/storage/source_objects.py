@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
+from hashlib import sha256
 from typing import Protocol, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -12,6 +14,55 @@ from suite.rag.models import SourceDocument
 from suite.rag.source_indexing import ResolvedSource
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
+ManifestValue = str | int | None
+
+
+class SourceObjectWriteDeniedError(ValueError):
+    pass
+
+
+def sha256_bytes(value: bytes) -> str:
+    return f"sha256:{sha256(value).hexdigest()}"
+
+
+def source_object_content_bytes(record: SourceObjectRecord) -> bytes:
+    return record.content_bytes if record.content_bytes is not None else record.text.encode("utf-8")
+
+
+def source_object_manifest_payload(metadata: SourceObjectMetadata) -> dict[str, ManifestValue]:
+    return {
+        "tenant_id": metadata.tenant_id,
+        "object_id": metadata.object_id,
+        "object_type": metadata.object_type.value,
+        "version_id": metadata.version_id,
+        "title": metadata.title,
+        "owner_principal_id": metadata.owner_principal_id,
+        "created_by": metadata.created_by,
+        "created_at_utc": metadata.created_at_utc,
+        "updated_at_utc": metadata.updated_at_utc,
+        "classification": metadata.classification.value,
+        "retention_policy_id": metadata.retention_policy_id,
+        "legal_hold_state": metadata.legal_hold_state.value,
+        "kms_key_ref": metadata.kms_key_ref,
+        "audit_chain_ref": metadata.audit_chain_ref,
+        "source_system": metadata.source_system,
+        "schema_version": metadata.schema_version,
+        "mime_type": metadata.mime_type,
+        "acl_hash": metadata.acl_hash,
+        "acl_version": metadata.acl_version,
+        "content_hash": metadata.content_hash,
+        "content_byte_length": metadata.content_byte_length,
+        "lifecycle_state": metadata.lifecycle_state.value,
+        "parent_object_id": metadata.parent_object_id,
+        "thread_id": metadata.thread_id,
+        "parser_profile_id": metadata.parser_profile_id,
+    }
+
+
+def build_source_object_manifest_hash(metadata: SourceObjectMetadata) -> str:
+    payload = source_object_manifest_payload(metadata)
+    manifest_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return sha256_bytes(manifest_bytes)
 
 
 class SourceObjectType(StrEnum):
@@ -162,15 +213,62 @@ class SourceObjectRepository(Protocol):
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord: ...
 
 
+class SourceObjectWriteGuard:
+    required_metadata_fields: tuple[str, ...] = (
+        "tenant_id",
+        "classification",
+        "retention_policy_id",
+        "kms_key_ref",
+        "manifest_hash",
+        "content_hash",
+    )
+
+    def validate_before_write(self, record: SourceObjectRecord) -> None:
+        metadata = record.metadata
+        self._require_write_metadata(metadata)
+        self._require_kms_reference(metadata.kms_key_ref)
+        self._require_content_hash_match(record)
+        self._require_manifest_hash_match(metadata)
+
+    def _require_write_metadata(self, metadata: SourceObjectMetadata) -> None:
+        for field_name in self.required_metadata_fields:
+            value = getattr(metadata, field_name)
+            if value is None:
+                raise SourceObjectWriteDeniedError(f"{field_name} is required for storage write")
+            if isinstance(value, str) and not value.strip():
+                raise SourceObjectWriteDeniedError(f"{field_name} is required for storage write")
+
+    def _require_kms_reference(self, kms_key_ref: str) -> None:
+        if not kms_key_ref.startswith("kms://"):
+            raise SourceObjectWriteDeniedError("kms_key_ref must use kms://")
+
+    def _require_content_hash_match(self, record: SourceObjectRecord) -> None:
+        expected_hash = sha256_bytes(source_object_content_bytes(record))
+        if record.metadata.content_hash != expected_hash:
+            raise SourceObjectWriteDeniedError("content_hash does not match source content")
+
+    def _require_manifest_hash_match(self, metadata: SourceObjectMetadata) -> None:
+        expected_hash = build_source_object_manifest_hash(metadata)
+        if metadata.manifest_hash != expected_hash:
+            raise SourceObjectWriteDeniedError("manifest_hash does not match source object metadata")
+
+
 class InMemorySourceObjectRepository:
-    def __init__(self, records: tuple[SourceObjectRecord, ...] = ()) -> None:
+    def __init__(
+        self,
+        records: tuple[SourceObjectRecord, ...] = (),
+        *,
+        write_guard: SourceObjectWriteGuard | None = None,
+    ) -> None:
         self._records: dict[tuple[str, str, str], SourceObjectRecord] = {}
         self._latest_keys: dict[tuple[str, str], tuple[str, str, str]] = {}
+        self.write_guard = write_guard or SourceObjectWriteGuard()
         for record in records:
             self.add(record)
 
     def add(self, record: SourceObjectRecord) -> None:
         metadata = record.metadata
+        self.write_guard.validate_before_write(record)
         key = (metadata.tenant_id, metadata.object_id, metadata.version_id)
         if key in self._records:
             raise ValueError("source object version already exists")

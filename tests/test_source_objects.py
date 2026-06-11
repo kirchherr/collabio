@@ -20,6 +20,9 @@ from suite.storage.source_objects import (
     SourceObjectRecord,
     SourceObjectResolver,
     SourceObjectType,
+    SourceObjectWriteDeniedError,
+    build_source_object_manifest_hash,
+    sha256_bytes,
 )
 
 
@@ -76,7 +79,8 @@ def metadata_for(
     legal_hold_state: LegalHoldState = LegalHoldState.NONE,
     lifecycle_state: SourceLifecycleState = SourceLifecycleState.WORKING,
 ) -> SourceObjectMetadata:
-    return SourceObjectMetadata(
+    content = text.encode("utf-8")
+    draft = SourceObjectMetadata(
         tenant_id="tenant-1",
         object_id=object_id,
         object_type=object_type,
@@ -90,18 +94,19 @@ def metadata_for(
         retention_policy_id="rp-standard",
         legal_hold_state=legal_hold_state,
         kms_key_ref="kms://tenant-1/internal/v1",
-        manifest_hash="sha256:manifest",
+        manifest_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
         audit_chain_ref="audit:chain-1",
         source_system="collabio",
         mime_type=mime_type,
         acl_hash="sha256:acl",
         acl_version=3,
-        content_hash="sha256:content",
-        content_byte_length=len(text.encode("utf-8")),
+        content_hash=sha256_bytes(content),
+        content_byte_length=len(content),
         lifecycle_state=lifecycle_state,
         parent_object_id=parent_object_id,
         thread_id=thread_id,
     )
+    return draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)})
 
 
 def record_for(
@@ -214,6 +219,41 @@ def test_source_object_repository_is_tenant_version_scoped() -> None:
         repository.get(tenant_id="tenant-2", object_id="doc-1", version_id="v1")
     with pytest.raises(ValueError, match="already exists"):
         repository.add(first)
+
+
+def test_source_object_repository_rejects_content_hash_mismatch_before_write() -> None:
+    record = record_for()
+    tampered = SourceObjectRecord(
+        metadata=record.metadata.model_copy(update={"content_hash": "sha256:not-the-content"}),
+        text=record.text,
+    )
+    repository = InMemorySourceObjectRepository()
+
+    with pytest.raises(SourceObjectWriteDeniedError, match="content_hash"):
+        repository.add(tampered)
+
+
+def test_source_object_repository_rejects_manifest_hash_mismatch_before_write() -> None:
+    record = record_for()
+    tampered = SourceObjectRecord(
+        metadata=record.metadata.model_copy(update={"title": "Changed after manifest"}),
+        text=record.text,
+    )
+    repository = InMemorySourceObjectRepository()
+
+    with pytest.raises(SourceObjectWriteDeniedError, match="manifest_hash"):
+        repository.add(tampered)
+
+
+def test_source_object_repository_rejects_non_kms_key_reference_before_write() -> None:
+    record = record_for()
+    metadata = record.metadata.model_copy(update={"kms_key_ref": "vault://tenant-1/internal/v1"})
+    metadata = metadata.model_copy(update={"manifest_hash": build_source_object_manifest_hash(metadata)})
+    tampered = SourceObjectRecord(metadata=metadata, text=record.text)
+    repository = InMemorySourceObjectRepository()
+
+    with pytest.raises(SourceObjectWriteDeniedError, match="kms_key_ref"):
+        repository.add(tampered)
 
 
 def test_source_object_resolver_feeds_indexing_pipeline_with_authoritative_metadata() -> None:

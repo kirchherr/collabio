@@ -30,11 +30,12 @@ Current sprint:
 20. [x] Suite-wide backup/failover continuity culture, policy, and dev backup verification commands.
 21. [x] Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction.
 22. [x] Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation.
+23. [x] Storage write guard for tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
 
 ## Next Engineering Step
 
-After the source object model is in place:
+After the storage write guard is in place:
 
-- Enforce storage writes through a single guard that requires tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
+- Plan the S3/MinIO-compatible storage adapter, including versioning, object-lock/WORM posture, and manifest restore checks.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.
