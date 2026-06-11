@@ -39,20 +39,24 @@ Disabled does not mean deleted. Disabled also does not stop retention, Legal Hol
 
 ## 3. Feature Flags
 
+Runtime feature IDs are fully qualified with the module prefix. Short names in product discussions must be normalized to the IDs below before they reach API or worker gates.
+
 | Feature ID | Default | Requires approval | Notes |
 | --- | --- | --- | --- |
-| `crm.accounts` | on | no | Customer and organization records |
-| `crm.contacts` | on | no | Contact persons and relationship metadata |
-| `crm.activities` | on | no | Activities, notes, and follow-ups |
-| `erp.products` | on | no | Product and service catalog |
-| `erp.suppliers` | on | no | Supplier records |
-| `erp.orders` | on | no | Orders and order items |
-| `erp.invoices` | on | no | Invoices and invoice items |
-| `legacy_import.sqlserver` | off | yes | SQL Server import and cutover tooling |
-| `gobd_export` | off | yes | GoBD/audit export packages |
-| `legal_hold` | on | yes | Compliance feature, not user convenience |
-| `rag_indexing` | off | yes | Only after source resolver and ACL checks exist |
-| `ai_assist` | off | yes | Requires tenant AI policy and Local LLM Gateway |
+| `crm_erp.crm.accounts` | on | no | Customer and organization records |
+| `crm_erp.crm.contacts` | on | no | Contact persons and relationship metadata |
+| `crm_erp.crm.activities` | on | no | Activities, notes, and follow-ups |
+| `crm_erp.erp.products` | on | no | Product and service catalog |
+| `crm_erp.erp.suppliers` | on | no | Supplier records |
+| `crm_erp.erp.orders` | on | no | Orders and order items |
+| `crm_erp.erp.invoices` | on | no | Invoices and invoice items |
+| `crm_erp.legacy_import.sqlserver` | off | yes | SQL Server import and cutover tooling |
+| `crm_erp.gobd_export` | off | yes | GoBD/audit export packages |
+| `crm_erp.legal_hold` | on | yes | Compliance feature, not user convenience |
+| `crm_erp.rag_indexing` | off | yes | Only after source resolver and ACL checks exist |
+| `crm_erp.ai_assist` | off | yes | Requires tenant AI policy and Local LLM Gateway |
+
+The canonical registry lives in `app/suite/platform/crm_erp_subfeatures.py` and is documented in `docs/modules/CRM_ERP_SUBFEATURE_REGISTRY.md`.
 
 ## 4. API And Worker Gates
 

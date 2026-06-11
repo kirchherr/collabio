@@ -1004,7 +1004,7 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-- [ ] Subfeatures definieren: `crm.accounts`, `crm.contacts`, `crm.activities`, `erp.products`, `erp.suppliers`, `erp.orders`, `erp.invoices`, `legacy_import.sqlserver`, `gobd_export`, `legal_hold`, `rag_indexing`, `ai_assist`.
+- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
 - [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
@@ -1195,7 +1195,8 @@ Empfohlene naechste Reihenfolge:
 53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
 54. [x] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
 55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-56. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren.
+56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, RAG und AI Assist implementieren.
+57. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
 
 ## Release-Strategie
 

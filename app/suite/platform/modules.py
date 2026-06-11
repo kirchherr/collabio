@@ -7,6 +7,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
+
 MODULE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 FEATURE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -1213,20 +1215,7 @@ def default_module_registry() -> InMemoryModuleRegistry:
         tenant_id="tenant-demo",
         module_id="crm_erp",
         status=ModuleStatus.AVAILABLE,
-        enabled_features={
-            "crm_erp.crm.accounts": False,
-            "crm_erp.crm.activities": False,
-            "crm_erp.crm.contacts": False,
-            "crm_erp.erp.invoices": False,
-            "crm_erp.erp.orders": False,
-            "crm_erp.erp.products": False,
-            "crm_erp.erp.suppliers": False,
-            "crm_erp.gobd_export": False,
-            "crm_erp.legal_hold": False,
-            "crm_erp.legacy_import.sqlserver": False,
-            "crm_erp.rag_indexing": False,
-            "crm_erp.ai_assist": False,
-        },
+        enabled_features=default_crm_erp_subfeature_enabled_features(),
         policy_snapshot_hash="sha256:demo-module-policy",
         changed_by="system",
         audit_chain_ref="audit:module-seed",

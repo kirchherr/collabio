@@ -60,6 +60,7 @@ Current sprint:
 50. [x] Legacy SQL Discovery and Import Evidence Framework for metadata-only legacy source assessment.
 51. [x] Isolated SQL Server metadata adapter worker with connector policy, secret-reference boundary, and metadata-only query plan.
 52. [x] CRM/ERP legacy mapping evidence for discovered tables, target object candidates, `legacy.row` fallbacks, and quarantine decisions.
+53. [x] CRM/ERP subfeature registry for accounts, contacts, activities, products, suppliers, orders, invoices, import, export, Legal Hold, RAG, and AI assist gates.
 
 ## Next Engineering Step
 
@@ -67,7 +68,7 @@ After module provisioning and legacy SQL discovery evidence are in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Implement CRM/ERP subfeature registry for accounts, contacts, activities, products, suppliers, orders, invoices, and import/compliance features.
+- Plan CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
 
 ## Module Expansion Stance
 
