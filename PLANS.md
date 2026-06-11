@@ -39,11 +39,12 @@ Current sprint:
 29. [x] KMS adapter boundary, canonical key references, rotation evidence, and destruction guards.
 30. [x] Envelope encryption API with local dev implementation, manifests, AAD binding, and destroyed-key rejection.
 31. [x] Key rotation interface connected to envelope rewrap manifests and restore evidence.
+32. [x] Cryptographic shredding simulation with GoBD, legal-hold, retention, and KMS destruction gates.
 
 ## Next Engineering Step
 
-After envelope rewrap is in place:
+After cryptoshred simulation is in place:
 
-- Implement cryptographic shredding simulation with policy gates for GoBD and legal hold.
+- Build the restore-test framework for storage, envelope, retention, and KMS evidence.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

@@ -2,7 +2,7 @@
 
 The KMS adapter is the only allowed boundary for key references, key-usage evidence, rotation evidence, and key-destruction evidence.
 
-The current implementation provides the KMS control plane and a local development envelope encryption API. Production crypto providers must replace the local envelope implementation behind the same boundary.
+The current implementation provides the KMS control plane, local development envelope encryption API, and local cryptoshred simulation. Production crypto providers must replace local provider behavior behind the same boundary.
 
 ## Files
 
@@ -11,6 +11,7 @@ Runtime model:
 ```text
 app/suite/kms/adapter.py
 app/suite/kms/envelope.py
+app/suite/kms/cryptoshred.py
 ```
 
 Policy:
@@ -23,6 +24,7 @@ Tests:
 
 ```text
 tests/test_envelope_encryption.py
+tests/test_cryptoshred_simulation.py
 tests/test_kms_adapter.py
 tests/test_source_objects.py
 tests/test_storage_manifest.py
@@ -61,6 +63,7 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 - Active legal hold blocks key destruction.
 - GoBD and legal-hold data classes block key destruction.
 - Business-record and WORM-evidence lifecycle states block key destruction.
+- Cryptoshred simulation must record that object bytes were not deleted and plaintext key material was not exported.
 
 ## Current Adapter
 
@@ -77,6 +80,8 @@ It intentionally does not expose raw keys.
 `LocalEnvelopeEncryptionService` is the local development implementation for object-byte encryption. It validates KMS key references, creates envelope encryption manifests, authenticates ciphertext with AAD, rejects tampering, and refuses decryption when the referenced key version has been destroyed.
 
 It also supports envelope rewrap for rotation drills. Rewrap verifies the existing manifest, ciphertext hash, AAD hash, current KMS key reference, and authentication tag before rotating the key reference and replacing only the wrapped data key plus rotation evidence fields.
+
+`LocalCryptoshredSimulator` is the local development implementation for cryptographic shredding drills. It verifies the source object, retention manifest, legal-hold state, protected lifecycle state, and human approval reference before recording KMS key-destruction evidence and producing a cryptoshred manifest.
 
 ## Policy
 
@@ -112,4 +117,4 @@ The evidence model rejects `raw_key_material_exposed=true`.
 
 ## Next Work
 
-The next layer is cryptographic shredding simulation. Production envelope providers must not introduce direct crypto or provider calls in feature code.
+The next layer is restore-test framework wiring. Production envelope providers must not introduce direct crypto or provider calls in feature code.

@@ -499,8 +499,8 @@ Aufgaben:
 - [x] KMS Adapter implementieren.
 - [x] Envelope Encryption API implementieren.
 - [x] Key Rotation Interface implementieren.
-- [ ] Cryptographic Shredding Simulation implementieren.
-- [ ] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
+- [x] Cryptographic Shredding Simulation implementieren.
+- [x] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
 - [ ] Restore-Test-Framework anlegen.
 - [x] Text Extraction Interface fuer Office/Mail/Attachments.
 - [x] Chunker Interface.
@@ -1049,7 +1049,9 @@ Empfohlene naechste Reihenfolge:
 29. [x] KMS Adapter Boundary vor Envelope Encryption implementieren.
 30. [x] Envelope Encryption API auf KMS Adapter Boundary implementieren.
 31. [x] Key Rotation Interface mit Envelope-Manifests verbinden.
-32. [ ] Cryptographic Shredding Simulation implementieren.
+32. [x] Cryptographic Shredding Simulation implementieren.
+33. [x] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
+34. [ ] Restore-Test-Framework anlegen.
 
 ## Release-Strategie
 
