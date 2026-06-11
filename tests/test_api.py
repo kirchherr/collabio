@@ -44,6 +44,32 @@ def test_unknown_tenant_policy_is_blocked() -> None:
     assert response.json()["detail"] == "Tenant policy is not available"
 
 
+def test_platform_modules_discovery_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> None:
+    response = client.get("/v1/platform/modules", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert len(body["modules"]) == 1
+    module = body["modules"][0]
+    assert module["module_id"] == "crm_erp"
+    assert module["display_name"] == "CRM/ERP"
+    assert module["status"] == "available"
+    assert module["normal_use_enabled"] is False
+    assert module["compliance_access_allowed"] is False
+    assert module["enabled_features"]["crm_erp.legacy_import.sqlserver"] is False
+    assert "audit_chain_ref" not in module
+    assert "policy_snapshot_hash" not in module
+    assert "changed_by" not in module
+
+
 def test_admin_tenant_policy_requires_admin_role() -> None:
     response = client.get("/v1/admin/tenant-policy", headers=DEMO_HEADERS)
     assert response.status_code == 403

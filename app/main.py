@@ -25,6 +25,7 @@ from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
+from suite.platform.modules import InMemoryModuleRegistry, PlatformModulesResponse, default_module_registry
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.rag.embedding_model_admin import (
@@ -157,6 +158,7 @@ def build_app() -> FastAPI:
         registry_dir / "tenant_policies.json",
         seed=InMemoryTenantPolicyRepository.default(),
     )
+    module_registry = default_module_registry()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -165,6 +167,14 @@ def build_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/v1/platform/modules", response_model=PlatformModulesResponse)
+    def list_platform_modules(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> PlatformModulesResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        return module_registry.discover_tenant_modules(context.user_context.tenant_id)
 
     @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
     def get_tenant_policy(
@@ -326,6 +336,7 @@ def build_app() -> FastAPI:
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
     app.state.model_registry = model_registry
+    app.state.module_registry = module_registry
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard

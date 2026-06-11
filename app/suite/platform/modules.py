@@ -172,6 +172,26 @@ class TenantModuleState(BaseModel):
         return self.normal_use_enabled and self.enabled_features.get(feature_id, False)
 
 
+class PlatformModuleView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    module_id: str
+    display_name: str
+    module_version: str
+    module_kind: ModuleKind
+    status: ModuleStatus
+    enabled_features: dict[str, bool]
+    normal_use_enabled: bool
+    compliance_access_allowed: bool
+
+
+class PlatformModulesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    modules: list[PlatformModuleView]
+
+
 class InMemoryModuleRegistry:
     def __init__(
         self,
@@ -232,3 +252,59 @@ class InMemoryModuleRegistry:
         if not state.compliance_access_allowed:
             raise ModuleLifecycleError(f"Module state does not allow compliance access: {module_id}")
         return state
+
+    def discover_tenant_modules(self, tenant_id: str) -> PlatformModulesResponse:
+        modules = []
+        for state in self.list_tenant_modules(tenant_id):
+            catalog_entry = self.get_catalog_entry(state.module_id)
+            modules.append(
+                PlatformModuleView(
+                    module_id=state.module_id,
+                    display_name=catalog_entry.display_name,
+                    module_version=catalog_entry.module_version,
+                    module_kind=catalog_entry.module_kind,
+                    status=state.status,
+                    enabled_features=dict(sorted(state.enabled_features.items())),
+                    normal_use_enabled=state.normal_use_enabled,
+                    compliance_access_allowed=state.compliance_access_allowed,
+                )
+            )
+        return PlatformModulesResponse(tenant_id=tenant_id, modules=modules)
+
+
+def default_module_registry() -> InMemoryModuleRegistry:
+    crm_erp_catalog = ModuleCatalogEntry(
+        module_id="crm_erp",
+        display_name="CRM/ERP",
+        module_version="0.1.0",
+        module_kind=ModuleKind.BUSINESS_DOMAIN,
+        status=ModuleStatus.INSTALLED,
+        description="Optional CRM/ERP business module.",
+        manifest_hash="sha256:crm-erp-module-manifest",
+    )
+    crm_erp_demo_state = TenantModuleState(
+        tenant_id="tenant-demo",
+        module_id="crm_erp",
+        status=ModuleStatus.AVAILABLE,
+        enabled_features={
+            "crm_erp.crm.accounts": False,
+            "crm_erp.crm.activities": False,
+            "crm_erp.crm.contacts": False,
+            "crm_erp.erp.invoices": False,
+            "crm_erp.erp.orders": False,
+            "crm_erp.erp.products": False,
+            "crm_erp.erp.suppliers": False,
+            "crm_erp.gobd_export": False,
+            "crm_erp.legal_hold": False,
+            "crm_erp.legacy_import.sqlserver": False,
+            "crm_erp.rag_indexing": False,
+            "crm_erp.ai_assist": False,
+        },
+        policy_snapshot_hash="sha256:demo-module-policy",
+        changed_by="system",
+        audit_chain_ref="audit:module-seed",
+    )
+    return InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog],
+        tenant_modules=[crm_erp_demo_state],
+    )

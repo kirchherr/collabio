@@ -118,3 +118,33 @@ def test_module_registry_gates_normal_and_compliance_access() -> None:
         module_id="crm_erp",
         feature_id="crm_erp.crm.accounts",
     ).feature_enabled("crm_erp.crm.accounts")
+
+
+def test_module_registry_discovery_returns_public_tenant_module_view_only() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[
+            tenant_module(ModuleStatus.ENABLED),
+            tenant_module(
+                ModuleStatus.DISABLED,
+                tenant_id="tenant-2",
+                disabled_at_utc=NOW,
+                enabled_features={"crm_erp.crm.accounts": True},
+            ),
+        ],
+    )
+
+    response = registry.discover_tenant_modules("tenant-1")
+
+    assert response.tenant_id == "tenant-1"
+    assert len(response.modules) == 1
+    view = response.modules[0]
+    assert view.module_id == "crm_erp"
+    assert view.display_name == "CRM/ERP"
+    assert view.status == ModuleStatus.ENABLED
+    assert view.normal_use_enabled
+    assert view.compliance_access_allowed
+    serialized = view.model_dump(mode="json")
+    assert "audit_chain_ref" not in serialized
+    assert "policy_snapshot_hash" not in serialized
+    assert "changed_by" not in serialized
