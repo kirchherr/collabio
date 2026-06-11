@@ -26,7 +26,14 @@ from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.admin_models import TenantAiPolicyUpdate
-from suite.platform.context import DevHeaderAuthError, TenantRequestContext, require_dev_header_auth_allowed
+from suite.platform.context import (
+    DevHeaderAuthError,
+    JwtAuthenticationError,
+    PrincipalResolutionError,
+    TenantRequestContext,
+    build_default_principal_resolver,
+    require_dev_header_auth_allowed,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -44,6 +51,7 @@ from suite.platform.modules import (
     default_module_registry,
     tenant_module_admin_view,
 )
+from suite.platform.runtime import suite_auth_mode
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.rag.embedding_model_admin import (
@@ -70,10 +78,36 @@ def parse_csv_header(value: str | None) -> set[str]:
 
 def get_tenant_request_context(
     request: Request,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
     tenant_id: Annotated[str | None, Header(alias="X-Tenant-Id")] = None,
     user_id: Annotated[str | None, Header(alias="X-User-Id")] = None,
     role_ids: Annotated[str | None, Header(alias="X-Role-Ids")] = None,
     readable_object_ids: Annotated[str | None, Header(alias="X-Readable-Object-Ids")] = None,
+) -> TenantRequestContext:
+    auth_mode = suite_auth_mode()
+    if auth_mode == "dev":
+        return get_dev_header_tenant_request_context(
+            request=request,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            role_ids=role_ids,
+            readable_object_ids=readable_object_ids,
+        )
+    if auth_mode in {"jwt", "oidc"}:
+        return get_jwt_tenant_request_context(request=request, authorization=authorization)
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=f"Unsupported SUITE_AUTH_MODE: {auth_mode}",
+    )
+
+
+def get_dev_header_tenant_request_context(
+    *,
+    request: Request,
+    tenant_id: str | None,
+    user_id: str | None,
+    role_ids: str | None,
+    readable_object_ids: str | None,
 ) -> TenantRequestContext:
     try:
         require_dev_header_auth_allowed()
@@ -107,6 +141,27 @@ def get_tenant_request_context(
         ),
         tenant_policy=tenant_policy,
     )
+
+
+def get_jwt_tenant_request_context(*, request: Request, authorization: str | None) -> TenantRequestContext:
+    principal_resolver = request.app.state.principal_resolver
+    try:
+        user_context = principal_resolver.resolve_authorization_header(authorization)
+    except (JwtAuthenticationError, PrincipalResolutionError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
+
+    policy_repository: InMemoryTenantPolicyRepository = request.app.state.tenant_policy_repository
+    try:
+        tenant_policy = policy_repository.get(user_context.tenant_id)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant policy is not available",
+        ) from exc
+    return TenantRequestContext(user_context=user_context, tenant_policy=tenant_policy)
 
 
 ADMIN_ROLE_IDS = {"tenant-admin", "security-admin"}
@@ -218,6 +273,7 @@ def build_app() -> FastAPI:
         repository=embedding_model_registry,
         audit_logger=audit_logger,
     )
+    principal_resolver = build_default_principal_resolver()
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -704,6 +760,7 @@ def build_app() -> FastAPI:
     app.state.model_registry = model_registry
     app.state.migration_manifest = migration_manifest
     app.state.module_registry = module_registry
+    app.state.principal_resolver = principal_resolver
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard

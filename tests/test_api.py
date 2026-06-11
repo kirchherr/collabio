@@ -1,4 +1,8 @@
-from typing import Annotated
+import base64
+import hmac
+import json
+from hashlib import sha256
+from typing import Annotated, Any
 from uuid import uuid4
 
 import pytest
@@ -7,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from main import app, require_module_api_gate
 from suite.persistence.migration_catalog import load_migration_manifest
+from suite.platform.context import DEFAULT_DEV_JWT_SECRET, DEFAULT_JWT_AUDIENCE, DEFAULT_JWT_ISSUER
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateDecision, default_module_registry
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 
@@ -66,6 +71,33 @@ DECOMMISSION_REOPEN_PAYLOAD = {
 }
 
 
+def signed_jwt_for_api(subject: str = "user-demo", *, tenant_id: str = "tenant-demo") -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {
+        "iss": DEFAULT_JWT_ISSUER,
+        "aud": DEFAULT_JWT_AUDIENCE,
+        "sub": subject,
+        "tenant_id": tenant_id,
+        "iat": 1_780_000_000,
+        "exp": 1_800_000_000,
+        "roles": ["tenant-admin"],
+        "readable_object_ids": ["secret-1"],
+    }
+    encoded_header = base64url_json(header)
+    encoded_payload = base64url_json(payload)
+    signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
+    signature = hmac.new(DEFAULT_DEV_JWT_SECRET.encode("utf-8"), signing_input, sha256).digest()
+    return f"{encoded_header}.{encoded_payload}.{base64url_bytes(signature)}"
+
+
+def base64url_json(payload: dict[str, Any]) -> str:
+    return base64url_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+
+
+def base64url_bytes(payload: bytes) -> str:
+    return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+
 def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
 
@@ -118,13 +150,42 @@ def test_dev_header_tenant_context_is_disabled_in_production(monkeypatch: pytest
     assert response.json()["detail"] == "Dev header tenant context is disabled in production"
 
 
-def test_dev_header_tenant_context_requires_dev_auth_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SUITE_AUTH_MODE", "oidc")
+def test_jwt_auth_mode_requires_bearer_token_and_ignores_dev_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SUITE_AUTH_MODE", "jwt")
 
     response = client.get("/v1/platform/modules", headers=DEMO_HEADERS)
 
-    assert response.status_code == 503
-    assert response.json()["detail"] == "Dev header tenant context requires SUITE_AUTH_MODE=dev"
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Bearer authorization header required"
+
+
+def test_jwt_auth_mode_uses_signed_token_and_server_side_authorization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SUITE_AUTH_MODE", "jwt")
+    forged_headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-unknown",
+        "X-Readable-Object-Ids": "doc-1,mail-1,secret-1",
+        "Authorization": f"Bearer {signed_jwt_for_api()}",
+    }
+
+    response = client.get("/v1/platform/modules", headers=forged_headers)
+
+    assert response.status_code == 200
+    assert response.json()["tenant_id"] == "tenant-demo"
+
+    admin_response = client.get("/v1/admin/tenant-policy", headers=forged_headers)
+    assert admin_response.status_code == 403
+    assert admin_response.json()["detail"] == "Tenant admin role required"
+
+    inference_response = client.post(
+        "/v1/ai/inference",
+        headers=forged_headers,
+        json={"input_text": "Bitte zusammenfassen.", "source_object_ids": ["secret-1"]},
+    )
+    assert inference_response.status_code == 403
+    assert inference_response.json()["detail"] == "User cannot read one or more requested sources"
 
 
 def test_unknown_tenant_policy_is_blocked() -> None:

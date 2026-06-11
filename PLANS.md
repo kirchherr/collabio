@@ -62,12 +62,14 @@ Current sprint:
 52. [x] CRM/ERP legacy mapping evidence for discovered tables, target object candidates, `legacy.row` fallbacks, and quarantine decisions.
 53. [x] CRM/ERP subfeature registry for accounts, contacts, activities, products, suppliers, orders, invoices, import, export, Legal Hold, RAG, and AI assist gates.
 54. [x] Review intake P0 hardening: dev header auth production block, RAG source data-class propagation, and local dev KMS/envelope production block.
+55. [x] Signed JWT PrincipalResolver with server-side tenant membership, roles, groups, and object ACL resolution.
 
 ## Next Engineering Step
 
 After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
 
-- Replace dev header auth with a signed OIDC/JWT PrincipalResolver and server-side tenant membership, role, group, ACL, and ABAC resolution.
+- Replace the local HS256 JWT verifier with production OIDC discovery, JWKS key rotation, issuer/audience allowlists, replay controls, and health checks.
+- Persist PrincipalResolver, tenant membership, role, group, ACL, and ABAC stores in PostgreSQL with RLS and audit events.
 - Create a canonical DataClass registry and validate runtime enum, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
 - Implement persistent append-only audit storage with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
 - Introduce authorized ChunkRepository retrieval so RAG passes exact chunks instead of whole source documents.

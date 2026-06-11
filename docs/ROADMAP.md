@@ -78,6 +78,7 @@ Bereits umgesetzt:
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
+- [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
@@ -488,8 +489,9 @@ Aufgaben:
 - [x] Demo-User durch request-scoped Tenant Context ersetzen.
 - [x] Tenant Context Dependency fuer Tenant-Daten-Endpunkte implementieren.
 - [x] Dev-Header-Tenant-Context in Production und ausserhalb `SUITE_AUTH_MODE=dev` fail-closed sperren.
+- [x] Signed JWT PrincipalResolver mit serverseitiger Tenant Membership, Rollen, Gruppen und Object ACLs implementieren.
 - [ ] Principal-, Role- und Permission-Modelle implementieren.
-- [ ] OIDC-Claims-Mapping vorbereiten.
+- [ ] Produktive OIDC Discovery, JWKS Key Rotation, Issuer/Audience Allowlist, Replay Controls und Health Checks vorbereiten.
 - [ ] MFA/FIDO2/WebAuthn als Zielarchitektur dokumentieren.
 - [x] PostgreSQL mit Migrationen und Runtime-Rollen einfuehren.
 - [x] RLS als Defense-in-depth planen und testen.
@@ -1202,11 +1204,13 @@ Empfohlene naechste Reihenfolge:
 55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
 56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, RAG und AI Assist implementieren.
 57. [x] Review-Kritik aufnehmen und P0-Soforthaertungen fuer dev-only Header Auth, RAG DataClass Propagation und lokale Dev-Krypto umsetzen.
-58. [ ] Signed OIDC/JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen-, ACL- und ABAC-Aufloesung implementieren.
-59. [ ] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
-60. [ ] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
-61. [ ] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
-62. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
+58. [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung implementieren.
+59. [ ] Produktive OIDC Discovery, JWKS Key Rotation, Issuer/Audience Allowlist, Replay Controls und Health Checks implementieren.
+60. [ ] PrincipalResolver, Tenant Membership, Rollen, Gruppen, ACL und ABAC Stores in PostgreSQL mit RLS und Audit Events persistieren.
+61. [ ] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
+62. [ ] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
+63. [ ] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
+64. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
 
 ## Release-Strategie
 
