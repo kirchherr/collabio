@@ -63,12 +63,13 @@ Current sprint:
 53. [x] CRM/ERP subfeature registry for accounts, contacts, activities, products, suppliers, orders, invoices, import, export, Legal Hold, RAG, and AI assist gates.
 54. [x] Review intake P0 hardening: dev header auth production block, RAG source data-class propagation, and local dev KMS/envelope production block.
 55. [x] Signed JWT PrincipalResolver with server-side tenant membership, roles, groups, and object ACL resolution.
+56. [x] Static OIDC/JWKS verifier with RS256 key selection, issuer/audience allowlists, replay guard, and health reporting.
 
 ## Next Engineering Step
 
 After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
 
-- Replace the local HS256 JWT verifier with production OIDC discovery, JWKS key rotation, issuer/audience allowlists, replay controls, and health checks.
+- Add dynamic OIDC discovery, JWKS refresh scheduling, key-cache expiry, IdP outage policy, and persistent replay storage.
 - Persist PrincipalResolver, tenant membership, role, group, ACL, and ABAC stores in PostgreSQL with RLS and audit events.
 - Create a canonical DataClass registry and validate runtime enum, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
 - Implement persistent append-only audit storage with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.

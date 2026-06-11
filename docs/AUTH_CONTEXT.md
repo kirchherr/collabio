@@ -36,7 +36,21 @@ Optional validated claims:
 - `nbf`
 - `jti`
 
-The current verifier supports HS256 for the local signed-token boundary and tests. Production OIDC must replace or extend this verifier with issuer metadata discovery, JWKS key rotation, asymmetric algorithms, issuer allowlists, audience allowlists, token replay controls, and operational health checks.
+`jwt` mode uses a local HS256 verifier for signed development and integration tests. `oidc` mode uses a static OIDC/JWKS verifier that supports:
+
+- trusted issuer allowlists
+- audience allowlists
+- RS256 verification from JWKS keys
+- `kid`-based signing-key selection and rotation
+- `jti` replay detection
+- verifier health reporting
+
+`oidc` mode requires either:
+
+- `SUITE_OIDC_ISSUERS_JSON`, a JSON array of issuer configs with `issuer`, `audiences`, and `jwks`
+- or `SUITE_OIDC_ISSUER`, `SUITE_OIDC_AUDIENCE`, and `SUITE_OIDC_JWKS_JSON`
+
+The current OIDC boundary is intentionally networkless and deterministic. Production still needs dynamic `.well-known/openid-configuration` discovery, JWKS refresh scheduling, key-cache expiry, IdP outage policy, and persistent replay storage.
 
 ## Server-Side Authorization
 
