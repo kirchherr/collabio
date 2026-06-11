@@ -30,6 +30,22 @@ DECOMMISSION_REQUEST_PAYLOAD = {
     "audit_evidence_ref": "audit:evidence-1",
     "backup_restore_evidence_ref": "backup:restore-1",
 }
+DECOMMISSION_BLOCK_PAYLOAD = {
+    "approval_reference": "approval:module-decommission-block",
+    "reason": "legal hold still blocks decommission completion",
+    "blocker_report_ref": "decommission-blocker:report-1",
+    "remediation_plan_ref": "decommission-remediation:plan-1",
+}
+DECOMMISSION_COMPLETE_PAYLOAD = {
+    "approval_reference": "approval:module-decommission-complete",
+    "reason": "all final disposition evidence is complete",
+    "final_retention_disposition_ref": "retention:final-disposition-1",
+    "final_legal_hold_clearance_ref": "legal-hold:clearance-1",
+    "final_export_archive_manifest_ref": "export:archive-manifest-1",
+    "final_audit_closure_ref": "audit:closure-1",
+    "final_backup_disposition_ref": "backup:final-disposition-1",
+    "final_data_disposition_ref": "data-disposition:final-1",
+}
 
 
 def reset_module_registry() -> None:
@@ -266,6 +282,68 @@ def test_tenant_module_decommission_request_requires_all_evidence_refs() -> None
     )
 
     assert response.status_code == 422
+
+
+def test_tenant_module_decommission_block_and_complete_are_audited() -> None:
+    reset_module_registry()
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare module"},
+    )
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REQUEST_PAYLOAD,
+    )
+    starting_event_count = len(app.state.audit_logger.events)
+
+    block_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-block",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_BLOCK_PAYLOAD,
+    )
+
+    assert block_response.status_code == 200
+    blocked = block_response.json()
+    assert blocked["status"] == "decommission_blocked"
+    assert blocked["normal_use_enabled"] is False
+    assert blocked["compliance_access_allowed"] is True
+    assert blocked["decommission_blocked_at_utc"] is not None
+    assert blocked["decommission_evidence_refs"]["blocker_report_ref"] == "decommission-blocker:report-1"
+    assert blocked["decommission_evidence_refs"]["remediation_plan_ref"] == "decommission-remediation:plan-1"
+
+    incomplete_completion_payload = dict(DECOMMISSION_COMPLETE_PAYLOAD)
+    del incomplete_completion_payload["final_data_disposition_ref"]
+    incomplete_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-complete",
+        headers=DEMO_ADMIN_HEADERS,
+        json=incomplete_completion_payload,
+    )
+    assert incomplete_response.status_code == 422
+
+    complete_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-complete",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_COMPLETE_PAYLOAD,
+    )
+
+    assert complete_response.status_code == 200
+    completed = complete_response.json()
+    assert completed["status"] == "decommissioned"
+    assert completed["normal_use_enabled"] is False
+    assert completed["compliance_access_allowed"] is False
+    assert completed["decommissioned_at_utc"] is not None
+    assert completed["decommission_evidence_refs"]["final_data_disposition_ref"] == "data-disposition:final-1"
+    assert completed["decommission_evidence_refs"]["blocker_report_ref"] == "decommission-blocker:report-1"
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-2:]] == [
+        "tenant_module.decommission_blocked",
+        "tenant_module.decommission_completed",
+    ]
+    assert all(event.input_hash is not None for event in new_events[-2:])
+    assert all("reason" not in event.metadata for event in new_events[-2:])
 
 
 def test_admin_tenant_policy_requires_admin_role() -> None:

@@ -27,7 +27,9 @@ from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import (
     InMemoryModuleRegistry,
+    ModuleDecommissionBlockCommand,
     ModuleDecommissionCheck,
+    ModuleDecommissionCompletionCommand,
     ModuleDecommissionRequestCommand,
     ModuleLifecycleCommand,
     ModuleLifecycleError,
@@ -373,6 +375,64 @@ def build_app() -> FastAPI:
                     target_status="decommission_requested",
                 ),
                 decommission_evidence_refs=command.evidence_refs(),
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/decommission-block", response_model=TenantModuleAdminView)
+    def block_tenant_module_decommission(
+        module_id: str,
+        command: ModuleDecommissionBlockCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.block_decommission(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="decommission_blocked",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="decommission_blocked",
+                ),
+                blocker_evidence_refs=command.evidence_refs(),
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/decommission-complete", response_model=TenantModuleAdminView)
+    def complete_tenant_module_decommission(
+        module_id: str,
+        command: ModuleDecommissionCompletionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.complete_decommission(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="decommission_completed",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="decommissioned",
+                ),
+                completion_evidence_refs=command.evidence_refs(),
             )
             return tenant_module_admin_view(state)
         except LookupError as exc:

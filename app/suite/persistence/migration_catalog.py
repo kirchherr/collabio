@@ -53,6 +53,11 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         name="tenant_module_decommission_evidence",
         resource_name="0008_tenant_module_decommission_evidence.sql",
     ),
+    SqlMigration(
+        version="0009",
+        name="tenant_module_decommission_completion",
+        resource_name="0009_tenant_module_decommission_completion.sql",
+    ),
 )
 
 

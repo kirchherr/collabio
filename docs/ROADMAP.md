@@ -990,6 +990,7 @@ Plattform-Aufgaben:
 - [x] `GET /v1/platform/modules` fuer Frontend-Discovery planen.
 - [x] Admin-APIs fuer Provision, Enable, Disable, Suspend und Decommission Check implementieren.
 - [x] Decommission Request API mit Evidence Workflow implementieren.
+- [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
 - [ ] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
 - [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
@@ -1181,7 +1182,8 @@ Empfohlene naechste Reihenfolge:
 45. [x] `GET /v1/platform/modules` Frontend-Discovery Endpoint mit Tenant Context anbinden.
 46. [x] Admin-APIs fuer Provision, Enable, Disable, Suspend und Decommission Check implementieren.
 47. [x] Decommission Request API mit Retention-, Legal-Hold-, Export- und Backup-Evidence Workflow implementieren.
-48. [ ] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
+48. [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
+49. [ ] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
 
 ## Release-Strategie
 

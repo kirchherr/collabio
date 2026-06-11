@@ -52,6 +52,7 @@ Current sprint:
 42. [x] Tenant-secure `GET /v1/platform/modules` discovery endpoint.
 43. [x] Tenant-admin module lifecycle APIs for provision, enable, disable, suspend, and decommission precheck.
 44. [x] Decommission Request API with retention, Legal Hold, export, audit, and backup evidence references.
+45. [x] Decommission Blocked/Completed workflow with final disposition evidence.
 
 ## Next Engineering Step
 
@@ -59,7 +60,7 @@ After embedding model registry administration is in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Add Decommission Blocked/Completed workflow with final disposition evidence.
+- Add Decommission Cancel/Reopen workflow with explicit approval and audit evidence.
 
 ## Module Expansion Stance
 

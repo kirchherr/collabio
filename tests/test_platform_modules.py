@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleCatalogEntry,
+    ModuleDecommissionBlockCommand,
+    ModuleDecommissionCompletionCommand,
     ModuleDecommissionRequestCommand,
     ModuleKind,
     ModuleLifecycleError,
@@ -20,6 +22,18 @@ DECOMMISSION_EVIDENCE_REFS = {
     "export_archive_decision_ref": "export:decision-1",
     "audit_evidence_ref": "audit:evidence-1",
     "backup_restore_evidence_ref": "backup:restore-1",
+}
+DECOMMISSION_BLOCKER_EVIDENCE_REFS = {
+    "blocker_report_ref": "decommission-blocker:report-1",
+    "remediation_plan_ref": "decommission-remediation:plan-1",
+}
+DECOMMISSION_COMPLETION_EVIDENCE_REFS = {
+    "final_retention_disposition_ref": "retention:final-disposition-1",
+    "final_legal_hold_clearance_ref": "legal-hold:clearance-1",
+    "final_export_archive_manifest_ref": "export:archive-manifest-1",
+    "final_audit_closure_ref": "audit:closure-1",
+    "final_backup_disposition_ref": "backup:final-disposition-1",
+    "final_data_disposition_ref": "data-disposition:final-1",
 }
 
 
@@ -61,9 +75,23 @@ def tenant_module(status: ModuleStatus, **overrides: object) -> TenantModuleStat
         values["decommission_requested_at_utc"] = NOW
         values["decommission_evidence_refs"] = DECOMMISSION_EVIDENCE_REFS
         values["enabled_features"] = {"crm_erp.crm.accounts": False}
+    if status == ModuleStatus.DECOMMISSION_BLOCKED:
+        values["provisioned_at_utc"] = NOW
+        values["decommission_requested_at_utc"] = NOW
+        values["decommission_blocked_at_utc"] = NOW
+        values["decommission_evidence_refs"] = {
+            **DECOMMISSION_EVIDENCE_REFS,
+            **DECOMMISSION_BLOCKER_EVIDENCE_REFS,
+        }
+        values["enabled_features"] = {"crm_erp.crm.accounts": False}
     if status == ModuleStatus.DECOMMISSIONED:
         values["provisioned_at_utc"] = NOW
+        values["decommission_requested_at_utc"] = NOW
         values["decommissioned_at_utc"] = NOW
+        values["decommission_evidence_refs"] = {
+            **DECOMMISSION_EVIDENCE_REFS,
+            **DECOMMISSION_COMPLETION_EVIDENCE_REFS,
+        }
         values["enabled_features"] = {"crm_erp.crm.accounts": False}
     values.update(overrides)
     return TenantModuleState.model_validate(values)
@@ -123,6 +151,48 @@ def test_decommission_request_command_requires_complete_namespaced_evidence() ->
         )
 
 
+def test_decommission_block_and_completion_commands_require_namespaced_evidence() -> None:
+    block_command = ModuleDecommissionBlockCommand(
+        approval_reference="approval:decommission-block",
+        reason="legal hold still blocks completion",
+        blocker_report_ref="decommission-blocker:report-1",
+        remediation_plan_ref="decommission-remediation:plan-1",
+    )
+    completion_command = ModuleDecommissionCompletionCommand(
+        approval_reference="approval:decommission-complete",
+        reason="all final disposition evidence is complete",
+        final_retention_disposition_ref="retention:final-disposition-1",
+        final_legal_hold_clearance_ref="legal-hold:clearance-1",
+        final_export_archive_manifest_ref="export:archive-manifest-1",
+        final_audit_closure_ref="audit:closure-1",
+        final_backup_disposition_ref="backup:final-disposition-1",
+        final_data_disposition_ref="data-disposition:final-1",
+    )
+
+    assert block_command.evidence_refs() == DECOMMISSION_BLOCKER_EVIDENCE_REFS
+    assert completion_command.evidence_refs() == DECOMMISSION_COMPLETION_EVIDENCE_REFS
+
+    with pytest.raises(ValidationError, match="blocker evidence"):
+        ModuleDecommissionBlockCommand(
+            approval_reference="approval:decommission-block",
+            reason="legal hold still blocks completion",
+            blocker_report_ref="not-namespaced",
+            remediation_plan_ref="decommission-remediation:plan-1",
+        )
+
+    with pytest.raises(ValidationError, match="completion evidence"):
+        ModuleDecommissionCompletionCommand(
+            approval_reference="approval:decommission-complete",
+            reason="all final disposition evidence is complete",
+            final_retention_disposition_ref="retention:final-disposition-1",
+            final_legal_hold_clearance_ref="legal-hold:clearance-1",
+            final_export_archive_manifest_ref="export:archive-manifest-1",
+            final_audit_closure_ref="audit:closure-1",
+            final_backup_disposition_ref="backup:final-disposition-1",
+            final_data_disposition_ref="missing-namespace",
+        )
+
+
 def test_decommission_requested_state_requires_evidence_and_disabled_features() -> None:
     requested = tenant_module(ModuleStatus.DECOMMISSION_REQUESTED)
     assert requested.decommission_evidence_refs == DECOMMISSION_EVIDENCE_REFS
@@ -135,6 +205,29 @@ def test_decommission_requested_state_requires_evidence_and_disabled_features() 
     with pytest.raises(ValidationError, match="cannot keep enabled features"):
         tenant_module(
             ModuleStatus.DECOMMISSION_REQUESTED,
+            enabled_features={"crm_erp.crm.accounts": True},
+        )
+
+
+def test_decommission_blocked_and_completed_states_require_final_evidence() -> None:
+    blocked = tenant_module(ModuleStatus.DECOMMISSION_BLOCKED)
+    assert blocked.compliance_access_allowed
+    assert blocked.decommission_evidence_refs["blocker_report_ref"] == "decommission-blocker:report-1"
+
+    completed = tenant_module(ModuleStatus.DECOMMISSIONED)
+    assert not completed.normal_use_enabled
+    assert not completed.compliance_access_allowed
+    assert completed.decommission_evidence_refs["final_data_disposition_ref"] == "data-disposition:final-1"
+
+    with pytest.raises(ValidationError, match="blocker evidence"):
+        tenant_module(ModuleStatus.DECOMMISSION_BLOCKED, decommission_evidence_refs=DECOMMISSION_EVIDENCE_REFS)
+
+    with pytest.raises(ValidationError, match="final disposition evidence"):
+        tenant_module(ModuleStatus.DECOMMISSIONED, decommission_evidence_refs=DECOMMISSION_EVIDENCE_REFS)
+
+    with pytest.raises(ValidationError, match="cannot keep enabled features"):
+        tenant_module(
+            ModuleStatus.DECOMMISSION_BLOCKED,
             enabled_features={"crm_erp.crm.accounts": True},
         )
 
@@ -301,6 +394,67 @@ def test_decommission_request_requires_disabled_or_suspended_module_and_complete
             changed_by="admin-1",
             audit_chain_ref="audit:enable-after-request",
         )
+    with pytest.raises(ModuleLifecycleError, match="decommission workflow"):
+        registry.disable_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:disable-after-request",
+        )
+
+
+def test_decommission_block_and_complete_workflow_preserves_final_evidence() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.DECOMMISSION_REQUESTED)],
+    )
+
+    blocked = registry.block_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-block",
+        blocker_evidence_refs=DECOMMISSION_BLOCKER_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert blocked.status == ModuleStatus.DECOMMISSION_BLOCKED
+    assert blocked.compliance_access_allowed
+    assert not blocked.normal_use_enabled
+    assert blocked.decommission_blocked_at_utc == NOW
+    assert blocked.decommission_evidence_refs["retention_evaluation_ref"] == "retention:eval-1"
+    assert blocked.decommission_evidence_refs["remediation_plan_ref"] == "decommission-remediation:plan-1"
+
+    with pytest.raises(ModuleLifecycleError, match="Missing decommission completion evidence"):
+        registry.complete_decommission(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:decommission-complete",
+            completion_evidence_refs={},
+            changed_at_utc=NOW,
+        )
+
+    completed = registry.complete_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-complete",
+        completion_evidence_refs=DECOMMISSION_COMPLETION_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert completed.status == ModuleStatus.DECOMMISSIONED
+    assert not completed.compliance_access_allowed
+    assert completed.decommissioned_at_utc == NOW
+    assert completed.decommission_evidence_refs["final_data_disposition_ref"] == "data-disposition:final-1"
+    assert completed.decommission_evidence_refs["blocker_report_ref"] == "decommission-blocker:report-1"
+    with pytest.raises(ModuleLifecycleError, match="does not allow compliance access"):
+        registry.require_compliance_access(tenant_id="tenant-1", module_id="crm_erp")
 
 
 def test_module_registry_discovery_returns_public_tenant_module_view_only() -> None:
