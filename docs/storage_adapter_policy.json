@@ -1,0 +1,117 @@
+{
+  "schema_version": "storage_adapter_policy.v1",
+  "owner": "platform-storage",
+  "provider_api": "s3-compatible",
+  "development_provider": "minio",
+  "production_compatibility_targets": [
+    "aws_s3_object_lock",
+    "minio_object_lock",
+    "s3_compatible_enterprise_object_storage"
+  ],
+  "required_source_object_types": [
+    "document",
+    "mail",
+    "attachment",
+    "comment",
+    "wiki",
+    "procedure_doc"
+  ],
+  "adapter_requirements": [
+    "source_object_write_guard",
+    "bucket_versioning",
+    "object_lock_for_records",
+    "legal_hold_mapping",
+    "retention_policy_mapping",
+    "kms_key_reference_mapping",
+    "restore_manifest_verification",
+    "no_direct_sdk_access_from_feature_code"
+  ],
+  "forbidden_operations": [
+    "feature_code_direct_s3_sdk_call",
+    "overwrite_existing_object_version",
+    "delete_worm_object_before_retention_end",
+    "delete_held_object",
+    "serve_restored_object_before_manifest_verification"
+  ],
+  "bucket_profiles": [
+    {
+      "bucket_id": "working-objects",
+      "purpose": "Mutable working data, drafts, comments, and collaborative state before business-record commit.",
+      "source_object_types": ["document", "mail", "attachment", "comment", "wiki", "procedure_doc"],
+      "lifecycle_states": ["working", "saved_version", "restricted"],
+      "versioning_required": true,
+      "object_lock_mode": "none",
+      "legal_hold_supported": false,
+      "default_retention_days": 0,
+      "encryption_required": true,
+      "kms_key_refs_required": true,
+      "replication_target_required_before_production": true,
+      "restore_integrity_checks": [
+        "source_object_manifest_hash_check",
+        "content_hash_check",
+        "tenant_metadata_check"
+      ]
+    },
+    {
+      "bucket_id": "business-records",
+      "purpose": "Saved business records and GoBD-relevant versions that must not be overwritten.",
+      "source_object_types": ["document", "mail", "attachment", "wiki", "procedure_doc"],
+      "lifecycle_states": ["business_record", "worm_evidence"],
+      "versioning_required": true,
+      "object_lock_mode": "compliance",
+      "legal_hold_supported": true,
+      "default_retention_days": 2555,
+      "encryption_required": true,
+      "kms_key_refs_required": true,
+      "replication_target_required_before_production": true,
+      "restore_integrity_checks": [
+        "source_object_manifest_hash_check",
+        "object_manifest_hash",
+        "content_hash_check",
+        "retention_policy_check",
+        "legal_hold_check",
+        "chain_of_custody_check"
+      ]
+    },
+    {
+      "bucket_id": "evidence-records",
+      "purpose": "Audit snapshots, e-discovery packages, legal evidence, and forensic export artifacts.",
+      "source_object_types": ["document", "mail", "attachment", "comment", "wiki", "procedure_doc"],
+      "lifecycle_states": ["worm_evidence"],
+      "versioning_required": true,
+      "object_lock_mode": "compliance",
+      "legal_hold_supported": true,
+      "default_retention_days": 3650,
+      "encryption_required": true,
+      "kms_key_refs_required": true,
+      "replication_target_required_before_production": true,
+      "restore_integrity_checks": [
+        "source_object_manifest_hash_check",
+        "object_manifest_hash",
+        "content_hash_check",
+        "retention_policy_check",
+        "legal_hold_check",
+        "chain_of_custody_check"
+      ]
+    },
+    {
+      "bucket_id": "parser-artifacts",
+      "purpose": "Parser manifests, extracted text artifacts, warnings, and sandbox evidence retained for rebuild and audit.",
+      "source_object_types": ["document", "mail", "attachment", "comment", "wiki", "procedure_doc"],
+      "lifecycle_states": ["working", "saved_version", "restricted"],
+      "versioning_required": true,
+      "object_lock_mode": "none",
+      "legal_hold_supported": false,
+      "default_retention_days": 90,
+      "encryption_required": true,
+      "kms_key_refs_required": true,
+      "replication_target_required_before_production": true,
+      "restore_integrity_checks": [
+        "parser_manifest_hash_check",
+        "source_object_manifest_hash_check",
+        "content_hash_check",
+        "parser_version_check"
+      ]
+    }
+  ]
+}

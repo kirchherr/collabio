@@ -490,8 +490,8 @@ Aufgaben:
 
 - [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
 - [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
-- [ ] S3/MinIO-kompatiblen Storage Adapter planen.
-- [ ] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
+- [x] S3/MinIO-kompatiblen Storage Adapter planen.
+- [x] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
 - [ ] Retention Defaults und Retention Manifest definieren.
 - [ ] Legal Hold APIs fuer Objekte definieren.
 - [ ] Content Hash Verification implementieren.
@@ -1041,7 +1041,8 @@ Empfohlene naechste Reihenfolge:
 21. [x] Isolierten Rich-Document Parser Service fuer DOCX, ODT und einfache Text-PDFs anbinden.
 22. [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
 23. [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
-24. [ ] S3/MinIO-kompatiblen Storage Adapter mit Versioning, Object-Lock/WORM-Haltung und Manifest-Restore-Checks planen.
+24. [x] S3/MinIO-kompatiblen Storage Adapter mit Versioning, Object-Lock/WORM-Haltung und Manifest-Restore-Checks planen.
+25. [ ] Retention Defaults und Retention Manifest definieren.
 
 ## Release-Strategie
 

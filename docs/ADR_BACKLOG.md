@@ -71,7 +71,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 
 ## Phase 2 ADRs
 
-- [ ] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target.
+- [x] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target.
 - [ ] ADR-0025: Retention policy engine.
 - [ ] ADR-0026: Legal hold semantics.
 - [ ] ADR-0027: Envelope encryption implementation.

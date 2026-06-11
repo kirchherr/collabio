@@ -48,7 +48,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
-      "state_artifacts": ["source object manifests", "object manifests", "content hashes", "retention metadata", "legal hold metadata", "object versions"]
+      "state_artifacts": ["source object manifests", "object manifests", "content hashes", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
     },
     {
       "domain_id": "kms_key_metadata",
@@ -212,15 +212,15 @@
       "data_classes": ["public", "internal", "personal", "confidential", "gobd", "legal_hold", "voice_transcript"],
       "rpo_minutes": 60,
       "rto_hours": 8,
-      "backup_methods": ["versioned_object_storage", "object_lock_retention", "cross_bucket_replication", "manifest_export"],
+      "backup_methods": ["versioned_object_storage", "object_lock_retention", "bucket_profile_policy_export", "cross_bucket_replication", "manifest_export"],
       "retention": {
         "daily": 30,
         "weekly": 12,
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["source_object_manifest_hash_check", "object_manifest_hash", "content_hash_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
-      "failover_mode": "manual bucket endpoint switch until storage ADR is implemented",
+      "integrity_checks": ["source_object_manifest_hash_check", "object_manifest_hash", "content_hash_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
+      "failover_mode": "manual bucket endpoint switch until object-store implementation and restore drills are passing",
       "current_dev_commands": []
     },
     {

@@ -88,6 +88,14 @@ It also verifies:
 
 This guard is the current shared entry point for storage writes. Future PostgreSQL, S3/MinIO, WORM, and KMS adapters must call the same guard or an equivalent stricter policy before accepting object data.
 
+The first object-storage adapter plan is documented in:
+
+```text
+ARCHITECTURE_DECISIONS/ADR-0024-s3-compatible-object-storage.md
+docs/STORAGE_ADAPTER_PLAN.md
+docs/storage_adapter_policy.json
+```
+
 ## RAG And Parser Boundary
 
 `SourceObjectResolver` converts a versioned source object into the existing `ResolvedSource` shape used by source indexing.
@@ -131,8 +139,8 @@ Implemented now:
 Not implemented yet:
 
 - PostgreSQL-backed source metadata tables.
-- S3/MinIO-compatible content store.
-- WORM/object-lock manifests.
+- Concrete S3/MinIO-compatible content-store implementation.
+- Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Retention engine.
 - KMS adapter and envelope encryption.
 - Full production storage write API.

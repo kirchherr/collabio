@@ -31,11 +31,12 @@ Current sprint:
 21. [x] Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction.
 22. [x] Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation.
 23. [x] Storage write guard for tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
+24. [x] S3/MinIO-compatible storage adapter ADR, bucket profiles, Object Lock posture, and manifest restore checks.
 
 ## Next Engineering Step
 
-After the storage write guard is in place:
+After the storage adapter plan is in place:
 
-- Plan the S3/MinIO-compatible storage adapter, including versioning, object-lock/WORM posture, and manifest restore checks.
+- Define retention defaults and the retention manifest model that storage, legal hold, WORM, backup, and e-discovery will share.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.
