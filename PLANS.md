@@ -57,14 +57,16 @@ Current sprint:
 47. [x] Server-side module gates for API routers and workers.
 48. [x] Module-aware migration catalog with checksums, evidence, and startup mismatch blockade.
 49. [x] Module provisioning connected to migration manifest evidence with missing-startup-migration blockade.
+50. [x] Legacy SQL Discovery and Import Evidence Framework for metadata-only legacy source assessment.
 
 ## Next Engineering Step
 
-After embedding model registry administration is in place:
+After module provisioning and legacy SQL discovery evidence are in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Close module lifecycle behavior test matrix and start CRM/ERP subfeature registry.
+- Add isolated SQL Server metadata adapter worker behind connector policy.
+- Start CRM/ERP subfeature registry only after legacy table discovery and mapping evidence exist.
 
 ## Module Expansion Stance
 
@@ -78,3 +80,4 @@ Each module charter must define:
 - backup/failover continuity domain, restore evidence, and degraded mode
 - search/RAG source contract with candidate-only results and authoritative ACL checks
 - migration, provisioning, disable, suspend, and decommission behavior
+- legacy-source discovery, import dry-runs, quarantine handling, and mapping evidence before data import

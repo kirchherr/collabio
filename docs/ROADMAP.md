@@ -995,17 +995,20 @@ Plattform-Aufgaben:
 - [x] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
 - [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [x] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
+- [x] Legacy-SQL-Discovery als metadata-only Evidenzschritt vor Mapping, Import und Registry-Entscheidungen implementieren.
 - [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
 
 CRM/ERP `crm_erp`:
 
 - [x] Module Charter fuer `crm_erp` schreiben.
+- [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
+- [ ] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [ ] Subfeatures definieren: `crm.accounts`, `crm.contacts`, `crm.activities`, `erp.products`, `erp.suppliers`, `erp.orders`, `erp.invoices`, `legacy_import.sqlserver`, `gobd_export`, `legal_hold`, `rag_indexing`, `ai_assist`.
 - [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [ ] Datenklassen harmonisieren: personal_data, working_data, gobd_record, legal_hold, security_data, export_package.
-- [ ] SQL-Server-Import mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
+- [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
 - [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
@@ -1188,7 +1191,9 @@ Empfohlene naechste Reihenfolge:
 50. [x] Serverseitige Modul-Gates fuer API-Router und Worker implementieren.
 51. [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch implementieren.
 52. [x] Modul-Provisioning mit Migration-Manifest-Evidence verbinden und bei fehlenden Startup-Migrationen blockieren.
-53. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren.
+53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
+54. [ ] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
+55. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren, sobald Legacy-Mapping-Evidence vorliegt.
 
 ## Release-Strategie
 
