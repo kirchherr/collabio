@@ -69,7 +69,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks
     assert "key_usage_evidence_hash_check" in kms.integrity_checks
+    assert "envelope_rewrap_evidence_hash_check" in kms.integrity_checks
     assert "wrapped_data_key_hash_check" in kms.integrity_checks
+    assert "rewrapped_data_key_hash_check" in kms.integrity_checks
     assert "no_plaintext_key_export_check" in kms.integrity_checks
 
     for target in policy.targets:

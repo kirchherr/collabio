@@ -55,6 +55,7 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 - Storage manifests must use KMS refs matching the source tenant and data class.
 - KMS and envelope operations produce hashable evidence.
 - Envelope encryption manifests must bind ciphertext, AAD, wrapped data key hash, KMS evidence, and content hash.
+- Envelope rewrap must consume KMS rotation evidence and produce a new manifest hash without changing object ciphertext.
 - Raw key material export is forbidden by policy and evidence validation.
 - Key destruction requires human approval evidence.
 - Active legal hold blocks key destruction.
@@ -74,6 +75,8 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 It intentionally does not expose raw keys.
 
 `LocalEnvelopeEncryptionService` is the local development implementation for object-byte encryption. It validates KMS key references, creates envelope encryption manifests, authenticates ciphertext with AAD, rejects tampering, and refuses decryption when the referenced key version has been destroyed.
+
+It also supports envelope rewrap for rotation drills. Rewrap verifies the existing manifest, ciphertext hash, AAD hash, current KMS key reference, and authentication tag before rotating the key reference and replacing only the wrapped data key plus rotation evidence fields.
 
 ## Policy
 
@@ -109,4 +112,4 @@ The evidence model rejects `raw_key_material_exposed=true`.
 
 ## Next Work
 
-The next layer is key rotation interface hardening and cryptographic shredding simulation. Production envelope providers must not introduce direct crypto or provider calls in feature code.
+The next layer is cryptographic shredding simulation. Production envelope providers must not introduce direct crypto or provider calls in feature code.

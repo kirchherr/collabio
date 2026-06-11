@@ -498,7 +498,7 @@ Aufgaben:
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
 - [x] Envelope Encryption API implementieren.
-- [ ] Key Rotation Interface implementieren.
+- [x] Key Rotation Interface implementieren.
 - [ ] Cryptographic Shredding Simulation implementieren.
 - [ ] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
 - [ ] Restore-Test-Framework anlegen.
@@ -1048,7 +1048,8 @@ Empfohlene naechste Reihenfolge:
 28. [x] Storage Manifest mit Restore-Checks fuer Object Records implementieren.
 29. [x] KMS Adapter Boundary vor Envelope Encryption implementieren.
 30. [x] Envelope Encryption API auf KMS Adapter Boundary implementieren.
-31. [ ] Key Rotation Interface mit Envelope-Manifests verbinden.
+31. [x] Key Rotation Interface mit Envelope-Manifests verbinden.
+32. [ ] Cryptographic Shredding Simulation implementieren.
 
 ## Release-Strategie
 

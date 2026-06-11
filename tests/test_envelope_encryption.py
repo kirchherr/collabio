@@ -7,6 +7,7 @@ from suite.ai_control_plane.models import DataClass
 from suite.kms.adapter import (
     KmsDestroyKeyCommand,
     KmsKeyUse,
+    KmsOperation,
     KmsPolicyViolation,
     LocalKmsAdapter,
     load_kms_adapter_policy,
@@ -16,6 +17,7 @@ from suite.kms.envelope import (
     EnvelopeEncryptionError,
     EnvelopeEncryptionManifest,
     EnvelopeEncryptionRequest,
+    EnvelopeRewrapRequest,
     LocalEnvelopeEncryptionService,
     build_envelope_encryption_manifest_hash,
 )
@@ -77,6 +79,33 @@ def decryption_request(
         requested_by="user-storage",
         audit_chain_ref="audit:envelope-decrypt",
         occurred_at_utc="2026-06-11T03:05:00Z",
+    )
+
+
+def rewrap_request(
+    *,
+    ciphertext: bytes,
+    manifest: EnvelopeEncryptionManifest,
+    aad: dict[str, str] | None = None,
+    current_kms_key_ref: str | None = None,
+    new_kms_key_ref: str | None = None,
+) -> EnvelopeRewrapRequest:
+    default_new_kms_key_ref = manifest.kms_key_ref.rsplit("/", maxsplit=1)[0] + "/v2"
+    return EnvelopeRewrapRequest(
+        tenant_id=manifest.tenant_id,
+        object_id=manifest.object_id,
+        source_version_id=manifest.source_version_id,
+        data_class=manifest.data_class,
+        ciphertext=ciphertext,
+        manifest=manifest,
+        aad=aad if aad is not None else {"storage_manifest_hash": "sha256:" + "a" * 64},
+        current_kms_key_ref=current_kms_key_ref or manifest.kms_key_ref,
+        new_kms_key_ref=new_kms_key_ref or default_new_kms_key_ref,
+        requested_by="user-kms",
+        approved_by="user-security",
+        audit_chain_ref="audit:envelope-rewrap",
+        occurred_at_utc="2026-06-11T03:10:00Z",
+        reason="scheduled key rotation",
     )
 
 
@@ -190,6 +219,23 @@ def test_envelope_decryption_rejects_tampered_ciphertext() -> None:
         )
 
 
+def test_envelope_decryption_rejects_wrapped_data_key_hash_mismatch() -> None:
+    service, _kms_adapter = service_for_tests()
+    encrypted = service.encrypt(encryption_request())
+    tampered_draft = encrypted.manifest.model_copy(update={"wrapped_data_key_hash": "sha256:" + "d" * 64})
+    tampered_manifest = tampered_draft.model_copy(
+        update={"manifest_hash": build_envelope_encryption_manifest_hash(tampered_draft)}
+    )
+
+    with pytest.raises(EnvelopeEncryptionError, match="wrapped data key hash"):
+        service.decrypt(
+            decryption_request(
+                ciphertext=encrypted.ciphertext,
+                manifest=tampered_manifest,
+            )
+        )
+
+
 def test_envelope_decryption_rejects_destroyed_key_version() -> None:
     service, kms_adapter = service_for_tests()
     encrypted = service.encrypt(
@@ -205,5 +251,93 @@ def test_envelope_decryption_rejects_destroyed_key_version() -> None:
             decryption_request(
                 ciphertext=encrypted.ciphertext,
                 manifest=encrypted.manifest,
+            )
+        )
+
+
+def test_envelope_rewrap_rotates_wrapped_key_and_preserves_decryptability() -> None:
+    service, _kms_adapter = service_for_tests()
+    request = encryption_request()
+    encrypted = service.encrypt(request)
+
+    rewrapped = service.rewrap(
+        rewrap_request(
+            ciphertext=encrypted.ciphertext,
+            manifest=encrypted.manifest,
+            new_kms_key_ref="kms://tenant-1/internal/v2",
+        )
+    )
+    decrypted = service.decrypt(
+        decryption_request(
+            ciphertext=encrypted.ciphertext,
+            manifest=rewrapped.manifest,
+        )
+    )
+
+    assert rewrapped.verified is True
+    assert rewrapped.previous_manifest_hash == encrypted.manifest.manifest_hash
+    assert rewrapped.manifest.previous_manifest_hash == encrypted.manifest.manifest_hash
+    assert rewrapped.previous_kms_key_ref == encrypted.manifest.kms_key_ref
+    assert rewrapped.new_kms_key_ref == "kms://tenant-1/internal/v2"
+    assert rewrapped.kms_rotation_evidence.operation == KmsOperation.ROTATE_KEY_REFERENCE
+    assert rewrapped.kms_rotation_evidence.key_use == KmsKeyUse.KEY_ROTATION
+    assert rewrapped.manifest.kms_key_ref == "kms://tenant-1/internal/v2"
+    assert rewrapped.manifest.previous_kms_key_ref == encrypted.manifest.kms_key_ref
+    assert rewrapped.manifest.rotation_evidence_hash == rewrapped.kms_rotation_evidence.evidence_hash
+    assert rewrapped.manifest.kms_evidence_hash == rewrapped.kms_rotation_evidence.evidence_hash
+    assert rewrapped.manifest.rotated_at_utc == "2026-06-11T03:10:00Z"
+    assert rewrapped.manifest.rotation_reason == "scheduled key rotation"
+    assert rewrapped.manifest.wrapped_data_key_hash != encrypted.manifest.wrapped_data_key_hash
+    assert rewrapped.manifest.aad_hash == encrypted.manifest.aad_hash
+    assert rewrapped.manifest.ciphertext_hash == encrypted.manifest.ciphertext_hash
+    assert rewrapped.manifest.plaintext_hash == encrypted.manifest.plaintext_hash
+    assert rewrapped.manifest.manifest_hash == build_envelope_encryption_manifest_hash(rewrapped.manifest)
+    assert decrypted.plaintext == request.plaintext
+
+
+def test_envelope_rewrap_rejects_tampered_manifest_hash() -> None:
+    service, _kms_adapter = service_for_tests()
+    encrypted = service.encrypt(encryption_request())
+    tampered_manifest = encrypted.manifest.model_copy(update={"ciphertext_hash": "sha256:" + "c" * 64})
+
+    with pytest.raises(EnvelopeEncryptionError, match="manifest_hash"):
+        service.rewrap(
+            rewrap_request(
+                ciphertext=encrypted.ciphertext,
+                manifest=tampered_manifest,
+            )
+        )
+
+
+def test_envelope_rewrap_rejects_unexpected_rotation_target() -> None:
+    service, _kms_adapter = service_for_tests()
+    encrypted = service.encrypt(encryption_request())
+
+    with pytest.raises(EnvelopeEncryptionError, match="requested new_kms_key_ref"):
+        service.rewrap(
+            rewrap_request(
+                ciphertext=encrypted.ciphertext,
+                manifest=encrypted.manifest,
+                new_kms_key_ref="kms://tenant-1/internal/v3",
+            )
+        )
+
+
+def test_envelope_rewrap_rejects_destroyed_current_key_version() -> None:
+    service, kms_adapter = service_for_tests()
+    encrypted = service.encrypt(
+        encryption_request(
+            data_class=DataClass.PERSONAL,
+            kms_key_ref="kms://tenant-1/personal/v1",
+        )
+    )
+    kms_adapter.record_key_destruction(destroy_personal_key_command())
+
+    with pytest.raises(KmsPolicyViolation, match="destroyed"):
+        service.rewrap(
+            rewrap_request(
+                ciphertext=encrypted.ciphertext,
+                manifest=encrypted.manifest,
+                new_kms_key_ref="kms://tenant-1/personal/v2",
             )
         )

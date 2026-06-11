@@ -38,11 +38,12 @@ Current sprint:
 28. [x] Storage object manifest model and restore verification for object records.
 29. [x] KMS adapter boundary, canonical key references, rotation evidence, and destruction guards.
 30. [x] Envelope encryption API with local dev implementation, manifests, AAD binding, and destroyed-key rejection.
+31. [x] Key rotation interface connected to envelope rewrap manifests and restore evidence.
 
 ## Next Engineering Step
 
-After the envelope encryption API is in place:
+After envelope rewrap is in place:
 
-- Harden the key rotation interface and connect rotation evidence to envelope manifests.
+- Implement cryptographic shredding simulation with policy gates for GoBD and legal hold.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

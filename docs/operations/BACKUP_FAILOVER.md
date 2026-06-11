@@ -33,7 +33,7 @@ It is intentionally lightweight. The current repository implements development b
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Storage object restores must prove storage manifest hash, object version ID, bucket profile, KMS reference, object-lock configuration, and legal-hold evidence.
 - KMS restores must prove adapter policy, key-reference evidence hashes, rotation evidence, destruction evidence, and no plaintext key export.
-- Encrypted object restores must prove envelope manifest hash, ciphertext hash, AAD hash, wrapped data key hash, and KMS evidence hash before decrypting.
+- Encrypted object restores must prove envelope manifest hash, ciphertext hash, AAD hash, wrapped data key hash, rewrap evidence hash where present, and KMS evidence hash before decrypting.
 - Content hash verification must use the shared verifier so write, read, restore, parser, and export checks produce comparable evidence.
 - Retention manifest restores must prove retain-until, policy snapshot hash, WORM requirement, Object Lock mode, and Legal Hold state.
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
@@ -89,7 +89,7 @@ Monthly for active development and before every production-readiness milestone:
 4. For production, restore into an isolated environment and run the domain-specific checks from the policy.
 5. Update the policy and this runbook when the restore path changes.
 
-Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
+Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 
 ## Failover Stance
 
