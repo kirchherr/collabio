@@ -29,6 +29,7 @@ docs/RETENTION_MANIFEST.md
 docs/STORAGE_ADAPTER_PLAN.md
 docs/KMS_ADAPTER.md
 docs/ENVELOPE_ENCRYPTION.md
+docs/RESTORE_TEST_FRAMEWORK.md
 docs/operations/BACKUP_FAILOVER.md
 ```
 
@@ -98,6 +99,8 @@ It rejects manifests when:
 
 Restore verification returns structured evidence with the manifest hash, source manifest hash, retention manifest hash, content hash, bucket, object key, object version ID, checks performed, and content hash verification result.
 
+Suite-level restore drills are orchestrated by `app/suite/operations/restore_drill.py`, which combines storage, retention, envelope, KMS, and cryptoshred evidence into a hashable restore drill report.
+
 ## Adapter Rule
 
 The future S3/MinIO adapter must treat this model as the acceptance boundary:
@@ -120,4 +123,4 @@ Feature code must not call S3, MinIO, or provider SDKs directly.
 
 The backup/failover policy tracks this as `storage_object_manifest_hash_check`.
 
-Object-store restore evidence must include storage manifest hash, source manifest hash, retention manifest hash, content hash result, object version ID, bucket profile, object-lock state, legal-hold state, KMS key reference, and audit chain reference.
+Object-store restore evidence must include storage manifest hash, source manifest hash, retention manifest hash, content hash result, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS key reference, and audit chain reference.

@@ -26,6 +26,7 @@ Related docs:
 ```text
 docs/KMS_ADAPTER.md
 docs/STORAGE_MANIFEST.md
+docs/RESTORE_TEST_FRAMEWORK.md
 docs/operations/BACKUP_FAILOVER.md
 ```
 
@@ -55,6 +56,8 @@ encrypted object bytes
   -> content hash verification
   -> controlled read/export/index path
 ```
+
+Suite-level restore drills use `app/suite/operations/restore_drill.py` to combine envelope evidence with storage, retention, and KMS evidence before content is released.
 
 ## Manifest Fields
 
@@ -147,4 +150,5 @@ Backup/failover evidence must include:
 - ciphertext hash
 - AAD hash
 - KMS provider profile
+- restore drill report hash
 - no-plaintext-key-export check

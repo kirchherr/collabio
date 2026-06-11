@@ -61,6 +61,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legal_hold_reevaluation_check" in object_storage.integrity_checks
     assert "storage_object_manifest_hash_check" in object_storage.integrity_checks
     assert "envelope_encryption_manifest_hash_check" in object_storage.integrity_checks
+    assert "restore_drill_report_hash_check" in object_storage.integrity_checks
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -71,6 +72,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "key_usage_evidence_hash_check" in kms.integrity_checks
     assert "envelope_rewrap_evidence_hash_check" in kms.integrity_checks
     assert "cryptoshred_manifest_hash_check" in kms.integrity_checks
+    assert "restore_drill_report_hash_check" in kms.integrity_checks
     assert "wrapped_data_key_hash_check" in kms.integrity_checks
     assert "rewrapped_data_key_hash_check" in kms.integrity_checks
     assert "no_plaintext_key_export_check" in kms.integrity_checks
@@ -131,6 +133,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "RTO" in runbook
     assert "Failover" in runbook
     assert "Monthly" in runbook
+    assert "restore drill report hash" in runbook
 
 
 def test_compose_exposes_backup_and_verification_commands() -> None:

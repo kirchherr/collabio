@@ -501,7 +501,7 @@ Aufgaben:
 - [x] Key Rotation Interface implementieren.
 - [x] Cryptographic Shredding Simulation implementieren.
 - [x] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
-- [ ] Restore-Test-Framework anlegen.
+- [x] Restore-Test-Framework anlegen.
 - [x] Text Extraction Interface fuer Office/Mail/Attachments.
 - [x] Chunker Interface.
 - [x] Embedding Provider Interface.
@@ -1051,7 +1051,9 @@ Empfohlene naechste Reihenfolge:
 31. [x] Key Rotation Interface mit Envelope-Manifests verbinden.
 32. [x] Cryptographic Shredding Simulation implementieren.
 33. [x] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
-34. [ ] Restore-Test-Framework anlegen.
+34. [x] Restore-Test-Framework anlegen.
+35. [ ] Vector Metadata Schema validieren.
+36. [ ] ACL-Versionen in Vector Metadata uebernehmen.
 
 ## Release-Strategie
 

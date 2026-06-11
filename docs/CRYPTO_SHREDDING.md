@@ -26,6 +26,7 @@ Related docs:
 ```text
 docs/KMS_ADAPTER.md
 docs/ENVELOPE_ENCRYPTION.md
+docs/RESTORE_TEST_FRAMEWORK.md
 docs/operations/BACKUP_FAILOVER.md
 ```
 
@@ -82,3 +83,5 @@ Every cryptoshred simulation manifest carries:
 ## Restore And Evidence
 
 Restore checks must verify the cryptoshred manifest hash, KMS destruction evidence hash, source manifest hash, retention manifest hash, and no-plaintext-key-export claim before treating cryptoshredded content as unrecoverable.
+
+`app/suite/operations/restore_drill.py` records this as a restore drill report with status `unrecoverable_by_policy`.
