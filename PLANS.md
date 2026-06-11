@@ -66,16 +66,16 @@ Current sprint:
 56. [x] Static OIDC/JWKS verifier with RS256 key selection, issuer/audience allowlists, replay guard, and health reporting.
 57. [x] Dynamic OIDC discovery, JWKS refresh scheduling, key-cache expiry, outage policy, and persistent replay store.
 58. [x] PostgreSQL/RLS-backed PrincipalResolver, tenant membership, role, group, object ACL, and ABAC stores with audit-chain references.
+59. [x] PostgreSQL/RLS-backed JWT replay store with tenant-aware accepted/replayed events and no token-body storage.
 
 ## Next Engineering Step
 
 After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
 
-- Move JWT replay state from JSON file to PostgreSQL with tenant-aware audit events.
 - Create a canonical DataClass registry and validate runtime enum, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
 - Implement persistent append-only audit storage with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
 - Introduce authorized ChunkRepository retrieval so RAG passes exact chunks instead of whole source documents.
-- Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, and ABAC mutations.
+- Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay-retention mutations.
 - Then resume keyword indexer, hybrid search, and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
 
 ## Module Expansion Stance

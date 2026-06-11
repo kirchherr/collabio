@@ -133,6 +133,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("doc:auth-context", "test:principal-authz-store"),
     ),
+    SqlMigration(
+        version="0013",
+        name="jwt_replay_store",
+        resource_name="0013_jwt_replay_store.sql",
+        module_id="core",
+        evidence_refs=("doc:auth-context", "test:jwt-replay-store"),
+    ),
 )
 
 

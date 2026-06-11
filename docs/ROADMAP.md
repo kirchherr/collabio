@@ -82,6 +82,7 @@ Bereits umgesetzt:
 - [x] Statischer OIDC/JWKS Verifier mit RS256, `kid`-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting.
 - [x] Dynamische OIDC Discovery mit JWKS Refresh, Key-Cache Expiry, IdP-Outage-Policy und persistentem Replay Store.
 - [x] PostgreSQL/RLS-backed PrincipalResolver-, Tenant-Membership-, Rollen-, Gruppen-, ACL- und ABAC-Stores mit Audit-Refs.
+- [x] PostgreSQL/RLS-backed JWT Replay Store mit tenant-aware Accepted/Replayed Events ohne Token-Body-Speicherung.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
@@ -496,6 +497,7 @@ Aufgaben:
 - [x] Principal-, Role- und Permission-Modelle implementieren.
 - [x] Statischen OIDC/JWKS Verifier mit Issuer/Audience Allowlist, RS256, `kid`-Rotation, Replay Guard und Health Checks vorbereiten.
 - [x] Dynamische OIDC Discovery, JWKS Refresh, Key-Cache Expiry, IdP-Outage-Policy und persistente Replay Stores implementieren.
+- [x] JWT Replay State von JSON auf PostgreSQL mit tenant-aware Audit Events umziehen.
 - [ ] MFA/FIDO2/WebAuthn als Zielarchitektur dokumentieren.
 - [x] PostgreSQL mit Migrationen und Runtime-Rollen einfuehren.
 - [x] RLS als Defense-in-depth planen und testen.
@@ -1212,11 +1214,12 @@ Empfohlene naechste Reihenfolge:
 59. [x] Statischen OIDC/JWKS Verifier mit RS256-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting implementieren.
 60. [x] Dynamische OIDC Discovery, JWKS Refresh Scheduling, Key-Cache Expiry, IdP-Outage-Policy und persistenten Replay Store implementieren.
 61. [x] PrincipalResolver, Tenant Membership, Rollen, Gruppen, ACL und ABAC Stores in PostgreSQL mit RLS und Audit Events persistieren.
-62. [ ] JWT Replay State von JSON auf PostgreSQL mit tenant-aware Audit Events umziehen.
+62. [x] JWT Replay State von JSON auf PostgreSQL mit tenant-aware Audit Events umziehen.
 63. [ ] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
 64. [ ] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
 65. [ ] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
-66. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
+66. [ ] Audited Authz Admin APIs fuer PostgreSQL Principal, Rollen, Gruppen, ACL, ABAC und Replay-Retention Mutationen implementieren.
+67. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
 
 ## Release-Strategie
 

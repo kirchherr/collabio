@@ -44,6 +44,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0010",
         "0011",
         "0012",
+        "0013",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -296,6 +297,41 @@ def test_principal_authz_store_migration_declares_rls_and_audit_refs() -> None:
     assert "grant select on table collabio.abac_policy_bindings to collabio_app" in sql
     assert "grant insert" not in sql
     assert "authoritative object acl entries" in sql
+
+
+def test_jwt_replay_store_migration_declares_rls_and_append_only_events() -> None:
+    sql = normalized(get_migration("0013").sql())
+    replay_tokens_body = table_body(get_migration("0013").sql(), "collabio.jwt_replay_tokens")
+    replay_events_body = table_body(get_migration("0013").sql(), "collabio.jwt_replay_events")
+
+    for column in [
+        "tenant_id",
+        "issuer",
+        "subject",
+        "jwt_id",
+        "expires_at_epoch",
+        "expires_at_utc",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert column in replay_tokens_body
+        assert column in replay_events_body
+
+    assert "primary key (issuer, jwt_id)" in sql
+    assert "event_type in ('accepted', 'replayed')" in sql
+    assert "token bodies are never stored" in sql
+    assert "alter table collabio.jwt_replay_tokens enable row level security" in sql
+    assert "alter table collabio.jwt_replay_tokens force row level security" in sql
+    assert "alter table collabio.jwt_replay_events enable row level security" in sql
+    assert "alter table collabio.jwt_replay_events force row level security" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "create policy jwt_replay_tokens_no_hard_delete" in sql
+    assert "create policy jwt_replay_events_no_hard_delete" in sql
+    assert "grant select, insert on table collabio.jwt_replay_tokens to collabio_app" in sql
+    assert "grant insert on table collabio.jwt_replay_events to collabio_app" in sql
+    assert "grant update" not in sql
+    assert "compact_jwt" not in replay_tokens_body
+    assert "token_body" not in replay_tokens_body
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

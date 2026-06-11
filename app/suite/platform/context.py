@@ -75,22 +75,65 @@ class JwtVerifier(Protocol):
 
 
 class JwtReplayStore(Protocol):
-    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool: ...
+    def contains(self, *, tenant_id: str, issuer: str, jwt_id: str, now_epoch: int) -> bool: ...
 
-    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None: ...
+    def record(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None: ...
+
+    def record_replay_detected(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None: ...
 
 
 class InMemoryJwtReplayStore:
     def __init__(self) -> None:
         self._seen_jti_by_issuer: dict[tuple[str, str], int] = {}
 
-    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool:
+    def contains(self, *, tenant_id: str, issuer: str, jwt_id: str, now_epoch: int) -> bool:
+        del tenant_id
         self._purge_expired(now_epoch)
         return (issuer, jwt_id) in self._seen_jti_by_issuer
 
-    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None:
+    def record(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None:
+        del tenant_id, subject
         self._purge_expired(now_epoch)
         self._seen_jti_by_issuer[(issuer, jwt_id)] = expires_at_epoch
+
+    def record_replay_detected(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None:
+        del tenant_id, issuer, subject, jwt_id, expires_at_epoch, now_epoch
 
     def _purge_expired(self, now_epoch: int) -> None:
         expired = [key for key, expires_at in self._seen_jti_by_issuer.items() if expires_at <= now_epoch]
@@ -102,16 +145,42 @@ class JsonFileJwtReplayStore:
     def __init__(self, path: Path) -> None:
         self.path = path
 
-    def contains(self, *, issuer: str, jwt_id: str, now_epoch: int) -> bool:
+    def contains(self, *, tenant_id: str, issuer: str, jwt_id: str, now_epoch: int) -> bool:
+        del tenant_id
         records = self._read_records(now_epoch)
         return (issuer, jwt_id) in records
 
-    def record(self, *, issuer: str, jwt_id: str, expires_at_epoch: int, now_epoch: int) -> None:
+    def record(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None:
+        del subject
         records = self._read_records(now_epoch)
-        records[(issuer, jwt_id)] = expires_at_epoch
+        records[(issuer, jwt_id)] = {
+            "tenant_id": tenant_id,
+            "expires_at_epoch": expires_at_epoch,
+        }
         self._write_records(records)
 
-    def _read_records(self, now_epoch: int) -> dict[tuple[str, str], int]:
+    def record_replay_detected(
+        self,
+        *,
+        tenant_id: str,
+        issuer: str,
+        subject: str,
+        jwt_id: str,
+        expires_at_epoch: int,
+        now_epoch: int,
+    ) -> None:
+        del tenant_id, issuer, subject, jwt_id, expires_at_epoch, now_epoch
+
+    def _read_records(self, now_epoch: int) -> dict[tuple[str, str], dict[str, object]]:
         if not self.path.exists():
             return {}
         try:
@@ -121,7 +190,7 @@ class JsonFileJwtReplayStore:
         raw_records = payload.get("records")
         if not isinstance(raw_records, list):
             raise JwtAuthenticationError("JWT replay store records must be a list")
-        records: dict[tuple[str, str], int] = {}
+        records: dict[tuple[str, str], dict[str, object]] = {}
         for record in raw_records:
             if not isinstance(record, dict):
                 raise JwtAuthenticationError("JWT replay store record must be an object")
@@ -129,16 +198,25 @@ class JsonFileJwtReplayStore:
             jwt_id = _required_string_claim(record, "jwt_id")
             expires_at_epoch = _required_int_claim(record, "expires_at_epoch")
             if expires_at_epoch > now_epoch:
-                records[(issuer, jwt_id)] = expires_at_epoch
+                tenant_id = record.get("tenant_id")
+                records[(issuer, jwt_id)] = {
+                    "tenant_id": tenant_id if isinstance(tenant_id, str) and tenant_id.strip() else "unknown",
+                    "expires_at_epoch": expires_at_epoch,
+                }
         if len(records) != len(raw_records):
             self._write_records(records)
         return records
 
-    def _write_records(self, records: dict[tuple[str, str], int]) -> None:
+    def _write_records(self, records: dict[tuple[str, str], dict[str, object]]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         rows = [
-            {"issuer": issuer, "jwt_id": jwt_id, "expires_at_epoch": expires_at_epoch}
-            for (issuer, jwt_id), expires_at_epoch in sorted(records.items())
+            {
+                "issuer": issuer,
+                "jwt_id": jwt_id,
+                "tenant_id": record["tenant_id"],
+                "expires_at_epoch": record["expires_at_epoch"],
+            }
+            for (issuer, jwt_id), record in sorted(records.items())
         ]
         temp_path = self.path.with_suffix(self.path.suffix + ".tmp")
         temp_path.write_text(json.dumps({"records": rows}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -152,10 +230,25 @@ class JwtReplayGuard:
     def require_not_replayed(self, claims: VerifiedJwtClaims, *, now_epoch: int) -> None:
         if claims.jwt_id is None:
             return
-        if self.store.contains(issuer=claims.issuer, jwt_id=claims.jwt_id, now_epoch=now_epoch):
+        if self.store.contains(
+            tenant_id=claims.tenant_id,
+            issuer=claims.issuer,
+            jwt_id=claims.jwt_id,
+            now_epoch=now_epoch,
+        ):
+            self.store.record_replay_detected(
+                tenant_id=claims.tenant_id,
+                issuer=claims.issuer,
+                subject=claims.subject,
+                jwt_id=claims.jwt_id,
+                expires_at_epoch=claims.expires_at_epoch,
+                now_epoch=now_epoch,
+            )
             raise JwtAuthenticationError("JWT replay detected")
         self.store.record(
+            tenant_id=claims.tenant_id,
             issuer=claims.issuer,
+            subject=claims.subject,
             jwt_id=claims.jwt_id,
             expires_at_epoch=claims.expires_at_epoch,
             now_epoch=now_epoch,
@@ -776,6 +869,18 @@ def _default_principal_directory() -> PrincipalDirectory:
 
 
 def _default_replay_guard() -> JwtReplayGuard:
+    backend = os.getenv("SUITE_JWT_REPLAY_STORE_BACKEND", "json").strip().lower()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_JWT_REPLAY_STORE_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise JwtAuthenticationError(
+                "PostgreSQL JWT replay store requires SUITE_JWT_REPLAY_STORE_DSN or SUITE_DATABASE_DSN"
+            )
+        from suite.platform.jwt_replay_store import PgJwtReplayStore
+
+        return JwtReplayGuard(store=PgJwtReplayStore(database_dsn=database_dsn))
+    if backend not in {"json", "file", "json-file", "json_file"}:
+        raise JwtAuthenticationError(f"Unsupported SUITE_JWT_REPLAY_STORE_BACKEND: {backend}")
     replay_store_path = Path(
         os.getenv(
             "SUITE_JWT_REPLAY_STORE_PATH",

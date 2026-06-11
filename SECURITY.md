@@ -26,6 +26,7 @@ Current skeleton guarantees:
 - `jwt` and `oidc` auth modes resolve the request context from signed bearer tokens and server-side membership/ACL state.
 - Principal, tenant membership, role, group, object ACL, and ABAC stores have a PostgreSQL/RLS-backed runtime option with read-only app-role access and audit-chain references.
 - OIDC verification supports RS256 JWKS, key refresh, IdP outage policy, and replay detection.
+- JWT/OIDC replay state has a PostgreSQL/RLS-backed runtime option with tenant-aware append-only replay events and no token-body storage.
 - Local dev KMS and envelope encryption adapters are disabled in production environments.
 - Voice transcripts require explicit push-to-talk activation.
 - Tests run in Docker Compose.

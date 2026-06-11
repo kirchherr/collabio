@@ -15,17 +15,17 @@ The most important lesson is also correct: the next work must harden the foundat
 - Static OIDC/JWKS verification now supports RS256, `kid`-based key selection, issuer/audience allowlists, replay detection, and health reporting.
 - Dynamic OIDC discovery now supports JWKS refresh scheduling, unknown-`kid` refresh, key-cache expiry, IdP outage policy, and a persistent JSON replay store.
 - PrincipalResolver, tenant membership, role, group, object ACL, and ABAC state now have a PostgreSQL/RLS-backed runtime store with audit-chain references and read-only app-role access.
+- JWT/OIDC replay state now has a PostgreSQL/RLS-backed runtime store with tenant-aware accepted/replayed events and no token-body storage.
 - RAG inference data classes are now derived from the actual authorized source classifications and include `ai_prompt` for the user question.
 - Local dev KMS and local dev envelope encryption now fail closed in production environments.
 - Tests cover the above regressions.
 
 ## Remaining P0 Gates
 
-1. Move replay state from JSON file to PostgreSQL or another durable low-latency store with audit events.
-2. Create a canonical DataClass registry and validate runtime enums, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
-3. Implement a persistent PostgreSQL append-only audit store with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
-4. Introduce an authorized ChunkRepository so RAG sends exact chunks, not whole source documents.
-5. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, and ABAC mutations.
+1. Create a canonical DataClass registry and validate runtime enums, retention, KMS, DB constraints, prompt/model registries, and compliance docs against it.
+2. Implement a persistent PostgreSQL append-only audit store with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
+3. Introduce an authorized ChunkRepository so RAG sends exact chunks, not whole source documents.
+4. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
 
 ## Release Gate
 

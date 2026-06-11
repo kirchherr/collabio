@@ -59,7 +59,16 @@ Discovery-backed `oidc` mode is enabled with either:
 
 The discovery-backed verifier fetches `.well-known/openid-configuration`, validates the issuer, fetches JWKS, refreshes keys on schedule, refreshes again when an unknown `kid` appears, and can either fail closed or use stale keys during an IdP outage until the configured grace period expires.
 
-`jti` replay detection can use a JSON file store through `SUITE_JWT_REPLAY_STORE_PATH`; by default it stores under `SUITE_DATA_DIR/auth/jwt_replay_store.json`. Production should move replay state to PostgreSQL or another durable low-latency store with tenant-aware audit events.
+`jti` replay detection can use a JSON file store through `SUITE_JWT_REPLAY_STORE_PATH`; by default it stores under `SUITE_DATA_DIR/auth/jwt_replay_store.json`.
+
+`SUITE_JWT_REPLAY_STORE_BACKEND=postgres` enables the PostgreSQL-backed replay store. It uses `SUITE_JWT_REPLAY_STORE_DSN` when set, otherwise `SUITE_DATABASE_DSN`.
+
+The PostgreSQL replay store writes:
+
+- `jwt_replay_tokens`: accepted `issuer` + `jti` pairs with `tenant_id`, `subject`, expiry, and audit-chain reference
+- `jwt_replay_events`: append-only `accepted` and `replayed` events with tenant-aware RLS
+
+Compact JWTs, token bodies, prompt text, and output text are never stored in the replay tables. `issuer` + `jti` is globally unique to block cross-tenant token-ID reuse while all readable rows remain tenant-filtered by RLS.
 
 ## Server-Side Authorization
 
