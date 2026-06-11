@@ -60,3 +60,14 @@ Required fields:
 - retired_at_utc
 
 Source indexing must resolve the exact embedding model ID and version before writing vector chunks. The model version must be approved, not retired, approved for the source data classification, and dimension-compatible with the embedding provider output. The pgvector-backed registry reads this state from `collabio.embedding_models`.
+
+Embedding model administration is exposed through the security-admin API:
+
+- `GET /v1/admin/embedding-models`
+- `POST /v1/admin/embedding-models`
+- `POST /v1/admin/embedding-models/{embedding_model_id}/versions/{embedding_model_version}/approve`
+- `POST /v1/admin/embedding-models/{embedding_model_id}/versions/{embedding_model_version}/retire`
+
+Only `security-admin` may register, approve, or retire embedding model versions. Registration creates a draft model version. Approval requires an approval reference and writes `embedding_model_version.approved` to the audit chain. Retirement requires a retirement reference and reason and writes `embedding_model_version.retired`.
+
+The current app deployment stores the administrative registry in `SUITE_DATA_DIR/registries/embedding_models.json`; production indexing can read the same governance state from the pgvector `collabio.embedding_models` table through the pgvector registry adapter.

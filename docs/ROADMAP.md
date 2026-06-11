@@ -1057,7 +1057,8 @@ Empfohlene naechste Reihenfolge:
 37. [x] Benchmark Thresholds und Reporting vor ANN-Index-Entscheidungen ergaenzen.
 38. [x] Vector Worker Audit Events an durable Deployment Audit Storage anbinden.
 39. [x] Embedding Model Versioning Registry Checks vor Production Indexing ergaenzen.
-40. [ ] Production-grade Embedding Model Registry Administration und Approval Audit Events ergaenzen.
+40. [x] Production-grade Embedding Model Registry Administration und Approval Audit Events ergaenzen.
+41. [ ] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
 
 ## Release-Strategie
 

@@ -10,7 +10,7 @@ The second rule is just as important: every new durable component must update th
 
 This model covers the whole suite trajectory:
 
-- PostgreSQL metadata, policies, audit events, vector worker audit events, migration history, vector metadata, and embedding model version approvals.
+- PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.
 - File-backed development policy and registry data.
 - Source object metadata, object manifests, object storage, WORM records, office documents, collaborative state, mail messages, attachments, parser artifacts, export packages, and audit snapshots.
 - KMS references, secret-manager state, key rotation evidence, and destruction evidence.
@@ -31,6 +31,7 @@ It is intentionally lightweight. The current repository implements development b
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
 - Vector worker audit events must remain in the deployment audit chain and survive restore verification before recovered vector indexes are trusted.
+- Embedding model approval and retirement audit events must be restored with the registry state before source indexing resumes.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Storage object restores must prove storage manifest hash, object version ID, bucket profile, KMS reference, object-lock configuration, and legal-hold evidence.
 - KMS restores must prove adapter policy, key-reference evidence hashes, rotation evidence, cryptoshred manifests, destruction evidence, and no plaintext key export.

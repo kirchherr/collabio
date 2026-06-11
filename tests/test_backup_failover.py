@@ -112,10 +112,12 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
     assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
     assert "vector worker audit events" in policy.domain("audit_evidence").state_artifacts
+    assert "embedding model approval audit events" in policy.domain("audit_evidence").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
     assert "benchmark reports" in policy.domain("search_indexes").state_artifacts
     assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
     assert "embedding model version approvals" in policy.domain("vector_indexes").state_artifacts
+    assert "embedding model approval audit references" in policy.domain("vector_indexes").state_artifacts
     assert "embedding model dimensions" in policy.domain("vector_indexes").state_artifacts
     assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
     assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
@@ -151,6 +153,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "restore drill report hash" in runbook
     assert "ACL versions" in runbook
     assert "embedding model version approvals" in runbook
+    assert "Embedding model approval" in runbook
     assert "benchmark report hash" in runbook
     assert "Vector worker audit events" in runbook
 

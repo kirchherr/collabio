@@ -27,9 +27,18 @@ from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
+from suite.rag.embedding_model_admin import (
+    EmbeddingModelVersionAdminService,
+    EmbeddingModelVersionApprovalRequest,
+    EmbeddingModelVersionRegistrationRequest,
+    EmbeddingModelVersionRetirementRequest,
+    EmbeddingModelVersionView,
+    JsonFileEmbeddingModelVersionRegistry,
+)
 from suite.rag.models import RagQuery, RagResponse
 from suite.rag.pipeline import RagPipeline
 from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
+from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -87,6 +96,17 @@ def require_tenant_admin(
     return context
 
 
+def require_security_admin(
+    context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+) -> TenantRequestContext:
+    if "security-admin" not in context.user_context.role_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Security admin role required",
+        )
+    return context
+
+
 def build_app() -> FastAPI:
     app = FastAPI(title="Compliance-First Enterprise Suite", version="0.1.0")
 
@@ -105,6 +125,10 @@ def build_app() -> FastAPI:
     tool_permission_registry = JsonFileToolPermissionRegistry.load_or_seed(
         registry_dir / "tool_permissions.json",
         seed=InMemoryToolPermissionRegistry.default(),
+    )
+    embedding_model_registry = JsonFileEmbeddingModelVersionRegistry.load_or_seed(
+        registry_dir / "embedding_models.json",
+        seed=InMemoryEmbeddingModelVersionRegistry.approved_single_model(),
     )
     policy_engine = PolicyEngine(
         model_registry=model_registry,
@@ -132,6 +156,10 @@ def build_app() -> FastAPI:
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(
         registry_dir / "tenant_policies.json",
         seed=InMemoryTenantPolicyRepository.default(),
+    )
+    embedding_model_admin = EmbeddingModelVersionAdminService(
+        repository=embedding_model_registry,
+        audit_logger=audit_logger,
     )
 
     @app.get("/health")
@@ -190,6 +218,67 @@ def build_app() -> FastAPI:
         )
         return persisted_policy
 
+    @app.get("/v1/admin/embedding-models", response_model=list[EmbeddingModelVersionView])
+    def list_embedding_model_versions(
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> list[EmbeddingModelVersionView]:
+        del context
+        return list(embedding_model_admin.list_model_versions())
+
+    @app.post("/v1/admin/embedding-models", response_model=EmbeddingModelVersionView)
+    def register_embedding_model_version(
+        registration: EmbeddingModelVersionRegistrationRequest,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> EmbeddingModelVersionView:
+        try:
+            return embedding_model_admin.register(registration, user_context=context.user_context)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/admin/embedding-models/{embedding_model_id}/versions/{embedding_model_version}/approve",
+        response_model=EmbeddingModelVersionView,
+    )
+    def approve_embedding_model_version(
+        embedding_model_id: str,
+        embedding_model_version: str,
+        approval: EmbeddingModelVersionApprovalRequest,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> EmbeddingModelVersionView:
+        try:
+            return embedding_model_admin.approve(
+                embedding_model_id=embedding_model_id,
+                embedding_model_version=embedding_model_version,
+                request=approval,
+                user_context=context.user_context,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/admin/embedding-models/{embedding_model_id}/versions/{embedding_model_version}/retire",
+        response_model=EmbeddingModelVersionView,
+    )
+    def retire_embedding_model_version(
+        embedding_model_id: str,
+        embedding_model_version: str,
+        retirement: EmbeddingModelVersionRetirementRequest,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> EmbeddingModelVersionView:
+        try:
+            return embedding_model_admin.retire(
+                embedding_model_id=embedding_model_id,
+                embedding_model_version=embedding_model_version,
+                request=retirement,
+                user_context=context.user_context,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     @app.post("/v1/ai/inference", response_model=InferenceResponse)
     def infer(
         inference_request: InferenceRequest,
@@ -234,6 +323,8 @@ def build_app() -> FastAPI:
 
     app.state.audit_logger = audit_logger
     app.state.llm_gateway = llm_gateway
+    app.state.embedding_model_admin = embedding_model_admin
+    app.state.embedding_model_registry = embedding_model_registry
     app.state.model_registry = model_registry
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository

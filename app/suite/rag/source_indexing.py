@@ -149,6 +149,14 @@ class InMemoryEmbeddingModelVersionRegistry:
             version_key = f"{embedding_model_id}@{embedding_model_version}"
             raise LookupError(f"Unknown embedding model version: {version_key}") from exc
 
+    def list_model_versions(self) -> tuple[EmbeddingModelVersion, ...]:
+        return tuple(self._model_versions[key] for key in sorted(self._model_versions))
+
+    def upsert(self, model_version: EmbeddingModelVersion) -> EmbeddingModelVersion:
+        key = (model_version.embedding_model_id, model_version.embedding_model_version)
+        self._model_versions[key] = model_version
+        return model_version
+
 
 @dataclass(frozen=True)
 class ResolvedSource:

@@ -45,10 +45,11 @@ Current sprint:
 35. [x] Vector benchmark thresholds, report hashes, and ANN candidate decision gates.
 36. [x] Durable deployment audit storage for vector worker events.
 37. [x] Embedding model versioning registry checks before production indexing.
+38. [x] Production-grade embedding model registry administration and approval audit events.
 
 ## Next Engineering Step
 
-After embedding model version registry checks are in place:
+After embedding model registry administration is in place:
 
-- Add production-grade embedding model registry administration and approval audit events.
+- Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.

@@ -40,7 +40,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore audit tables and WORM snapshots; verify hash chain before declaring service recovered",
-      "state_artifacts": ["audit events", "audit hashes", "vector worker audit events", "verification checkpoints", "WORM audit snapshots"]
+      "state_artifacts": ["audit events", "audit hashes", "vector worker audit events", "embedding model approval audit events", "verification checkpoints", "WORM audit snapshots"]
     },
     {
       "domain_id": "object_storage_records",
@@ -112,7 +112,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "important",
       "recovery_strategy": "restore vector metadata with Postgres; rebuild derived vectors when model or index snapshots are stale",
-      "state_artifacts": ["vector chunks", "embedding model IDs", "embedding model version approvals", "embedding model dimensions", "ACL hashes", "ACL versions", "vector metadata schema", "lifecycle state", "reindex checkpoints", "benchmark reports", "benchmark report hashes"]
+      "state_artifacts": ["vector chunks", "embedding model IDs", "embedding model version approvals", "embedding model approval audit references", "embedding model dimensions", "ACL hashes", "ACL versions", "vector metadata schema", "lifecycle state", "reindex checkpoints", "benchmark reports", "benchmark report hashes"]
     },
     {
       "domain_id": "ai_control_plane",
