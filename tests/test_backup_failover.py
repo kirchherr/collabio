@@ -27,6 +27,13 @@ REQUIRED_CONTINUITY_DOMAINS = {
     "observability_operational_logs",
     "repository_and_configuration",
     "background_jobs_queues",
+    "module_registry_state",
+    "crm_erp_business_records",
+    "knowledge_base_content",
+    "learning_management_records",
+    "task_activity_records",
+    "service_ticket_records",
+    "time_tracking_records",
 }
 
 
@@ -123,6 +130,16 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
+    assert policy.domain("module_registry_state").criticality == "critical"
+    assert "tenant module states" in policy.domain("module_registry_state").state_artifacts
+    assert policy.domain("crm_erp_business_records").criticality == "critical"
+    assert "invoices" in policy.domain("crm_erp_business_records").state_artifacts
+    assert "SQL Server migration manifests" in policy.domain("crm_erp_business_records").state_artifacts
+    assert "knowledge article versions" in policy.domain("knowledge_base_content").state_artifacts
+    assert "course completions" in policy.domain("learning_management_records").state_artifacts
+    assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
+    assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
+    assert "time entries" in policy.domain("time_tracking_records").state_artifacts
 
 
 def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
@@ -156,6 +173,10 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Embedding model approval" in runbook
     assert "benchmark report hash" in runbook
     assert "Vector worker audit events" in runbook
+    assert "module registry state" in runbook
+    assert "CRM/ERP business records" in runbook
+    assert "knowledge-base article versions" in runbook
+    assert "time entries" in runbook
 
 
 def test_compose_exposes_backup_and_verification_commands() -> None:

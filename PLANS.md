@@ -53,3 +53,16 @@ After embedding model registry administration is in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
+
+## Module Expansion Stance
+
+ERP/CRM and later modules such as knowledge base, LMS, tasks and activities, incident/ticket systems, and time tracking must enter through the Platform Module System.
+
+Each module charter must define:
+
+- module ID, tenant entitlement, tenant enablement, and server-side module gates
+- object types, classifications, retention policies, legal-hold scopes, and KMS expectations
+- audit events for lifecycle, imports, exports, approvals, and destructive intents
+- backup/failover continuity domain, restore evidence, and degraded mode
+- search/RAG source contract with candidate-only results and authoritative ACL checks
+- migration, provisioning, disable, suspend, and decommission behavior

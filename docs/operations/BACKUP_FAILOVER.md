@@ -65,6 +65,13 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - observability evidence
 - repository and release configuration
 - background jobs and outbox state
+- module registry state and tenant module lifecycle
+- CRM/ERP business records, GoBD-relevant records, and SQL Server migration evidence
+- knowledge-base article versions, source attachments, and publication approvals
+- LMS courses, enrollments, completion evidence, and certificates
+- tasks, activities, assignments, workflow state, and due dates
+- incident reports, tickets, SLA state, communications, and escalation evidence
+- time entries, corrections, approvals, and export metadata
 
 When a future feature introduces a new stateful subsystem, one of these domains must be updated or a new domain must be added in the same change.
 
@@ -129,6 +136,7 @@ Any PR or roadmap step that adds persistent state must answer:
 - What integrity check proves the restored state is trustworthy?
 - What is the degraded or failover mode?
 - Does retention, legal hold, KMS, audit, tenant isolation, or e-discovery change?
+- Does module enablement, disablement, suspension, or decommissioning change?
 
 If the answer changes, the policy and runbook move in the same PR.
 

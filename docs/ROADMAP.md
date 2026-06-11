@@ -97,7 +97,7 @@ Noch nicht umgesetzt:
 - [ ] Vollstaendiger IAM/OIDC Auth Context.
 - [ ] Produktionsfaehiger Audit Storage mit DB-Rollen, WORM Snapshots und Checkpoints.
 - [ ] KMS/WORM/Retention/Legal Hold.
-- [ ] Office-, Mail-, Search-, E-Discovery- und Admin-Module.
+- [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
 ## Roadmap-Ueberblick
 
@@ -115,6 +115,7 @@ Noch nicht umgesetzt:
 | 8 | Kubernetes, Self-Hosting, lokale LLM Deployments | Kunden koennen sicher selbst betreiben |
 | 9 | Security Hardening, Performance, Audit Readiness | Release Candidate ist belastbar geprueft |
 | 10 | Enterprise Readiness und v1.5-Ausbau | Audit-Paket, Betriebsreife und Enterprise-Erweiterungen |
+| 11 | Platform Module System, CRM/ERP und weitere Fachmodule | ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung docken compliance-sicher an |
 
 ## Referenzstandards
 
@@ -160,6 +161,7 @@ suite/
   backend/
     apps/
       api/
+      module-registry/
       mail-gateway/
       collaboration/
       search-indexer/
@@ -169,6 +171,12 @@ suite/
       kms-adapter/
       ai-control-plane/
       llm-gateway/
+      crm-erp/
+      knowledge-base/
+      learning-management/
+      work-management/
+      service-desk/
+      time-tracking/
     libs/
       authz/
       audit/
@@ -178,11 +186,18 @@ suite/
       tenant-context/
       policy-engine/
       observability/
+      module-runtime/
   frontend/
     apps/
       web-suite/
       admin-console/
       ediscovery-console/
+      crm-erp-console/
+      knowledge-console/
+      learning-console/
+      work-console/
+      service-desk-console/
+      time-tracking-console/
     packages/
       editor-text/
       editor-sheet/
@@ -313,6 +328,38 @@ Vector DB und Search Index sind Beschleuniger, keine Berechtigungsquelle.
 - Roh-Audio wird nicht gespeichert, ausser Tenant Policy erlaubt es explizit.
 - Transkripte sind personenbezogene oder vertrauliche Daten und folgen Retention.
 - Voice Commands umgehen niemals Berechtigungen.
+
+### Modul-Erweiterungsregel
+
+ERP/CRM, Wissensdatenbank, LMS, Aufgaben und Aktivitaeten, Meldesysteme und Tickets, Zeiterfassung und spaetere Fachmodule sind optionale Produktmodule auf demselben Compliance-Core.
+
+Jedes neue Modul braucht vor Implementierung ein Module Charter mit:
+
+- `module_id`, Modulstatus, Tenant-Entitlement und Tenant-Enablement.
+- Serverseitigem Modul-Gate fuer API, Worker und Admin-Aktionen.
+- Feature-Permissions; UI-Sichtbarkeit ist nur Komfort, keine Autorisierung.
+- Objektklassen, Datenklassen, Retention Policies, Legal-Hold-Scope und KMS-Bezug.
+- Audit-Events fuer Enable, Disable, Suspend, Decommission, Import, Export und destruktive Absichten.
+- Backup-/Restore-/Failover-Domain und Restore-Evidence.
+- Search/RAG-Quellenvertrag mit Candidate-only Results und autoritativer ACL-Pruefung.
+- Migrations- und Decommissioning-Regeln mit Checksummen und Freigabe.
+
+Modulstatus:
+
+```text
+not_installed
+installed
+available
+provisioning
+enabled
+disabled
+suspended
+decommission_requested
+decommission_blocked
+decommissioned
+```
+
+Ein deaktiviertes Modul ist nicht geloescht. Retention, Legal Hold, Audit, Backup, Restore, Export, GoBD- und DSGVO-Pflichten laufen weiter.
 
 ## Phase -1: Produkt-, Rechts-, Standard-, AI- und UX-Fundament
 
@@ -913,6 +960,74 @@ Exit-Kriterien:
 - [ ] Enterprise Buyer versteht Deployment, Datenfluesse, AI-Kontrollen und Audit Evidence.
 - [ ] v1 Release Candidate hat komplette Test-, Security-, Betriebs- und Governance-Nachweise.
 
+## Phase 11: Platform Module System, CRM/ERP und weitere Fachmodule
+
+Ziel: Fachmodule entstehen nicht als parallele Silos, sondern als tenantfaehige Add-ons auf dem bestehenden Compliance-, Audit-, Storage-, KMS-, Search-, RAG-, Backup- und Failover-Core.
+
+Leitsatz:
+
+```text
+Module sind optional in der Nutzung,
+aber nicht optional in der Compliance.
+```
+
+Epics:
+
+- MOD-1: Platform Module Registry und Tenant Module State.
+- MOD-2: Module-Aware Migrations und Provisioning Evidence.
+- MOD-3: CRM/ERP optionales Modul `crm_erp`.
+- MOD-4: Business Object Registry fuer Fachmodule.
+- MOD-5: SQL-Server-Legacy-Import fuer CRM/ERP.
+- MOD-6: Fachmodul-Search/RAG Boundary.
+- MOD-7: Modul-Decommissioning mit Retention, Legal Hold, Export und Audit Evidence.
+- MOD-8: Modul-Vorbereitung fuer Wissensdatenbank, LMS, Aufgaben/Aktivitaeten, Meldesysteme/Tickets und Zeiterfassung.
+
+Plattform-Aufgaben:
+
+- [ ] ADR fuer Platform Module System erstellen.
+- [ ] `module_catalog` und `tenant_modules` als Kernmodell definieren.
+- [ ] Statusmodell fuer installierte, verfuegbare, aktivierte, deaktivierte, suspendierte und dekommissionierte Module implementieren.
+- [ ] `GET /v1/platform/modules` fuer Frontend-Discovery planen.
+- [ ] Admin-APIs fuer Provision, Enable, Disable, Suspend, Decommission Request und Decommission Check planen.
+- [ ] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
+- [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
+- [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
+- [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
+
+CRM/ERP `crm_erp`:
+
+- [ ] Module Charter fuer `crm_erp` schreiben.
+- [ ] Subfeatures definieren: `crm.accounts`, `crm.contacts`, `crm.activities`, `erp.products`, `erp.suppliers`, `erp.orders`, `erp.invoices`, `legacy_import.sqlserver`, `gobd_export`, `legal_hold`, `rag_indexing`, `ai_assist`.
+- [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
+- [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
+- [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
+- [ ] Datenklassen harmonisieren: personal, internal, confidential, gobd, legal_hold, security_data, export_package.
+- [ ] SQL-Server-Import mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
+- [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
+- [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
+- [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
+- [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
+- [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
+- [ ] CRM/ERP Search zuerst klassisch/ACL-gefiltert, RAG erst nach Source Resolver, Redaction und Audit Trace.
+- [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
+
+Vorbereitete Modul-Familien:
+
+- Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention.
+- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
+- Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
+- Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
+- Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.
+
+Exit-Kriterien:
+
+- [ ] Kein Modul kann Daten ohne Tenant Context, Modulstatus und Feature-Permission lesen oder schreiben.
+- [ ] Disable stoppt normale Nutzung, aber nicht Retention, Legal Hold, Audit, Backup, Restore, Export oder Compliance-Admin-Zugriff.
+- [ ] Decommission ist ein Compliance-Workflow und wird durch aktive Retention, Legal Hold oder Exportpflichten blockiert.
+- [ ] Jedes Modul hat Restore Drill Evidence und RLS/Authz-Tests.
+- [ ] Search/RAG fuer Module liefert nur Kandidaten und zitiert autorisierte Source Object IDs und Versionen.
+- [ ] Modul-Aktivierung und -Deaktivierung sind auditierbar und wiederherstellbar.
+
 ## Erste Codex-Epics
 
 ### Epic 1: Compliance Foundation
@@ -1059,6 +1174,8 @@ Empfohlene naechste Reihenfolge:
 39. [x] Embedding Model Versioning Registry Checks vor Production Indexing ergaenzen.
 40. [x] Production-grade Embedding Model Registry Administration und Approval Audit Events ergaenzen.
 41. [ ] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
+42. [ ] Platform Module System ADR und Module Charter Template fuer `crm_erp` und spaetere Fachmodule erstellen.
+43. [ ] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
 
 ## Release-Strategie
 
@@ -1137,6 +1254,9 @@ Enthaelt:
 - [ ] Multi-Region.
 - [ ] High Availability Profile.
 - [ ] Externe Auditor Packages.
+- [ ] Platform Module System.
+- [ ] Optionales CRM/ERP Modul als erster Business-Modulnachweis.
+- [ ] Vorbereitete Modulpfade fuer Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
 ## Kritische Fallstricke
 
@@ -1152,3 +1272,5 @@ Enthaelt:
 - Barrierefreiheit zu spaet: Design System ab Phase 1 mit WCAG 2.2 AA.
 - AI als Superuser: AI darf nie mehr sehen, tun oder exportieren als der aktuelle Nutzer.
 - Embeddings unterschaetzt: Embeddings sind klassifizierte Daten, nicht anonym.
+- Feature Flags als Autorisierung missverstanden: Modulstatus muss serverseitig in API und Workern gelten.
+- Modul deaktiviert, Compliance vergessen: Disable darf Retention, Legal Hold, Audit, Backup, Restore und Export nie stoppen.

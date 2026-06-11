@@ -169,12 +169,68 @@
       "criticality": "important",
       "recovery_strategy": "restore durable queue/outbox state; resume workers only after idempotency and tenant checks pass",
       "state_artifacts": ["outbox events", "job cursors", "retry state", "idempotency keys", "worker checkpoints"]
+    },
+    {
+      "domain_id": "module_registry_state",
+      "description": "Global module catalog, tenant module lifecycle, feature flags, provisioning evidence, enablement history, and decommission prechecks.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore before feature routers and workers start; verify module gates, disabled state, suspended state, and decommission blockers",
+      "state_artifacts": ["module catalog", "tenant module states", "module feature flags", "provisioning evidence", "module lifecycle audit references", "decommission precheck results"]
+    },
+    {
+      "domain_id": "crm_erp_business_records",
+      "description": "CRM/ERP accounts, contacts, activities, products, suppliers, orders, invoices, GoBD-relevant records, and SQL Server migration evidence.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore module schemas with row-count and checksum evidence; verify RLS, legal-hold blocking, retention mapping, and module enablement state",
+      "state_artifacts": ["CRM accounts", "CRM contacts", "CRM activities", "ERP products", "ERP suppliers", "orders", "invoices", "GoBD retention mappings", "SQL Server migration manifests", "migration validation reports"]
+    },
+    {
+      "domain_id": "knowledge_base_content",
+      "description": "Knowledge-base articles, article versions, source attachments, publication approvals, and RAG source references.",
+      "primary_target_id": "object_storage_records",
+      "criticality": "important",
+      "recovery_strategy": "restore versioned content and metadata; verify source object references, publication state, ACLs, and RAG citation readiness before serving",
+      "state_artifacts": ["knowledge articles", "knowledge article versions", "source attachments", "publication approvals", "RAG source references"]
+    },
+    {
+      "domain_id": "learning_management_records",
+      "description": "LMS courses, enrollments, learning progress, completion evidence, certificates, and mandatory-training audit references.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "important",
+      "recovery_strategy": "restore course and learner state; verify certificates, completion evidence, retention mapping, and tenant isolation before reopening LMS access",
+      "state_artifacts": ["courses", "enrollments", "learning progress", "course completions", "certificates", "mandatory-training evidence"]
+    },
+    {
+      "domain_id": "task_activity_records",
+      "description": "Tasks, activities, assignments, workflow transitions, due dates, responsibility records, and activity audit references.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "important",
+      "recovery_strategy": "restore task and activity state; verify workflow transitions, assignments, idempotency, and authorization boundaries before workers resume",
+      "state_artifacts": ["tasks", "activities", "assignments", "workflow transitions", "due dates", "activity audit references"]
+    },
+    {
+      "domain_id": "service_ticket_records",
+      "description": "Reports, incidents, tickets, SLA state, communications, escalation history, and service-desk evidence.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore ticket state and communications; verify escalation history, SLA state, legal-hold scopes, and tenant isolation before queues reopen",
+      "state_artifacts": ["reports", "incidents", "tickets", "ticket SLA state", "communications", "escalation history", "service-desk evidence"]
+    },
+    {
+      "domain_id": "time_tracking_records",
+      "description": "Time entries, corrections, approvals, export metadata, payroll/ERP bridge state, and retention evidence.",
+      "primary_target_id": "postgres_primary",
+      "criticality": "critical",
+      "recovery_strategy": "restore time records with approval and correction evidence; verify export metadata, retention mapping, and tenant isolation before exports resume",
+      "state_artifacts": ["time entries", "corrections", "time approvals", "export metadata", "payroll bridge state", "ERP bridge state", "retention evidence"]
     }
   ],
   "targets": [
     {
       "target_id": "postgres_primary",
-      "description": "PostgreSQL metadata, source object metadata, tenant policies, registries, audit rows, migration history, vector metadata, mail metadata, and durable job state.",
+      "description": "PostgreSQL metadata, source object metadata, tenant policies, registries, audit rows, migration history, vector metadata, mail metadata, module registry state, business module records, and durable job state.",
       "covered_domains": [
         "tenant_iam_authz",
         "postgres_metadata",
@@ -183,9 +239,15 @@
         "vector_indexes",
         "ai_control_plane",
         "voice_transcripts",
-        "background_jobs_queues"
+        "background_jobs_queues",
+        "module_registry_state",
+        "crm_erp_business_records",
+        "learning_management_records",
+        "task_activity_records",
+        "service_ticket_records",
+        "time_tracking_records"
       ],
-      "data_classes": ["internal", "personal", "confidential", "embedding", "ai_prompt", "ai_output", "voice_transcript"],
+      "data_classes": ["internal", "personal", "confidential", "gobd", "legal_hold", "embedding", "ai_prompt", "ai_output", "voice_transcript"],
       "rpo_minutes": 15,
       "rto_hours": 4,
       "backup_methods": ["production_pitr_wal_archive", "daily_logical_dump", "development_pg_dump"],
@@ -201,13 +263,14 @@
     },
     {
       "target_id": "object_storage_records",
-      "description": "Office documents, mail attachments, WORM records, parser artifacts, e-discovery export packages, source object manifests, object manifests, and audit snapshots.",
+      "description": "Office documents, mail attachments, WORM records, parser artifacts, knowledge-base content, e-discovery export packages, source object manifests, object manifests, and audit snapshots.",
       "covered_domains": [
         "object_storage_records",
         "office_documents",
         "mail_attachments",
         "parser_worker_artifacts",
-        "ediscovery_exports"
+        "ediscovery_exports",
+        "knowledge_base_content"
       ],
       "data_classes": ["public", "internal", "personal", "confidential", "gobd", "legal_hold", "voice_transcript"],
       "rpo_minutes": 60,
@@ -323,6 +386,8 @@
     "KMS or secret-manager recovery risk",
     "mail delivery or journal consistency risk",
     "office record or WORM integrity risk",
+    "module enablement state or decommission blocker mismatch",
+    "CRM/ERP, ticket, LMS, or time-tracking records cannot be restored within RTO",
     "search or vector index cannot be rebuilt within RTO",
     "RPO or RTO threshold at risk"
   ],
@@ -338,6 +403,8 @@
     "verification command output",
     "restore drill report hash",
     "storage, envelope, retention, and KMS evidence hashes",
+    "module registry state and tenant module lifecycle result",
+    "business module row-count and checksum evidence when applicable",
     "restore target",
     "tenant and data scope",
     "approval reference"
