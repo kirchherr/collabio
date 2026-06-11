@@ -62,10 +62,21 @@ REQUIRED_DECOMMISSION_COMPLETION_EVIDENCE_KEYS = {
     "final_backup_disposition_ref",
     "final_data_disposition_ref",
 }
+REQUIRED_DECOMMISSION_CANCEL_EVIDENCE_KEYS = {
+    "cancel_approval_ref",
+    "cancel_audit_evidence_ref",
+}
+REQUIRED_DECOMMISSION_REOPEN_EVIDENCE_KEYS = {
+    "reopen_approval_ref",
+    "blocker_remediation_evidence_ref",
+    "reopen_audit_evidence_ref",
+}
 ALLOWED_DECOMMISSION_EVIDENCE_KEYS = (
     REQUIRED_DECOMMISSION_EVIDENCE_KEYS
     | REQUIRED_DECOMMISSION_BLOCKER_EVIDENCE_KEYS
     | REQUIRED_DECOMMISSION_COMPLETION_EVIDENCE_KEYS
+    | REQUIRED_DECOMMISSION_CANCEL_EVIDENCE_KEYS
+    | REQUIRED_DECOMMISSION_REOPEN_EVIDENCE_KEYS
 )
 
 
@@ -188,6 +199,44 @@ class ModuleDecommissionCompletionCommand(ModuleLifecycleCommand):
         }
 
 
+class ModuleDecommissionCancelCommand(ModuleLifecycleCommand):
+    cancel_approval_ref: str
+    cancel_audit_evidence_ref: str
+
+    @field_validator("cancel_approval_ref", "cancel_audit_evidence_ref")
+    @classmethod
+    def validate_evidence_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("decommission cancel evidence references must be namespaced references")
+        return value
+
+    def evidence_refs(self) -> dict[str, str]:
+        return {
+            "cancel_approval_ref": self.cancel_approval_ref,
+            "cancel_audit_evidence_ref": self.cancel_audit_evidence_ref,
+        }
+
+
+class ModuleDecommissionReopenCommand(ModuleLifecycleCommand):
+    reopen_approval_ref: str
+    blocker_remediation_evidence_ref: str
+    reopen_audit_evidence_ref: str
+
+    @field_validator("reopen_approval_ref", "blocker_remediation_evidence_ref", "reopen_audit_evidence_ref")
+    @classmethod
+    def validate_evidence_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("decommission reopen evidence references must be namespaced references")
+        return value
+
+    def evidence_refs(self) -> dict[str, str]:
+        return {
+            "reopen_approval_ref": self.reopen_approval_ref,
+            "blocker_remediation_evidence_ref": self.blocker_remediation_evidence_ref,
+            "reopen_audit_evidence_ref": self.reopen_audit_evidence_ref,
+        }
+
+
 class ModuleCatalogEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -254,6 +303,8 @@ class TenantModuleState(BaseModel):
     disabled_at_utc: datetime | None = None
     decommission_requested_at_utc: datetime | None = None
     decommission_blocked_at_utc: datetime | None = None
+    decommission_cancelled_at_utc: datetime | None = None
+    decommission_reopened_at_utc: datetime | None = None
     decommissioned_at_utc: datetime | None = None
     created_at_utc: datetime = Field(default_factory=utc_now)
     updated_at_utc: datetime = Field(default_factory=utc_now)
@@ -330,6 +381,24 @@ class TenantModuleState(BaseModel):
                 raise ValueError("decommissioned module state requires final disposition evidence")
             if any(self.enabled_features.values()):
                 raise ValueError("decommissioned module cannot keep enabled features")
+        if self.decommission_cancelled_at_utc is not None:
+            missing_evidence = REQUIRED_DECOMMISSION_CANCEL_EVIDENCE_KEYS - set(self.decommission_evidence_refs)
+            if missing_evidence:
+                raise ValueError("cancelled decommission module state requires cancel evidence")
+            if self.status == ModuleStatus.DISABLED and any(self.enabled_features.values()):
+                raise ValueError("cancelled decommission module cannot keep enabled features while disabled")
+        if self.decommission_reopened_at_utc is not None:
+            if self.decommission_requested_at_utc is None:
+                raise ValueError("reopened decommission module state requires decommission_requested_at_utc")
+            if self.decommission_blocked_at_utc is None:
+                raise ValueError("reopened decommission module state requires decommission_blocked_at_utc")
+            missing_evidence = (
+                REQUIRED_DECOMMISSION_EVIDENCE_KEYS
+                | REQUIRED_DECOMMISSION_BLOCKER_EVIDENCE_KEYS
+                | REQUIRED_DECOMMISSION_REOPEN_EVIDENCE_KEYS
+            ) - set(self.decommission_evidence_refs)
+            if missing_evidence:
+                raise ValueError("reopened decommission module state requires reopen evidence")
         return self
 
     @property
@@ -378,6 +447,8 @@ class TenantModuleAdminView(BaseModel):
     disabled_at_utc: datetime | None = None
     decommission_requested_at_utc: datetime | None = None
     decommission_blocked_at_utc: datetime | None = None
+    decommission_cancelled_at_utc: datetime | None = None
+    decommission_reopened_at_utc: datetime | None = None
     decommissioned_at_utc: datetime | None = None
     decommission_evidence_refs: dict[str, str]
     updated_at_utc: datetime
@@ -397,6 +468,8 @@ def tenant_module_admin_view(state: TenantModuleState) -> TenantModuleAdminView:
         disabled_at_utc=state.disabled_at_utc,
         decommission_requested_at_utc=state.decommission_requested_at_utc,
         decommission_blocked_at_utc=state.decommission_blocked_at_utc,
+        decommission_cancelled_at_utc=state.decommission_cancelled_at_utc,
+        decommission_reopened_at_utc=state.decommission_reopened_at_utc,
         decommissioned_at_utc=state.decommissioned_at_utc,
         decommission_evidence_refs=dict(sorted(state.decommission_evidence_refs.items())),
         updated_at_utc=state.updated_at_utc,
@@ -693,7 +766,9 @@ class InMemoryModuleRegistry:
             update={
                 "status": ModuleStatus.DECOMMISSION_REQUESTED,
                 "enabled_features": disabled_features,
-                "decommission_evidence_refs": dict(sorted(decommission_evidence_refs.items())),
+                "decommission_evidence_refs": dict(
+                    sorted({**existing.decommission_evidence_refs, **decommission_evidence_refs}.items())
+                ),
                 "policy_snapshot_hash": policy_snapshot_hash,
                 "decommission_requested_at_utc": now,
                 "changed_by": changed_by,
@@ -741,6 +816,99 @@ class InMemoryModuleRegistry:
                 ),
                 "policy_snapshot_hash": policy_snapshot_hash,
                 "decommission_blocked_at_utc": now,
+                "changed_by": changed_by,
+                "audit_chain_ref": audit_chain_ref,
+                "updated_at_utc": now,
+            }
+        )
+        return self.upsert_tenant_module(TenantModuleState.model_validate(state.model_dump()))
+
+    def cancel_decommission(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        policy_snapshot_hash: str,
+        changed_by: str,
+        audit_chain_ref: str,
+        cancel_evidence_refs: dict[str, str],
+        changed_at_utc: datetime | None = None,
+    ) -> TenantModuleState:
+        existing = self.get_tenant_module(tenant_id, module_id)
+        if existing.status not in {ModuleStatus.DECOMMISSION_REQUESTED, ModuleStatus.DECOMMISSION_BLOCKED}:
+            raise ModuleLifecycleError(
+                f"Module must have an active decommission workflow before cancellation: {module_id}"
+            )
+        if existing.decommission_requested_at_utc is None:
+            raise ModuleLifecycleError(f"Module must have request timestamp before cancellation: {module_id}")
+        self._require_decommission_evidence(
+            existing.decommission_evidence_refs,
+            REQUIRED_DECOMMISSION_EVIDENCE_KEYS,
+            "request",
+        )
+        self._require_decommission_evidence(
+            cancel_evidence_refs,
+            REQUIRED_DECOMMISSION_CANCEL_EVIDENCE_KEYS,
+            "cancel",
+        )
+
+        now = changed_at_utc or utc_now()
+        disabled_features = {feature_id: False for feature_id in existing.enabled_features}
+        state = existing.model_copy(
+            update={
+                "status": ModuleStatus.DISABLED,
+                "enabled_features": disabled_features,
+                "decommission_evidence_refs": dict(
+                    sorted({**existing.decommission_evidence_refs, **cancel_evidence_refs}.items())
+                ),
+                "policy_snapshot_hash": policy_snapshot_hash,
+                "disabled_at_utc": now,
+                "decommission_cancelled_at_utc": now,
+                "changed_by": changed_by,
+                "audit_chain_ref": audit_chain_ref,
+                "updated_at_utc": now,
+            }
+        )
+        return self.upsert_tenant_module(TenantModuleState.model_validate(state.model_dump()))
+
+    def reopen_decommission(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        policy_snapshot_hash: str,
+        changed_by: str,
+        audit_chain_ref: str,
+        reopen_evidence_refs: dict[str, str],
+        changed_at_utc: datetime | None = None,
+    ) -> TenantModuleState:
+        existing = self.get_tenant_module(tenant_id, module_id)
+        if existing.status != ModuleStatus.DECOMMISSION_BLOCKED:
+            raise ModuleLifecycleError(f"Module must have a blocked decommission workflow before reopen: {module_id}")
+        if existing.decommission_requested_at_utc is None or existing.decommission_blocked_at_utc is None:
+            raise ModuleLifecycleError(f"Module must have request and blocked timestamps before reopen: {module_id}")
+        self._require_decommission_evidence(
+            existing.decommission_evidence_refs,
+            REQUIRED_DECOMMISSION_EVIDENCE_KEYS | REQUIRED_DECOMMISSION_BLOCKER_EVIDENCE_KEYS,
+            "blocked",
+        )
+        self._require_decommission_evidence(
+            reopen_evidence_refs,
+            REQUIRED_DECOMMISSION_REOPEN_EVIDENCE_KEYS,
+            "reopen",
+        )
+
+        now = changed_at_utc or utc_now()
+        disabled_features = {feature_id: False for feature_id in existing.enabled_features}
+        state = existing.model_copy(
+            update={
+                "status": ModuleStatus.DECOMMISSION_REQUESTED,
+                "enabled_features": disabled_features,
+                "decommission_evidence_refs": dict(
+                    sorted({**existing.decommission_evidence_refs, **reopen_evidence_refs}.items())
+                ),
+                "policy_snapshot_hash": policy_snapshot_hash,
+                "decommission_reopened_at_utc": now,
                 "changed_by": changed_by,
                 "audit_chain_ref": audit_chain_ref,
                 "updated_at_utc": now,

@@ -7,7 +7,9 @@ from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleCatalogEntry,
     ModuleDecommissionBlockCommand,
+    ModuleDecommissionCancelCommand,
     ModuleDecommissionCompletionCommand,
+    ModuleDecommissionReopenCommand,
     ModuleDecommissionRequestCommand,
     ModuleKind,
     ModuleLifecycleError,
@@ -34,6 +36,15 @@ DECOMMISSION_COMPLETION_EVIDENCE_REFS = {
     "final_audit_closure_ref": "audit:closure-1",
     "final_backup_disposition_ref": "backup:final-disposition-1",
     "final_data_disposition_ref": "data-disposition:final-1",
+}
+DECOMMISSION_CANCEL_EVIDENCE_REFS = {
+    "cancel_approval_ref": "approval:decommission-cancel",
+    "cancel_audit_evidence_ref": "audit:decommission-cancel-evidence-1",
+}
+DECOMMISSION_REOPEN_EVIDENCE_REFS = {
+    "reopen_approval_ref": "approval:decommission-reopen",
+    "blocker_remediation_evidence_ref": "decommission-remediation:evidence-1",
+    "reopen_audit_evidence_ref": "audit:decommission-reopen-evidence-1",
 }
 
 
@@ -193,6 +204,42 @@ def test_decommission_block_and_completion_commands_require_namespaced_evidence(
         )
 
 
+def test_decommission_cancel_and_reopen_commands_require_namespaced_evidence() -> None:
+    cancel_command = ModuleDecommissionCancelCommand(
+        approval_reference="approval:decommission-cancel",
+        reason="tenant cancels the decommission workflow",
+        cancel_approval_ref="approval:decommission-cancel",
+        cancel_audit_evidence_ref="audit:decommission-cancel-evidence-1",
+    )
+    reopen_command = ModuleDecommissionReopenCommand(
+        approval_reference="approval:decommission-reopen",
+        reason="blocker has remediation evidence",
+        reopen_approval_ref="approval:decommission-reopen",
+        blocker_remediation_evidence_ref="decommission-remediation:evidence-1",
+        reopen_audit_evidence_ref="audit:decommission-reopen-evidence-1",
+    )
+
+    assert cancel_command.evidence_refs() == DECOMMISSION_CANCEL_EVIDENCE_REFS
+    assert reopen_command.evidence_refs() == DECOMMISSION_REOPEN_EVIDENCE_REFS
+
+    with pytest.raises(ValidationError, match="cancel evidence"):
+        ModuleDecommissionCancelCommand(
+            approval_reference="approval:decommission-cancel",
+            reason="tenant cancels the decommission workflow",
+            cancel_approval_ref="missing-namespace",
+            cancel_audit_evidence_ref="audit:decommission-cancel-evidence-1",
+        )
+
+    with pytest.raises(ValidationError, match="reopen evidence"):
+        ModuleDecommissionReopenCommand(
+            approval_reference="approval:decommission-reopen",
+            reason="blocker has remediation evidence",
+            reopen_approval_ref="approval:decommission-reopen",
+            blocker_remediation_evidence_ref="missing-namespace",
+            reopen_audit_evidence_ref="audit:decommission-reopen-evidence-1",
+        )
+
+
 def test_decommission_requested_state_requires_evidence_and_disabled_features() -> None:
     requested = tenant_module(ModuleStatus.DECOMMISSION_REQUESTED)
     assert requested.decommission_evidence_refs == DECOMMISSION_EVIDENCE_REFS
@@ -229,6 +276,63 @@ def test_decommission_blocked_and_completed_states_require_final_evidence() -> N
         tenant_module(
             ModuleStatus.DECOMMISSION_BLOCKED,
             enabled_features={"crm_erp.crm.accounts": True},
+        )
+
+
+def test_cancelled_and_reopened_decommission_states_require_evidence() -> None:
+    cancelled = tenant_module(
+        ModuleStatus.DISABLED,
+        enabled_features={"crm_erp.crm.accounts": False},
+        decommission_requested_at_utc=NOW,
+        decommission_cancelled_at_utc=NOW,
+        decommission_evidence_refs={
+            **DECOMMISSION_EVIDENCE_REFS,
+            **DECOMMISSION_CANCEL_EVIDENCE_REFS,
+        },
+    )
+    reopened = tenant_module(
+        ModuleStatus.DECOMMISSION_REQUESTED,
+        decommission_blocked_at_utc=NOW,
+        decommission_reopened_at_utc=NOW,
+        decommission_evidence_refs={
+            **DECOMMISSION_EVIDENCE_REFS,
+            **DECOMMISSION_BLOCKER_EVIDENCE_REFS,
+            **DECOMMISSION_REOPEN_EVIDENCE_REFS,
+        },
+    )
+
+    assert cancelled.decommission_cancelled_at_utc == NOW
+    assert reopened.decommission_reopened_at_utc == NOW
+
+    with pytest.raises(ValidationError, match="cancel evidence"):
+        tenant_module(
+            ModuleStatus.DISABLED,
+            enabled_features={"crm_erp.crm.accounts": False},
+            decommission_requested_at_utc=NOW,
+            decommission_cancelled_at_utc=NOW,
+            decommission_evidence_refs=DECOMMISSION_EVIDENCE_REFS,
+        )
+
+    with pytest.raises(ValidationError, match="cannot keep enabled features"):
+        tenant_module(
+            ModuleStatus.DISABLED,
+            decommission_requested_at_utc=NOW,
+            decommission_cancelled_at_utc=NOW,
+            decommission_evidence_refs={
+                **DECOMMISSION_EVIDENCE_REFS,
+                **DECOMMISSION_CANCEL_EVIDENCE_REFS,
+            },
+        )
+
+    with pytest.raises(ValidationError, match="reopen evidence"):
+        tenant_module(
+            ModuleStatus.DECOMMISSION_REQUESTED,
+            decommission_blocked_at_utc=NOW,
+            decommission_reopened_at_utc=NOW,
+            decommission_evidence_refs={
+                **DECOMMISSION_EVIDENCE_REFS,
+                **DECOMMISSION_BLOCKER_EVIDENCE_REFS,
+            },
         )
 
 
@@ -455,6 +559,95 @@ def test_decommission_block_and_complete_workflow_preserves_final_evidence() -> 
     assert completed.decommission_evidence_refs["blocker_report_ref"] == "decommission-blocker:report-1"
     with pytest.raises(ModuleLifecycleError, match="does not allow compliance access"):
         registry.require_compliance_access(tenant_id="tenant-1", module_id="crm_erp")
+
+
+def test_decommission_cancel_returns_to_disabled_and_allows_explicit_reenable() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.DECOMMISSION_REQUESTED)],
+    )
+
+    cancelled = registry.cancel_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-cancel",
+        cancel_evidence_refs=DECOMMISSION_CANCEL_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert cancelled.status == ModuleStatus.DISABLED
+    assert cancelled.decommission_cancelled_at_utc == NOW
+    assert cancelled.compliance_access_allowed
+    assert not cancelled.normal_use_enabled
+    assert cancelled.enabled_features == {"crm_erp.crm.accounts": False}
+    assert cancelled.decommission_evidence_refs["cancel_approval_ref"] == "approval:decommission-cancel"
+
+    reenabled = registry.enable_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:enable-after-cancel",
+        enabled_features={"crm_erp.crm.accounts": True},
+        changed_at_utc=NOW,
+    )
+
+    assert reenabled.status == ModuleStatus.ENABLED
+    assert reenabled.feature_enabled("crm_erp.crm.accounts")
+    assert reenabled.decommission_cancelled_at_utc == NOW
+
+
+def test_decommission_reopen_moves_blocked_workflow_back_to_requested() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.DECOMMISSION_BLOCKED)],
+    )
+
+    with pytest.raises(ModuleLifecycleError, match="Missing decommission reopen evidence"):
+        registry.reopen_decommission(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:decommission-reopen",
+            reopen_evidence_refs={},
+            changed_at_utc=NOW,
+        )
+
+    reopened = registry.reopen_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-reopen",
+        reopen_evidence_refs=DECOMMISSION_REOPEN_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert reopened.status == ModuleStatus.DECOMMISSION_REQUESTED
+    assert reopened.decommission_reopened_at_utc == NOW
+    assert reopened.compliance_access_allowed
+    assert not reopened.normal_use_enabled
+    assert reopened.decommission_evidence_refs["blocker_remediation_evidence_ref"] == (
+        "decommission-remediation:evidence-1"
+    )
+    assert reopened.decommission_evidence_refs["blocker_report_ref"] == "decommission-blocker:report-1"
+
+    completed = registry.complete_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-complete",
+        completion_evidence_refs=DECOMMISSION_COMPLETION_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert completed.status == ModuleStatus.DECOMMISSIONED
+    assert completed.decommission_reopened_at_utc == NOW
+    assert completed.decommission_evidence_refs["reopen_audit_evidence_ref"] == "audit:decommission-reopen-evidence-1"
 
 
 def test_module_registry_discovery_returns_public_tenant_module_view_only() -> None:

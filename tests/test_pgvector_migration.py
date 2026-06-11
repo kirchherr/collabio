@@ -36,6 +36,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0007",
         "0008",
         "0009",
+        "0010",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -208,6 +209,22 @@ def test_tenant_module_decommission_completion_migration_requires_final_evidence
     assert "decommission_evidence_refs ? 'final_backup_disposition_ref'" in sql
     assert "decommission_evidence_refs ? 'final_data_disposition_ref'" in sql
     assert "status not in ('decommission_requested', 'decommission_blocked', 'decommissioned')" in sql
+
+
+def test_tenant_module_decommission_cancel_reopen_migration_requires_audit_evidence() -> None:
+    sql = normalized(get_migration("0010").sql())
+
+    assert "add column if not exists decommission_cancelled_at_utc timestamptz" in sql
+    assert "add column if not exists decommission_reopened_at_utc timestamptz" in sql
+    assert "tenant_modules_decommission_cancel_evidence_check" in sql
+    assert "decommission_evidence_refs ? 'cancel_approval_ref'" in sql
+    assert "decommission_evidence_refs ? 'cancel_audit_evidence_ref'" in sql
+    assert "tenant_modules_decommission_cancel_disabled_features_check" in sql
+    assert "tenant_modules_decommission_reopen_evidence_check" in sql
+    assert "decommission_blocked_at_utc is not null" in sql
+    assert "decommission_evidence_refs ? 'reopen_approval_ref'" in sql
+    assert "decommission_evidence_refs ? 'blocker_remediation_evidence_ref'" in sql
+    assert "decommission_evidence_refs ? 'reopen_audit_evidence_ref'" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

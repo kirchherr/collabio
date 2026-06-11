@@ -46,6 +46,19 @@ DECOMMISSION_COMPLETE_PAYLOAD = {
     "final_backup_disposition_ref": "backup:final-disposition-1",
     "final_data_disposition_ref": "data-disposition:final-1",
 }
+DECOMMISSION_CANCEL_PAYLOAD = {
+    "approval_reference": "approval:module-decommission-cancel",
+    "reason": "tenant cancels the decommission workflow",
+    "cancel_approval_ref": "approval:module-decommission-cancel",
+    "cancel_audit_evidence_ref": "audit:decommission-cancel-evidence-1",
+}
+DECOMMISSION_REOPEN_PAYLOAD = {
+    "approval_reference": "approval:module-decommission-reopen",
+    "reason": "decommission blocker has remediation evidence",
+    "reopen_approval_ref": "approval:module-decommission-reopen",
+    "blocker_remediation_evidence_ref": "decommission-remediation:evidence-1",
+    "reopen_audit_evidence_ref": "audit:decommission-reopen-evidence-1",
+}
 
 
 def reset_module_registry() -> None:
@@ -284,6 +297,45 @@ def test_tenant_module_decommission_request_requires_all_evidence_refs() -> None
     assert response.status_code == 422
 
 
+def test_tenant_module_decommission_cancel_returns_to_disabled_and_audits() -> None:
+    reset_module_registry()
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare module"},
+    )
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REQUEST_PAYLOAD,
+    )
+    starting_event_count = len(app.state.audit_logger.events)
+
+    cancel_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-cancel",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_CANCEL_PAYLOAD,
+    )
+
+    assert cancel_response.status_code == 200
+    cancelled = cancel_response.json()
+    assert cancelled["status"] == "disabled"
+    assert cancelled["normal_use_enabled"] is False
+    assert cancelled["compliance_access_allowed"] is True
+    assert cancelled["decommission_cancelled_at_utc"] is not None
+    assert cancelled["enabled_features"]["crm_erp.crm.accounts"] is False
+    assert cancelled["decommission_evidence_refs"]["cancel_approval_ref"] == "approval:module-decommission-cancel"
+    assert cancelled["decommission_evidence_refs"]["cancel_audit_evidence_ref"] == (
+        "audit:decommission-cancel-evidence-1"
+    )
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "tenant_module.decommission_cancelled"
+    assert new_events[-1].input_hash is not None
+    assert new_events[-1].metadata["approval_reference"] == "approval:module-decommission-cancel"
+    assert "reason" not in new_events[-1].metadata
+
+
 def test_tenant_module_decommission_block_and_complete_are_audited() -> None:
     reset_module_registry()
     client.post(
@@ -344,6 +396,61 @@ def test_tenant_module_decommission_block_and_complete_are_audited() -> None:
     ]
     assert all(event.input_hash is not None for event in new_events[-2:])
     assert all("reason" not in event.metadata for event in new_events[-2:])
+
+
+def test_tenant_module_decommission_reopen_requires_evidence_and_audits() -> None:
+    reset_module_registry()
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare module"},
+    )
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REQUEST_PAYLOAD,
+    )
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-block",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_BLOCK_PAYLOAD,
+    )
+
+    incomplete_payload = dict(DECOMMISSION_REOPEN_PAYLOAD)
+    del incomplete_payload["reopen_audit_evidence_ref"]
+    incomplete_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-reopen",
+        headers=DEMO_ADMIN_HEADERS,
+        json=incomplete_payload,
+    )
+    assert incomplete_response.status_code == 422
+
+    starting_event_count = len(app.state.audit_logger.events)
+    reopen_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-reopen",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REOPEN_PAYLOAD,
+    )
+
+    assert reopen_response.status_code == 200
+    reopened = reopen_response.json()
+    assert reopened["status"] == "decommission_requested"
+    assert reopened["normal_use_enabled"] is False
+    assert reopened["compliance_access_allowed"] is True
+    assert reopened["decommission_reopened_at_utc"] is not None
+    assert reopened["decommission_evidence_refs"]["blocker_report_ref"] == "decommission-blocker:report-1"
+    assert reopened["decommission_evidence_refs"]["blocker_remediation_evidence_ref"] == (
+        "decommission-remediation:evidence-1"
+    )
+    assert reopened["decommission_evidence_refs"]["reopen_audit_evidence_ref"] == (
+        "audit:decommission-reopen-evidence-1"
+    )
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "tenant_module.decommission_reopened"
+    assert new_events[-1].input_hash is not None
+    assert new_events[-1].metadata["approval_reference"] == "approval:module-decommission-reopen"
+    assert "reason" not in new_events[-1].metadata
 
 
 def test_admin_tenant_policy_requires_admin_role() -> None:
