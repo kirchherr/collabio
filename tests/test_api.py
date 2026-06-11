@@ -1,9 +1,12 @@
+from typing import Annotated
 from uuid import uuid4
 
+from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from main import app
-from suite.platform.modules import default_module_registry
+from main import app, require_module_api_gate
+from suite.platform.modules import InMemoryModuleRegistry, ModuleGateDecision, default_module_registry
+from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 
 client = TestClient(app)
 
@@ -65,6 +68,32 @@ def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
 
 
+def build_module_gate_probe_app(module_registry: InMemoryModuleRegistry) -> FastAPI:
+    probe_app = FastAPI()
+    probe_app.state.module_registry = module_registry
+    probe_app.state.tenant_policy_repository = InMemoryTenantPolicyRepository.default()
+
+    @probe_app.get("/normal", response_model=ModuleGateDecision)
+    def normal_route(
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id="crm_erp", feature_id="crm_erp.crm.accounts")),
+        ],
+    ) -> ModuleGateDecision:
+        return gate
+
+    @probe_app.get("/compliance", response_model=ModuleGateDecision)
+    def compliance_route(
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id="crm_erp", compliance=True)),
+        ],
+    ) -> ModuleGateDecision:
+        return gate
+
+    return probe_app
+
+
 def test_health() -> None:
     response = client.get("/health")
     assert response.status_code == 200
@@ -113,6 +142,60 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
     assert "audit_chain_ref" not in module
     assert "policy_snapshot_hash" not in module
     assert "changed_by" not in module
+
+
+def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_routes() -> None:
+    module_registry = default_module_registry()
+    probe_client = TestClient(build_module_gate_probe_app(module_registry))
+
+    unavailable_response = probe_client.get("/normal", headers=DEMO_HEADERS)
+    assert unavailable_response.status_code == 403
+    assert "not enabled" in unavailable_response.json()["detail"]
+
+    module_registry.provision_tenant_module(
+        tenant_id="tenant-demo",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:provision",
+    )
+    module_registry.enable_tenant_module(
+        tenant_id="tenant-demo",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:enable",
+        enabled_features={"crm_erp.crm.accounts": True},
+    )
+
+    normal_response = probe_client.get("/normal", headers=DEMO_HEADERS)
+    assert normal_response.status_code == 200
+    normal_body = normal_response.json()
+    assert normal_body["tenant_id"] == "tenant-demo"
+    assert normal_body["surface"] == "normal_api"
+    assert normal_body["status"] == "enabled"
+    assert normal_body["feature_id"] == "crm_erp.crm.accounts"
+    assert normal_body["normal_use_enabled"] is True
+
+    module_registry.disable_tenant_module(
+        tenant_id="tenant-demo",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:disable",
+    )
+
+    disabled_normal_response = probe_client.get("/normal", headers=DEMO_HEADERS)
+    assert disabled_normal_response.status_code == 403
+    assert "not enabled" in disabled_normal_response.json()["detail"]
+
+    compliance_response = probe_client.get("/compliance", headers=DEMO_HEADERS)
+    assert compliance_response.status_code == 200
+    compliance_body = compliance_response.json()
+    assert compliance_body["surface"] == "compliance_api"
+    assert compliance_body["status"] == "disabled"
+    assert compliance_body["normal_use_enabled"] is False
+    assert compliance_body["compliance_access_allowed"] is True
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

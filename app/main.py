@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
@@ -33,6 +34,8 @@ from suite.platform.modules import (
     ModuleDecommissionCompletionCommand,
     ModuleDecommissionReopenCommand,
     ModuleDecommissionRequestCommand,
+    ModuleGateDecision,
+    ModuleGateSurface,
     ModuleLifecycleCommand,
     ModuleLifecycleError,
     PlatformModulesResponse,
@@ -120,6 +123,34 @@ def require_security_admin(
             detail="Security admin role required",
         )
     return context
+
+
+def require_module_api_gate(
+    *,
+    module_id: str,
+    feature_id: str | None = None,
+    compliance: bool = False,
+) -> Callable[..., ModuleGateDecision]:
+    surface = ModuleGateSurface.COMPLIANCE_API if compliance else ModuleGateSurface.NORMAL_API
+
+    def dependency(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ModuleGateDecision:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            return module_registry.require_module_gate(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                surface=surface,
+                feature_id=feature_id,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return dependency
 
 
 def build_app() -> FastAPI:

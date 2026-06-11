@@ -54,6 +54,7 @@ Current sprint:
 44. [x] Decommission Request API with retention, Legal Hold, export, audit, and backup evidence references.
 45. [x] Decommission Blocked/Completed workflow with final disposition evidence.
 46. [x] Decommission Cancel/Reopen workflow with explicit approval and audit evidence.
+47. [x] Server-side module gates for API routers and workers.
 
 ## Next Engineering Step
 
@@ -61,7 +62,7 @@ After embedding model registry administration is in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Add server-side module gates for API routers and workers.
+- Add module-aware migration catalog with checksums, evidence, and startup mismatch blockade.
 
 ## Module Expansion Stance
 

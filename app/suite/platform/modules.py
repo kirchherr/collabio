@@ -35,6 +35,13 @@ class ModuleStatus(StrEnum):
     DECOMMISSIONED = "decommissioned"
 
 
+class ModuleGateSurface(StrEnum):
+    NORMAL_API = "normal_api"
+    COMPLIANCE_API = "compliance_api"
+    FEATURE_WORKER = "feature_worker"
+    COMPLIANCE_WORKER = "compliance_worker"
+
+
 NORMAL_USE_STATUS = ModuleStatus.ENABLED
 COMPLIANCE_ACCESS_STATUSES = {
     ModuleStatus.ENABLED,
@@ -94,6 +101,18 @@ class ModuleDecommissionCheck(BaseModel):
     blocking_reasons: list[str]
     required_evidence: list[str]
     checked_at_utc: datetime = Field(default_factory=utc_now)
+
+
+class ModuleGateDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str
+    surface: ModuleGateSurface
+    status: ModuleStatus
+    feature_id: str | None = None
+    normal_use_enabled: bool
+    compliance_access_allowed: bool
 
 
 class ModuleLifecycleCommand(BaseModel):
@@ -538,6 +557,40 @@ class InMemoryModuleRegistry:
             raise ModuleLifecycleError(f"Module state does not allow compliance access: {module_id}")
         return state
 
+    @staticmethod
+    def _validate_gate_feature_id(*, module_id: str, feature_id: str) -> None:
+        if not FEATURE_ID_PATTERN.fullmatch(feature_id):
+            raise ModuleLifecycleError(f"Module feature ID is not namespaced: {feature_id}")
+        if not feature_id.startswith(f"{module_id}."):
+            raise ModuleLifecycleError(f"Module feature does not belong to module {module_id}: {feature_id}")
+
+    def require_module_gate(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        surface: ModuleGateSurface,
+        feature_id: str | None = None,
+    ) -> ModuleGateDecision:
+        state = self.get_tenant_module(tenant_id, module_id)
+        if feature_id is not None:
+            self._validate_gate_feature_id(module_id=module_id, feature_id=feature_id)
+
+        if surface in {ModuleGateSurface.NORMAL_API, ModuleGateSurface.FEATURE_WORKER}:
+            self.require_normal_use(tenant_id=tenant_id, module_id=module_id, feature_id=feature_id)
+        if surface in {ModuleGateSurface.COMPLIANCE_API, ModuleGateSurface.COMPLIANCE_WORKER}:
+            self.require_compliance_access(tenant_id=tenant_id, module_id=module_id)
+
+        return ModuleGateDecision(
+            tenant_id=tenant_id,
+            module_id=module_id,
+            surface=surface,
+            status=state.status,
+            feature_id=feature_id,
+            normal_use_enabled=state.normal_use_enabled,
+            compliance_access_allowed=state.compliance_access_allowed,
+        )
+
     def discover_tenant_modules(self, tenant_id: str) -> PlatformModulesResponse:
         modules = []
         for state in self.list_tenant_modules(tenant_id):
@@ -960,6 +1013,37 @@ class InMemoryModuleRegistry:
             }
         )
         return self.upsert_tenant_module(TenantModuleState.model_validate(state.model_dump()))
+
+
+class ModuleWorkerGate:
+    def __init__(self, registry: InMemoryModuleRegistry) -> None:
+        self.registry = registry
+
+    def require_feature_worker(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        feature_id: str,
+    ) -> ModuleGateDecision:
+        return self.registry.require_module_gate(
+            tenant_id=tenant_id,
+            module_id=module_id,
+            surface=ModuleGateSurface.FEATURE_WORKER,
+            feature_id=feature_id,
+        )
+
+    def require_compliance_worker(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+    ) -> ModuleGateDecision:
+        return self.registry.require_module_gate(
+            tenant_id=tenant_id,
+            module_id=module_id,
+            surface=ModuleGateSurface.COMPLIANCE_WORKER,
+        )
 
 
 def default_module_registry() -> InMemoryModuleRegistry:

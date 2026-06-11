@@ -992,7 +992,7 @@ Plattform-Aufgaben:
 - [x] Decommission Request API mit Evidence Workflow implementieren.
 - [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
 - [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
-- [ ] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
+- [x] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
 - [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
 - [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
@@ -1185,7 +1185,8 @@ Empfohlene naechste Reihenfolge:
 47. [x] Decommission Request API mit Retention-, Legal-Hold-, Export- und Backup-Evidence Workflow implementieren.
 48. [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
 49. [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
-50. [ ] Serverseitige Modul-Gates fuer API-Router und Worker implementieren.
+50. [x] Serverseitige Modul-Gates fuer API-Router und Worker implementieren.
+51. [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch implementieren.
 
 ## Release-Strategie
 

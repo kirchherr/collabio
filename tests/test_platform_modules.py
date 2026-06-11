@@ -11,9 +11,11 @@ from suite.platform.modules import (
     ModuleDecommissionCompletionCommand,
     ModuleDecommissionReopenCommand,
     ModuleDecommissionRequestCommand,
+    ModuleGateSurface,
     ModuleKind,
     ModuleLifecycleError,
     ModuleStatus,
+    ModuleWorkerGate,
     TenantModuleState,
 )
 
@@ -372,6 +374,84 @@ def test_module_registry_gates_normal_and_compliance_access() -> None:
         module_id="crm_erp",
         feature_id="crm_erp.crm.accounts",
     ).feature_enabled("crm_erp.crm.accounts")
+
+
+def test_module_registry_server_side_api_gates_require_status_and_feature_flags() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.ENABLED, enabled_features={"crm_erp.crm.accounts": True})],
+    )
+
+    decision = registry.require_module_gate(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        surface=ModuleGateSurface.NORMAL_API,
+        feature_id="crm_erp.crm.accounts",
+    )
+
+    assert decision.surface == ModuleGateSurface.NORMAL_API
+    assert decision.status == ModuleStatus.ENABLED
+    assert decision.feature_id == "crm_erp.crm.accounts"
+    assert decision.normal_use_enabled
+    assert decision.compliance_access_allowed
+
+    with pytest.raises(ModuleLifecycleError, match="does not belong"):
+        registry.require_module_gate(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            surface=ModuleGateSurface.NORMAL_API,
+            feature_id="knowledge_base.articles",
+        )
+
+    registry.upsert_tenant_module(tenant_module(ModuleStatus.ENABLED, enabled_features={"crm_erp.crm.accounts": False}))
+    with pytest.raises(ModuleLifecycleError, match="feature"):
+        registry.require_module_gate(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            surface=ModuleGateSurface.NORMAL_API,
+            feature_id="crm_erp.crm.accounts",
+        )
+
+    registry.upsert_tenant_module(tenant_module(ModuleStatus.DISABLED, enabled_features={"crm_erp.crm.accounts": True}))
+    with pytest.raises(ModuleLifecycleError, match="not enabled"):
+        registry.require_module_gate(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            surface=ModuleGateSurface.NORMAL_API,
+            feature_id="crm_erp.crm.accounts",
+        )
+
+    compliance_decision = registry.require_module_gate(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        surface=ModuleGateSurface.COMPLIANCE_API,
+    )
+    assert compliance_decision.surface == ModuleGateSurface.COMPLIANCE_API
+    assert not compliance_decision.normal_use_enabled
+    assert compliance_decision.compliance_access_allowed
+
+
+def test_module_worker_gate_stops_feature_workers_but_allows_compliance_workers() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.DISABLED, enabled_features={"crm_erp.crm.accounts": True})],
+    )
+    gate = ModuleWorkerGate(registry)
+
+    with pytest.raises(ModuleLifecycleError, match="not enabled"):
+        gate.require_feature_worker(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            feature_id="crm_erp.crm.accounts",
+        )
+
+    compliance_decision = gate.require_compliance_worker(tenant_id="tenant-1", module_id="crm_erp")
+    assert compliance_decision.surface == ModuleGateSurface.COMPLIANCE_WORKER
+    assert compliance_decision.compliance_access_allowed
+
+    registry.upsert_tenant_module(tenant_module(ModuleStatus.DECOMMISSIONED))
+    with pytest.raises(ModuleLifecycleError, match="does not allow compliance access"):
+        gate.require_compliance_worker(tenant_id="tenant-1", module_id="crm_erp")
 
 
 def test_module_registry_lifecycle_transitions_keep_disable_compliance_access() -> None:
