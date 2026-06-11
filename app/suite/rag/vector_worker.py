@@ -2,10 +2,32 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
+from suite.ai_control_plane.audit import JsonlAuditLogger
 from suite.ai_control_plane.models import AuditEvent, UserContext
+from suite.platform.storage_paths import suite_data_dir
 from suite.rag.models import VectorEmbeddingRecord, VectorLifecycleState
+
+DEFAULT_DEPLOYMENT_AUDIT_LOG_RELATIVE_PATH = Path("audit") / "events.jsonl"
+FORBIDDEN_VECTOR_WORKER_AUDIT_METADATA_KEYS = frozenset(
+    {
+        "answer",
+        "embedding",
+        "embeddings",
+        "generated_answer",
+        "output",
+        "output_text",
+        "prompt",
+        "prompt_text",
+        "raw_audio",
+        "raw_embedding",
+        "raw_embeddings",
+        "source_text",
+        "transcript",
+    }
+)
 
 
 class VectorIndexStore(Protocol):
@@ -82,6 +104,7 @@ class AuditLoggerVectorWorkerAuditSink:
         source_version_id: str,
         metadata: dict[str, Any],
     ) -> str:
+        _assert_safe_vector_worker_audit_metadata(metadata)
         event = self.audit_logger.record(
             user_context=UserContext(user_id=self.user_id, tenant_id=tenant_id),
             event_type=event_type,
@@ -92,6 +115,23 @@ class AuditLoggerVectorWorkerAuditSink:
             },
         )
         return event.event_id
+
+
+def build_durable_vector_worker_audit_sink(
+    *,
+    data_dir: Path | None = None,
+    audit_log_path: Path | None = None,
+    user_id: str = "vector-index-worker",
+) -> AuditLoggerVectorWorkerAuditSink:
+    if data_dir is not None and audit_log_path is not None:
+        raise ValueError("use either data_dir or audit_log_path, not both")
+    resolved_audit_log_path = audit_log_path
+    if resolved_audit_log_path is None:
+        resolved_audit_log_path = (data_dir or suite_data_dir()) / DEFAULT_DEPLOYMENT_AUDIT_LOG_RELATIVE_PATH
+    return AuditLoggerVectorWorkerAuditSink(
+        audit_logger=JsonlAuditLogger.load(resolved_audit_log_path),
+        user_id=user_id,
+    )
 
 
 @dataclass(frozen=True)
@@ -326,3 +366,28 @@ class VectorIndexWorker:
 
     def _acl_versions(self, chunks: Iterable[VectorEmbeddingRecord]) -> list[int]:
         return sorted({chunk.metadata.acl_version for chunk in chunks})
+
+
+def _assert_safe_vector_worker_audit_metadata(metadata: dict[str, Any]) -> None:
+    unsafe_key = _find_unsafe_vector_worker_audit_metadata_key(metadata)
+    if unsafe_key is not None:
+        raise ValueError(f"vector worker audit metadata must not include raw payload field: {unsafe_key}")
+
+
+def _find_unsafe_vector_worker_audit_metadata_key(value: Any, *, path: str = "") -> str | None:
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            key_text = str(key)
+            normalized_key = key_text.lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            if normalized_key in FORBIDDEN_VECTOR_WORKER_AUDIT_METADATA_KEYS:
+                return key_path
+            nested_unsafe_key = _find_unsafe_vector_worker_audit_metadata_key(nested_value, path=key_path)
+            if nested_unsafe_key is not None:
+                return nested_unsafe_key
+    if isinstance(value, (list, tuple)):
+        for index, nested_value in enumerate(value):
+            nested_unsafe_key = _find_unsafe_vector_worker_audit_metadata_key(nested_value, path=f"{path}[{index}]")
+            if nested_unsafe_key is not None:
+                return nested_unsafe_key
+    return None

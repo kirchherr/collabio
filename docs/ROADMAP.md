@@ -1055,7 +1055,8 @@ Empfohlene naechste Reihenfolge:
 35. [x] Vector Metadata Schema validieren.
 36. [x] ACL-Versionen in Vector Metadata uebernehmen.
 37. [x] Benchmark Thresholds und Reporting vor ANN-Index-Entscheidungen ergaenzen.
-38. [ ] Vector Worker Audit Events an durable Deployment Audit Storage anbinden.
+38. [x] Vector Worker Audit Events an durable Deployment Audit Storage anbinden.
+39. [ ] Embedding Model Versioning Registry Checks vor Production Indexing ergaenzen.
 
 ## Release-Strategie
 

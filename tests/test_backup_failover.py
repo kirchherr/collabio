@@ -110,6 +110,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert policy.domain("kms_key_metadata").primary_target_id == "kms_and_secrets"
     assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
     assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
+    assert "vector worker audit events" in policy.domain("audit_evidence").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
     assert "benchmark reports" in policy.domain("search_indexes").state_artifacts
     assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
@@ -147,6 +148,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "restore drill report hash" in runbook
     assert "ACL versions" in runbook
     assert "benchmark report hash" in runbook
+    assert "Vector worker audit events" in runbook
 
 
 def test_compose_exposes_backup_and_verification_commands() -> None:

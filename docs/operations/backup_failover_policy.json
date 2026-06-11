@@ -40,7 +40,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore audit tables and WORM snapshots; verify hash chain before declaring service recovered",
-      "state_artifacts": ["audit events", "audit hashes", "verification checkpoints", "WORM audit snapshots"]
+      "state_artifacts": ["audit events", "audit hashes", "vector worker audit events", "verification checkpoints", "WORM audit snapshots"]
     },
     {
       "domain_id": "object_storage_records",

@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 
-from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.audit import InMemoryAuditLogger, JsonlAuditLogger
 from suite.ai_control_plane.models import DataClass
 from suite.rag.models import ChunkMetadata, VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.vector_worker import (
@@ -10,6 +11,7 @@ from suite.rag.vector_worker import (
     DeletionPropagationCommand,
     ReindexSourceCommand,
     VectorIndexWorker,
+    build_durable_vector_worker_audit_sink,
 )
 
 
@@ -166,6 +168,80 @@ def test_reindex_source_emits_hash_chained_audit_events_without_raw_embeddings()
         "deleted_stale_chunks": 1,
         "requested_audit_event_id": "audit-upstream",
     }
+
+
+def test_vector_worker_audit_events_persist_to_deployment_audit_storage(tmp_path: Path) -> None:
+    audit_path = tmp_path / "audit" / "events.jsonl"
+    store = FakeVectorIndexStore()
+    first_worker = VectorIndexWorker(
+        store,
+        audit_sink=build_durable_vector_worker_audit_sink(audit_log_path=audit_path),
+    )
+
+    first_worker.reindex_source(
+        ReindexSourceCommand(
+            tenant_id="tenant-1",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            chunks=(record(chunk_id="chunk-1"), record(chunk_id="chunk-2")),
+            audit_event_id="audit-upstream",
+        )
+    )
+    second_worker = VectorIndexWorker(
+        store,
+        audit_sink=build_durable_vector_worker_audit_sink(audit_log_path=audit_path),
+    )
+    second_worker.propagate_deletion(
+        DeletionPropagationCommand(
+            tenant_id="tenant-1",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            lifecycle_state=VectorLifecycleState.DELETED,
+            audit_event_id="audit-delete",
+        )
+    )
+
+    reloaded = JsonlAuditLogger.load(audit_path)
+    assert reloaded.verify().ok
+    assert [event.event_type for event in reloaded.events] == [
+        "vector.reindex.started",
+        "vector.reindex.completed",
+        "vector.deletion_propagation.started",
+        "vector.deletion_propagation.completed",
+    ]
+    assert [event.sequence_number for event in reloaded.events] == [1, 2, 3, 4]
+    assert reloaded.events[0].user_id == "vector-index-worker"
+    assert reloaded.events[0].input_hash is None
+    assert reloaded.events[0].output_hash is None
+    assert reloaded.events[2].previous_event_hash == reloaded.events[1].event_hash
+    audit_log_text = audit_path.read_text(encoding="utf-8")
+    assert '"embedding":' not in audit_log_text
+    assert "1.0" not in audit_log_text
+
+
+def test_vector_worker_audit_sink_rejects_raw_payload_metadata() -> None:
+    audit_logger = InMemoryAuditLogger()
+    sink = AuditLoggerVectorWorkerAuditSink(audit_logger)
+
+    with pytest.raises(ValueError, match="source_text"):
+        sink.record_worker_event(
+            tenant_id="tenant-1",
+            event_type="vector.reindex.started",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            metadata={"source_text": "classified content"},
+        )
+
+    with pytest.raises(ValueError, match=r"nested\.raw_embedding"):
+        sink.record_worker_event(
+            tenant_id="tenant-1",
+            event_type="vector.reindex.started",
+            source_object_id="doc-1",
+            source_version_id="v1",
+            metadata={"nested": {"raw_embedding": [1.0, 0.0, 0.0]}},
+        )
+
+    assert audit_logger.events == ()
 
 
 def test_reindex_source_rejects_mismatched_or_duplicate_chunks() -> None:

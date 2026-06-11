@@ -43,10 +43,10 @@ Current sprint:
 33. [x] Restore-test framework for storage, envelope, retention, KMS, and cryptoshred evidence.
 34. [x] Vector metadata schema validation and ACL-version propagation hardening.
 35. [x] Vector benchmark thresholds, report hashes, and ANN candidate decision gates.
+36. [x] Durable deployment audit storage for vector worker events.
 
 ## Next Engineering Step
 
-After vector benchmark reporting is in place:
+After durable vector worker audit storage is in place:
 
-- Wire vector worker audit events to durable deployment audit storage.
 - Add embedding model versioning registry checks before production indexing.

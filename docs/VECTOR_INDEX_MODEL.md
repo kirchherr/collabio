@@ -90,7 +90,9 @@ Implemented operations:
 - `reindex_source`: marks existing active chunks for reindex, upserts the new chunk set, and soft-deletes stale reindex leftovers.
 - `propagate_deletion`: moves all chunks for a source version to `deleted` or `cryptoshredded`.
 
-The worker can receive an optional `VectorWorkerAuditSink`. `AuditLoggerVectorWorkerAuditSink` writes hash-chained audit events for started, completed, and failed reindex or deletion-propagation jobs. These events carry source IDs, source version, lifecycle targets, counts, model IDs, and upstream audit IDs only. They do not include raw source text, prompts, generated answers, or raw embedding vectors.
+The worker can receive a `VectorWorkerAuditSink`. `AuditLoggerVectorWorkerAuditSink` writes hash-chained audit events for started, completed, and failed reindex or deletion-propagation jobs. `build_durable_vector_worker_audit_sink` connects that sink to the deployment audit log under `SUITE_DATA_DIR/audit/events.jsonl` by default and verifies the existing chain before appending new worker events.
+
+These events carry source IDs, source version, lifecycle targets, counts, model IDs, ACL hashes, ACL versions, and upstream audit IDs only. They do not include raw source text, prompts, generated answers, transcripts, raw audio, or raw embedding vectors. The sink rejects unsafe raw-payload metadata keys before writing.
 
 The runtime app role has no `INSERT`, `UPDATE`, or `DELETE` grant on `collabio.vector_embedding_chunks`. This prevents API-side writes or accidental reactivation of deleted/restricted chunks.
 
