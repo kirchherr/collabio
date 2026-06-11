@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 
-from suite.ai_control_plane.audit import JsonlAuditLogger
+from suite.ai_control_plane.audit import JsonlAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import (
     InferenceRequest,
     InferenceResponse,
@@ -25,7 +25,16 @@ from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
-from suite.platform.modules import InMemoryModuleRegistry, PlatformModulesResponse, default_module_registry
+from suite.platform.modules import (
+    InMemoryModuleRegistry,
+    ModuleDecommissionCheck,
+    ModuleLifecycleCommand,
+    ModuleLifecycleError,
+    PlatformModulesResponse,
+    TenantModuleAdminView,
+    default_module_registry,
+    tenant_module_admin_view,
+)
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.rag.embedding_model_admin import (
@@ -175,6 +184,171 @@ def build_app() -> FastAPI:
     ) -> PlatformModulesResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
         return module_registry.discover_tenant_modules(context.user_context.tenant_id)
+
+    def tenant_policy_snapshot_hash(policy: TenantPolicy) -> str:
+        return stable_hash(canonical_json(policy.model_dump(mode="json")))
+
+    def module_audit_ref(
+        *,
+        action: str,
+        module_id: str,
+        command: ModuleLifecycleCommand,
+        context: TenantRequestContext,
+        target_status: str,
+    ) -> str:
+        event = audit_logger.record(
+            user_context=context.user_context,
+            event_type=f"tenant_module.{action}",
+            source_object_ids=[f"module:{module_id}"],
+            input_text=command.reason,
+            metadata={
+                "module_id": module_id,
+                "approval_reference": command.approval_reference,
+                "target_status": target_status,
+                "feature_count": len(command.enabled_features or {}),
+            },
+        )
+        return f"audit:{event.event_id}"
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/provision", response_model=TenantModuleAdminView)
+    def provision_tenant_module(
+        module_id: str,
+        command: ModuleLifecycleCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.provision_tenant_module(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="provisioned",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="disabled",
+                ),
+                enabled_features=command.enabled_features,
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/enable", response_model=TenantModuleAdminView)
+    def enable_tenant_module(
+        module_id: str,
+        command: ModuleLifecycleCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.enable_tenant_module(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="enabled",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="enabled",
+                ),
+                enabled_features=command.enabled_features,
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/disable", response_model=TenantModuleAdminView)
+    def disable_tenant_module(
+        module_id: str,
+        command: ModuleLifecycleCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.disable_tenant_module(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="disabled",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="disabled",
+                ),
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/suspend", response_model=TenantModuleAdminView)
+    def suspend_tenant_module(
+        module_id: str,
+        command: ModuleLifecycleCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.suspend_tenant_module(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="suspended",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="suspended",
+                ),
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/v1/admin/tenant-modules/{module_id}/decommission-check", response_model=ModuleDecommissionCheck)
+    def check_tenant_module_decommission(
+        module_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ModuleDecommissionCheck:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            check = module_registry.decommission_check(tenant_id=context.user_context.tenant_id, module_id=module_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="tenant_module.decommission_check",
+            source_object_ids=[f"module:{module_id}"],
+            metadata={
+                "module_id": module_id,
+                "status": check.status,
+                "can_decommission": check.can_decommission,
+                "blocking_reason_count": len(check.blocking_reasons),
+                "required_evidence_count": len(check.required_evidence),
+            },
+        )
+        return check
 
     @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
     def get_tenant_policy(

@@ -988,7 +988,8 @@ Plattform-Aufgaben:
 - [x] `module_catalog` und `tenant_modules` als Kernmodell definieren.
 - [x] Statusmodell fuer installierte, verfuegbare, aktivierte, deaktivierte, suspendierte und dekommissionierte Module implementieren.
 - [x] `GET /v1/platform/modules` fuer Frontend-Discovery planen.
-- [ ] Admin-APIs fuer Provision, Enable, Disable, Suspend, Decommission Request und Decommission Check planen.
+- [x] Admin-APIs fuer Provision, Enable, Disable, Suspend und Decommission Check implementieren.
+- [ ] Decommission Request API mit Evidence Workflow implementieren.
 - [ ] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
 - [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
@@ -1178,7 +1179,8 @@ Empfohlene naechste Reihenfolge:
 43. [x] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
 44. [x] `module_catalog` und `tenant_modules` Kernmodell mit SQL-Migration, Statusmodell und Gatekeeping-Tests anlegen.
 45. [x] `GET /v1/platform/modules` Frontend-Discovery Endpoint mit Tenant Context anbinden.
-46. [ ] Admin-APIs fuer Provision, Enable, Disable, Suspend und Decommission Check implementieren.
+46. [x] Admin-APIs fuer Provision, Enable, Disable, Suspend und Decommission Check implementieren.
+47. [ ] Decommission Request API mit Retention-, Legal-Hold-, Export- und Backup-Evidence Workflow implementieren.
 
 ## Release-Strategie
 

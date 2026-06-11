@@ -120,6 +120,84 @@ def test_module_registry_gates_normal_and_compliance_access() -> None:
     ).feature_enabled("crm_erp.crm.accounts")
 
 
+def test_module_registry_lifecycle_transitions_keep_disable_compliance_access() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.AVAILABLE, enabled_features={"crm_erp.crm.accounts": False})],
+    )
+
+    with pytest.raises(ModuleLifecycleError, match="provisioned"):
+        registry.enable_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:enable-before-provision",
+        )
+
+    provisioned = registry.provision_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:provision",
+        changed_at_utc=NOW,
+    )
+    assert provisioned.status == ModuleStatus.DISABLED
+    assert not provisioned.normal_use_enabled
+    assert provisioned.compliance_access_allowed
+
+    enabled = registry.enable_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:enable",
+        enabled_features={"crm_erp.crm.accounts": True},
+        changed_at_utc=NOW,
+    )
+    assert enabled.status == ModuleStatus.ENABLED
+    assert enabled.feature_enabled("crm_erp.crm.accounts")
+
+    disabled = registry.disable_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:disable",
+        changed_at_utc=NOW,
+    )
+    assert disabled.status == ModuleStatus.DISABLED
+    assert not disabled.normal_use_enabled
+    assert disabled.compliance_access_allowed
+
+    suspended = registry.suspend_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:suspend",
+        changed_at_utc=NOW,
+    )
+    assert suspended.status == ModuleStatus.SUSPENDED
+    assert suspended.compliance_access_allowed
+
+
+def test_decommission_check_is_conservative_until_evidence_exists() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.ENABLED)],
+    )
+
+    check = registry.decommission_check(tenant_id="tenant-1", module_id="crm_erp")
+
+    assert check.status == ModuleStatus.ENABLED
+    assert not check.can_decommission
+    assert "module must be disabled or suspended before decommission" in check.blocking_reasons
+    assert "Legal Hold check" in check.required_evidence
+    assert "backup/restore evidence check" in check.required_evidence
+
+
 def test_module_registry_discovery_returns_public_tenant_module_view_only() -> None:
     registry = InMemoryModuleRegistry(
         catalog_entries=[crm_erp_catalog()],
