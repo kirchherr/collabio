@@ -106,7 +106,18 @@ It separates the pipeline into replaceable contracts:
 - `TextExtractor`: extracts text from the resolved source. The current implementation handles plain text only.
 - `TextChunker`: creates deterministic chunk IDs, content hashes, and byte lengths.
 - `EmbeddingProvider`: produces vectors. The current deterministic hash embedder is for local development and tests only.
+- `EmbeddingModelVersionRegistry`: resolves the exact model ID and version before indexing.
 - `SourceIndexingPipeline`: converts extracted chunks into `VectorEmbeddingRecord` objects and sends them to `VectorIndexWorker.reindex_source`.
+
+Before a source is indexed, the pipeline verifies that the configured embedding model version:
+
+- exists in the registry
+- is approved for indexing
+- is not retired
+- is approved for the source data classification
+- declares the same dimensions produced by the embedding provider
+
+`PgvectorEmbeddingModelVersionRegistry` reads the production-facing state from `collabio.embedding_models`, including version, dimensions, checksum, approved data classes, approval timestamp, and retirement timestamp.
 
 The pipeline can receive an expected ACL hash or ACL version. If the resolved source metadata differs, indexing stops before worker writes. The worker also rejects chunk sets with mixed ACL hashes or ACL versions, so one reindex operation cannot accidentally publish stale and current authorization metadata together.
 

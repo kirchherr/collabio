@@ -8,6 +8,7 @@ import psycopg
 
 from suite.ai_control_plane.models import DataClass
 from suite.rag.models import ChunkMetadata, VectorCandidate, VectorEmbeddingRecord, VectorLifecycleState
+from suite.rag.source_indexing import EmbeddingModelVersion
 
 
 def vector_literal(values: Sequence[float]) -> str:
@@ -398,3 +399,51 @@ class PgvectorVectorStore:
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
         connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+class PgvectorEmbeddingModelVersionRegistry:
+    def __init__(self, *, database_dsn: str) -> None:
+        self.database_dsn = database_dsn
+
+    def get(
+        self,
+        *,
+        embedding_model_id: str,
+        embedding_model_version: str,
+    ) -> EmbeddingModelVersion:
+        with psycopg.connect(self.database_dsn) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    embedding_model_id,
+                    embedding_model_version,
+                    provider,
+                    deployment,
+                    dimensions,
+                    distance_metric,
+                    checksum,
+                    approved_for_data_classes,
+                    approved_at_utc,
+                    retired_at_utc
+                FROM collabio.embedding_models
+                WHERE embedding_model_id = %s
+                  AND embedding_model_version = %s
+                """,
+                (embedding_model_id, embedding_model_version),
+            ).fetchone()
+
+        if row is None:
+            raise LookupError(f"Unknown embedding model version: {embedding_model_id}@{embedding_model_version}")
+
+        return EmbeddingModelVersion(
+            embedding_model_id=str(row[0]),
+            embedding_model_version=str(row[1]),
+            provider=str(row[2]),
+            deployment=str(row[3]),
+            dimensions=int(row[4]),
+            distance_metric=str(row[5]),
+            checksum=str(row[6]),
+            approved_for_data_classes=frozenset(DataClass(value) for value in row[7]),
+            approved_at_utc=iso_utc(row[8]) if row[8] is not None else None,
+            retired_at_utc=iso_utc(row[9]) if row[9] is not None else None,
+        )

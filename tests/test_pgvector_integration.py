@@ -10,7 +10,7 @@ import pytest
 from suite.ai_control_plane.models import DataClass
 from suite.persistence.migrator import apply_migrations
 from suite.rag.models import ChunkMetadata, SourceDocument, VectorEmbeddingRecord, VectorLifecycleState
-from suite.rag.pgvector_store import PgvectorVectorStore
+from suite.rag.pgvector_store import PgvectorEmbeddingModelVersionRegistry, PgvectorVectorStore
 from suite.rag.repositories import InMemorySourceRepository
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
@@ -91,9 +91,10 @@ def seed_embedding_model(connection: psycopg.Connection[Any], model_id: str) -> 
             dimensions,
             distance_metric,
             checksum,
-            approved_for_data_classes
+            approved_for_data_classes,
+            approved_at_utc
         )
-        VALUES (%s, '1', 'test', 'local', 3, 'cosine', 'sha256:test', ARRAY['embedding'])
+        VALUES (%s, '1', 'test', 'local', 3, 'cosine', 'sha256:test', ARRAY['internal'], now())
         ON CONFLICT (embedding_model_id, embedding_model_version) DO NOTHING
         """,
         (model_id,),
@@ -688,6 +689,7 @@ def test_source_indexing_pipeline_feeds_pgvector_worker_and_deletes_stale_chunks
     with psycopg.connect(live_database.migration_dsn) as owner_connection:
         seed_embedding_model(owner_connection, model_id)
         owner_connection.commit()
+    embedding_model_registry = PgvectorEmbeddingModelVersionRegistry(database_dsn=live_database.app_dsn)
 
     first_pipeline = SourceIndexingPipeline(
         resolver=RepositorySourceResolver(
@@ -711,6 +713,7 @@ def test_source_indexing_pipeline_feeds_pgvector_worker_and_deletes_stale_chunks
         text_extractor=PlainTextExtractor(),
         chunker=FixedSizeTextChunker(max_characters=48),
         embedding_provider=embedder,
+        embedding_model_registry=embedding_model_registry,
         worker=worker,
         embedding_model_id=model_id,
         embedding_model_version="1",
@@ -744,6 +747,7 @@ def test_source_indexing_pipeline_feeds_pgvector_worker_and_deletes_stale_chunks
         text_extractor=PlainTextExtractor(),
         chunker=FixedSizeTextChunker(max_characters=48),
         embedding_provider=embedder,
+        embedding_model_registry=embedding_model_registry,
         worker=worker,
         embedding_model_id=model_id,
         embedding_model_version="1",

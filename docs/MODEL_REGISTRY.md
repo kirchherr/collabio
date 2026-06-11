@@ -41,3 +41,22 @@ The code also includes provider adapters for:
 - `vllm`: OpenAI-compatible HTTP API, suitable for vLLM
 
 Only models explicitly allowed by tenant policy can be used.
+
+## Embedding model versions
+
+Embedding models used by source indexing have a separate versioned registry surface because vectors are durable classified data.
+
+Required fields:
+
+- embedding_model_id
+- embedding_model_version
+- provider
+- deployment
+- dimensions
+- distance_metric
+- checksum
+- approved_for_data_classes
+- approved_at_utc
+- retired_at_utc
+
+Source indexing must resolve the exact embedding model ID and version before writing vector chunks. The model version must be approved, not retired, approved for the source data classification, and dimension-compatible with the embedding provider output. The pgvector-backed registry reads this state from `collabio.embedding_models`.

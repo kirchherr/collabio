@@ -7,6 +7,7 @@ from suite.rag.models import VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
     FixedSizeTextChunker,
+    InMemoryEmbeddingModelVersionRegistry,
     PlainTextExtractor,
     SourceIndexCommand,
     SourceIndexingPipeline,
@@ -285,6 +286,7 @@ def test_source_object_resolver_feeds_indexing_pipeline_with_authoritative_metad
         text_extractor=PlainTextExtractor(),
         chunker=FixedSizeTextChunker(max_characters=256),
         embedding_provider=DeterministicHashEmbeddingProvider(dimensions=3),
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry.approved_single_model(),
         worker=VectorIndexWorker(store),
         embedding_model_id="mock-embedding",
         embedding_model_version="1",

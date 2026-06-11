@@ -10,7 +10,7 @@ The second rule is just as important: every new durable component must update th
 
 This model covers the whole suite trajectory:
 
-- PostgreSQL metadata, policies, audit events, vector worker audit events, migration history, and vector metadata.
+- PostgreSQL metadata, policies, audit events, vector worker audit events, migration history, vector metadata, and embedding model version approvals.
 - File-backed development policy and registry data.
 - Source object metadata, object manifests, object storage, WORM records, office documents, collaborative state, mail messages, attachments, parser artifacts, export packages, and audit snapshots.
 - KMS references, secret-manager state, key rotation evidence, and destruction evidence.
@@ -42,7 +42,7 @@ It is intentionally lightweight. The current repository implements development b
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
 - Object-store failover must preserve bucket profile evidence, version IDs, Object Lock posture, retention configuration, and legal-hold state.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
-- Vector index rebuilds must verify metadata schema, ACL hashes, ACL versions, lifecycle state, source checkpoints, and benchmark report hashes before ANN candidates are trusted.
+- Vector index rebuilds must verify metadata schema, embedding model version approvals, embedding dimensions, ACL hashes, ACL versions, lifecycle state, source checkpoints, and benchmark report hashes before ANN candidates are trusted.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.
 
 ## Continuity Domains

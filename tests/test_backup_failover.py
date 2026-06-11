@@ -52,6 +52,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "sha256_manifest" in postgres.integrity_checks
     assert "pg_restore_catalog" in postgres.integrity_checks
     assert "vector_metadata_schema_check" in postgres.integrity_checks
+    assert "embedding_model_version_approval_check" in postgres.integrity_checks
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
     assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
@@ -114,6 +115,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert policy.domain("search_indexes").criticality == "rebuildable"
     assert "benchmark reports" in policy.domain("search_indexes").state_artifacts
     assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
+    assert "embedding model version approvals" in policy.domain("vector_indexes").state_artifacts
+    assert "embedding model dimensions" in policy.domain("vector_indexes").state_artifacts
     assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
     assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
@@ -147,6 +150,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Monthly" in runbook
     assert "restore drill report hash" in runbook
     assert "ACL versions" in runbook
+    assert "embedding model version approvals" in runbook
     assert "benchmark report hash" in runbook
     assert "Vector worker audit events" in runbook
 

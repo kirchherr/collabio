@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -10,6 +11,18 @@ from typing import Protocol
 from suite.ai_control_plane.models import DataClass
 from suite.rag.models import ChunkMetadata, SourceDocument, VectorEmbeddingRecord
 from suite.rag.vector_worker import ReindexSourceCommand, ReindexSourceResult, VectorIndexWorker
+
+NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
+DEFAULT_EMBEDDING_MODEL_DATA_CLASSES = frozenset(
+    {
+        DataClass.PUBLIC,
+        DataClass.INTERNAL,
+        DataClass.PERSONAL,
+        DataClass.CONFIDENTIAL,
+        DataClass.GOBD,
+        DataClass.LEGAL_HOLD,
+    }
+)
 
 
 def utc_now_iso() -> str:
@@ -44,6 +57,97 @@ class TextChunker(Protocol):
 
 class EmbeddingProvider(Protocol):
     def embed(self, text: str) -> Sequence[float]: ...
+
+
+class EmbeddingModelVersionRegistry(Protocol):
+    def get(
+        self,
+        *,
+        embedding_model_id: str,
+        embedding_model_version: str,
+    ) -> EmbeddingModelVersion: ...
+
+
+@dataclass(frozen=True)
+class EmbeddingModelVersion:
+    embedding_model_id: str
+    embedding_model_version: str
+    provider: str
+    deployment: str
+    dimensions: int
+    checksum: str
+    approved_for_data_classes: frozenset[DataClass]
+    distance_metric: str = "cosine"
+    approved_at_utc: str | None = None
+    retired_at_utc: str | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "embedding_model_id",
+            "embedding_model_version",
+            "provider",
+            "deployment",
+            "distance_metric",
+        ):
+            value = getattr(self, field_name)
+            if not value.strip():
+                raise ValueError(f"{field_name} must not be empty")
+        if self.dimensions < 1:
+            raise ValueError("embedding model dimensions must be greater than or equal to 1")
+        if not NAMESPACED_REF_PATTERN.fullmatch(self.checksum.strip()):
+            raise ValueError("embedding model checksum must be a namespaced reference")
+        if not self.approved_for_data_classes:
+            raise ValueError("embedding model must declare approved data classes")
+        if self.approved_at_utc is not None:
+            _require_utc_timestamp(self.approved_at_utc)
+        if self.retired_at_utc is not None:
+            _require_utc_timestamp(self.retired_at_utc)
+
+
+class InMemoryEmbeddingModelVersionRegistry:
+    def __init__(self, model_versions: Sequence[EmbeddingModelVersion]) -> None:
+        self._model_versions: dict[tuple[str, str], EmbeddingModelVersion] = {}
+        for model_version in model_versions:
+            key = (model_version.embedding_model_id, model_version.embedding_model_version)
+            if key in self._model_versions:
+                raise ValueError("embedding model registry contains duplicate model versions")
+            self._model_versions[key] = model_version
+
+    @classmethod
+    def approved_single_model(
+        cls,
+        *,
+        embedding_model_id: str = "mock-embedding",
+        embedding_model_version: str = "1",
+        dimensions: int = 3,
+        approved_for_data_classes: frozenset[DataClass] = DEFAULT_EMBEDDING_MODEL_DATA_CLASSES,
+    ) -> InMemoryEmbeddingModelVersionRegistry:
+        return cls(
+            model_versions=(
+                EmbeddingModelVersion(
+                    embedding_model_id=embedding_model_id,
+                    embedding_model_version=embedding_model_version,
+                    provider="local-test",
+                    deployment="deterministic-hash",
+                    dimensions=dimensions,
+                    checksum=sha256_text(f"{embedding_model_id}:{embedding_model_version}:{dimensions}"),
+                    approved_for_data_classes=approved_for_data_classes,
+                    approved_at_utc="2026-06-10T00:00:00Z",
+                ),
+            )
+        )
+
+    def get(
+        self,
+        *,
+        embedding_model_id: str,
+        embedding_model_version: str,
+    ) -> EmbeddingModelVersion:
+        try:
+            return self._model_versions[(embedding_model_id, embedding_model_version)]
+        except KeyError as exc:
+            version_key = f"{embedding_model_id}@{embedding_model_version}"
+            raise LookupError(f"Unknown embedding model version: {version_key}") from exc
 
 
 @dataclass(frozen=True)
@@ -243,6 +347,7 @@ class SourceIndexingPipeline:
         text_extractor: TextExtractor,
         chunker: TextChunker,
         embedding_provider: EmbeddingProvider,
+        embedding_model_registry: EmbeddingModelVersionRegistry,
         worker: VectorIndexWorker,
         embedding_model_id: str,
         embedding_model_version: str,
@@ -252,6 +357,10 @@ class SourceIndexingPipeline:
         self.text_extractor = text_extractor
         self.chunker = chunker
         self.embedding_provider = embedding_provider
+        self.embedding_model = embedding_model_registry.get(
+            embedding_model_id=embedding_model_id,
+            embedding_model_version=embedding_model_version,
+        )
         self.worker = worker
         self.embedding_model_id = embedding_model_id
         self.embedding_model_version = embedding_model_version
@@ -264,6 +373,7 @@ class SourceIndexingPipeline:
             source_version_id=command.source_version_id,
         )
         self._validate_source(command=command, source=source)
+        self._validate_embedding_model_for_source(source)
 
         extracted = self.text_extractor.extract_text(source)
         chunks = self.chunker.chunk(source=source, text=extracted.text)
@@ -296,6 +406,8 @@ class SourceIndexingPipeline:
         audit_event_id: str | None,
     ) -> VectorEmbeddingRecord:
         embedding = list(self.embedding_provider.embed(chunk.text))
+        if len(embedding) != self.embedding_model.dimensions:
+            raise ValueError("embedding dimensions do not match registered model version")
         return VectorEmbeddingRecord(
             metadata=ChunkMetadata(
                 tenant_id=source.tenant_id,
@@ -333,3 +445,25 @@ class SourceIndexingPipeline:
             raise ValueError("resolved source acl_hash does not match index command")
         if command.expected_acl_version is not None and source.acl_version != command.expected_acl_version:
             raise ValueError("resolved source acl_version does not match index command")
+
+    def _validate_embedding_model_for_source(self, source: ResolvedSource) -> None:
+        if self.embedding_model.embedding_model_id != self.embedding_model_id:
+            raise ValueError("registered embedding model_id does not match pipeline configuration")
+        if self.embedding_model.embedding_model_version != self.embedding_model_version:
+            raise ValueError("registered embedding model_version does not match pipeline configuration")
+        if self.embedding_model.approved_at_utc is None:
+            raise ValueError("embedding model version is not approved for indexing")
+        if self.embedding_model.retired_at_utc is not None:
+            raise ValueError("embedding model version is retired")
+        if source.classification not in self.embedding_model.approved_for_data_classes:
+            raise ValueError("embedding model version is not approved for source data class")
+
+
+def _require_utc_timestamp(value: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("timestamp must not be empty")
+    parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() != UTC.utcoffset(parsed):
+        raise ValueError("timestamp must be UTC")
+    return normalized

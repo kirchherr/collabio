@@ -16,6 +16,7 @@ from suite.rag.repositories import InMemorySourceRepository
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
     FixedSizeTextChunker,
+    InMemoryEmbeddingModelVersionRegistry,
     RepositorySourceResolver,
     SourceIndexCommand,
     SourceIndexingPipeline,
@@ -178,6 +179,7 @@ def test_parser_worker_text_extractor_feeds_mail_into_source_indexing_pipeline()
         text_extractor=ParserWorkerTextExtractor(PolicyEnforcedParserWorker()),
         chunker=FixedSizeTextChunker(max_characters=512),
         embedding_provider=DeterministicHashEmbeddingProvider(dimensions=3),
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry.approved_single_model(),
         worker=VectorIndexWorker(store),
         embedding_model_id="mock-embedding",
         embedding_model_version="1",

@@ -7,7 +7,9 @@ from suite.rag.models import SourceDocument, VectorEmbeddingRecord, VectorLifecy
 from suite.rag.repositories import InMemorySourceRepository
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
+    EmbeddingModelVersion,
     FixedSizeTextChunker,
+    InMemoryEmbeddingModelVersionRegistry,
     PlainTextExtractor,
     RepositorySourceResolver,
     SourceIndexCommand,
@@ -65,6 +67,7 @@ def pipeline_for(
     store: CapturingVectorIndexStore,
     *,
     acl_version: int = 1,
+    embedding_model_registry: InMemoryEmbeddingModelVersionRegistry | None = None,
 ) -> SourceIndexingPipeline:
     repository = InMemorySourceRepository(documents={document.object_id: document})
     return SourceIndexingPipeline(
@@ -76,6 +79,8 @@ def pipeline_for(
         text_extractor=PlainTextExtractor(),
         chunker=FixedSizeTextChunker(max_characters=32),
         embedding_provider=DeterministicHashEmbeddingProvider(dimensions=3),
+        embedding_model_registry=embedding_model_registry
+        or InMemoryEmbeddingModelVersionRegistry.approved_single_model(),
         worker=VectorIndexWorker(store),
         embedding_model_id="mock-embedding",
         embedding_model_version="1",
@@ -120,6 +125,7 @@ def test_source_indexing_pipeline_builds_chunks_and_reindexes_source() -> None:
     assert first.metadata.acl_hash.startswith("sha256:")
     assert first.metadata.acl_version == 1
     assert first.metadata.embedding_model_id == "mock-embedding"
+    assert first.metadata.embedding_model_version == "1"
     assert first.metadata.content_hash.startswith("sha256:")
     assert first.embedding_dimensions == 3
     assert len(first.embedding) == 3
@@ -169,6 +175,167 @@ def test_source_indexing_rejects_stale_expected_acl_version_before_writing() -> 
                 source_object_id="doc-1",
                 source_version_id="v1",
                 expected_acl_version=2,
+            )
+        )
+
+    assert store.upserted == []
+
+
+def test_source_indexing_rejects_unknown_embedding_model_version_at_construction() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Retention policy",
+        text="Source text",
+        classification=DataClass.INTERNAL,
+    )
+
+    with pytest.raises(LookupError, match="Unknown embedding model version"):
+        SourceIndexingPipeline(
+            resolver=RepositorySourceResolver(InMemorySourceRepository(documents={"doc-1": document})),
+            text_extractor=PlainTextExtractor(),
+            chunker=FixedSizeTextChunker(max_characters=32),
+            embedding_provider=DeterministicHashEmbeddingProvider(dimensions=3),
+            embedding_model_registry=InMemoryEmbeddingModelVersionRegistry(model_versions=()),
+            worker=VectorIndexWorker(store),
+            embedding_model_id="mock-embedding",
+            embedding_model_version="1",
+            indexed_at_clock=lambda: "2026-06-10T00:01:00Z",
+        )
+
+
+def test_source_indexing_rejects_unapproved_embedding_model_before_writing() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Retention policy",
+        text="Source text",
+        classification=DataClass.INTERNAL,
+    )
+    pipeline = pipeline_for(
+        document,
+        store,
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry(
+            model_versions=(
+                EmbeddingModelVersion(
+                    embedding_model_id="mock-embedding",
+                    embedding_model_version="1",
+                    provider="local-test",
+                    deployment="deterministic-hash",
+                    dimensions=3,
+                    checksum="sha256:model",
+                    approved_for_data_classes=frozenset({DataClass.INTERNAL}),
+                    approved_at_utc=None,
+                ),
+            )
+        ),
+    )
+
+    with pytest.raises(ValueError, match="not approved for indexing"):
+        pipeline.index_source(
+            SourceIndexCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+            )
+        )
+
+    assert store.upserted == []
+
+
+def test_source_indexing_rejects_retired_embedding_model_before_writing() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Retention policy",
+        text="Source text",
+        classification=DataClass.INTERNAL,
+    )
+    pipeline = pipeline_for(
+        document,
+        store,
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry(
+            model_versions=(
+                EmbeddingModelVersion(
+                    embedding_model_id="mock-embedding",
+                    embedding_model_version="1",
+                    provider="local-test",
+                    deployment="deterministic-hash",
+                    dimensions=3,
+                    checksum="sha256:model",
+                    approved_for_data_classes=frozenset({DataClass.INTERNAL}),
+                    approved_at_utc="2026-06-10T00:00:00Z",
+                    retired_at_utc="2026-06-11T00:00:00Z",
+                ),
+            )
+        ),
+    )
+
+    with pytest.raises(ValueError, match="retired"):
+        pipeline.index_source(
+            SourceIndexCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+            )
+        )
+
+    assert store.upserted == []
+
+
+def test_source_indexing_rejects_embedding_model_data_class_mismatch_before_writing() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Confidential source",
+        text="Source text",
+        classification=DataClass.CONFIDENTIAL,
+    )
+    pipeline = pipeline_for(
+        document,
+        store,
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry.approved_single_model(
+            approved_for_data_classes=frozenset({DataClass.INTERNAL})
+        ),
+    )
+
+    with pytest.raises(ValueError, match="not approved for source data class"):
+        pipeline.index_source(
+            SourceIndexCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+            )
+        )
+
+    assert store.upserted == []
+
+
+def test_source_indexing_rejects_embedding_dimension_mismatch_before_writing() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Retention policy",
+        text="Source text",
+        classification=DataClass.INTERNAL,
+    )
+    pipeline = pipeline_for(
+        document,
+        store,
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry.approved_single_model(dimensions=4),
+    )
+
+    with pytest.raises(ValueError, match="dimensions"):
+        pipeline.index_source(
+            SourceIndexCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
             )
         )
 

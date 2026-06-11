@@ -44,9 +44,11 @@ Current sprint:
 34. [x] Vector metadata schema validation and ACL-version propagation hardening.
 35. [x] Vector benchmark thresholds, report hashes, and ANN candidate decision gates.
 36. [x] Durable deployment audit storage for vector worker events.
+37. [x] Embedding model versioning registry checks before production indexing.
 
 ## Next Engineering Step
 
-After durable vector worker audit storage is in place:
+After embedding model version registry checks are in place:
 
-- Add embedding model versioning registry checks before production indexing.
+- Add production-grade embedding model registry administration and approval audit events.
+- Start hybrid search orchestration boundary after keyword indexer design.

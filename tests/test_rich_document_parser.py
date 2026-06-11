@@ -29,6 +29,7 @@ from suite.rag.rich_document_parser import (
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
     FixedSizeTextChunker,
+    InMemoryEmbeddingModelVersionRegistry,
     RepositorySourceResolver,
     SourceIndexCommand,
     SourceIndexingPipeline,
@@ -224,6 +225,7 @@ def test_rich_document_parser_text_extractor_feeds_docx_bytes_into_indexing_pipe
         text_extractor=ParserWorkerTextExtractor(RichDocumentParserWorker()),
         chunker=FixedSizeTextChunker(max_characters=512),
         embedding_provider=DeterministicHashEmbeddingProvider(dimensions=3),
+        embedding_model_registry=InMemoryEmbeddingModelVersionRegistry.approved_single_model(),
         worker=VectorIndexWorker(store),
         embedding_model_id="mock-embedding",
         embedding_model_version="1",
