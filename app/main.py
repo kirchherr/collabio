@@ -24,6 +24,7 @@ from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.llm_gateway.providers.mock import MockLLMProvider
 from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
+from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import (
@@ -204,6 +205,7 @@ def build_app() -> FastAPI:
         seed=InMemoryTenantPolicyRepository.default(),
     )
     module_registry = default_module_registry()
+    migration_manifest = load_migration_manifest()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -268,6 +270,7 @@ def build_app() -> FastAPI:
                     target_status="disabled",
                 ),
                 enabled_features=command.enabled_features,
+                migration_manifest_entries=request.app.state.migration_manifest,
             )
             return tenant_module_admin_view(state)
         except LookupError as exc:
@@ -691,6 +694,7 @@ def build_app() -> FastAPI:
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
     app.state.model_registry = model_registry
+    app.state.migration_manifest = migration_manifest
     app.state.module_registry = module_registry
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository

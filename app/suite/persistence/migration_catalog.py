@@ -119,6 +119,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("adr:platform-module-system", "test:module-decommission-cancel-reopen"),
     ),
+    SqlMigration(
+        version="0011",
+        name="tenant_module_migration_evidence",
+        resource_name="0011_tenant_module_migration_evidence.sql",
+        module_id="core",
+        evidence_refs=("adr:platform-module-system", "test:module-provisioning-migration-evidence"),
+    ),
 )
 
 

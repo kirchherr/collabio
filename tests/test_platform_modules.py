@@ -14,6 +14,7 @@ from suite.platform.modules import (
     ModuleGateSurface,
     ModuleKind,
     ModuleLifecycleError,
+    ModuleMigrationEvidence,
     ModuleStatus,
     ModuleWorkerGate,
     TenantModuleState,
@@ -48,9 +49,31 @@ DECOMMISSION_REOPEN_EVIDENCE_REFS = {
     "blocker_remediation_evidence_ref": "decommission-remediation:evidence-1",
     "reopen_audit_evidence_ref": "audit:decommission-reopen-evidence-1",
 }
+MIGRATION_EVIDENCE = (
+    ModuleMigrationEvidence(
+        version="0007",
+        name="platform_module_registry",
+        module_id="core",
+        checksum="sha256:module-registry",
+        evidence_refs=("adr:platform-module-system", "test:platform-module-registry"),
+        blocks_startup=True,
+    ),
+    ModuleMigrationEvidence(
+        version="0011",
+        name="tenant_module_migration_evidence",
+        module_id="core",
+        checksum="sha256:module-migration-evidence",
+        evidence_refs=("adr:platform-module-system", "test:module-provisioning-migration-evidence"),
+        blocks_startup=True,
+    ),
+)
 
 
-def crm_erp_catalog(status: ModuleStatus = ModuleStatus.INSTALLED) -> ModuleCatalogEntry:
+def crm_erp_catalog(
+    status: ModuleStatus = ModuleStatus.INSTALLED,
+    *,
+    required_migration_versions: tuple[str, ...] = (),
+) -> ModuleCatalogEntry:
     return ModuleCatalogEntry(
         module_id="crm_erp",
         display_name="CRM/ERP",
@@ -59,6 +82,7 @@ def crm_erp_catalog(status: ModuleStatus = ModuleStatus.INSTALLED) -> ModuleCata
         status=status,
         description="Optional CRM/ERP business module.",
         manifest_hash="sha256:crm-erp-manifest",
+        required_migration_versions=required_migration_versions,
         installed_at_utc=NOW,
     )
 
@@ -515,6 +539,61 @@ def test_module_registry_lifecycle_transitions_keep_disable_compliance_access() 
     )
     assert suspended.status == ModuleStatus.SUSPENDED
     assert suspended.compliance_access_allowed
+
+
+def test_module_provisioning_requires_startup_migration_manifest_evidence() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog(required_migration_versions=("0007", "0011"))],
+        tenant_modules=[tenant_module(ModuleStatus.AVAILABLE, enabled_features={"crm_erp.crm.accounts": False})],
+    )
+
+    with pytest.raises(ModuleLifecycleError, match="Missing startup migrations"):
+        registry.provision_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:provision",
+            changed_at_utc=NOW,
+        )
+
+    with pytest.raises(ModuleLifecycleError, match="0011"):
+        registry.provision_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:provision",
+            migration_manifest_entries=MIGRATION_EVIDENCE[:1],
+            changed_at_utc=NOW,
+        )
+
+    provisioned = registry.provision_tenant_module(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:provision",
+        migration_manifest_entries=MIGRATION_EVIDENCE,
+        changed_at_utc=NOW,
+    )
+
+    assert provisioned.status == ModuleStatus.DISABLED
+    assert [evidence.version for evidence in provisioned.migration_evidence] == ["0007", "0011"]
+    assert provisioned.migration_evidence[0].evidence_refs
+
+    stale_registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog(required_migration_versions=("0007", "0011"))],
+        tenant_modules=[tenant_module(ModuleStatus.DISABLED, enabled_features={"crm_erp.crm.accounts": False})],
+    )
+    with pytest.raises(ModuleLifecycleError, match="missing evidence"):
+        stale_registry.enable_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:enable",
+        )
 
 
 def test_decommission_check_is_conservative_until_evidence_exists() -> None:

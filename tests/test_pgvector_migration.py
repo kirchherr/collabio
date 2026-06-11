@@ -42,6 +42,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0008",
         "0009",
         "0010",
+        "0011",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -247,6 +248,17 @@ def test_tenant_module_decommission_cancel_reopen_migration_requires_audit_evide
     assert "decommission_evidence_refs ? 'reopen_approval_ref'" in sql
     assert "decommission_evidence_refs ? 'blocker_remediation_evidence_ref'" in sql
     assert "decommission_evidence_refs ? 'reopen_audit_evidence_ref'" in sql
+
+
+def test_tenant_module_migration_evidence_migration_requires_manifest_snapshot() -> None:
+    sql = normalized(get_migration("0011").sql())
+
+    assert "add column if not exists migration_evidence jsonb" in sql
+    assert "tenant_modules_migration_evidence_json_check" in sql
+    assert "tenant_modules_provisioned_migration_evidence_check" in sql
+    assert "status in ('available', 'provisioning')" in sql
+    assert "jsonb_array_length(migration_evidence) > 0" in sql
+    assert "startup-blocking migration manifest entries" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

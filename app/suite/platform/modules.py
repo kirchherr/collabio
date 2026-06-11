@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
 
@@ -266,6 +267,7 @@ class ModuleCatalogEntry(BaseModel):
     status: ModuleStatus
     description: str
     manifest_hash: str
+    required_migration_versions: tuple[str, ...] = Field(default_factory=tuple)
     min_core_version: str | None = None
     installed_at_utc: datetime = Field(default_factory=utc_now)
     schema_version: str = "module_catalog.v1"
@@ -291,6 +293,16 @@ class ModuleCatalogEntry(BaseModel):
             raise ValueError("manifest_hash must be a namespaced hash reference")
         return value
 
+    @field_validator("required_migration_versions")
+    @classmethod
+    def validate_required_migration_versions(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("required_migration_versions must not contain duplicates")
+        for version in value:
+            if not version.isdigit() or len(version) != 4:
+                raise ValueError("required_migration_versions must contain four digit migration versions")
+        return value
+
     @model_validator(mode="after")
     def require_deployable_catalog_status(self) -> ModuleCatalogEntry:
         if self.status in {
@@ -306,6 +318,57 @@ class ModuleCatalogEntry(BaseModel):
         return self
 
 
+class ModuleMigrationEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    version: str
+    name: str
+    module_id: str
+    checksum: str
+    evidence_refs: tuple[str, ...]
+    blocks_startup: bool
+
+    @field_validator("version")
+    @classmethod
+    def validate_version(cls, value: str) -> str:
+        if not value.isdigit() or len(value) != 4:
+            raise ValueError("migration version must be a four digit string")
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("migration name must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def validate_module_id(cls, value: str) -> str:
+        if not MODULE_ID_PATTERN.fullmatch(value):
+            raise ValueError("migration module_id must be lowercase snake_case")
+        return value
+
+    @field_validator("checksum")
+    @classmethod
+    def validate_checksum(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("migration checksum must be a namespaced reference")
+        return value
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def validate_evidence_refs(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not value:
+            raise ValueError("migration evidence_refs must not be empty")
+        if len(set(value)) != len(value):
+            raise ValueError("migration evidence_refs must not contain duplicates")
+        for evidence_ref in value:
+            if not NAMESPACED_REF_PATTERN.fullmatch(evidence_ref):
+                raise ValueError("migration evidence_refs must be namespaced references")
+        return value
+
+
 class TenantModuleState(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -316,6 +379,7 @@ class TenantModuleState(BaseModel):
     changed_by: str
     audit_chain_ref: str
     enabled_features: dict[str, bool] = Field(default_factory=dict)
+    migration_evidence: tuple[ModuleMigrationEvidence, ...] = Field(default_factory=tuple)
     decommission_evidence_refs: dict[str, str] = Field(default_factory=dict)
     provisioned_at_utc: datetime | None = None
     enabled_at_utc: datetime | None = None
@@ -357,6 +421,14 @@ class TenantModuleState(BaseModel):
                 raise ValueError("feature IDs must be namespaced module features")
             if not feature_id.startswith(f"{self.module_id}."):
                 raise ValueError("feature IDs must belong to the tenant module")
+
+        migration_versions: set[str] = set()
+        for migration_evidence in self.migration_evidence:
+            if migration_evidence.version in migration_versions:
+                raise ValueError("migration evidence versions must be unique")
+            migration_versions.add(migration_evidence.version)
+            if migration_evidence.module_id not in {"core", self.module_id}:
+                raise ValueError("migration evidence must belong to core or the tenant module")
 
         for evidence_key, evidence_ref in self.decommission_evidence_refs.items():
             if evidence_key not in ALLOWED_DECOMMISSION_EVIDENCE_KEYS:
@@ -459,6 +531,7 @@ class TenantModuleAdminView(BaseModel):
     module_id: str
     status: ModuleStatus
     enabled_features: dict[str, bool]
+    migration_evidence: tuple[ModuleMigrationEvidence, ...]
     normal_use_enabled: bool
     compliance_access_allowed: bool
     provisioned_at_utc: datetime | None = None
@@ -480,6 +553,7 @@ def tenant_module_admin_view(state: TenantModuleState) -> TenantModuleAdminView:
         module_id=state.module_id,
         status=state.status,
         enabled_features=dict(sorted(state.enabled_features.items())),
+        migration_evidence=tuple(sorted(state.migration_evidence, key=lambda evidence: evidence.version)),
         normal_use_enabled=state.normal_use_enabled,
         compliance_access_allowed=state.compliance_access_allowed,
         provisioned_at_utc=state.provisioned_at_utc,
@@ -558,6 +632,70 @@ class InMemoryModuleRegistry:
         return state
 
     @staticmethod
+    def _migration_evidence_by_version(
+        migration_manifest_entries: Iterable[object] | None,
+    ) -> dict[str, ModuleMigrationEvidence]:
+        if migration_manifest_entries is None:
+            return {}
+
+        evidence_by_version: dict[str, ModuleMigrationEvidence] = {}
+        for entry in migration_manifest_entries:
+            evidence = ModuleMigrationEvidence.model_validate(entry)
+            if evidence.version in evidence_by_version:
+                raise ModuleLifecycleError(f"Duplicate migration manifest evidence: {evidence.version}")
+            evidence_by_version[evidence.version] = evidence
+        return evidence_by_version
+
+    @staticmethod
+    def _required_versions(catalog_entry: ModuleCatalogEntry) -> set[str]:
+        return set(catalog_entry.required_migration_versions)
+
+    def migration_evidence_for_module(
+        self,
+        *,
+        module_id: str,
+        migration_manifest_entries: Iterable[object] | None,
+    ) -> tuple[ModuleMigrationEvidence, ...]:
+        catalog_entry = self.get_catalog_entry(module_id)
+        required_versions = self._required_versions(catalog_entry)
+        if not required_versions:
+            return ()
+
+        evidence_by_version = self._migration_evidence_by_version(migration_manifest_entries)
+        missing_versions = sorted(required_versions - set(evidence_by_version))
+        if missing_versions:
+            raise ModuleLifecycleError(
+                f"Missing startup migrations for module {module_id}: {', '.join(missing_versions)}"
+            )
+
+        migration_evidence: list[ModuleMigrationEvidence] = []
+        for version in sorted(required_versions):
+            evidence = evidence_by_version[version]
+            if not evidence.blocks_startup:
+                raise ModuleLifecycleError(f"Required migration does not block startup: {version}")
+            if evidence.module_id not in {"core", module_id}:
+                raise ModuleLifecycleError(
+                    f"Migration {version} belongs to {evidence.module_id}, not core or module {module_id}"
+                )
+            migration_evidence.append(evidence)
+        return tuple(migration_evidence)
+
+    def _require_state_migration_evidence(
+        self,
+        *,
+        catalog_entry: ModuleCatalogEntry,
+        state: TenantModuleState,
+    ) -> None:
+        required_versions = self._required_versions(catalog_entry)
+        if not required_versions:
+            return
+
+        available_versions = {evidence.version for evidence in state.migration_evidence if evidence.blocks_startup}
+        missing_versions = sorted(required_versions - available_versions)
+        if missing_versions:
+            raise ModuleLifecycleError(f"Module startup migrations are missing evidence: {', '.join(missing_versions)}")
+
+    @staticmethod
     def _validate_gate_feature_id(*, module_id: str, feature_id: str) -> None:
         if not FEATURE_ID_PATTERN.fullmatch(feature_id):
             raise ModuleLifecycleError(f"Module feature ID is not namespaced: {feature_id}")
@@ -578,6 +716,7 @@ class InMemoryModuleRegistry:
 
         if surface in {ModuleGateSurface.NORMAL_API, ModuleGateSurface.FEATURE_WORKER}:
             self.require_normal_use(tenant_id=tenant_id, module_id=module_id, feature_id=feature_id)
+            self._require_state_migration_evidence(catalog_entry=self.get_catalog_entry(module_id), state=state)
         if surface in {ModuleGateSurface.COMPLIANCE_API, ModuleGateSurface.COMPLIANCE_WORKER}:
             self.require_compliance_access(tenant_id=tenant_id, module_id=module_id)
 
@@ -618,9 +757,10 @@ class InMemoryModuleRegistry:
         changed_by: str,
         audit_chain_ref: str,
         enabled_features: dict[str, bool] | None = None,
+        migration_manifest_entries: Iterable[object] | None = None,
         changed_at_utc: datetime | None = None,
     ) -> TenantModuleState:
-        self.get_catalog_entry(module_id)
+        catalog_entry = self.get_catalog_entry(module_id)
         now = changed_at_utc or utc_now()
         existing = self._tenant_modules.get((tenant_id, module_id))
         if existing is not None and existing.status in {
@@ -636,12 +776,22 @@ class InMemoryModuleRegistry:
         next_enabled_features = enabled_features if enabled_features is not None else {}
         if enabled_features is None and existing is not None:
             next_enabled_features = existing.enabled_features
+        migration_evidence = self.migration_evidence_for_module(
+            module_id=module_id,
+            migration_manifest_entries=migration_manifest_entries,
+        )
+        if not migration_evidence and existing is not None:
+            migration_evidence = existing.migration_evidence
+
+        if self._required_versions(catalog_entry) and not migration_evidence:
+            raise ModuleLifecycleError(f"Missing migration evidence for module provision: {module_id}")
 
         state = TenantModuleState(
             tenant_id=tenant_id,
             module_id=module_id,
             status=ModuleStatus.DISABLED,
             enabled_features=next_enabled_features,
+            migration_evidence=migration_evidence,
             policy_snapshot_hash=policy_snapshot_hash,
             provisioned_at_utc=now,
             disabled_at_utc=now,
@@ -664,6 +814,7 @@ class InMemoryModuleRegistry:
         changed_at_utc: datetime | None = None,
     ) -> TenantModuleState:
         existing = self.get_tenant_module(tenant_id, module_id)
+        catalog_entry = self.get_catalog_entry(module_id)
         if existing.provisioned_at_utc is None:
             raise ModuleLifecycleError(f"Module must be provisioned before enablement: {module_id}")
         if existing.status in {
@@ -672,6 +823,7 @@ class InMemoryModuleRegistry:
             ModuleStatus.DECOMMISSIONED,
         }:
             raise ModuleLifecycleError(f"Module cannot be enabled from state {existing.status}: {module_id}")
+        self._require_state_migration_evidence(catalog_entry=catalog_entry, state=existing)
 
         now = changed_at_utc or utc_now()
         state = existing.model_copy(
@@ -1055,6 +1207,7 @@ def default_module_registry() -> InMemoryModuleRegistry:
         status=ModuleStatus.INSTALLED,
         description="Optional CRM/ERP business module.",
         manifest_hash="sha256:crm-erp-module-manifest",
+        required_migration_versions=("0007", "0008", "0009", "0010", "0011"),
     )
     crm_erp_demo_state = TenantModuleState(
         tenant_id="tenant-demo",

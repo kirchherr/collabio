@@ -994,7 +994,7 @@ Plattform-Aufgaben:
 - [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
 - [x] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
 - [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
-- [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
+- [x] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
 - [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
 
 CRM/ERP `crm_erp`:
@@ -1187,7 +1187,8 @@ Empfohlene naechste Reihenfolge:
 49. [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
 50. [x] Serverseitige Modul-Gates fuer API-Router und Worker implementieren.
 51. [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch implementieren.
-52. [ ] Modul-Provisioning mit Migration-Manifest-Evidence verbinden und bei fehlenden Startup-Migrationen blockieren.
+52. [x] Modul-Provisioning mit Migration-Manifest-Evidence verbinden und bei fehlenden Startup-Migrationen blockieren.
+53. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren.
 
 ## Release-Strategie
 

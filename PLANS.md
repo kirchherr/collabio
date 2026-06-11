@@ -56,6 +56,7 @@ Current sprint:
 46. [x] Decommission Cancel/Reopen workflow with explicit approval and audit evidence.
 47. [x] Server-side module gates for API routers and workers.
 48. [x] Module-aware migration catalog with checksums, evidence, and startup mismatch blockade.
+49. [x] Module provisioning connected to migration manifest evidence with missing-startup-migration blockade.
 
 ## Next Engineering Step
 
@@ -63,7 +64,7 @@ After embedding model registry administration is in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Connect module provisioning to migration manifest evidence and block modules with missing startup migrations.
+- Close module lifecycle behavior test matrix and start CRM/ERP subfeature registry.
 
 ## Module Expansion Stance
 

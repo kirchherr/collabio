@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from main import app, require_module_api_gate
+from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateDecision, default_module_registry
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 
@@ -158,6 +159,7 @@ def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_r
         policy_snapshot_hash="sha256:policy",
         changed_by="admin-1",
         audit_chain_ref="audit:provision",
+        migration_manifest_entries=load_migration_manifest(),
     )
     module_registry.enable_tenant_module(
         tenant_id="tenant-demo",
@@ -232,6 +234,13 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
     assert provisioned["normal_use_enabled"] is False
     assert provisioned["compliance_access_allowed"] is True
     assert provisioned["audit_chain_ref"].startswith("audit:")
+    assert [evidence["version"] for evidence in provisioned["migration_evidence"]] == [
+        "0007",
+        "0008",
+        "0009",
+        "0010",
+        "0011",
+    ]
 
     enable_response = client.post(
         "/v1/admin/tenant-modules/crm_erp/enable",
