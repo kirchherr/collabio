@@ -8,7 +8,8 @@ import psycopg
 import pytest
 
 from suite.ai_control_plane.models import DataClass
-from suite.persistence.migrator import apply_migrations
+from suite.persistence.migration_catalog import get_migration
+from suite.persistence.migrator import MigrationStartupBlocked, apply_migrations, verify_migration_startup_state
 from suite.rag.models import ChunkMetadata, SourceDocument, VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.pgvector_store import PgvectorEmbeddingModelVersionRegistry, PgvectorVectorStore
 from suite.rag.repositories import InMemorySourceRepository
@@ -239,6 +240,40 @@ def test_migrator_applies_pgvector_extension_and_records_version(live_database: 
 
     assert extension_row is not None
     assert migration_row == ("0001",)
+
+
+def test_migrator_records_module_metadata_and_blocks_startup_mismatch(live_database: LiveDatabase) -> None:
+    apply_migrations(live_database.migration_dsn)
+    verify_migration_startup_state(live_database.migration_dsn)
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        metadata_row = connection.execute(
+            """
+            SELECT module_id, evidence_refs, blocks_startup
+            FROM collabio.schema_migrations
+            WHERE version = '0007'
+            """
+        ).fetchone()
+
+    assert metadata_row is not None
+    assert metadata_row[0] == "core"
+    assert "test:platform-module-registry" in metadata_row[1]
+    assert metadata_row[2] is True
+
+    expected_checksum = get_migration("0007").checksum()
+    with psycopg.connect(live_database.migration_dsn, autocommit=True) as connection:
+        connection.execute("UPDATE collabio.schema_migrations SET checksum = 'sha256:tampered' WHERE version = '0007'")
+    try:
+        with pytest.raises(MigrationStartupBlocked, match="0007"):
+            verify_migration_startup_state(live_database.migration_dsn)
+    finally:
+        with psycopg.connect(live_database.migration_dsn, autocommit=True) as connection:
+            connection.execute(
+                "UPDATE collabio.schema_migrations SET checksum = %s WHERE version = '0007'",
+                (expected_checksum,),
+            )
+
+    verify_migration_startup_state(live_database.migration_dsn)
 
 
 def test_pgvector_rls_returns_only_active_candidates_for_current_tenant(live_database: LiveDatabase) -> None:

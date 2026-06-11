@@ -993,7 +993,7 @@ Plattform-Aufgaben:
 - [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
 - [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
 - [x] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
-- [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
+- [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [ ] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
 - [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
 
@@ -1186,7 +1186,8 @@ Empfohlene naechste Reihenfolge:
 48. [x] Decommission Blocked/Completed Workflow mit finaler Disposition Evidence implementieren.
 49. [x] Decommission Cancel/Reopen Workflow mit expliziter Freigabe und Audit Evidence implementieren.
 50. [x] Serverseitige Modul-Gates fuer API-Router und Worker implementieren.
-51. [ ] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch implementieren.
+51. [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch implementieren.
+52. [ ] Modul-Provisioning mit Migration-Manifest-Evidence verbinden und bei fehlenden Startup-Migrationen blockieren.
 
 ## Release-Strategie
 
