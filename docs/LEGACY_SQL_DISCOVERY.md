@@ -30,6 +30,21 @@ Dieser Schritt ist absichtlich metadata-only. Er darf keine Rohdaten, Beispielze
 6. Unsichere oder unbekannte Tabellen werden als `legacy.row` markiert und quarantined.
 7. Der Import-Evidence-Plan verlangt Dry Run und explizite Freigabe.
 
+## SQL-Server-Metadata-Worker
+
+`app/suite/platform/legacy_sql_server_metadata.py` implementiert die erste konkrete Worker-Grenze fuer SQL Server. Der Worker ist treiberneutral: Er kennt nur ein Query-Executor-Protokoll und bekommt ausschliesslich eine Secret-Referenz, niemals DSN oder Passwort.
+
+`docs/legacy_sql_connector_policy.json` legt fest:
+
+- nur `sqlserver` als Connector-Kind fuer diesen Worker
+- isolierter Worker ist Pflicht
+- Netzwerkzugriff nur zu freigegebenen Legacy-Hosts
+- keine Raw-Row-Reads, keine Sample Values, keine Stored-Procedure-Body-Reads
+- nur erlaubte Query-Namen und Metadatenquellen aus `INFORMATION_SCHEMA` und `sys`
+- Audit Events fuer Started, Completed und Failed ohne Nutzdaten
+
+Das Docker-Compose-Profil enthaelt `legacy-sql-metadata-worker` als read-only, capability-losen Offline-Policy-Check mit `network_mode: none`. Produktiver Legacy-Zugriff muss spaeter ueber ein eigenes, restriktives Connector-Netzwerkprofil laufen.
+
 ## Import-Gates
 
 Ein Import darf erst starten, wenn folgende Evidenz vorliegt:
@@ -46,4 +61,4 @@ Rohdatenimport, destruktive Aktionen und automatische Zielobjektanlage bleiben d
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein isolierter SQL-Server-Metadata-Adapter-Worker mit Connector-Policy, Netzwerkbegrenzung, Secret-Referenzen statt Secrets und Audit Events ohne Nutzdaten.
+Der naechste technische Schritt ist die CRM/ERP-Mapping-Evidence: Tabellen aus Discovery-Manifests werden bewusst auf Zielobjekte, `legacy.row`-Fallback oder Quarantaene abgebildet, bevor Subfeature-Registry und Import-Dry-Run starten.

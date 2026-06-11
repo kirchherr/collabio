@@ -81,6 +81,25 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  legacy-sql-metadata-worker:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_server_metadata
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
   api:
     build:
       context: .

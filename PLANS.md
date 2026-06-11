@@ -58,6 +58,7 @@ Current sprint:
 48. [x] Module-aware migration catalog with checksums, evidence, and startup mismatch blockade.
 49. [x] Module provisioning connected to migration manifest evidence with missing-startup-migration blockade.
 50. [x] Legacy SQL Discovery and Import Evidence Framework for metadata-only legacy source assessment.
+51. [x] Isolated SQL Server metadata adapter worker with connector policy, secret-reference boundary, and metadata-only query plan.
 
 ## Next Engineering Step
 
@@ -65,7 +66,7 @@ After module provisioning and legacy SQL discovery evidence are in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
-- Add isolated SQL Server metadata adapter worker behind connector policy.
+- Add CRM/ERP legacy mapping evidence for discovered tables, target object candidates, `legacy.row` fallbacks, and quarantine decisions.
 - Start CRM/ERP subfeature registry only after legacy table discovery and mapping evidence exist.
 
 ## Module Expansion Stance

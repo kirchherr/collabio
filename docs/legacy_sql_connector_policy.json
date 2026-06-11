@@ -1,0 +1,71 @@
+{
+  "schema_version": "legacy_sql_server_connector_policy.v1",
+  "owner": "platform-legacy-import",
+  "connector_kind": "sqlserver",
+  "required_worker_network_mode": "approved_legacy_host_only",
+  "isolated_worker_required": true,
+  "unrestricted_network_forbidden": true,
+  "secret_reference_required": true,
+  "parameterized_queries_required": true,
+  "raw_row_reads_allowed": false,
+  "sample_values_allowed": false,
+  "stored_procedure_body_reads_allowed": false,
+  "row_count_estimates_allowed": true,
+  "allowed_query_names": [
+    "tables",
+    "columns",
+    "primary_keys",
+    "foreign_keys",
+    "indexes",
+    "row_counts"
+  ],
+  "required_query_names": [
+    "tables",
+    "columns",
+    "primary_keys"
+  ],
+  "allowed_metadata_sources": [
+    "information_schema.tables",
+    "information_schema.columns",
+    "information_schema.table_constraints",
+    "information_schema.key_column_usage",
+    "sys.foreign_keys",
+    "sys.foreign_key_columns",
+    "sys.tables",
+    "sys.schemas",
+    "sys.columns",
+    "sys.indexes",
+    "sys.index_columns",
+    "sys.dm_db_partition_stats"
+  ],
+  "forbidden_statement_fragments": [
+    "select *",
+    "insert ",
+    "update ",
+    "delete ",
+    "merge ",
+    "drop ",
+    "alter ",
+    "create ",
+    "exec ",
+    "execute ",
+    "openrowset",
+    "xp_"
+  ],
+  "forbidden_result_field_fragments": [
+    "sample",
+    "preview",
+    "row_values",
+    "record_values",
+    "cell",
+    "payload",
+    "secret",
+    "password",
+    "dsn"
+  ],
+  "required_audit_events": [
+    "legacy_sql.metadata_discovery.started",
+    "legacy_sql.metadata_discovery.completed",
+    "legacy_sql.metadata_discovery.failed"
+  ]
+}
