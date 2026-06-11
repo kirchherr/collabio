@@ -32,11 +32,12 @@ Current sprint:
 22. [x] Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation.
 23. [x] Storage write guard for tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
 24. [x] S3/MinIO-compatible storage adapter ADR, bucket profiles, Object Lock posture, and manifest restore checks.
+25. [x] Retention defaults and RetentionManifest model for storage, legal hold, WORM, backup, and e-discovery.
 
 ## Next Engineering Step
 
-After the storage adapter plan is in place:
+After the retention manifest model is in place:
 
-- Define retention defaults and the retention manifest model that storage, legal hold, WORM, backup, and e-discovery will share.
+- Define Legal Hold APIs for source objects and retention-manifest re-evaluation.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

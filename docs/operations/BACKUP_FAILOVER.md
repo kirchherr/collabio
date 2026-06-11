@@ -31,6 +31,7 @@ It is intentionally lightweight. The current repository implements development b
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
+- Retention manifest restores must prove retain-until, policy snapshot hash, WORM requirement, Object Lock mode, and Legal Hold state.
 - Object-store failover must preserve bucket profile evidence, version IDs, Object Lock posture, retention configuration, and legal-hold state.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.

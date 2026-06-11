@@ -4,6 +4,8 @@ The storage adapter is the object-content boundary beneath source objects.
 
 Product code must not call S3, MinIO, or any object-store SDK directly. It writes source objects through storage APIs that validate metadata, content hashes, manifest hashes, retention, legal hold, KMS references, and audit references first.
 
+Retention manifests are defined in `docs/RETENTION_MANIFEST.md` and must be available before record/evidence object writes are enabled.
+
 ## First Decision
 
 ADR:
@@ -33,6 +35,7 @@ SourceObjectRecord
   -> SourceObjectWriteGuard
   -> Storage adapter policy
   -> object bucket profile
+  -> retention manifest
   -> encrypted object write
   -> version ID and manifest evidence
   -> audit event / outbox event

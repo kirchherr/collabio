@@ -492,7 +492,7 @@ Aufgaben:
 - [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 - [x] S3/MinIO-kompatiblen Storage Adapter planen.
 - [x] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
-- [ ] Retention Defaults und Retention Manifest definieren.
+- [x] Retention Defaults und Retention Manifest definieren.
 - [ ] Legal Hold APIs fuer Objekte definieren.
 - [ ] Content Hash Verification implementieren.
 - [ ] Storage Manifest implementieren.
@@ -1042,7 +1042,8 @@ Empfohlene naechste Reihenfolge:
 22. [x] Source Object Model fuer Dokumente, Mails, Attachments, Kommentare und Verfahrensdokumentation definieren.
 23. [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 24. [x] S3/MinIO-kompatiblen Storage Adapter mit Versioning, Object-Lock/WORM-Haltung und Manifest-Restore-Checks planen.
-25. [ ] Retention Defaults und Retention Manifest definieren.
+25. [x] Retention Defaults und Retention Manifest definieren.
+26. [ ] Legal Hold APIs fuer Source Objects und Retention-Manifest-Reevaluation definieren.
 
 ## Release-Strategie
 

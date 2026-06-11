@@ -1,6 +1,8 @@
 version: 1
 status: initial
 updated_at: "2026-06-10"
+runtime_manifest_policy: docs/retention_manifest_policy.json
+runtime_manifest_model: app/suite/storage/retention.py
 policies:
   temporary_default:
     description: Short-lived temporary data such as previews and transient cache.
@@ -80,4 +82,3 @@ policies:
     legal_hold_allowed: true
     worm_required: true
     audit_required: true
-

@@ -96,6 +96,14 @@ docs/STORAGE_ADAPTER_PLAN.md
 docs/storage_adapter_policy.json
 ```
 
+Retention defaults and manifests are documented in:
+
+```text
+ARCHITECTURE_DECISIONS/ADR-0025-retention-defaults-and-manifest.md
+docs/RETENTION_MANIFEST.md
+docs/retention_manifest_policy.json
+```
+
 ## RAG And Parser Boundary
 
 `SourceObjectResolver` converts a versioned source object into the existing `ResolvedSource` shape used by source indexing.
@@ -141,7 +149,7 @@ Not implemented yet:
 - PostgreSQL-backed source metadata tables.
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
-- Retention engine.
+- Persistent retention-manifest storage and lifecycle worker.
 - KMS adapter and envelope encryption.
 - Full production storage write API.
 
