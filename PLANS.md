@@ -42,10 +42,11 @@ Current sprint:
 32. [x] Cryptographic shredding simulation with GoBD, legal-hold, retention, and KMS destruction gates.
 33. [x] Restore-test framework for storage, envelope, retention, KMS, and cryptoshred evidence.
 34. [x] Vector metadata schema validation and ACL-version propagation hardening.
+35. [x] Vector benchmark thresholds, report hashes, and ANN candidate decision gates.
 
 ## Next Engineering Step
 
-After vector metadata and ACL-version hardening is in place:
+After vector benchmark reporting is in place:
 
-- Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.
+- Add embedding model versioning registry checks before production indexing.

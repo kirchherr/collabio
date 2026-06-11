@@ -1054,7 +1054,8 @@ Empfohlene naechste Reihenfolge:
 34. [x] Restore-Test-Framework anlegen.
 35. [x] Vector Metadata Schema validieren.
 36. [x] ACL-Versionen in Vector Metadata uebernehmen.
-37. [ ] Benchmark Thresholds und Reporting vor ANN-Index-Entscheidungen ergaenzen.
+37. [x] Benchmark Thresholds und Reporting vor ANN-Index-Entscheidungen ergaenzen.
+38. [ ] Vector Worker Audit Events an durable Deployment Audit Storage anbinden.
 
 ## Release-Strategie
 

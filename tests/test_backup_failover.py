@@ -53,6 +53,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "pg_restore_catalog" in postgres.integrity_checks
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
+    assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
 
@@ -78,6 +79,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "wrapped_data_key_hash_check" in kms.integrity_checks
     assert "rewrapped_data_key_hash_check" in kms.integrity_checks
     assert "no_plaintext_key_export_check" in kms.integrity_checks
+
+    search_derivatives = policy.target("search_and_vector_derivatives")
+    assert "recall_baseline_check" in search_derivatives.integrity_checks
+    assert "benchmark_report_hash_check" in search_derivatives.integrity_checks
 
     for target in policy.targets:
         assert target.covered_domains
@@ -106,8 +111,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
     assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
+    assert "benchmark reports" in policy.domain("search_indexes").state_artifacts
     assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
     assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
+    assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
 
@@ -139,6 +146,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Monthly" in runbook
     assert "restore drill report hash" in runbook
     assert "ACL versions" in runbook
+    assert "benchmark report hash" in runbook
 
 
 def test_compose_exposes_backup_and_verification_commands() -> None:

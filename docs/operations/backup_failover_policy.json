@@ -104,7 +104,7 @@
       "primary_target_id": "search_and_vector_derivatives",
       "criticality": "rebuildable",
       "recovery_strategy": "rebuild from source objects and metadata; keep snapshots only when rebuild exceeds RTO",
-      "state_artifacts": ["index version", "source checkpoint", "ACL checkpoint", "rebuild cursor"]
+      "state_artifacts": ["index version", "source checkpoint", "ACL checkpoint", "rebuild cursor", "benchmark reports", "benchmark report hashes"]
     },
     {
       "domain_id": "vector_indexes",
@@ -112,7 +112,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "important",
       "recovery_strategy": "restore vector metadata with Postgres; rebuild derived vectors when model or index snapshots are stale",
-      "state_artifacts": ["vector chunks", "embedding model IDs", "ACL hashes", "ACL versions", "vector metadata schema", "lifecycle state", "reindex checkpoints"]
+      "state_artifacts": ["vector chunks", "embedding model IDs", "ACL hashes", "ACL versions", "vector metadata schema", "lifecycle state", "reindex checkpoints", "benchmark reports", "benchmark report hashes"]
     },
     {
       "domain_id": "ai_control_plane",
@@ -195,7 +195,7 @@
         "monthly": 12
       },
       "restore_drill_frequency_days": 30,
-      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification", "source_object_metadata_smoke_test", "vector_metadata_schema_check", "acl_version_checkpoint_check", "tenant_isolation_smoke_test"],
+      "integrity_checks": ["sha256_manifest", "pg_restore_catalog", "migration_checksum_verification", "audit_chain_verification", "source_object_metadata_smoke_test", "vector_metadata_schema_check", "acl_version_checkpoint_check", "benchmark_report_hash_check", "tenant_isolation_smoke_test"],
       "failover_mode": "manual promotion until HA ADR and production drills are passing",
       "current_dev_commands": ["docker compose run --rm backup", "docker compose run --rm backup-verify"]
     },
@@ -255,7 +255,7 @@
         "monthly": 3
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["recall_baseline_check", "acl_filter_smoke_test", "acl_version_checkpoint_check", "vector_metadata_schema_check", "source_checkpoint_match"],
+      "integrity_checks": ["recall_baseline_check", "acl_filter_smoke_test", "acl_version_checkpoint_check", "vector_metadata_schema_check", "benchmark_report_hash_check", "source_checkpoint_match"],
       "failover_mode": "degraded search mode or rebuild from source until search HA ADR is implemented",
       "current_dev_commands": []
     },

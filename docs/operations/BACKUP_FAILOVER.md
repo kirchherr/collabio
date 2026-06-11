@@ -14,7 +14,7 @@ This model covers the whole suite trajectory:
 - File-backed development policy and registry data.
 - Source object metadata, object manifests, object storage, WORM records, office documents, collaborative state, mail messages, attachments, parser artifacts, export packages, and audit snapshots.
 - KMS references, secret-manager state, key rotation evidence, and destruction evidence.
-- Search indexes, vector indexes, indexing checkpoints, and rebuild cursors.
+- Search indexes, vector indexes, indexing checkpoints, benchmark reports, and rebuild cursors.
 - AI control-plane registries, model artifacts, prompt/tool policy, and approval policy.
 - Voice transcripts, e-discovery exports, observability evidence, release artifacts, background jobs, and outbox state.
 
@@ -41,7 +41,7 @@ It is intentionally lightweight. The current repository implements development b
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
 - Object-store failover must preserve bucket profile evidence, version IDs, Object Lock posture, retention configuration, and legal-hold state.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
-- Vector index rebuilds must verify metadata schema, ACL hashes, ACL versions, lifecycle state, and source checkpoints.
+- Vector index rebuilds must verify metadata schema, ACL hashes, ACL versions, lifecycle state, source checkpoints, and benchmark report hashes before ANN candidates are trusted.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.
 
 ## Continuity Domains
@@ -93,6 +93,8 @@ Monthly for active development and before every production-readiness milestone:
 5. Update the policy and this runbook when the restore path changes.
 
 Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, cryptoshred manifest hash when present, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
+
+Search and vector restore evidence must include the source checkpoint, ACL checkpoint, benchmark report hash, metadata schema result, and recall baseline result before rebuilt indexes or ANN candidates are trusted.
 
 ## Failover Stance
 

@@ -130,5 +130,20 @@ Rich document parsing stays behind the same `TextExtractor` and parser worker bo
 - `build_exact_search_benchmark_fixture`: creates stable embedding records and query expectations.
 - `rank_exact_vectors`: computes an in-process cosine ranking oracle.
 - `assert_exact_search_fixture_consistency`: proves that every expected query result is the exact top result.
+- `VectorBenchmarkThresholds`: declares minimum record/query counts, recall thresholds, latency ceilings, and `top_k`.
+- `VectorBenchmarkObservation`: records returned chunk IDs and measured latency for each benchmark query.
+- `build_vector_benchmark_report`: produces a hashable benchmark report with recall-at-1, recall-at-k, p95/p99 latency, failed checks, and an ANN decision.
 
 The live pgvector integration test loads the fixture through the worker-write path and verifies recall-at-1 against exact pgvector search. ANN indexes remain deferred until benchmark thresholds, tenant distributions, and model dimensions are explicit.
+
+Exact pgvector benchmarks are baseline evidence only. They cannot approve ANN usage by themselves.
+
+HNSW or IVFFlat candidates must produce a `vector_benchmark_report.v1` report with:
+
+- tenant, embedding model, model version, dimensions, record count, query count, and `top_k`
+- threshold payload and failed-check names
+- observations hash and report hash
+- UTC measurement timestamp
+- decision `ann_candidate_passed` only when every recall, latency, and fixture-size threshold passes
+
+Benchmark reports are operational evidence. Restore and failover checks for search/vector domains must preserve report hashes so index rebuilds and ANN rollouts can be re-evaluated instead of trusted from memory.
