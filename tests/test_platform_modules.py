@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleCatalogEntry,
+    ModuleDecommissionRequestCommand,
     ModuleKind,
     ModuleLifecycleError,
     ModuleStatus,
@@ -13,6 +14,13 @@ from suite.platform.modules import (
 )
 
 NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
+DECOMMISSION_EVIDENCE_REFS = {
+    "retention_evaluation_ref": "retention:eval-1",
+    "legal_hold_check_ref": "legal-hold:check-1",
+    "export_archive_decision_ref": "export:decision-1",
+    "audit_evidence_ref": "audit:evidence-1",
+    "backup_restore_evidence_ref": "backup:restore-1",
+}
 
 
 def crm_erp_catalog(status: ModuleStatus = ModuleStatus.INSTALLED) -> ModuleCatalogEntry:
@@ -41,12 +49,20 @@ def tenant_module(status: ModuleStatus, **overrides: object) -> TenantModuleStat
         "updated_at_utc": NOW,
     }
     if status == ModuleStatus.ENABLED:
+        values["provisioned_at_utc"] = NOW
         values["enabled_at_utc"] = NOW
     if status == ModuleStatus.DISABLED:
+        values["provisioned_at_utc"] = NOW
         values["disabled_at_utc"] = NOW
+    if status == ModuleStatus.SUSPENDED:
+        values["provisioned_at_utc"] = NOW
     if status == ModuleStatus.DECOMMISSION_REQUESTED:
+        values["provisioned_at_utc"] = NOW
         values["decommission_requested_at_utc"] = NOW
+        values["decommission_evidence_refs"] = DECOMMISSION_EVIDENCE_REFS
+        values["enabled_features"] = {"crm_erp.crm.accounts": False}
     if status == ModuleStatus.DECOMMISSIONED:
+        values["provisioned_at_utc"] = NOW
         values["decommissioned_at_utc"] = NOW
         values["enabled_features"] = {"crm_erp.crm.accounts": False}
     values.update(overrides)
@@ -80,6 +96,47 @@ def test_tenant_module_feature_ids_must_belong_to_the_module() -> None:
 
     with pytest.raises(ValidationError, match="namespaced module features"):
         tenant_module(ModuleStatus.ENABLED, enabled_features={"crm_erp": True})
+
+
+def test_decommission_request_command_requires_complete_namespaced_evidence() -> None:
+    command = ModuleDecommissionRequestCommand(
+        approval_reference="approval:decommission",
+        reason="tenant requested module decommission",
+        retention_evaluation_ref="retention:eval-1",
+        legal_hold_check_ref="legal-hold:check-1",
+        export_archive_decision_ref="export:decision-1",
+        audit_evidence_ref="audit:evidence-1",
+        backup_restore_evidence_ref="backup:restore-1",
+    )
+
+    assert command.evidence_refs() == DECOMMISSION_EVIDENCE_REFS
+
+    with pytest.raises(ValidationError, match="decommission evidence"):
+        ModuleDecommissionRequestCommand(
+            approval_reference="approval:decommission",
+            reason="tenant requested module decommission",
+            retention_evaluation_ref="not-namespaced",
+            legal_hold_check_ref="legal-hold:check-1",
+            export_archive_decision_ref="export:decision-1",
+            audit_evidence_ref="audit:evidence-1",
+            backup_restore_evidence_ref="backup:restore-1",
+        )
+
+
+def test_decommission_requested_state_requires_evidence_and_disabled_features() -> None:
+    requested = tenant_module(ModuleStatus.DECOMMISSION_REQUESTED)
+    assert requested.decommission_evidence_refs == DECOMMISSION_EVIDENCE_REFS
+    assert not requested.normal_use_enabled
+    assert requested.compliance_access_allowed
+
+    with pytest.raises(ValidationError, match="complete decommission evidence"):
+        tenant_module(ModuleStatus.DECOMMISSION_REQUESTED, decommission_evidence_refs={})
+
+    with pytest.raises(ValidationError, match="cannot keep enabled features"):
+        tenant_module(
+            ModuleStatus.DECOMMISSION_REQUESTED,
+            enabled_features={"crm_erp.crm.accounts": True},
+        )
 
 
 def test_module_registry_blocks_unknown_or_not_installed_modules() -> None:
@@ -196,6 +253,54 @@ def test_decommission_check_is_conservative_until_evidence_exists() -> None:
     assert "module must be disabled or suspended before decommission" in check.blocking_reasons
     assert "Legal Hold check" in check.required_evidence
     assert "backup/restore evidence check" in check.required_evidence
+
+
+def test_decommission_request_requires_disabled_or_suspended_module_and_complete_evidence() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[tenant_module(ModuleStatus.ENABLED)],
+    )
+
+    with pytest.raises(ModuleLifecycleError, match="disabled or suspended"):
+        registry.request_decommission(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:decommission-request",
+            decommission_evidence_refs=DECOMMISSION_EVIDENCE_REFS,
+            changed_at_utc=NOW,
+        )
+
+    registry.upsert_tenant_module(
+        tenant_module(
+            ModuleStatus.DISABLED,
+            provisioned_at_utc=NOW,
+            enabled_features={"crm_erp.crm.accounts": True},
+        )
+    )
+    requested = registry.request_decommission(
+        tenant_id="tenant-1",
+        module_id="crm_erp",
+        policy_snapshot_hash="sha256:policy",
+        changed_by="admin-1",
+        audit_chain_ref="audit:decommission-request",
+        decommission_evidence_refs=DECOMMISSION_EVIDENCE_REFS,
+        changed_at_utc=NOW,
+    )
+
+    assert requested.status == ModuleStatus.DECOMMISSION_REQUESTED
+    assert requested.decommission_evidence_refs == DECOMMISSION_EVIDENCE_REFS
+    assert requested.compliance_access_allowed
+    assert requested.enabled_features == {"crm_erp.crm.accounts": False}
+    with pytest.raises(ModuleLifecycleError, match="cannot be enabled"):
+        registry.enable_tenant_module(
+            tenant_id="tenant-1",
+            module_id="crm_erp",
+            policy_snapshot_hash="sha256:policy",
+            changed_by="admin-1",
+            audit_chain_ref="audit:enable-after-request",
+        )
 
 
 def test_module_registry_discovery_returns_public_tenant_module_view_only() -> None:

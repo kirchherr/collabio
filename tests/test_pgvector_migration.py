@@ -26,7 +26,16 @@ def pgvector_sql() -> str:
 def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005", "0006", "0007"]
+    assert [migration.version for migration in migrations] == [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+        "0008",
+    ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
     assert "CREATE EXTENSION IF NOT EXISTS vector;" in migrations[0].sql()
@@ -163,6 +172,22 @@ def test_platform_module_registry_migration_declares_lifecycle_tables_and_rls() 
     assert "tenant_id = collabio.current_tenant_id()" in sql
     assert "create policy tenant_modules_no_hard_delete" in sql
     assert "using (false)" in sql
+
+
+def test_tenant_module_decommission_evidence_migration_requires_evidence_refs() -> None:
+    sql = normalized(get_migration("0008").sql())
+
+    assert "add column if not exists decommission_evidence_refs jsonb" in sql
+    assert "tenant_modules_decommission_evidence_json_check" in sql
+    assert "tenant_modules_decommission_request_evidence_check" in sql
+    assert "decommission_evidence_refs ? 'retention_evaluation_ref'" in sql
+    assert "decommission_evidence_refs ? 'legal_hold_check_ref'" in sql
+    assert "decommission_evidence_refs ? 'export_archive_decision_ref'" in sql
+    assert "decommission_evidence_refs ? 'audit_evidence_ref'" in sql
+    assert "decommission_evidence_refs ? 'backup_restore_evidence_ref'" in sql
+    assert "tenant_modules_decommission_request_features_check" in sql
+    assert "status <> 'decommission_requested'" in sql
+    assert "enabled_features @? '$.* ? (@ == true)'" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

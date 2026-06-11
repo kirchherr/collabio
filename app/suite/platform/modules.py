@@ -43,6 +43,13 @@ COMPLIANCE_ACCESS_STATUSES = {
     ModuleStatus.DECOMMISSION_REQUESTED,
     ModuleStatus.DECOMMISSION_BLOCKED,
 }
+REQUIRED_DECOMMISSION_EVIDENCE_KEYS = {
+    "retention_evaluation_ref",
+    "legal_hold_check_ref",
+    "export_archive_decision_ref",
+    "audit_evidence_ref",
+    "backup_restore_evidence_ref",
+}
 
 
 class ModuleLifecycleError(ValueError):
@@ -81,6 +88,36 @@ class ModuleLifecycleCommand(BaseModel):
         if not value.strip():
             raise ValueError("reason must not be empty")
         return value
+
+
+class ModuleDecommissionRequestCommand(ModuleLifecycleCommand):
+    retention_evaluation_ref: str
+    legal_hold_check_ref: str
+    export_archive_decision_ref: str
+    audit_evidence_ref: str
+    backup_restore_evidence_ref: str
+
+    @field_validator(
+        "retention_evaluation_ref",
+        "legal_hold_check_ref",
+        "export_archive_decision_ref",
+        "audit_evidence_ref",
+        "backup_restore_evidence_ref",
+    )
+    @classmethod
+    def validate_evidence_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("decommission evidence references must be namespaced references")
+        return value
+
+    def evidence_refs(self) -> dict[str, str]:
+        return {
+            "retention_evaluation_ref": self.retention_evaluation_ref,
+            "legal_hold_check_ref": self.legal_hold_check_ref,
+            "export_archive_decision_ref": self.export_archive_decision_ref,
+            "audit_evidence_ref": self.audit_evidence_ref,
+            "backup_restore_evidence_ref": self.backup_restore_evidence_ref,
+        }
 
 
 class ModuleCatalogEntry(BaseModel):
@@ -143,6 +180,7 @@ class TenantModuleState(BaseModel):
     changed_by: str
     audit_chain_ref: str
     enabled_features: dict[str, bool] = Field(default_factory=dict)
+    decommission_evidence_refs: dict[str, str] = Field(default_factory=dict)
     provisioned_at_utc: datetime | None = None
     enabled_at_utc: datetime | None = None
     disabled_at_utc: datetime | None = None
@@ -181,12 +219,24 @@ class TenantModuleState(BaseModel):
             if not feature_id.startswith(f"{self.module_id}."):
                 raise ValueError("feature IDs must belong to the tenant module")
 
+        for evidence_key, evidence_ref in self.decommission_evidence_refs.items():
+            if evidence_key not in REQUIRED_DECOMMISSION_EVIDENCE_KEYS:
+                raise ValueError("unknown decommission evidence key")
+            if not NAMESPACED_REF_PATTERN.fullmatch(evidence_ref):
+                raise ValueError("decommission evidence references must be namespaced references")
+
         if self.status == ModuleStatus.ENABLED and self.enabled_at_utc is None:
             raise ValueError("enabled module state requires enabled_at_utc")
         if self.status == ModuleStatus.DISABLED and self.disabled_at_utc is None:
             raise ValueError("disabled module state requires disabled_at_utc")
         if self.status == ModuleStatus.DECOMMISSION_REQUESTED and self.decommission_requested_at_utc is None:
             raise ValueError("decommission_requested module state requires decommission_requested_at_utc")
+        if self.status == ModuleStatus.DECOMMISSION_REQUESTED:
+            missing_evidence = REQUIRED_DECOMMISSION_EVIDENCE_KEYS - set(self.decommission_evidence_refs)
+            if missing_evidence:
+                raise ValueError("decommission_requested module state requires complete decommission evidence")
+            if any(self.enabled_features.values()):
+                raise ValueError("decommission_requested module cannot keep enabled features")
         if self.status == ModuleStatus.DECOMMISSIONED:
             if self.decommissioned_at_utc is None:
                 raise ValueError("decommissioned module state requires decommissioned_at_utc")
@@ -240,6 +290,7 @@ class TenantModuleAdminView(BaseModel):
     disabled_at_utc: datetime | None = None
     decommission_requested_at_utc: datetime | None = None
     decommissioned_at_utc: datetime | None = None
+    decommission_evidence_refs: dict[str, str]
     updated_at_utc: datetime
     audit_chain_ref: str
 
@@ -257,6 +308,7 @@ def tenant_module_admin_view(state: TenantModuleState) -> TenantModuleAdminView:
         disabled_at_utc=state.disabled_at_utc,
         decommission_requested_at_utc=state.decommission_requested_at_utc,
         decommissioned_at_utc=state.decommissioned_at_utc,
+        decommission_evidence_refs=dict(sorted(state.decommission_evidence_refs.items())),
         updated_at_utc=state.updated_at_utc,
         audit_chain_ref=state.audit_chain_ref,
     )
@@ -498,6 +550,46 @@ class InMemoryModuleRegistry:
             blocking_reasons=blocking_reasons,
             required_evidence=required_evidence,
         )
+
+    def request_decommission(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        policy_snapshot_hash: str,
+        changed_by: str,
+        audit_chain_ref: str,
+        decommission_evidence_refs: dict[str, str],
+        changed_at_utc: datetime | None = None,
+    ) -> TenantModuleState:
+        existing = self.get_tenant_module(tenant_id, module_id)
+        check = self.decommission_check(tenant_id=tenant_id, module_id=module_id)
+        if existing.provisioned_at_utc is None:
+            raise ModuleLifecycleError(f"Module must be provisioned before decommission request: {module_id}")
+        if existing.status not in {ModuleStatus.DISABLED, ModuleStatus.SUSPENDED}:
+            raise ModuleLifecycleError(f"Module must be disabled or suspended before decommission request: {module_id}")
+        if check.blocking_reasons:
+            raise ModuleLifecycleError(f"Module cannot request decommission: {'; '.join(check.blocking_reasons)}")
+
+        missing_evidence = REQUIRED_DECOMMISSION_EVIDENCE_KEYS - set(decommission_evidence_refs)
+        if missing_evidence:
+            raise ModuleLifecycleError(f"Missing decommission evidence: {', '.join(sorted(missing_evidence))}")
+
+        now = changed_at_utc or utc_now()
+        disabled_features = {feature_id: False for feature_id in existing.enabled_features}
+        state = existing.model_copy(
+            update={
+                "status": ModuleStatus.DECOMMISSION_REQUESTED,
+                "enabled_features": disabled_features,
+                "decommission_evidence_refs": dict(sorted(decommission_evidence_refs.items())),
+                "policy_snapshot_hash": policy_snapshot_hash,
+                "decommission_requested_at_utc": now,
+                "changed_by": changed_by,
+                "audit_chain_ref": audit_chain_ref,
+                "updated_at_utc": now,
+            }
+        )
+        return self.upsert_tenant_module(TenantModuleState.model_validate(state.model_dump()))
 
 
 def default_module_registry() -> InMemoryModuleRegistry:

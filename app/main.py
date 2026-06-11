@@ -28,6 +28,7 @@ from suite.platform.context import TenantRequestContext
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionCheck,
+    ModuleDecommissionRequestCommand,
     ModuleLifecycleCommand,
     ModuleLifecycleError,
     PlatformModulesResponse,
@@ -349,6 +350,35 @@ def build_app() -> FastAPI:
             },
         )
         return check
+
+    @app.post("/v1/admin/tenant-modules/{module_id}/decommission-request", response_model=TenantModuleAdminView)
+    def request_tenant_module_decommission(
+        module_id: str,
+        command: ModuleDecommissionRequestCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TenantModuleAdminView:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        try:
+            state = module_registry.request_decommission(
+                tenant_id=context.user_context.tenant_id,
+                module_id=module_id,
+                policy_snapshot_hash=tenant_policy_snapshot_hash(context.tenant_policy),
+                changed_by=context.user_context.user_id,
+                audit_chain_ref=module_audit_ref(
+                    action="decommission_requested",
+                    module_id=module_id,
+                    command=command,
+                    context=context,
+                    target_status="decommission_requested",
+                ),
+                decommission_evidence_refs=command.evidence_refs(),
+            )
+            return tenant_module_admin_view(state)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ModuleLifecycleError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
     def get_tenant_policy(

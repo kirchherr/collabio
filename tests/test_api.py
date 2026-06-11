@@ -21,6 +21,15 @@ DEMO_SECURITY_ADMIN_HEADERS = {
     **DEMO_HEADERS,
     "X-Role-Ids": "security-admin",
 }
+DECOMMISSION_REQUEST_PAYLOAD = {
+    "approval_reference": "approval:module-decommission-request",
+    "reason": "tenant requests controlled module decommission",
+    "retention_evaluation_ref": "retention:eval-1",
+    "legal_hold_check_ref": "legal-hold:check-1",
+    "export_archive_decision_ref": "export:decision-1",
+    "audit_evidence_ref": "audit:evidence-1",
+    "backup_restore_evidence_ref": "backup:restore-1",
+}
 
 
 def reset_module_registry() -> None:
@@ -182,6 +191,81 @@ def test_tenant_module_decommission_check_is_admin_scoped_and_audited() -> None:
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "tenant_module.decommission_check"
     assert new_events[-1].input_hash is None
+
+
+def test_tenant_module_decommission_request_requires_evidence_and_blocks_normal_use() -> None:
+    reset_module_registry()
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare module"},
+    )
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate CRM accounts",
+            "enabled_features": {"crm_erp.crm.accounts": True},
+        },
+    )
+    enabled_request_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REQUEST_PAYLOAD,
+    )
+    assert enabled_request_response.status_code == 400
+    assert "disabled or suspended" in enabled_request_response.json()["detail"]
+
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/disable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-disable", "reason": "pause normal usage"},
+    )
+    starting_event_count = len(app.state.audit_logger.events)
+
+    request_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=DECOMMISSION_REQUEST_PAYLOAD,
+    )
+
+    assert request_response.status_code == 200
+    body = request_response.json()
+    assert body["status"] == "decommission_requested"
+    assert body["normal_use_enabled"] is False
+    assert body["compliance_access_allowed"] is True
+    assert body["enabled_features"]["crm_erp.crm.accounts"] is False
+    assert body["decommission_evidence_refs"]["retention_evaluation_ref"] == "retention:eval-1"
+    assert body["decommission_evidence_refs"]["legal_hold_check_ref"] == "legal-hold:check-1"
+    assert body["decommission_evidence_refs"]["export_archive_decision_ref"] == "export:decision-1"
+    assert body["decommission_evidence_refs"]["audit_evidence_ref"] == "audit:evidence-1"
+    assert body["decommission_evidence_refs"]["backup_restore_evidence_ref"] == "backup:restore-1"
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "tenant_module.decommission_requested"
+    assert new_events[-1].input_hash is not None
+    assert new_events[-1].metadata["approval_reference"] == "approval:module-decommission-request"
+    assert "reason" not in new_events[-1].metadata
+
+
+def test_tenant_module_decommission_request_requires_all_evidence_refs() -> None:
+    reset_module_registry()
+    client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare module"},
+    )
+    incomplete_payload = dict(DECOMMISSION_REQUEST_PAYLOAD)
+    del incomplete_payload["backup_restore_evidence_ref"]
+
+    response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/decommission-request",
+        headers=DEMO_ADMIN_HEADERS,
+        json=incomplete_payload,
+    )
+
+    assert response.status_code == 422
 
 
 def test_admin_tenant_policy_requires_admin_role() -> None:
