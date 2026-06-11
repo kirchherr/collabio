@@ -163,9 +163,11 @@ CRM/ERP includes a repeatable SQL Server import pipeline:
 
 ```text
 SQL Server
-  -> extract
+  -> metadata discovery
+legacy discovery manifest
+  -> mapping evidence
 crm_erp_legacy.*
-  -> validate raw import
+  -> dry-run validation
 crm.* / erp.*
   -> transform
 business object registry
@@ -178,6 +180,9 @@ Migration evidence must include:
 
 - source snapshot timestamp
 - source table row counts
+- discovery manifest hash
+- mapping manifest hash
+- quarantine decisions and `legacy.row` fallbacks
 - target table row counts
 - source checksums where possible
 - target checksums

@@ -1003,7 +1003,7 @@ CRM/ERP `crm_erp`:
 - [x] Module Charter fuer `crm_erp` schreiben.
 - [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
-- [ ] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
+- [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
 - [ ] Subfeatures definieren: `crm.accounts`, `crm.contacts`, `crm.activities`, `erp.products`, `erp.suppliers`, `erp.orders`, `erp.invoices`, `legacy_import.sqlserver`, `gobd_export`, `legal_hold`, `rag_indexing`, `ai_assist`.
 - [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
@@ -1194,8 +1194,8 @@ Empfohlene naechste Reihenfolge:
 52. [x] Modul-Provisioning mit Migration-Manifest-Evidence verbinden und bei fehlenden Startup-Migrationen blockieren.
 53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
 54. [x] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
-55. [ ] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-56. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren, sobald Legacy-Mapping-Evidence vorliegt.
+55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
+56. [ ] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen implementieren.
 
 ## Release-Strategie
 

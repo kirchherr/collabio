@@ -52,13 +52,27 @@ Ein Import darf erst starten, wenn folgende Evidenz vorliegt:
 - Discovery-Manifest mit Snapshot-Hash.
 - Import-Evidence-Plan mit Quarantaene-Liste.
 - Mapping-Entscheidung fuer jede Tabelle oder bewusstes `legacy.row`-Fallback.
+- CRM/ERP-Mapping-Manifest mit Zielobjekt, Feature-Gate, Klassifikation und Retention Policy pro Tabelle.
 - Dry-Run-Report mit Row Counts, Checksums, Validierungsfehlern und Audit-Referenz.
 - Human Approval fuer produktive Migration.
 
 Rohdatenimport, destruktive Aktionen und automatische Zielobjektanlage bleiben default-off. Dieser Default gilt auch fuer spaetere Module wie Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
+## CRM/ERP-Mapping-Evidence
+
+`app/suite/platform/crm_erp_legacy_mapping.py` erzeugt das erste fachliche Mapping-Manifest fuer `crm_erp`. Es verbindet Discovery-Manifest und Import-Evidence-Plan, ohne Altdaten zu laden.
+
+Jede Tabelle erhaelt eine Entscheidung:
+
+- `map_to_target`: nur fuer sichere Kandidaten oder explizit genehmigte Overrides.
+- `map_to_legacy_row`: konservativer Fallback fuer unbekannte oder schwache Kandidaten.
+- `quarantine`: keine fachliche Nutzung bis zur manuellen Entscheidung.
+- `defer`: bewusst vertagt, aber weiterhin als `legacy.row` nachvollziehbar.
+
+Das Manifest enthaelt Zielobjekt, Feature-Gate, Data Class, Retention Policy, Quarantaene-Status, Approval-Referenz und Hash. Es erlaubt weiterhin keinen Rohdatenimport und keine destruktiven Aktionen.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist die CRM/ERP-Mapping-Evidence: Tabellen aus Discovery-Manifests werden bewusst auf Zielobjekte, `legacy.row`-Fallback oder Quarantaene abgebildet, bevor Subfeature-Registry und Import-Dry-Run starten.
+Der naechste technische Schritt ist die CRM/ERP-Subfeature-Registry: Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen werden erst nach Mapping-Evidence als aktivierbare Feature-Bausteine modelliert.
