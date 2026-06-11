@@ -2,7 +2,7 @@
 
 The KMS adapter is the only allowed boundary for key references, key-usage evidence, rotation evidence, and key-destruction evidence.
 
-The current implementation does not perform envelope encryption yet. It creates the control plane that envelope encryption must use next.
+The current implementation provides the KMS control plane and a local development envelope encryption API. Production crypto providers must replace the local envelope implementation behind the same boundary.
 
 ## Files
 
@@ -10,6 +10,7 @@ Runtime model:
 
 ```text
 app/suite/kms/adapter.py
+app/suite/kms/envelope.py
 ```
 
 Policy:
@@ -21,6 +22,7 @@ docs/kms_adapter_policy.json
 Tests:
 
 ```text
+tests/test_envelope_encryption.py
 tests/test_kms_adapter.py
 tests/test_source_objects.py
 tests/test_storage_manifest.py
@@ -51,7 +53,8 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 - Business code may pass `kms_key_ref`, never raw key material.
 - Source object writes must use a KMS ref matching the source tenant and data class.
 - Storage manifests must use KMS refs matching the source tenant and data class.
-- KMS operations produce hashable evidence.
+- KMS and envelope operations produce hashable evidence.
+- Envelope encryption manifests must bind ciphertext, AAD, wrapped data key hash, KMS evidence, and content hash.
 - Raw key material export is forbidden by policy and evidence validation.
 - Key destruction requires human approval evidence.
 - Active legal hold blocks key destruction.
@@ -68,7 +71,9 @@ The parser rejects non-`kms://` refs, unknown data classes, malformed versions, 
 - records key-destruction evidence for policy-allowed classes
 - blocks future use of destroyed key versions
 
-It intentionally does not expose raw keys and does not implement encryption. Envelope encryption will use this boundary in the next step.
+It intentionally does not expose raw keys.
+
+`LocalEnvelopeEncryptionService` is the local development implementation for object-byte encryption. It validates KMS key references, creates envelope encryption manifests, authenticates ciphertext with AAD, rejects tampering, and refuses decryption when the referenced key version has been destroyed.
 
 ## Policy
 
@@ -104,4 +109,4 @@ The evidence model rejects `raw_key_material_exposed=true`.
 
 ## Next Work
 
-Envelope encryption must use this adapter boundary to request wrapped data keys and produce encryption manifests. It must not introduce direct crypto or provider calls in feature code.
+The next layer is key rotation interface hardening and cryptographic shredding simulation. Production envelope providers must not introduce direct crypto or provider calls in feature code.

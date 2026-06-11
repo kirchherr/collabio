@@ -60,12 +60,16 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legal_hold_decision_check" in object_storage.integrity_checks
     assert "legal_hold_reevaluation_check" in object_storage.integrity_checks
     assert "storage_object_manifest_hash_check" in object_storage.integrity_checks
+    assert "envelope_encryption_manifest_hash_check" in object_storage.integrity_checks
+    assert "ciphertext_hash_check" in object_storage.integrity_checks
+    assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
 
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks
     assert "key_usage_evidence_hash_check" in kms.integrity_checks
+    assert "wrapped_data_key_hash_check" in kms.integrity_checks
     assert "no_plaintext_key_export_check" in kms.integrity_checks
 
     for target in policy.targets:

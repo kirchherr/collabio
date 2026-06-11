@@ -48,7 +48,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
-      "state_artifacts": ["source object manifests", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "storage object manifests", "object manifests", "content hashes", "content hash verification evidence", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
+      "state_artifacts": ["source object manifests", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "storage object manifests", "envelope encryption manifests", "object manifests", "content hashes", "content hash verification evidence", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
     },
     {
       "domain_id": "kms_key_metadata",
@@ -56,7 +56,7 @@
       "primary_target_id": "kms_and_secrets",
       "criticality": "critical",
       "recovery_strategy": "recover through approved KMS/HSM/secret-manager mechanism; never restore plaintext key material from ordinary dumps",
-      "state_artifacts": ["key references", "wrapped data keys", "rotation manifests", "destruction evidence", "KMS adapter policy", "key usage evidence", "KMS configuration"]
+      "state_artifacts": ["key references", "wrapped data keys", "wrapped data key hashes", "envelope encryption manifests", "rotation manifests", "destruction evidence", "KMS adapter policy", "key usage evidence", "KMS configuration"]
     },
     {
       "domain_id": "secrets_configuration",
@@ -219,7 +219,7 @@
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["storage_object_manifest_hash_check", "source_object_manifest_hash_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "content_hash_verifier_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
+      "integrity_checks": ["storage_object_manifest_hash_check", "envelope_encryption_manifest_hash_check", "source_object_manifest_hash_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "content_hash_verifier_check", "ciphertext_hash_check", "aad_hash_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
       "failover_mode": "manual bucket endpoint switch until object-store implementation and restore drills are passing",
       "current_dev_commands": []
     },
@@ -237,7 +237,7 @@
         "monthly": 12
       },
       "restore_drill_frequency_days": 30,
-      "integrity_checks": ["kms_adapter_policy_check", "key_reference_check", "key_usage_evidence_hash_check", "sealed_secret_integrity_check", "rotation_manifest_check", "key_destruction_policy_check", "no_plaintext_key_export_check"],
+      "integrity_checks": ["kms_adapter_policy_check", "key_reference_check", "key_usage_evidence_hash_check", "envelope_encryption_manifest_hash_check", "wrapped_data_key_hash_check", "sealed_secret_integrity_check", "rotation_manifest_check", "key_destruction_policy_check", "no_plaintext_key_export_check"],
       "failover_mode": "manual KMS endpoint switch and secret rotation until KMS ADR is implemented",
       "current_dev_commands": []
     },

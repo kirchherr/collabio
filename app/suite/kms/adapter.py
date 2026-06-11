@@ -38,6 +38,7 @@ class KmsKeyUse(StrEnum):
     KEY_ROTATION = "key_rotation"
     KEY_DESTRUCTION = "key_destruction"
     ENVELOPE_ENCRYPTION_PREP = "envelope_encryption_prep"
+    ENVELOPE_DECRYPTION = "envelope_decryption"
 
 
 class KmsKeyReference(BaseModel):

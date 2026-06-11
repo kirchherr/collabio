@@ -28,6 +28,7 @@ docs/CONTENT_HASH_VERIFICATION.md
 docs/RETENTION_MANIFEST.md
 docs/STORAGE_ADAPTER_PLAN.md
 docs/KMS_ADAPTER.md
+docs/ENVELOPE_ENCRYPTION.md
 docs/operations/BACKUP_FAILOVER.md
 ```
 
@@ -93,6 +94,7 @@ It rejects manifests when:
 - object-lock configuration
 - legal-hold evidence
 - KMS key reference alignment with source metadata
+- envelope encryption manifest hash before encrypted object restore
 
 Restore verification returns structured evidence with the manifest hash, source manifest hash, retention manifest hash, content hash, bucket, object key, object version ID, checks performed, and content hash verification result.
 
@@ -105,6 +107,7 @@ source object
   -> retention manifest
   -> bucket profile
   -> KMS key reference validation
+  -> envelope encryption manifest
   -> content hash verifier
   -> storage object manifest
   -> encrypted object write

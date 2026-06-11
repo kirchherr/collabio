@@ -497,7 +497,7 @@ Aufgaben:
 - [x] Content Hash Verification implementieren.
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
-- [ ] Envelope Encryption API implementieren.
+- [x] Envelope Encryption API implementieren.
 - [ ] Key Rotation Interface implementieren.
 - [ ] Cryptographic Shredding Simulation implementieren.
 - [ ] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
@@ -1047,7 +1047,8 @@ Empfohlene naechste Reihenfolge:
 27. [x] Content Hash Verification als wiederverwendbare Storage-/Read-/Restore-Grenze implementieren.
 28. [x] Storage Manifest mit Restore-Checks fuer Object Records implementieren.
 29. [x] KMS Adapter Boundary vor Envelope Encryption implementieren.
-30. [ ] Envelope Encryption API auf KMS Adapter Boundary implementieren.
+30. [x] Envelope Encryption API auf KMS Adapter Boundary implementieren.
+31. [ ] Key Rotation Interface mit Envelope-Manifests verbinden.
 
 ## Release-Strategie
 

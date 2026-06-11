@@ -37,11 +37,12 @@ Current sprint:
 27. [x] Reusable content hash verification for source object writes, reads, restore drills, parser inputs, and exports.
 28. [x] Storage object manifest model and restore verification for object records.
 29. [x] KMS adapter boundary, canonical key references, rotation evidence, and destruction guards.
+30. [x] Envelope encryption API with local dev implementation, manifests, AAD binding, and destroyed-key rejection.
 
 ## Next Engineering Step
 
-After the KMS adapter boundary is in place:
+After the envelope encryption API is in place:
 
-- Implement envelope encryption API on top of the KMS adapter.
+- Harden the key rotation interface and connect rotation evidence to envelope manifests.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

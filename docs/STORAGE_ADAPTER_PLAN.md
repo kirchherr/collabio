@@ -12,6 +12,8 @@ Storage manifests are defined in `docs/STORAGE_MANIFEST.md` and must be produced
 
 KMS adapter rules are defined in `docs/KMS_ADAPTER.md` and must validate tenant/data-class key references before envelope encryption is introduced.
 
+Envelope encryption is defined in `docs/ENVELOPE_ENCRYPTION.md`; encrypted object writes must carry envelope manifest evidence before restored bytes are trusted.
+
 ## First Decision
 
 ADR:
@@ -43,6 +45,7 @@ SourceObjectRecord
   -> Storage adapter policy
   -> object bucket profile
   -> KMS key reference validation
+  -> envelope encryption manifest
   -> retention manifest
   -> storage object manifest
   -> encrypted object write
@@ -94,7 +97,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 - Object-lock buckets support legal hold.
 - Every write carries KMS reference metadata.
 - KMS references must be canonical and match tenant plus data class before object writes.
-- Restore cannot serve content until storage object manifest hash, source object manifest hash, retention manifest hash, Object Lock evidence, legal-hold state, and shared content hash verification pass.
+- Restore cannot serve content until storage object manifest hash, envelope encryption manifest hash, source object manifest hash, retention manifest hash, Object Lock evidence, legal-hold state, KMS evidence, and shared content hash verification pass.
 - Deleting metadata must not delete WORM object versions.
 - Cryptoshred must be policy-gated and must not apply to GoBD or legal-hold records.
 
