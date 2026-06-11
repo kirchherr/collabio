@@ -7,7 +7,8 @@ policies:
   temporary_default:
     description: Short-lived temporary data such as previews and transient cache.
     data_classes:
-      - temporary
+      - public
+      - internal
     retention_days: 7
     deletion_mode: hard_delete
     legal_hold_allowed: false
@@ -16,7 +17,8 @@ policies:
   working_data_default:
     description: Drafts, CRDT deltas, and collaborative working data.
     data_classes:
-      - working_data
+      - internal
+      - confidential
     retention_days: 365
     deletion_mode: policy_delete_or_restrict
     legal_hold_allowed: true
@@ -25,7 +27,7 @@ policies:
   personal_data_default:
     description: Personal data subject to DSGVO workflows.
     data_classes:
-      - personal_data
+      - personal
       - voice_transcript
       - ai_prompt
     retention_days: 365
@@ -45,7 +47,7 @@ policies:
   business_record_gobd:
     description: GoBD-relevant business records.
     data_classes:
-      - gobd_record
+      - gobd
     retention_years: 10
     deletion_mode: delete_after_retention_if_no_hold
     legal_hold_allowed: true
@@ -55,9 +57,7 @@ policies:
   security_audit_default:
     description: Security, admin, audit, retrieval trace, and tool-call evidence.
     data_classes:
-      - security_data
-      - retrieval_trace
-      - tool_call
+      - confidential
     retention_years: 10
     deletion_mode: delete_after_retention_if_no_hold
     legal_hold_allowed: true
@@ -76,7 +76,10 @@ policies:
   export_package_default:
     description: E-discovery and compliance export packages.
     data_classes:
-      - export_package
+      - confidential
+      - gobd
+      - legal_hold
+      - personal
     retention_years: 10
     deletion_mode: delete_after_retention_if_no_hold
     legal_hold_allowed: true

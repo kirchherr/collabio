@@ -9,20 +9,12 @@ from math import sqrt
 from typing import Protocol
 
 from suite.ai_control_plane.models import DataClass
+from suite.compliance.data_classes import source_indexable_data_classes
 from suite.rag.models import ChunkMetadata, SourceDocument, VectorEmbeddingRecord
 from suite.rag.vector_worker import ReindexSourceCommand, ReindexSourceResult, VectorIndexWorker
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
-DEFAULT_EMBEDDING_MODEL_DATA_CLASSES = frozenset(
-    {
-        DataClass.PUBLIC,
-        DataClass.INTERNAL,
-        DataClass.PERSONAL,
-        DataClass.CONFIDENTIAL,
-        DataClass.GOBD,
-        DataClass.LEGAL_HOLD,
-    }
-)
+DEFAULT_EMBEDDING_MODEL_DATA_CLASSES = source_indexable_data_classes()
 
 
 def utc_now_iso() -> str:
