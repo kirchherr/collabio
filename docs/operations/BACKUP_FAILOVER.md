@@ -32,6 +32,7 @@ It is intentionally lightweight. The current repository implements development b
 - Audit and backup evidence must be hashable and exportable.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Retention manifest restores must prove retain-until, policy snapshot hash, WORM requirement, Object Lock mode, and Legal Hold state.
+- Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
 - Object-store failover must preserve bucket profile evidence, version IDs, Object Lock posture, retention configuration, and legal-hold state.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.

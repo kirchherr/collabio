@@ -493,7 +493,7 @@ Aufgaben:
 - [x] S3/MinIO-kompatiblen Storage Adapter planen.
 - [x] WORM/Object-Lock-faehigen Bucket und Versioning modellieren.
 - [x] Retention Defaults und Retention Manifest definieren.
-- [ ] Legal Hold APIs fuer Objekte definieren.
+- [x] Legal Hold APIs fuer Objekte definieren.
 - [ ] Content Hash Verification implementieren.
 - [ ] Storage Manifest implementieren.
 - [ ] KMS Adapter implementieren.
@@ -1043,7 +1043,8 @@ Empfohlene naechste Reihenfolge:
 23. [x] Storage Write nur mit `tenant_id`, `classification`, `retention_policy_id`, `kms_key_ref`, `manifest_hash` und `content_hash` erlauben.
 24. [x] S3/MinIO-kompatiblen Storage Adapter mit Versioning, Object-Lock/WORM-Haltung und Manifest-Restore-Checks planen.
 25. [x] Retention Defaults und Retention Manifest definieren.
-26. [ ] Legal Hold APIs fuer Source Objects und Retention-Manifest-Reevaluation definieren.
+26. [x] Legal Hold APIs fuer Source Objects und Retention-Manifest-Reevaluation definieren.
+27. [ ] Content Hash Verification als wiederverwendbare Storage-/Read-/Restore-Grenze implementieren.
 
 ## Release-Strategie
 

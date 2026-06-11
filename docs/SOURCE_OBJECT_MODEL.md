@@ -104,6 +104,13 @@ docs/RETENTION_MANIFEST.md
 docs/retention_manifest_policy.json
 ```
 
+Legal Hold transitions are documented in:
+
+```text
+ARCHITECTURE_DECISIONS/ADR-0026-legal-hold-api-and-reevaluation.md
+docs/LEGAL_HOLD_API.md
+```
+
 ## RAG And Parser Boundary
 
 `SourceObjectResolver` converts a versioned source object into the existing `ResolvedSource` shape used by source indexing.
@@ -150,6 +157,7 @@ Not implemented yet:
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.
+- Persistent legal-matter and legal-hold scope storage.
 - KMS adapter and envelope encryption.
 - Full production storage write API.
 

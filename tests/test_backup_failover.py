@@ -57,6 +57,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
     assert "retention_policy_snapshot_hash_check" in object_storage.integrity_checks
+    assert "legal_hold_decision_check" in object_storage.integrity_checks
+    assert "legal_hold_reevaluation_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
 
     for target in policy.targets:

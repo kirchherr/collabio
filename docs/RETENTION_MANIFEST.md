@@ -75,6 +75,7 @@ These defaults are intentionally conservative. They are not tenant-specific over
 ## Rules
 
 - Active Legal Hold blocks disposition until release.
+- Legal Hold placement and release trigger manifest re-evaluation.
 - Business records and WORM evidence require WORM-capable policies.
 - GoBD and Legal Hold records cannot allow early cryptoshred.
 - Embeddings and RAG chunks follow source lifecycle.
@@ -86,5 +87,6 @@ These defaults are intentionally conservative. They are not tenant-specific over
 - Persist retention manifests with source object metadata.
 - Add tenant-specific retention overrides.
 - Add Legal Hold APIs that update objects and trigger manifest re-evaluation.
+- Persist Legal Hold decisions and matter scopes.
 - Add retention worker simulations before destructive actions exist.
 - Add object-store restore verification for retention manifest hash, source manifest hash, content hash, Object Lock state, and legal-hold state.

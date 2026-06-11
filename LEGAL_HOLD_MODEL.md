@@ -49,6 +49,22 @@ Legal Hold must be checked in:
 - Admin workflows.
 - AI tool permissions.
 
+## Current Implementation
+
+Runtime boundary:
+
+```text
+app/suite/storage/legal_hold.py
+```
+
+The current service supports placing and releasing Legal Hold on source objects. Both actions create a new source object version, rebuild the source object manifest hash, write through the guarded source object repository, and re-evaluate the `RetentionManifest`.
+
+Detailed API notes:
+
+```text
+docs/LEGAL_HOLD_API.md
+```
+
 ## Decision Rule
 
 ```text
@@ -92,4 +108,3 @@ Every hold action must write an audit event:
 - Four-eyes requirement for hold release.
 - Tenant-specific retention overrides.
 - Export package rules for held data.
-

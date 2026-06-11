@@ -33,11 +33,12 @@ Current sprint:
 23. [x] Storage write guard for tenant, classification, retention policy, KMS key reference, manifest hash, and content hash.
 24. [x] S3/MinIO-compatible storage adapter ADR, bucket profiles, Object Lock posture, and manifest restore checks.
 25. [x] Retention defaults and RetentionManifest model for storage, legal hold, WORM, backup, and e-discovery.
+26. [x] Legal Hold API boundary for source object versioning and retention-manifest re-evaluation.
 
 ## Next Engineering Step
 
-After the retention manifest model is in place:
+After the Legal Hold API boundary is in place:
 
-- Define Legal Hold APIs for source objects and retention-manifest re-evaluation.
+- Implement content hash verification as a reusable storage/read/restore boundary.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.
