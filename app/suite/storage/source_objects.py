@@ -4,7 +4,6 @@ import json
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from hashlib import sha256
 from typing import Protocol, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -12,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from suite.ai_control_plane.models import DataClass
 from suite.rag.models import SourceDocument
 from suite.rag.source_indexing import ResolvedSource
+from suite.storage.content_hash import ContentHashVerificationError, compute_content_hash, verify_content_hash
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
 ManifestValue = str | int | None
@@ -22,7 +22,7 @@ class SourceObjectWriteDeniedError(ValueError):
 
 
 def sha256_bytes(value: bytes) -> str:
-    return f"sha256:{sha256(value).hexdigest()}"
+    return compute_content_hash(value)
 
 
 def source_object_content_bytes(record: SourceObjectRecord) -> bytes:
@@ -243,9 +243,14 @@ class SourceObjectWriteGuard:
             raise SourceObjectWriteDeniedError("kms_key_ref must use kms://")
 
     def _require_content_hash_match(self, record: SourceObjectRecord) -> None:
-        expected_hash = sha256_bytes(source_object_content_bytes(record))
-        if record.metadata.content_hash != expected_hash:
-            raise SourceObjectWriteDeniedError("content_hash does not match source content")
+        try:
+            verify_content_hash(
+                content=source_object_content_bytes(record),
+                expected_hash=record.metadata.content_hash,
+                verification_context="source_object_write",
+            )
+        except ContentHashVerificationError as exc:
+            raise SourceObjectWriteDeniedError(f"content_hash verification failed: {exc}") from exc
 
     def _require_manifest_hash_match(self, metadata: SourceObjectMetadata) -> None:
         expected_hash = build_source_object_manifest_hash(metadata)

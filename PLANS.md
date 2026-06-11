@@ -34,11 +34,12 @@ Current sprint:
 24. [x] S3/MinIO-compatible storage adapter ADR, bucket profiles, Object Lock posture, and manifest restore checks.
 25. [x] Retention defaults and RetentionManifest model for storage, legal hold, WORM, backup, and e-discovery.
 26. [x] Legal Hold API boundary for source object versioning and retention-manifest re-evaluation.
+27. [x] Reusable content hash verification for source object writes, reads, restore drills, parser inputs, and exports.
 
 ## Next Engineering Step
 
-After the Legal Hold API boundary is in place:
+After the content hash verification boundary is in place:
 
-- Implement content hash verification as a reusable storage/read/restore boundary.
+- Implement storage manifest model and restore checks for object records.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

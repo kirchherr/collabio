@@ -27,6 +27,7 @@ docs/OFFICE_MAIL_CORE.md
 docs/SOURCE_OBJECT_MODEL.md
 docs/STORAGE_ADAPTER_PLAN.md
 docs/storage_adapter_policy.json
+docs/CONTENT_HASH_VERIFICATION.md
 docs/RETENTION_MANIFEST.md
 docs/retention_manifest_policy.json
 docs/LEGAL_HOLD_API.md
@@ -125,6 +126,7 @@ This is the MVP skeleton for the roadmap in `konzept_suite_2.md`. It includes:
 - Isolated rich-document parser service for DOCX, ODT, and basic text PDF extraction
 - Source object metadata model and RAG resolver for documents, mails, attachments, comments, wiki content, and procedure documentation
 - Storage write guard for mandatory compliance metadata, KMS references, content hashes, and manifest hashes
+- Reusable content hash verifier for storage writes, reads, restore drills, parser inputs, and future exports
 - S3/MinIO-compatible object-storage ADR, bucket profile policy, and restore-check plan
 - Retention defaults and RetentionManifest model for source, WORM, legal-hold, backup, and e-discovery flows
 - Legal Hold service/API boundary for versioned source object transitions and retention re-evaluation

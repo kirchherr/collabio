@@ -83,10 +83,16 @@ The guard requires:
 It also verifies:
 
 - `kms_key_ref` uses the `kms://` scheme.
-- `content_hash` matches the stored text or native bytes.
+- `content_hash` is canonical and matches the stored text or native bytes through the shared content hash verifier.
 - `manifest_hash` matches the canonical source object metadata payload.
 
 This guard is the current shared entry point for storage writes. Future PostgreSQL, S3/MinIO, WORM, and KMS adapters must call the same guard or an equivalent stricter policy before accepting object data.
+
+Content hash verification is documented in:
+
+```text
+docs/CONTENT_HASH_VERIFICATION.md
+```
 
 The first object-storage adapter plan is documented in:
 
@@ -146,7 +152,7 @@ Implemented now:
 - Pydantic source object metadata model.
 - Versioned source object record wrapper.
 - Tenant/version-scoped in-memory repository.
-- Storage write guard for required metadata, KMS references, content hashes, and canonical manifest hashes.
+- Storage write guard for required metadata, KMS references, shared content hash verification, and canonical manifest hashes.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
@@ -168,3 +174,5 @@ Source object metadata is owned by the `postgres_metadata` continuity domain.
 Native content, manifests, WORM records, attachments, parser artifacts, and export packages are owned by `object_storage_records`.
 
 Any change that adds a new durable source object field must update backup/failover evidence if restore verification changes.
+
+Any future read, restore, parser, or export path that serves stored bytes must verify the content hash before trusting those bytes.

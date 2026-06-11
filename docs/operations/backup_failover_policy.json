@@ -48,7 +48,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
-      "state_artifacts": ["source object manifests", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "object manifests", "content hashes", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
+      "state_artifacts": ["source object manifests", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "object manifests", "content hashes", "content hash verification evidence", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
     },
     {
       "domain_id": "kms_key_metadata",
@@ -219,7 +219,7 @@
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["source_object_manifest_hash_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
+      "integrity_checks": ["source_object_manifest_hash_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "content_hash_verifier_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
       "failover_mode": "manual bucket endpoint switch until object-store implementation and restore drills are passing",
       "current_dev_commands": []
     },
