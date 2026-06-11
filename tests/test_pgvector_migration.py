@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 import pytest
 
@@ -25,7 +26,7 @@ def pgvector_sql() -> str:
 def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005"]
+    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005", "0006"]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
     assert "CREATE EXTENSION IF NOT EXISTS vector;" in migrations[0].sql()
@@ -115,6 +116,16 @@ def test_pgvector_role_policy_migrations_split_app_and_worker_permissions() -> N
     assert "drop policy if exists vector_embedding_chunks_tenant_update" in worker_write_sql
 
 
+def test_vector_metadata_guardrail_migration_validates_acl_and_source_type() -> None:
+    sql = normalized(get_migration("0006").sql())
+
+    assert "vector_embedding_chunks_source_object_type_check" in sql
+    assert "'procedure_doc'" in sql
+    assert "vector_embedding_chunks_acl_metadata_check" in sql
+    assert "acl_version >= 1" in sql
+    assert "authoritative acl snapshot" in sql
+
+
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:
     body = table_body(pgvector_sql(), "collabio.vector_embedding_chunks")
 
@@ -159,3 +170,69 @@ def test_vector_embedding_record_requires_declared_dimensions_to_match_embedding
             content_byte_length=42,
             indexed_at_utc="2026-06-10T00:01:00Z",
         )
+
+
+def test_vector_metadata_schema_rejects_invalid_acl_and_source_metadata() -> None:
+    with pytest.raises(ValueError, match="source_object_type"):
+        chunk_metadata_for(source_object_type="unknown")
+
+    with pytest.raises(ValueError, match="legal_hold_state"):
+        chunk_metadata_for(legal_hold_state="maybe")
+
+    with pytest.raises(ValueError, match="acl_hash"):
+        chunk_metadata_for(acl_hash="not-namespaced")
+
+    with pytest.raises(ValueError, match="acl_version"):
+        chunk_metadata_for(acl_version=0)
+
+    with pytest.raises(ValueError, match="UTC"):
+        chunk_metadata_for(created_at_utc="2026-06-10T00:00:00+02:00")
+
+
+def test_vector_embedding_record_rejects_non_finite_embeddings() -> None:
+    metadata = ChunkMetadata(
+        tenant_id="tenant-1",
+        source_object_id="doc-1",
+        source_object_type="document",
+        source_version_id="v1",
+        chunk_id="chunk-1",
+        classification=DataClass.EMBEDDING,
+        retention_policy_id="rp-standard",
+        legal_hold_state="none",
+        acl_hash="sha256:acl",
+        acl_version=1,
+        created_at_utc="2026-06-10T00:00:00Z",
+        embedding_model_id="mock-embedding",
+        embedding_model_version="1",
+        content_hash="sha256:content",
+    )
+
+    with pytest.raises(ValueError, match="finite"):
+        VectorEmbeddingRecord(
+            metadata=metadata,
+            embedding=[0.1, float("nan"), 0.3],
+            embedding_dimensions=3,
+            content_byte_length=42,
+            indexed_at_utc="2026-06-10T00:01:00Z",
+        )
+
+
+def chunk_metadata_for(**overrides: Any) -> ChunkMetadata:
+    values = {
+        "tenant_id": "tenant-1",
+        "source_object_id": "doc-1",
+        "source_object_type": "document",
+        "source_version_id": "v1",
+        "chunk_id": "chunk-1",
+        "classification": DataClass.EMBEDDING,
+        "retention_policy_id": "rp-standard",
+        "legal_hold_state": "none",
+        "acl_hash": "sha256:acl",
+        "acl_version": 1,
+        "created_at_utc": "2026-06-10T00:00:00Z",
+        "embedding_model_id": "mock-embedding",
+        "embedding_model_version": "1",
+        "content_hash": "sha256:content",
+    }
+    values.update(overrides)
+    return ChunkMetadata.model_validate(values)

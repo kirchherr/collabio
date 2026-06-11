@@ -20,6 +20,8 @@ def record(
     source_version_id: str = "v1",
     chunk_id: str = "chunk-1",
     lifecycle_state: VectorLifecycleState = VectorLifecycleState.ACTIVE,
+    acl_hash: str = "sha256:acl",
+    acl_version: int = 1,
 ) -> VectorEmbeddingRecord:
     return VectorEmbeddingRecord(
         metadata=ChunkMetadata(
@@ -31,8 +33,8 @@ def record(
             classification=DataClass.EMBEDDING,
             retention_policy_id="rp-standard",
             legal_hold_state="none",
-            acl_hash="sha256:acl",
-            acl_version=1,
+            acl_hash=acl_hash,
+            acl_version=acl_version,
             created_at_utc="2026-06-10T00:00:00Z",
             embedding_model_id="mock-embedding",
             embedding_model_version="1",
@@ -154,6 +156,8 @@ def test_reindex_source_emits_hash_chained_audit_events_without_raw_embeddings()
                 "embedding_model_version": "1",
             }
         ],
+        "acl_hashes": ["sha256:acl"],
+        "acl_versions": [1],
     }
     assert audit_logger.events[1].metadata == {
         "source_version_id": "v1",
@@ -194,6 +198,38 @@ def test_reindex_source_rejects_mismatched_or_duplicate_chunks() -> None:
                 source_object_id="doc-1",
                 source_version_id="v1",
                 chunks=(record(lifecycle_state=VectorLifecycleState.RESTRICTED),),
+            )
+        )
+
+    with pytest.raises(ValueError, match="acl_version"):
+        worker.reindex_source(
+            ReindexSourceCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+                chunks=(record(chunk_id="chunk-1", acl_version=1), record(chunk_id="chunk-2", acl_version=2)),
+            )
+        )
+
+    with pytest.raises(ValueError, match="expected ACL version"):
+        worker.reindex_source(
+            ReindexSourceCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+                chunks=(record(chunk_id="chunk-1", acl_version=2),),
+                expected_acl_version=1,
+            )
+        )
+
+    with pytest.raises(ValueError, match="expected ACL hash"):
+        worker.reindex_source(
+            ReindexSourceCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+                chunks=(record(chunk_id="chunk-1", acl_hash="sha256:new-acl"),),
+                expected_acl_hash="sha256:old-acl",
             )
         )
 

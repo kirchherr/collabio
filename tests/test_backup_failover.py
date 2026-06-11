@@ -51,6 +51,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert postgres.restore_drill_frequency_days <= 30
     assert "sha256_manifest" in postgres.integrity_checks
     assert "pg_restore_catalog" in postgres.integrity_checks
+    assert "vector_metadata_schema_check" in postgres.integrity_checks
+    assert "acl_version_checkpoint_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
 
@@ -104,6 +106,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "plaintext key material" in policy.domain("kms_key_metadata").recovery_strategy
     assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
+    assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
+    assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
 
@@ -134,6 +138,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Failover" in runbook
     assert "Monthly" in runbook
     assert "restore drill report hash" in runbook
+    assert "ACL versions" in runbook
 
 
 def test_compose_exposes_backup_and_verification_commands() -> None:

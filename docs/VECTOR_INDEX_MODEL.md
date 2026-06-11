@@ -38,6 +38,9 @@ The schema stores candidate vectors and compliance metadata only. It does not st
 Key guardrails:
 
 - `tenant_id` is mandatory and protected by PostgreSQL RLS using the request-scoped `app.tenant_id` setting.
+- vector metadata is validated in Python before worker writes and in PostgreSQL through schema constraints.
+- `source_object_type`, `legal_hold_state`, `acl_hash`, `acl_version`, content hashes, and timestamps are schema-validated.
+- `acl_version` is copied from authoritative source metadata and must be greater than or equal to 1.
 - `embedding_dimensions` must match `vector_dims(embedding)`.
 - `lifecycle_state` is soft-delete oriented: `active`, `reindex_pending`, `restricted`, `deleted`, or `cryptoshredded`.
 - hard deletes are denied by policy; deletion, restriction, reindex, legal hold, and cryptoshred workflows update lifecycle fields instead.
@@ -102,6 +105,8 @@ It separates the pipeline into replaceable contracts:
 - `TextChunker`: creates deterministic chunk IDs, content hashes, and byte lengths.
 - `EmbeddingProvider`: produces vectors. The current deterministic hash embedder is for local development and tests only.
 - `SourceIndexingPipeline`: converts extracted chunks into `VectorEmbeddingRecord` objects and sends them to `VectorIndexWorker.reindex_source`.
+
+The pipeline can receive an expected ACL hash or ACL version. If the resolved source metadata differs, indexing stops before worker writes. The worker also rejects chunk sets with mixed ACL hashes or ACL versions, so one reindex operation cannot accidentally publish stale and current authorization metadata together.
 
 The live integration test proves that the pipeline feeds the pgvector worker and that a later source reindex soft-deletes stale chunks while keeping candidate search source-text-free.
 

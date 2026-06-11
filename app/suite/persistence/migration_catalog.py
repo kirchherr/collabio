@@ -38,6 +38,11 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         name="pgvector_worker_write_policy",
         resource_name="0005_pgvector_worker_write_policy.sql",
     ),
+    SqlMigration(
+        version="0006",
+        name="vector_metadata_guardrails",
+        resource_name="0006_vector_metadata_guardrails.sql",
+    ),
 )
 
 

@@ -41,11 +41,11 @@ Current sprint:
 31. [x] Key rotation interface connected to envelope rewrap manifests and restore evidence.
 32. [x] Cryptographic shredding simulation with GoBD, legal-hold, retention, and KMS destruction gates.
 33. [x] Restore-test framework for storage, envelope, retention, KMS, and cryptoshred evidence.
+34. [x] Vector metadata schema validation and ACL-version propagation hardening.
 
 ## Next Engineering Step
 
-After restore drill evidence is in place:
+After vector metadata and ACL-version hardening is in place:
 
-- Validate vector metadata schema and harden ACL version propagation.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

@@ -21,6 +21,9 @@ user query
 - Vector search returns candidates only.
 - Candidate metadata is not sufficient authorization.
 - Source objects are fetched only after ACL validation.
+- Vector metadata must carry the authoritative ACL hash and ACL version that were current at indexing time.
+- Index jobs with stale expected ACL versions must fail before writing vector metadata.
+- Reindex workers must not mix multiple ACL hashes or ACL versions in one source-version reindex.
 - RAG answers must cite source object IDs and versions.
 - Prompt injection content in documents is treated as untrusted data.
 - Authorized source text is rendered inside explicit untrusted source blocks before prompting.

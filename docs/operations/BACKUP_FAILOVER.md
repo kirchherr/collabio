@@ -41,6 +41,7 @@ It is intentionally lightweight. The current repository implements development b
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
 - Object-store failover must preserve bucket profile evidence, version IDs, Object Lock posture, retention configuration, and legal-hold state.
 - Rebuildable indexes still require checkpoint, rebuild order, freshness, and integrity checks.
+- Vector index rebuilds must verify metadata schema, ACL hashes, ACL versions, lifecycle state, and source checkpoints.
 - Secrets and key material are recovered through KMS/secret-manager mechanisms, never through plaintext dumps.
 
 ## Continuity Domains

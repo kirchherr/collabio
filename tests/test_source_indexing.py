@@ -60,11 +60,17 @@ class CapturingVectorIndexStore:
         raise AssertionError("source indexing must not perform lifecycle deletion")
 
 
-def pipeline_for(document: SourceDocument, store: CapturingVectorIndexStore) -> SourceIndexingPipeline:
+def pipeline_for(
+    document: SourceDocument,
+    store: CapturingVectorIndexStore,
+    *,
+    acl_version: int = 1,
+) -> SourceIndexingPipeline:
     repository = InMemorySourceRepository(documents={document.object_id: document})
     return SourceIndexingPipeline(
         resolver=RepositorySourceResolver(
             repository,
+            acl_version=acl_version,
             created_at_clock=lambda: "2026-06-10T00:00:00Z",
         ),
         text_extractor=PlainTextExtractor(),
@@ -93,6 +99,7 @@ def test_source_indexing_pipeline_builds_chunks_and_reindexes_source() -> None:
             tenant_id="tenant-1",
             source_object_id="doc-1",
             source_version_id="v1",
+            expected_acl_version=1,
             audit_event_id="audit-source-index",
         )
     )
@@ -111,6 +118,7 @@ def test_source_indexing_pipeline_builds_chunks_and_reindexes_source() -> None:
     assert first.metadata.retention_policy_id == "rp-standard"
     assert first.metadata.legal_hold_state == "none"
     assert first.metadata.acl_hash.startswith("sha256:")
+    assert first.metadata.acl_version == 1
     assert first.metadata.embedding_model_id == "mock-embedding"
     assert first.metadata.content_hash.startswith("sha256:")
     assert first.embedding_dimensions == 3
@@ -137,6 +145,30 @@ def test_source_indexing_rejects_version_mismatch_before_writing() -> None:
                 tenant_id="tenant-1",
                 source_object_id="doc-1",
                 source_version_id="v2",
+            )
+        )
+
+    assert store.upserted == []
+
+
+def test_source_indexing_rejects_stale_expected_acl_version_before_writing() -> None:
+    store = CapturingVectorIndexStore()
+    document = SourceDocument(
+        object_id="doc-1",
+        version_id="v1",
+        title="Retention policy",
+        text="Source text",
+        classification=DataClass.INTERNAL,
+    )
+    pipeline = pipeline_for(document, store, acl_version=3)
+
+    with pytest.raises(ValueError, match="acl_version"):
+        pipeline.index_source(
+            SourceIndexCommand(
+                tenant_id="tenant-1",
+                source_object_id="doc-1",
+                source_version_id="v1",
+                expected_acl_version=2,
             )
         )
 

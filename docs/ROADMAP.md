@@ -505,8 +505,8 @@ Aufgaben:
 - [x] Text Extraction Interface fuer Office/Mail/Attachments.
 - [x] Chunker Interface.
 - [x] Embedding Provider Interface.
-- [ ] Vector Metadata Schema validieren.
-- [ ] ACL-Versionen in Vector Metadata uebernehmen.
+- [x] Vector Metadata Schema validieren.
+- [x] ACL-Versionen in Vector Metadata uebernehmen.
 - [x] Delete Propagation Worker.
 - [x] Reindex Worker.
 - [ ] Embedding Model Versioning.
@@ -1052,8 +1052,9 @@ Empfohlene naechste Reihenfolge:
 32. [x] Cryptographic Shredding Simulation implementieren.
 33. [x] Schutzregel: GoBD- und Legal-Hold-Objekte nicht versehentlich cryptoshreddern.
 34. [x] Restore-Test-Framework anlegen.
-35. [ ] Vector Metadata Schema validieren.
-36. [ ] ACL-Versionen in Vector Metadata uebernehmen.
+35. [x] Vector Metadata Schema validieren.
+36. [x] ACL-Versionen in Vector Metadata uebernehmen.
+37. [ ] Benchmark Thresholds und Reporting vor ANN-Index-Entscheidungen ergaenzen.
 
 ## Release-Strategie
 

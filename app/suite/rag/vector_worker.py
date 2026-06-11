@@ -100,6 +100,8 @@ class ReindexSourceCommand:
     source_object_id: str
     source_version_id: str
     chunks: tuple[VectorEmbeddingRecord, ...]
+    expected_acl_hash: str | None = None
+    expected_acl_version: int | None = None
     audit_event_id: str | None = None
 
 
@@ -140,6 +142,8 @@ class VectorIndexWorker:
                 "requested_chunk_count": len(command.chunks),
                 "requested_audit_event_id": command.audit_event_id,
                 "embedding_models": self._embedding_models(command.chunks),
+                "acl_hashes": self._acl_hashes(command.chunks),
+                "acl_versions": self._acl_versions(command.chunks),
             },
         )
 
@@ -261,6 +265,17 @@ class VectorIndexWorker:
             if chunk.lifecycle_state != VectorLifecycleState.ACTIVE:
                 raise ValueError("reindex chunks must be active records")
 
+        acl_hashes = self._acl_hashes(command.chunks)
+        acl_versions = self._acl_versions(command.chunks)
+        if len(acl_hashes) != 1:
+            raise ValueError("reindex chunks must share one acl_hash")
+        if len(acl_versions) != 1:
+            raise ValueError("reindex chunks must share one acl_version")
+        if command.expected_acl_hash is not None and acl_hashes[0] != command.expected_acl_hash:
+            raise ValueError("chunk acl_hash does not match expected ACL hash")
+        if command.expected_acl_version is not None and acl_versions[0] != command.expected_acl_version:
+            raise ValueError("chunk acl_version does not match expected ACL version")
+
     def _duplicate_chunk_ids(self, chunks: Iterable[VectorEmbeddingRecord]) -> list[str]:
         seen: set[str] = set()
         duplicates: set[str] = set()
@@ -305,3 +320,9 @@ class VectorIndexWorker:
             }
             for model_id, model_version in sorted(models)
         ]
+
+    def _acl_hashes(self, chunks: Iterable[VectorEmbeddingRecord]) -> list[str]:
+        return sorted({chunk.metadata.acl_hash for chunk in chunks})
+
+    def _acl_versions(self, chunks: Iterable[VectorEmbeddingRecord]) -> list[int]:
+        return sorted({chunk.metadata.acl_version for chunk in chunks})

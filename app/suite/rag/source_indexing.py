@@ -82,6 +82,8 @@ class SourceIndexCommand:
     tenant_id: str
     source_object_id: str
     source_version_id: str
+    expected_acl_hash: str | None = None
+    expected_acl_version: int | None = None
     audit_event_id: str | None = None
 
 
@@ -274,6 +276,8 @@ class SourceIndexingPipeline:
                 source_object_id=command.source_object_id,
                 source_version_id=command.source_version_id,
                 chunks=records,
+                expected_acl_hash=command.expected_acl_hash,
+                expected_acl_version=command.expected_acl_version,
                 audit_event_id=command.audit_event_id,
             )
         )
@@ -323,3 +327,9 @@ class SourceIndexingPipeline:
             raise ValueError("resolved source object_id does not match index command")
         if source.version_id != command.source_version_id:
             raise ValueError("resolved source version_id does not match index command")
+        if source.acl_version < 1:
+            raise ValueError("resolved source acl_version must be greater than or equal to 1")
+        if command.expected_acl_hash is not None and source.acl_hash != command.expected_acl_hash:
+            raise ValueError("resolved source acl_hash does not match index command")
+        if command.expected_acl_version is not None and source.acl_version != command.expected_acl_version:
+            raise ValueError("resolved source acl_version does not match index command")
