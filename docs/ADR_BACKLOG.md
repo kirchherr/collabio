@@ -117,6 +117,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [ ] ADR-0055: Air-gap model import and verification.
 - [ ] ADR-0056: High availability and multi-region strategy.
 - [ ] ADR-0057: Enterprise audit evidence pack.
+- [x] ADR-0058: Platform Module System and optional business modules.
 
 ## Immediate ADR Priority
 
@@ -128,4 +129,5 @@ Start with:
 4. [x] ADR-0003 KMS key hierarchy.
 5. [x] ADR-0002 WORM storage.
 6. [x] ADR-0031 pgvector vs. Qdrant.
-7. [ ] ADR-0017 IAM strategy.
+7. [x] ADR-0058 Platform Module System.
+8. [ ] ADR-0017 IAM strategy.

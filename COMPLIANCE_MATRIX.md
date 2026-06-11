@@ -24,13 +24,18 @@ This matrix maps external requirements and internal controls to product capabili
 | CM-013 | Voice privacy | Voice capture must be explicit | Push-to-talk guard | Voice tests | partial |
 | CM-014 | Supply chain | Artifacts need provenance | SBOM, signing, pinned deps | Release evidence | planned |
 | CM-015 | Parser safety | Untrusted files need isolation | Networkless parser workers | Sandbox tests | planned |
+| CM-016 | Module lifecycle | Optional modules must be tenant-wise enabled, disabled, suspended, and decommissioned without bypassing compliance | Platform module registry, tenant module state, server-side module gates | Module lifecycle tests and audit events | planned |
+| CM-017 | Module migration | Module and legacy imports must be repeatable, checksummed, validated, and auditable | Module-aware migration catalog, import manifests, validation reports | Migration checksum tests and import reports | planned |
+| CM-018 | Module retention | Business module objects need retention and disposition rules | Module retention adapters and retention policy mappings | Retention simulation and deletion-blocking tests | planned |
+| CM-019 | Module Legal Hold | Legal Hold must apply to module business objects and related objects | Legal Hold scopes for module objects, source objects, and imports | Hold-blocking and release re-evaluation tests | planned |
+| CM-020 | Module decommission | Module removal must respect retention, Legal Hold, export, audit, and backup obligations | Decommission precheck workflow and evidence package | Decommission-blocked tests and restore evidence | planned |
 
 ## Standards Mapping
 
 | Standard | Relevant themes | Internal controls |
 | --- | --- | --- |
-| DSGVO | Privacy by design, security, deletion, restriction, TOMs | CM-001, CM-003, CM-004, CM-008, CM-009, CM-010 |
-| GoBD | Immutability, traceability, data access, procedural documentation | CM-004, CM-005, CM-006, CM-007 |
+| DSGVO | Privacy by design, security, deletion, restriction, TOMs | CM-001, CM-003, CM-004, CM-008, CM-009, CM-010, CM-016, CM-018, CM-019, CM-020 |
+| GoBD | Immutability, traceability, data access, procedural documentation | CM-004, CM-005, CM-006, CM-007, CM-017, CM-018, CM-019, CM-020 |
 | EU AI Act | Risk classification, transparency, logging, human oversight, robustness | CM-011, CM-012, CM-010, CM-013 |
 | NIST CSF 2.0 | Govern, Identify, Protect, Detect, Respond, Recover | all controls |
 | NIST SSDF | Secure development and vulnerability reduction | CM-014 plus SDLC controls |
@@ -44,4 +49,3 @@ This matrix maps external requirements and internal controls to product capabili
 ## Release Rule
 
 No feature that creates, modifies, deletes, searches, exports, indexes, embeds, summarizes, sends, or stores tenant data is complete until this matrix has a row or linked control covering its compliance impact.
-

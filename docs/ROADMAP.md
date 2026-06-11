@@ -984,7 +984,7 @@ Epics:
 
 Plattform-Aufgaben:
 
-- [ ] ADR fuer Platform Module System erstellen.
+- [x] ADR fuer Platform Module System erstellen.
 - [ ] `module_catalog` und `tenant_modules` als Kernmodell definieren.
 - [ ] Statusmodell fuer installierte, verfuegbare, aktivierte, deaktivierte, suspendierte und dekommissionierte Module implementieren.
 - [ ] `GET /v1/platform/modules` fuer Frontend-Discovery planen.
@@ -996,12 +996,12 @@ Plattform-Aufgaben:
 
 CRM/ERP `crm_erp`:
 
-- [ ] Module Charter fuer `crm_erp` schreiben.
+- [x] Module Charter fuer `crm_erp` schreiben.
 - [ ] Subfeatures definieren: `crm.accounts`, `crm.contacts`, `crm.activities`, `erp.products`, `erp.suppliers`, `erp.orders`, `erp.invoices`, `legacy_import.sqlserver`, `gobd_export`, `legal_hold`, `rag_indexing`, `ai_assist`.
 - [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
-- [ ] Datenklassen harmonisieren: personal, internal, confidential, gobd, legal_hold, security_data, export_package.
+- [ ] Datenklassen harmonisieren: personal_data, working_data, gobd_record, legal_hold, security_data, export_package.
 - [ ] SQL-Server-Import mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
 - [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
@@ -1174,8 +1174,8 @@ Empfohlene naechste Reihenfolge:
 39. [x] Embedding Model Versioning Registry Checks vor Production Indexing ergaenzen.
 40. [x] Production-grade Embedding Model Registry Administration und Approval Audit Events ergaenzen.
 41. [ ] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
-42. [ ] Platform Module System ADR und Module Charter Template fuer `crm_erp` und spaetere Fachmodule erstellen.
-43. [ ] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
+42. [x] Platform Module System ADR und Module Charter Template fuer `crm_erp` und spaetere Fachmodule erstellen.
+43. [x] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
 
 ## Release-Strategie
 

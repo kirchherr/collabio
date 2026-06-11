@@ -46,6 +46,8 @@ Current sprint:
 36. [x] Durable deployment audit storage for vector worker events.
 37. [x] Embedding model versioning registry checks before production indexing.
 38. [x] Production-grade embedding model registry administration and approval audit events.
+39. [x] Platform Module System ADR, module charter template, and initial CRM/ERP module charter.
+40. [x] Compliance matrix controls for optional module lifecycle, migration, retention, Legal Hold, and decommissioning.
 
 ## Next Engineering Step
 
