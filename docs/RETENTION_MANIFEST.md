@@ -24,6 +24,13 @@ Runtime model:
 app/suite/storage/retention.py
 ```
 
+Storage object manifests consume retention manifests:
+
+```text
+app/suite/storage/storage_manifest.py
+docs/STORAGE_MANIFEST.md
+```
+
 Tests:
 
 ```text
@@ -81,6 +88,7 @@ These defaults are intentionally conservative. They are not tenant-specific over
 - Embeddings and RAG chunks follow source lifecycle.
 - Retention policies must point to known storage bucket profiles.
 - Retention manifests carry policy snapshot hashes so restored evidence can be checked against the policy that produced it.
+- Storage manifests carry retention manifest hashes so restored object bytes can be checked against the retention decision that governed the write.
 
 ## Next Implementation Work
 
@@ -89,4 +97,5 @@ These defaults are intentionally conservative. They are not tenant-specific over
 - Add Legal Hold APIs that update objects and trigger manifest re-evaluation.
 - Persist Legal Hold decisions and matter scopes.
 - Add retention worker simulations before destructive actions exist.
-- Add object-store restore verification for retention manifest hash, source manifest hash, content hash, Object Lock state, and legal-hold state.
+- Persist storage manifests and retention manifests with source object metadata.
+- Add object-store restore commands that call storage manifest verification before serving restored bytes.

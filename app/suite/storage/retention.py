@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from hashlib import sha256
 from pathlib import Path
 from typing import Self
 
@@ -11,6 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from suite.ai_control_plane.models import DataClass
 from suite.storage.adapter_policy import ObjectLockMode
+from suite.storage.content_hash import compute_content_hash
 from suite.storage.source_objects import LegalHoldState, SourceLifecycleState, SourceObjectRecord, SourceObjectType
 
 
@@ -158,7 +158,13 @@ def load_retention_manifest_policy(path: Path) -> RetentionManifestPolicy:
 def build_policy_snapshot_hash(policy: RetentionPolicyDefault) -> str:
     payload = policy.model_dump(mode="json")
     policy_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return f"sha256:{sha256(policy_bytes).hexdigest()}"
+    return compute_content_hash(policy_bytes)
+
+
+def build_retention_manifest_hash(manifest: RetentionManifest) -> str:
+    payload = manifest.model_dump(mode="json")
+    manifest_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return compute_content_hash(manifest_bytes)
 
 
 def build_retention_manifest(record: SourceObjectRecord, policy_set: RetentionManifestPolicy) -> RetentionManifest:

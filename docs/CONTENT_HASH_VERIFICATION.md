@@ -49,6 +49,8 @@ The verification context names why bytes were checked, for example:
 
 This makes the same primitive usable by storage adapters, restore commands, parser workers, and e-discovery exports.
 
+Storage manifest verification consumes this result and records it as restore evidence.
+
 ## Source Object Integration
 
 `SourceObjectWriteGuard` now calls the shared verifier before accepting source object records.

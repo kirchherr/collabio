@@ -59,6 +59,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "retention_policy_snapshot_hash_check" in object_storage.integrity_checks
     assert "legal_hold_decision_check" in object_storage.integrity_checks
     assert "legal_hold_reevaluation_check" in object_storage.integrity_checks
+    assert "storage_object_manifest_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
 

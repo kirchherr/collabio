@@ -35,11 +35,12 @@ Current sprint:
 25. [x] Retention defaults and RetentionManifest model for storage, legal hold, WORM, backup, and e-discovery.
 26. [x] Legal Hold API boundary for source object versioning and retention-manifest re-evaluation.
 27. [x] Reusable content hash verification for source object writes, reads, restore drills, parser inputs, and exports.
+28. [x] Storage object manifest model and restore verification for object records.
 
 ## Next Engineering Step
 
-After the content hash verification boundary is in place:
+After the storage manifest boundary is in place:
 
-- Implement storage manifest model and restore checks for object records.
+- Implement the KMS adapter boundary before envelope encryption.
 - Add benchmark thresholds and reporting before ANN index decisions.
 - Wire vector worker audit events to durable deployment audit storage.

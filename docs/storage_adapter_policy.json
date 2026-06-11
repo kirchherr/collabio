@@ -47,6 +47,7 @@
       "kms_key_refs_required": true,
       "replication_target_required_before_production": true,
       "restore_integrity_checks": [
+        "storage_object_manifest_hash_check",
         "source_object_manifest_hash_check",
         "content_hash_check",
         "tenant_metadata_check"
@@ -65,6 +66,7 @@
       "kms_key_refs_required": true,
       "replication_target_required_before_production": true,
       "restore_integrity_checks": [
+        "storage_object_manifest_hash_check",
         "source_object_manifest_hash_check",
         "object_manifest_hash",
         "content_hash_check",
@@ -86,6 +88,7 @@
       "kms_key_refs_required": true,
       "replication_target_required_before_production": true,
       "restore_integrity_checks": [
+        "storage_object_manifest_hash_check",
         "source_object_manifest_hash_check",
         "object_manifest_hash",
         "content_hash_check",
@@ -107,6 +110,7 @@
       "kms_key_refs_required": true,
       "replication_target_required_before_production": true,
       "restore_integrity_checks": [
+        "storage_object_manifest_hash_check",
         "parser_manifest_hash_check",
         "source_object_manifest_hash_check",
         "content_hash_check",

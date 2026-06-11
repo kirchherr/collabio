@@ -43,6 +43,7 @@ def test_storage_adapter_policy_requires_secure_bucket_profiles() -> None:
         assert profile.versioning_required
         assert profile.encryption_required
         assert profile.kms_key_refs_required
+        assert "storage_object_manifest_hash_check" in profile.restore_integrity_checks
         assert "source_object_manifest_hash_check" in profile.restore_integrity_checks
         assert "content_hash_check" in profile.restore_integrity_checks
 

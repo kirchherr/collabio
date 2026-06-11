@@ -495,7 +495,7 @@ Aufgaben:
 - [x] Retention Defaults und Retention Manifest definieren.
 - [x] Legal Hold APIs fuer Objekte definieren.
 - [x] Content Hash Verification implementieren.
-- [ ] Storage Manifest implementieren.
+- [x] Storage Manifest implementieren.
 - [ ] KMS Adapter implementieren.
 - [ ] Envelope Encryption API implementieren.
 - [ ] Key Rotation Interface implementieren.
@@ -1045,7 +1045,8 @@ Empfohlene naechste Reihenfolge:
 25. [x] Retention Defaults und Retention Manifest definieren.
 26. [x] Legal Hold APIs fuer Source Objects und Retention-Manifest-Reevaluation definieren.
 27. [x] Content Hash Verification als wiederverwendbare Storage-/Read-/Restore-Grenze implementieren.
-28. [ ] Storage Manifest mit Restore-Checks fuer Object Records implementieren.
+28. [x] Storage Manifest mit Restore-Checks fuer Object Records implementieren.
+29. [ ] KMS Adapter Boundary vor Envelope Encryption implementieren.
 
 ## Release-Strategie
 

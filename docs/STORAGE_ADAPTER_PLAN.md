@@ -8,6 +8,8 @@ Retention manifests are defined in `docs/RETENTION_MANIFEST.md` and must be avai
 
 Content hash verification is defined in `docs/CONTENT_HASH_VERIFICATION.md` and must be reused for writes, reads, restore drills, parser inputs, and exports.
 
+Storage manifests are defined in `docs/STORAGE_MANIFEST.md` and must be produced for every object-store write before the future adapter serves restored content.
+
 ## First Decision
 
 ADR:
@@ -39,6 +41,7 @@ SourceObjectRecord
   -> Storage adapter policy
   -> object bucket profile
   -> retention manifest
+  -> storage object manifest
   -> encrypted object write
   -> version ID and manifest evidence
   -> audit event / outbox event
@@ -87,7 +90,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 - Record/evidence buckets require Object Lock compliance mode.
 - Object-lock buckets support legal hold.
 - Every write carries KMS reference metadata.
-- Restore cannot serve content until source object manifest hash and shared content hash verification pass.
+- Restore cannot serve content until storage object manifest hash, source object manifest hash, retention manifest hash, Object Lock evidence, legal-hold state, and shared content hash verification pass.
 - Deleting metadata must not delete WORM object versions.
 - Cryptoshred must be policy-gated and must not apply to GoBD or legal-hold records.
 
@@ -98,5 +101,5 @@ The storage adapter must never be an authorization source. Read flows still requ
 3. Add bucket bootstrap checks for versioning and Object Lock.
 4. Persist source object metadata in PostgreSQL.
 5. Write object version IDs and manifest evidence into audit/outbox events.
-6. Add restore verification commands for object manifests and content hash evidence.
+6. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
 7. Add provider profile tests before allowing production object writes.

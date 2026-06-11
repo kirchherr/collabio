@@ -31,6 +31,7 @@ It is intentionally lightweight. The current repository implements development b
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
+- Storage object restores must prove storage manifest hash, object version ID, bucket profile, KMS reference, object-lock configuration, and legal-hold evidence.
 - Content hash verification must use the shared verifier so write, read, restore, parser, and export checks produce comparable evidence.
 - Retention manifest restores must prove retain-until, policy snapshot hash, WORM requirement, Object Lock mode, and Legal Hold state.
 - Legal Hold restores must prove hold decisions, release decisions, matter references, source versions, and retention re-evaluation evidence.
@@ -86,7 +87,7 @@ Monthly for active development and before every production-readiness milestone:
 4. For production, restore into an isolated environment and run the domain-specific checks from the policy.
 5. Update the policy and this runbook when the restore path changes.
 
-Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, and manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
+Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, retention manifest hash, object version ID, bucket profile, object-lock state, legal-hold state, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 
 ## Failover Stance
 
