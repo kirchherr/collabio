@@ -985,8 +985,8 @@ Epics:
 Plattform-Aufgaben:
 
 - [x] ADR fuer Platform Module System erstellen.
-- [ ] `module_catalog` und `tenant_modules` als Kernmodell definieren.
-- [ ] Statusmodell fuer installierte, verfuegbare, aktivierte, deaktivierte, suspendierte und dekommissionierte Module implementieren.
+- [x] `module_catalog` und `tenant_modules` als Kernmodell definieren.
+- [x] Statusmodell fuer installierte, verfuegbare, aktivierte, deaktivierte, suspendierte und dekommissionierte Module implementieren.
 - [ ] `GET /v1/platform/modules` fuer Frontend-Discovery planen.
 - [ ] Admin-APIs fuer Provision, Enable, Disable, Suspend, Decommission Request und Decommission Check planen.
 - [ ] Serverseitige Modul-Gates fuer API-Router und Worker einfuehren.
@@ -1176,6 +1176,8 @@ Empfohlene naechste Reihenfolge:
 41. [ ] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
 42. [x] Platform Module System ADR und Module Charter Template fuer `crm_erp` und spaetere Fachmodule erstellen.
 43. [x] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
+44. [x] `module_catalog` und `tenant_modules` Kernmodell mit SQL-Migration, Statusmodell und Gatekeeping-Tests anlegen.
+45. [ ] `GET /v1/platform/modules` Frontend-Discovery Endpoint mit Tenant Context anbinden.
 
 ## Release-Strategie
 

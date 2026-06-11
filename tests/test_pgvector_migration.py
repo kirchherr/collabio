@@ -26,7 +26,7 @@ def pgvector_sql() -> str:
 def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
     migrations = load_migrations()
 
-    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005", "0006"]
+    assert [migration.version for migration in migrations] == ["0001", "0002", "0003", "0004", "0005", "0006", "0007"]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
     assert "CREATE EXTENSION IF NOT EXISTS vector;" in migrations[0].sql()
@@ -124,6 +124,45 @@ def test_vector_metadata_guardrail_migration_validates_acl_and_source_type() -> 
     assert "vector_embedding_chunks_acl_metadata_check" in sql
     assert "acl_version >= 1" in sql
     assert "authoritative acl snapshot" in sql
+
+
+def test_platform_module_registry_migration_declares_lifecycle_tables_and_rls() -> None:
+    sql = normalized(get_migration("0007").sql())
+    module_catalog_body = table_body(get_migration("0007").sql(), "collabio.module_catalog")
+    tenant_modules_body = table_body(get_migration("0007").sql(), "collabio.tenant_modules")
+
+    for column in [
+        "module_id",
+        "display_name",
+        "module_version",
+        "module_kind",
+        "status",
+        "manifest_hash",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", module_catalog_body), f"{column} missing from module catalog schema"
+
+    for column in [
+        "tenant_id",
+        "module_id",
+        "status",
+        "enabled_features",
+        "policy_snapshot_hash",
+        "changed_by",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", tenant_modules_body), f"{column} missing from tenant module schema"
+
+    assert "'enabled'" in tenant_modules_body
+    assert "'disabled'" in tenant_modules_body
+    assert "'decommission_blocked'" in tenant_modules_body
+    assert "status <> 'enabled' or enabled_at_utc is not null" in sql
+    assert "alter table collabio.tenant_modules enable row level security" in sql
+    assert "alter table collabio.tenant_modules force row level security" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "create policy tenant_modules_no_hard_delete" in sql
+    assert "using (false)" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

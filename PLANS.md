@@ -48,6 +48,7 @@ Current sprint:
 38. [x] Production-grade embedding model registry administration and approval audit events.
 39. [x] Platform Module System ADR, module charter template, and initial CRM/ERP module charter.
 40. [x] Compliance matrix controls for optional module lifecycle, migration, retention, Legal Hold, and decommissioning.
+41. [x] Platform module catalog and tenant module state core model with SQL migration and gatekeeping tests.
 
 ## Next Engineering Step
 
@@ -55,6 +56,7 @@ After embedding model registry administration is in place:
 
 - Add keyword indexer boundary with candidate-only results and search audit events.
 - Start hybrid search orchestration boundary after keyword indexer design.
+- Add `GET /v1/platform/modules` tenant discovery after the module core model.
 
 ## Module Expansion Stance
 

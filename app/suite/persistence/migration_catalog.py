@@ -43,6 +43,11 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         name="vector_metadata_guardrails",
         resource_name="0006_vector_metadata_guardrails.sql",
     ),
+    SqlMigration(
+        version="0007",
+        name="platform_module_registry",
+        resource_name="0007_platform_module_registry.sql",
+    ),
 )
 
 
