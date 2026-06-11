@@ -71,3 +71,20 @@ Runtime `UserContext` fields are derived as follows:
 - `readable_object_ids`: server-side object ACL records using user, role, and group grants
 
 No LLM, RAG, module, admin, or voice endpoint may derive roles or readable object IDs from caller-controlled headers.
+
+## PostgreSQL Principal Directory
+
+`SUITE_PRINCIPAL_DIRECTORY_BACKEND=postgres` enables the PostgreSQL-backed Principal Directory. It uses `SUITE_PRINCIPAL_DIRECTORY_DSN` when set, otherwise `SUITE_DATABASE_DSN`.
+
+The store is tenant-scoped and protected by PostgreSQL RLS:
+
+- `tenant_principals`
+- `tenant_principal_memberships`
+- `tenant_roles`
+- `tenant_groups`
+- `tenant_principal_role_assignments`
+- `tenant_principal_group_memberships`
+- `object_acl_entries`
+- `abac_policy_bindings`
+
+Every row carries `tenant_id`, `audit_chain_ref`, and `schema_version`. The normal `collabio_app` role receives read access only; future authz administration must write through explicit audit and approval paths.

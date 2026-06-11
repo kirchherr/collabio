@@ -126,6 +126,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("adr:platform-module-system", "test:module-provisioning-migration-evidence"),
     ),
+    SqlMigration(
+        version="0012",
+        name="principal_authz_store",
+        resource_name="0012_principal_authz_store.sql",
+        module_id="core",
+        evidence_refs=("doc:auth-context", "test:principal-authz-store"),
+    ),
 )
 
 

@@ -43,6 +43,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0009",
         "0010",
         "0011",
+        "0012",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -259,6 +260,42 @@ def test_tenant_module_migration_evidence_migration_requires_manifest_snapshot()
     assert "status in ('available', 'provisioning')" in sql
     assert "jsonb_array_length(migration_evidence) > 0" in sql
     assert "startup-blocking migration manifest entries" in sql
+
+
+def test_principal_authz_store_migration_declares_rls_and_audit_refs() -> None:
+    sql = normalized(get_migration("0012").sql())
+
+    required_tables = [
+        "tenant_principals",
+        "tenant_principal_memberships",
+        "tenant_roles",
+        "tenant_groups",
+        "tenant_principal_role_assignments",
+        "tenant_principal_group_memberships",
+        "object_acl_entries",
+        "abac_policy_bindings",
+    ]
+    for table in required_tables:
+        body = table_body(get_migration("0012").sql(), f"collabio.{table}")
+        assert "tenant_id" in body
+        assert "audit_chain_ref" in body
+        assert "schema_version" in body
+        assert f"alter table collabio.{table} enable row level security" in sql
+        assert f"alter table collabio.{table} force row level security" in sql
+        assert f"create policy {table}_tenant_select" in sql
+        assert f"create policy {table}_tenant_insert" in sql
+        assert f"create policy {table}_tenant_update" in sql
+        assert f"create policy {table}_no_hard_delete" in sql
+
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "using (false)" in sql
+    assert "permission in ('read', 'write', 'admin')" in sql
+    assert "acl_subject_type in ('user', 'role', 'group')" in sql
+    assert "effect in ('allow', 'deny')" in sql
+    assert "grant select on table collabio.tenant_principals to collabio_app" in sql
+    assert "grant select on table collabio.abac_policy_bindings to collabio_app" in sql
+    assert "grant insert" not in sql
+    assert "authoritative object acl entries" in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

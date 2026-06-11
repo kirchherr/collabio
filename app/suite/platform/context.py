@@ -597,6 +597,16 @@ class ObjectAclRecord(BaseModel):
         return normalized
 
 
+class PrincipalDirectory(Protocol):
+    def principal_for_claims(self, claims: VerifiedJwtClaims) -> PrincipalRecord: ...
+
+    def tenant_membership(self, principal: PrincipalRecord, tenant_id: str) -> TenantMembership: ...
+
+    def readable_object_ids(
+        self, *, tenant_id: str, user_id: str, role_ids: set[str], group_ids: set[str]
+    ) -> set[str]: ...
+
+
 class InMemoryPrincipalDirectory:
     def __init__(self, *, principals: list[PrincipalRecord], object_acls: list[ObjectAclRecord]) -> None:
         self._principals = {(principal.issuer, principal.subject): principal for principal in principals}
@@ -693,7 +703,7 @@ class InMemoryPrincipalDirectory:
 
 
 class JwtPrincipalResolver:
-    def __init__(self, *, verifier: JwtVerifier, directory: InMemoryPrincipalDirectory) -> None:
+    def __init__(self, *, verifier: JwtVerifier, directory: PrincipalDirectory) -> None:
         self.verifier = verifier
         self.directory = directory
 
@@ -745,8 +755,24 @@ def build_default_principal_resolver() -> JwtPrincipalResolver:
         )
     return JwtPrincipalResolver(
         verifier=verifier,
-        directory=InMemoryPrincipalDirectory.default(),
+        directory=_default_principal_directory(),
     )
+
+
+def _default_principal_directory() -> PrincipalDirectory:
+    backend = os.getenv("SUITE_PRINCIPAL_DIRECTORY_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "in-memory", "in_memory"}:
+        return InMemoryPrincipalDirectory.default()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_PRINCIPAL_DIRECTORY_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise PrincipalResolutionError(
+                "PostgreSQL principal directory requires SUITE_PRINCIPAL_DIRECTORY_DSN or SUITE_DATABASE_DSN"
+            )
+        from suite.platform.principal_store import PgPrincipalDirectory
+
+        return PgPrincipalDirectory(database_dsn=database_dsn)
+    raise PrincipalResolutionError(f"Unsupported SUITE_PRINCIPAL_DIRECTORY_BACKEND: {backend}")
 
 
 def _default_replay_guard() -> JwtReplayGuard:
