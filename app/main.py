@@ -70,6 +70,12 @@ from suite.platform.crm_contacts import (
     CrmContactsResponse,
     InMemoryCrmContactRepository,
 )
+from suite.platform.erp_products import (
+    ERP_PRODUCTS_FEATURE_ID,
+    ErpProductService,
+    ErpProductsResponse,
+    InMemoryErpProductRepository,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -324,6 +330,10 @@ def build_app() -> FastAPI:
     crm_activity_service = CrmActivityService(
         activity_repository=InMemoryCrmActivityRepository.demo(),
         note_repository=InMemoryCrmNoteRepository.demo(),
+        audit_logger=audit_logger,
+    )
+    erp_product_service = ErpProductService(
+        repository=InMemoryErpProductRepository.demo(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1113,6 +1123,19 @@ def build_app() -> FastAPI:
         crm_activities = cast(CrmActivityService, request.app.state.crm_activity_service)
         return crm_activities.list_notes(user_context=context.user_context)
 
+    @app.get("/v1/erp/products", response_model=ErpProductsResponse)
+    def list_erp_products(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=ERP_PRODUCTS_FEATURE_ID)),
+        ],
+    ) -> ErpProductsResponse:
+        del gate
+        erp_products = cast(ErpProductService, request.app.state.erp_product_service)
+        return erp_products.list_products(user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1132,6 +1155,7 @@ def build_app() -> FastAPI:
     app.state.crm_account_service = crm_account_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
+    app.state.erp_product_service = erp_product_service
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

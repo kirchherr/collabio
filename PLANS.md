@@ -77,12 +77,13 @@ Current sprint:
 67. [x] First gated CRM accounts read vertical slice with `crm.accounts`, audit, and `GET /v1/crm/accounts`.
 68. [x] Gated CRM contacts read vertical slice with `crm.contacts`, account-link redaction, audit, and `GET /v1/crm/contacts`.
 69. [x] Gated CRM activities/notes read vertical slice with `crm.activities`, `crm.notes`, link redaction, audit, and metadata-only notes.
+70. [x] Minimal ERP products read vertical slice with `erp.products`, internal classification, audit, and `GET /v1/erp/products`.
 
 ## Next Engineering Step
 
-After the CRM accounts, contacts, activities, and notes read slices, continue broadening CRM/ERP without skipping hardening:
+After the CRM slices and minimal ERP products proof, broaden the suite module system without skipping hardening:
 
-- Start the first ERP object slice, preferably products, using the same object metadata, RLS, module-gate, and audit pattern.
+- Extract the repeated vertical-slice checklist into a module implementation contract for knowledge base, LMS, tasks, tickets, and time tracking.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

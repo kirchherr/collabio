@@ -1209,7 +1209,18 @@ def default_module_registry() -> InMemoryModuleRegistry:
         status=ModuleStatus.INSTALLED,
         description="Optional CRM/ERP business module.",
         manifest_hash="sha256:crm-erp-module-manifest",
-        required_migration_versions=("0007", "0008", "0009", "0010", "0011", "0016", "0017", "0018", "0019"),
+        required_migration_versions=(
+            "0007",
+            "0008",
+            "0009",
+            "0010",
+            "0011",
+            "0016",
+            "0017",
+            "0018",
+            "0019",
+            "0020",
+        ),
     )
     crm_erp_demo_state = TenantModuleState(
         tenant_id="tenant-demo",

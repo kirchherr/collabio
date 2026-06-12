@@ -50,6 +50,10 @@ DEMO_CRM_ACTIVITY_HEADERS = {
         "crm-note-acme-demo,crm-note-northwind-demo"
     ),
 }
+DEMO_ERP_PRODUCT_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": "doc-1,mail-1,erp-product-standard-widget-demo,erp-product-service-plan-demo",
+}
 DECOMMISSION_REQUEST_PAYLOAD = {
     "approval_reference": "approval:module-decommission-request",
     "reason": "tenant requests controlled module decommission",
@@ -176,6 +180,26 @@ def provision_and_enable_crm_activities_for_demo() -> None:
             "approval_reference": "approval:module-enable",
             "reason": "activate CRM activities and notes",
             "enabled_features": {"crm_erp.crm.activities": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
+def provision_and_enable_erp_products_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare ERP products"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate ERP products",
+            "enabled_features": {"crm_erp.erp.products": True},
         },
     )
     assert enable_response.status_code == 200
@@ -525,6 +549,45 @@ def test_crm_notes_endpoint_returns_metadata_only_notes_after_feature_enable() -
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
+def test_erp_products_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    response = client.get("/v1/erp/products", headers=DEMO_ERP_PRODUCT_HEADERS)
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_erp_products_endpoint_returns_internal_products_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_erp_products_for_demo()
+
+    response = client.get("/v1/erp/products", headers=DEMO_ERP_PRODUCT_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.erp.products"
+    assert body["audit_event_id"]
+    assert [product["display_name"] for product in body["products"]] == ["Service Plan", "Standard Widget"]
+    assert {product["object_type"] for product in body["products"]} == {"erp.product"}
+    assert {product["data_classification"] for product in body["products"]} == {"internal"}
+    assert {product["retention_policy_id"] for product in body["products"]} == {"rp-standard"}
+    assert all(product["access_checked"] for product in body["products"])
+    assert "Other Tenant Product" not in {product["display_name"] for product in body["products"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "erp.product.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:
     reset_module_registry()
 
@@ -569,6 +632,7 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
         "0017",
         "0018",
         "0019",
+        "0020",
     ]
 
     enable_response = client.post(

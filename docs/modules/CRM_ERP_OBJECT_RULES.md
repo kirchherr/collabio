@@ -7,8 +7,8 @@ This document defines the canonical planning contract for CRM/ERP schemas and bu
 Implementation:
 
 - Code: `app/suite/platform/crm_erp_object_rules.py`
-- Migrations: `app/suite/persistence/migrations/0016_crm_erp_schema_scaffold.sql`, `app/suite/persistence/migrations/0017_crm_accounts.sql`, `app/suite/persistence/migrations/0018_crm_contacts.sql`, `app/suite/persistence/migrations/0019_crm_activities_notes.sql`
-- Tests: `tests/test_crm_erp_object_rules.py`, `tests/test_crm_accounts.py`, `tests/test_crm_contacts.py`, `tests/test_crm_activities.py`
+- Migrations: `app/suite/persistence/migrations/0016_crm_erp_schema_scaffold.sql`, `app/suite/persistence/migrations/0017_crm_accounts.sql`, `app/suite/persistence/migrations/0018_crm_contacts.sql`, `app/suite/persistence/migrations/0019_crm_activities_notes.sql`, `app/suite/persistence/migrations/0020_erp_products.sql`
+- Tests: `tests/test_crm_erp_object_rules.py`, `tests/test_crm_accounts.py`, `tests/test_crm_contacts.py`, `tests/test_crm_activities.py`, `tests/test_erp_products.py`
 - Cross-checks: `tests/test_crm_erp_subfeatures.py`, `tests/test_api.py`
 
 ## Planned Schemas
@@ -29,18 +29,21 @@ The `0016` migration creates the four schemas and the first tenant-scoped scaffo
 
 These tables are manifest/evidence anchors, not business-data tables. They are RLS-protected, append-only by policy, and do not store source text, raw legacy payloads, prompts, snippets, or generated answers.
 
-The `0017`, `0018`, and `0019` migrations create the first persistent business tables:
+The `0017`, `0018`, `0019`, and `0020` migrations create the first persistent business tables:
 
 - `crm.accounts`
 - `crm.contacts`
 - `crm.activities`
 - `crm.notes`
+- `erp.products`
 
 `crm.accounts` implements the `crm.account` object-rule contract for the gated `/v1/crm/accounts` read slice. Rows include tenant, object, owner, source, classification, retention, Legal Hold, lifecycle, KMS, audit, and schema-version metadata, are protected by RLS, and have no hard-delete grant.
 
 `crm.contacts` implements the `crm.contact` object-rule contract for the gated `/v1/crm/contacts` read slice. Contact rows use the same mandatory metadata and may reference `crm.accounts` through a tenant-scoped FK; API responses redact that relation unless the linked account object is readable.
 
 `crm.activities` and `crm.notes` implement the `crm.activity` and `crm.note` contracts for gated `/v1/crm/activities` and `/v1/crm/notes` read slices. Both tables use mandatory metadata and tenant-scoped links to accounts, contacts, and activities. Notes are metadata-only in this slice; note bodies require a later source-object/content-resolver path.
+
+`erp.products` implements the `erp.product` contract for gated `/v1/erp/products`. This table deliberately proves internal master-data handling without starting ERP order, invoice, tax, or GoBD workflows.
 
 ## Required Object Metadata
 

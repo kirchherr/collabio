@@ -128,7 +128,7 @@ legacy.row
 
 Every object must carry the persistent object metadata required by `docs/ROADMAP.md` and `DATA_CLASSIFICATION.md`.
 
-The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. Migrations `0017_crm_accounts.sql`, `0018_crm_contacts.sql`, and `0019_crm_activities_notes.sql` create the first RLS-protected business tables, `crm.accounts`, `crm.contacts`, `crm.activities`, and `crm.notes`, for the initial CRM object types. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before broader business tables are introduced.
+The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. Migrations `0017_crm_accounts.sql`, `0018_crm_contacts.sql`, `0019_crm_activities_notes.sql`, and `0020_erp_products.sql` create the first RLS-protected business tables, `crm.accounts`, `crm.contacts`, `crm.activities`, `crm.notes`, and `erp.products`, for initial CRM objects plus one internal ERP master-data proof. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before broader business tables are introduced.
 
 ## 6. Data Classification And Retention
 
@@ -286,8 +286,9 @@ module registry
   -> expose gated GET /v1/crm/accounts
   -> expose gated GET /v1/crm/contacts
   -> expose gated GET /v1/crm/activities and GET /v1/crm/notes
-  -> prove disabled module blocks normal CRM APIs
-  -> audit metadata-only CRM reads
+  -> expose gated GET /v1/erp/products as internal master-data proof
+  -> prove disabled module blocks normal CRM/ERP APIs
+  -> audit metadata-only CRM/ERP reads
 ```
 
 ## 13. Explicit Non-Goals For The First Slice
