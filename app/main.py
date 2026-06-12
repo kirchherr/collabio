@@ -85,6 +85,7 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseEvidenceResponse,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteDryRunResponse,
+    build_default_knowledge_base_write_approval_ledger,
     demo_knowledge_base_source_object_repository,
 )
 from suite.platform.modules import (
@@ -351,6 +352,7 @@ def build_app() -> FastAPI:
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
         audit_logger=audit_logger,
+        write_approval_ledger=build_default_knowledge_base_write_approval_ledger(),
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(

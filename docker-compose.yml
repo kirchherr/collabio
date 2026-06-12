@@ -117,6 +117,7 @@ services:
       SUITE_DATA_DIR: /workspace/data
       SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_AUTHZ_ADMIN_STORE_BACKEND: postgres
+      SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio

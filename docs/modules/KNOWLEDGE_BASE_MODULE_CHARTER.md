@@ -62,7 +62,7 @@ Initial API:
 
 `GET /v1/admin/kb/evidence` is a tenant-admin compliance API. It remains available through the compliance module gate while the module is disabled, suspended, or in an active decommission workflow. It returns source-version evidence and restore evidence only, not article bodies or source text.
 
-`POST /v1/admin/kb/articles/write-dry-run` validates a write/edit approval command and writes an audit event only. It does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state. It returns command hashes and required evidence for the future approval ledger.
+`POST /v1/admin/kb/articles/write-dry-run` validates a write/edit approval command, writes an audit event, and appends metadata-only approval evidence to the write-approval ledger. It does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state. It returns command hashes and required evidence for the source-object write guard.
 
 Future workers:
 

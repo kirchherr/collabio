@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
@@ -556,6 +558,14 @@ class KnowledgeBaseArticleRepository(Protocol):
         pass
 
 
+class KnowledgeBaseWriteApprovalLedger(Protocol):
+    def append(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> KnowledgeBaseWriteApprovalEvidence:
+        pass
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
+        pass
+
+
 def knowledge_base_audit_source_object_ids(records: Sequence[KnowledgeBaseArticleRecord]) -> list[str]:
     source_object_ids: list[str] = []
     seen: set[str] = set()
@@ -688,6 +698,174 @@ class InMemoryKnowledgeBaseArticleRepository:
         return tuple(article for article in self._articles if article.tenant_id == tenant_id)
 
 
+class InMemoryKnowledgeBaseWriteApprovalLedger:
+    def __init__(self, evidences: Sequence[KnowledgeBaseWriteApprovalEvidence] = ()) -> None:
+        self._evidences: dict[tuple[str, str], KnowledgeBaseWriteApprovalEvidence] = {}
+        for evidence in evidences:
+            self.append(evidence)
+
+    def append(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> KnowledgeBaseWriteApprovalEvidence:
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("knowledge base write approval evidence already exists")
+        self._evidences[key] = evidence
+        return evidence
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
+
+
+class PgKnowledgeBaseWriteApprovalLedger:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> KnowledgeBaseWriteApprovalEvidence:
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, evidence.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO knowledge_base.write_approval_evidence (
+                        tenant_id,
+                        approval_reference,
+                        operation,
+                        approval_state,
+                        article_object_id,
+                        expected_current_version_object_id,
+                        proposed_version_object_id,
+                        proposed_source_object_id,
+                        proposed_source_version_id,
+                        proposed_source_object_type,
+                        proposed_source_manifest_hash,
+                        proposed_content_hash,
+                        proposed_acl_version,
+                        command_hash,
+                        proposed_source_version_evidence_hash,
+                        current_restore_evidence_hash,
+                        source_object_write_guard_ref,
+                        requested_by,
+                        persistence_allowed,
+                        rag_indexing_allowed,
+                        source_authority_verified,
+                        audit_event_id,
+                        audit_chain_ref,
+                        evidence_hash,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        evidence.tenant_id,
+                        evidence.approval_reference,
+                        evidence.operation,
+                        evidence.approval_state,
+                        evidence.article_object_id,
+                        evidence.expected_current_version_object_id,
+                        evidence.proposed_version_object_id,
+                        evidence.proposed_source_object_id,
+                        evidence.proposed_source_version_id,
+                        evidence.proposed_source_object_type,
+                        evidence.proposed_source_manifest_hash,
+                        evidence.proposed_content_hash,
+                        evidence.proposed_acl_version,
+                        evidence.command_hash,
+                        evidence.proposed_source_version_evidence_hash,
+                        evidence.current_restore_evidence_hash,
+                        evidence.source_object_write_guard_ref,
+                        evidence.requested_by,
+                        evidence.persistence_allowed,
+                        evidence.rag_indexing_allowed,
+                        evidence.source_authority_verified,
+                        evidence.audit_event_id,
+                        evidence.audit_chain_ref,
+                        evidence.evidence_hash,
+                        evidence.schema_version,
+                    ),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("knowledge base write approval evidence already exists") from exc
+        return evidence
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    approval_reference,
+                    operation,
+                    approval_state,
+                    article_object_id,
+                    expected_current_version_object_id,
+                    proposed_version_object_id,
+                    proposed_source_object_id,
+                    proposed_source_version_id,
+                    proposed_source_object_type,
+                    proposed_source_manifest_hash,
+                    proposed_content_hash,
+                    proposed_acl_version,
+                    command_hash,
+                    proposed_source_version_evidence_hash,
+                    current_restore_evidence_hash,
+                    source_object_write_guard_ref,
+                    requested_by,
+                    persistence_allowed,
+                    rag_indexing_allowed,
+                    source_authority_verified,
+                    audit_event_id,
+                    audit_chain_ref,
+                    evidence_hash,
+                    schema_version
+                FROM knowledge_base.write_approval_evidence
+                WHERE tenant_id = %s
+                ORDER BY captured_at_utc, evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._evidence_from_row(row) for row in rows)
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> KnowledgeBaseWriteApprovalEvidence:
+        return KnowledgeBaseWriteApprovalEvidence(
+            tenant_id=str(row[0]),
+            approval_reference=str(row[1]),
+            operation=KnowledgeBaseWriteOperation(str(row[2])),
+            approval_state=KnowledgeBaseWriteApprovalState(str(row[3])),
+            article_object_id=str(row[4]),
+            expected_current_version_object_id=str(row[5]) if row[5] is not None else None,
+            proposed_version_object_id=str(row[6]),
+            proposed_source_object_id=str(row[7]),
+            proposed_source_version_id=str(row[8]),
+            proposed_source_object_type=SourceObjectType(str(row[9])),
+            proposed_source_manifest_hash=str(row[10]),
+            proposed_content_hash=str(row[11]),
+            proposed_acl_version=int(row[12]),
+            command_hash=str(row[13]),
+            proposed_source_version_evidence_hash=str(row[14]),
+            current_restore_evidence_hash=str(row[15]),
+            source_object_write_guard_ref=str(row[16]),
+            requested_by=str(row[17]),
+            persistence_allowed=bool(row[18]),
+            rag_indexing_allowed=bool(row[19]),
+            source_authority_verified=bool(row[20]),
+            audit_event_id=str(row[21]),
+            audit_chain_ref=str(row[22]),
+            evidence_hash=str(row[23]),
+            schema_version=str(row[24]),
+        )
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
 class KnowledgeBaseArticleService:
     def __init__(
         self,
@@ -695,10 +873,12 @@ class KnowledgeBaseArticleService:
         repository: KnowledgeBaseArticleRepository,
         source_repository: SourceObjectRepository,
         audit_logger: InMemoryAuditLogger,
+        write_approval_ledger: KnowledgeBaseWriteApprovalLedger | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
         self.audit_logger = audit_logger
+        self.write_approval_ledger = write_approval_ledger or InMemoryKnowledgeBaseWriteApprovalLedger()
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
         candidate_records = sorted(
@@ -851,6 +1031,7 @@ class KnowledgeBaseArticleService:
             audit_event_id=event.event_id,
             audit_chain_ref=f"audit:{event.event_id}",
         )
+        persisted_write_approval_evidence = self.write_approval_ledger.append(write_approval_evidence)
         return KnowledgeBaseWriteDryRunResponse(
             tenant_id=user_context.tenant_id,
             operation=command.operation,
@@ -862,7 +1043,7 @@ class KnowledgeBaseArticleService:
             command_hash=command_hash,
             proposed_source_version_evidence_hash=proposed_evidence.evidence_hash,
             current_restore_evidence_hash=restore_evidence.evidence_hash,
-            write_approval_evidence_hash=write_approval_evidence.evidence_hash,
+            write_approval_evidence_hash=persisted_write_approval_evidence.evidence_hash,
             audit_event_id=event.event_id,
         )
 
@@ -877,6 +1058,21 @@ class KnowledgeBaseArticleService:
 
 def default_knowledge_base_enabled_features() -> dict[str, bool]:
     return {KB_ARTICLES_FEATURE_ID: True, KB_ARTICLES_WRITE_FEATURE_ID: False}
+
+
+def build_default_knowledge_base_write_approval_ledger() -> KnowledgeBaseWriteApprovalLedger:
+    backend = os.getenv("SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemoryKnowledgeBaseWriteApprovalLedger()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_KB_WRITE_APPROVAL_LEDGER_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL knowledge base write approval ledger requires "
+                "SUITE_KB_WRITE_APPROVAL_LEDGER_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgKnowledgeBaseWriteApprovalLedger(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: {backend}")
 
 
 def build_knowledge_base_source_version_evidence(

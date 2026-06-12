@@ -10,6 +10,7 @@ from suite.platform.knowledge_base import (
     KB_ARTICLES_WRITE_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
     InMemoryKnowledgeBaseArticleRepository,
+    InMemoryKnowledgeBaseWriteApprovalLedger,
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
     KnowledgeBaseWriteApprovalCommand,
@@ -246,10 +247,12 @@ def test_knowledge_base_write_approval_command_rejects_bodies_and_unsafe_contrac
 
 def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persistence() -> None:
     audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
     service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
         audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
     )
     source_record = demo_knowledge_base_source_object_repository().get(
         tenant_id="tenant-demo",
@@ -294,6 +297,20 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert response.current_restore_evidence_hash.startswith("sha256:")
     assert response.write_approval_evidence_hash.startswith("sha256:")
     assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+    ledger_evidences = write_approval_ledger.list_evidence(tenant_id="tenant-demo")
+    assert len(ledger_evidences) == 1
+    persisted_evidence = ledger_evidences[0]
+    assert persisted_evidence.evidence_hash == response.write_approval_evidence_hash
+    assert persisted_evidence.tenant_id == "tenant-demo"
+    assert persisted_evidence.article_object_id == "kb-article-backup-runbook-demo"
+    assert persisted_evidence.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN
+    assert persisted_evidence.persistence_allowed is False
+    assert persisted_evidence.rag_indexing_allowed is False
+    assert persisted_evidence.source_authority_verified is False
+    assert "article_body" not in persisted_evidence.model_dump_json()
+    assert write_approval_ledger.list_evidence(tenant_id="tenant-other") == ()
+    with pytest.raises(ValueError, match="already exists"):
+        write_approval_ledger.append(persisted_evidence)
 
     event = audit_logger.events[-1]
     assert response.audit_event_id == event.event_id
@@ -326,6 +343,7 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert evidence.source_authority_verified is False
     assert evidence.evidence_hash == build_write_approval_evidence_hash(evidence)
     assert response.write_approval_evidence_hash == evidence.evidence_hash
+    assert persisted_evidence == evidence
 
 
 def test_knowledge_base_source_version_evidence_matches_authoritative_source_object() -> None:

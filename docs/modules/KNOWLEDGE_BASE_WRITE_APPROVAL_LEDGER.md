@@ -1,6 +1,6 @@
 # Knowledge Base Write Approval Ledger
 
-Status: initial
+Status: wired for dry-run persistence
 Date: 2026-06-12
 Module ID: `knowledge_base`
 Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
@@ -9,7 +9,7 @@ Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
 
 Knowledge Base create/edit actions require a persistent approval-evidence ledger before article metadata, source objects, search indexes, embeddings, or RAG state may change.
 
-The first implementation stage is still metadata-only dry-run. It validates approval command metadata, creates command and evidence hashes, writes audit, and prepares the ledger contract without persisting content changes.
+The first implementation stage is still metadata-only dry-run. It validates approval command metadata, creates command and evidence hashes, writes audit, persists the approval evidence through the append-only ledger port, and does not persist article or source-object content changes.
 
 ## Ledger Contract
 
@@ -50,9 +50,15 @@ Each ledger row must carry:
 
 ## Runtime Boundary
 
-`POST /v1/admin/kb/articles/write-dry-run` requires tenant context and creates audit-only dry-run evidence. It returns a `write_approval_evidence_hash`.
+`POST /v1/admin/kb/articles/write-dry-run` requires tenant context and creates dry-run evidence. The service appends that evidence to the ledger before returning a `write_approval_evidence_hash`.
 
-Future persistence must insert the ledger row before article/source writes and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until the source-object write guard and restore evidence refresh are connected.
+Runtime wiring:
+
+- tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
+- the Docker Compose API profile sets `SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND=postgres` after migrations, so dry-run evidence is inserted into `knowledge_base.write_approval_evidence`.
+- the ledger row remains metadata-only and cannot authorize persistence while `approval_state` is `dry_run`.
+
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Future approved write paths must verify the ledger row, pass the source-object write guard, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until the source-object write guard and restore evidence refresh are connected.
 
 ## Backup And Restore
 

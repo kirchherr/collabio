@@ -725,6 +725,8 @@ def test_knowledge_base_admin_evidence_endpoint_is_compliance_scoped_and_metadat
 def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persist() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
+    write_approval_ledger = app.state.knowledge_base_article_service.write_approval_ledger
+    starting_ledger_count = len(write_approval_ledger.list_evidence(tenant_id="tenant-demo"))
     provision_response = client.post(
         "/v1/admin/tenant-modules/knowledge_base/provision",
         headers=DEMO_ADMIN_HEADERS,
@@ -775,6 +777,18 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert body["write_approval_evidence_hash"].startswith("sha256:")
     assert "write_approval_ledger_entry" in body["required_evidence"]
     assert "source_object_write_guard" in body["required_evidence"]
+    ledger_evidences = write_approval_ledger.list_evidence(tenant_id="tenant-demo")
+    assert len(ledger_evidences) == starting_ledger_count + 1
+    ledger_evidence = next(
+        evidence for evidence in ledger_evidences if evidence.evidence_hash == body["write_approval_evidence_hash"]
+    )
+    assert ledger_evidence.approval_reference == "approval:kb-write-dry-run"
+    assert ledger_evidence.approval_state == "dry_run"
+    assert ledger_evidence.persistence_allowed is False
+    assert ledger_evidence.rag_indexing_allowed is False
+    assert ledger_evidence.source_authority_verified is False
+    assert write_approval_ledger.list_evidence(tenant_id="tenant-other") == ()
+    assert "article_body" not in ledger_evidence.model_dump_json()
     assert "article_body" not in body_text
     assert "source content" not in body_text
     assert "prompt_text" not in body_text

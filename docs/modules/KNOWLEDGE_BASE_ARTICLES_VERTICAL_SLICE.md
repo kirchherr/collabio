@@ -56,7 +56,7 @@ request tenant context
 - no hard-delete policy or grant
 - no article body, prompt, output, source text, or raw payload columns
 
-`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. It records approval command hashes, proposed source-version evidence hashes, current restore evidence hashes, source-object write-guard references, audit references, and evidence hashes before any future article/source write can be allowed.
+`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. The dry-run endpoint appends metadata-only approval evidence through the ledger port. It records approval command hashes, proposed source-version evidence hashes, current restore evidence hashes, source-object write-guard references, audit references, and evidence hashes before any future article/source write can be allowed.
 
 ## Runtime Contract
 
