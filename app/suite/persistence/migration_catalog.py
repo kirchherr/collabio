@@ -140,6 +140,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("doc:auth-context", "test:jwt-replay-store"),
     ),
+    SqlMigration(
+        version="0014",
+        name="audit_event_store",
+        resource_name="0014_audit_event_store.sql",
+        module_id="core",
+        evidence_refs=("adr:audit-persistence", "test:audit-event-store"),
+    ),
 )
 
 

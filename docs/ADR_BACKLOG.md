@@ -64,7 +64,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [ ] ADR-0017: IAM strategy: Keycloak and OIDC/SAML adapter boundary.
 - [ ] ADR-0018: Runtime authorization: internal policy engine vs. OPA/Cerbos/Casbin/Cedar.
 - [ ] ADR-0019: PostgreSQL RLS defense-in-depth strategy.
-- [ ] ADR-0020: Audit persistence, runtime DB permissions and tamper verification.
+- [x] ADR-0020: Audit persistence, runtime DB permissions and tamper verification.
 - [ ] ADR-0021: Outbox/event bus choice.
 - [ ] ADR-0022: Human approval model.
 - [ ] ADR-0023: Observability data classification.

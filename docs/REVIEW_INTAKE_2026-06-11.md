@@ -17,15 +17,15 @@ The most important lesson is also correct: the next work must harden the foundat
 - PrincipalResolver, tenant membership, role, group, object ACL, and ABAC state now have a PostgreSQL/RLS-backed runtime store with audit-chain references and read-only app-role access.
 - JWT/OIDC replay state now has a PostgreSQL/RLS-backed runtime store with tenant-aware accepted/replayed events and no token-body storage.
 - Data classes now have a canonical runtime registry with drift tests covering runtime enum, retention, KMS, pgvector DB constraints, prompt/model registries, and classification docs.
+- Audit events now have a PostgreSQL/RLS-backed append-only runtime store with an isolated audit-writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 - RAG inference data classes are now derived from the actual authorized source classifications and include `ai_prompt` for the user question.
 - Local dev KMS and local dev envelope encryption now fail closed in production environments.
 - Tests cover the above regressions.
 
 ## Remaining P0 Gates
 
-1. Implement a persistent PostgreSQL append-only audit store with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
-2. Introduce an authorized ChunkRepository so RAG sends exact chunks, not whole source documents.
-3. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
+1. Introduce an authorized ChunkRepository so RAG sends exact chunks, not whole source documents.
+2. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
 
 ## Release Gate
 
@@ -35,7 +35,7 @@ Allowed work in the meantime:
 
 - identity and authorization foundation
 - data-class taxonomy consolidation
-- audit persistence and WORM checkpoints
+- audit verification commands and WORM export automation
 - KMS and storage adapter hardening
 - supply-chain CI
 - parser/security corpus

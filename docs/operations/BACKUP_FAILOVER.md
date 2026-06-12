@@ -30,6 +30,7 @@ It is intentionally lightweight. The current repository implements development b
 - Backups containing tenant data are classified data.
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
+- PostgreSQL audit event rows, checkpoints, and WORM export evidence must be restored together before an audit chain is trusted.
 - Vector worker audit events must remain in the deployment audit chain and survive restore verification before recovered vector indexes are trusted.
 - Embedding model approval and retirement audit events must be restored with the registry state before source indexing resumes.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.

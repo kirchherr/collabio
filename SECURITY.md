@@ -27,6 +27,7 @@ Current skeleton guarantees:
 - Principal, tenant membership, role, group, object ACL, and ABAC stores have a PostgreSQL/RLS-backed runtime option with read-only app-role access and audit-chain references.
 - OIDC verification supports RS256 JWKS, key refresh, IdP outage policy, and replay detection.
 - JWT/OIDC replay state has a PostgreSQL/RLS-backed runtime option with tenant-aware append-only replay events and no token-body storage.
+- Audit events have a PostgreSQL/RLS-backed append-only runtime store with an isolated audit-writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 - Local dev KMS and envelope encryption adapters are disabled in production environments.
 - Voice transcripts require explicit push-to-talk activation.
 - Tests run in Docker Compose.
@@ -34,7 +35,7 @@ Current skeleton guarantees:
 Not yet production-ready:
 
 - Production authz administration flows for the PostgreSQL principal store.
-- Persistent audit store.
+- Production KMS-backed audit checkpoint signing and automated WORM object writes.
 - KMS integration.
 - WORM storage enforcement.
 - OIDC/SAML integration.

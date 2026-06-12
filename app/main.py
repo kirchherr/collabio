@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 
-from suite.ai_control_plane.audit import JsonlAuditLogger, canonical_json, stable_hash
+from suite.ai_control_plane.audit import build_default_audit_logger, canonical_json, stable_hash
 from suite.ai_control_plane.models import (
     InferenceRequest,
     InferenceResponse,
@@ -223,7 +223,7 @@ def build_app() -> FastAPI:
     data_dir = suite_data_dir()
     registry_dir = data_dir / "registries"
 
-    audit_logger = JsonlAuditLogger.load(data_dir / "audit" / "events.jsonl")
+    audit_logger = build_default_audit_logger(data_dir)
     model_registry = JsonFileModelRegistry.load_or_seed(
         registry_dir / "models.json",
         seed=InMemoryModelRegistry.default(),

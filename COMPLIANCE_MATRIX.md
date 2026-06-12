@@ -15,7 +15,7 @@ This matrix maps external requirements and internal controls to product capabili
 | CM-004 | Retention | Records need retention policy | Retention policy engine | Retention simulation | planned |
 | CM-005 | Legal Hold | Holds override lifecycle deletion | Legal hold service and storage lock | Hold-aware deletion tests | planned |
 | CM-006 | WORM | Business/evidence records require immutability | S3-compatible object lock | Object lock integration tests | planned |
-| CM-007 | Audit | Security and lifecycle actions need evidence | Append-only audit with hash chain | Audit verifier | planned |
+| CM-007 | Audit | Security and lifecycle actions need evidence | Append-only audit with hash chain, PostgreSQL/RLS writer role, HMAC checkpoints, and WORM export evidence | `tests/test_audit_chain.py`, `tests/test_pg_audit_store.py` | partial |
 | CM-008 | KMS | Keys must be tenant- and class-aware | KMS adapter and envelope encryption | Key rotation tests | planned |
 | CM-009 | Search security | Search must not leak unauthorized data | Candidate search, ACL check, redaction | Search leakage tests | planned |
 | CM-010 | Vector security | Embeddings are classified data | Vector metadata and ACL-aware retrieval | RAG leakage tests | partial |

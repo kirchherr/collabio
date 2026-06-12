@@ -29,6 +29,7 @@ services:
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
 
@@ -108,10 +109,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /workspace/data
+      SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
     ports:
       - "8000:8000"
     volumes:
@@ -133,6 +138,7 @@ services:
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -191,6 +197,7 @@ services:
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests

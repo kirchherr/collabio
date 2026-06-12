@@ -86,6 +86,7 @@ Bereits umgesetzt:
 - [x] Kanonische DataClass Registry mit Drift-Tests fuer Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Docs.
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
+- [x] PostgreSQL/RLS-backed Append-only Audit Store mit isolierter Audit-Writer-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
 - [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
 - [x] Review-intake-Haertung fuer dev-only Header Auth, RAG-Datenklassenpropagation und lokale Dev-Krypto-Production-Sperren.
@@ -102,7 +103,7 @@ Noch nicht umgesetzt:
 - [x] ADR-Struktur.
 - [ ] Persistente Datenbank.
 - [ ] Vollstaendiger IAM/OIDC Auth Context.
-- [ ] Produktionsfaehiger Audit Storage mit DB-Rollen, WORM Snapshots und Checkpoints.
+- [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -512,6 +513,7 @@ Aufgaben:
 - [x] Audit Hash Chain implementieren.
 - [ ] Audit Verification Command implementieren.
 - [x] Persistente Audit Storage Abstraktion implementieren.
+- [x] PostgreSQL Audit Store mit isolierter Runtime-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence implementieren.
 - [ ] PostgreSQL-Backed Stores mit Migrationen implementieren.
 - [ ] Outbox fuer Audit- und Domain-Events implementieren.
 - [ ] Break-glass Zugriff technisch modellieren.
@@ -1218,7 +1220,7 @@ Empfohlene naechste Reihenfolge:
 61. [x] PrincipalResolver, Tenant Membership, Rollen, Gruppen, ACL und ABAC Stores in PostgreSQL mit RLS und Audit Events persistieren.
 62. [x] JWT Replay State von JSON auf PostgreSQL mit tenant-aware Audit Events umziehen.
 63. [x] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
-64. [ ] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
+64. [x] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
 65. [ ] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
 66. [ ] Audited Authz Admin APIs fuer PostgreSQL Principal, Rollen, Gruppen, ACL, ABAC und Replay-Retention Mutationen implementieren.
 67. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.

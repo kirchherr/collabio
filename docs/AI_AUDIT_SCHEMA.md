@@ -35,3 +35,11 @@ Prompts, retrieved source text, outputs, and transcripts must not be written to 
 Vector worker events may store source IDs, source versions, counts, lifecycle targets, model IDs, ACL hashes, ACL versions, and upstream audit event IDs. They must not store raw source text, prompts, generated answers, transcripts, raw audio, or raw embedding vectors.
 
 Embedding model administration events may store model ID, model version, provider, deployment, dimensions, distance metric, checksum, approved data classes, approval or retirement references, and status timestamps. They must not store model weights, tokenizer files, prompts, outputs, source text, or embeddings.
+
+## PostgreSQL audit store
+
+`collabio.audit_events` persists the same hash-chain fields with a tenant-local sequence number. The `collabio_audit_writer` role can only `SELECT` and `INSERT` tenant-scoped rows through RLS. The normal `collabio_app` role has no audit-table grants.
+
+`collabio.audit_checkpoints` stores HMAC-SHA256 checkpoint evidence over a tenant chain prefix. The row stores a key reference and the checkpoint hash, never signing key material.
+
+`collabio.audit_worm_exports` stores evidence that a checkpointed chain prefix was exported to WORM-capable storage. It records the export manifest hash, storage URI, object lock mode, and audit chain reference; the object-store write path remains responsible for actual WORM enforcement.

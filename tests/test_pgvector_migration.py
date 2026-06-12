@@ -45,6 +45,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0011",
         "0012",
         "0013",
+        "0014",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -332,6 +333,87 @@ def test_jwt_replay_store_migration_declares_rls_and_append_only_events() -> Non
     assert "grant update" not in sql
     assert "compact_jwt" not in replay_tokens_body
     assert "token_body" not in replay_tokens_body
+
+
+def test_audit_event_store_migration_declares_append_only_roles_and_evidence_tables() -> None:
+    sql = normalized(get_migration("0014").sql())
+    audit_events_body = table_body(get_migration("0014").sql(), "collabio.audit_events")
+    checkpoint_body = table_body(get_migration("0014").sql(), "collabio.audit_checkpoints")
+    worm_export_body = table_body(get_migration("0014").sql(), "collabio.audit_worm_exports")
+
+    for column in [
+        "tenant_id",
+        "sequence_number",
+        "event_id",
+        "schema_version",
+        "user_id",
+        "event_type",
+        "source_object_ids",
+        "input_hash",
+        "output_hash",
+        "metadata",
+        "previous_event_hash",
+        "event_hash",
+    ]:
+        assert column in audit_events_body
+
+    for column in [
+        "tenant_id",
+        "checkpoint_id",
+        "through_sequence_number",
+        "event_count",
+        "first_event_hash",
+        "last_event_hash",
+        "checkpoint_hash",
+        "signature_algorithm",
+        "signature_key_ref",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert column in checkpoint_body
+
+    for column in [
+        "tenant_id",
+        "export_id",
+        "checkpoint_id",
+        "from_sequence_number",
+        "through_sequence_number",
+        "event_count",
+        "checkpoint_hash",
+        "export_manifest_hash",
+        "storage_uri",
+        "object_lock_mode",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert column in worm_export_body
+
+    assert "create role collabio_audit_writer login password" in sql
+    assert "primary key (tenant_id, sequence_number)" in sql
+    assert "unique (event_id)" in sql
+    assert "unique (tenant_id, event_hash)" in sql
+    assert "signature_algorithm text not null check (signature_algorithm in ('hmac-sha256'))" in sql
+    assert "object_lock_mode text not null default 'compliance' check (object_lock_mode in ('compliance'))" in sql
+    assert "prompt, output, document, mail, transcript, and token bodies are forbidden" in sql
+
+    for table in ["audit_events", "audit_checkpoints", "audit_worm_exports"]:
+        assert f"alter table collabio.{table} enable row level security" in sql
+        assert f"alter table collabio.{table} force row level security" in sql
+        assert f"create policy {table}_tenant_select" in sql
+        assert f"create policy {table}_tenant_insert" in sql
+        assert f"create policy {table}_no_update" in sql
+        assert f"create policy {table}_no_hard_delete" in sql
+        assert f"grant select, insert on table collabio.{table} to collabio_audit_writer" in sql
+        assert f"revoke all on table collabio.{table} from collabio_app" in sql
+
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "using (false)" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
+    assert "prompt_text" not in audit_events_body
+    assert "output_text" not in audit_events_body
+    assert "transcript_text" not in audit_events_body
+    assert "token_body" not in audit_events_body
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

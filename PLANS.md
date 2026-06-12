@@ -68,12 +68,12 @@ Current sprint:
 58. [x] PostgreSQL/RLS-backed PrincipalResolver, tenant membership, role, group, object ACL, and ABAC stores with audit-chain references.
 59. [x] PostgreSQL/RLS-backed JWT replay store with tenant-aware accepted/replayed events and no token-body storage.
 60. [x] Canonical DataClass registry with runtime, retention, KMS, DB constraint, prompt/model registry, and docs drift tests.
+61. [x] PostgreSQL/RLS-backed append-only audit store with isolated writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 
 ## Next Engineering Step
 
 After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
 
-- Implement persistent append-only audit storage with DB-role restrictions, concurrency-safe sequencing, HMAC/signature checkpoints, and WORM export.
 - Introduce authorized ChunkRepository retrieval so RAG passes exact chunks instead of whole source documents.
 - Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay-retention mutations.
 - Then resume keyword indexer, hybrid search, and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
