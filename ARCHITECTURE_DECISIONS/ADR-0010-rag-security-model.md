@@ -1,11 +1,11 @@
-# ADR-0010: RAG Security Model And Candidate-Only Vector Search
+# ADR-0010: RAG Security Model And Candidate-Only Search
 
 Status: accepted
 Date: 2026-06-10
 
 ## Context
 
-RAG can leak data if search or vector stores return unauthorized text, snippets, or embeddings directly. The vector database is not an authorization source.
+RAG can leak data if search or vector stores return unauthorized text, snippets, or embeddings directly. Search indexes and vector databases are not authorization sources.
 
 ## Decision
 
@@ -24,7 +24,7 @@ query
                 -> audit
 ```
 
-Vector search and keyword search may return candidate identifiers and metadata for filtering, but not final user-visible content before authorization and redaction. RAG context construction must fetch exact chunks by candidate identity and must validate tenant, ACL, source version, chunk ID, classification, ACL hash/version, embedding model version, and content hash before text enters the prompt.
+Vector search and keyword search may return candidate identifiers and metadata for filtering, but not final user-visible content before authorization and redaction. Keyword search candidate API responses are visible only after authoritative ACL validation and still must not include raw index text or snippets. RAG context construction must fetch exact chunks by candidate identity and must validate tenant, ACL, source version, chunk ID, classification, ACL hash/version, embedding model version, and content hash before text enters the prompt.
 
 RAG answers must cite source object IDs and source versions. Answers without sources must be labeled unsupported.
 
@@ -33,6 +33,7 @@ RAG answers must cite source object IDs and source versions. Answers without sou
 - Retrieval quality and authorization are separate concerns.
 - Source resolver and redaction layer become mandatory.
 - Embedding deletion/reindex flows must track source lifecycle.
+- Keyword search events must be auditable without storing plaintext query bodies in metadata or index snippets in outputs.
 
 ## Alternatives Considered
 
@@ -49,6 +50,7 @@ RAG answers must cite source object IDs and source versions. Answers without sou
 ## Verification
 
 - Unauthorized candidate tests.
+- Keyword candidate-only response tests.
 - Deleted source tests.
 - Legal-hold visibility tests for authorized roles.
 - Citation tests.

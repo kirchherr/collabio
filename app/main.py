@@ -86,6 +86,8 @@ from suite.rag.repositories import (
     InMemoryVectorStore,
 )
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
+from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
+from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -275,13 +277,19 @@ def build_app() -> FastAPI:
         policy_engine=policy_engine,
         audit_logger=audit_logger,
     )
+    acl_authorizer = InMemoryAclAuthorizer.demo()
     rag_pipeline = RagPipeline(
         vector_store=InMemoryVectorStore.demo(),
         chunk_repository=AuthorizedChunkRepository(
             chunk_repository=InMemorySourceChunkRepository.demo(),
-            acl_authorizer=InMemoryAclAuthorizer.demo(),
+            acl_authorizer=acl_authorizer,
         ),
         llm_gateway=llm_gateway,
+        audit_logger=audit_logger,
+    )
+    keyword_search_service = KeywordSearchService(
+        index=InMemoryKeywordIndex.demo(),
+        acl_authorizer=acl_authorizer,
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1010,6 +1018,15 @@ def build_app() -> FastAPI:
         except PolicyViolation as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+    @app.post("/v1/search/keyword", response_model=KeywordSearchResponse)
+    def keyword_search(
+        query: KeywordSearchQuery,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> KeywordSearchResponse:
+        keyword_service = cast(KeywordSearchService, request.app.state.keyword_search_service)
+        return keyword_service.search(query=query, user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1029,6 +1046,7 @@ def build_app() -> FastAPI:
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
+    app.state.keyword_search_service = keyword_search_service
     app.state.model_registry = model_registry
     app.state.migration_manifest = migration_manifest
     app.state.module_registry = module_registry

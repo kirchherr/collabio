@@ -71,13 +71,14 @@ Current sprint:
 61. [x] PostgreSQL/RLS-backed append-only audit store with isolated writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 62. [x] Authorized ChunkRepository retrieval for RAG so prompts receive exact authorized chunks instead of whole source documents.
 63. [x] Audited authz administration APIs with a dedicated PostgreSQL admin role for principal, role, group, ACL, ABAC, and replay-retention mutations.
+64. [x] Keyword Indexer Boundary with candidate-only API results and Search Audit Events.
 
 ## Next Engineering Step
 
-After review intake, the immediate P0 foundation blockers are closed for the current skeleton. Next, resume the first product-facing platform slices without skipping hardening:
+After review intake and keyword-search boundary hardening, resume the first product-facing platform slices without skipping hardening:
 
-- Implement the Keyword Indexer Boundary with candidate-only results and Search Audit Events.
-- Then resume hybrid search and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
+- Plan CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
+- Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance
 

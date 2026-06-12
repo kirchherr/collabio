@@ -921,6 +921,36 @@ def test_rag_filters_unauthorized_sources_before_context() -> None:
     assert "secret-1" not in body["answer"]
 
 
+def test_keyword_search_returns_candidate_only_authorized_results_and_audit() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.post(
+        "/v1/search/keyword",
+        headers=DEMO_HEADERS,
+        json={"query": "policy citations", "top_k": 5},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["search_policy_id"] == "keyword_candidate_acl_v1"
+    assert body["audit_event_id"]
+    assert [candidate["object_id"] for candidate in body["candidates"]] == ["doc-1"]
+    assert body["candidates"][0]["access_checked"] is True
+    assert "text" not in body["candidates"][0]
+    assert "snippet" not in body["candidates"][0]
+    assert "AI suggestions must remain drafts" not in response.text
+    assert "This confidential source" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "search.keyword.query"
+    assert new_events[-1].event_id == body["audit_event_id"]
+    assert new_events[-1].input_hash is not None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].source_object_ids == ["doc-1"]
+    assert new_events[-1].metadata["authorized_candidate_count"] == 1
+    assert "query" not in new_events[-1].metadata
+
+
 def test_voice_requires_push_to_talk() -> None:
     response = client.post(
         "/v1/voice/transcripts",

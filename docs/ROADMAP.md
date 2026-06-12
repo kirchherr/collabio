@@ -699,6 +699,7 @@ Bereits erledigt:
 
 - [x] In-memory Vector Candidate Flow.
 - [x] ACL Check vor Kontextaufbau.
+- [x] Keyword Indexer Boundary mit Candidate-only API Results und Search Audit Events.
 
 Aufgaben:
 
@@ -708,7 +709,7 @@ Aufgaben:
 - [ ] Attachment Text Extraction.
 - [ ] Tenant-separierte Indizes oder harte Tenant Filter.
 - [ ] Index-Rebuild Pipeline.
-- [ ] Search Audit Events.
+- [x] Search Audit Events fuer Keyword Candidate Search.
 - [ ] Snippet-Erzeugung erst nach Authz.
 - [x] Persistent Vector DB Adapter.
 - [x] ADR: pgvector vs. Qdrant als erster Backend-Adapter.
@@ -719,7 +720,7 @@ Aufgaben:
 - [ ] Source Resolver.
 - [ ] Redaction Engine.
 - [x] RAG Inference Data Classes aus `ai_prompt` und autorisierten Source-Klassifikationen ableiten.
-- [ ] RAG Context Builder nutzt exakte autorisierte Chunks statt ganzer Source Documents.
+- [x] RAG Context Builder nutzt exakte autorisierte Chunks statt ganzer Source Documents.
 - [ ] RAG Answer Schema mit Confidence und Sources.
 - [ ] Unsupported-answer Label.
 - [ ] User Feedback API ohne automatisches Training.
@@ -1199,7 +1200,7 @@ Empfohlene naechste Reihenfolge:
 38. [x] Vector Worker Audit Events an durable Deployment Audit Storage anbinden.
 39. [x] Embedding Model Versioning Registry Checks vor Production Indexing ergaenzen.
 40. [x] Production-grade Embedding Model Registry Administration und Approval Audit Events ergaenzen.
-41. [ ] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
+41. [x] Keyword Indexer Boundary mit Candidate-only Results und Search Audit Events ergaenzen.
 42. [x] Platform Module System ADR und Module Charter Template fuer `crm_erp` und spaetere Fachmodule erstellen.
 43. [x] Backup-/Failover-Domaenen fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung verankern.
 44. [x] `module_catalog` und `tenant_modules` Kernmodell mit SQL-Migration, Statusmodell und Gatekeeping-Tests anlegen.

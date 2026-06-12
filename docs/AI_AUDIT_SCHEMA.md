@@ -18,6 +18,7 @@
 - `ai.inference`
 - `rag.retrieval`
 - `voice.transcript`
+- `search.keyword.query`
 - `vector.reindex.started`
 - `vector.reindex.completed`
 - `vector.reindex.failed`
@@ -37,6 +38,8 @@ Vector worker events may store source IDs, source versions, counts, lifecycle ta
 Embedding model administration events may store model ID, model version, provider, deployment, dimensions, distance metric, checksum, approved data classes, approval or retirement references, and status timestamps. They must not store model weights, tokenizer files, prompts, outputs, source text, or embeddings.
 
 RAG retrieval events may store candidate counts, authorized source counts, authorized chunk counts, authorized chunk references, retrieval policy IDs, source object IDs, source versions, and source classifications. They must not store retrieved chunk text or generated answers.
+
+Keyword search events may store candidate counts, authorized candidate counts, authorized candidate references, search policy IDs, source object IDs, source versions, source classifications, and result-contract metadata. They must not store raw query text in metadata, source text, snippets, prompts, generated answers, transcripts, raw audio, or embeddings.
 
 ## PostgreSQL audit store
 

@@ -67,7 +67,7 @@ Dieses Dokument sammelt bewährte Open-Source- und offene Standard-Bausteine. "E
 
 | Bereich | Empfehlung | Status | Warum |
 | --- | --- | --- | --- |
-| Keyword Search MVP | PostgreSQL FTS | candidate | Einfacher Start, keine neue Datenbank. |
+| Keyword Search MVP | PostgreSQL FTS hinter `KeywordIndex` Boundary | default | Einfacher Start, keine neue Datenbank; API bleibt candidate-only und ACL-gefiltert. |
 | Keyword Search Scale | OpenSearch | candidate | Fuer groessere Volltext-/Hybrid-Setups, Betriebskomplexitaet beachten. |
 | Vector MVP | pgvector | default | Nah an Metadaten, RLS, Backups und Transaktionen. |
 | Vector Scale | Qdrant | candidate | Dedizierte Vector DB, Payload, Filtering, Hybrid Queries, Multitenancy. |
@@ -188,4 +188,3 @@ Noch nicht implementieren, bevor die ADRs stehen:
 - Qdrant produktiv.
 - Kubernetes-Produktionschart.
 - Externe AI Provider.
-

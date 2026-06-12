@@ -6,7 +6,7 @@
 user query
   -> tenant context
     -> policy engine
-      -> vector search candidates
+      -> keyword/vector search candidates
         -> authoritative ACL check
           -> authorized chunk repository
             -> exact chunk fetch
@@ -19,8 +19,11 @@ user query
 
 ## Non-negotiable rules
 
-- Vector search returns candidates only.
+- Keyword and vector search return candidates only.
 - Candidate metadata is not sufficient authorization.
+- Search responses must not return raw source text, snippets, prompts, answers, or embeddings from the index.
+- Keyword search candidate responses are user-visible only after authoritative ACL validation.
+- Keyword search audit events store candidate counts, authorized candidate refs, policy IDs, and hashes, never raw query text in metadata or source snippets.
 - Source chunks are fetched only through the Authorized ChunkRepository after tenant, ACL, and candidate/chunk metadata validation.
 - RAG context must contain exact authorized chunks, not whole source documents.
 - Vector metadata must carry the authoritative ACL hash and ACL version that were current at indexing time.
