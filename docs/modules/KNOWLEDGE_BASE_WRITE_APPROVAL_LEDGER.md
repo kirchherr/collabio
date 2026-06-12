@@ -1,6 +1,6 @@
 # Knowledge Base Write Approval Ledger
 
-Status: wired for dry-run persistence
+Status: wired for dry-run persistence and approval lineage
 Date: 2026-06-12
 Module ID: `knowledge_base`
 Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
@@ -14,6 +14,7 @@ The first implementation stage is still metadata-only dry-run. It validates appr
 ## Ledger Contract
 
 Migration `0023_knowledge_base_write_approval_evidence.sql` creates `knowledge_base.write_approval_evidence`.
+Migration `0024_knowledge_base_write_approval_transition_lineage.sql` adds `transition_source_evidence_hash`.
 
 Each ledger row must carry:
 
@@ -32,6 +33,7 @@ Each ledger row must carry:
 - proposed source-version evidence hash
 - current restore evidence hash
 - source-object write-guard reference
+- transition source evidence hash for non-dry-run states
 - requested-by principal
 - Legal Hold state through linked source-version evidence
 - audit event ID and audit-chain reference
@@ -43,6 +45,8 @@ Each ledger row must carry:
 - Edit approval evidence must name the expected current version.
 - Create approval evidence must not name an expected current version.
 - Dry-run evidence cannot allow persistence.
+- Dry-run evidence cannot reference a transition source.
+- `approved_for_write`, `rejected`, and `expired` evidence must reference the source dry-run evidence by hash.
 - RAG indexing cannot be allowed before write approval.
 - The ledger is append-only by policy: no update and no hard delete.
 - RLS is mandatory.
@@ -52,6 +56,8 @@ Each ledger row must carry:
 
 `POST /v1/admin/kb/articles/write-dry-run` requires tenant context and creates dry-run evidence. The service appends that evidence to the ledger before returning a `write_approval_evidence_hash`.
 
+`POST /v1/admin/kb/articles/write-approvals/approve` requires tenant context and a tenant admin. It accepts a dry-run evidence hash, a new human approval reference, and a reason. The service verifies the dry-run evidence hash, current restore evidence, and expected current article version before appending a new `approved_for_write` ledger row whose `transition_source_evidence_hash` points back to the dry-run evidence. It does not write article metadata, source objects, source text, article bodies, embeddings, or RAG state.
+
 Runtime wiring:
 
 - tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
@@ -59,7 +65,7 @@ Runtime wiring:
 - the ledger row remains metadata-only and cannot authorize persistence while `approval_state` is `dry_run`.
 - `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Future approved write paths must verify the ledger row, pass the source-object write guard, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until the approval-state transition and restore evidence refresh are connected.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Future write paths must verify the approved ledger row, pass the source-object write guard, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until restore evidence refresh and article/source mutation paths are explicitly connected.
 
 ## Source-Object Write Guard
 

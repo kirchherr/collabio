@@ -53,6 +53,14 @@ KB_SOURCE_OBJECT_WRITE_GUARD_REQUIRED_EVIDENCE = (
     "retention_policy_evaluation",
     "legal_hold_evaluation",
 )
+KB_WRITE_APPROVAL_TRANSITION_REQUIRED_EVIDENCE = (
+    "dry_run_write_approval_evidence_hash",
+    "human_approval_reference",
+    "current_restore_evidence_hash",
+    "expected_current_version_match",
+    "approved_write_approval_ledger_entry",
+    "audit_event_hash",
+)
 
 
 class KnowledgeBaseArticleLifecycleState(StrEnum):
@@ -479,6 +487,59 @@ class KnowledgeBaseWriteDryRunResponse(BaseModel):
     audit_event_id: str
 
 
+class KnowledgeBaseWriteApprovalTransitionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dry_run_write_approval_evidence_hash: str
+    approval_reference: str
+    reason: str
+
+    @field_validator("dry_run_write_approval_evidence_hash")
+    @classmethod
+    def validate_dry_run_hash(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("dry_run_write_approval_evidence_hash must be a sha256 reference")
+        return value
+
+    @field_validator("approval_reference")
+    @classmethod
+    def validate_approval_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("approval_reference must be a namespaced reference")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def require_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("reason must not be empty")
+        return value
+
+
+class KnowledgeBaseWriteApprovalTransitionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    feature_id: str = KB_ARTICLES_WRITE_FEATURE_ID
+    dry_run_write_approval_evidence_hash: str
+    approved_write_approval_evidence_hash: str
+    approval_state: KnowledgeBaseWriteApprovalState
+    operation: KnowledgeBaseWriteOperation
+    article_object_id: str
+    proposed_version_object_id: str
+    proposed_source_object_id: str
+    proposed_source_version_id: str
+    persistence_allowed: bool
+    rag_indexing_allowed: bool
+    source_authority_verified: bool
+    command_hash: str
+    proposed_source_version_evidence_hash: str
+    current_restore_evidence_hash: str
+    required_evidence: tuple[str, ...] = KB_WRITE_APPROVAL_TRANSITION_REQUIRED_EVIDENCE
+    audit_event_id: str
+
+
 class KnowledgeBaseWriteApprovalEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -499,6 +560,7 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
     proposed_source_version_evidence_hash: str
     current_restore_evidence_hash: str
     source_object_write_guard_ref: str
+    transition_source_evidence_hash: str | None = None
     requested_by: str
     persistence_allowed: bool = False
     rag_indexing_allowed: bool = False
@@ -549,6 +611,13 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
             raise ValueError("knowledge base write approval evidence hashes must be sha256 references")
         return value
 
+    @field_validator("transition_source_evidence_hash")
+    @classmethod
+    def validate_transition_source_hash(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("transition_source_evidence_hash must be a sha256 reference")
+        return value
+
     @model_validator(mode="after")
     def require_approval_ledger_safety(self) -> KnowledgeBaseWriteApprovalEvidence:
         if self.proposed_source_object_id != self.proposed_version_object_id:
@@ -559,6 +628,15 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
             raise ValueError("create approval evidence must not include expected_current_version_object_id")
         if self.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN and self.persistence_allowed:
             raise ValueError("dry-run approval evidence cannot allow persistence")
+        if self.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN and self.transition_source_evidence_hash:
+            raise ValueError("dry-run approval evidence cannot reference a transition source")
+        if (
+            self.approval_state != KnowledgeBaseWriteApprovalState.DRY_RUN
+            and self.transition_source_evidence_hash is None
+        ):
+            raise ValueError("approval state transitions require transition_source_evidence_hash")
+        if self.transition_source_evidence_hash == self.evidence_hash:
+            raise ValueError("transition_source_evidence_hash cannot equal evidence_hash")
         if self.approval_state != KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE and self.rag_indexing_allowed:
             raise ValueError("RAG indexing cannot be allowed before write approval")
         return self
@@ -844,6 +922,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         proposed_source_version_evidence_hash,
                         current_restore_evidence_hash,
                         source_object_write_guard_ref,
+                        transition_source_evidence_hash,
                         requested_by,
                         persistence_allowed,
                         rag_indexing_allowed,
@@ -855,7 +934,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     )
                     VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
@@ -876,6 +955,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         evidence.proposed_source_version_evidence_hash,
                         evidence.current_restore_evidence_hash,
                         evidence.source_object_write_guard_ref,
+                        evidence.transition_source_evidence_hash,
                         evidence.requested_by,
                         evidence.persistence_allowed,
                         evidence.rag_indexing_allowed,
@@ -914,6 +994,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     proposed_source_version_evidence_hash,
                     current_restore_evidence_hash,
                     source_object_write_guard_ref,
+                    transition_source_evidence_hash,
                     requested_by,
                     persistence_allowed,
                     rag_indexing_allowed,
@@ -955,6 +1036,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     proposed_source_version_evidence_hash,
                     current_restore_evidence_hash,
                     source_object_write_guard_ref,
+                    transition_source_evidence_hash,
                     requested_by,
                     persistence_allowed,
                     rag_indexing_allowed,
@@ -990,14 +1072,15 @@ class PgKnowledgeBaseWriteApprovalLedger:
             proposed_source_version_evidence_hash=str(row[14]),
             current_restore_evidence_hash=str(row[15]),
             source_object_write_guard_ref=str(row[16]),
-            requested_by=str(row[17]),
-            persistence_allowed=bool(row[18]),
-            rag_indexing_allowed=bool(row[19]),
-            source_authority_verified=bool(row[20]),
-            audit_event_id=str(row[21]),
-            audit_chain_ref=str(row[22]),
-            evidence_hash=str(row[23]),
-            schema_version=str(row[24]),
+            transition_source_evidence_hash=str(row[17]) if row[17] is not None else None,
+            requested_by=str(row[18]),
+            persistence_allowed=bool(row[19]),
+            rag_indexing_allowed=bool(row[20]),
+            source_authority_verified=bool(row[21]),
+            audit_event_id=str(row[22]),
+            audit_chain_ref=str(row[23]),
+            evidence_hash=str(row[24]),
+            schema_version=str(row[25]),
         )
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
@@ -1344,6 +1427,116 @@ class KnowledgeBaseArticleService:
             audit_event_id=event.event_id,
         )
 
+    def approve_write_approval(
+        self,
+        *,
+        command: KnowledgeBaseWriteApprovalTransitionCommand,
+        user_context: UserContext,
+    ) -> KnowledgeBaseWriteApprovalTransitionResponse:
+        dry_run_evidence = self.write_approval_ledger.get(
+            tenant_id=user_context.tenant_id,
+            evidence_hash=command.dry_run_write_approval_evidence_hash,
+        )
+        self._require_approvable_dry_run_evidence(dry_run_evidence)
+        self._require_not_already_approved(
+            tenant_id=user_context.tenant_id,
+            dry_run_write_approval_evidence_hash=dry_run_evidence.evidence_hash,
+        )
+        records = sorted(
+            self.repository.list_articles(tenant_id=user_context.tenant_id),
+            key=lambda record: (record.title.lower(), record.object_id),
+        )
+        records_by_object_id = {record.object_id: record for record in records}
+        existing_article = records_by_object_id.get(dry_run_evidence.article_object_id)
+        if dry_run_evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            if existing_article is None:
+                raise LookupError(f"knowledge base article not found: {dry_run_evidence.article_object_id}")
+            if existing_article.current_version_object_id != dry_run_evidence.expected_current_version_object_id:
+                raise ValueError("expected current article version does not match dry-run evidence")
+        if dry_run_evidence.operation == KnowledgeBaseWriteOperation.CREATE and existing_article is not None:
+            raise ValueError("create approval cannot target an existing knowledge base article")
+
+        source_evidences = [self.source_version_evidence(record) for record in records]
+        restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=user_context.tenant_id,
+            articles=records,
+            source_evidences=source_evidences,
+            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+        if restore_evidence.evidence_hash != dry_run_evidence.current_restore_evidence_hash:
+            raise ValueError("current restore evidence no longer matches dry-run evidence")
+
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.write_approval.approved",
+            source_object_ids=knowledge_base_write_evidence_target_object_ids(dry_run_evidence, existing_article),
+            input_text=canonical_json(command.model_dump(mode="json")),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
+                "surface": "compliance_api",
+                "operation": dry_run_evidence.operation,
+                "approval_reference": command.approval_reference,
+                "approval_state": KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+                "dry_run_write_approval_evidence_hash": dry_run_evidence.evidence_hash,
+                "command_hash": dry_run_evidence.command_hash,
+                "proposed_source_version_evidence_hash": dry_run_evidence.proposed_source_version_evidence_hash,
+                "current_restore_evidence_hash": dry_run_evidence.current_restore_evidence_hash,
+                "persistence_allowed": True,
+                "rag_indexing_allowed": False,
+                "source_authority_verified": False,
+                "required_evidence": list(KB_WRITE_APPROVAL_TRANSITION_REQUIRED_EVIDENCE),
+            },
+        )
+        approved_evidence = build_write_approval_transition_evidence(
+            source_evidence=dry_run_evidence,
+            approval_reference=command.approval_reference,
+            requested_by=user_context.user_id,
+            audit_event_id=event.event_id,
+            audit_chain_ref=f"audit:{event.event_id}",
+        )
+        persisted_approved_evidence = self.write_approval_ledger.append(approved_evidence)
+        return KnowledgeBaseWriteApprovalTransitionResponse(
+            tenant_id=user_context.tenant_id,
+            dry_run_write_approval_evidence_hash=dry_run_evidence.evidence_hash,
+            approved_write_approval_evidence_hash=persisted_approved_evidence.evidence_hash,
+            approval_state=persisted_approved_evidence.approval_state,
+            operation=persisted_approved_evidence.operation,
+            article_object_id=persisted_approved_evidence.article_object_id,
+            proposed_version_object_id=persisted_approved_evidence.proposed_version_object_id,
+            proposed_source_object_id=persisted_approved_evidence.proposed_source_object_id,
+            proposed_source_version_id=persisted_approved_evidence.proposed_source_version_id,
+            persistence_allowed=persisted_approved_evidence.persistence_allowed,
+            rag_indexing_allowed=persisted_approved_evidence.rag_indexing_allowed,
+            source_authority_verified=persisted_approved_evidence.source_authority_verified,
+            command_hash=persisted_approved_evidence.command_hash,
+            proposed_source_version_evidence_hash=persisted_approved_evidence.proposed_source_version_evidence_hash,
+            current_restore_evidence_hash=persisted_approved_evidence.current_restore_evidence_hash,
+            audit_event_id=event.event_id,
+        )
+
+    def _require_approvable_dry_run_evidence(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> None:
+        if evidence.approval_state != KnowledgeBaseWriteApprovalState.DRY_RUN:
+            raise ValueError("only dry-run write approval evidence can be approved")
+        if build_write_approval_evidence_hash(evidence) != evidence.evidence_hash:
+            raise ValueError("dry-run write approval evidence hash is invalid")
+        if evidence.persistence_allowed or evidence.rag_indexing_allowed or evidence.source_authority_verified:
+            raise ValueError("dry-run write approval evidence must not already allow persistence, RAG, or authority")
+
+    def _require_not_already_approved(
+        self,
+        *,
+        tenant_id: str,
+        dry_run_write_approval_evidence_hash: str,
+    ) -> None:
+        for evidence in self.write_approval_ledger.list_evidence(tenant_id=tenant_id):
+            if (
+                evidence.transition_source_evidence_hash == dry_run_write_approval_evidence_hash
+                and evidence.approval_state == KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE
+            ):
+                raise ValueError("dry-run write approval evidence is already approved")
+
     def evaluate_source_object_write_guard(
         self,
         *,
@@ -1546,6 +1739,7 @@ def build_write_approval_evidence(
     audit_event_id: str,
     audit_chain_ref: str,
     approval_state: KnowledgeBaseWriteApprovalState = KnowledgeBaseWriteApprovalState.DRY_RUN,
+    transition_source_evidence_hash: str | None = None,
     persistence_allowed: bool = False,
     rag_indexing_allowed: bool = False,
     source_authority_verified: bool = False,
@@ -1568,6 +1762,7 @@ def build_write_approval_evidence(
         proposed_source_version_evidence_hash=proposed_source_version_evidence_hash,
         current_restore_evidence_hash=current_restore_evidence_hash,
         source_object_write_guard_ref="guard:source-object-write-guard-pending",
+        transition_source_evidence_hash=transition_source_evidence_hash,
         requested_by=requested_by,
         persistence_allowed=persistence_allowed,
         rag_indexing_allowed=rag_indexing_allowed,
@@ -1579,8 +1774,49 @@ def build_write_approval_evidence(
     return draft.model_copy(update={"evidence_hash": build_write_approval_evidence_hash(draft)})
 
 
+def build_write_approval_transition_evidence(
+    *,
+    source_evidence: KnowledgeBaseWriteApprovalEvidence,
+    approval_reference: str,
+    requested_by: str,
+    audit_event_id: str,
+    audit_chain_ref: str,
+) -> KnowledgeBaseWriteApprovalEvidence:
+    draft = KnowledgeBaseWriteApprovalEvidence(
+        tenant_id=source_evidence.tenant_id,
+        approval_reference=approval_reference,
+        operation=source_evidence.operation,
+        approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+        article_object_id=source_evidence.article_object_id,
+        expected_current_version_object_id=source_evidence.expected_current_version_object_id,
+        proposed_version_object_id=source_evidence.proposed_version_object_id,
+        proposed_source_object_id=source_evidence.proposed_source_object_id,
+        proposed_source_version_id=source_evidence.proposed_source_version_id,
+        proposed_source_object_type=source_evidence.proposed_source_object_type,
+        proposed_source_manifest_hash=source_evidence.proposed_source_manifest_hash,
+        proposed_content_hash=source_evidence.proposed_content_hash,
+        proposed_acl_version=source_evidence.proposed_acl_version,
+        command_hash=source_evidence.command_hash,
+        proposed_source_version_evidence_hash=source_evidence.proposed_source_version_evidence_hash,
+        current_restore_evidence_hash=source_evidence.current_restore_evidence_hash,
+        source_object_write_guard_ref="guard:source-object-write-guard-pending",
+        transition_source_evidence_hash=source_evidence.evidence_hash,
+        requested_by=requested_by,
+        persistence_allowed=True,
+        rag_indexing_allowed=False,
+        source_authority_verified=False,
+        audit_event_id=audit_event_id,
+        audit_chain_ref=audit_chain_ref,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_write_approval_evidence_hash(draft)})
+
+
 def build_write_approval_evidence_hash(evidence: KnowledgeBaseWriteApprovalEvidence) -> str:
-    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+    excluded_fields = {"evidence_hash"}
+    if evidence.transition_source_evidence_hash is None:
+        excluded_fields.add("transition_source_evidence_hash")
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude=excluded_fields)))
 
 
 def build_source_object_write_guard_ref(decision: KnowledgeBaseSourceObjectWriteGuardDecision) -> str:
@@ -1598,6 +1834,26 @@ def knowledge_base_write_target_object_ids(
         existing_article.current_source_object_id if existing_article is not None else None,
         command.proposed_version_object_id,
         command.proposed_source_object_id,
+    ]
+    target_object_ids: list[str] = []
+    seen: set[str] = set()
+    for object_id in object_ids:
+        if object_id is not None and object_id not in seen:
+            target_object_ids.append(object_id)
+            seen.add(object_id)
+    return target_object_ids
+
+
+def knowledge_base_write_evidence_target_object_ids(
+    evidence: KnowledgeBaseWriteApprovalEvidence,
+    existing_article: KnowledgeBaseArticleRecord | None,
+) -> list[str]:
+    object_ids = [
+        evidence.article_object_id,
+        evidence.expected_current_version_object_id,
+        existing_article.current_source_object_id if existing_article is not None else None,
+        evidence.proposed_version_object_id,
+        evidence.proposed_source_object_id,
     ]
     target_object_ids: list[str] = []
     seen: set[str] = set()

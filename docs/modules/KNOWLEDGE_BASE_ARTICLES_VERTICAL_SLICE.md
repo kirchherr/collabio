@@ -56,7 +56,7 @@ request tenant context
 - no hard-delete policy or grant
 - no article body, prompt, output, source text, or raw payload columns
 
-`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. The dry-run endpoint appends metadata-only approval evidence through the ledger port. `KnowledgeBaseSourceObjectWriteGuard` consumes that ledger evidence before future writes and checks expected version, proposed source-version evidence, restore evidence, retention, Legal Hold, and source-object metadata. The slice still does not allow article/source writes.
+`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. `0024_knowledge_base_write_approval_transition_lineage.sql` requires non-dry-run approval states to point back to the dry-run evidence that was approved. The dry-run endpoint appends metadata-only approval evidence through the ledger port. The approval endpoint appends `approved_for_write` evidence with lineage, but still does not mutate article/source records. `KnowledgeBaseSourceObjectWriteGuard` consumes approved ledger evidence before future writes and checks expected version, proposed source-version evidence, restore evidence, retention, Legal Hold, and source-object metadata.
 
 ## Runtime Contract
 
@@ -67,6 +67,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 `GET /v1/admin/kb/evidence` exposes the full source-version and restore-evidence metadata to tenant admins through the compliance module gate. It remains available while normal article browsing is disabled, and it does not return article bodies or source text.
 
 `POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and produces audit-only dry-run evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
+
+`POST /v1/admin/kb/articles/write-approvals/approve` accepts a dry-run evidence hash and a new approval reference. It appends approved ledger evidence only; article rows, source objects, search indexes, embeddings, and RAG state remain unchanged.
 
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 

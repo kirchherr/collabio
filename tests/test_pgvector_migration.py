@@ -55,6 +55,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0021",
         "0022",
         "0023",
+        "0024",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -69,9 +70,9 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 8
+    assert len(core_migrations) == len(load_migrations()) - 9
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
-    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022", "0023"]
+    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022", "0023", "0024"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -997,6 +998,25 @@ def test_knowledge_base_write_approval_evidence_migration_declares_append_only_l
     assert "grant select, insert on table knowledge_base.write_approval_evidence to collabio_app" in sql
     assert "grant select on table knowledge_base.write_approval_evidence to collabio_worker" in sql
     assert "grant delete" not in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+
+
+def test_knowledge_base_write_approval_transition_lineage_migration_declares_hash_source() -> None:
+    sql = normalized(get_migration("0024").sql())
+
+    assert "alter table knowledge_base.write_approval_evidence" in sql
+    assert "add column if not exists transition_source_evidence_hash text" in sql
+    assert "kb_write_approval_transition_source_hash_format" in sql
+    assert "transition_source_evidence_hash ~ '^sha256:[a-f0-9]{64}$'" in sql
+    assert "kb_write_approval_transition_source_required" in sql
+    assert "approval_state = 'dry_run' and transition_source_evidence_hash is null" in sql
+    assert "approval_state <> 'dry_run' and transition_source_evidence_hash is not null" in sql
+    assert "transition_source_evidence_hash <> evidence_hash" in sql
+    assert "kb_write_approval_evidence_transition_source_idx" in sql
     assert "source_text" not in sql
     assert "article_body" not in sql
     assert "prompt_text" not in sql

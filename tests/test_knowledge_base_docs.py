@@ -35,20 +35,26 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`kb.article_version`" in charter
     assert "`GET /v1/admin/kb/evidence`" in charter
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in charter
+    assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in charter
     assert "Article bodies are not stored in the first slice" in charter
     assert "0022_knowledge_base_source_restore_evidence.sql" in charter
     assert "0023_knowledge_base_write_approval_evidence.sql" in charter
+    assert "0024_knowledge_base_write_approval_transition_lineage.sql" in charter
     assert "current `kb.article_version`" in slice_doc
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
+    assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
     assert "`GET /v1/admin/kb/evidence`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in evidence_doc
+    assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in evidence_doc
     assert "`knowledge_base.source_version_evidence`" in evidence_doc
     assert "`knowledge_base.restore_evidence`" in evidence_doc
     assert "Drift blocks the evidence build" in evidence_doc
     assert "`knowledge_base.write_approval_evidence`" in ledger_doc
     assert "`0023_knowledge_base_write_approval_evidence.sql`" in ledger_doc
+    assert "`0024_knowledge_base_write_approval_transition_lineage.sql`" in ledger_doc
+    assert "`transition_source_evidence_hash`" in ledger_doc
     assert "Dry-run evidence cannot allow persistence" in ledger_doc
     assert "`KnowledgeBaseSourceObjectWriteGuard`" in ledger_doc
     assert "expected current version" in ledger_doc

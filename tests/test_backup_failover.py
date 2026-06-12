@@ -142,6 +142,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "Knowledge Base source-version evidence hashes" in policy.domain("knowledge_base_content").state_artifacts
     assert "Knowledge Base restore evidence hash" in policy.domain("knowledge_base_content").state_artifacts
     assert "Knowledge Base write-approval evidence hashes" in policy.domain("knowledge_base_content").state_artifacts
+    assert "Knowledge Base write-approval transition lineage" in policy.domain("knowledge_base_content").state_artifacts
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts

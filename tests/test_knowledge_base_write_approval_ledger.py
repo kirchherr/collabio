@@ -11,6 +11,7 @@ from suite.platform.knowledge_base import (
     PgKnowledgeBaseWriteApprovalLedger,
     build_write_approval_command_hash,
     build_write_approval_evidence,
+    build_write_approval_transition_evidence,
 )
 
 
@@ -84,3 +85,17 @@ def test_pg_knowledge_base_write_approval_ledger_appends_metadata_only_evidence(
     assert "output_text" not in row_json
     with pytest.raises(ValueError, match="already exists"):
         ledger.append(evidence)
+
+    approved = build_write_approval_transition_evidence(
+        source_evidence=evidence,
+        approval_reference=f"approval:kb-ledger-approved-{suffix}",
+        requested_by=f"tenant-admin-{suffix}",
+        audit_event_id=f"audit-event-approved-{suffix}",
+        audit_chain_ref=f"audit:approved-{suffix}",
+    )
+    ledger.append(approved)
+
+    assert ledger.get(tenant_id=tenant_id, evidence_hash=approved.evidence_hash) == approved
+    assert ledger.get(tenant_id=tenant_id, evidence_hash=approved.evidence_hash).transition_source_evidence_hash == (
+        evidence.evidence_hash
+    )

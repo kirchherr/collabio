@@ -59,10 +59,13 @@ Initial API:
 - `GET /v1/kb/articles`
 - `GET /v1/admin/kb/evidence`
 - `POST /v1/admin/kb/articles/write-dry-run`
+- `POST /v1/admin/kb/articles/write-approvals/approve`
 
 `GET /v1/admin/kb/evidence` is a tenant-admin compliance API. It remains available through the compliance module gate while the module is disabled, suspended, or in an active decommission workflow. It returns source-version evidence and restore evidence only, not article bodies or source text.
 
 `POST /v1/admin/kb/articles/write-dry-run` validates a write/edit approval command, writes an audit event, and appends metadata-only approval evidence to the write-approval ledger. It does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state. It returns command hashes and required evidence for the source-object write guard.
+
+`POST /v1/admin/kb/articles/write-approvals/approve` transitions an existing dry-run ledger row to a new append-only `approved_for_write` ledger row. It requires a new human approval reference, verifies that the current restore evidence and expected version still match the dry-run evidence, and still does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state.
 
 `KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
 
@@ -128,12 +131,15 @@ Initial migrations:
 - `0021_knowledge_base_articles.sql`
 - `0022_knowledge_base_source_restore_evidence.sql`
 - `0023_knowledge_base_write_approval_evidence.sql`
+- `0024_knowledge_base_write_approval_transition_lineage.sql`
 
 The first migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
 
 The second migration creates append-only tenant-scoped `knowledge_base.source_version_evidence` and `knowledge_base.restore_evidence` tables. These tables are RLS-protected, grant no hard delete, and are the required precondition for later write/edit or RAG expansion.
 
 The third migration creates append-only tenant-scoped `knowledge_base.write_approval_evidence`. Future article/source writes must first persist approval evidence in this ledger, pass the source-object write guard, and refresh source-version plus restore evidence.
+
+The fourth migration adds `transition_source_evidence_hash` so non-dry-run approval states must point back to the dry-run ledger evidence that was approved. This keeps state transitions append-only and auditable.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 

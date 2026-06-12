@@ -16,6 +16,7 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseSourceObjectWriteGuard,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalState,
+    KnowledgeBaseWriteApprovalTransitionCommand,
     KnowledgeBaseWriteOperation,
     build_knowledge_base_restore_evidence,
     build_knowledge_base_source_version_evidence,
@@ -427,6 +428,86 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert persisted_evidence == evidence
 
 
+def test_knowledge_base_write_approval_transition_appends_approved_evidence_without_writes() -> None:
+    audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
+    )
+    proposed_source_record = knowledge_base_source_record_for_write()
+    write_command = write_command_for_source_record(proposed_source_record)
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+    dry_run_response = service.dry_run_write_approval(command=write_command, user_context=user_context)
+    transition_command = KnowledgeBaseWriteApprovalTransitionCommand(
+        dry_run_write_approval_evidence_hash=dry_run_response.write_approval_evidence_hash,
+        approval_reference="approval:kb-write-approve",
+        reason="human approved guarded knowledge base write",
+    )
+
+    transition_response = service.approve_write_approval(command=transition_command, user_context=user_context)
+
+    assert transition_response.tenant_id == "tenant-demo"
+    assert transition_response.approval_state == KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE
+    assert transition_response.dry_run_write_approval_evidence_hash == dry_run_response.write_approval_evidence_hash
+    assert transition_response.approved_write_approval_evidence_hash.startswith("sha256:")
+    assert transition_response.approved_write_approval_evidence_hash != dry_run_response.write_approval_evidence_hash
+    assert transition_response.persistence_allowed is True
+    assert transition_response.rag_indexing_allowed is False
+    assert transition_response.source_authority_verified is False
+    assert "approved_write_approval_ledger_entry" in transition_response.required_evidence
+    assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+
+    ledger_evidences = write_approval_ledger.list_evidence(tenant_id="tenant-demo")
+    assert len(ledger_evidences) == 2
+    dry_run_evidence = write_approval_ledger.get(
+        tenant_id="tenant-demo",
+        evidence_hash=dry_run_response.write_approval_evidence_hash,
+    )
+    approved_evidence = write_approval_ledger.get(
+        tenant_id="tenant-demo",
+        evidence_hash=transition_response.approved_write_approval_evidence_hash,
+    )
+    assert dry_run_evidence.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN
+    assert dry_run_evidence.transition_source_evidence_hash is None
+    assert approved_evidence.approval_state == KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE
+    assert approved_evidence.transition_source_evidence_hash == dry_run_evidence.evidence_hash
+    assert approved_evidence.approval_reference == "approval:kb-write-approve"
+    assert approved_evidence.persistence_allowed is True
+    assert approved_evidence.rag_indexing_allowed is False
+    assert approved_evidence.source_authority_verified is False
+    assert approved_evidence.evidence_hash == build_write_approval_evidence_hash(approved_evidence)
+    assert "Backup restore runbook source content v2" not in approved_evidence.model_dump_json()
+
+    event = audit_logger.events[-1]
+    assert transition_response.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.write_approval.approved"
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["approval_reference"] == "approval:kb-write-approve"
+    assert event.metadata["dry_run_write_approval_evidence_hash"] == dry_run_evidence.evidence_hash
+    assert event.metadata["persistence_allowed"] is True
+    assert event.metadata["rag_indexing_allowed"] is False
+
+    decision = service.evaluate_source_object_write_guard(
+        user_context=user_context,
+        write_approval_evidence_hash=approved_evidence.evidence_hash,
+        proposed_source_record=proposed_source_record,
+    )
+    assert decision.allowed is True
+    assert decision.persistence_allowed is True
+
+    with pytest.raises(ValueError, match="already approved"):
+        service.approve_write_approval(command=transition_command, user_context=user_context)
+
+
 def test_knowledge_base_source_object_write_guard_blocks_dry_run_ledger_evidence() -> None:
     audit_logger = InMemoryAuditLogger()
     write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
@@ -504,6 +585,7 @@ def test_knowledge_base_source_object_write_guard_allows_only_approved_matching_
         audit_event_id="audit-event-kb-approved-write",
         audit_chain_ref="audit:audit-event-kb-approved-write",
         approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+        transition_source_evidence_hash="sha256:" + "7" * 64,
         persistence_allowed=True,
     )
     write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger((approved_evidence,))
@@ -580,6 +662,7 @@ def test_knowledge_base_source_object_write_guard_blocks_version_legal_hold_and_
         audit_event_id="audit-event-kb-approved-write",
         audit_chain_ref="audit:audit-event-kb-approved-write",
         approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+        transition_source_evidence_hash="sha256:" + "8" * 64,
         persistence_allowed=True,
     )
     write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger((approved_evidence,))

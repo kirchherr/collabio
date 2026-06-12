@@ -86,13 +86,14 @@ Current sprint:
 76. [x] Persistent Knowledge Base write-approval evidence ledger migration and ledger-ready dry-run evidence hash.
 77. [x] Knowledge Base write-dry-run approval evidence persistence through append-only ledger port with Postgres adapter.
 78. [x] Knowledge Base source-object write guard that validates ledger evidence, expected version, retention, Legal Hold, restore evidence, and source metadata before future writes.
+79. [x] Knowledge Base approval-state transition from dry-run to append-only `approved_for_write` evidence with lineage and no article/source writes.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, and a source-object write guard. The next narrow step is approval-state transition design:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, and an append-only approval transition path. The next narrow step is restore evidence refresh design:
 
-- Keep actual article/source writes blocked until approval-state transition and restore evidence refresh are connected.
-- Add an explicit approval-state transition path from dry-run evidence to approved write evidence without mutating article/source records yet.
+- Keep actual article/source writes blocked until restore evidence refresh is connected to the post-approval write plan.
+- Add a metadata-only restore/source evidence refresh preview for approved writes before any article/source mutation path exists.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

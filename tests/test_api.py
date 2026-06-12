@@ -794,6 +794,55 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert "prompt_text" not in body_text
     assert "output_text" not in body_text
 
+    approval_payload = {
+        "dry_run_write_approval_evidence_hash": body["write_approval_evidence_hash"],
+        "approval_reference": "approval:kb-write-approve",
+        "reason": "human approved guarded knowledge base write",
+    }
+    non_admin_approval_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/approve",
+        headers=DEMO_HEADERS,
+        json=approval_payload,
+    )
+    assert non_admin_approval_response.status_code == 403
+    assert non_admin_approval_response.json()["detail"] == "Tenant admin role required"
+
+    approval_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/approve",
+        headers=DEMO_ADMIN_HEADERS,
+        json=approval_payload,
+    )
+    assert approval_response.status_code == 200
+    approval_body = approval_response.json()
+    approval_body_text = json.dumps(approval_body)
+    assert approval_body["tenant_id"] == "tenant-demo"
+    assert approval_body["module_id"] == "knowledge_base"
+    assert approval_body["feature_id"] == "knowledge_base.articles.write"
+    assert approval_body["dry_run_write_approval_evidence_hash"] == body["write_approval_evidence_hash"]
+    assert approval_body["approved_write_approval_evidence_hash"].startswith("sha256:")
+    assert approval_body["approved_write_approval_evidence_hash"] != body["write_approval_evidence_hash"]
+    assert approval_body["approval_state"] == "approved_for_write"
+    assert approval_body["persistence_allowed"] is True
+    assert approval_body["rag_indexing_allowed"] is False
+    assert approval_body["source_authority_verified"] is False
+    assert "approved_write_approval_ledger_entry" in approval_body["required_evidence"]
+    ledger_evidences = write_approval_ledger.list_evidence(tenant_id="tenant-demo")
+    assert len(ledger_evidences) == starting_ledger_count + 2
+    approved_evidence = next(
+        evidence
+        for evidence in ledger_evidences
+        if evidence.evidence_hash == approval_body["approved_write_approval_evidence_hash"]
+    )
+    assert approved_evidence.approval_state == "approved_for_write"
+    assert approved_evidence.transition_source_evidence_hash == ledger_evidence.evidence_hash
+    assert approved_evidence.persistence_allowed is True
+    assert approved_evidence.rag_indexing_allowed is False
+    assert approved_evidence.source_authority_verified is False
+    assert "article_body" not in approval_body_text
+    assert "source content" not in approval_body_text
+    assert "prompt_text" not in approval_body_text
+    assert "output_text" not in approval_body_text
+
     after_response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
     assert after_response.status_code == 200
     assert {evidence["source_version_id"] for evidence in after_response.json()["source_version_evidence"]} == {"v1"}
@@ -816,6 +865,15 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert event.metadata["persistence_allowed"] is False
     assert event.metadata["command_hash"] == body["command_hash"]
     assert event.metadata["approval_reference"] == "approval:kb-write-dry-run"
+    approval_events = [event for event in new_events if event.event_type == "knowledge_base.write_approval.approved"]
+    assert len(approval_events) == 1
+    approval_event = approval_events[0]
+    assert approval_event.input_hash is not None
+    assert approval_event.output_hash is None
+    assert approval_event.metadata["approval_reference"] == "approval:kb-write-approve"
+    assert approval_event.metadata["dry_run_write_approval_evidence_hash"] == body["write_approval_evidence_hash"]
+    assert approval_event.metadata["persistence_allowed"] is True
+    assert approval_event.metadata["rag_indexing_allowed"] is False
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:
