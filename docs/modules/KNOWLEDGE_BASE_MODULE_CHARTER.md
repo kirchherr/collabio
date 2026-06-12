@@ -61,6 +61,7 @@ Initial API:
 - `POST /v1/admin/kb/articles/write-dry-run`
 - `POST /v1/admin/kb/articles/write-approvals/approve`
 - `POST /v1/admin/kb/articles/write-approvals/refresh-preview`
+- `POST /v1/admin/kb/articles/write-approvals/execution-skeleton`
 
 `GET /v1/admin/kb/evidence` is a tenant-admin compliance API. It remains available through the compliance module gate while the module is disabled, suspended, or in an active decommission workflow. It returns source-version evidence and restore evidence only, not article bodies or source text.
 
@@ -69,6 +70,8 @@ Initial API:
 `POST /v1/admin/kb/articles/write-approvals/approve` transitions an existing dry-run ledger row to a new append-only `approved_for_write` ledger row. It requires a new human approval reference, verifies that the current restore evidence and expected version still match the dry-run evidence, and still does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state.
 
 `POST /v1/admin/kb/articles/write-approvals/refresh-preview` accepts approved write-approval evidence and returns a metadata-only source/restore evidence projection. It verifies the approved ledger row, current restore evidence, and expected version, then returns current and projected source-version evidence hashes plus a `projected_restore_evidence_preview_hash`. It does not append ledger rows, persist source-version evidence, persist restore evidence, write article metadata, write source objects, index, embed, or update RAG state.
+
+`POST /v1/admin/kb/articles/write-approvals/execution-skeleton` accepts approved write-approval evidence, a metadata-only source-object write-guard decision, the refresh-preview hashes, and an explicit human confirmation reference. It verifies that those inputs bind to the same tenant, article, proposed source version, and restore evidence, then returns an `execution_plan_hash`. It still sets `execution_allowed=false` and does not persist article metadata, source objects, source-version evidence, restore evidence, embeddings, indexes, or RAG state.
 
 `KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
 
@@ -144,7 +147,7 @@ The third migration creates append-only tenant-scoped `knowledge_base.write_appr
 
 The fourth migration adds `transition_source_evidence_hash` so non-dry-run approval states must point back to the dry-run ledger evidence that was approved. This keeps state transitions append-only and auditable.
 
-The refresh-preview endpoint is runtime-only and does not need a migration. Future write execution must consume its projected hash contract before refreshing append-only source-version and restore evidence.
+The refresh-preview and execution-skeleton endpoints are runtime-only and do not need migrations. Future write execution must consume their projected hash contracts before refreshing append-only source-version and restore evidence.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 

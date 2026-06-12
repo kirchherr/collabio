@@ -60,6 +60,8 @@ Each ledger row must carry:
 
 `POST /v1/admin/kb/articles/write-approvals/refresh-preview` requires tenant context and a tenant admin. It accepts an approved write-approval evidence hash, verifies that the approved evidence and current restore evidence still match, and returns a metadata-only projection containing current source-version evidence hashes, projected source-version evidence hashes, and `projected_restore_evidence_preview_hash`. It does not append ledger rows and does not persist source-version evidence, restore evidence, article metadata, source objects, source text, article bodies, embeddings, or RAG state.
 
+`POST /v1/admin/kb/articles/write-approvals/execution-skeleton` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, and explicit human confirmation. It verifies that the evidence binds to the same article and proposed source version, returns an `execution_plan_hash`, and still blocks execution with `execution_allowed=false`. It does not append ledger rows and does not persist article metadata, source objects, source-version evidence, restore evidence, source text, article bodies, embeddings, or RAG state.
+
 Runtime wiring:
 
 - tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
@@ -67,8 +69,9 @@ Runtime wiring:
 - the ledger row remains metadata-only and cannot authorize persistence while `approval_state` is `dry_run`.
 - `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
 - the refresh preview consumes exact tenant-scoped approved ledger evidence and produces hash/count projection only.
+- the execution skeleton consumes exact tenant-scoped approved ledger evidence, guard decision metadata, refresh-preview hashes, and human confirmation, then returns a blocked execution plan hash.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Future write paths must verify the approved ledger row, pass the source-object write guard, match the refresh-preview projection, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until article/source mutation paths are explicitly connected.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Future write paths must verify the approved ledger row, pass the source-object write guard, match the refresh-preview projection, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until article/source mutation paths are explicitly connected.
 
 ## Source-Object Write Guard
 

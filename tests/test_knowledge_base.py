@@ -18,6 +18,7 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalState,
     KnowledgeBaseWriteApprovalTransitionCommand,
+    KnowledgeBaseWriteExecutionSkeletonCommand,
     KnowledgeBaseWriteOperation,
     build_knowledge_base_restore_evidence,
     build_knowledge_base_source_version_evidence,
@@ -592,6 +593,109 @@ def test_knowledge_base_write_refresh_preview_projects_restore_evidence_without_
     assert event.metadata["rag_indexing_allowed"] is False
     assert event.metadata["source_authority_verified"] is False
     assert event.metadata["projected_restore_evidence_preview_hash"] == preview.projected_restore_evidence_preview_hash
+
+
+def test_knowledge_base_write_execution_skeleton_verifies_preconditions_and_still_blocks_writes() -> None:
+    audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
+    )
+    proposed_source_record = knowledge_base_source_record_for_write()
+    write_command = write_command_for_source_record(proposed_source_record)
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+    dry_run_response = service.dry_run_write_approval(command=write_command, user_context=user_context)
+    transition_response = service.approve_write_approval(
+        command=KnowledgeBaseWriteApprovalTransitionCommand(
+            dry_run_write_approval_evidence_hash=dry_run_response.write_approval_evidence_hash,
+            approval_reference="approval:kb-write-approve",
+            reason="human approved guarded knowledge base write",
+        ),
+        user_context=user_context,
+    )
+    preview = service.preview_write_evidence_refresh(
+        command=KnowledgeBaseEvidenceRefreshPreviewCommand(
+            approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+            preview_reference="preview:kb-refresh-1",
+            reason="preview metadata-only source and restore evidence refresh",
+        ),
+        user_context=user_context,
+    )
+    guard_decision = service.evaluate_source_object_write_guard(
+        user_context=user_context,
+        write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+        proposed_source_record=proposed_source_record,
+    )
+    assert guard_decision.allowed is True
+
+    command = KnowledgeBaseWriteExecutionSkeletonCommand(
+        approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+        source_object_write_guard_decision=guard_decision,
+        refresh_preview_command_hash=preview.preview_command_hash,
+        projected_restore_evidence_preview_hash=preview.projected_restore_evidence_preview_hash,
+        execution_reference="execution:kb-write-skeleton-1",
+        human_confirmation_reference="human-confirmation:kb-write-1",
+        reason="prepare guarded write execution without persistence",
+    )
+    response = service.prepare_write_execution_skeleton(command=command, user_context=user_context)
+
+    assert response.tenant_id == "tenant-demo"
+    assert response.approved_write_approval_evidence_hash == transition_response.approved_write_approval_evidence_hash
+    assert response.transition_source_evidence_hash == dry_run_response.write_approval_evidence_hash
+    assert response.source_object_write_guard_ref == guard_decision.source_object_write_guard_ref
+    assert response.refresh_preview_command_hash == preview.preview_command_hash
+    assert response.projected_restore_evidence_preview_hash == preview.projected_restore_evidence_preview_hash
+    assert response.preconditions_verified is True
+    assert response.source_object_write_guard_verified is True
+    assert response.human_confirmation_verified is True
+    assert response.source_authority_verified is True
+    assert response.execution_allowed is False
+    assert response.article_source_writes_allowed is False
+    assert response.article_metadata_persistence_allowed is False
+    assert response.source_object_persistence_allowed is False
+    assert response.evidence_persistence_allowed is False
+    assert response.rag_indexing_allowed is False
+    assert "write_execution_adapter_not_enabled" in response.blocking_reasons
+    assert "post_write_source_restore_evidence_refresh_not_connected" in response.blocking_reasons
+    assert "explicit_human_confirmation_reference" in response.required_evidence
+    assert response.execution_command_hash.startswith("sha256:")
+    assert response.execution_plan_hash.startswith("sha256:")
+    assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
+    assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+    assert "Backup restore runbook source content v2" not in response.model_dump_json()
+
+    event = audit_logger.events[-1]
+    assert response.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.write_approval.execution_skeleton"
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only"
+    assert event.metadata["execution_reference"] == "execution:kb-write-skeleton-1"
+    assert event.metadata["human_confirmation_reference"] == "human-confirmation:kb-write-1"
+    assert event.metadata["execution_allowed"] is False
+    assert event.metadata["execution_plan_hash"] == response.execution_plan_hash
+
+    tampered_guard_decision = guard_decision.model_copy(
+        update={"source_object_write_guard_ref": "guard:sha256:" + "1" * 64}
+    )
+    with pytest.raises(ValueError, match="guard reference is invalid"):
+        service.prepare_write_execution_skeleton(
+            command=command.model_copy(update={"source_object_write_guard_decision": tampered_guard_decision}),
+            user_context=user_context,
+        )
+    with pytest.raises(ValueError, match="preview hash does not match"):
+        service.prepare_write_execution_skeleton(
+            command=command.model_copy(update={"projected_restore_evidence_preview_hash": "sha256:" + "2" * 64}),
+            user_context=user_context,
+        )
 
 
 def test_knowledge_base_source_object_write_guard_blocks_dry_run_ledger_evidence() -> None:

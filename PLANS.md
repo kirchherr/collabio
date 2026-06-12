@@ -88,13 +88,14 @@ Current sprint:
 78. [x] Knowledge Base source-object write guard that validates ledger evidence, expected version, retention, Legal Hold, restore evidence, and source metadata before future writes.
 79. [x] Knowledge Base approval-state transition from dry-run to append-only `approved_for_write` evidence with lineage and no article/source writes.
 80. [x] Metadata-only Knowledge Base restore/source evidence refresh preview for approved writes, still without article/source writes or RAG indexing.
+81. [x] Guarded Knowledge Base write-execution skeleton with approved evidence, source-guard decision, refresh-preview hash, explicit human confirmation, and no article/source writes.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, and a metadata-only restore/source evidence refresh preview. The next narrow step is guarded write execution design:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, and a blocked write-execution skeleton. The next narrow step is atomic write execution design:
 
-- Keep actual article/source writes blocked until the source-object guard, projected refresh evidence, and post-write evidence persistence are connected in one atomic write plan.
-- Add a controlled write-execution skeleton that still defaults to no-op unless every approved evidence, guard, restore-preview, and human confirmation precondition is present.
+- Connect actual article/source writes only inside one atomic write plan that persists the source object, article metadata, source-version evidence, restore evidence, and audit linkage together.
+- Keep RAG/indexing disabled until post-write evidence is persisted and authoritative ACL validation is proven.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance
