@@ -128,6 +128,8 @@ legacy.row
 
 Every object must carry the persistent object metadata required by `docs/ROADMAP.md` and `DATA_CLASSIFICATION.md`.
 
+The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. It binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before persistent business tables are introduced.
+
 ## 6. Data Classification And Retention
 
 Canonical class mapping:

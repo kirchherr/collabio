@@ -176,7 +176,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore before feature routers and workers start; verify module gates, disabled state, suspended state, and decommission blockers",
-      "state_artifacts": ["module catalog", "tenant module states", "module feature flags", "CRM/ERP subfeature registry manifests", "provisioning evidence", "module lifecycle audit references", "decommission precheck results"]
+      "state_artifacts": ["module catalog", "tenant module states", "module feature flags", "CRM/ERP subfeature registry manifests", "CRM/ERP object rule manifests", "provisioning evidence", "module lifecycle audit references", "decommission precheck results"]
     },
     {
       "domain_id": "crm_erp_business_records",
@@ -184,7 +184,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore module schemas with row-count and checksum evidence; verify RLS, legal-hold blocking, retention mapping, and module enablement state",
-      "state_artifacts": ["CRM accounts", "CRM contacts", "CRM activities", "ERP products", "ERP suppliers", "orders", "invoices", "GoBD retention mappings", "Legacy SQL discovery manifests", "Legacy SQL connector policy snapshots", "Legacy SQL import evidence plans", "Legacy SQL mapping manifests", "Legacy SQL quarantine decisions", "SQL Server migration manifests", "migration validation reports"]
+      "state_artifacts": ["CRM accounts", "CRM contacts", "CRM activities", "ERP products", "ERP suppliers", "orders", "invoices", "CRM/ERP object rule manifest hash", "GoBD retention mappings", "Legacy SQL discovery manifests", "Legacy SQL connector policy snapshots", "Legacy SQL import evidence plans", "Legacy SQL mapping manifests", "Legacy SQL quarantine decisions", "SQL Server migration manifests", "migration validation reports"]
     },
     {
       "domain_id": "knowledge_base_content",

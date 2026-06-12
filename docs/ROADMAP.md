@@ -1025,8 +1025,8 @@ CRM/ERP `crm_erp`:
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
 - [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
-- [ ] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
-- [ ] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
+- [x] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
+- [x] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [x] Datenklassen harmonisieren: `personal_data`, `working_data`, `gobd_record`, `security_data` und `export_package` sind Alias-/Lifecycle-/Objektkonzepte auf kanonischen Runtime-Klassen.
 - [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
@@ -1226,7 +1226,7 @@ Empfohlene naechste Reihenfolge:
 64. [x] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
 65. [x] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
 66. [x] Audited Authz Admin APIs fuer PostgreSQL Principal, Rollen, Gruppen, ACL, ABAC und Replay-Retention Mutationen implementieren.
-67. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
+67. [x] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
 
 ## Release-Strategie
 

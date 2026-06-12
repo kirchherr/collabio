@@ -8,6 +8,7 @@ from suite.platform.crm_erp_legacy_mapping import (
     CrmErpLegacyMappingManifest,
     default_crm_erp_target_profiles,
 )
+from suite.platform.crm_erp_object_rules import build_default_crm_erp_object_rule_manifest
 from suite.platform.crm_erp_subfeatures import (
     CrmErpSubfeatureArea,
     CrmErpSubfeatureRegistryError,
@@ -131,6 +132,7 @@ def test_default_module_registry_uses_canonical_crm_erp_subfeature_defaults() ->
 
 def test_crm_erp_subfeature_registry_covers_all_mapping_target_profiles() -> None:
     registry = build_default_crm_erp_subfeature_registry()
+    object_rules = build_default_crm_erp_object_rule_manifest()
 
     for profile in default_crm_erp_target_profiles().values():
         feature = registry.feature(profile.feature_id)
@@ -139,6 +141,7 @@ def test_crm_erp_subfeature_registry_covers_all_mapping_target_profiles() -> Non
         assert profile.retention_policy_id in feature.retention_policy_ids
 
     registry.validate_mapping_manifest(mapping_manifest())
+    object_rules.validate_subfeature_registry(registry)
 
 
 def test_crm_erp_subfeature_registry_rejects_unknown_mapping_feature() -> None:

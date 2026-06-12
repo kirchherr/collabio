@@ -36,5 +36,6 @@ crm_erp.ai_assist
 - Tests: `tests/test_crm_erp_subfeatures.py`
 - Mapping-Anbindung: `CrmErpSubfeatureRegistryManifest.validate_mapping_manifest(...)`
 - Modul-Defaults: `default_module_registry()` nutzt `default_crm_erp_subfeature_enabled_features()`
+- Objektregel-Anbindung: `app/suite/platform/crm_erp_object_rules.py`
 
-Der naechste Schritt ist die Schema- und Objektregelplanung fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy`.
+Die Schema- und Objektregelplanung fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` ist in `docs/modules/CRM_ERP_OBJECT_RULES.md` verankert. Der naechste Schritt sind persistente Schema-Migrationen oder ein API-Vertical-Slice, aber erst nach diesem Vertrag.
