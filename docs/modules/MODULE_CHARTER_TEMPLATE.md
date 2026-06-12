@@ -6,6 +6,8 @@ Module ID: `<module_id>`
 Module kind: `<business_domain | platform_extension | integration | ai_extension>`
 Owner: `<team-or-role>`
 
+Implementation contract: every module charter must be implemented through `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md` before persistent state, API routes, workers, imports, search/RAG, AI assist, exports, or decommission behavior are added.
+
 ## 1. Product Decision
 
 Describe why this module belongs in the suite and whether it is native, optional, required, or integration-only.
@@ -106,6 +108,7 @@ updated_at_utc
 data_classification
 retention_policy_id
 legal_hold_state
+lifecycle_state
 kms_key_ref
 audit_chain_ref
 source_system

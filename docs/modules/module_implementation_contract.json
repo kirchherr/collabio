@@ -1,0 +1,95 @@
+{
+  "schema_version": "module_implementation_contract.v1",
+  "contract_id": "module_vertical_slice_contract",
+  "required_metadata_fields": [
+    "tenant_id",
+    "object_id",
+    "object_type",
+    "owner_principal_id",
+    "created_by",
+    "created_at_utc",
+    "updated_at_utc",
+    "data_classification",
+    "retention_policy_id",
+    "legal_hold_state",
+    "lifecycle_state",
+    "kms_key_ref",
+    "audit_chain_ref",
+    "source_system",
+    "schema_version"
+  ],
+  "required_controls": [
+    "tenant_context",
+    "module_gate",
+    "feature_gate",
+    "object_read_authorization",
+    "rls_enabled",
+    "no_hard_delete",
+    "audit_metadata_only",
+    "retention_policy",
+    "legal_hold_state",
+    "kms_key_ref",
+    "backup_restore_domain",
+    "restore_drill_evidence",
+    "migration_evidence",
+    "decommission_evidence",
+    "candidate_only_search",
+    "rag_authoritative_acl",
+    "rag_source_citations",
+    "local_llm_gateway",
+    "tenant_ai_policy",
+    "human_confirmation_for_destructive_actions",
+    "voice_explicit_activation"
+  ],
+  "slice_steps": [
+    "module_charter",
+    "feature_registry",
+    "object_rules",
+    "migration_catalog_entry",
+    "persistent_storage_with_metadata",
+    "tenant_isolation_rls",
+    "service_repository_authorization",
+    "api_worker_gate",
+    "audit_metadata_only",
+    "backup_restore_failover_domain",
+    "tests",
+    "roadmap_compliance_docs"
+  ],
+  "future_module_families": [
+    {
+      "module_family": "knowledge_base",
+      "first_objects": ["kb.article", "kb.article_version"],
+      "first_slice": "authorized article metadata/read slice with source versions",
+      "default_feature_gate": "knowledge_base.articles.read",
+      "continuity_domain": "knowledge_base_records"
+    },
+    {
+      "module_family": "lms",
+      "first_objects": ["lms.course", "lms.enrollment"],
+      "first_slice": "course catalog and enrollment status read slice",
+      "default_feature_gate": "lms.courses.read",
+      "continuity_domain": "lms_training_records"
+    },
+    {
+      "module_family": "tasks_activities",
+      "first_objects": ["task.task", "task.activity"],
+      "first_slice": "assigned task/activity read slice",
+      "default_feature_gate": "tasks.items.read",
+      "continuity_domain": "task_activity_records"
+    },
+    {
+      "module_family": "tickets_incidents",
+      "first_objects": ["ticket.ticket", "ticket.event"],
+      "first_slice": "ticket summary read slice with SLA state",
+      "default_feature_gate": "tickets.items.read",
+      "continuity_domain": "ticket_incident_records"
+    },
+    {
+      "module_family": "time_tracking",
+      "first_objects": ["time.entry", "time.approval"],
+      "first_slice": "own time-entry read slice with approval state",
+      "default_feature_gate": "time_tracking.entries.read",
+      "continuity_domain": "time_tracking_records"
+    }
+  ]
+}

@@ -1016,7 +1016,8 @@ Plattform-Aufgaben:
 - [x] Module-Aware Migration Catalog mit Checksummen, Evidence und Startblockade bei Mismatch planen.
 - [x] Tests fuer enabled/disabled/suspended/decommissioned Verhalten definieren.
 - [x] Legacy-SQL-Discovery als metadata-only Evidenzschritt vor Mapping, Import und Registry-Entscheidungen implementieren.
-- [ ] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand mitziehen.
+- [x] `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md` als verbindlichen Vertical-Slice-Vertrag fuer CRM/ERP, Wissensdatenbank, LMS, Aufgaben, Tickets, Zeiterfassung und spaetere Module einziehen.
+- [x] Backup-/Failover-Policy bei jedem Modul mit persistentem Zustand als Teil des Modul-Implementierungsvertrags mitziehen.
 
 CRM/ERP `crm_erp`:
 
@@ -1050,6 +1051,8 @@ Vorbereitete Modul-Familien:
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
 - Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.
+
+Alle vorbereiteten Modul-Familien starten ueber `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`. CRM/ERP bleibt damit der Architekturbeweis fuer Modul-Slices, nicht der Produktfokus.
 
 Exit-Kriterien:
 
@@ -1237,6 +1240,7 @@ Empfohlene naechste Reihenfolge:
 70. [x] Gated CRM Contacts Read-Vertical-Slice mit `crm.contacts`, Account-Link-Redaktion, Audit und `GET /v1/crm/contacts` implementieren.
 71. [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Audit und metadata-only Notes implementieren.
 72. [x] Minimalen ERP Products Read-Vertical-Slice mit `erp.products`, `internal` Klassifikation, Audit und `GET /v1/erp/products` als Architekturbeweis implementieren.
+73. [x] Modul-Implementierungsvertrag fuer Wissensdatenbank, LMS, Aufgaben, Tickets, Zeiterfassung und spaetere Suite-Module aus den CRM/ERP-Slices extrahieren.
 
 ## Release-Strategie
 
