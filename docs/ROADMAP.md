@@ -1244,7 +1244,8 @@ Empfohlene naechste Reihenfolge:
 74. [x] Ersten Wissensdatenbank-Read-Slice mit `knowledge_base`, `kb.article`, `kb.article_version`, RLS, Audit und `GET /v1/kb/articles` implementieren.
 75. [x] Wissensdatenbank-Source-Version- und Restore-Evidence mit `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`, Audit-Metadaten und Backup-Domain-Nachweis haerten.
 76. [x] Compliance/Admin-Read-Pfad fuer Wissensdatenbank-Source-/Restore-Evidence mit `GET /v1/admin/kb/evidence`, disabled-state access und metadata-only Audit implementieren.
-77. [ ] Wissensdatenbank-Write/Edit-Approval-Command-Modell und audit-only Dry-Run-Pfad starten.
+77. [x] Wissensdatenbank-Write/Edit-Approval-Command-Modell und audit-only Dry-Run-Pfad mit `POST /v1/admin/kb/articles/write-dry-run` implementieren.
+78. [ ] Persistente Wissensdatenbank-Write-Approval-Evidence-Ledger-Migration vor echten Artikel-/Source-Writes implementieren.
 
 ## Release-Strategie
 

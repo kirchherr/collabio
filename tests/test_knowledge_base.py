@@ -7,14 +7,18 @@ from suite.platform.knowledge_base import (
     KB_ARTICLE_OBJECT_TYPE,
     KB_ARTICLE_VERSION_OBJECT_TYPE,
     KB_ARTICLES_FEATURE_ID,
+    KB_ARTICLES_WRITE_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
     InMemoryKnowledgeBaseArticleRepository,
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
+    KnowledgeBaseWriteApprovalCommand,
+    KnowledgeBaseWriteOperation,
     build_knowledge_base_restore_evidence,
     build_knowledge_base_source_version_evidence,
     build_restore_evidence_hash,
     build_source_version_evidence_hash,
+    build_write_approval_command_hash,
     demo_knowledge_base_source_object_repository,
 )
 
@@ -195,6 +199,112 @@ def test_knowledge_base_compliance_evidence_returns_metadata_for_admin_without_a
     assert event.metadata["surface"] == "compliance_api"
     assert event.metadata["result_contract"] == "metadata_only"
     assert event.metadata["restore_evidence_hash"] == response.restore_evidence.evidence_hash
+
+
+def test_knowledge_base_write_approval_command_rejects_bodies_and_unsafe_contracts() -> None:
+    source_record = demo_knowledge_base_source_object_repository().get(
+        tenant_id="tenant-demo",
+        object_id="kb-article-version-backup-runbook-v1-demo",
+        version_id="v1",
+    )
+    values = {
+        "approval_reference": "approval:kb-write-dry-run",
+        "reason": "prepare controlled knowledge base edit",
+        "operation": "edit",
+        "article_object_id": "kb-article-backup-runbook-demo",
+        "article_key": "KB-BACKUP-001",
+        "title": "Backup Restore Runbook",
+        "proposed_version_object_id": "kb-article-version-backup-runbook-v2-demo",
+        "proposed_version_label": "v2",
+        "proposed_source_object_id": "kb-article-version-backup-runbook-v2-demo",
+        "proposed_source_version_id": "v2",
+        "proposed_source_manifest_hash": source_record.metadata.manifest_hash,
+        "proposed_content_hash": source_record.metadata.content_hash,
+        "proposed_acl_version": 1,
+        "expected_current_version_object_id": "kb-article-version-backup-runbook-v1-demo",
+    }
+
+    command = KnowledgeBaseWriteApprovalCommand.model_validate(values)
+
+    assert command.operation == KnowledgeBaseWriteOperation.EDIT
+    assert command.data_classification == DataClass.INTERNAL
+
+    with pytest.raises(ValidationError, match="Extra inputs"):
+        KnowledgeBaseWriteApprovalCommand.model_validate({**values, "article_body": "body is not allowed"})
+
+    with pytest.raises(ValidationError, match="expected_current_version_object_id"):
+        KnowledgeBaseWriteApprovalCommand.model_validate({**values, "expected_current_version_object_id": None})
+
+    with pytest.raises(ValidationError, match="proposed source object"):
+        KnowledgeBaseWriteApprovalCommand.model_validate(
+            {**values, "proposed_source_object_id": "kb-article-version-other"}
+        )
+
+
+def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persistence() -> None:
+    audit_logger = InMemoryAuditLogger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+    )
+    source_record = demo_knowledge_base_source_object_repository().get(
+        tenant_id="tenant-demo",
+        object_id="kb-article-version-backup-runbook-v1-demo",
+        version_id="v1",
+    )
+    command = KnowledgeBaseWriteApprovalCommand(
+        approval_reference="approval:kb-write-dry-run",
+        reason="prepare controlled knowledge base edit",
+        operation=KnowledgeBaseWriteOperation.EDIT,
+        article_object_id="kb-article-backup-runbook-demo",
+        article_key="KB-BACKUP-001",
+        title="Backup Restore Runbook",
+        proposed_version_object_id="kb-article-version-backup-runbook-v2-demo",
+        proposed_version_label="v2",
+        proposed_source_object_id="kb-article-version-backup-runbook-v2-demo",
+        proposed_source_version_id="v2",
+        proposed_source_manifest_hash=source_record.metadata.manifest_hash,
+        proposed_content_hash=source_record.metadata.content_hash,
+        proposed_acl_version=1,
+        expected_current_version_object_id="kb-article-version-backup-runbook-v1-demo",
+    )
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+
+    response = service.dry_run_write_approval(command=command, user_context=user_context)
+
+    assert response.tenant_id == "tenant-demo"
+    assert response.module_id == KNOWLEDGE_BASE_MODULE_ID
+    assert response.feature_id == KB_ARTICLES_WRITE_FEATURE_ID
+    assert response.operation == KnowledgeBaseWriteOperation.EDIT
+    assert response.dry_run is True
+    assert response.persistence_allowed is False
+    assert response.rag_indexing_allowed is False
+    assert response.source_authority_verified is False
+    assert response.command_hash == build_write_approval_command_hash(command)
+    assert response.proposed_source_version_evidence_hash.startswith("sha256:")
+    assert response.current_restore_evidence_hash.startswith("sha256:")
+    assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+
+    event = audit_logger.events[-1]
+    assert response.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.write_approval.dry_run"
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["feature_id"] == KB_ARTICLES_WRITE_FEATURE_ID
+    assert event.metadata["dry_run"] is True
+    assert event.metadata["persistence_allowed"] is False
+    assert event.metadata["command_hash"] == response.command_hash
+    assert event.source_object_ids == [
+        "kb-article-backup-runbook-demo",
+        "kb-article-version-backup-runbook-v1-demo",
+        "kb-article-version-backup-runbook-v2-demo",
+    ]
 
 
 def test_knowledge_base_source_version_evidence_matches_authoritative_source_object() -> None:

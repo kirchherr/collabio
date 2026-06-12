@@ -64,6 +64,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `GET /v1/admin/kb/evidence` exposes the full source-version and restore-evidence metadata to tenant admins through the compliance module gate. It remains available while normal article browsing is disabled, and it does not return article bodies or source text.
 
+`POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and produces audit-only dry-run evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
+
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
 ## Backup And Restore

@@ -358,6 +358,7 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
     assert kb_module["status"] == "available"
     assert kb_module["normal_use_enabled"] is False
     assert kb_module["enabled_features"]["knowledge_base.articles.read"] is True
+    assert kb_module["enabled_features"]["knowledge_base.articles.write"] is False
 
     for module in body["modules"]:
         assert "audit_chain_ref" not in module
@@ -719,6 +720,86 @@ def test_knowledge_base_admin_evidence_endpoint_is_compliance_scoped_and_metadat
     assert new_events[-1].metadata["surface"] == "compliance_api"
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
     assert new_events[-1].metadata["restore_evidence_hash"] == body["restore_evidence"]["evidence_hash"]
+
+
+def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persist() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare knowledge base write dry-run"},
+    )
+    assert provision_response.status_code == 200
+    assert provision_response.json()["status"] == "disabled"
+    payload = {
+        "approval_reference": "approval:kb-write-dry-run",
+        "reason": "prepare controlled knowledge base edit",
+        "operation": "edit",
+        "article_object_id": "kb-article-backup-runbook-demo",
+        "article_key": "KB-BACKUP-001",
+        "title": "Backup Restore Runbook",
+        "proposed_version_object_id": "kb-article-version-backup-runbook-v2-demo",
+        "proposed_version_label": "v2",
+        "proposed_source_object_id": "kb-article-version-backup-runbook-v2-demo",
+        "proposed_source_version_id": "v2",
+        "proposed_source_manifest_hash": "sha256:" + "3" * 64,
+        "proposed_content_hash": "sha256:" + "4" * 64,
+        "proposed_acl_version": 1,
+        "expected_current_version_object_id": "kb-article-version-backup-runbook-v1-demo",
+    }
+
+    normal_response = client.get("/v1/kb/articles", headers=DEMO_KB_ARTICLE_HEADERS)
+    assert normal_response.status_code == 403
+
+    non_admin_response = client.post("/v1/admin/kb/articles/write-dry-run", headers=DEMO_HEADERS, json=payload)
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+    response = client.post("/v1/admin/kb/articles/write-dry-run", headers=DEMO_ADMIN_HEADERS, json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    body_text = json.dumps(body)
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "knowledge_base"
+    assert body["feature_id"] == "knowledge_base.articles.write"
+    assert body["operation"] == "edit"
+    assert body["dry_run"] is True
+    assert body["persistence_allowed"] is False
+    assert body["rag_indexing_allowed"] is False
+    assert body["source_authority_verified"] is False
+    assert body["command_hash"].startswith("sha256:")
+    assert body["proposed_source_version_evidence_hash"].startswith("sha256:")
+    assert body["current_restore_evidence_hash"].startswith("sha256:")
+    assert "source_object_write_guard" in body["required_evidence"]
+    assert "article_body" not in body_text
+    assert "source content" not in body_text
+    assert "prompt_text" not in body_text
+    assert "output_text" not in body_text
+
+    after_response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
+    assert after_response.status_code == 200
+    assert {evidence["source_version_id"] for evidence in after_response.json()["source_version_evidence"]} == {"v1"}
+
+    invalid_body_response = client.post(
+        "/v1/admin/kb/articles/write-dry-run",
+        headers=DEMO_ADMIN_HEADERS,
+        json={**payload, "article_body": "must not be accepted"},
+    )
+    assert invalid_body_response.status_code == 422
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    dry_run_events = [event for event in new_events if event.event_type == "knowledge_base.write_approval.dry_run"]
+    assert len(dry_run_events) == 1
+    event = dry_run_events[0]
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["surface"] == "compliance_api"
+    assert event.metadata["dry_run"] is True
+    assert event.metadata["persistence_allowed"] is False
+    assert event.metadata["command_hash"] == body["command_hash"]
+    assert event.metadata["approval_reference"] == "approval:kb-write-dry-run"
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

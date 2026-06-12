@@ -24,12 +24,21 @@ from suite.storage.source_objects import (
 
 KNOWLEDGE_BASE_MODULE_ID = "knowledge_base"
 KB_ARTICLES_FEATURE_ID = "knowledge_base.articles.read"
+KB_ARTICLES_WRITE_FEATURE_ID = "knowledge_base.articles.write"
 KB_ARTICLE_OBJECT_TYPE = "kb.article"
 KB_ARTICLE_VERSION_OBJECT_TYPE = "kb.article_version"
 KB_ARTICLE_SCHEMA_VERSION = "kb_article.v1"
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
+SHA256_REF_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 SOURCE_SYSTEM_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*$")
 ZERO_HASH = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+KB_WRITE_DRY_RUN_REQUIRED_EVIDENCE = (
+    "human_approval_reference",
+    "source_object_write_guard",
+    "source_version_evidence_persisted",
+    "restore_evidence_refreshed",
+    "audit_event_hash",
+)
 
 
 class KnowledgeBaseArticleLifecycleState(StrEnum):
@@ -44,6 +53,11 @@ class KnowledgeBaseArticleStatus(StrEnum):
     PUBLISHED = "published"
     RESTRICTED = "restricted"
     ARCHIVED = "archived"
+
+
+class KnowledgeBaseWriteOperation(StrEnum):
+    CREATE = "create"
+    EDIT = "edit"
 
 
 class KnowledgeBaseArticleRecord(BaseModel):
@@ -321,6 +335,128 @@ class KnowledgeBaseEvidenceResponse(BaseModel):
     audit_event_id: str
 
 
+class KnowledgeBaseWriteApprovalCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approval_reference: str
+    reason: str
+    operation: KnowledgeBaseWriteOperation
+    article_object_id: str
+    article_key: str
+    title: str
+    proposed_version_object_id: str
+    proposed_version_label: str
+    proposed_source_object_id: str
+    proposed_source_version_id: str
+    proposed_source_object_type: SourceObjectType = SourceObjectType.WIKI
+    proposed_source_manifest_hash: str
+    proposed_content_hash: str
+    proposed_acl_version: int = Field(ge=1)
+    expected_current_version_object_id: str | None = None
+    data_classification: DataClass = DataClass.INTERNAL
+    retention_policy_id: str = "rp-standard"
+    legal_hold_state: str = "none"
+    source_system: str = "native"
+
+    @field_validator(
+        "approval_reference",
+        "article_object_id",
+        "article_key",
+        "title",
+        "proposed_version_object_id",
+        "proposed_version_label",
+        "proposed_source_object_id",
+        "proposed_source_version_id",
+    )
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base write approval command fields must not be empty")
+        return value
+
+    @field_validator("approval_reference")
+    @classmethod
+    def validate_approval_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("approval_reference must be a namespaced reference")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def require_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("reason must not be empty")
+        return value
+
+    @field_validator("proposed_source_manifest_hash", "proposed_content_hash")
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("proposed source hashes must be sha256 references")
+        return value
+
+    @field_validator("data_classification")
+    @classmethod
+    def require_internal_classification(cls, value: DataClass) -> DataClass:
+        if value != DataClass.INTERNAL:
+            raise ValueError("knowledge base write dry-run only accepts internal classification")
+        return value
+
+    @field_validator("retention_policy_id")
+    @classmethod
+    def require_standard_retention(cls, value: str) -> str:
+        if value != "rp-standard":
+            raise ValueError("knowledge base write dry-run requires rp-standard retention")
+        return value
+
+    @field_validator("legal_hold_state")
+    @classmethod
+    def validate_legal_hold_state(cls, value: str) -> str:
+        if value not in {"none", "active"}:
+            raise ValueError("knowledge base write dry-run legal_hold_state must be none or active")
+        return value
+
+    @field_validator("source_system")
+    @classmethod
+    def validate_source_system(cls, value: str) -> str:
+        if not SOURCE_SYSTEM_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base write dry-run source_system must be lowercase and non-empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_write_safety_contract(self) -> KnowledgeBaseWriteApprovalCommand:
+        if self.proposed_source_object_id != self.proposed_version_object_id:
+            raise ValueError("proposed source object must be the proposed kb.article_version object")
+        if self.operation == KnowledgeBaseWriteOperation.EDIT and self.expected_current_version_object_id is None:
+            raise ValueError("edit dry-run requires expected_current_version_object_id")
+        if self.operation == KnowledgeBaseWriteOperation.CREATE and self.expected_current_version_object_id is not None:
+            raise ValueError("create dry-run must not include expected_current_version_object_id")
+        return self
+
+
+class KnowledgeBaseWriteDryRunResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    feature_id: str = KB_ARTICLES_WRITE_FEATURE_ID
+    operation: KnowledgeBaseWriteOperation
+    article_object_id: str
+    proposed_version_object_id: str
+    proposed_source_object_id: str
+    proposed_source_version_id: str
+    dry_run: bool = True
+    persistence_allowed: bool = False
+    rag_indexing_allowed: bool = False
+    source_authority_verified: bool = False
+    approval_reference: str
+    command_hash: str
+    proposed_source_version_evidence_hash: str
+    current_restore_evidence_hash: str
+    required_evidence: tuple[str, ...] = KB_WRITE_DRY_RUN_REQUIRED_EVIDENCE
+    audit_event_id: str
+
+
 class KnowledgeBaseArticleRepository(Protocol):
     def list_articles(self, *, tenant_id: str) -> Sequence[KnowledgeBaseArticleRecord]:
         pass
@@ -557,6 +693,74 @@ class KnowledgeBaseArticleService:
             audit_event_id=event.event_id,
         )
 
+    def dry_run_write_approval(
+        self,
+        *,
+        command: KnowledgeBaseWriteApprovalCommand,
+        user_context: UserContext,
+    ) -> KnowledgeBaseWriteDryRunResponse:
+        records = sorted(
+            self.repository.list_articles(tenant_id=user_context.tenant_id),
+            key=lambda record: (record.title.lower(), record.object_id),
+        )
+        records_by_object_id = {record.object_id: record for record in records}
+        existing_article = records_by_object_id.get(command.article_object_id)
+        if command.operation == KnowledgeBaseWriteOperation.EDIT:
+            if existing_article is None:
+                raise LookupError(f"knowledge base article not found: {command.article_object_id}")
+            if existing_article.current_version_object_id != command.expected_current_version_object_id:
+                raise ValueError("expected current article version does not match")
+        if command.operation == KnowledgeBaseWriteOperation.CREATE and existing_article is not None:
+            raise ValueError("create dry-run cannot target an existing knowledge base article")
+
+        source_evidences = [self.source_version_evidence(record) for record in records]
+        restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=user_context.tenant_id,
+            articles=records,
+            source_evidences=source_evidences,
+            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+        proposed_evidence = build_proposed_source_version_evidence(
+            tenant_id=user_context.tenant_id,
+            command=command,
+        )
+        command_hash = build_write_approval_command_hash(command)
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.write_approval.dry_run",
+            source_object_ids=knowledge_base_write_target_object_ids(command, existing_article),
+            input_text=canonical_json(command.model_dump(mode="json")),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
+                "surface": "compliance_api",
+                "operation": command.operation,
+                "dry_run": True,
+                "persistence_allowed": False,
+                "rag_indexing_allowed": False,
+                "source_authority_verified": False,
+                "approval_reference": command.approval_reference,
+                "command_hash": command_hash,
+                "proposed_source_version_evidence_hash": proposed_evidence.evidence_hash,
+                "current_restore_evidence_hash": restore_evidence.evidence_hash,
+                "required_evidence": list(KB_WRITE_DRY_RUN_REQUIRED_EVIDENCE),
+            },
+        )
+        return KnowledgeBaseWriteDryRunResponse(
+            tenant_id=user_context.tenant_id,
+            operation=command.operation,
+            article_object_id=command.article_object_id,
+            proposed_version_object_id=command.proposed_version_object_id,
+            proposed_source_object_id=command.proposed_source_object_id,
+            proposed_source_version_id=command.proposed_source_version_id,
+            approval_reference=command.approval_reference,
+            command_hash=command_hash,
+            proposed_source_version_evidence_hash=proposed_evidence.evidence_hash,
+            current_restore_evidence_hash=restore_evidence.evidence_hash,
+            audit_event_id=event.event_id,
+        )
+
     def source_version_evidence(self, record: KnowledgeBaseArticleRecord) -> KnowledgeBaseSourceVersionEvidence:
         source_record = self.source_repository.get(
             tenant_id=record.tenant_id,
@@ -567,7 +771,7 @@ class KnowledgeBaseArticleService:
 
 
 def default_knowledge_base_enabled_features() -> dict[str, bool]:
-    return {KB_ARTICLES_FEATURE_ID: True}
+    return {KB_ARTICLES_FEATURE_ID: True, KB_ARTICLES_WRITE_FEATURE_ID: False}
 
 
 def build_knowledge_base_source_version_evidence(
@@ -645,6 +849,53 @@ def build_source_version_evidence_stub(article: KnowledgeBaseArticleRecord) -> K
 
 def build_source_version_evidence_hash(evidence: KnowledgeBaseSourceVersionEvidence) -> str:
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_proposed_source_version_evidence(
+    *,
+    tenant_id: str,
+    command: KnowledgeBaseWriteApprovalCommand,
+) -> KnowledgeBaseSourceVersionEvidence:
+    draft = KnowledgeBaseSourceVersionEvidence(
+        tenant_id=tenant_id,
+        article_object_id=command.article_object_id,
+        article_version_object_id=command.proposed_version_object_id,
+        source_object_id=command.proposed_source_object_id,
+        source_version_id=command.proposed_source_version_id,
+        source_object_type=command.proposed_source_object_type,
+        source_manifest_hash=command.proposed_source_manifest_hash,
+        content_hash=command.proposed_content_hash,
+        acl_version=command.proposed_acl_version,
+        data_classification=command.data_classification,
+        retention_policy_id=command.retention_policy_id,
+        legal_hold_state=command.legal_hold_state,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_source_version_evidence_hash(draft)})
+
+
+def build_write_approval_command_hash(command: KnowledgeBaseWriteApprovalCommand) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def knowledge_base_write_target_object_ids(
+    command: KnowledgeBaseWriteApprovalCommand,
+    existing_article: KnowledgeBaseArticleRecord | None,
+) -> list[str]:
+    object_ids = [
+        command.article_object_id,
+        command.expected_current_version_object_id,
+        existing_article.current_source_object_id if existing_article is not None else None,
+        command.proposed_version_object_id,
+        command.proposed_source_object_id,
+    ]
+    target_object_ids: list[str] = []
+    seen: set[str] = set()
+    for object_id in object_ids:
+        if object_id is not None and object_id not in seen:
+            target_object_ids.append(object_id)
+            seen.add(object_id)
+    return target_object_ids
 
 
 def build_knowledge_base_restore_evidence(

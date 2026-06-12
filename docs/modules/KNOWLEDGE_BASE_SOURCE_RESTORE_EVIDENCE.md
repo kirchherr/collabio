@@ -60,6 +60,8 @@ Restore evidence must cover every returned article version. Missing source evide
 
 `GET /v1/admin/kb/evidence` may return source-version evidence records and restore evidence only after tenant context, tenant-admin role validation, and the compliance module gate pass. It is metadata-only and remains available while normal Knowledge Base use is disabled or suspended so retention, Legal Hold, restore, export, and decommission checks can continue.
 
+`POST /v1/admin/kb/articles/write-dry-run` may validate a create/edit approval command and audit its command hash. It is an audit-only dry-run. It must not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state.
+
 Future write/edit, search indexing, embedding, RAG, export, and AI-assist work must not bypass this boundary. RAG must still use candidate-only search, authoritative ACL validation, source object IDs, source versions, Local LLM Gateway enforcement, and metadata-only audit.
 
 ## Persistence
