@@ -49,6 +49,13 @@ from suite.platform.context import (
     build_default_principal_resolver,
     require_dev_header_auth_allowed,
 )
+from suite.platform.crm_accounts import (
+    CRM_ACCOUNTS_FEATURE_ID,
+    CRM_ERP_MODULE_ID,
+    CrmAccountService,
+    CrmAccountsResponse,
+    InMemoryCrmAccountRepository,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -290,6 +297,10 @@ def build_app() -> FastAPI:
     keyword_search_service = KeywordSearchService(
         index=InMemoryKeywordIndex.demo(),
         acl_authorizer=acl_authorizer,
+        audit_logger=audit_logger,
+    )
+    crm_account_service = CrmAccountService(
+        repository=InMemoryCrmAccountRepository.demo(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1027,6 +1038,19 @@ def build_app() -> FastAPI:
         keyword_service = cast(KeywordSearchService, request.app.state.keyword_search_service)
         return keyword_service.search(query=query, user_context=context.user_context)
 
+    @app.get("/v1/crm/accounts", response_model=CrmAccountsResponse)
+    def list_crm_accounts(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACCOUNTS_FEATURE_ID)),
+        ],
+    ) -> CrmAccountsResponse:
+        del gate
+        crm_accounts = cast(CrmAccountService, request.app.state.crm_account_service)
+        return crm_accounts.list_accounts(user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1043,6 +1067,7 @@ def build_app() -> FastAPI:
 
     app.state.audit_logger = audit_logger
     app.state.authz_admin_store = authz_admin_store
+    app.state.crm_account_service = crm_account_service
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

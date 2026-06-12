@@ -161,6 +161,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="crm_erp",
         evidence_refs=("doc:crm-erp-object-rules", "test:crm-erp-schema-scaffold"),
     ),
+    SqlMigration(
+        version="0017",
+        name="crm_accounts",
+        resource_name="0017_crm_accounts.sql",
+        module_id="crm_erp",
+        evidence_refs=("doc:crm-accounts-vertical-slice", "test:crm-accounts-slice"),
+    ),
 )
 
 

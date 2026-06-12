@@ -128,7 +128,7 @@ legacy.row
 
 Every object must carry the persistent object metadata required by `docs/ROADMAP.md` and `DATA_CLASSIFICATION.md`.
 
-The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before persistent business tables are introduced.
+The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. Migration `0017_crm_accounts.sql` creates the first RLS-protected business table, `crm.accounts`, for `crm.account`. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before broader business tables are introduced.
 
 ## 6. Data Classification And Retention
 
@@ -275,6 +275,17 @@ module registry
   -> prove API and UI are blocked
   -> prove compliance/admin lifecycle view still works
   -> prove backup/restore keeps module state
+```
+
+Current implemented base:
+
+```text
+module registry
+  -> provision and enable crm_erp for tenant
+  -> persist crm.accounts schema with object metadata and RLS
+  -> expose gated GET /v1/crm/accounts
+  -> prove disabled module blocks normal account API
+  -> audit metadata-only account reads
 ```
 
 ## 13. Explicit Non-Goals For The First Slice

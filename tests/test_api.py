@@ -31,6 +31,10 @@ DEMO_SECURITY_ADMIN_HEADERS = {
     **DEMO_HEADERS,
     "X-Role-Ids": "security-admin",
 }
+DEMO_CRM_ACCOUNT_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": "doc-1,mail-1,crm-account-acme-demo,crm-account-northwind-demo",
+}
 DECOMMISSION_REQUEST_PAYLOAD = {
     "approval_reference": "approval:module-decommission-request",
     "reason": "tenant requests controlled module decommission",
@@ -100,6 +104,26 @@ def base64url_bytes(payload: bytes) -> str:
 
 def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
+
+
+def provision_and_enable_crm_accounts_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare CRM accounts"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate CRM accounts",
+            "enabled_features": {"crm_erp.crm.accounts": True},
+        },
+    )
+    assert enable_response.status_code == 200
 
 
 def build_module_gate_probe_app(module_registry: InMemoryModuleRegistry) -> FastAPI:
@@ -281,6 +305,45 @@ def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_r
     assert compliance_body["compliance_access_allowed"] is True
 
 
+def test_crm_accounts_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    response = client.get("/v1/crm/accounts", headers=DEMO_CRM_ACCOUNT_HEADERS)
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_crm_accounts_endpoint_returns_tenant_scoped_accounts_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_accounts_for_demo()
+
+    response = client.get("/v1/crm/accounts", headers=DEMO_CRM_ACCOUNT_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.crm.accounts"
+    assert body["audit_event_id"]
+    assert [account["display_name"] for account in body["accounts"]] == ["Acme Demo GmbH", "Northwind Demo AG"]
+    assert {account["object_type"] for account in body["accounts"]} == {"crm.account"}
+    assert {account["data_classification"] for account in body["accounts"]} == {"personal"}
+    assert {account["retention_policy_id"] for account in body["accounts"]} == {"rp-standard"}
+    assert all(account["access_checked"] for account in body["accounts"])
+    assert "Other Tenant AG" not in {account["display_name"] for account in body["accounts"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "crm.account.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:
     reset_module_registry()
 
@@ -322,6 +385,7 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
         "0010",
         "0011",
         "0016",
+        "0017",
     ]
 
     enable_response = client.post(

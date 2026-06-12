@@ -7,9 +7,9 @@ This document defines the canonical planning contract for CRM/ERP schemas and bu
 Implementation:
 
 - Code: `app/suite/platform/crm_erp_object_rules.py`
-- Migration: `app/suite/persistence/migrations/0016_crm_erp_schema_scaffold.sql`
-- Tests: `tests/test_crm_erp_object_rules.py`
-- Cross-checks: `tests/test_crm_erp_subfeatures.py`
+- Migrations: `app/suite/persistence/migrations/0016_crm_erp_schema_scaffold.sql`, `app/suite/persistence/migrations/0017_crm_accounts.sql`
+- Tests: `tests/test_crm_erp_object_rules.py`, `tests/test_crm_accounts.py`
+- Cross-checks: `tests/test_crm_erp_subfeatures.py`, `tests/test_api.py`
 
 ## Planned Schemas
 
@@ -28,6 +28,12 @@ The `0016` migration creates the four schemas and the first tenant-scoped scaffo
 - `crm_erp.object_type_rules`
 
 These tables are manifest/evidence anchors, not business-data tables. They are RLS-protected, append-only by policy, and do not store source text, raw legacy payloads, prompts, snippets, or generated answers.
+
+The `0017` migration creates the first persistent business table:
+
+- `crm.accounts`
+
+`crm.accounts` implements the `crm.account` object-rule contract for the gated `/v1/crm/accounts` read slice. Rows include tenant, object, owner, source, classification, retention, Legal Hold, lifecycle, KMS, audit, and schema-version metadata, are protected by RLS, and have no hard-delete grant.
 
 ## Required Object Metadata
 
