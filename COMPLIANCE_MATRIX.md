@@ -9,8 +9,8 @@ This matrix maps external requirements and internal controls to product capabili
 
 | Control ID | Area | Requirement | Product control | Evidence target | Status |
 | --- | --- | --- | --- | --- | --- |
-| CM-001 | Tenancy | Tenant data must be isolated | Tenant context, authz, DB RLS, tenant-scoped storage/indexes | Tenant isolation tests | planned |
-| CM-002 | Authorization | UI checks are insufficient | Server-side policy engine | Authz test suite | planned |
+| CM-001 | Tenancy | Tenant data must be isolated | Tenant context, authz, DB RLS, tenant-scoped storage/indexes | `tests/test_principal_store.py`, `tests/test_authz_admin_store.py` | partial |
+| CM-002 | Authorization | UI checks are insufficient | Server-side policy engine, PostgreSQL Principal Directory, audited authz admin APIs | `tests/test_principal_store.py`, `tests/test_authz_admin_store.py`, `tests/test_api.py` | partial |
 | CM-003 | Data classification | Persistent data must be classified | Canonical DataClass registry plus runtime, KMS, retention, DB, and registry drift tests | `tests/test_data_class_registry.py` | partial |
 | CM-004 | Retention | Records need retention policy | Retention policy engine | Retention simulation | planned |
 | CM-005 | Legal Hold | Holds override lifecycle deletion | Legal hold service and storage lock | Hold-aware deletion tests | planned |

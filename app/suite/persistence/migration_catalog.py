@@ -147,6 +147,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("adr:audit-persistence", "test:audit-event-store"),
     ),
+    SqlMigration(
+        version="0015",
+        name="authz_admin_runtime_role",
+        resource_name="0015_authz_admin_runtime_role.sql",
+        module_id="core",
+        evidence_refs=("doc:auth-context", "test:authz-admin-store"),
+    ),
 )
 
 

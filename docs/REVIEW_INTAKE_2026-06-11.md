@@ -19,17 +19,18 @@ The most important lesson is also correct: the next work must harden the foundat
 - Data classes now have a canonical runtime registry with drift tests covering runtime enum, retention, KMS, pgvector DB constraints, prompt/model registries, and classification docs.
 - Audit events now have a PostgreSQL/RLS-backed append-only runtime store with an isolated audit-writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 - RAG context now uses an Authorized ChunkRepository that validates tenant, ACL, and candidate/chunk metadata before exact chunks enter prompts.
+- Authz administration now has security-admin-only APIs with approval-reference validation, audit events, a dedicated PostgreSQL admin role, and tenant-scoped replay-retention cleanup.
 - RAG inference data classes are now derived from the actual authorized source classifications and include `ai_prompt` for the user question.
 - Local dev KMS and local dev envelope encryption now fail closed in production environments.
 - Tests cover the above regressions.
 
 ## Remaining P0 Gates
 
-1. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
+The review-driven P0 foundation gates are closed for the current skeleton. Do not treat this as production readiness; it means the next work can move from immediate foundation blockers to hardening and product-facing slices.
 
 ## Release Gate
 
-Until the remaining P0 gates are closed, do not attach real customer data, production mailboxes, production CRM/ERP imports, external LLM providers, destructive automation, or productive RAG over sensitive data.
+Until production hardening gates are closed, do not attach real customer data, production mailboxes, production CRM/ERP imports, external LLM providers, destructive automation, or productive RAG over sensitive data.
 
 Allowed work in the meantime:
 

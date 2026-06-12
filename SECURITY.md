@@ -25,6 +25,7 @@ Current skeleton guarantees:
 - Dev header tenant context is disabled outside `SUITE_AUTH_MODE=dev` and in production environments.
 - `jwt` and `oidc` auth modes resolve the request context from signed bearer tokens and server-side membership/ACL state.
 - Principal, tenant membership, role, group, object ACL, and ABAC stores have a PostgreSQL/RLS-backed runtime option with read-only app-role access and audit-chain references.
+- Authz administration has security-admin-only APIs, approval-reference validation, audit events, and a dedicated PostgreSQL admin role for principal, role, group, ACL, ABAC, and replay-retention mutations.
 - OIDC verification supports RS256 JWKS, key refresh, IdP outage policy, and replay detection.
 - JWT/OIDC replay state has a PostgreSQL/RLS-backed runtime option with tenant-aware append-only replay events and no token-body storage.
 - Audit events have a PostgreSQL/RLS-backed append-only runtime store with an isolated audit-writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
@@ -34,7 +35,7 @@ Current skeleton guarantees:
 
 Not yet production-ready:
 
-- Production authz administration flows for the PostgreSQL principal store.
+- Four-eyes approval workflow integration for authz administration.
 - Production KMS-backed audit checkpoint signing and automated WORM object writes.
 - KMS integration.
 - WORM storage enforcement.

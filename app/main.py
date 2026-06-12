@@ -1,6 +1,6 @@
 import os
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 
@@ -26,6 +26,21 @@ from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.admin_models import TenantAiPolicyUpdate
+from suite.platform.authz_admin import (
+    AbacPolicyBindingUpsertCommand,
+    AuthzAdminStore,
+    AuthzMutationView,
+    GroupUpsertCommand,
+    JwtReplayRetentionPurgeCommand,
+    JwtReplayRetentionPurgeView,
+    ObjectAclEntryUpsertCommand,
+    PrincipalGroupMembershipUpsertCommand,
+    PrincipalMembershipUpsertCommand,
+    PrincipalRoleAssignmentUpsertCommand,
+    PrincipalUpsertCommand,
+    RoleUpsertCommand,
+    build_default_authz_admin_store,
+)
 from suite.platform.context import (
     DevHeaderAuthError,
     JwtAuthenticationError,
@@ -276,6 +291,7 @@ def build_app() -> FastAPI:
     )
     module_registry = default_module_registry()
     migration_manifest = load_migration_manifest()
+    authz_admin_store = build_default_authz_admin_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -296,6 +312,35 @@ def build_app() -> FastAPI:
 
     def tenant_policy_snapshot_hash(policy: TenantPolicy) -> str:
         return stable_hash(canonical_json(policy.model_dump(mode="json")))
+
+    def authz_admin_audit_ref(
+        *,
+        event_type: str,
+        resource_type: str,
+        resource_id: str,
+        approval_reference: str,
+        reason: str,
+        context: TenantRequestContext,
+        metadata: dict[str, object] | None = None,
+    ) -> str:
+        audit_metadata: dict[str, object] = {
+            "approval_reference": approval_reference,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+        }
+        if metadata is not None:
+            audit_metadata.update(metadata)
+        event = audit_logger.record(
+            user_context=context.user_context,
+            event_type=event_type,
+            source_object_ids=[f"authz:{resource_type}:{resource_id}"],
+            input_text=reason,
+            metadata=audit_metadata,
+        )
+        return f"audit:{event.event_id}"
+
+    def authz_admin_store_from_request(request: Request) -> AuthzAdminStore:
+        return cast(AuthzAdminStore, request.app.state.authz_admin_store)
 
     def module_audit_ref(
         *,
@@ -657,6 +702,225 @@ def build_app() -> FastAPI:
         )
         return persisted_policy
 
+    @app.post("/v1/admin/authz/principals", response_model=AuthzMutationView)
+    def upsert_authz_principal(
+        command: PrincipalUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        resource_id = f"{command.issuer}:{command.subject}"
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.principal.upsert",
+            resource_type="tenant_principal",
+            resource_id=resource_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status, "user_id": command.user_id},
+        )
+        return store.upsert_principal(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/memberships", response_model=AuthzMutationView)
+    def upsert_authz_membership(
+        command: PrincipalMembershipUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        resource_id = f"{command.issuer}:{command.subject}"
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.membership.upsert",
+            resource_type="tenant_principal_membership",
+            resource_id=resource_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status},
+        )
+        return store.upsert_membership(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/roles", response_model=AuthzMutationView)
+    def upsert_authz_role(
+        command: RoleUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.role.upsert",
+            resource_type="tenant_role",
+            resource_id=command.role_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status, "system_role": command.system_role},
+        )
+        return store.upsert_role(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/groups", response_model=AuthzMutationView)
+    def upsert_authz_group(
+        command: GroupUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.group.upsert",
+            resource_type="tenant_group",
+            resource_id=command.group_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status},
+        )
+        return store.upsert_group(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/role-assignments", response_model=AuthzMutationView)
+    def upsert_authz_role_assignment(
+        command: PrincipalRoleAssignmentUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        resource_id = f"{command.issuer}:{command.subject}:{command.role_id}"
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.role_assignment.upsert",
+            resource_type="tenant_principal_role_assignment",
+            resource_id=resource_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status, "role_id": command.role_id},
+        )
+        return store.upsert_role_assignment(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/group-memberships", response_model=AuthzMutationView)
+    def upsert_authz_group_membership(
+        command: PrincipalGroupMembershipUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        resource_id = f"{command.issuer}:{command.subject}:{command.group_id}"
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.group_membership.upsert",
+            resource_type="tenant_principal_group_membership",
+            resource_id=resource_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"status": command.status, "group_id": command.group_id},
+        )
+        return store.upsert_group_membership(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/object-acl-entries", response_model=AuthzMutationView)
+    def upsert_authz_object_acl_entry(
+        command: ObjectAclEntryUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        resource_id = (
+            f"{command.object_type}:{command.object_id}:"
+            f"{command.acl_subject_type}:{command.acl_subject_id}:{command.permission}:{command.acl_version}"
+        )
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.object_acl.upsert",
+            resource_type="object_acl_entry",
+            resource_id=resource_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={
+                "status": command.status,
+                "object_type": command.object_type,
+                "acl_subject_type": command.acl_subject_type,
+                "permission": command.permission,
+                "acl_version": command.acl_version,
+            },
+        )
+        return store.upsert_object_acl_entry(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/abac-policy-bindings", response_model=AuthzMutationView)
+    def upsert_authz_abac_policy_binding(
+        command: AbacPolicyBindingUpsertCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> AuthzMutationView:
+        store = authz_admin_store_from_request(request)
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.abac_policy_binding.upsert",
+            resource_type="abac_policy_binding",
+            resource_id=command.policy_id,
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={
+                "status": command.status,
+                "effect": command.effect,
+                "priority": command.priority,
+                "principal_selector_keys": sorted(command.principal_selector),
+                "resource_selector_keys": sorted(command.resource_selector),
+                "condition_keys": sorted(command.condition),
+            },
+        )
+        return store.upsert_abac_policy_binding(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
+    @app.post("/v1/admin/authz/jwt-replay-retention/purge", response_model=JwtReplayRetentionPurgeView)
+    def purge_authz_jwt_replay_retention(
+        command: JwtReplayRetentionPurgeCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> JwtReplayRetentionPurgeView:
+        store = authz_admin_store_from_request(request)
+        audit_ref = authz_admin_audit_ref(
+            event_type="authz.jwt_replay_retention.purge",
+            resource_type="jwt_replay_tokens",
+            resource_id=f"expires_before:{command.expires_before_epoch}",
+            approval_reference=command.approval_reference,
+            reason=command.reason,
+            context=context,
+            metadata={"expires_before_epoch": command.expires_before_epoch},
+        )
+        return store.purge_expired_jwt_replay_tokens(
+            tenant_id=context.user_context.tenant_id,
+            command=command,
+            audit_chain_ref=audit_ref,
+        )
+
     @app.get("/v1/admin/embedding-models", response_model=list[EmbeddingModelVersionView])
     def list_embedding_model_versions(
         context: Annotated[TenantRequestContext, Depends(require_security_admin)],
@@ -761,6 +1025,7 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     app.state.audit_logger = audit_logger
+    app.state.authz_admin_store = authz_admin_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

@@ -639,6 +639,170 @@ def test_embedding_model_admin_requires_security_admin_role() -> None:
     assert response.json()["detail"] == "Security admin role required"
 
 
+def test_authz_admin_mutations_require_security_admin_role_and_approval_reference() -> None:
+    non_security_response = client.post(
+        "/v1/admin/authz/roles",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "role_id": "auditor",
+            "display_name": "Auditor",
+            "approval_reference": "approval:authz-role",
+            "reason": "create role",
+        },
+    )
+    assert non_security_response.status_code == 403
+    assert non_security_response.json()["detail"] == "Security admin role required"
+
+    missing_approval_response = client.post(
+        "/v1/admin/authz/roles",
+        headers=DEMO_SECURITY_ADMIN_HEADERS,
+        json={"role_id": "auditor", "display_name": "Auditor", "reason": "create role"},
+    )
+    assert missing_approval_response.status_code == 422
+
+
+def test_security_admin_can_mutate_authz_store_and_replay_retention_with_audit() -> None:
+    suffix = uuid4().hex
+    subject = f"authz-subject-{suffix}"
+    role_id = f"authz-role-{suffix}"
+    group_id = f"authz-group-{suffix}"
+    object_id = f"authz-doc-{suffix}"
+    policy_id = f"authz-policy-{suffix}"
+    starting_event_count = len(app.state.audit_logger.events)
+
+    requests = [
+        (
+            "/v1/admin/authz/principals",
+            {
+                "issuer": DEFAULT_JWT_ISSUER,
+                "subject": subject,
+                "user_id": f"authz-user-{suffix}",
+                "display_name": "Authz User",
+                "approval_reference": "approval:authz-principal",
+                "reason": "register authz principal",
+            },
+            "tenant_principal",
+        ),
+        (
+            "/v1/admin/authz/memberships",
+            {
+                "issuer": DEFAULT_JWT_ISSUER,
+                "subject": subject,
+                "approval_reference": "approval:authz-membership",
+                "reason": "activate tenant membership",
+            },
+            "tenant_principal_membership",
+        ),
+        (
+            "/v1/admin/authz/roles",
+            {
+                "role_id": role_id,
+                "display_name": "Authz Role",
+                "approval_reference": "approval:authz-role",
+                "reason": "create role",
+            },
+            "tenant_role",
+        ),
+        (
+            "/v1/admin/authz/groups",
+            {
+                "group_id": group_id,
+                "display_name": "Authz Group",
+                "approval_reference": "approval:authz-group",
+                "reason": "create group",
+            },
+            "tenant_group",
+        ),
+        (
+            "/v1/admin/authz/role-assignments",
+            {
+                "issuer": DEFAULT_JWT_ISSUER,
+                "subject": subject,
+                "role_id": role_id,
+                "approval_reference": "approval:authz-role-assignment",
+                "reason": "assign role",
+            },
+            "tenant_principal_role_assignment",
+        ),
+        (
+            "/v1/admin/authz/group-memberships",
+            {
+                "issuer": DEFAULT_JWT_ISSUER,
+                "subject": subject,
+                "group_id": group_id,
+                "approval_reference": "approval:authz-group-membership",
+                "reason": "assign group",
+            },
+            "tenant_principal_group_membership",
+        ),
+        (
+            "/v1/admin/authz/object-acl-entries",
+            {
+                "object_id": object_id,
+                "object_type": "document",
+                "acl_subject_type": "group",
+                "acl_subject_id": group_id,
+                "permission": "read",
+                "acl_version": 1,
+                "approval_reference": "approval:authz-acl",
+                "reason": "grant read access",
+            },
+            "object_acl_entry",
+        ),
+        (
+            "/v1/admin/authz/abac-policy-bindings",
+            {
+                "policy_id": policy_id,
+                "effect": "allow",
+                "principal_selector": {"roles": [role_id]},
+                "resource_selector": {"object_type": "document"},
+                "condition": {"classification": {"not_in": ["confidential"]}},
+                "priority": 10,
+                "approval_reference": "approval:authz-abac",
+                "reason": "bind ABAC policy",
+            },
+            "abac_policy_binding",
+        ),
+    ]
+
+    for path, payload, resource_type in requests:
+        response = client.post(path, headers=DEMO_SECURITY_ADMIN_HEADERS, json=payload)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["tenant_id"] == "tenant-demo"
+        assert body["resource_type"] == resource_type
+        assert body["audit_chain_ref"].startswith("audit:")
+
+    purge_response = client.post(
+        "/v1/admin/authz/jwt-replay-retention/purge",
+        headers=DEMO_SECURITY_ADMIN_HEADERS,
+        json={
+            "expires_before_epoch": 2_000,
+            "approval_reference": "approval:authz-jwt-retention",
+            "reason": "purge expired replay tokens",
+        },
+    )
+    assert purge_response.status_code == 200
+    purge_body = purge_response.json()
+    assert purge_body["tenant_id"] == "tenant-demo"
+    assert purge_body["audit_chain_ref"].startswith("audit:")
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-9:]] == [
+        "authz.principal.upsert",
+        "authz.membership.upsert",
+        "authz.role.upsert",
+        "authz.group.upsert",
+        "authz.role_assignment.upsert",
+        "authz.group_membership.upsert",
+        "authz.object_acl.upsert",
+        "authz.abac_policy_binding.upsert",
+        "authz.jwt_replay_retention.purge",
+    ]
+    assert all(event.input_hash is not None and event.output_hash is None for event in new_events[-9:])
+    assert all("reason" not in event.metadata for event in new_events[-9:])
+
+
 def test_admin_tenant_policy_rejects_unknown_allowed_model() -> None:
     response = client.patch(
         "/v1/admin/tenant-policy/ai-settings",

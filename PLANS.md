@@ -70,13 +70,14 @@ Current sprint:
 60. [x] Canonical DataClass registry with runtime, retention, KMS, DB constraint, prompt/model registry, and docs drift tests.
 61. [x] PostgreSQL/RLS-backed append-only audit store with isolated writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
 62. [x] Authorized ChunkRepository retrieval for RAG so prompts receive exact authorized chunks instead of whole source documents.
+63. [x] Audited authz administration APIs with a dedicated PostgreSQL admin role for principal, role, group, ACL, ABAC, and replay-retention mutations.
 
 ## Next Engineering Step
 
-After review intake, close the remaining P0 foundation gates before attaching real data or expanding product surface:
+After review intake, the immediate P0 foundation blockers are closed for the current skeleton. Next, resume the first product-facing platform slices without skipping hardening:
 
-- Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay-retention mutations.
-- Then resume keyword indexer, hybrid search, and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
+- Implement the Keyword Indexer Boundary with candidate-only results and Search Audit Events.
+- Then resume hybrid search and CRM/ERP schemas and object rules for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
 
 ## Module Expansion Stance
 

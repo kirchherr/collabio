@@ -96,4 +96,20 @@ The store is tenant-scoped and protected by PostgreSQL RLS:
 - `object_acl_entries`
 - `abac_policy_bindings`
 
-Every row carries `tenant_id`, `audit_chain_ref`, and `schema_version`. The normal `collabio_app` role receives read access only; future authz administration must write through explicit audit and approval paths.
+Every row carries `tenant_id`, `audit_chain_ref`, and `schema_version`. The normal `collabio_app` role receives read access only; authz administration writes through explicit audit and approval paths.
+
+`SUITE_AUTHZ_ADMIN_STORE_BACKEND=postgres` enables the PostgreSQL-backed authorization administration store. It uses the dedicated `collabio_authz_admin` role through `SUITE_AUTHZ_ADMIN_DATABASE_DSN`.
+
+Authorization administration APIs are security-admin-only and require an approval reference plus a reason. They write an audit event before mutating:
+
+- tenant principals
+- tenant principal memberships
+- tenant roles
+- tenant groups
+- principal role assignments
+- principal group memberships
+- object ACL entries
+- ABAC policy bindings
+- expired JWT replay tokens for retention cleanup
+
+The normal `collabio_app` role remains read-only for principal, role, group, ACL, and ABAC stores. Replay token retention cleanup is tenant-scoped and can delete only tokens whose expiry is at or before the explicitly supplied retention epoch.

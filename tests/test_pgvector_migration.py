@@ -46,6 +46,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0012",
         "0013",
         "0014",
+        "0015",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -414,6 +415,32 @@ def test_audit_event_store_migration_declares_append_only_roles_and_evidence_tab
     assert "output_text" not in audit_events_body
     assert "transcript_text" not in audit_events_body
     assert "token_body" not in audit_events_body
+
+
+def test_authz_admin_runtime_role_migration_declares_admin_write_boundary() -> None:
+    sql = normalized(get_migration("0015").sql())
+
+    assert "create role collabio_authz_admin login password" in sql
+    for table in [
+        "tenant_principals",
+        "tenant_principal_memberships",
+        "tenant_roles",
+        "tenant_groups",
+        "tenant_principal_role_assignments",
+        "tenant_principal_group_memberships",
+        "object_acl_entries",
+        "abac_policy_bindings",
+    ]:
+        assert f"grant select, insert, update on table collabio.{table} to collabio_authz_admin" in sql
+        assert f"grant select, insert, update on table collabio.{table} to collabio_app" not in sql
+
+    assert "create policy jwt_replay_tokens_retention_delete" in sql
+    assert "to collabio_authz_admin" in sql
+    assert "expires_at_epoch <= coalesce" in sql
+    assert "current_setting('app.retention_now_epoch', true)" in sql
+    assert "grant select, delete on table collabio.jwt_replay_tokens to collabio_authz_admin" in sql
+    assert "grant delete on table collabio.jwt_replay_tokens to collabio_app" not in sql
+    assert "grant delete on table collabio.jwt_replay_events" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:
