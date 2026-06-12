@@ -19,6 +19,8 @@ from suite.storage.source_objects import (
     SourceObjectRecord,
     SourceObjectRepository,
     SourceObjectType,
+    SourceObjectWriteDeniedError,
+    SourceObjectWriteGuard,
     build_source_object_manifest_hash,
     sha256_bytes,
     source_object_content_bytes,
@@ -41,6 +43,15 @@ KB_WRITE_DRY_RUN_REQUIRED_EVIDENCE = (
     "source_version_evidence_persisted",
     "restore_evidence_refreshed",
     "audit_event_hash",
+)
+KB_SOURCE_OBJECT_WRITE_GUARD_REQUIRED_EVIDENCE = (
+    "approved_write_approval_ledger_entry",
+    "expected_current_version_match",
+    "source_object_metadata_guard",
+    "proposed_source_version_evidence_hash",
+    "current_restore_evidence_hash",
+    "retention_policy_evaluation",
+    "legal_hold_evaluation",
 )
 
 
@@ -553,6 +564,83 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
         return self
 
 
+class KnowledgeBaseSourceObjectWriteGuardDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    source_object_write_guard_ref: str
+    allowed: bool
+    blocking_reasons: tuple[str, ...]
+    write_approval_evidence_hash: str
+    approval_state: KnowledgeBaseWriteApprovalState
+    operation: KnowledgeBaseWriteOperation
+    article_object_id: str
+    expected_current_version_object_id: str | None = None
+    proposed_source_object_id: str
+    proposed_source_version_id: str
+    proposed_source_version_evidence_hash: str
+    current_restore_evidence_hash: str
+    persistence_allowed: bool
+    rag_indexing_allowed: bool
+    source_authority_verified: bool
+    required_evidence: tuple[str, ...] = KB_SOURCE_OBJECT_WRITE_GUARD_REQUIRED_EVIDENCE
+    schema_version: str = "knowledge_base_source_object_write_guard.v1"
+
+    @field_validator(
+        "tenant_id",
+        "article_object_id",
+        "proposed_source_object_id",
+        "proposed_source_version_id",
+    )
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base source-object write guard fields must not be empty")
+        return value
+
+    @field_validator("source_object_write_guard_ref")
+    @classmethod
+    def validate_guard_ref(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("source_object_write_guard_ref must be namespaced")
+        return value
+
+    @field_validator(
+        "write_approval_evidence_hash",
+        "proposed_source_version_evidence_hash",
+        "current_restore_evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base source-object write guard hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def validate_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("blocking_reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("blocking_reasons must not contain empty values")
+        return value
+
+    @model_validator(mode="after")
+    def require_decision_alignment(self) -> KnowledgeBaseSourceObjectWriteGuardDecision:
+        if self.allowed and self.blocking_reasons:
+            raise ValueError("allowed source-object writes must not carry blocking reasons")
+        if not self.allowed and not self.blocking_reasons:
+            raise ValueError("blocked source-object writes require blocking reasons")
+        if not self.allowed and self.persistence_allowed:
+            raise ValueError("blocked source-object writes cannot allow persistence")
+        if not self.allowed and self.rag_indexing_allowed:
+            raise ValueError("blocked source-object writes cannot allow RAG indexing")
+        if self.source_authority_verified and not self.allowed:
+            raise ValueError("source authority is verified only for allowed write decisions")
+        return self
+
+
 class KnowledgeBaseArticleRepository(Protocol):
     def list_articles(self, *, tenant_id: str) -> Sequence[KnowledgeBaseArticleRecord]:
         pass
@@ -560,6 +648,9 @@ class KnowledgeBaseArticleRepository(Protocol):
 
 class KnowledgeBaseWriteApprovalLedger(Protocol):
     def append(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> KnowledgeBaseWriteApprovalEvidence:
+        pass
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> KnowledgeBaseWriteApprovalEvidence:
         pass
 
     def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
@@ -711,6 +802,12 @@ class InMemoryKnowledgeBaseWriteApprovalLedger:
         self._evidences[key] = evidence
         return evidence
 
+    def get(self, *, tenant_id: str, evidence_hash: str) -> KnowledgeBaseWriteApprovalEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("knowledge base write approval evidence not found") from exc
+
     def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
         return tuple(
             evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
@@ -794,6 +891,47 @@ class PgKnowledgeBaseWriteApprovalLedger:
             raise ValueError("knowledge base write approval evidence already exists") from exc
         return evidence
 
+    def get(self, *, tenant_id: str, evidence_hash: str) -> KnowledgeBaseWriteApprovalEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    approval_reference,
+                    operation,
+                    approval_state,
+                    article_object_id,
+                    expected_current_version_object_id,
+                    proposed_version_object_id,
+                    proposed_source_object_id,
+                    proposed_source_version_id,
+                    proposed_source_object_type,
+                    proposed_source_manifest_hash,
+                    proposed_content_hash,
+                    proposed_acl_version,
+                    command_hash,
+                    proposed_source_version_evidence_hash,
+                    current_restore_evidence_hash,
+                    source_object_write_guard_ref,
+                    requested_by,
+                    persistence_allowed,
+                    rag_indexing_allowed,
+                    source_authority_verified,
+                    audit_event_id,
+                    audit_chain_ref,
+                    evidence_hash,
+                    schema_version
+                FROM knowledge_base.write_approval_evidence
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("knowledge base write approval evidence not found")
+        return self._evidence_from_row(row)
+
     def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, tenant_id)
@@ -866,6 +1004,163 @@ class PgKnowledgeBaseWriteApprovalLedger:
         connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
 
 
+class KnowledgeBaseSourceObjectWriteGuard:
+    def __init__(self, *, source_object_write_guard: SourceObjectWriteGuard | None = None) -> None:
+        self.source_object_write_guard = source_object_write_guard or SourceObjectWriteGuard()
+
+    def evaluate(
+        self,
+        *,
+        tenant_id: str,
+        write_approval_evidence_hash: str,
+        write_approval_ledger: KnowledgeBaseWriteApprovalLedger,
+        current_article: KnowledgeBaseArticleRecord | None,
+        proposed_source_record: SourceObjectRecord,
+        current_restore_evidence: KnowledgeBaseRestoreEvidence,
+    ) -> KnowledgeBaseSourceObjectWriteGuardDecision:
+        evidence = write_approval_ledger.get(tenant_id=tenant_id, evidence_hash=write_approval_evidence_hash)
+        blocking_reasons: list[str] = []
+
+        if build_write_approval_evidence_hash(evidence) != evidence.evidence_hash:
+            blocking_reasons.append("write_approval_evidence_hash_invalid")
+        if evidence.approval_state != KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE:
+            blocking_reasons.append("approval_state_not_approved_for_write")
+        if not evidence.persistence_allowed:
+            blocking_reasons.append("persistence_not_allowed_by_approval_evidence")
+
+        self._evaluate_expected_version(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            current_article=current_article,
+            blocking_reasons=blocking_reasons,
+        )
+        self._evaluate_proposed_source(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            proposed_source_record=proposed_source_record,
+            blocking_reasons=blocking_reasons,
+        )
+        self._evaluate_restore_evidence(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            current_restore_evidence=current_restore_evidence,
+            blocking_reasons=blocking_reasons,
+        )
+
+        allowed = not blocking_reasons
+        draft = KnowledgeBaseSourceObjectWriteGuardDecision(
+            tenant_id=tenant_id,
+            source_object_write_guard_ref="guard:pending",
+            allowed=allowed,
+            blocking_reasons=tuple(blocking_reasons),
+            write_approval_evidence_hash=evidence.evidence_hash,
+            approval_state=evidence.approval_state,
+            operation=evidence.operation,
+            article_object_id=evidence.article_object_id,
+            expected_current_version_object_id=evidence.expected_current_version_object_id,
+            proposed_source_object_id=evidence.proposed_source_object_id,
+            proposed_source_version_id=evidence.proposed_source_version_id,
+            proposed_source_version_evidence_hash=evidence.proposed_source_version_evidence_hash,
+            current_restore_evidence_hash=evidence.current_restore_evidence_hash,
+            persistence_allowed=allowed and evidence.persistence_allowed,
+            rag_indexing_allowed=allowed and evidence.rag_indexing_allowed,
+            source_authority_verified=allowed,
+        )
+        return draft.model_copy(update={"source_object_write_guard_ref": build_source_object_write_guard_ref(draft)})
+
+    def _evaluate_expected_version(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        current_article: KnowledgeBaseArticleRecord | None,
+        blocking_reasons: list[str],
+    ) -> None:
+        if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
+            if current_article is not None:
+                blocking_reasons.append("create_target_already_exists")
+            return
+
+        if current_article is None:
+            blocking_reasons.append("current_article_missing")
+            return
+        if current_article.tenant_id != tenant_id:
+            blocking_reasons.append("current_article_tenant_mismatch")
+        if current_article.object_id != evidence.article_object_id:
+            blocking_reasons.append("current_article_object_mismatch")
+        if current_article.current_version_object_id != evidence.expected_current_version_object_id:
+            blocking_reasons.append("expected_current_version_mismatch")
+        if current_article.legal_hold_state == "active":
+            blocking_reasons.append("current_article_legal_hold_active")
+        if current_article.retention_policy_id != "rp-standard":
+            blocking_reasons.append("current_article_retention_policy_unsupported")
+
+    def _evaluate_proposed_source(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        proposed_source_record: SourceObjectRecord,
+        blocking_reasons: list[str],
+    ) -> None:
+        metadata = proposed_source_record.metadata
+        try:
+            self.source_object_write_guard.validate_before_write(proposed_source_record)
+        except SourceObjectWriteDeniedError as exc:
+            blocking_reasons.append(f"source_object_metadata_guard_failed:{exc}")
+
+        if metadata.tenant_id != tenant_id:
+            blocking_reasons.append("proposed_source_tenant_mismatch")
+        if metadata.object_id != evidence.proposed_source_object_id:
+            blocking_reasons.append("proposed_source_object_mismatch")
+        if metadata.version_id != evidence.proposed_source_version_id:
+            blocking_reasons.append("proposed_source_version_mismatch")
+        if metadata.object_type != evidence.proposed_source_object_type:
+            blocking_reasons.append("proposed_source_object_type_mismatch")
+        if metadata.manifest_hash != evidence.proposed_source_manifest_hash:
+            blocking_reasons.append("proposed_source_manifest_hash_mismatch")
+        if metadata.content_hash != evidence.proposed_content_hash:
+            blocking_reasons.append("proposed_source_content_hash_mismatch")
+        if metadata.acl_version != evidence.proposed_acl_version:
+            blocking_reasons.append("proposed_source_acl_version_mismatch")
+        if metadata.classification != DataClass.INTERNAL:
+            blocking_reasons.append("proposed_source_classification_not_internal")
+        if metadata.retention_policy_id != "rp-standard":
+            blocking_reasons.append("proposed_source_retention_policy_unsupported")
+        if metadata.legal_hold_state == LegalHoldState.ACTIVE:
+            blocking_reasons.append("proposed_source_legal_hold_active")
+
+        proposed_source_evidence = build_source_version_evidence_for_source_record(
+            tenant_id=tenant_id,
+            article_object_id=evidence.article_object_id,
+            article_version_object_id=evidence.proposed_version_object_id,
+            source_record=proposed_source_record,
+        )
+        if proposed_source_evidence.evidence_hash != evidence.proposed_source_version_evidence_hash:
+            blocking_reasons.append("proposed_source_version_evidence_hash_mismatch")
+
+    def _evaluate_restore_evidence(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        current_restore_evidence: KnowledgeBaseRestoreEvidence,
+        blocking_reasons: list[str],
+    ) -> None:
+        if current_restore_evidence.tenant_id != tenant_id:
+            blocking_reasons.append("current_restore_evidence_tenant_mismatch")
+        if current_restore_evidence.evidence_hash != evidence.current_restore_evidence_hash:
+            blocking_reasons.append("current_restore_evidence_hash_mismatch")
+        if build_restore_evidence_hash(current_restore_evidence) != current_restore_evidence.evidence_hash:
+            blocking_reasons.append("current_restore_evidence_hash_invalid")
+        if not current_restore_evidence.legal_hold_restore_verified:
+            blocking_reasons.append("legal_hold_restore_not_verified")
+        if not current_restore_evidence.disabled_state_restore_verified:
+            blocking_reasons.append("disabled_state_restore_not_verified")
+        if not current_restore_evidence.tenant_isolation_verified:
+            blocking_reasons.append("tenant_isolation_restore_not_verified")
+
+
 class KnowledgeBaseArticleService:
     def __init__(
         self,
@@ -874,11 +1169,13 @@ class KnowledgeBaseArticleService:
         source_repository: SourceObjectRepository,
         audit_logger: InMemoryAuditLogger,
         write_approval_ledger: KnowledgeBaseWriteApprovalLedger | None = None,
+        source_object_write_guard: KnowledgeBaseSourceObjectWriteGuard | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
         self.audit_logger = audit_logger
         self.write_approval_ledger = write_approval_ledger or InMemoryKnowledgeBaseWriteApprovalLedger()
+        self.source_object_write_guard = source_object_write_guard or KnowledgeBaseSourceObjectWriteGuard()
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
         candidate_records = sorted(
@@ -1047,6 +1344,39 @@ class KnowledgeBaseArticleService:
             audit_event_id=event.event_id,
         )
 
+    def evaluate_source_object_write_guard(
+        self,
+        *,
+        user_context: UserContext,
+        write_approval_evidence_hash: str,
+        proposed_source_record: SourceObjectRecord,
+    ) -> KnowledgeBaseSourceObjectWriteGuardDecision:
+        records = sorted(
+            self.repository.list_articles(tenant_id=user_context.tenant_id),
+            key=lambda record: (record.title.lower(), record.object_id),
+        )
+        records_by_object_id = {record.object_id: record for record in records}
+        source_evidences = [self.source_version_evidence(record) for record in records]
+        restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=user_context.tenant_id,
+            articles=records,
+            source_evidences=source_evidences,
+            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+        evidence = self.write_approval_ledger.get(
+            tenant_id=user_context.tenant_id,
+            evidence_hash=write_approval_evidence_hash,
+        )
+        return self.source_object_write_guard.evaluate(
+            tenant_id=user_context.tenant_id,
+            write_approval_evidence_hash=write_approval_evidence_hash,
+            write_approval_ledger=self.write_approval_ledger,
+            current_article=records_by_object_id.get(evidence.article_object_id),
+            proposed_source_record=proposed_source_record,
+            current_restore_evidence=restore_evidence,
+        )
+
     def source_version_evidence(self, record: KnowledgeBaseArticleRecord) -> KnowledgeBaseSourceVersionEvidence:
         source_record = self.source_repository.get(
             tenant_id=record.tenant_id,
@@ -1175,6 +1505,32 @@ def build_proposed_source_version_evidence(
     return draft.model_copy(update={"evidence_hash": build_source_version_evidence_hash(draft)})
 
 
+def build_source_version_evidence_for_source_record(
+    *,
+    tenant_id: str,
+    article_object_id: str,
+    article_version_object_id: str,
+    source_record: SourceObjectRecord,
+) -> KnowledgeBaseSourceVersionEvidence:
+    metadata = source_record.metadata
+    draft = KnowledgeBaseSourceVersionEvidence(
+        tenant_id=tenant_id,
+        article_object_id=article_object_id,
+        article_version_object_id=article_version_object_id,
+        source_object_id=metadata.object_id,
+        source_version_id=metadata.version_id,
+        source_object_type=metadata.object_type,
+        source_manifest_hash=metadata.manifest_hash,
+        content_hash=metadata.content_hash,
+        acl_version=metadata.acl_version,
+        data_classification=metadata.classification,
+        retention_policy_id=metadata.retention_policy_id,
+        legal_hold_state=metadata.legal_hold_state.value,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_source_version_evidence_hash(draft)})
+
+
 def build_write_approval_command_hash(command: KnowledgeBaseWriteApprovalCommand) -> str:
     return stable_hash(canonical_json(command.model_dump(mode="json")))
 
@@ -1225,6 +1581,11 @@ def build_write_approval_evidence(
 
 def build_write_approval_evidence_hash(evidence: KnowledgeBaseWriteApprovalEvidence) -> str:
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_source_object_write_guard_ref(decision: KnowledgeBaseSourceObjectWriteGuardDecision) -> str:
+    payload = canonical_json(decision.model_dump(mode="json", exclude={"source_object_write_guard_ref"}))
+    return f"guard:{stable_hash(payload)}"
 
 
 def knowledge_base_write_target_object_ids(

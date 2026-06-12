@@ -1247,7 +1247,8 @@ Empfohlene naechste Reihenfolge:
 77. [x] Wissensdatenbank-Write/Edit-Approval-Command-Modell und audit-only Dry-Run-Pfad mit `POST /v1/admin/kb/articles/write-dry-run` implementieren.
 78. [x] Persistente Wissensdatenbank-Write-Approval-Evidence-Ledger-Migration `0023` vor echten Artikel-/Source-Writes implementieren.
 79. [x] Write-Dry-Run-Evidence in `knowledge_base.write_approval_evidence` persistieren, ohne Artikel-/Source-Writes freizuschalten.
-80. [ ] Source-Object-Write-Guard fuer Knowledge-Base-Artikel vorbereiten: Ledger-Evidence, erwartete Version, Legal Hold, Retention und Restore-Evidence pruefen, bevor echte Writes freigeschaltet werden.
+80. [x] Source-Object-Write-Guard fuer Knowledge-Base-Artikel vorbereiten: Ledger-Evidence, erwartete Version, Legal Hold, Retention und Restore-Evidence pruefen, bevor echte Writes freigeschaltet werden.
+81. [ ] Knowledge-Base-Approval-State-Transition von Dry-Run zu `approved_for_write` entwerfen, weiterhin ohne Artikel-/Source-Writes, mit Audit- und Restore-Evidence-Bindung.
 
 ## Release-Strategie
 

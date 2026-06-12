@@ -71,7 +71,10 @@ def test_pg_knowledge_base_write_approval_ledger_appends_metadata_only_evidence(
     persisted = ledger.append(evidence)
 
     assert persisted == evidence
+    assert ledger.get(tenant_id=tenant_id, evidence_hash=evidence.evidence_hash) == evidence
     assert ledger.list_evidence(tenant_id="tenant-other") == ()
+    with pytest.raises(KeyError, match="not found"):
+        ledger.get(tenant_id="tenant-other", evidence_hash=evidence.evidence_hash)
     rows = ledger.list_evidence(tenant_id=tenant_id)
     assert rows == (evidence,)
     row_json = rows[0].model_dump_json()

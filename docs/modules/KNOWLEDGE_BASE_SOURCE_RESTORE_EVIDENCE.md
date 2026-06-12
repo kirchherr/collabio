@@ -62,7 +62,7 @@ Restore evidence must cover every returned article version. Missing source evide
 
 `POST /v1/admin/kb/articles/write-dry-run` may validate a create/edit approval command and audit its command hash. It is an audit-only dry-run. It must not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state.
 
-Migration `0023_knowledge_base_write_approval_evidence.sql` adds the append-only write-approval ledger. The dry-run path now persists ledger evidence before source-object writes are possible; future approved write paths must verify that evidence and refresh source-version plus restore evidence after approved writes.
+Migration `0023_knowledge_base_write_approval_evidence.sql` adds the append-only write-approval ledger. The dry-run path now persists ledger evidence before source-object writes are possible. `KnowledgeBaseSourceObjectWriteGuard` verifies that ledger evidence, the expected current version, proposed source-version evidence, current restore evidence, retention policy, and Legal Hold state before future approved writes. Future approved write paths must refresh source-version plus restore evidence after approved writes.
 
 Future write/edit, search indexing, embedding, RAG, export, and AI-assist work must not bypass this boundary. RAG must still use candidate-only search, authoritative ACL validation, source object IDs, source versions, Local LLM Gateway enforcement, and metadata-only audit.
 

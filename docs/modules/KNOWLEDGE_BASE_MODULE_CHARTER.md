@@ -64,6 +64,8 @@ Initial API:
 
 `POST /v1/admin/kb/articles/write-dry-run` validates a write/edit approval command, writes an audit event, and appends metadata-only approval evidence to the write-approval ledger. It does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state. It returns command hashes and required evidence for the source-object write guard.
 
+`KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
+
 Future workers:
 
 - article source extraction worker

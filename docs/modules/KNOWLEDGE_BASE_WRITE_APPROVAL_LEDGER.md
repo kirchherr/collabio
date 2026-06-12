@@ -57,8 +57,23 @@ Runtime wiring:
 - tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
 - the Docker Compose API profile sets `SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND=postgres` after migrations, so dry-run evidence is inserted into `knowledge_base.write_approval_evidence`.
 - the ledger row remains metadata-only and cannot authorize persistence while `approval_state` is `dry_run`.
+- `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Future approved write paths must verify the ledger row, pass the source-object write guard, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until the source-object write guard and restore evidence refresh are connected.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Future approved write paths must verify the ledger row, pass the source-object write guard, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until the approval-state transition and restore evidence refresh are connected.
+
+## Source-Object Write Guard
+
+The write guard checks:
+
+- the ledger evidence exists for the current tenant and the evidence hash recomputes.
+- the approval state is `approved_for_write` and persistence is explicitly allowed.
+- edits still match the expected current article version.
+- current article Legal Hold and retention policy do not block mutation.
+- the proposed source object passes the generic storage write guard.
+- proposed source object ID, version, type, manifest hash, content hash, ACL version, retention policy, and Legal Hold state match the proposed source-version evidence hash.
+- current restore evidence hash matches and verifies tenant isolation, disabled-state restore behavior, and Legal Hold restore behavior.
+
+The decision stores only metadata, hashes, object IDs, and blocking reason codes. It does not store source text, article bodies, prompts, outputs, raw payloads, embeddings, or model responses.
 
 ## Backup And Restore
 
@@ -70,3 +85,4 @@ The ledger belongs to the `knowledge_base_content` continuity domain. Backup and
 - `tests/test_api.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_knowledge_base_docs.py`
+- `tests/test_knowledge_base_write_approval_ledger.py`

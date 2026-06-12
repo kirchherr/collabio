@@ -13,18 +13,99 @@ from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseWriteApprovalLedger,
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
+    KnowledgeBaseSourceObjectWriteGuard,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalState,
     KnowledgeBaseWriteOperation,
     build_knowledge_base_restore_evidence,
     build_knowledge_base_source_version_evidence,
     build_restore_evidence_hash,
+    build_source_version_evidence_for_source_record,
     build_source_version_evidence_hash,
     build_write_approval_command_hash,
     build_write_approval_evidence,
     build_write_approval_evidence_hash,
     demo_knowledge_base_source_object_repository,
 )
+from suite.storage.source_objects import (
+    LegalHoldState,
+    SourceLifecycleState,
+    SourceObjectMetadata,
+    SourceObjectRecord,
+    SourceObjectType,
+    build_source_object_manifest_hash,
+    sha256_bytes,
+)
+
+
+def knowledge_base_source_record_for_write(
+    *,
+    tenant_id: str = "tenant-demo",
+    object_id: str = "kb-article-version-backup-runbook-v2-demo",
+    version_id: str = "v2",
+    title: str = "Backup Restore Runbook v2",
+    text: str = "Backup restore runbook source content v2.",
+    retention_policy_id: str = "rp-standard",
+    legal_hold_state: LegalHoldState = LegalHoldState.NONE,
+) -> SourceObjectRecord:
+    content = text.encode("utf-8")
+    draft = SourceObjectMetadata(
+        tenant_id=tenant_id,
+        object_id=object_id,
+        object_type=SourceObjectType.WIKI,
+        version_id=version_id,
+        title=title,
+        owner_principal_id="user-demo",
+        created_by="tenant-admin-demo",
+        created_at_utc="2026-06-12T09:00:00Z",
+        updated_at_utc="2026-06-12T09:00:00Z",
+        classification=DataClass.INTERNAL,
+        retention_policy_id=retention_policy_id,
+        legal_hold_state=legal_hold_state,
+        kms_key_ref=f"kms://{tenant_id}/internal/v1",
+        manifest_hash="sha256:" + "0" * 64,
+        audit_chain_ref="audit:kb-article-version-backup-runbook-v2-demo",
+        source_system="collabio",
+        mime_type="text/plain",
+        acl_hash="sha256:" + "a" * 64,
+        acl_version=1,
+        content_hash=sha256_bytes(content),
+        content_byte_length=len(content),
+        lifecycle_state=SourceLifecycleState.SAVED_VERSION,
+    )
+    return SourceObjectRecord(
+        metadata=draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)}),
+        text=text,
+    )
+
+
+def write_command_for_source_record(
+    source_record: SourceObjectRecord,
+    *,
+    operation: KnowledgeBaseWriteOperation = KnowledgeBaseWriteOperation.EDIT,
+    expected_current_version_object_id: str | None = "kb-article-version-backup-runbook-v1-demo",
+) -> KnowledgeBaseWriteApprovalCommand:
+    metadata = source_record.metadata
+    return KnowledgeBaseWriteApprovalCommand(
+        approval_reference=f"approval:{metadata.object_id}",
+        reason="prepare guarded knowledge base source-object write",
+        operation=operation,
+        article_object_id="kb-article-backup-runbook-demo",
+        article_key="KB-BACKUP-001",
+        title="Backup Restore Runbook",
+        proposed_version_object_id=metadata.object_id,
+        proposed_version_label=metadata.version_id,
+        proposed_source_object_id=metadata.object_id,
+        proposed_source_version_id=metadata.version_id,
+        proposed_source_object_type=metadata.object_type,
+        proposed_source_manifest_hash=metadata.manifest_hash,
+        proposed_content_hash=metadata.content_hash,
+        proposed_acl_version=metadata.acl_version,
+        expected_current_version_object_id=expected_current_version_object_id,
+        data_classification=metadata.classification,
+        retention_policy_id=metadata.retention_policy_id,
+        legal_hold_state=metadata.legal_hold_state.value,
+    )
 
 
 def test_knowledge_base_article_records_require_internal_compliance_metadata() -> None:
@@ -344,6 +425,179 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert evidence.evidence_hash == build_write_approval_evidence_hash(evidence)
     assert response.write_approval_evidence_hash == evidence.evidence_hash
     assert persisted_evidence == evidence
+
+
+def test_knowledge_base_source_object_write_guard_blocks_dry_run_ledger_evidence() -> None:
+    audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
+    )
+    proposed_source_record = knowledge_base_source_record_for_write()
+    command = write_command_for_source_record(proposed_source_record)
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+
+    response = service.dry_run_write_approval(command=command, user_context=user_context)
+    decision = service.evaluate_source_object_write_guard(
+        user_context=user_context,
+        write_approval_evidence_hash=response.write_approval_evidence_hash,
+        proposed_source_record=proposed_source_record,
+    )
+
+    assert decision.allowed is False
+    assert decision.persistence_allowed is False
+    assert decision.source_authority_verified is False
+    assert decision.source_object_write_guard_ref.startswith("guard:sha256:")
+    assert "approval_state_not_approved_for_write" in decision.blocking_reasons
+    assert "persistence_not_allowed_by_approval_evidence" in decision.blocking_reasons
+    assert "expected_current_version_match" in decision.required_evidence
+    assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+    assert "Backup restore runbook source content v2" not in decision.model_dump_json()
+
+
+def test_knowledge_base_source_object_write_guard_allows_only_approved_matching_evidence() -> None:
+    article_repository = InMemoryKnowledgeBaseArticleRepository.demo()
+    article = article_repository.list_articles(tenant_id="tenant-demo")[0]
+    source_repository = demo_knowledge_base_source_object_repository()
+    source_evidences = [
+        build_knowledge_base_source_version_evidence(
+            existing_article,
+            source_repository.get(
+                tenant_id=existing_article.tenant_id,
+                object_id=existing_article.current_source_object_id,
+                version_id=existing_article.current_source_version_id,
+            ),
+        )
+        for existing_article in article_repository.list_articles(tenant_id="tenant-demo")
+    ]
+    restore_evidence = build_knowledge_base_restore_evidence(
+        tenant_id="tenant-demo",
+        articles=article_repository.list_articles(tenant_id="tenant-demo"),
+        source_evidences=source_evidences,
+        restore_drill_report_hash="sha256:" + "5" * 64,
+        audit_chain_ref="audit:knowledge-base-restore-evidence",
+    )
+    proposed_source_record = knowledge_base_source_record_for_write()
+    command = write_command_for_source_record(proposed_source_record)
+    command_hash = build_write_approval_command_hash(command)
+    proposed_source_evidence = build_source_version_evidence_for_source_record(
+        tenant_id="tenant-demo",
+        article_object_id=command.article_object_id,
+        article_version_object_id=command.proposed_version_object_id,
+        source_record=proposed_source_record,
+    )
+    approved_evidence = build_write_approval_evidence(
+        tenant_id="tenant-demo",
+        command=command,
+        command_hash=command_hash,
+        proposed_source_version_evidence_hash=proposed_source_evidence.evidence_hash,
+        current_restore_evidence_hash=restore_evidence.evidence_hash,
+        requested_by="tenant-admin-demo",
+        audit_event_id="audit-event-kb-approved-write",
+        audit_chain_ref="audit:audit-event-kb-approved-write",
+        approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+        persistence_allowed=True,
+    )
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger((approved_evidence,))
+    decision = KnowledgeBaseSourceObjectWriteGuard().evaluate(
+        tenant_id="tenant-demo",
+        write_approval_evidence_hash=approved_evidence.evidence_hash,
+        write_approval_ledger=write_approval_ledger,
+        current_article=article,
+        proposed_source_record=proposed_source_record,
+        current_restore_evidence=restore_evidence,
+    )
+
+    assert decision.allowed is True
+    assert decision.blocking_reasons == ()
+    assert decision.persistence_allowed is True
+    assert decision.source_authority_verified is True
+    assert decision.rag_indexing_allowed is False
+    assert decision.write_approval_evidence_hash == approved_evidence.evidence_hash
+    assert decision.proposed_source_version_evidence_hash == proposed_source_evidence.evidence_hash
+    assert decision.current_restore_evidence_hash == restore_evidence.evidence_hash
+
+    tampered_source_record = knowledge_base_source_record_for_write(retention_policy_id="rp-custom")
+    tampered_decision = KnowledgeBaseSourceObjectWriteGuard().evaluate(
+        tenant_id="tenant-demo",
+        write_approval_evidence_hash=approved_evidence.evidence_hash,
+        write_approval_ledger=write_approval_ledger,
+        current_article=article,
+        proposed_source_record=tampered_source_record,
+        current_restore_evidence=restore_evidence,
+    )
+    assert tampered_decision.allowed is False
+    assert "proposed_source_retention_policy_unsupported" in tampered_decision.blocking_reasons
+    assert "proposed_source_version_evidence_hash_mismatch" in tampered_decision.blocking_reasons
+
+
+def test_knowledge_base_source_object_write_guard_blocks_version_legal_hold_and_restore_drift() -> None:
+    article_repository = InMemoryKnowledgeBaseArticleRepository.demo()
+    article = article_repository.list_articles(tenant_id="tenant-demo")[0]
+    held_article = article.model_copy(update={"legal_hold_state": "active"})
+    proposed_source_record = knowledge_base_source_record_for_write()
+    command = write_command_for_source_record(proposed_source_record)
+    source_evidence = build_source_version_evidence_for_source_record(
+        tenant_id="tenant-demo",
+        article_object_id=command.article_object_id,
+        article_version_object_id=command.proposed_version_object_id,
+        source_record=proposed_source_record,
+    )
+    source_repository = demo_knowledge_base_source_object_repository()
+    current_source_evidences = [
+        build_knowledge_base_source_version_evidence(
+            existing_article,
+            source_repository.get(
+                tenant_id=existing_article.tenant_id,
+                object_id=existing_article.current_source_object_id,
+                version_id=existing_article.current_source_version_id,
+            ),
+        )
+        for existing_article in article_repository.list_articles(tenant_id="tenant-demo")
+    ]
+    restore_evidence = build_knowledge_base_restore_evidence(
+        tenant_id="tenant-demo",
+        articles=article_repository.list_articles(tenant_id="tenant-demo"),
+        source_evidences=current_source_evidences,
+        restore_drill_report_hash="sha256:" + "6" * 64,
+        audit_chain_ref="audit:knowledge-base-restore-evidence",
+    )
+    approved_evidence = build_write_approval_evidence(
+        tenant_id="tenant-demo",
+        command=command,
+        command_hash=build_write_approval_command_hash(command),
+        proposed_source_version_evidence_hash=source_evidence.evidence_hash,
+        current_restore_evidence_hash=restore_evidence.evidence_hash,
+        requested_by="tenant-admin-demo",
+        audit_event_id="audit-event-kb-approved-write",
+        audit_chain_ref="audit:audit-event-kb-approved-write",
+        approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
+        persistence_allowed=True,
+    )
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger((approved_evidence,))
+
+    decision = KnowledgeBaseSourceObjectWriteGuard().evaluate(
+        tenant_id="tenant-demo",
+        write_approval_evidence_hash=approved_evidence.evidence_hash,
+        write_approval_ledger=write_approval_ledger,
+        current_article=held_article.model_copy(update={"current_version_object_id": "unexpected-version"}),
+        proposed_source_record=proposed_source_record,
+        current_restore_evidence=restore_evidence.model_copy(update={"evidence_hash": "sha256:" + "f" * 64}),
+    )
+
+    assert decision.allowed is False
+    assert "expected_current_version_mismatch" in decision.blocking_reasons
+    assert "current_article_legal_hold_active" in decision.blocking_reasons
+    assert "current_restore_evidence_hash_mismatch" in decision.blocking_reasons
+    assert "current_restore_evidence_hash_invalid" in decision.blocking_reasons
 
 
 def test_knowledge_base_source_version_evidence_matches_authoritative_source_object() -> None:

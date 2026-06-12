@@ -50,3 +50,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base.write_approval_evidence`" in ledger_doc
     assert "`0023_knowledge_base_write_approval_evidence.sql`" in ledger_doc
     assert "Dry-run evidence cannot allow persistence" in ledger_doc
+    assert "`KnowledgeBaseSourceObjectWriteGuard`" in ledger_doc
+    assert "expected current version" in ledger_doc
+    assert "retention policy" in ledger_doc.lower()
+    assert "Legal Hold state" in ledger_doc
