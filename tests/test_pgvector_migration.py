@@ -52,6 +52,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0018",
         "0019",
         "0020",
+        "0021",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -63,12 +64,14 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
 def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence() -> None:
     core_migrations = load_module_migrations("core")
     crm_erp_migrations = load_module_migrations("crm_erp")
+    knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 5
+    assert len(core_migrations) == len(load_migrations()) - 6
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
+    assert [migration.version for migration in knowledge_base_migrations] == ["0021"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "crm_erp"
+    assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -755,6 +758,95 @@ def test_erp_products_migration_declares_internal_metadata_rls_and_no_hard_delet
     assert "grant delete" not in sql
     assert "source_text" not in sql
     assert "raw_payload" not in sql
+
+
+def test_knowledge_base_articles_migration_declares_metadata_versions_rls_and_no_body_storage() -> None:
+    sql = normalized(get_migration("0021").sql())
+    articles_body = table_body(get_migration("0021").sql(), "knowledge_base.articles")
+    versions_body = table_body(get_migration("0021").sql(), "knowledge_base.article_versions")
+
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in (
+        (articles_body, "knowledge_base.articles"),
+        (versions_body, "knowledge_base.article_versions"),
+    ):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "data_classification text not null default 'internal' check (data_classification = 'internal')" in body
+        assert (
+            "retention_policy_id text not null default 'rp-standard' check (retention_policy_id = 'rp-standard')"
+        ) in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in [
+        "article_key",
+        "title",
+        "current_version_object_id",
+        "current_version_label",
+        "published_at_utc",
+        "status",
+    ]:
+        assert re.search(rf"\b{column}\b", articles_body), f"{column} missing from knowledge_base.articles"
+
+    for column in [
+        "article_object_id",
+        "version_label",
+        "version_state",
+        "source_object_version_ref",
+        "content_hash",
+        "published_at_utc",
+    ]:
+        assert re.search(rf"\b{column}\b", versions_body), f"{column} missing from article_versions"
+
+    assert "object_type text not null default 'kb.article' check (object_type = 'kb.article')" in articles_body
+    assert (
+        "object_type text not null default 'kb.article_version' check (object_type = 'kb.article_version')"
+    ) in versions_body
+    assert "foreign key (tenant_id, article_object_id)" in versions_body
+    assert "references knowledge_base.articles (tenant_id, object_id)" in versions_body
+    assert "knowledge_base.articles.read" in sql
+    assert "alter table knowledge_base.articles enable row level security" in sql
+    assert "alter table knowledge_base.articles force row level security" in sql
+    assert "alter table knowledge_base.article_versions enable row level security" in sql
+    assert "alter table knowledge_base.article_versions force row level security" in sql
+    assert "create policy kb_articles_tenant_select" in sql
+    assert "create policy kb_articles_tenant_insert" in sql
+    assert "create policy kb_articles_tenant_update" in sql
+    assert "create policy kb_articles_no_hard_delete" in sql
+    assert "create policy kb_article_versions_tenant_select" in sql
+    assert "create policy kb_article_versions_tenant_insert" in sql
+    assert "create policy kb_article_versions_tenant_update" in sql
+    assert "create policy kb_article_versions_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger kb_articles_touch_updated_at_utc" in sql
+    assert "create trigger kb_article_versions_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table knowledge_base.articles to collabio_app" in sql
+    assert "grant select, insert, update on table knowledge_base.article_versions to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "article_body" not in sql
+    assert "source_text" not in sql
+    assert "raw_payload" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

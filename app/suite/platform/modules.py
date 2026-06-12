@@ -8,6 +8,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
+from suite.platform.knowledge_base import default_knowledge_base_enabled_features
 
 MODULE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 FEATURE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
@@ -1222,6 +1223,23 @@ def default_module_registry() -> InMemoryModuleRegistry:
             "0020",
         ),
     )
+    knowledge_base_catalog = ModuleCatalogEntry(
+        module_id="knowledge_base",
+        display_name="Knowledge Base",
+        module_version="0.1.0",
+        module_kind=ModuleKind.BUSINESS_DOMAIN,
+        status=ModuleStatus.INSTALLED,
+        description="Optional governed knowledge base module.",
+        manifest_hash="sha256:knowledge-base-module-manifest",
+        required_migration_versions=(
+            "0007",
+            "0008",
+            "0009",
+            "0010",
+            "0011",
+            "0021",
+        ),
+    )
     crm_erp_demo_state = TenantModuleState(
         tenant_id="tenant-demo",
         module_id="crm_erp",
@@ -1231,7 +1249,16 @@ def default_module_registry() -> InMemoryModuleRegistry:
         changed_by="system",
         audit_chain_ref="audit:module-seed",
     )
+    knowledge_base_demo_state = TenantModuleState(
+        tenant_id="tenant-demo",
+        module_id="knowledge_base",
+        status=ModuleStatus.AVAILABLE,
+        enabled_features=default_knowledge_base_enabled_features(),
+        policy_snapshot_hash="sha256:demo-module-policy",
+        changed_by="system",
+        audit_chain_ref="audit:module-seed",
+    )
     return InMemoryModuleRegistry(
-        catalog_entries=[crm_erp_catalog],
-        tenant_modules=[crm_erp_demo_state],
+        catalog_entries=[crm_erp_catalog, knowledge_base_catalog],
+        tenant_modules=[crm_erp_demo_state, knowledge_base_demo_state],
     )

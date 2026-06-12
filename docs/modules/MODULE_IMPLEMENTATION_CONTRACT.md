@@ -184,7 +184,7 @@ The next module families should start as small read or metadata slices, not as f
 
 | Module family | First objects | First slice | Default feature gate | Continuity domain |
 | --- | --- | --- | --- | --- |
-| Knowledge base | `kb.article`, `kb.article_version` | authorized article metadata/read slice with source versions | `knowledge_base.articles.read` | `knowledge_base_records` |
+| Knowledge base | `kb.article`, `kb.article_version` | authorized article metadata/read slice with source versions | `knowledge_base.articles.read` | `knowledge_base_content` |
 | LMS | `lms.course`, `lms.enrollment` | course catalog and enrollment status read slice | `lms.courses.read` | `lms_training_records` |
 | Tasks and activities | `task.task`, `task.activity` | assigned task/activity read slice | `tasks.items.read` | `task_activity_records` |
 | Tickets and incidents | `ticket.ticket`, `ticket.event` | ticket summary read slice with SLA state | `tickets.items.read` | `ticket_incident_records` |

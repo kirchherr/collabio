@@ -1046,7 +1046,7 @@ CRM/ERP `crm_erp`:
 
 Vorbereitete Modul-Familien:
 
-- Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention.
+- Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`.
 - LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
@@ -1241,6 +1241,7 @@ Empfohlene naechste Reihenfolge:
 71. [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Audit und metadata-only Notes implementieren.
 72. [x] Minimalen ERP Products Read-Vertical-Slice mit `erp.products`, `internal` Klassifikation, Audit und `GET /v1/erp/products` als Architekturbeweis implementieren.
 73. [x] Modul-Implementierungsvertrag fuer Wissensdatenbank, LMS, Aufgaben, Tickets, Zeiterfassung und spaetere Suite-Module aus den CRM/ERP-Slices extrahieren.
+74. [x] Ersten Wissensdatenbank-Read-Slice mit `knowledge_base`, `kb.article`, `kb.article_version`, RLS, Audit und `GET /v1/kb/articles` implementieren.
 
 ## Release-Strategie
 

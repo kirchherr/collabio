@@ -188,11 +188,11 @@
     },
     {
       "domain_id": "knowledge_base_content",
-      "description": "Knowledge-base articles, article versions, source attachments, publication approvals, and RAG source references.",
+      "description": "Knowledge-base article metadata, article-version metadata, source attachments, publication approvals, and RAG source references.",
       "primary_target_id": "object_storage_records",
       "criticality": "important",
       "recovery_strategy": "restore versioned content and metadata; verify source object references, publication state, ACLs, and RAG citation readiness before serving",
-      "state_artifacts": ["knowledge articles", "knowledge article versions", "source attachments", "publication approvals", "RAG source references"]
+      "state_artifacts": ["knowledge article metadata", "knowledge article version metadata", "knowledge articles", "knowledge article versions", "source attachments", "publication approvals", "Knowledge Base migration evidence", "RAG source references"]
     },
     {
       "domain_id": "learning_management_records",
@@ -242,6 +242,7 @@
         "background_jobs_queues",
         "module_registry_state",
         "crm_erp_business_records",
+        "knowledge_base_content",
         "learning_management_records",
         "task_activity_records",
         "service_ticket_records",

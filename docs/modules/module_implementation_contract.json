@@ -61,7 +61,7 @@
       "first_objects": ["kb.article", "kb.article_version"],
       "first_slice": "authorized article metadata/read slice with source versions",
       "default_feature_gate": "knowledge_base.articles.read",
-      "continuity_domain": "knowledge_base_records"
+      "continuity_domain": "knowledge_base_content"
     },
     {
       "module_family": "lms",

@@ -135,6 +135,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert policy.domain("crm_erp_business_records").criticality == "critical"
     assert "invoices" in policy.domain("crm_erp_business_records").state_artifacts
     assert "SQL Server migration manifests" in policy.domain("crm_erp_business_records").state_artifacts
+    assert "knowledge article metadata" in policy.domain("knowledge_base_content").state_artifacts
     assert "knowledge article versions" in policy.domain("knowledge_base_content").state_artifacts
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts

@@ -79,12 +79,13 @@ Current sprint:
 69. [x] Gated CRM activities/notes read vertical slice with `crm.activities`, `crm.notes`, link redaction, audit, and metadata-only notes.
 70. [x] Minimal ERP products read vertical slice with `erp.products`, internal classification, audit, and `GET /v1/erp/products`.
 71. [x] Reusable module implementation contract for knowledge base, LMS, tasks, tickets, time tracking, and later suite modules.
+72. [x] First Knowledge Base metadata/read slice with `knowledge_base`, `kb.article`, `kb.article_version`, RLS, audit, and `GET /v1/kb/articles`.
 
 ## Next Engineering Step
 
-After extracting the reusable module contract, prove it outside CRM/ERP with the smallest useful non-ERP slice:
+After proving the reusable module contract outside CRM/ERP, keep the Knowledge Base narrow and harden source-version behavior before adding authoring:
 
-- Start a knowledge-base module charter and first metadata/read slice through `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`.
+- Add Knowledge Base article-version source resolver evidence and restore-drill evidence before write/edit workflows.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

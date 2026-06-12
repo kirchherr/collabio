@@ -76,6 +76,13 @@ from suite.platform.erp_products import (
     ErpProductsResponse,
     InMemoryErpProductRepository,
 )
+from suite.platform.knowledge_base import (
+    KB_ARTICLES_FEATURE_ID,
+    KNOWLEDGE_BASE_MODULE_ID,
+    InMemoryKnowledgeBaseArticleRepository,
+    KnowledgeBaseArticleService,
+    KnowledgeBaseArticlesResponse,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -334,6 +341,10 @@ def build_app() -> FastAPI:
     )
     erp_product_service = ErpProductService(
         repository=InMemoryErpProductRepository.demo(),
+        audit_logger=audit_logger,
+    )
+    knowledge_base_article_service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1136,6 +1147,24 @@ def build_app() -> FastAPI:
         erp_products = cast(ErpProductService, request.app.state.erp_product_service)
         return erp_products.list_products(user_context=context.user_context)
 
+    @app.get("/v1/kb/articles", response_model=KnowledgeBaseArticlesResponse)
+    def list_knowledge_base_articles(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=KNOWLEDGE_BASE_MODULE_ID,
+                    feature_id=KB_ARTICLES_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> KnowledgeBaseArticlesResponse:
+        del gate
+        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        return articles.list_articles(user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1156,6 +1185,7 @@ def build_app() -> FastAPI:
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.erp_product_service = erp_product_service
+    app.state.knowledge_base_article_service = knowledge_base_article_service
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

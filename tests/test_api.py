@@ -54,6 +54,14 @@ DEMO_ERP_PRODUCT_HEADERS = {
     **DEMO_HEADERS,
     "X-Readable-Object-Ids": "doc-1,mail-1,erp-product-standard-widget-demo,erp-product-service-plan-demo",
 }
+DEMO_KB_ARTICLE_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": (
+        "doc-1,mail-1,"
+        "kb-article-backup-runbook-demo,kb-article-version-backup-runbook-v1-demo,"
+        "kb-article-security-baseline-demo,kb-article-version-security-baseline-v1-demo"
+    ),
+}
 DECOMMISSION_REQUEST_PAYLOAD = {
     "approval_reference": "approval:module-decommission-request",
     "reason": "tenant requests controlled module decommission",
@@ -205,6 +213,26 @@ def provision_and_enable_erp_products_for_demo() -> None:
     assert enable_response.status_code == 200
 
 
+def provision_and_enable_knowledge_base_articles_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare knowledge base articles"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate knowledge base articles",
+            "enabled_features": {"knowledge_base.articles.read": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
 def build_module_gate_probe_app(module_registry: InMemoryModuleRegistry) -> FastAPI:
     probe_app = FastAPI()
     probe_app.state.module_registry = module_registry
@@ -316,17 +344,25 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
     assert response.status_code == 200
     body = response.json()
     assert body["tenant_id"] == "tenant-demo"
-    assert len(body["modules"]) == 1
-    module = body["modules"][0]
-    assert module["module_id"] == "crm_erp"
-    assert module["display_name"] == "CRM/ERP"
-    assert module["status"] == "available"
-    assert module["normal_use_enabled"] is False
-    assert module["compliance_access_allowed"] is False
-    assert module["enabled_features"]["crm_erp.legacy_import.sqlserver"] is False
-    assert "audit_chain_ref" not in module
-    assert "policy_snapshot_hash" not in module
-    assert "changed_by" not in module
+    assert len(body["modules"]) == 2
+    modules = {module["module_id"]: module for module in body["modules"]}
+    crm_module = modules["crm_erp"]
+    assert crm_module["display_name"] == "CRM/ERP"
+    assert crm_module["status"] == "available"
+    assert crm_module["normal_use_enabled"] is False
+    assert crm_module["compliance_access_allowed"] is False
+    assert crm_module["enabled_features"]["crm_erp.legacy_import.sqlserver"] is False
+
+    kb_module = modules["knowledge_base"]
+    assert kb_module["display_name"] == "Knowledge Base"
+    assert kb_module["status"] == "available"
+    assert kb_module["normal_use_enabled"] is False
+    assert kb_module["enabled_features"]["knowledge_base.articles.read"] is True
+
+    for module in body["modules"]:
+        assert "audit_chain_ref" not in module
+        assert "policy_snapshot_hash" not in module
+        assert "changed_by" not in module
 
 
 def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_routes() -> None:
@@ -580,6 +616,47 @@ def test_erp_products_endpoint_returns_internal_products_after_feature_enable() 
 
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "erp.product.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
+def test_knowledge_base_articles_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    response = client.get("/v1/kb/articles", headers=DEMO_KB_ARTICLE_HEADERS)
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_knowledge_base_articles_endpoint_returns_metadata_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_knowledge_base_articles_for_demo()
+
+    response = client.get("/v1/kb/articles", headers=DEMO_KB_ARTICLE_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "knowledge_base"
+    assert body["feature_id"] == "knowledge_base.articles.read"
+    assert body["audit_event_id"]
+    assert [article["title"] for article in body["articles"]] == ["Backup Restore Runbook", "Security Baseline"]
+    assert {article["object_type"] for article in body["articles"]} == {"kb.article"}
+    assert {article["data_classification"] for article in body["articles"]} == {"internal"}
+    assert {article["retention_policy_id"] for article in body["articles"]} == {"rp-standard"}
+    assert all(article["access_checked"] for article in body["articles"])
+    assert all(article["source_version_access_checked"] for article in body["articles"])
+    assert all("article_body" not in article for article in body["articles"])
+    assert "Other Tenant Article" not in {article["title"] for article in body["articles"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "knowledge_base.article.list"
     assert new_events[-1].tenant_id == "tenant-demo"
     assert new_events[-1].input_hash is None
     assert new_events[-1].output_hash is None

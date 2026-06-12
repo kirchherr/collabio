@@ -189,6 +189,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="crm_erp",
         evidence_refs=("doc:erp-products-vertical-slice", "test:erp-products-slice"),
     ),
+    SqlMigration(
+        version="0021",
+        name="knowledge_base_articles",
+        resource_name="0021_knowledge_base_articles.sql",
+        module_id="knowledge_base",
+        evidence_refs=("doc:knowledge-base-articles-vertical-slice", "test:knowledge-base-articles-slice"),
+    ),
 )
 
 

@@ -1,0 +1,140 @@
+# Knowledge Base Module Charter
+
+Status: proposed
+Date: 2026-06-12
+Module ID: `knowledge_base`
+Module kind: `business_domain`
+Owner: platform/product
+Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
+
+## 1. Product Decision
+
+Knowledge Base is a native optional suite module for governed internal articles, procedure snippets, runbooks, versioned sources, and later RAG citations.
+
+The module is optional in normal use, but compliance obligations for existing knowledge base data remain mandatory.
+
+This charter intentionally starts smaller than a full wiki. The first slice proves tenant-safe article metadata and source-version references before article bodies, editing workflows, approvals, search indexing, or RAG are added.
+
+## 2. Lifecycle And Activation
+
+Supported states:
+
+```text
+not_installed
+installed
+available
+provisioning
+enabled
+disabled
+suspended
+decommission_requested
+decommission_blocked
+decommissioned
+```
+
+Disabled stops normal article browsing and editing. Disabled does not stop retention, Legal Hold, audit, backup, restore, export, decommission evidence, or compliance-only administration for existing data.
+
+## 3. Feature Flags
+
+| Feature ID | Default | Requires approval | Notes |
+| --- | --- | --- | --- |
+| `knowledge_base.articles.read` | on | no | Metadata-only article list and current version references |
+| `knowledge_base.articles.write` | off | yes | Future authoring and approval workflow |
+| `knowledge_base.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
+| `knowledge_base.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
+
+## 4. API And Worker Gates
+
+Every normal Knowledge Base route must require:
+
+```text
+Tenant Context
++ knowledge_base enabled
++ feature permission
++ object authorization
+```
+
+Initial API:
+
+- `GET /v1/kb/articles`
+
+Future workers:
+
+- article source extraction worker
+- version approval worker
+- candidate-only search indexing worker
+- RAG citation rebuild worker
+
+Destructive, external, or compliance-relevant actions require explicit human confirmation.
+
+## 5. Persistent Objects
+
+| Object type | Data class | Retention policy | Legal Hold scope | KMS expectation | Source object? |
+| --- | --- | --- | --- | --- | --- |
+| `kb.article` | `internal` | `rp-standard` | article and related versions | tenant + class | yes |
+| `kb.article_version` | `internal` | `rp-standard` | version and article family | tenant + class | yes |
+
+Every object must carry the required metadata from `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`, including tenant, object ID, object type, owner, classification, retention policy, Legal Hold state, lifecycle state, KMS key reference, audit-chain reference, source system, and schema version.
+
+Article bodies are not stored in the first slice. Current article versions are references for future source-object retrieval and RAG citation, not permission to bypass ACL validation.
+
+## 6. Search, RAG, AI, And Voice
+
+Initial state:
+
+- keyword search: off
+- vector search: off
+- RAG: off
+- AI assist: off
+- voice: off
+
+Future search and RAG must return candidate IDs only, validate authoritative ACLs before source fetch, cite `kb.article` and `kb.article_version` object IDs and versions, and audit retrieved context, model ID, tool calls, and output hashes without writing prompt or output bodies to normal logs.
+
+AI providers must go through the Local LLM Gateway. Cloud AI provider use requires tenant policy enablement.
+
+## 7. Backup, Restore, And Failover
+
+Continuity domain: `knowledge_base_content`
+
+Required evidence:
+
+- module state restore check
+- article row-count check
+- article-version row-count check
+- manifest or checksum check
+- tenant isolation check after restore
+- disabled-state restore check
+- Legal Hold restore check
+
+New article body storage, source indexes, RAG chunks, embeddings, approvals, or exports must update this continuity domain in the same change.
+
+## 8. Migrations And Imports
+
+Initial migration:
+
+- `0021_knowledge_base_articles.sql`
+
+The migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
+
+Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
+
+## 9. Decommissioning
+
+Decommissioning requires:
+
+- disabled or suspended normal use
+- retention evaluation
+- Legal Hold check
+- export/archive decision
+- audit evidence
+- backup/restore evidence
+- source-version disposition evidence
+- explicit approval
+
+Missing or blocked evidence leaves the module in `decommission_blocked`.
+
+## 10. Verification
+
+- `tests/test_knowledge_base.py`
+- `tests/test_api.py`
+- `tests/test_pgvector_migration.py`
