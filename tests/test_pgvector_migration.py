@@ -54,6 +54,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0020",
         "0021",
         "0022",
+        "0023",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -68,9 +69,9 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 7
+    assert len(core_migrations) == len(load_migrations()) - 8
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
-    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022"]
+    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022", "0023"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -932,6 +933,75 @@ def test_knowledge_base_evidence_migration_declares_source_version_and_restore_e
     assert "article_body" not in sql
     assert "prompt_text" not in sql
     assert "output_text" not in sql
+
+
+def test_knowledge_base_write_approval_evidence_migration_declares_append_only_ledger() -> None:
+    sql = normalized(get_migration("0023").sql())
+    body = table_body(get_migration("0023").sql(), "knowledge_base.write_approval_evidence")
+
+    for column in [
+        "tenant_id",
+        "approval_reference",
+        "operation",
+        "approval_state",
+        "article_object_id",
+        "expected_current_version_object_id",
+        "proposed_version_object_id",
+        "proposed_source_object_id",
+        "proposed_source_version_id",
+        "proposed_source_object_type",
+        "proposed_source_manifest_hash",
+        "proposed_content_hash",
+        "proposed_acl_version",
+        "command_hash",
+        "proposed_source_version_evidence_hash",
+        "current_restore_evidence_hash",
+        "source_object_write_guard_ref",
+        "requested_by",
+        "persistence_allowed",
+        "rag_indexing_allowed",
+        "source_authority_verified",
+        "audit_event_id",
+        "audit_chain_ref",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from write approval evidence"
+
+    assert "operation text not null check (operation in ('create', 'edit'))" in body
+    assert "approval_state text not null default 'dry_run' check" in body
+    assert "'approved_for_write'" in body
+    assert "proposed_version_object_id = proposed_source_object_id" in body
+    assert "operation <> 'edit' or expected_current_version_object_id is not null" in body
+    assert "operation <> 'create' or expected_current_version_object_id is null" in body
+    assert "approval_state = 'approved_for_write' or not persistence_allowed" in body
+    assert "approval_state = 'approved_for_write' or not rag_indexing_allowed" in body
+    assert "approval_state = 'approved_for_write' or not source_authority_verified" in body
+    for hash_column in [
+        "proposed_source_manifest_hash",
+        "proposed_content_hash",
+        "command_hash",
+        "proposed_source_version_evidence_hash",
+        "current_restore_evidence_hash",
+        "evidence_hash",
+    ]:
+        assert f"{hash_column}" in body
+        assert "'^sha256:[a-f0-9]{64}$'" in body
+
+    assert "alter table knowledge_base.write_approval_evidence enable row level security" in sql
+    assert "alter table knowledge_base.write_approval_evidence force row level security" in sql
+    assert "create policy kb_write_approval_evidence_tenant_select" in sql
+    assert "create policy kb_write_approval_evidence_tenant_insert" in sql
+    assert "create policy kb_write_approval_evidence_no_update" in sql
+    assert "create policy kb_write_approval_evidence_no_hard_delete" in sql
+    assert "grant select, insert on table knowledge_base.write_approval_evidence to collabio_app" in sql
+    assert "grant select on table knowledge_base.write_approval_evidence to collabio_worker" in sql
+    assert "grant delete" not in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

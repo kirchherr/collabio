@@ -1239,6 +1239,7 @@ def default_module_registry() -> InMemoryModuleRegistry:
             "0011",
             "0021",
             "0022",
+            "0023",
         ),
     )
     crm_erp_demo_state = TenantModuleState(

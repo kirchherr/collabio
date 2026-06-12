@@ -13,12 +13,15 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
     KnowledgeBaseWriteApprovalCommand,
+    KnowledgeBaseWriteApprovalState,
     KnowledgeBaseWriteOperation,
     build_knowledge_base_restore_evidence,
     build_knowledge_base_source_version_evidence,
     build_restore_evidence_hash,
     build_source_version_evidence_hash,
     build_write_approval_command_hash,
+    build_write_approval_evidence,
+    build_write_approval_evidence_hash,
     demo_knowledge_base_source_object_repository,
 )
 
@@ -289,6 +292,7 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert response.command_hash == build_write_approval_command_hash(command)
     assert response.proposed_source_version_evidence_hash.startswith("sha256:")
     assert response.current_restore_evidence_hash.startswith("sha256:")
+    assert response.write_approval_evidence_hash.startswith("sha256:")
     assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
 
     event = audit_logger.events[-1]
@@ -305,6 +309,23 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
         "kb-article-version-backup-runbook-v1-demo",
         "kb-article-version-backup-runbook-v2-demo",
     ]
+
+    evidence = build_write_approval_evidence(
+        tenant_id="tenant-demo",
+        command=command,
+        command_hash=response.command_hash,
+        proposed_source_version_evidence_hash=response.proposed_source_version_evidence_hash,
+        current_restore_evidence_hash=response.current_restore_evidence_hash,
+        requested_by="tenant-admin-demo",
+        audit_event_id=response.audit_event_id,
+        audit_chain_ref=f"audit:{response.audit_event_id}",
+    )
+    assert evidence.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN
+    assert evidence.persistence_allowed is False
+    assert evidence.rag_indexing_allowed is False
+    assert evidence.source_authority_verified is False
+    assert evidence.evidence_hash == build_write_approval_evidence_hash(evidence)
+    assert response.write_approval_evidence_hash == evidence.evidence_hash
 
 
 def test_knowledge_base_source_version_evidence_matches_authoritative_source_object() -> None:

@@ -125,10 +125,13 @@ Initial migrations:
 
 - `0021_knowledge_base_articles.sql`
 - `0022_knowledge_base_source_restore_evidence.sql`
+- `0023_knowledge_base_write_approval_evidence.sql`
 
 The first migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
 
 The second migration creates append-only tenant-scoped `knowledge_base.source_version_evidence` and `knowledge_base.restore_evidence` tables. These tables are RLS-protected, grant no hard delete, and are the required precondition for later write/edit or RAG expansion.
+
+The third migration creates append-only tenant-scoped `knowledge_base.write_approval_evidence`. Future article/source writes must first persist approval evidence in this ledger, pass the source-object write guard, and refresh source-version plus restore evidence.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 

@@ -203,6 +203,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="knowledge_base",
         evidence_refs=("doc:knowledge-base-source-restore-evidence", "test:knowledge-base-evidence-slice"),
     ),
+    SqlMigration(
+        version="0023",
+        name="knowledge_base_write_approval_evidence",
+        resource_name="0023_knowledge_base_write_approval_evidence.sql",
+        module_id="knowledge_base",
+        evidence_refs=("doc:knowledge-base-write-approval-ledger", "test:knowledge-base-write-approval-ledger"),
+    ),
 )
 
 

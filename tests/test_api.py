@@ -772,6 +772,8 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert body["command_hash"].startswith("sha256:")
     assert body["proposed_source_version_evidence_hash"].startswith("sha256:")
     assert body["current_restore_evidence_hash"].startswith("sha256:")
+    assert body["write_approval_evidence_hash"].startswith("sha256:")
+    assert "write_approval_ledger_entry" in body["required_evidence"]
     assert "source_object_write_guard" in body["required_evidence"]
     assert "article_body" not in body_text
     assert "source content" not in body_text

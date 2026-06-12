@@ -83,13 +83,14 @@ Current sprint:
 73. [x] Knowledge Base source-version and restore evidence hardening for manifest hash, content hash, ACL version, disabled-state restore, and Legal Hold restore checks.
 74. [x] Admin compliance read path for Knowledge Base source-version and restore evidence with disabled-state access and metadata-only audit.
 75. [x] Knowledge Base write/edit approval command model and audit-only dry-run endpoint without persistence or RAG indexing.
+76. [x] Persistent Knowledge Base write-approval evidence ledger migration and ledger-ready dry-run evidence hash.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail and audit-only authoring dry-run. The next narrow step is persistent approval evidence:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, and a persistent approval ledger schema. The next narrow step is ledger persistence wiring:
 
-- Add a persistent Knowledge Base write-approval evidence ledger.
-- Keep actual article/source writes blocked until the approval ledger, source-object write guard, and restore evidence refresh are connected.
+- Persist write-dry-run approval evidence into `knowledge_base.write_approval_evidence`.
+- Keep actual article/source writes blocked until source-object write guard and restore evidence refresh are connected.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance
