@@ -843,6 +843,66 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert "prompt_text" not in approval_body_text
     assert "output_text" not in approval_body_text
 
+    refresh_payload = {
+        "approved_write_approval_evidence_hash": approval_body["approved_write_approval_evidence_hash"],
+        "preview_reference": "preview:kb-refresh-api",
+        "reason": "preview metadata-only source and restore evidence refresh",
+    }
+    non_admin_refresh_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/refresh-preview",
+        headers=DEMO_HEADERS,
+        json=refresh_payload,
+    )
+    assert non_admin_refresh_response.status_code == 403
+    assert non_admin_refresh_response.json()["detail"] == "Tenant admin role required"
+
+    refresh_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/refresh-preview",
+        headers=DEMO_ADMIN_HEADERS,
+        json=refresh_payload,
+    )
+    assert refresh_response.status_code == 200
+    refresh_body = refresh_response.json()
+    refresh_body_text = json.dumps(refresh_body)
+    assert refresh_body["tenant_id"] == "tenant-demo"
+    assert refresh_body["module_id"] == "knowledge_base"
+    assert refresh_body["feature_id"] == "knowledge_base.articles.write"
+    assert (
+        refresh_body["approved_write_approval_evidence_hash"] == approval_body["approved_write_approval_evidence_hash"]
+    )
+    assert refresh_body["transition_source_evidence_hash"] == body["write_approval_evidence_hash"]
+    assert refresh_body["operation"] == "edit"
+    assert refresh_body["command_hash"] == approval_body["command_hash"]
+    assert refresh_body["preview_command_hash"].startswith("sha256:")
+    assert (
+        refresh_body["proposed_source_version_evidence_hash"] == approval_body["proposed_source_version_evidence_hash"]
+    )
+    assert refresh_body["current_restore_evidence_hash"] == approval_body["current_restore_evidence_hash"]
+    assert refresh_body["projected_restore_evidence_preview_hash"].startswith("sha256:")
+    assert refresh_body["article_count_before"] == 2
+    assert refresh_body["article_count_after"] == 2
+    assert refresh_body["source_version_evidence_count_before"] == 2
+    assert refresh_body["source_version_evidence_count_after"] == 2
+    assert refresh_body["preview_only"] is True
+    assert refresh_body["article_source_writes_allowed"] is False
+    assert refresh_body["evidence_persistence_allowed"] is False
+    assert refresh_body["rag_indexing_allowed"] is False
+    assert refresh_body["source_authority_verified"] is False
+    assert "projected_restore_evidence_preview_hash" in refresh_body["required_evidence"]
+    assert (
+        refresh_body["proposed_source_version_evidence_hash"]
+        not in refresh_body["current_source_version_evidence_hashes"]
+    )
+    assert (
+        refresh_body["proposed_source_version_evidence_hash"]
+        in refresh_body["projected_source_version_evidence_hashes"]
+    )
+    assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == starting_ledger_count + 2
+    assert "article_body" not in refresh_body_text
+    assert "source content" not in refresh_body_text
+    assert "prompt_text" not in refresh_body_text
+    assert "output_text" not in refresh_body_text
+
     after_response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
     assert after_response.status_code == 200
     assert {evidence["source_version_id"] for evidence in after_response.json()["source_version_evidence"]} == {"v1"}
@@ -874,6 +934,21 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert approval_event.metadata["dry_run_write_approval_evidence_hash"] == body["write_approval_evidence_hash"]
     assert approval_event.metadata["persistence_allowed"] is True
     assert approval_event.metadata["rag_indexing_allowed"] is False
+    refresh_events = [
+        event for event in new_events if event.event_type == "knowledge_base.write_approval.refresh_preview"
+    ]
+    assert len(refresh_events) == 1
+    refresh_event = refresh_events[0]
+    assert refresh_event.input_hash is not None
+    assert refresh_event.output_hash is None
+    assert refresh_event.metadata["result_contract"] == "metadata_only"
+    assert refresh_event.metadata["preview_reference"] == "preview:kb-refresh-api"
+    assert (
+        refresh_event.metadata["projected_restore_evidence_preview_hash"]
+        == refresh_body["projected_restore_evidence_preview_hash"]
+    )
+    assert refresh_event.metadata["article_source_writes_allowed"] is False
+    assert refresh_event.metadata["evidence_persistence_allowed"] is False
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

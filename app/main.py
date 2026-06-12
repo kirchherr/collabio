@@ -82,6 +82,8 @@ from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseArticleRepository,
     KnowledgeBaseArticleService,
     KnowledgeBaseArticlesResponse,
+    KnowledgeBaseEvidenceRefreshPreviewCommand,
+    KnowledgeBaseEvidenceRefreshPreviewResponse,
     KnowledgeBaseEvidenceResponse,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalTransitionCommand,
@@ -771,6 +773,28 @@ def build_app() -> FastAPI:
         articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
         try:
             return articles.approve_write_approval(command=command, user_context=context.user_context)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/admin/kb/articles/write-approvals/refresh-preview",
+        response_model=KnowledgeBaseEvidenceRefreshPreviewResponse,
+    )
+    def preview_knowledge_base_write_evidence_refresh(
+        command: KnowledgeBaseEvidenceRefreshPreviewCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+        ],
+    ) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
+        del gate
+        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        try:
+            return articles.preview_write_evidence_refresh(command=command, user_context=context.user_context)
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:

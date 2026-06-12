@@ -1249,7 +1249,8 @@ Empfohlene naechste Reihenfolge:
 79. [x] Write-Dry-Run-Evidence in `knowledge_base.write_approval_evidence` persistieren, ohne Artikel-/Source-Writes freizuschalten.
 80. [x] Source-Object-Write-Guard fuer Knowledge-Base-Artikel vorbereiten: Ledger-Evidence, erwartete Version, Legal Hold, Retention und Restore-Evidence pruefen, bevor echte Writes freigeschaltet werden.
 81. [x] Knowledge-Base-Approval-State-Transition von Dry-Run zu `approved_for_write` entwerfen, weiterhin ohne Artikel-/Source-Writes, mit Audit- und Restore-Evidence-Bindung.
-82. [ ] Metadata-only Restore-/Source-Evidence-Refresh-Preview fuer approved Knowledge-Base-Writes vorbereiten, bevor echte Artikel-/Source-Writes freigeschaltet werden.
+82. [x] Metadata-only Restore-/Source-Evidence-Refresh-Preview fuer approved Knowledge-Base-Writes vorbereiten, bevor echte Artikel-/Source-Writes freigeschaltet werden.
+83. [ ] Guarded Knowledge-Base-Write-Execution-Skeleton vorbereiten: approved Ledger-Evidence, Source-Object-Guard, Refresh-Preview und explizite Human Confirmation muessen gemeinsam vor echten Artikel-/Source-Writes vorliegen.
 
 ## Release-Strategie
 

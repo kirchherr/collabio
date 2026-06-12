@@ -70,6 +70,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `POST /v1/admin/kb/articles/write-approvals/approve` accepts a dry-run evidence hash and a new approval reference. It appends approved ledger evidence only; article rows, source objects, search indexes, embeddings, and RAG state remain unchanged.
 
+`POST /v1/admin/kb/articles/write-approvals/refresh-preview` accepts approved ledger evidence and projects the post-write source/restore evidence metadata. It returns current source-version evidence hashes, projected source-version evidence hashes, and a `projected_restore_evidence_preview_hash`; it does not persist evidence rows, article rows, source objects, search indexes, embeddings, or RAG state.
+
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
 ## Backup And Restore

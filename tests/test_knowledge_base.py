@@ -13,6 +13,7 @@ from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseWriteApprovalLedger,
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
+    KnowledgeBaseEvidenceRefreshPreviewCommand,
     KnowledgeBaseSourceObjectWriteGuard,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalState,
@@ -506,6 +507,91 @@ def test_knowledge_base_write_approval_transition_appends_approved_evidence_with
 
     with pytest.raises(ValueError, match="already approved"):
         service.approve_write_approval(command=transition_command, user_context=user_context)
+
+
+def test_knowledge_base_write_refresh_preview_projects_restore_evidence_without_writes() -> None:
+    audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
+    )
+    proposed_source_record = knowledge_base_source_record_for_write()
+    write_command = write_command_for_source_record(proposed_source_record)
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+    dry_run_response = service.dry_run_write_approval(command=write_command, user_context=user_context)
+    dry_run_preview_command = KnowledgeBaseEvidenceRefreshPreviewCommand(
+        approved_write_approval_evidence_hash=dry_run_response.write_approval_evidence_hash,
+        preview_reference="preview:kb-refresh-should-block",
+        reason="dry-run evidence is not enough for refresh preview",
+    )
+    with pytest.raises(ValueError, match="only approved"):
+        service.preview_write_evidence_refresh(command=dry_run_preview_command, user_context=user_context)
+
+    transition_response = service.approve_write_approval(
+        command=KnowledgeBaseWriteApprovalTransitionCommand(
+            dry_run_write_approval_evidence_hash=dry_run_response.write_approval_evidence_hash,
+            approval_reference="approval:kb-write-approve",
+            reason="human approved guarded knowledge base write",
+        ),
+        user_context=user_context,
+    )
+    preview_command = KnowledgeBaseEvidenceRefreshPreviewCommand(
+        approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+        preview_reference="preview:kb-refresh-1",
+        reason="preview metadata-only source and restore evidence refresh",
+    )
+
+    preview = service.preview_write_evidence_refresh(command=preview_command, user_context=user_context)
+
+    assert preview.tenant_id == "tenant-demo"
+    assert preview.approved_write_approval_evidence_hash == transition_response.approved_write_approval_evidence_hash
+    assert preview.transition_source_evidence_hash == dry_run_response.write_approval_evidence_hash
+    assert preview.operation == KnowledgeBaseWriteOperation.EDIT
+    assert preview.command_hash == transition_response.command_hash
+    assert preview.preview_command_hash.startswith("sha256:")
+    assert preview.proposed_source_version_evidence_hash == transition_response.proposed_source_version_evidence_hash
+    assert preview.current_restore_evidence_hash == transition_response.current_restore_evidence_hash
+    assert preview.projected_restore_evidence_preview_hash.startswith("sha256:")
+    assert preview.article_count_before == 2
+    assert preview.article_count_after == 2
+    assert preview.article_version_count_before == 2
+    assert preview.article_version_count_after == 2
+    assert preview.source_version_evidence_count_before == 2
+    assert preview.source_version_evidence_count_after == 2
+    assert len(preview.current_source_version_evidence_hashes) == 2
+    assert len(preview.projected_source_version_evidence_hashes) == 2
+    assert preview.proposed_source_version_evidence_hash not in preview.current_source_version_evidence_hashes
+    assert preview.proposed_source_version_evidence_hash in preview.projected_source_version_evidence_hashes
+    assert preview.preview_only is True
+    assert preview.article_source_writes_allowed is False
+    assert preview.evidence_persistence_allowed is False
+    assert preview.rag_indexing_allowed is False
+    assert preview.source_authority_verified is False
+    assert "projected_restore_evidence_preview_hash" in preview.required_evidence
+    assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
+    assert service.repository.list_articles(tenant_id="tenant-demo")[0].current_version_label == "v1"
+    assert "Backup restore runbook source content v2" not in preview.model_dump_json()
+
+    event = audit_logger.events[-1]
+    assert preview.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.write_approval.refresh_preview"
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only"
+    assert event.metadata["preview_only"] is True
+    assert event.metadata["article_source_writes_allowed"] is False
+    assert event.metadata["evidence_persistence_allowed"] is False
+    assert event.metadata["rag_indexing_allowed"] is False
+    assert event.metadata["source_authority_verified"] is False
+    assert event.metadata["projected_restore_evidence_preview_hash"] == preview.projected_restore_evidence_preview_hash
 
 
 def test_knowledge_base_source_object_write_guard_blocks_dry_run_ledger_evidence() -> None:

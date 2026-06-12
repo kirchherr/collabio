@@ -61,6 +61,15 @@ KB_WRITE_APPROVAL_TRANSITION_REQUIRED_EVIDENCE = (
     "approved_write_approval_ledger_entry",
     "audit_event_hash",
 )
+KB_WRITE_REFRESH_PREVIEW_REQUIRED_EVIDENCE = (
+    "approved_write_approval_ledger_entry",
+    "expected_current_version_match",
+    "current_restore_evidence_hash",
+    "projected_source_version_evidence_hashes",
+    "projected_restore_evidence_preview_hash",
+    "source_object_write_guard_still_required_before_persistence",
+    "audit_event_hash",
+)
 
 
 class KnowledgeBaseArticleLifecycleState(StrEnum):
@@ -538,6 +547,143 @@ class KnowledgeBaseWriteApprovalTransitionResponse(BaseModel):
     current_restore_evidence_hash: str
     required_evidence: tuple[str, ...] = KB_WRITE_APPROVAL_TRANSITION_REQUIRED_EVIDENCE
     audit_event_id: str
+
+
+class KnowledgeBaseEvidenceRefreshPreviewCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approved_write_approval_evidence_hash: str
+    preview_reference: str
+    reason: str
+
+    @field_validator("approved_write_approval_evidence_hash")
+    @classmethod
+    def validate_approved_evidence_hash(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("approved_write_approval_evidence_hash must be a sha256 reference")
+        return value
+
+    @field_validator("preview_reference")
+    @classmethod
+    def validate_preview_reference(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("preview_reference must be a namespaced reference")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def require_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("reason must not be empty")
+        return value
+
+
+class KnowledgeBaseEvidenceRefreshPreviewResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    feature_id: str = KB_ARTICLES_WRITE_FEATURE_ID
+    approved_write_approval_evidence_hash: str
+    transition_source_evidence_hash: str
+    operation: KnowledgeBaseWriteOperation
+    article_object_id: str
+    expected_current_version_object_id: str | None = None
+    proposed_version_object_id: str
+    proposed_source_object_id: str
+    proposed_source_version_id: str
+    command_hash: str
+    preview_command_hash: str
+    proposed_source_version_evidence_hash: str
+    current_source_version_evidence_hashes: tuple[str, ...]
+    projected_source_version_evidence_hashes: tuple[str, ...]
+    current_restore_evidence_hash: str
+    projected_restore_evidence_preview_hash: str
+    article_count_before: int = Field(ge=0)
+    article_count_after: int = Field(ge=0)
+    article_version_count_before: int = Field(ge=0)
+    article_version_count_after: int = Field(ge=0)
+    source_version_evidence_count_before: int = Field(ge=0)
+    source_version_evidence_count_after: int = Field(ge=0)
+    preview_only: bool = True
+    article_source_writes_allowed: bool = False
+    evidence_persistence_allowed: bool = False
+    rag_indexing_allowed: bool = False
+    source_authority_verified: bool = False
+    required_evidence: tuple[str, ...] = KB_WRITE_REFRESH_PREVIEW_REQUIRED_EVIDENCE
+    audit_event_id: str
+    schema_version: str = "knowledge_base_evidence_refresh_preview.v1"
+
+    @field_validator(
+        "tenant_id",
+        "article_object_id",
+        "proposed_version_object_id",
+        "proposed_source_object_id",
+        "proposed_source_version_id",
+        "audit_event_id",
+    )
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base refresh preview fields must not be empty")
+        return value
+
+    @field_validator(
+        "approved_write_approval_evidence_hash",
+        "transition_source_evidence_hash",
+        "command_hash",
+        "preview_command_hash",
+        "proposed_source_version_evidence_hash",
+        "current_restore_evidence_hash",
+        "projected_restore_evidence_preview_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base refresh preview hashes must be sha256 references")
+        return value
+
+    @field_validator("current_source_version_evidence_hashes", "projected_source_version_evidence_hashes")
+    @classmethod
+    def validate_source_hashes(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("source version evidence hashes must be unique")
+        for evidence_hash in value:
+            if not SHA256_REF_PATTERN.fullmatch(evidence_hash):
+                raise ValueError("source version evidence hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_preview(self) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
+        if not self.preview_only:
+            raise ValueError("knowledge base refresh preview must be preview_only")
+        if self.article_source_writes_allowed:
+            raise ValueError("knowledge base refresh preview cannot allow article/source writes")
+        if self.evidence_persistence_allowed:
+            raise ValueError("knowledge base refresh preview cannot allow evidence persistence")
+        if self.rag_indexing_allowed:
+            raise ValueError("knowledge base refresh preview cannot allow RAG indexing")
+        if self.source_authority_verified:
+            raise ValueError("knowledge base refresh preview cannot verify source authority")
+        if self.operation == KnowledgeBaseWriteOperation.EDIT:
+            if self.article_count_after != self.article_count_before:
+                raise ValueError("edit refresh preview must not change article count")
+            if self.article_version_count_after != self.article_version_count_before:
+                raise ValueError("edit refresh preview must not change article version count in preview")
+            if self.source_version_evidence_count_after != self.source_version_evidence_count_before:
+                raise ValueError("edit refresh preview must not change source evidence count")
+        if self.operation == KnowledgeBaseWriteOperation.CREATE:
+            if self.article_count_after != self.article_count_before + 1:
+                raise ValueError("create refresh preview must project one additional article")
+            if self.article_version_count_after != self.article_version_count_before + 1:
+                raise ValueError("create refresh preview must project one additional article version")
+            if self.source_version_evidence_count_after != self.source_version_evidence_count_before + 1:
+                raise ValueError("create refresh preview must project one additional source evidence")
+        if len(self.current_source_version_evidence_hashes) != self.source_version_evidence_count_before:
+            raise ValueError("current source evidence hashes must match before count")
+        if len(self.projected_source_version_evidence_hashes) != self.source_version_evidence_count_after:
+            raise ValueError("projected source evidence hashes must match after count")
+        return self
 
 
 class KnowledgeBaseWriteApprovalEvidence(BaseModel):
@@ -1516,6 +1662,125 @@ class KnowledgeBaseArticleService:
             audit_event_id=event.event_id,
         )
 
+    def preview_write_evidence_refresh(
+        self,
+        *,
+        command: KnowledgeBaseEvidenceRefreshPreviewCommand,
+        user_context: UserContext,
+    ) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
+        approved_evidence = self.write_approval_ledger.get(
+            tenant_id=user_context.tenant_id,
+            evidence_hash=command.approved_write_approval_evidence_hash,
+        )
+        self._require_refresh_preview_approved_evidence(approved_evidence)
+
+        records = sorted(
+            self.repository.list_articles(tenant_id=user_context.tenant_id),
+            key=lambda record: (record.title.lower(), record.object_id),
+        )
+        records_by_object_id = {record.object_id: record for record in records}
+        existing_article = records_by_object_id.get(approved_evidence.article_object_id)
+        if approved_evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            if existing_article is None:
+                raise LookupError(f"knowledge base article not found: {approved_evidence.article_object_id}")
+            if existing_article.current_version_object_id != approved_evidence.expected_current_version_object_id:
+                raise ValueError("expected current article version does not match approved evidence")
+        if approved_evidence.operation == KnowledgeBaseWriteOperation.CREATE and existing_article is not None:
+            raise ValueError("create refresh preview cannot target an existing knowledge base article")
+
+        source_evidences = [self.source_version_evidence(record) for record in records]
+        restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=user_context.tenant_id,
+            articles=records,
+            source_evidences=source_evidences,
+            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+        if restore_evidence.evidence_hash != approved_evidence.current_restore_evidence_hash:
+            raise ValueError("current restore evidence no longer matches approved write evidence")
+
+        current_source_hashes = tuple(sorted(evidence.evidence_hash for evidence in source_evidences))
+        projected_source_hashes = build_projected_source_version_evidence_hashes(
+            approved_evidence=approved_evidence,
+            current_source_evidences=source_evidences,
+        )
+        count_delta = 1 if approved_evidence.operation == KnowledgeBaseWriteOperation.CREATE else 0
+        article_count_before = len(records)
+        source_evidence_count_before = len(source_evidences)
+        preview_command_hash = build_evidence_refresh_preview_command_hash(command)
+        projected_restore_hash = build_knowledge_base_restore_evidence_preview_hash(
+            tenant_id=user_context.tenant_id,
+            approved_evidence=approved_evidence,
+            preview_command_hash=preview_command_hash,
+            current_source_version_evidence_hashes=current_source_hashes,
+            projected_source_version_evidence_hashes=projected_source_hashes,
+            article_count_before=article_count_before,
+            article_count_after=article_count_before + count_delta,
+            article_version_count_before=article_count_before,
+            article_version_count_after=article_count_before + count_delta,
+            source_version_evidence_count_before=source_evidence_count_before,
+            source_version_evidence_count_after=source_evidence_count_before + count_delta,
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.write_approval.refresh_preview",
+            source_object_ids=knowledge_base_write_evidence_target_object_ids(approved_evidence, existing_article),
+            input_text=canonical_json(command.model_dump(mode="json")),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
+                "surface": "compliance_api",
+                "operation": approved_evidence.operation,
+                "preview_reference": command.preview_reference,
+                "approval_state": approved_evidence.approval_state,
+                "approved_write_approval_evidence_hash": approved_evidence.evidence_hash,
+                "transition_source_evidence_hash": approved_evidence.transition_source_evidence_hash,
+                "command_hash": approved_evidence.command_hash,
+                "preview_command_hash": preview_command_hash,
+                "proposed_source_version_evidence_hash": approved_evidence.proposed_source_version_evidence_hash,
+                "current_restore_evidence_hash": restore_evidence.evidence_hash,
+                "projected_restore_evidence_preview_hash": projected_restore_hash,
+                "current_source_version_evidence_hashes": list(current_source_hashes),
+                "projected_source_version_evidence_hashes": list(projected_source_hashes),
+                "article_count_before": article_count_before,
+                "article_count_after": article_count_before + count_delta,
+                "source_version_evidence_count_before": source_evidence_count_before,
+                "source_version_evidence_count_after": source_evidence_count_before + count_delta,
+                "result_contract": "metadata_only",
+                "preview_only": True,
+                "article_source_writes_allowed": False,
+                "evidence_persistence_allowed": False,
+                "rag_indexing_allowed": False,
+                "source_authority_verified": False,
+                "required_evidence": list(KB_WRITE_REFRESH_PREVIEW_REQUIRED_EVIDENCE),
+            },
+        )
+        return KnowledgeBaseEvidenceRefreshPreviewResponse(
+            tenant_id=user_context.tenant_id,
+            approved_write_approval_evidence_hash=approved_evidence.evidence_hash,
+            transition_source_evidence_hash=str(approved_evidence.transition_source_evidence_hash),
+            operation=approved_evidence.operation,
+            article_object_id=approved_evidence.article_object_id,
+            expected_current_version_object_id=approved_evidence.expected_current_version_object_id,
+            proposed_version_object_id=approved_evidence.proposed_version_object_id,
+            proposed_source_object_id=approved_evidence.proposed_source_object_id,
+            proposed_source_version_id=approved_evidence.proposed_source_version_id,
+            command_hash=approved_evidence.command_hash,
+            preview_command_hash=preview_command_hash,
+            proposed_source_version_evidence_hash=approved_evidence.proposed_source_version_evidence_hash,
+            current_source_version_evidence_hashes=current_source_hashes,
+            projected_source_version_evidence_hashes=projected_source_hashes,
+            current_restore_evidence_hash=restore_evidence.evidence_hash,
+            projected_restore_evidence_preview_hash=projected_restore_hash,
+            article_count_before=article_count_before,
+            article_count_after=article_count_before + count_delta,
+            article_version_count_before=article_count_before,
+            article_version_count_after=article_count_before + count_delta,
+            source_version_evidence_count_before=source_evidence_count_before,
+            source_version_evidence_count_after=source_evidence_count_before + count_delta,
+            audit_event_id=event.event_id,
+        )
+
     def _require_approvable_dry_run_evidence(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> None:
         if evidence.approval_state != KnowledgeBaseWriteApprovalState.DRY_RUN:
             raise ValueError("only dry-run write approval evidence can be approved")
@@ -1536,6 +1801,16 @@ class KnowledgeBaseArticleService:
                 and evidence.approval_state == KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE
             ):
                 raise ValueError("dry-run write approval evidence is already approved")
+
+    def _require_refresh_preview_approved_evidence(self, evidence: KnowledgeBaseWriteApprovalEvidence) -> None:
+        if evidence.approval_state != KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE:
+            raise ValueError("only approved write approval evidence can be used for refresh preview")
+        if build_write_approval_evidence_hash(evidence) != evidence.evidence_hash:
+            raise ValueError("approved write approval evidence hash is invalid")
+        if not evidence.persistence_allowed:
+            raise ValueError("approved write approval evidence must allow persistence before refresh preview")
+        if evidence.transition_source_evidence_hash is None:
+            raise ValueError("approved write approval evidence must reference transition source evidence")
 
     def evaluate_source_object_write_guard(
         self,
@@ -1819,6 +2094,10 @@ def build_write_approval_evidence_hash(evidence: KnowledgeBaseWriteApprovalEvide
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude=excluded_fields)))
 
 
+def build_evidence_refresh_preview_command_hash(command: KnowledgeBaseEvidenceRefreshPreviewCommand) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
 def build_source_object_write_guard_ref(decision: KnowledgeBaseSourceObjectWriteGuardDecision) -> str:
     payload = canonical_json(decision.model_dump(mode="json", exclude={"source_object_write_guard_ref"}))
     return f"guard:{stable_hash(payload)}"
@@ -1862,6 +2141,82 @@ def knowledge_base_write_evidence_target_object_ids(
             target_object_ids.append(object_id)
             seen.add(object_id)
     return target_object_ids
+
+
+def build_projected_source_version_evidence_hashes(
+    *,
+    approved_evidence: KnowledgeBaseWriteApprovalEvidence,
+    current_source_evidences: Sequence[KnowledgeBaseSourceVersionEvidence],
+) -> tuple[str, ...]:
+    current_by_article = {
+        evidence.article_object_id: evidence.evidence_hash
+        for evidence in sorted(current_source_evidences, key=lambda item: item.article_object_id)
+    }
+    if approved_evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+        if approved_evidence.article_object_id not in current_by_article:
+            raise LookupError(f"knowledge base article not found: {approved_evidence.article_object_id}")
+        current_by_article[approved_evidence.article_object_id] = (
+            approved_evidence.proposed_source_version_evidence_hash
+        )
+        projected_hashes = tuple(sorted(current_by_article.values()))
+    else:
+        if approved_evidence.article_object_id in current_by_article:
+            raise ValueError("create refresh preview cannot target an existing knowledge base article")
+        projected_hashes = tuple(
+            sorted((*current_by_article.values(), approved_evidence.proposed_source_version_evidence_hash))
+        )
+    if len(projected_hashes) != len(set(projected_hashes)):
+        raise ValueError("projected source version evidence hashes must be unique")
+    return projected_hashes
+
+
+def build_knowledge_base_restore_evidence_preview_hash(
+    *,
+    tenant_id: str,
+    approved_evidence: KnowledgeBaseWriteApprovalEvidence,
+    preview_command_hash: str,
+    current_source_version_evidence_hashes: tuple[str, ...],
+    projected_source_version_evidence_hashes: tuple[str, ...],
+    article_count_before: int,
+    article_count_after: int,
+    article_version_count_before: int,
+    article_version_count_after: int,
+    source_version_evidence_count_before: int,
+    source_version_evidence_count_after: int,
+) -> str:
+    payload = {
+        "schema_version": "knowledge_base_restore_evidence_refresh_preview.v1",
+        "tenant_id": tenant_id,
+        "module_id": KNOWLEDGE_BASE_MODULE_ID,
+        "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
+        "approved_write_approval_evidence_hash": approved_evidence.evidence_hash,
+        "transition_source_evidence_hash": approved_evidence.transition_source_evidence_hash,
+        "operation": approved_evidence.operation,
+        "article_object_id": approved_evidence.article_object_id,
+        "expected_current_version_object_id": approved_evidence.expected_current_version_object_id,
+        "proposed_version_object_id": approved_evidence.proposed_version_object_id,
+        "proposed_source_object_id": approved_evidence.proposed_source_object_id,
+        "proposed_source_version_id": approved_evidence.proposed_source_version_id,
+        "command_hash": approved_evidence.command_hash,
+        "preview_command_hash": preview_command_hash,
+        "proposed_source_version_evidence_hash": approved_evidence.proposed_source_version_evidence_hash,
+        "current_restore_evidence_hash": approved_evidence.current_restore_evidence_hash,
+        "current_source_version_evidence_hashes": current_source_version_evidence_hashes,
+        "projected_source_version_evidence_hashes": projected_source_version_evidence_hashes,
+        "article_count_before": article_count_before,
+        "article_count_after": article_count_after,
+        "article_version_count_before": article_version_count_before,
+        "article_version_count_after": article_version_count_after,
+        "source_version_evidence_count_before": source_version_evidence_count_before,
+        "source_version_evidence_count_after": source_version_evidence_count_after,
+        "preview_only": True,
+        "article_source_writes_allowed": False,
+        "evidence_persistence_allowed": False,
+        "rag_indexing_allowed": False,
+        "source_authority_verified": False,
+        "required_evidence": KB_WRITE_REFRESH_PREVIEW_REQUIRED_EVIDENCE,
+    }
+    return stable_hash(canonical_json(payload))
 
 
 def build_knowledge_base_restore_evidence(
