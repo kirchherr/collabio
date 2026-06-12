@@ -13,7 +13,7 @@ Knowledge Base is a native optional suite module for governed internal articles,
 
 The module is optional in normal use, but compliance obligations for existing knowledge base data remain mandatory.
 
-This charter intentionally starts smaller than a full wiki. The first slice proves tenant-safe article metadata and source-version references before article bodies, editing workflows, approvals, search indexing, or RAG are added.
+This charter intentionally starts smaller than a full wiki. The first slices prove tenant-safe article metadata, source-version evidence, and restore evidence before article bodies, editing workflows, approvals, search indexing, or RAG are added.
 
 ## 2. Lifecycle And Activation
 
@@ -78,6 +78,8 @@ Every object must carry the required metadata from `docs/modules/MODULE_IMPLEMEN
 
 Article bodies are not stored in the first slice. Current article versions are references for future source-object retrieval and RAG citation, not permission to bypass ACL validation.
 
+Current article versions must resolve to authoritative source-object records before the module can move toward authoring or RAG. The source-version evidence captures source object ID, source version ID, manifest hash, content hash, ACL version, classification, retention policy, Legal Hold state, and an evidence hash without storing article body text.
+
 ## 6. Search, RAG, AI, And Voice
 
 Initial state:
@@ -101,20 +103,26 @@ Required evidence:
 - module state restore check
 - article row-count check
 - article-version row-count check
+- source-version evidence row-count check
+- source-version evidence hashes
 - manifest or checksum check
 - tenant isolation check after restore
 - disabled-state restore check
 - Legal Hold restore check
+- restore evidence hash for `knowledge_base_content`
 
 New article body storage, source indexes, RAG chunks, embeddings, approvals, or exports must update this continuity domain in the same change.
 
 ## 8. Migrations And Imports
 
-Initial migration:
+Initial migrations:
 
 - `0021_knowledge_base_articles.sql`
+- `0022_knowledge_base_source_restore_evidence.sql`
 
-The migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
+The first migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
+
+The second migration creates append-only tenant-scoped `knowledge_base.source_version_evidence` and `knowledge_base.restore_evidence` tables. These tables are RLS-protected, grant no hard delete, and are the required precondition for later write/edit or RAG expansion.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 
@@ -138,3 +146,4 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 - `tests/test_knowledge_base.py`
 - `tests/test_api.py`
 - `tests/test_pgvector_migration.py`
+- `tests/test_knowledge_base_docs.py`

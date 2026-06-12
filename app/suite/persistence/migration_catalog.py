@@ -196,6 +196,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="knowledge_base",
         evidence_refs=("doc:knowledge-base-articles-vertical-slice", "test:knowledge-base-articles-slice"),
     ),
+    SqlMigration(
+        version="0022",
+        name="knowledge_base_source_restore_evidence",
+        resource_name="0022_knowledge_base_source_restore_evidence.sql",
+        module_id="knowledge_base",
+        evidence_refs=("doc:knowledge-base-source-restore-evidence", "test:knowledge-base-evidence-slice"),
+    ),
 )
 
 

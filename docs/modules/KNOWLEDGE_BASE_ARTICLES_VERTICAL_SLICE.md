@@ -3,14 +3,14 @@
 Status: initial
 Date: 2026-06-12
 
-This slice proves the reusable module implementation contract outside CRM/ERP. It starts the Knowledge Base with metadata-only article reads and source-version references, not a full wiki and not RAG.
+This slice proves the reusable module implementation contract outside CRM/ERP. It starts the Knowledge Base with metadata-only article reads, source-version evidence, and restore evidence, not a full wiki and not RAG.
 
 ## Scope
 
 - Module: `knowledge_base`
 - Feature gate: `knowledge_base.articles.read`
 - API: `GET /v1/kb/articles`
-- Persistent tables: `knowledge_base.articles`, `knowledge_base.article_versions`
+- Persistent tables: `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`
 - Object types: `kb.article`, `kb.article_version`
 - Classification: `internal`
 - Retention policy: `rp-standard`
@@ -24,6 +24,9 @@ request tenant context
   -> tenant-scoped article repository
   -> article object authorization
   -> current version object authorization
+  -> authoritative source-version resolution
+  -> source-version evidence hash generation
+  -> restore evidence hash generation for knowledge_base_content
   -> metadata-only response
   -> audit event without prompt, output, source text, article body, or raw payload body
 ```
@@ -43,15 +46,27 @@ request tenant context
 - no hard-delete policy or grant
 - no article body, prompt, output, source text, or raw payload columns
 
+`0022_knowledge_base_source_restore_evidence.sql` creates source-version and restore-evidence tables with:
+
+- tenant RLS and forced RLS
+- source object ID and source version ID evidence
+- source manifest hash and content hash evidence
+- ACL version, classification, retention policy, and Legal Hold state evidence
+- row-count, checksum-manifest, disabled-state restore, tenant-isolation restore, and Legal-Hold restore evidence
+- no hard-delete policy or grant
+- no article body, prompt, output, source text, or raw payload columns
+
 ## Runtime Contract
 
 The API returns only articles for the current tenant where the current user is authorized for both the `kb.article` and current `kb.article_version` object IDs.
+
+Each returned article includes a `source_version_evidence_hash`. The response includes `source_version_evidence_hashes` and a `restore_evidence_hash`, and the audit event records those hashes as metadata only.
 
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
 ## Backup And Restore
 
-The slice belongs to the `knowledge_base_content` continuity domain. Backup and restore evidence must cover article metadata, article-version metadata, source references, tenant isolation, disabled-state restore behavior, and Legal Hold state before broader authoring or RAG work begins.
+The slice belongs to the `knowledge_base_content` continuity domain. Backup and restore evidence must cover article metadata, article-version metadata, source-version evidence, source references, tenant isolation, disabled-state restore behavior, and Legal Hold state before broader authoring or RAG work begins.
 
 ## RAG Boundary
 
@@ -62,3 +77,4 @@ This slice intentionally stops before RAG. Later RAG work must use candidate-onl
 - `tests/test_knowledge_base.py`
 - `tests/test_api.py`
 - `tests/test_pgvector_migration.py`
+- `tests/test_knowledge_base_docs.py`

@@ -82,6 +82,7 @@ from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseArticleRepository,
     KnowledgeBaseArticleService,
     KnowledgeBaseArticlesResponse,
+    demo_knowledge_base_source_object_repository,
 )
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -345,6 +346,7 @@ def build_app() -> FastAPI:
     )
     knowledge_base_article_service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)

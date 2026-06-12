@@ -646,12 +646,16 @@ def test_knowledge_base_articles_endpoint_returns_metadata_after_feature_enable(
     assert body["module_id"] == "knowledge_base"
     assert body["feature_id"] == "knowledge_base.articles.read"
     assert body["audit_event_id"]
+    assert body["restore_evidence_hash"].startswith("sha256:")
+    assert len(body["source_version_evidence_hashes"]) == 2
     assert [article["title"] for article in body["articles"]] == ["Backup Restore Runbook", "Security Baseline"]
     assert {article["object_type"] for article in body["articles"]} == {"kb.article"}
     assert {article["data_classification"] for article in body["articles"]} == {"internal"}
     assert {article["retention_policy_id"] for article in body["articles"]} == {"rp-standard"}
     assert all(article["access_checked"] for article in body["articles"])
     assert all(article["source_version_access_checked"] for article in body["articles"])
+    assert {article["current_source_version_id"] for article in body["articles"]} == {"v1"}
+    assert all(article["source_version_evidence_hash"].startswith("sha256:") for article in body["articles"])
     assert all("article_body" not in article for article in body["articles"])
     assert "Other Tenant Article" not in {article["title"] for article in body["articles"]}
 
@@ -663,6 +667,9 @@ def test_knowledge_base_articles_endpoint_returns_metadata_after_feature_enable(
     assert new_events[-1].metadata["candidate_count"] == 2
     assert new_events[-1].metadata["result_count"] == 2
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
+    assert new_events[-1].metadata["continuity_domain"] == "knowledge_base_content"
+    assert new_events[-1].metadata["restore_evidence_hash"] == body["restore_evidence_hash"]
+    assert new_events[-1].metadata["source_version_evidence_hashes"] == body["source_version_evidence_hashes"]
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

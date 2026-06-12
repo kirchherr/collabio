@@ -53,6 +53,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0019",
         "0020",
         "0021",
+        "0022",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -67,9 +68,9 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 6
+    assert len(core_migrations) == len(load_migrations()) - 7
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
-    assert [migration.version for migration in knowledge_base_migrations] == ["0021"]
+    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -845,6 +846,90 @@ def test_knowledge_base_articles_migration_declares_metadata_versions_rls_and_no
     assert "article_body" not in sql
     assert "source_text" not in sql
     assert "raw_payload" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_knowledge_base_evidence_migration_declares_source_version_and_restore_evidence() -> None:
+    sql = normalized(get_migration("0022").sql())
+    source_evidence_body = table_body(get_migration("0022").sql(), "knowledge_base.source_version_evidence")
+    restore_evidence_body = table_body(get_migration("0022").sql(), "knowledge_base.restore_evidence")
+
+    for column in [
+        "tenant_id",
+        "article_object_id",
+        "article_version_object_id",
+        "source_object_id",
+        "source_version_id",
+        "source_object_type",
+        "source_manifest_hash",
+        "content_hash",
+        "acl_version",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "evidence_hash",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", source_evidence_body), f"{column} missing from source evidence"
+
+    for column in [
+        "tenant_id",
+        "module_id",
+        "continuity_domain",
+        "article_count",
+        "article_version_count",
+        "source_version_evidence_count",
+        "source_version_evidence_hashes",
+        "restore_drill_report_hash",
+        "row_count_hash",
+        "checksum_manifest_hash",
+        "tenant_isolation_verified",
+        "disabled_state_restore_verified",
+        "legal_hold_restore_verified",
+        "evidence_hash",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", restore_evidence_body), f"{column} missing from restore evidence"
+
+    assert "article_version_object_id = source_object_id" in source_evidence_body
+    assert (
+        "source_manifest_hash text not null check (source_manifest_hash ~ '^sha256:[a-f0-9]{64}$')"
+        in source_evidence_body
+    )
+    assert "content_hash text not null check (content_hash ~ '^sha256:[a-f0-9]{64}$')" in source_evidence_body
+    assert "acl_version integer not null check (acl_version >= 1)" in source_evidence_body
+    assert (
+        "data_classification text not null default 'internal' check (data_classification = 'internal')"
+        in source_evidence_body
+    )
+    assert (
+        "retention_policy_id text not null default 'rp-standard' check (retention_policy_id = 'rp-standard')"
+        in source_evidence_body
+    )
+    assert "continuity_domain = 'knowledge_base_content'" in restore_evidence_body
+    assert "tenant_isolation_verified boolean not null check (tenant_isolation_verified)" in restore_evidence_body
+    assert (
+        "disabled_state_restore_verified boolean not null check (disabled_state_restore_verified)"
+        in restore_evidence_body
+    )
+    assert "legal_hold_restore_verified boolean not null check (legal_hold_restore_verified)" in restore_evidence_body
+    assert "article_version_count = source_version_evidence_count" in restore_evidence_body
+    assert "alter table knowledge_base.source_version_evidence enable row level security" in sql
+    assert "alter table knowledge_base.restore_evidence enable row level security" in sql
+    assert "create policy kb_source_version_evidence_tenant_select" in sql
+    assert "create policy kb_source_version_evidence_no_update" in sql
+    assert "create policy kb_source_version_evidence_no_hard_delete" in sql
+    assert "create policy kb_restore_evidence_tenant_select" in sql
+    assert "create policy kb_restore_evidence_no_update" in sql
+    assert "create policy kb_restore_evidence_no_hard_delete" in sql
+    assert "grant select, insert on table knowledge_base.source_version_evidence to collabio_app" in sql
+    assert "grant select, insert on table knowledge_base.restore_evidence to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
     assert "prompt_text" not in sql
     assert "output_text" not in sql
 

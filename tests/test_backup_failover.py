@@ -73,6 +73,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "storage_object_manifest_hash_check" in object_storage.integrity_checks
     assert "envelope_encryption_manifest_hash_check" in object_storage.integrity_checks
     assert "restore_drill_report_hash_check" in object_storage.integrity_checks
+    assert "knowledge_base_source_version_evidence_hash_check" in object_storage.integrity_checks
+    assert "knowledge_base_restore_evidence_hash_check" in object_storage.integrity_checks
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -137,6 +139,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "SQL Server migration manifests" in policy.domain("crm_erp_business_records").state_artifacts
     assert "knowledge article metadata" in policy.domain("knowledge_base_content").state_artifacts
     assert "knowledge article versions" in policy.domain("knowledge_base_content").state_artifacts
+    assert "Knowledge Base source-version evidence hashes" in policy.domain("knowledge_base_content").state_artifacts
+    assert "Knowledge Base restore evidence hash" in policy.domain("knowledge_base_content").state_artifacts
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts

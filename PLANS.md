@@ -80,12 +80,14 @@ Current sprint:
 70. [x] Minimal ERP products read vertical slice with `erp.products`, internal classification, audit, and `GET /v1/erp/products`.
 71. [x] Reusable module implementation contract for knowledge base, LMS, tasks, tickets, time tracking, and later suite modules.
 72. [x] First Knowledge Base metadata/read slice with `knowledge_base`, `kb.article`, `kb.article_version`, RLS, audit, and `GET /v1/kb/articles`.
+73. [x] Knowledge Base source-version and restore evidence hardening for manifest hash, content hash, ACL version, disabled-state restore, and Legal Hold restore checks.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, keep the Knowledge Base narrow and harden source-version behavior before adding authoring:
+After proving the reusable module contract outside CRM/ERP, keep the Knowledge Base narrow and persist the evidence trail before adding authoring:
 
-- Add Knowledge Base article-version source resolver evidence and restore-drill evidence before write/edit workflows.
+- Add a compliance/admin read path for Knowledge Base source-version and restore evidence.
+- Only then add Knowledge Base write/edit approval workflows.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

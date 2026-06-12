@@ -1046,7 +1046,7 @@ CRM/ERP `crm_erp`:
 
 Vorbereitete Modul-Familien:
 
-- Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`.
+- Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`; Source-Version- und Restore-Evidence fuer Manifest Hash, Content Hash, ACL-Version, Disabled-State-Restore und Legal-Hold-Restore ist vorbereitet.
 - LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
@@ -1242,6 +1242,9 @@ Empfohlene naechste Reihenfolge:
 72. [x] Minimalen ERP Products Read-Vertical-Slice mit `erp.products`, `internal` Klassifikation, Audit und `GET /v1/erp/products` als Architekturbeweis implementieren.
 73. [x] Modul-Implementierungsvertrag fuer Wissensdatenbank, LMS, Aufgaben, Tickets, Zeiterfassung und spaetere Suite-Module aus den CRM/ERP-Slices extrahieren.
 74. [x] Ersten Wissensdatenbank-Read-Slice mit `knowledge_base`, `kb.article`, `kb.article_version`, RLS, Audit und `GET /v1/kb/articles` implementieren.
+75. [x] Wissensdatenbank-Source-Version- und Restore-Evidence mit `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`, Audit-Metadaten und Backup-Domain-Nachweis haerten.
+76. [ ] Compliance/Admin-Read-Pfad fuer Wissensdatenbank-Source-/Restore-Evidence implementieren.
+77. [ ] Erst danach Wissensdatenbank-Write/Edit-Approval-Workflow starten.
 
 ## Release-Strategie
 
