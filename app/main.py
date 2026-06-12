@@ -89,6 +89,8 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseWriteApprovalTransitionCommand,
     KnowledgeBaseWriteApprovalTransitionResponse,
     KnowledgeBaseWriteDryRunResponse,
+    KnowledgeBaseWriteExecutionCommand,
+    KnowledgeBaseWriteExecutionResponse,
     KnowledgeBaseWriteExecutionSkeletonCommand,
     KnowledgeBaseWriteExecutionSkeletonResponse,
     build_default_knowledge_base_write_approval_ledger,
@@ -819,6 +821,28 @@ def build_app() -> FastAPI:
         articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
         try:
             return articles.prepare_write_execution_skeleton(command=command, user_context=context.user_context)
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/admin/kb/articles/write-approvals/execute",
+        response_model=KnowledgeBaseWriteExecutionResponse,
+    )
+    def execute_knowledge_base_article_write(
+        command: KnowledgeBaseWriteExecutionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+        ],
+    ) -> KnowledgeBaseWriteExecutionResponse:
+        del gate
+        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        try:
+            return articles.execute_write(command=command, user_context=context.user_context)
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:

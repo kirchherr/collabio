@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from main import app, require_module_api_gate
+from suite.ai_control_plane.models import DataClass
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.context import DEFAULT_DEV_JWT_SECRET, DEFAULT_JWT_AUDIENCE, DEFAULT_JWT_ISSUER
 from suite.platform.knowledge_base import (
@@ -20,6 +21,15 @@ from suite.platform.knowledge_base import (
 )
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateDecision, default_module_registry
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
+from suite.storage.source_objects import (
+    LegalHoldState,
+    SourceLifecycleState,
+    SourceObjectMetadata,
+    SourceObjectRecord,
+    SourceObjectType,
+    build_source_object_manifest_hash,
+    sha256_bytes,
+)
 
 client = TestClient(app)
 
@@ -99,6 +109,41 @@ DECOMMISSION_CANCEL_PAYLOAD = {
     "cancel_approval_ref": "approval:module-decommission-cancel",
     "cancel_audit_evidence_ref": "audit:decommission-cancel-evidence-1",
 }
+
+
+def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
+    text = "Backup restore runbook source content v2."
+    content = text.encode("utf-8")
+    draft = SourceObjectMetadata(
+        tenant_id="tenant-demo",
+        object_id="kb-article-version-backup-runbook-v2-demo",
+        object_type=SourceObjectType.WIKI,
+        version_id="v2",
+        title="Backup Restore Runbook v2",
+        owner_principal_id="user-demo",
+        created_by="tenant-admin-demo",
+        created_at_utc="2026-06-12T09:00:00Z",
+        updated_at_utc="2026-06-12T09:00:00Z",
+        classification=DataClass.INTERNAL,
+        retention_policy_id="rp-standard",
+        legal_hold_state=LegalHoldState.NONE,
+        kms_key_ref="kms://tenant-demo/internal/v1",
+        manifest_hash="sha256:" + "0" * 64,
+        audit_chain_ref="audit:kb-article-version-backup-runbook-v2-demo",
+        source_system="collabio",
+        mime_type="text/plain",
+        acl_hash="sha256:" + "a" * 64,
+        acl_version=1,
+        content_hash=sha256_bytes(content),
+        content_byte_length=len(content),
+        lifecycle_state=SourceLifecycleState.SAVED_VERSION,
+    )
+    return SourceObjectRecord(
+        metadata=draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)}),
+        text=text,
+    )
+
+
 DECOMMISSION_REOPEN_PAYLOAD = {
     "approval_reference": "approval:module-decommission-reopen",
     "reason": "decommission blocker has remediation evidence",
@@ -740,6 +785,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     )
     assert provision_response.status_code == 200
     assert provision_response.json()["status"] == "disabled"
+    proposed_source_record = knowledge_base_source_record_for_api_write()
     payload = {
         "approval_reference": "approval:kb-write-dry-run",
         "reason": "prepare controlled knowledge base edit",
@@ -751,8 +797,8 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
         "proposed_version_label": "v2",
         "proposed_source_object_id": "kb-article-version-backup-runbook-v2-demo",
         "proposed_source_version_id": "v2",
-        "proposed_source_manifest_hash": "sha256:" + "3" * 64,
-        "proposed_content_hash": "sha256:" + "4" * 64,
+        "proposed_source_manifest_hash": proposed_source_record.metadata.manifest_hash,
+        "proposed_content_hash": proposed_source_record.metadata.content_hash,
         "proposed_acl_version": 1,
         "expected_current_version_object_id": "kb-article-version-backup-runbook-v1-demo",
     }
@@ -989,9 +1035,65 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert "prompt_text" not in execution_body_text
     assert "output_text" not in execution_body_text
 
+    write_payload = {
+        "approved_write_approval_evidence_hash": approval_body["approved_write_approval_evidence_hash"],
+        "source_object_write_guard_decision": guard_decision.model_dump(mode="json"),
+        "refresh_preview_command_hash": refresh_body["preview_command_hash"],
+        "projected_restore_evidence_preview_hash": refresh_body["projected_restore_evidence_preview_hash"],
+        "execution_skeleton_command_hash": execution_body["execution_command_hash"],
+        "execution_plan_hash": execution_body["execution_plan_hash"],
+        "execution_reference": "execution:kb-write-api",
+        "human_confirmation_reference": "human-confirmation:kb-write-api",
+        "proposed_source_record": proposed_source_record.model_dump(mode="json"),
+        "reason": "execute guarded knowledge base edit",
+    }
+    non_admin_write_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/execute",
+        headers=DEMO_HEADERS,
+        json=write_payload,
+    )
+    assert non_admin_write_response.status_code == 403
+    assert non_admin_write_response.json()["detail"] == "Tenant admin role required"
+
+    write_response = client.post(
+        "/v1/admin/kb/articles/write-approvals/execute",
+        headers=DEMO_ADMIN_HEADERS,
+        json=write_payload,
+    )
+    assert write_response.status_code == 200
+    write_body = write_response.json()
+    write_body_text = json.dumps(write_body)
+    assert write_body["tenant_id"] == "tenant-demo"
+    assert write_body["module_id"] == "knowledge_base"
+    assert write_body["feature_id"] == "knowledge_base.articles.write"
+    assert write_body["execution_allowed"] is True
+    assert write_body["source_object_persisted"] is True
+    assert write_body["article_metadata_persisted"] is True
+    assert write_body["article_version_metadata_persisted"] is True
+    assert write_body["source_version_evidence_refreshed"] is True
+    assert write_body["restore_evidence_refreshed"] is True
+    assert write_body["rag_indexing_allowed"] is False
+    assert write_body["search_indexing_allowed"] is False
+    assert write_body["execution_plan_hash"] == execution_body["execution_plan_hash"]
+    assert write_body["current_version_object_id"] == payload["proposed_version_object_id"]
+    assert write_body["current_source_version_id"] == payload["proposed_source_version_id"]
+    assert (
+        write_body["refreshed_source_version_evidence_hash"] == approval_body["proposed_source_version_evidence_hash"]
+    )
+    assert write_body["refreshed_restore_evidence_hash"].startswith("sha256:")
+    assert write_body["refreshed_restore_evidence_hash"] != write_body["previous_restore_evidence_hash"]
+    assert "source_object_persisted" in write_body["required_evidence"]
+    assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == starting_ledger_count + 2
+    assert "article_body" not in write_body_text
+    assert "source content" not in write_body_text
+    assert "prompt_text" not in write_body_text
+    assert "output_text" not in write_body_text
+
     after_response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
     assert after_response.status_code == 200
-    assert {evidence["source_version_id"] for evidence in after_response.json()["source_version_evidence"]} == {"v1"}
+    after_body = after_response.json()
+    assert {evidence["source_version_id"] for evidence in after_body["source_version_evidence"]} == {"v1", "v2"}
+    assert after_body["restore_evidence"]["evidence_hash"] == write_body["refreshed_restore_evidence_hash"]
 
     invalid_body_response = client.post(
         "/v1/admin/kb/articles/write-dry-run",
@@ -1047,6 +1149,16 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert execution_event.metadata["human_confirmation_reference"] == "human-confirmation:kb-write-api"
     assert execution_event.metadata["execution_allowed"] is False
     assert execution_event.metadata["execution_plan_hash"] == execution_body["execution_plan_hash"]
+    write_events = [event for event in new_events if event.event_type == "knowledge_base.write_approval.executed"]
+    assert len(write_events) == 1
+    write_event = write_events[0]
+    assert write_event.input_hash is not None
+    assert write_event.output_hash is None
+    assert write_event.metadata["result_contract"] == "metadata_only"
+    assert write_event.metadata["execution_reference"] == "execution:kb-write-api"
+    assert write_event.metadata["source_object_persisted"] is True
+    assert write_event.metadata["article_metadata_persisted"] is True
+    assert write_event.metadata["refreshed_restore_evidence_hash"] == write_body["refreshed_restore_evidence_hash"]
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

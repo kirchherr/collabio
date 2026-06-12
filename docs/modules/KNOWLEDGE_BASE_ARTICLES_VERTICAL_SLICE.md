@@ -56,7 +56,7 @@ request tenant context
 - no hard-delete policy or grant
 - no article body, prompt, output, source text, or raw payload columns
 
-`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. `0024_knowledge_base_write_approval_transition_lineage.sql` requires non-dry-run approval states to point back to the dry-run evidence that was approved. The dry-run endpoint appends metadata-only approval evidence through the ledger port. The approval endpoint appends `approved_for_write` evidence with lineage, but still does not mutate article/source records. `KnowledgeBaseSourceObjectWriteGuard` consumes approved ledger evidence before future writes and checks expected version, proposed source-version evidence, restore evidence, retention, Legal Hold, and source-object metadata. The execution skeleton binds approved evidence, source-guard decision, refresh-preview hash, and human confirmation into an audited `execution_plan_hash`, but still blocks persistence.
+`0023_knowledge_base_write_approval_evidence.sql` creates the append-only write-approval ledger. `0024_knowledge_base_write_approval_transition_lineage.sql` requires non-dry-run approval states to point back to the dry-run evidence that was approved. The dry-run endpoint appends metadata-only approval evidence through the ledger port. The approval endpoint appends `approved_for_write` evidence with lineage, but still does not mutate article/source records. `KnowledgeBaseSourceObjectWriteGuard` consumes approved ledger evidence before future writes and checks expected version, proposed source-version evidence, restore evidence, retention, Legal Hold, and source-object metadata. The execution skeleton binds approved evidence, source-guard decision, refresh-preview hash, and human confirmation into an audited `execution_plan_hash`, but still blocks persistence. The execute endpoint performs the first edit-only in-memory commit and refreshes evidence while keeping RAG and indexing disabled.
 
 ## Runtime Contract
 
@@ -73,6 +73,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 `POST /v1/admin/kb/articles/write-approvals/refresh-preview` accepts approved ledger evidence and projects the post-write source/restore evidence metadata. It returns current source-version evidence hashes, projected source-version evidence hashes, and a `projected_restore_evidence_preview_hash`; it does not persist evidence rows, article rows, source objects, search indexes, embeddings, or RAG state.
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, and explicit human confirmation. It returns a blocked `execution_plan_hash` and keeps article rows, source objects, evidence rows, search indexes, embeddings, and RAG state unchanged.
+
+`POST /v1/admin/kb/articles/write-approvals/execute` accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, an execution plan hash, explicit human confirmation, and the proposed source object. It commits edit writes by persisting the source object, updating article/current-version metadata, refreshing source-version evidence, and returning `refreshed_restore_evidence_hash`. It does not return source text, article bodies, prompts, outputs, embeddings, or model responses.
 
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 

@@ -89,13 +89,14 @@ Current sprint:
 79. [x] Knowledge Base approval-state transition from dry-run to append-only `approved_for_write` evidence with lineage and no article/source writes.
 80. [x] Metadata-only Knowledge Base restore/source evidence refresh preview for approved writes, still without article/source writes or RAG indexing.
 81. [x] Guarded Knowledge Base write-execution skeleton with approved evidence, source-guard decision, refresh-preview hash, explicit human confirmation, and no article/source writes.
+82. [x] Atomic Knowledge Base edit-write execution path that persists the source object, updates article/version metadata, refreshes source/restore evidence, and keeps RAG/indexing disabled.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, and a blocked write-execution skeleton. The next narrow step is atomic write execution design:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, a blocked write-execution skeleton, and an atomic in-memory edit-write execution path. The next narrow step is persistent transaction hardening:
 
-- Connect actual article/source writes only inside one atomic write plan that persists the source object, article metadata, source-version evidence, restore evidence, and audit linkage together.
-- Keep RAG/indexing disabled until post-write evidence is persisted and authoritative ACL validation is proven.
+- Add a PostgreSQL-backed transaction adapter for article/version metadata plus append-only source/restore evidence writes.
+- Extend approval evidence before create-writes so `article_key`, title, version label, and source-system metadata are trusted instead of caller-supplied at execution time.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

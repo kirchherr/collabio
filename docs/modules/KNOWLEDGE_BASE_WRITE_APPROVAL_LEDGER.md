@@ -62,6 +62,8 @@ Each ledger row must carry:
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, and explicit human confirmation. It verifies that the evidence binds to the same article and proposed source version, returns an `execution_plan_hash`, and still blocks execution with `execution_allowed=false`. It does not append ledger rows and does not persist article metadata, source objects, source-version evidence, restore evidence, source text, article bodies, embeddings, or RAG state.
 
+`POST /v1/admin/kb/articles/write-approvals/execute` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, the skeleton execution plan hash, explicit human confirmation, and the proposed source object. The service re-evaluates the guard against the submitted source object, persists the source object, updates edit article/current-version metadata, refreshes source-version evidence and restore evidence, and audits only metadata/hash evidence. It keeps RAG and search indexing disabled. Create execution remains blocked until approval evidence carries trusted article metadata.
+
 Runtime wiring:
 
 - tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
@@ -70,8 +72,9 @@ Runtime wiring:
 - `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
 - the refresh preview consumes exact tenant-scoped approved ledger evidence and produces hash/count projection only.
 - the execution skeleton consumes exact tenant-scoped approved ledger evidence, guard decision metadata, refresh-preview hashes, and human confirmation, then returns a blocked execution plan hash.
+- the execute path consumes the same evidence plus the proposed source object, commits edit writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Future write paths must verify the approved ledger row, pass the source-object write guard, match the refresh-preview projection, and then refresh source-version evidence plus restore evidence. Actual writes remain blocked until article/source mutation paths are explicitly connected.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit writes and refreshes source-version plus restore evidence. PostgreSQL-backed writes must still wrap article/source/evidence persistence in a single transaction before this becomes production-grade.
 
 ## Source-Object Write Guard
 
