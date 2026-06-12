@@ -76,6 +76,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `POST /v1/admin/kb/articles/write-approvals/execute` accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, an execution plan hash, explicit human confirmation, and the proposed source object. It commits edit/create writes by persisting the source object, updating article/current-version metadata, refreshing source-version evidence, and returning `refreshed_restore_evidence_hash`. For create operations, article key, title, proposed version label, and source system come from the trusted approval evidence, not the execution request. It does not return source text, article bodies, prompts, outputs, embeddings, or model responses.
 
+`PgKnowledgeBaseArticleRepository` proves the PostgreSQL write boundary for this slice. It persists article metadata, article-version metadata, source-version evidence, and restore evidence in one transaction for create/edit operations. It does not persist source text or article bodies; the source-object content adapter remains separate.
+
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
 ## Backup And Restore

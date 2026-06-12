@@ -76,6 +76,8 @@ Initial API:
 
 `POST /v1/admin/kb/articles/write-approvals/execute` accepts the same approved evidence chain plus the authoritative proposed `SourceObjectRecord`. For edit/create operations it re-evaluates the source-object write guard against that record, verifies the skeleton `execution_plan_hash`, persists the source object, updates article/current-version metadata, refreshes source-version evidence and restore evidence, and returns `refreshed_restore_evidence_hash`. Create execution uses article key, title, proposed version label, and source system from trusted approval evidence instead of trusting execution-time metadata. It does not store source text in audit metadata or responses, and it keeps search indexing, embeddings, and RAG state disabled.
 
+`PgKnowledgeBaseArticleRepository` is the PostgreSQL transaction adapter for article/version/evidence metadata. Its `apply_write` transaction locks tenant articles, verifies create/edit preconditions, writes `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, and `knowledge_base.restore_evidence` together, and rolls the transaction back on conflicts. It deliberately does not store source text or article bodies. Production API wiring must wait until the source-object persistence boundary is also durable, because the generic PostgreSQL source-object metadata store is still a separate module concern.
+
 `KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
 
 Future workers:
@@ -153,7 +155,7 @@ The fourth migration adds `transition_source_evidence_hash` so non-dry-run appro
 
 The fifth migration adds trusted create metadata to `knowledge_base.write_approval_evidence`: article key, title, proposed version label, and source system. This prevents create execution from introducing caller-supplied article metadata after approval.
 
-The refresh-preview, execution-skeleton, and current in-memory execute endpoints are runtime-only. Future PostgreSQL write execution must consume their projected hash contracts inside one database transaction before refreshing append-only source-version and restore evidence.
+The refresh-preview, execution-skeleton, and current in-memory execute endpoints are runtime-only. `PgKnowledgeBaseArticleRepository` consumes the same approved evidence contract and persists article/version/source-version/restore metadata in one database transaction. The remaining production boundary is the durable source-object metadata/content adapter; API wiring must not claim atomic source-object content persistence until that adapter exists.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 

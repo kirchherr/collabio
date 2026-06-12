@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Protocol
 
@@ -1277,6 +1278,112 @@ def knowledge_base_article_view(record: KnowledgeBaseArticleRecord) -> Knowledge
     )
 
 
+def require_source_record_matches_write_evidence(
+    *,
+    tenant_id: str,
+    evidence: KnowledgeBaseWriteApprovalEvidence,
+    source_record: SourceObjectRecord,
+) -> SourceObjectMetadata:
+    metadata = source_record.metadata
+    if metadata.tenant_id != tenant_id:
+        raise ValueError("source object tenant does not match write tenant")
+    if metadata.object_id != evidence.proposed_source_object_id:
+        raise ValueError("source object ID does not match approved write evidence")
+    if metadata.version_id != evidence.proposed_source_version_id:
+        raise ValueError("source version ID does not match approved write evidence")
+    if metadata.object_type != evidence.proposed_source_object_type:
+        raise ValueError("source object type does not match approved write evidence")
+    if metadata.manifest_hash != evidence.proposed_source_manifest_hash:
+        raise ValueError("source manifest hash does not match approved write evidence")
+    if metadata.content_hash != evidence.proposed_content_hash:
+        raise ValueError("source content hash does not match approved write evidence")
+    if metadata.acl_version != evidence.proposed_acl_version:
+        raise ValueError("source ACL version does not match approved write evidence")
+    return metadata
+
+
+def build_created_article_from_write_evidence(
+    *,
+    tenant_id: str,
+    evidence: KnowledgeBaseWriteApprovalEvidence,
+    source_record: SourceObjectRecord,
+    audit_chain_ref: str,
+) -> KnowledgeBaseArticleRecord:
+    metadata = require_source_record_matches_write_evidence(
+        tenant_id=tenant_id,
+        evidence=evidence,
+        source_record=source_record,
+    )
+    if metadata.source_system != evidence.source_system:
+        raise ValueError("source system does not match approved write evidence")
+    return KnowledgeBaseArticleRecord(
+        tenant_id=tenant_id,
+        object_id=evidence.article_object_id,
+        owner_principal_id=metadata.owner_principal_id,
+        created_by=metadata.created_by,
+        created_at_utc=metadata.created_at_utc,
+        updated_at_utc=metadata.updated_at_utc,
+        data_classification=metadata.classification,
+        retention_policy_id=metadata.retention_policy_id,
+        legal_hold_state=metadata.legal_hold_state.value,
+        kms_key_ref=metadata.kms_key_ref,
+        audit_chain_ref=audit_chain_ref,
+        source_system=evidence.source_system,
+        article_key=evidence.article_key,
+        title=evidence.title,
+        current_version_object_id=evidence.proposed_version_object_id,
+        current_version_label=evidence.proposed_version_label,
+        current_source_object_id=evidence.proposed_source_object_id,
+        current_source_version_id=evidence.proposed_source_version_id,
+        current_source_object_type=evidence.proposed_source_object_type,
+        current_source_manifest_hash=metadata.manifest_hash,
+        current_content_hash=metadata.content_hash,
+        current_acl_version=metadata.acl_version,
+        published_at_utc=metadata.updated_at_utc,
+    )
+
+
+def build_edited_article_from_write_evidence(
+    *,
+    tenant_id: str,
+    evidence: KnowledgeBaseWriteApprovalEvidence,
+    source_record: SourceObjectRecord,
+    existing_article: KnowledgeBaseArticleRecord,
+    audit_chain_ref: str,
+) -> KnowledgeBaseArticleRecord:
+    metadata = require_source_record_matches_write_evidence(
+        tenant_id=tenant_id,
+        evidence=evidence,
+        source_record=source_record,
+    )
+    if existing_article.current_version_object_id != evidence.expected_current_version_object_id:
+        raise ValueError("expected current article version does not match approved evidence")
+    return existing_article.model_copy(
+        update={
+            "updated_at_utc": metadata.updated_at_utc,
+            "current_version_object_id": evidence.proposed_version_object_id,
+            "current_version_label": evidence.proposed_version_label,
+            "current_source_object_id": evidence.proposed_source_object_id,
+            "current_source_version_id": evidence.proposed_source_version_id,
+            "current_source_object_type": evidence.proposed_source_object_type,
+            "current_source_manifest_hash": metadata.manifest_hash,
+            "current_content_hash": metadata.content_hash,
+            "current_acl_version": metadata.acl_version,
+            "audit_chain_ref": audit_chain_ref,
+        }
+    )
+
+
+def pg_timestamp_to_utc_string(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return str(value)
+
+
+def source_object_version_ref(article: KnowledgeBaseArticleRecord) -> str:
+    return f"source:{article.current_source_object_id}:{article.current_source_version_id}"
+
+
 class InMemoryKnowledgeBaseArticleRepository:
     def __init__(self, articles: Sequence[KnowledgeBaseArticleRecord]) -> None:
         self._articles = tuple(articles)
@@ -1378,26 +1485,8 @@ class InMemoryKnowledgeBaseArticleRepository:
         source_record: SourceObjectRecord,
         audit_chain_ref: str,
     ) -> KnowledgeBaseArticleRecord:
-        metadata = source_record.metadata
-        if metadata.tenant_id != tenant_id:
-            raise ValueError("source object tenant does not match write tenant")
-        if metadata.object_id != evidence.proposed_source_object_id:
-            raise ValueError("source object ID does not match approved write evidence")
-        if metadata.version_id != evidence.proposed_source_version_id:
-            raise ValueError("source version ID does not match approved write evidence")
-        if metadata.object_type != evidence.proposed_source_object_type:
-            raise ValueError("source object type does not match approved write evidence")
-        if metadata.manifest_hash != evidence.proposed_source_manifest_hash:
-            raise ValueError("source manifest hash does not match approved write evidence")
-        if metadata.content_hash != evidence.proposed_content_hash:
-            raise ValueError("source content hash does not match approved write evidence")
-        if metadata.acl_version != evidence.proposed_acl_version:
-            raise ValueError("source ACL version does not match approved write evidence")
-
         articles = list(self._articles)
         if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
-            if metadata.source_system != evidence.source_system:
-                raise ValueError("source system does not match approved write evidence")
             if any(
                 article.tenant_id == tenant_id and article.object_id == evidence.article_object_id
                 for article in articles
@@ -1407,30 +1496,11 @@ class InMemoryKnowledgeBaseArticleRepository:
                 article.tenant_id == tenant_id and article.article_key == evidence.article_key for article in articles
             ):
                 raise ValueError("create write target article key already exists")
-            created_article = KnowledgeBaseArticleRecord(
+            created_article = build_created_article_from_write_evidence(
                 tenant_id=tenant_id,
-                object_id=evidence.article_object_id,
-                owner_principal_id=metadata.owner_principal_id,
-                created_by=metadata.created_by,
-                created_at_utc=metadata.created_at_utc,
-                updated_at_utc=metadata.updated_at_utc,
-                data_classification=metadata.classification,
-                retention_policy_id=metadata.retention_policy_id,
-                legal_hold_state=metadata.legal_hold_state.value,
-                kms_key_ref=metadata.kms_key_ref,
+                evidence=evidence,
+                source_record=source_record,
                 audit_chain_ref=audit_chain_ref,
-                source_system=evidence.source_system,
-                article_key=evidence.article_key,
-                title=evidence.title,
-                current_version_object_id=evidence.proposed_version_object_id,
-                current_version_label=evidence.proposed_version_label,
-                current_source_object_id=evidence.proposed_source_object_id,
-                current_source_version_id=evidence.proposed_source_version_id,
-                current_source_object_type=evidence.proposed_source_object_type,
-                current_source_manifest_hash=metadata.manifest_hash,
-                current_content_hash=metadata.content_hash,
-                current_acl_version=metadata.acl_version,
-                published_at_utc=metadata.updated_at_utc,
             )
             self._articles = tuple([*articles, created_article])
             return created_article
@@ -1438,26 +1508,490 @@ class InMemoryKnowledgeBaseArticleRepository:
         for index, article in enumerate(articles):
             if article.tenant_id != tenant_id or article.object_id != evidence.article_object_id:
                 continue
-            if article.current_version_object_id != evidence.expected_current_version_object_id:
-                raise ValueError("expected current article version does not match approved evidence")
-            updated_article = article.model_copy(
-                update={
-                    "updated_at_utc": metadata.updated_at_utc,
-                    "current_version_object_id": evidence.proposed_version_object_id,
-                    "current_version_label": evidence.proposed_version_label,
-                    "current_source_object_id": evidence.proposed_source_object_id,
-                    "current_source_version_id": evidence.proposed_source_version_id,
-                    "current_source_object_type": evidence.proposed_source_object_type,
-                    "current_source_manifest_hash": metadata.manifest_hash,
-                    "current_content_hash": metadata.content_hash,
-                    "current_acl_version": metadata.acl_version,
-                    "audit_chain_ref": audit_chain_ref,
-                }
+            updated_article = build_edited_article_from_write_evidence(
+                tenant_id=tenant_id,
+                evidence=evidence,
+                source_record=source_record,
+                existing_article=article,
+                audit_chain_ref=audit_chain_ref,
             )
             articles[index] = updated_article
             self._articles = tuple(articles)
             return updated_article
         raise LookupError(f"knowledge base article not found: {evidence.article_object_id}")
+
+
+class PgKnowledgeBaseArticleRepository:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def list_articles(self, *, tenant_id: str) -> Sequence[KnowledgeBaseArticleRecord]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            return self._list_articles(connection, tenant_id=tenant_id, for_update=False)
+
+    def apply_write(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseArticleRecord:
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, tenant_id)
+                with connection.transaction():
+                    records = list(self._list_articles(connection, tenant_id=tenant_id, for_update=True))
+                    records_by_object_id = {record.object_id: record for record in records}
+                    existing_article = records_by_object_id.get(evidence.article_object_id)
+
+                    if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
+                        if existing_article is not None:
+                            raise ValueError("create write target article already exists")
+                        if any(article.article_key == evidence.article_key for article in records):
+                            raise ValueError("create write target article key already exists")
+                        updated_article = build_created_article_from_write_evidence(
+                            tenant_id=tenant_id,
+                            evidence=evidence,
+                            source_record=source_record,
+                            audit_chain_ref=audit_chain_ref,
+                        )
+                        refreshed_records = sorted(
+                            [*records, updated_article],
+                            key=lambda record: (record.title.lower(), record.object_id),
+                        )
+                        self._insert_article(connection, article=updated_article)
+                    else:
+                        if existing_article is None:
+                            raise LookupError(f"knowledge base article not found: {evidence.article_object_id}")
+                        updated_article = build_edited_article_from_write_evidence(
+                            tenant_id=tenant_id,
+                            evidence=evidence,
+                            source_record=source_record,
+                            existing_article=existing_article,
+                            audit_chain_ref=audit_chain_ref,
+                        )
+                        refreshed_records = sorted(
+                            [
+                                updated_article if record.object_id == updated_article.object_id else record
+                                for record in records
+                            ],
+                            key=lambda record: (record.title.lower(), record.object_id),
+                        )
+
+                    self._insert_article_version(connection, article=updated_article)
+                    if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+                        self._update_article_current_version(connection, article=updated_article)
+
+                    refreshed_source_evidence = build_source_version_evidence_for_source_record(
+                        tenant_id=tenant_id,
+                        article_object_id=evidence.article_object_id,
+                        article_version_object_id=evidence.proposed_version_object_id,
+                        source_record=source_record,
+                    )
+                    if refreshed_source_evidence.evidence_hash != evidence.proposed_source_version_evidence_hash:
+                        raise ValueError("post-write source-version evidence does not match approved evidence")
+                    refreshed_source_evidences = [
+                        (
+                            refreshed_source_evidence
+                            if record.object_id == updated_article.object_id
+                            else build_source_version_evidence_stub(record)
+                        )
+                        for record in refreshed_records
+                    ]
+                    refreshed_restore_evidence = build_knowledge_base_restore_evidence(
+                        tenant_id=tenant_id,
+                        articles=refreshed_records,
+                        source_evidences=refreshed_source_evidences,
+                        restore_drill_report_hash=stable_hash(f"{tenant_id}:knowledge_base_content:restore-drill"),
+                        audit_chain_ref="audit:knowledge-base-restore-evidence",
+                    )
+
+                    self._insert_source_version_evidence(
+                        connection,
+                        evidence=refreshed_source_evidence,
+                        audit_chain_ref=audit_chain_ref,
+                    )
+                    self._insert_restore_evidence(connection, evidence=refreshed_restore_evidence)
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("knowledge base write transaction conflicts with existing metadata") from exc
+        return updated_article
+
+    def _list_articles(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        tenant_id: str,
+        for_update: bool,
+    ) -> tuple[KnowledgeBaseArticleRecord, ...]:
+        lock_clause = " FOR UPDATE" if for_update else ""
+        article_rows = connection.execute(
+            f"""
+            SELECT
+                tenant_id,
+                object_id,
+                object_type,
+                owner_principal_id,
+                created_by,
+                created_at_utc,
+                updated_at_utc,
+                data_classification,
+                retention_policy_id,
+                legal_hold_state,
+                lifecycle_state,
+                kms_key_ref,
+                audit_chain_ref,
+                source_system,
+                schema_version,
+                article_key,
+                title,
+                current_version_object_id,
+                current_version_label,
+                published_at_utc,
+                status
+            FROM knowledge_base.articles
+            WHERE tenant_id = %s
+            ORDER BY lower(title), object_id
+            {lock_clause}
+            """,
+            (tenant_id,),
+        ).fetchall()
+        return tuple(
+            self._article_from_row(
+                article_row,
+                self._latest_source_evidence_row(
+                    connection,
+                    tenant_id=tenant_id,
+                    article_object_id=str(article_row[1]),
+                    article_version_object_id=str(article_row[17]),
+                ),
+            )
+            for article_row in article_rows
+        )
+
+    def _latest_source_evidence_row(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        tenant_id: str,
+        article_object_id: str,
+        article_version_object_id: str,
+    ) -> tuple[Any, ...]:
+        row = connection.execute(
+            """
+            SELECT
+                source_object_id,
+                source_version_id,
+                source_object_type,
+                source_manifest_hash,
+                content_hash,
+                acl_version
+            FROM knowledge_base.source_version_evidence
+            WHERE tenant_id = %s
+              AND article_object_id = %s
+              AND article_version_object_id = %s
+            ORDER BY captured_at_utc DESC, evidence_hash DESC
+            LIMIT 1
+            """,
+            (tenant_id, article_object_id, article_version_object_id),
+        ).fetchone()
+        if row is None:
+            raise LookupError("knowledge base article is missing source-version evidence")
+        return tuple(row)
+
+    def _article_from_row(
+        self,
+        article_row: tuple[Any, ...],
+        source_evidence_row: tuple[Any, ...],
+    ) -> KnowledgeBaseArticleRecord:
+        return KnowledgeBaseArticleRecord(
+            tenant_id=str(article_row[0]),
+            object_id=str(article_row[1]),
+            object_type=str(article_row[2]),
+            owner_principal_id=str(article_row[3]),
+            created_by=str(article_row[4]),
+            created_at_utc=pg_timestamp_to_utc_string(article_row[5]),
+            updated_at_utc=pg_timestamp_to_utc_string(article_row[6]),
+            data_classification=DataClass(str(article_row[7])),
+            retention_policy_id=str(article_row[8]),
+            legal_hold_state=str(article_row[9]),
+            lifecycle_state=KnowledgeBaseArticleLifecycleState(str(article_row[10])),
+            kms_key_ref=str(article_row[11]),
+            audit_chain_ref=str(article_row[12]),
+            source_system=str(article_row[13]),
+            schema_version=str(article_row[14]),
+            article_key=str(article_row[15]),
+            title=str(article_row[16]),
+            current_version_object_id=str(article_row[17]),
+            current_version_label=str(article_row[18]),
+            current_source_object_id=str(source_evidence_row[0]),
+            current_source_version_id=str(source_evidence_row[1]),
+            current_source_object_type=SourceObjectType(str(source_evidence_row[2])),
+            current_source_manifest_hash=str(source_evidence_row[3]),
+            current_content_hash=str(source_evidence_row[4]),
+            current_acl_version=int(source_evidence_row[5]),
+            published_at_utc=pg_timestamp_to_utc_string(article_row[19]) if article_row[19] is not None else None,
+            status=KnowledgeBaseArticleStatus(str(article_row[20])),
+        )
+
+    def _insert_article(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        article: KnowledgeBaseArticleRecord,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO knowledge_base.articles (
+                tenant_id,
+                object_id,
+                object_type,
+                owner_principal_id,
+                created_by,
+                created_at_utc,
+                updated_at_utc,
+                data_classification,
+                retention_policy_id,
+                legal_hold_state,
+                lifecycle_state,
+                kms_key_ref,
+                audit_chain_ref,
+                source_system,
+                schema_version,
+                article_key,
+                title,
+                current_version_object_id,
+                current_version_label,
+                published_at_utc,
+                status
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                article.tenant_id,
+                article.object_id,
+                article.object_type,
+                article.owner_principal_id,
+                article.created_by,
+                article.created_at_utc,
+                article.updated_at_utc,
+                article.data_classification,
+                article.retention_policy_id,
+                article.legal_hold_state,
+                article.lifecycle_state,
+                article.kms_key_ref,
+                article.audit_chain_ref,
+                article.source_system,
+                article.schema_version,
+                article.article_key,
+                article.title,
+                article.current_version_object_id,
+                article.current_version_label,
+                article.published_at_utc,
+                article.status,
+            ),
+        )
+
+    def _insert_article_version(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        article: KnowledgeBaseArticleRecord,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO knowledge_base.article_versions (
+                tenant_id,
+                object_id,
+                object_type,
+                owner_principal_id,
+                created_by,
+                created_at_utc,
+                updated_at_utc,
+                data_classification,
+                retention_policy_id,
+                legal_hold_state,
+                lifecycle_state,
+                kms_key_ref,
+                audit_chain_ref,
+                source_system,
+                schema_version,
+                article_object_id,
+                version_label,
+                version_state,
+                source_object_version_ref,
+                content_hash,
+                published_at_utc
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, 'published', %s, %s, %s
+            )
+            """,
+            (
+                article.tenant_id,
+                article.current_version_object_id,
+                KB_ARTICLE_VERSION_OBJECT_TYPE,
+                article.owner_principal_id,
+                article.created_by,
+                article.updated_at_utc,
+                article.updated_at_utc,
+                article.data_classification,
+                article.retention_policy_id,
+                article.legal_hold_state,
+                article.lifecycle_state,
+                article.kms_key_ref,
+                article.audit_chain_ref,
+                article.source_system,
+                "kb_article_version.v1",
+                article.object_id,
+                article.current_version_label,
+                source_object_version_ref(article),
+                article.current_content_hash,
+                article.published_at_utc,
+            ),
+        )
+
+    def _update_article_current_version(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        article: KnowledgeBaseArticleRecord,
+    ) -> None:
+        result = connection.execute(
+            """
+            UPDATE knowledge_base.articles
+            SET updated_at_utc = %s,
+                audit_chain_ref = %s,
+                current_version_object_id = %s,
+                current_version_label = %s,
+                published_at_utc = %s,
+                status = %s
+            WHERE tenant_id = %s
+              AND object_id = %s
+            """,
+            (
+                article.updated_at_utc,
+                article.audit_chain_ref,
+                article.current_version_object_id,
+                article.current_version_label,
+                article.published_at_utc,
+                article.status,
+                article.tenant_id,
+                article.object_id,
+            ),
+        )
+        if result.rowcount != 1:
+            raise LookupError(f"knowledge base article not found: {article.object_id}")
+
+    def _insert_source_version_evidence(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        evidence: KnowledgeBaseSourceVersionEvidence,
+        audit_chain_ref: str,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO knowledge_base.source_version_evidence (
+                tenant_id,
+                article_object_id,
+                article_version_object_id,
+                source_object_id,
+                source_version_id,
+                source_object_type,
+                source_manifest_hash,
+                content_hash,
+                acl_version,
+                data_classification,
+                retention_policy_id,
+                legal_hold_state,
+                evidence_hash,
+                audit_chain_ref,
+                schema_version
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """,
+            (
+                evidence.tenant_id,
+                evidence.article_object_id,
+                evidence.article_version_object_id,
+                evidence.source_object_id,
+                evidence.source_version_id,
+                evidence.source_object_type,
+                evidence.source_manifest_hash,
+                evidence.content_hash,
+                evidence.acl_version,
+                evidence.data_classification,
+                evidence.retention_policy_id,
+                evidence.legal_hold_state,
+                evidence.evidence_hash,
+                audit_chain_ref,
+                evidence.schema_version,
+            ),
+        )
+
+    def _insert_restore_evidence(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        evidence: KnowledgeBaseRestoreEvidence,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO knowledge_base.restore_evidence (
+                tenant_id,
+                module_id,
+                continuity_domain,
+                article_count,
+                article_version_count,
+                source_version_evidence_count,
+                source_version_evidence_hashes,
+                restore_drill_report_hash,
+                row_count_hash,
+                checksum_manifest_hash,
+                tenant_isolation_verified,
+                disabled_state_restore_verified,
+                legal_hold_restore_verified,
+                evidence_hash,
+                audit_chain_ref,
+                schema_version
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s
+            )
+            """,
+            (
+                evidence.tenant_id,
+                evidence.module_id,
+                evidence.continuity_domain,
+                evidence.article_count,
+                evidence.article_version_count,
+                evidence.source_version_evidence_count,
+                list(evidence.source_version_evidence_hashes),
+                evidence.restore_drill_report_hash,
+                evidence.row_count_hash,
+                evidence.checksum_manifest_hash,
+                evidence.tenant_isolation_verified,
+                evidence.disabled_state_restore_verified,
+                evidence.legal_hold_restore_verified,
+                evidence.evidence_hash,
+                evidence.audit_chain_ref,
+                evidence.schema_version,
+            ),
+        )
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
 
 
 class InMemoryKnowledgeBaseWriteApprovalLedger:

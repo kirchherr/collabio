@@ -78,8 +78,9 @@ Runtime wiring:
 - the refresh preview consumes exact tenant-scoped approved ledger evidence and produces hash/count projection only.
 - the execution skeleton consumes exact tenant-scoped approved ledger evidence, guard decision metadata, refresh-preview hashes, and human confirmation, then returns a blocked execution plan hash.
 - the execute path consumes the same evidence plus the proposed source object, commits edit/create writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
+- `PgKnowledgeBaseArticleRepository` provides the PostgreSQL transaction adapter for article metadata, article-version metadata, source-version evidence, and restore evidence.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes and refreshes source-version plus restore evidence. PostgreSQL-backed writes must still wrap article/source/evidence persistence in a single transaction before this becomes production-grade.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction; durable source-object metadata/content persistence remains the next boundary before production API wiring.
 
 ## Source-Object Write Guard
 

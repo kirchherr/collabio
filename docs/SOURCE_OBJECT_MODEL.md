@@ -168,6 +168,8 @@ Implemented now:
 Not implemented yet:
 
 - PostgreSQL-backed source metadata tables.
+
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, but it does not replace the shared source-object metadata/content store. Source object PostgreSQL metadata and object-storage durability remain separate adapter work.
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.

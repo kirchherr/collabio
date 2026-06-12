@@ -72,6 +72,8 @@ Restore evidence must cover every returned article version. Missing source evide
 
 Migration `0023_knowledge_base_write_approval_evidence.sql` adds the append-only write-approval ledger. Migration `0024_knowledge_base_write_approval_transition_lineage.sql` adds approval-transition lineage. Migration `0025_knowledge_base_write_approval_trusted_article_metadata.sql` adds trusted article key, title, proposed version label, and source-system metadata to the ledger. The dry-run path now persists ledger evidence before source-object writes are possible. `KnowledgeBaseSourceObjectWriteGuard` verifies ledger evidence, expected current version for edits, proposed source-version evidence, current restore evidence, retention policy, and Legal Hold state before approved writes. The refresh preview makes the future source/restore evidence update auditable before writes exist. The execution skeleton binds that evidence to human confirmation. Execute refreshes source-version plus restore evidence after approved edit/create writes. Future PostgreSQL write paths must make the article/source/evidence update transactional.
 
+`PgKnowledgeBaseArticleRepository` now makes article/version/source-version/restore evidence updates transactional in PostgreSQL. The adapter still excludes source text and article bodies. Durable source-object metadata/content persistence must be added before the API execution path is switched to PostgreSQL-backed writes in production.
+
 Future write/edit, search indexing, embedding, RAG, export, and AI-assist work must not bypass this boundary. RAG must still use candidate-only search, authoritative ACL validation, source object IDs, source versions, Local LLM Gateway enforcement, and metadata-only audit.
 
 ## Persistence
