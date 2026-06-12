@@ -175,6 +175,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="crm_erp",
         evidence_refs=("doc:crm-contacts-vertical-slice", "test:crm-contacts-slice"),
     ),
+    SqlMigration(
+        version="0019",
+        name="crm_activities_notes",
+        resource_name="0019_crm_activities_notes.sql",
+        module_id="crm_erp",
+        evidence_refs=("doc:crm-activities-notes-vertical-slice", "test:crm-activities-notes-slice"),
+    ),
 )
 
 

@@ -1030,6 +1030,7 @@ CRM/ERP `crm_erp`:
 - [x] Persistente CRM/ERP Schema-Scaffold-Migration mit `crm_erp.schema_plans`, `crm_erp.object_type_rules`, RLS und startup-blocking Evidence implementieren.
 - [x] Ersten gated CRM Accounts Read-Vertical-Slice mit `crm.accounts`, Pflichtmetadaten, RLS, Audit und `GET /v1/crm/accounts` implementieren.
 - [x] Gated CRM Contacts Read-Vertical-Slice mit `crm.contacts`, Account-Link-Redaktion, Pflichtmetadaten, RLS, Audit und `GET /v1/crm/contacts` implementieren.
+- [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Pflichtmetadaten, RLS, Audit, metadata-only Notes und `GET /v1/crm/activities` plus `GET /v1/crm/notes` implementieren.
 - [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [x] Datenklassen harmonisieren: `personal_data`, `working_data`, `gobd_record`, `security_data` und `export_package` sind Alias-/Lifecycle-/Objektkonzepte auf kanonischen Runtime-Klassen.
 - [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
@@ -1233,6 +1234,7 @@ Empfohlene naechste Reihenfolge:
 68. [x] Persistente CRM/ERP Schema-Scaffold-Migration mit RLS-geschuetzten Manifest-Tabellen implementieren.
 69. [x] Ersten gated CRM Accounts Read-Vertical-Slice mit `crm.accounts`, Audit und `GET /v1/crm/accounts` implementieren.
 70. [x] Gated CRM Contacts Read-Vertical-Slice mit `crm.contacts`, Account-Link-Redaktion, Audit und `GET /v1/crm/contacts` implementieren.
+71. [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Audit und metadata-only Notes implementieren.
 
 ## Release-Strategie
 

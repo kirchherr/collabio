@@ -41,6 +41,15 @@ DEMO_CRM_CONTACT_HEADERS = {
         "doc-1,mail-1,crm-account-acme-demo,crm-account-northwind-demo,crm-contact-ada-demo,crm-contact-max-demo"
     ),
 }
+DEMO_CRM_ACTIVITY_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": (
+        "doc-1,mail-1,crm-account-acme-demo,crm-account-northwind-demo,"
+        "crm-contact-ada-demo,crm-contact-max-demo,"
+        "crm-activity-followup-demo,crm-activity-review-demo,"
+        "crm-note-acme-demo,crm-note-northwind-demo"
+    ),
+}
 DECOMMISSION_REQUEST_PAYLOAD = {
     "approval_reference": "approval:module-decommission-request",
     "reason": "tenant requests controlled module decommission",
@@ -147,6 +156,26 @@ def provision_and_enable_crm_contacts_for_demo() -> None:
             "approval_reference": "approval:module-enable",
             "reason": "activate CRM contacts",
             "enabled_features": {"crm_erp.crm.contacts": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
+def provision_and_enable_crm_activities_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare CRM activities"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate CRM activities and notes",
+            "enabled_features": {"crm_erp.crm.activities": True},
         },
     )
     assert enable_response.status_code == 200
@@ -415,6 +444,87 @@ def test_crm_contacts_endpoint_returns_tenant_scoped_contacts_after_feature_enab
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
+def test_crm_activities_and_notes_endpoints_require_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    activities_response = client.get("/v1/crm/activities", headers=DEMO_CRM_ACTIVITY_HEADERS)
+    notes_response = client.get("/v1/crm/notes", headers=DEMO_CRM_ACTIVITY_HEADERS)
+
+    assert activities_response.status_code == 403
+    assert notes_response.status_code == 403
+    assert "not enabled" in activities_response.json()["detail"]
+    assert "not enabled" in notes_response.json()["detail"]
+
+
+def test_crm_activities_endpoint_returns_tenant_scoped_activities_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_activities_for_demo()
+
+    response = client.get("/v1/crm/activities", headers=DEMO_CRM_ACTIVITY_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.crm.activities"
+    assert body["audit_event_id"]
+    assert [activity["subject"] for activity in body["activities"]] == ["Acme follow-up", "Northwind review"]
+    assert {activity["object_type"] for activity in body["activities"]} == {"crm.activity"}
+    assert {activity["data_classification"] for activity in body["activities"]} == {"personal"}
+    assert {activity["retention_policy_id"] for activity in body["activities"]} == {"rp-standard"}
+    assert [activity["contact_object_id"] for activity in body["activities"]] == [
+        "crm-contact-ada-demo",
+        "crm-contact-max-demo",
+    ]
+    assert all(activity["access_checked"] for activity in body["activities"])
+    assert all(activity["linked_object_access_checked"] for activity in body["activities"])
+    assert "Other tenant task" not in {activity["subject"] for activity in body["activities"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "crm.activity.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["redacted_link_count"] == 0
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
+def test_crm_notes_endpoint_returns_metadata_only_notes_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_activities_for_demo()
+
+    response = client.get("/v1/crm/notes", headers=DEMO_CRM_ACTIVITY_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.crm.activities"
+    assert body["audit_event_id"]
+    assert [note["title"] for note in body["notes"]] == ["Acme onboarding note", "Northwind review note"]
+    assert {note["object_type"] for note in body["notes"]} == {"crm.note"}
+    assert {note["data_classification"] for note in body["notes"]} == {"personal"}
+    assert {note["retention_policy_id"] for note in body["notes"]} == {"rp-standard"}
+    assert all(note["access_checked"] for note in body["notes"])
+    assert all(note["linked_object_access_checked"] for note in body["notes"])
+    assert all("note_body" not in note for note in body["notes"])
+    assert "Other tenant note" not in {note["title"] for note in body["notes"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "crm.note.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["redacted_link_count"] == 0
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:
     reset_module_registry()
 
@@ -458,6 +568,7 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
         "0016",
         "0017",
         "0018",
+        "0019",
     ]
 
     enable_response = client.post(

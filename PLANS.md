@@ -76,12 +76,13 @@ Current sprint:
 66. [x] Persistent CRM/ERP schema scaffold migration with RLS-protected schema and object-rule manifest tables.
 67. [x] First gated CRM accounts read vertical slice with `crm.accounts`, audit, and `GET /v1/crm/accounts`.
 68. [x] Gated CRM contacts read vertical slice with `crm.contacts`, account-link redaction, audit, and `GET /v1/crm/contacts`.
+69. [x] Gated CRM activities/notes read vertical slice with `crm.activities`, `crm.notes`, link redaction, audit, and metadata-only notes.
 
 ## Next Engineering Step
 
-After the CRM accounts and contacts read slices, continue broadening CRM/ERP without skipping hardening:
+After the CRM accounts, contacts, activities, and notes read slices, continue broadening CRM/ERP without skipping hardening:
 
-- Add the next CRM object slice, preferably activities/notes, using the same object metadata, RLS, module-gate, and audit pattern.
+- Start the first ERP object slice, preferably products, using the same object metadata, RLS, module-gate, and audit pattern.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

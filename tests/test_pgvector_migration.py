@@ -50,6 +50,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0016",
         "0017",
         "0018",
+        "0019",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -63,8 +64,8 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     crm_erp_migrations = load_module_migrations("crm_erp")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 3
-    assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018"]
+    assert len(core_migrations) == len(load_migrations()) - 4
+    assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "crm_erp"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -615,6 +616,92 @@ def test_crm_contacts_migration_declares_required_metadata_rls_fk_and_no_hard_de
     assert "create trigger crm_contacts_touch_updated_at_utc" in sql
     assert "grant select, insert, update on table crm.contacts to collabio_app" in sql
     assert "grant delete" not in sql
+    assert "source_text" not in sql
+    assert "raw_payload" not in sql
+
+
+def test_crm_activities_notes_migration_declares_required_metadata_rls_fks_and_no_body_storage() -> None:
+    sql = normalized(get_migration("0019").sql())
+    activities_body = table_body(get_migration("0019").sql(), "crm.activities")
+    notes_body = table_body(get_migration("0019").sql(), "crm.notes")
+
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in ((activities_body, "crm.activities"), (notes_body, "crm.notes")):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "data_classification text not null default 'personal' check (data_classification = 'personal')" in body
+        assert (
+            "retention_policy_id text not null default 'rp-standard' check (retention_policy_id = 'rp-standard')"
+        ) in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in [
+        "account_object_id",
+        "contact_object_id",
+        "activity_number",
+        "activity_type",
+        "subject",
+        "due_at_utc",
+        "completed_at_utc",
+        "status",
+    ]:
+        assert re.search(rf"\b{column}\b", activities_body), f"{column} missing from crm.activities"
+
+    for column in [
+        "account_object_id",
+        "contact_object_id",
+        "activity_object_id",
+        "note_number",
+        "title",
+        "status",
+    ]:
+        assert re.search(rf"\b{column}\b", notes_body), f"{column} missing from crm.notes"
+
+    assert "object_type text not null default 'crm.activity' check (object_type = 'crm.activity')" in activities_body
+    assert "object_type text not null default 'crm.note' check (object_type = 'crm.note')" in notes_body
+    assert "references crm.accounts (tenant_id, object_id)" in activities_body
+    assert "references crm.contacts (tenant_id, object_id)" in activities_body
+    assert "references crm.activities (tenant_id, object_id)" in notes_body
+    assert "status <> 'done' or completed_at_utc is not null" in activities_body
+    assert "crm_erp.crm.activities" in sql
+    assert "alter table crm.activities enable row level security" in sql
+    assert "alter table crm.activities force row level security" in sql
+    assert "alter table crm.notes enable row level security" in sql
+    assert "alter table crm.notes force row level security" in sql
+    assert "create policy crm_activities_tenant_select" in sql
+    assert "create policy crm_activities_tenant_insert" in sql
+    assert "create policy crm_activities_tenant_update" in sql
+    assert "create policy crm_activities_no_hard_delete" in sql
+    assert "create policy crm_notes_tenant_select" in sql
+    assert "create policy crm_notes_tenant_insert" in sql
+    assert "create policy crm_notes_tenant_update" in sql
+    assert "create policy crm_notes_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger crm_activities_touch_updated_at_utc" in sql
+    assert "create trigger crm_notes_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table crm.activities to collabio_app" in sql
+    assert "grant select, insert, update on table crm.notes to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "note_body" not in sql
     assert "source_text" not in sql
     assert "raw_payload" not in sql
 

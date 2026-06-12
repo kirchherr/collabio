@@ -56,6 +56,14 @@ from suite.platform.crm_accounts import (
     CrmAccountsResponse,
     InMemoryCrmAccountRepository,
 )
+from suite.platform.crm_activities import (
+    CRM_ACTIVITIES_FEATURE_ID,
+    CrmActivitiesResponse,
+    CrmActivityService,
+    CrmNotesResponse,
+    InMemoryCrmActivityRepository,
+    InMemoryCrmNoteRepository,
+)
 from suite.platform.crm_contacts import (
     CRM_CONTACTS_FEATURE_ID,
     CrmContactService,
@@ -311,6 +319,11 @@ def build_app() -> FastAPI:
     )
     crm_contact_service = CrmContactService(
         repository=InMemoryCrmContactRepository.demo(),
+        audit_logger=audit_logger,
+    )
+    crm_activity_service = CrmActivityService(
+        activity_repository=InMemoryCrmActivityRepository.demo(),
+        note_repository=InMemoryCrmNoteRepository.demo(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1074,6 +1087,32 @@ def build_app() -> FastAPI:
         crm_contacts = cast(CrmContactService, request.app.state.crm_contact_service)
         return crm_contacts.list_contacts(user_context=context.user_context)
 
+    @app.get("/v1/crm/activities", response_model=CrmActivitiesResponse)
+    def list_crm_activities(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACTIVITIES_FEATURE_ID)),
+        ],
+    ) -> CrmActivitiesResponse:
+        del gate
+        crm_activities = cast(CrmActivityService, request.app.state.crm_activity_service)
+        return crm_activities.list_activities(user_context=context.user_context)
+
+    @app.get("/v1/crm/notes", response_model=CrmNotesResponse)
+    def list_crm_notes(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACTIVITIES_FEATURE_ID)),
+        ],
+    ) -> CrmNotesResponse:
+        del gate
+        crm_activities = cast(CrmActivityService, request.app.state.crm_activity_service)
+        return crm_activities.list_notes(user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1091,6 +1130,7 @@ def build_app() -> FastAPI:
     app.state.audit_logger = audit_logger
     app.state.authz_admin_store = authz_admin_store
     app.state.crm_account_service = crm_account_service
+    app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin

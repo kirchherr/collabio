@@ -128,7 +128,7 @@ legacy.row
 
 Every object must carry the persistent object metadata required by `docs/ROADMAP.md` and `DATA_CLASSIFICATION.md`.
 
-The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. Migrations `0017_crm_accounts.sql` and `0018_crm_contacts.sql` create the first RLS-protected business tables, `crm.accounts` and `crm.contacts`, for `crm.account` and `crm.contact`. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before broader business tables are introduced.
+The canonical schema and object-rule contract lives in `app/suite/platform/crm_erp_object_rules.py` and is documented in `docs/modules/CRM_ERP_OBJECT_RULES.md`. Migration `0016_crm_erp_schema_scaffold.sql` creates the schema scaffold and tenant-scoped manifest tables. Migrations `0017_crm_accounts.sql`, `0018_crm_contacts.sql`, and `0019_crm_activities_notes.sql` create the first RLS-protected business tables, `crm.accounts`, `crm.contacts`, `crm.activities`, and `crm.notes`, for the initial CRM object types. This binds planned schemas, object types, table names, data classes, retention policies, Legal Hold support, KMS expectations, search/RAG defaults, and backup domains before broader business tables are introduced.
 
 ## 6. Data Classification And Retention
 
@@ -282,11 +282,12 @@ Current implemented base:
 ```text
 module registry
   -> provision and enable crm_erp for tenant
-  -> persist crm.accounts and crm.contacts schemas with object metadata and RLS
+  -> persist crm.accounts, crm.contacts, crm.activities, and crm.notes schemas with object metadata and RLS
   -> expose gated GET /v1/crm/accounts
   -> expose gated GET /v1/crm/contacts
-  -> prove disabled module blocks normal account/contact APIs
-  -> audit metadata-only account/contact reads
+  -> expose gated GET /v1/crm/activities and GET /v1/crm/notes
+  -> prove disabled module blocks normal CRM APIs
+  -> audit metadata-only CRM reads
 ```
 
 ## 13. Explicit Non-Goals For The First Slice
