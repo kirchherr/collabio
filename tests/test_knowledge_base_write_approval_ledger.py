@@ -78,6 +78,10 @@ def test_pg_knowledge_base_write_approval_ledger_appends_metadata_only_evidence(
         ledger.get(tenant_id="tenant-other", evidence_hash=evidence.evidence_hash)
     rows = ledger.list_evidence(tenant_id=tenant_id)
     assert rows == (evidence,)
+    assert rows[0].article_key == command.article_key
+    assert rows[0].title == command.title
+    assert rows[0].proposed_version_label == command.proposed_version_label
+    assert rows[0].source_system == command.source_system
     row_json = rows[0].model_dump_json()
     assert "article_body" not in row_json
     assert "source content" not in row_json
@@ -96,6 +100,7 @@ def test_pg_knowledge_base_write_approval_ledger_appends_metadata_only_evidence(
     ledger.append(approved)
 
     assert ledger.get(tenant_id=tenant_id, evidence_hash=approved.evidence_hash) == approved
+    assert ledger.get(tenant_id=tenant_id, evidence_hash=approved.evidence_hash).article_key == command.article_key
     assert ledger.get(tenant_id=tenant_id, evidence_hash=approved.evidence_hash).transition_source_evidence_hash == (
         evidence.evidence_hash
     )

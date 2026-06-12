@@ -56,6 +56,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0022",
         "0023",
         "0024",
+        "0025",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -70,9 +71,15 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 9
+    assert len(core_migrations) == len(load_migrations()) - 10
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
-    assert [migration.version for migration in knowledge_base_migrations] == ["0021", "0022", "0023", "0024"]
+    assert [migration.version for migration in knowledge_base_migrations] == [
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+    ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -1017,6 +1024,32 @@ def test_knowledge_base_write_approval_transition_lineage_migration_declares_has
     assert "approval_state <> 'dry_run' and transition_source_evidence_hash is not null" in sql
     assert "transition_source_evidence_hash <> evidence_hash" in sql
     assert "kb_write_approval_evidence_transition_source_idx" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+
+
+def test_knowledge_base_write_approval_trusted_metadata_migration_extends_create_evidence() -> None:
+    sql = normalized(get_migration("0025").sql())
+
+    assert "alter table knowledge_base.write_approval_evidence" in sql
+    assert "add column if not exists article_key text not null default 'legacy-untrusted'" in sql
+    assert "add column if not exists title text not null default 'legacy untrusted knowledge base write'" in sql
+    assert "add column if not exists proposed_version_label text not null default 'legacy-untrusted'" in sql
+    assert "add column if not exists source_system text not null default 'legacy'" in sql
+    assert "kb_write_approval_article_key_not_empty" in sql
+    assert "kb_write_approval_title_not_empty" in sql
+    assert "kb_write_approval_proposed_version_label_not_empty" in sql
+    assert "kb_write_approval_source_system_format" in sql
+    assert "source_system ~ '^[a-z][a-z0-9_+.-]*$'" in sql
+    assert "trusted article key captured at approval time" in sql
+    assert "trusted article title captured at approval time" in sql
+    assert "trusted proposed article-version label captured before execution" in sql
+    assert "trusted source-system identifier captured before create execution" in sql
+    assert "kb_write_approval_evidence_article_key_idx" in sql
+    assert "kb_write_approval_evidence_source_system_idx" in sql
     assert "source_text" not in sql
     assert "article_body" not in sql
     assert "prompt_text" not in sql

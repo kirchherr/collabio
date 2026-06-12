@@ -68,7 +68,7 @@ def knowledge_base_source_record_for_write(
         legal_hold_state=legal_hold_state,
         kms_key_ref=f"kms://{tenant_id}/internal/v1",
         manifest_hash="sha256:" + "0" * 64,
-        audit_chain_ref="audit:kb-article-version-backup-runbook-v2-demo",
+        audit_chain_ref=f"audit:{object_id}",
         source_system="collabio",
         mime_type="text/plain",
         acl_hash="sha256:" + "a" * 64,
@@ -87,6 +87,9 @@ def write_command_for_source_record(
     source_record: SourceObjectRecord,
     *,
     operation: KnowledgeBaseWriteOperation = KnowledgeBaseWriteOperation.EDIT,
+    article_object_id: str = "kb-article-backup-runbook-demo",
+    article_key: str = "KB-BACKUP-001",
+    article_title: str = "Backup Restore Runbook",
     expected_current_version_object_id: str | None = "kb-article-version-backup-runbook-v1-demo",
 ) -> KnowledgeBaseWriteApprovalCommand:
     metadata = source_record.metadata
@@ -94,9 +97,9 @@ def write_command_for_source_record(
         approval_reference=f"approval:{metadata.object_id}",
         reason="prepare guarded knowledge base source-object write",
         operation=operation,
-        article_object_id="kb-article-backup-runbook-demo",
-        article_key="KB-BACKUP-001",
-        title="Backup Restore Runbook",
+        article_object_id=article_object_id,
+        article_key=article_key,
+        title=article_title,
         proposed_version_object_id=metadata.object_id,
         proposed_version_label=metadata.version_id,
         proposed_source_object_id=metadata.object_id,
@@ -109,6 +112,7 @@ def write_command_for_source_record(
         data_classification=metadata.classification,
         retention_policy_id=metadata.retention_policy_id,
         legal_hold_state=metadata.legal_hold_state.value,
+        source_system=metadata.source_system,
     )
 
 
@@ -388,6 +392,10 @@ def test_knowledge_base_write_approval_dry_run_is_audit_only_and_blocks_persiste
     assert persisted_evidence.evidence_hash == response.write_approval_evidence_hash
     assert persisted_evidence.tenant_id == "tenant-demo"
     assert persisted_evidence.article_object_id == "kb-article-backup-runbook-demo"
+    assert persisted_evidence.article_key == "KB-BACKUP-001"
+    assert persisted_evidence.title == "Backup Restore Runbook"
+    assert persisted_evidence.proposed_version_label == "v2"
+    assert persisted_evidence.source_system == "native"
     assert persisted_evidence.approval_state == KnowledgeBaseWriteApprovalState.DRY_RUN
     assert persisted_evidence.persistence_allowed is False
     assert persisted_evidence.rag_indexing_allowed is False
@@ -483,6 +491,10 @@ def test_knowledge_base_write_approval_transition_appends_approved_evidence_with
     assert approved_evidence.approval_state == KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE
     assert approved_evidence.transition_source_evidence_hash == dry_run_evidence.evidence_hash
     assert approved_evidence.approval_reference == "approval:kb-write-approve"
+    assert approved_evidence.article_key == dry_run_evidence.article_key
+    assert approved_evidence.title == dry_run_evidence.title
+    assert approved_evidence.proposed_version_label == dry_run_evidence.proposed_version_label
+    assert approved_evidence.source_system == dry_run_evidence.source_system
     assert approved_evidence.persistence_allowed is True
     assert approved_evidence.rag_indexing_allowed is False
     assert approved_evidence.source_authority_verified is False
@@ -830,6 +842,185 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
                 human_confirmation_reference="human-confirmation:kb-write-1",
                 proposed_source_record=proposed_source_record,
                 reason="execute guarded knowledge base edit again",
+            ),
+            user_context=user_context,
+        )
+
+
+def test_knowledge_base_write_execution_commits_create_from_trusted_approval_metadata() -> None:
+    audit_logger = InMemoryAuditLogger()
+    write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
+    source_repository = demo_knowledge_base_source_object_repository()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=source_repository,
+        audit_logger=audit_logger,
+        write_approval_ledger=write_approval_ledger,
+    )
+    proposed_source_record = knowledge_base_source_record_for_write(
+        object_id="kb-article-version-new-runbook-v1-demo",
+        version_id="v1",
+        title="New Runbook v1",
+        text="New runbook source content.",
+    )
+    write_command = write_command_for_source_record(
+        proposed_source_record,
+        operation=KnowledgeBaseWriteOperation.CREATE,
+        article_object_id="kb-article-new-runbook-demo",
+        article_key="KB-NEW-001",
+        article_title="New Runbook",
+        expected_current_version_object_id=None,
+    )
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+
+    dry_run_response = service.dry_run_write_approval(command=write_command, user_context=user_context)
+    dry_run_evidence = write_approval_ledger.get(
+        tenant_id="tenant-demo",
+        evidence_hash=dry_run_response.write_approval_evidence_hash,
+    )
+    assert dry_run_evidence.operation == KnowledgeBaseWriteOperation.CREATE
+    assert dry_run_evidence.article_key == "KB-NEW-001"
+    assert dry_run_evidence.title == "New Runbook"
+    assert dry_run_evidence.proposed_version_label == "v1"
+    assert dry_run_evidence.source_system == "collabio"
+
+    transition_response = service.approve_write_approval(
+        command=KnowledgeBaseWriteApprovalTransitionCommand(
+            dry_run_write_approval_evidence_hash=dry_run_response.write_approval_evidence_hash,
+            approval_reference="approval:kb-create-approve",
+            reason="human approved governed knowledge base create",
+        ),
+        user_context=user_context,
+    )
+    approved_evidence = write_approval_ledger.get(
+        tenant_id="tenant-demo",
+        evidence_hash=transition_response.approved_write_approval_evidence_hash,
+    )
+    assert approved_evidence.article_key == dry_run_evidence.article_key
+    assert approved_evidence.title == dry_run_evidence.title
+    assert approved_evidence.proposed_version_label == dry_run_evidence.proposed_version_label
+    assert approved_evidence.source_system == dry_run_evidence.source_system
+
+    preview = service.preview_write_evidence_refresh(
+        command=KnowledgeBaseEvidenceRefreshPreviewCommand(
+            approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+            preview_reference="preview:kb-create-refresh",
+            reason="preview metadata-only source and restore evidence refresh for create",
+        ),
+        user_context=user_context,
+    )
+    assert preview.operation == KnowledgeBaseWriteOperation.CREATE
+    assert preview.article_count_before == 2
+    assert preview.article_count_after == 3
+    assert preview.article_version_count_before == 2
+    assert preview.article_version_count_after == 3
+    assert preview.source_version_evidence_count_before == 2
+    assert preview.source_version_evidence_count_after == 3
+    assert preview.proposed_source_version_evidence_hash in preview.projected_source_version_evidence_hashes
+
+    guard_decision = service.evaluate_source_object_write_guard(
+        user_context=user_context,
+        write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+        proposed_source_record=proposed_source_record,
+    )
+    assert guard_decision.allowed is True
+
+    skeleton = service.prepare_write_execution_skeleton(
+        command=KnowledgeBaseWriteExecutionSkeletonCommand(
+            approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+            source_object_write_guard_decision=guard_decision,
+            refresh_preview_command_hash=preview.preview_command_hash,
+            projected_restore_evidence_preview_hash=preview.projected_restore_evidence_preview_hash,
+            execution_reference="execution:kb-create-skeleton-1",
+            human_confirmation_reference="human-confirmation:kb-create-1",
+            reason="prepare guarded create execution",
+        ),
+        user_context=user_context,
+    )
+
+    response = service.execute_write(
+        command=KnowledgeBaseWriteExecutionCommand(
+            approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+            source_object_write_guard_decision=guard_decision,
+            refresh_preview_command_hash=preview.preview_command_hash,
+            projected_restore_evidence_preview_hash=preview.projected_restore_evidence_preview_hash,
+            execution_skeleton_command_hash=skeleton.execution_command_hash,
+            execution_plan_hash=skeleton.execution_plan_hash,
+            execution_reference="execution:kb-create-skeleton-1",
+            human_confirmation_reference="human-confirmation:kb-create-1",
+            proposed_source_record=proposed_source_record,
+            reason="execute governed knowledge base create",
+        ),
+        user_context=user_context,
+    )
+
+    assert response.execution_allowed is True
+    assert response.operation == KnowledgeBaseWriteOperation.CREATE
+    assert response.previous_version_object_id is None
+    assert response.current_version_object_id == proposed_source_record.metadata.object_id
+    assert response.current_source_object_id == proposed_source_record.metadata.object_id
+    assert response.current_source_version_id == "v1"
+    assert response.refreshed_source_version_evidence_hash == transition_response.proposed_source_version_evidence_hash
+    assert response.article_count_after == 3
+    assert response.article_version_count_after == 3
+    assert response.source_version_evidence_count_after == 3
+    assert response.rag_indexing_allowed is False
+    assert response.search_indexing_allowed is False
+
+    created_article = next(
+        article
+        for article in service.repository.list_articles(tenant_id="tenant-demo")
+        if article.object_id == "kb-article-new-runbook-demo"
+    )
+    assert created_article.article_key == "KB-NEW-001"
+    assert created_article.title == "New Runbook"
+    assert created_article.current_version_label == "v1"
+    assert created_article.source_system == "collabio"
+    assert created_article.current_source_manifest_hash == proposed_source_record.metadata.manifest_hash
+    assert (
+        source_repository.get(
+            tenant_id="tenant-demo",
+            object_id=proposed_source_record.metadata.object_id,
+            version_id=proposed_source_record.metadata.version_id,
+        )
+        == proposed_source_record
+    )
+    assert "New runbook source content" not in response.model_dump_json()
+
+    event = audit_logger.events[-1]
+    assert response.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.write_approval.executed"
+    assert event.input_hash is not None
+    assert event.output_hash is None
+    assert event.metadata["operation"] == KnowledgeBaseWriteOperation.CREATE
+    assert event.metadata["article_metadata_persisted"] is True
+    assert event.metadata["source_object_persisted"] is True
+
+    evidence_response = service.read_compliance_evidence(user_context=user_context)
+    assert evidence_response.restore_evidence.article_count == 3
+    assert evidence_response.restore_evidence.source_version_evidence_count == 3
+    assert response.refreshed_source_version_evidence_hash in {
+        evidence.evidence_hash for evidence in evidence_response.source_version_evidence
+    }
+
+    with pytest.raises(ValueError, match="existing knowledge base article"):
+        service.execute_write(
+            command=KnowledgeBaseWriteExecutionCommand(
+                approved_write_approval_evidence_hash=transition_response.approved_write_approval_evidence_hash,
+                source_object_write_guard_decision=guard_decision,
+                refresh_preview_command_hash=preview.preview_command_hash,
+                projected_restore_evidence_preview_hash=preview.projected_restore_evidence_preview_hash,
+                execution_skeleton_command_hash=skeleton.execution_command_hash,
+                execution_plan_hash=skeleton.execution_plan_hash,
+                execution_reference="execution:kb-create-skeleton-1",
+                human_confirmation_reference="human-confirmation:kb-create-1",
+                proposed_source_record=proposed_source_record,
+                reason="execute governed knowledge base create again",
             ),
             user_context=user_context,
         )

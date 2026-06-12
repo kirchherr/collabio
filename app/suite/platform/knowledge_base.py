@@ -718,8 +718,11 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
     operation: KnowledgeBaseWriteOperation
     approval_state: KnowledgeBaseWriteApprovalState = KnowledgeBaseWriteApprovalState.DRY_RUN
     article_object_id: str
+    article_key: str
+    title: str
     expected_current_version_object_id: str | None = None
     proposed_version_object_id: str
+    proposed_version_label: str
     proposed_source_object_id: str
     proposed_source_version_id: str
     proposed_source_object_type: SourceObjectType = SourceObjectType.WIKI
@@ -737,6 +740,7 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
     source_authority_verified: bool = False
     audit_event_id: str
     audit_chain_ref: str
+    source_system: str = "native"
     evidence_hash: str
     schema_version: str = "knowledge_base_write_approval_evidence.v1"
 
@@ -744,7 +748,10 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
         "tenant_id",
         "approval_reference",
         "article_object_id",
+        "article_key",
+        "title",
         "proposed_version_object_id",
+        "proposed_version_label",
         "proposed_source_object_id",
         "proposed_source_version_id",
         "requested_by",
@@ -754,6 +761,13 @@ class KnowledgeBaseWriteApprovalEvidence(BaseModel):
     def require_non_empty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("knowledge base write approval evidence fields must not be empty")
+        return value
+
+    @field_validator("source_system")
+    @classmethod
+    def validate_source_system(cls, value: str) -> str:
+        if not SOURCE_SYSTEM_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base write approval evidence source_system must be lowercase and non-empty")
         return value
 
     @field_validator(
@@ -1364,8 +1378,6 @@ class InMemoryKnowledgeBaseArticleRepository:
         source_record: SourceObjectRecord,
         audit_chain_ref: str,
     ) -> KnowledgeBaseArticleRecord:
-        if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
-            raise ValueError("create write execution requires trusted article metadata in approval evidence")
         metadata = source_record.metadata
         if metadata.tenant_id != tenant_id:
             raise ValueError("source object tenant does not match write tenant")
@@ -1373,6 +1385,8 @@ class InMemoryKnowledgeBaseArticleRepository:
             raise ValueError("source object ID does not match approved write evidence")
         if metadata.version_id != evidence.proposed_source_version_id:
             raise ValueError("source version ID does not match approved write evidence")
+        if metadata.object_type != evidence.proposed_source_object_type:
+            raise ValueError("source object type does not match approved write evidence")
         if metadata.manifest_hash != evidence.proposed_source_manifest_hash:
             raise ValueError("source manifest hash does not match approved write evidence")
         if metadata.content_hash != evidence.proposed_content_hash:
@@ -1381,6 +1395,46 @@ class InMemoryKnowledgeBaseArticleRepository:
             raise ValueError("source ACL version does not match approved write evidence")
 
         articles = list(self._articles)
+        if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
+            if metadata.source_system != evidence.source_system:
+                raise ValueError("source system does not match approved write evidence")
+            if any(
+                article.tenant_id == tenant_id and article.object_id == evidence.article_object_id
+                for article in articles
+            ):
+                raise ValueError("create write target article already exists")
+            if any(
+                article.tenant_id == tenant_id and article.article_key == evidence.article_key for article in articles
+            ):
+                raise ValueError("create write target article key already exists")
+            created_article = KnowledgeBaseArticleRecord(
+                tenant_id=tenant_id,
+                object_id=evidence.article_object_id,
+                owner_principal_id=metadata.owner_principal_id,
+                created_by=metadata.created_by,
+                created_at_utc=metadata.created_at_utc,
+                updated_at_utc=metadata.updated_at_utc,
+                data_classification=metadata.classification,
+                retention_policy_id=metadata.retention_policy_id,
+                legal_hold_state=metadata.legal_hold_state.value,
+                kms_key_ref=metadata.kms_key_ref,
+                audit_chain_ref=audit_chain_ref,
+                source_system=evidence.source_system,
+                article_key=evidence.article_key,
+                title=evidence.title,
+                current_version_object_id=evidence.proposed_version_object_id,
+                current_version_label=evidence.proposed_version_label,
+                current_source_object_id=evidence.proposed_source_object_id,
+                current_source_version_id=evidence.proposed_source_version_id,
+                current_source_object_type=evidence.proposed_source_object_type,
+                current_source_manifest_hash=metadata.manifest_hash,
+                current_content_hash=metadata.content_hash,
+                current_acl_version=metadata.acl_version,
+                published_at_utc=metadata.updated_at_utc,
+            )
+            self._articles = tuple([*articles, created_article])
+            return created_article
+
         for index, article in enumerate(articles):
             if article.tenant_id != tenant_id or article.object_id != evidence.article_object_id:
                 continue
@@ -1390,7 +1444,7 @@ class InMemoryKnowledgeBaseArticleRepository:
                 update={
                     "updated_at_utc": metadata.updated_at_utc,
                     "current_version_object_id": evidence.proposed_version_object_id,
-                    "current_version_label": evidence.proposed_source_version_id,
+                    "current_version_label": evidence.proposed_version_label,
                     "current_source_object_id": evidence.proposed_source_object_id,
                     "current_source_version_id": evidence.proposed_source_version_id,
                     "current_source_object_type": evidence.proposed_source_object_type,
@@ -1449,8 +1503,11 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         operation,
                         approval_state,
                         article_object_id,
+                        article_key,
+                        title,
                         expected_current_version_object_id,
                         proposed_version_object_id,
+                        proposed_version_label,
                         proposed_source_object_id,
                         proposed_source_version_id,
                         proposed_source_object_type,
@@ -1468,12 +1525,14 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         source_authority_verified,
                         audit_event_id,
                         audit_chain_ref,
+                        source_system,
                         evidence_hash,
                         schema_version
                     )
                     VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s
                     )
                     """,
                     (
@@ -1482,8 +1541,11 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         evidence.operation,
                         evidence.approval_state,
                         evidence.article_object_id,
+                        evidence.article_key,
+                        evidence.title,
                         evidence.expected_current_version_object_id,
                         evidence.proposed_version_object_id,
+                        evidence.proposed_version_label,
                         evidence.proposed_source_object_id,
                         evidence.proposed_source_version_id,
                         evidence.proposed_source_object_type,
@@ -1501,6 +1563,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                         evidence.source_authority_verified,
                         evidence.audit_event_id,
                         evidence.audit_chain_ref,
+                        evidence.source_system,
                         evidence.evidence_hash,
                         evidence.schema_version,
                     ),
@@ -1521,8 +1584,11 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     operation,
                     approval_state,
                     article_object_id,
+                    article_key,
+                    title,
                     expected_current_version_object_id,
                     proposed_version_object_id,
+                    proposed_version_label,
                     proposed_source_object_id,
                     proposed_source_version_id,
                     proposed_source_object_type,
@@ -1540,6 +1606,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     source_authority_verified,
                     audit_event_id,
                     audit_chain_ref,
+                    source_system,
                     evidence_hash,
                     schema_version
                 FROM knowledge_base.write_approval_evidence
@@ -1563,8 +1630,11 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     operation,
                     approval_state,
                     article_object_id,
+                    article_key,
+                    title,
                     expected_current_version_object_id,
                     proposed_version_object_id,
+                    proposed_version_label,
                     proposed_source_object_id,
                     proposed_source_version_id,
                     proposed_source_object_type,
@@ -1582,6 +1652,7 @@ class PgKnowledgeBaseWriteApprovalLedger:
                     source_authority_verified,
                     audit_event_id,
                     audit_chain_ref,
+                    source_system,
                     evidence_hash,
                     schema_version
                 FROM knowledge_base.write_approval_evidence
@@ -1599,27 +1670,31 @@ class PgKnowledgeBaseWriteApprovalLedger:
             operation=KnowledgeBaseWriteOperation(str(row[2])),
             approval_state=KnowledgeBaseWriteApprovalState(str(row[3])),
             article_object_id=str(row[4]),
-            expected_current_version_object_id=str(row[5]) if row[5] is not None else None,
-            proposed_version_object_id=str(row[6]),
-            proposed_source_object_id=str(row[7]),
-            proposed_source_version_id=str(row[8]),
-            proposed_source_object_type=SourceObjectType(str(row[9])),
-            proposed_source_manifest_hash=str(row[10]),
-            proposed_content_hash=str(row[11]),
-            proposed_acl_version=int(row[12]),
-            command_hash=str(row[13]),
-            proposed_source_version_evidence_hash=str(row[14]),
-            current_restore_evidence_hash=str(row[15]),
-            source_object_write_guard_ref=str(row[16]),
-            transition_source_evidence_hash=str(row[17]) if row[17] is not None else None,
-            requested_by=str(row[18]),
-            persistence_allowed=bool(row[19]),
-            rag_indexing_allowed=bool(row[20]),
-            source_authority_verified=bool(row[21]),
-            audit_event_id=str(row[22]),
-            audit_chain_ref=str(row[23]),
-            evidence_hash=str(row[24]),
-            schema_version=str(row[25]),
+            article_key=str(row[5]),
+            title=str(row[6]),
+            expected_current_version_object_id=str(row[7]) if row[7] is not None else None,
+            proposed_version_object_id=str(row[8]),
+            proposed_version_label=str(row[9]),
+            proposed_source_object_id=str(row[10]),
+            proposed_source_version_id=str(row[11]),
+            proposed_source_object_type=SourceObjectType(str(row[12])),
+            proposed_source_manifest_hash=str(row[13]),
+            proposed_content_hash=str(row[14]),
+            proposed_acl_version=int(row[15]),
+            command_hash=str(row[16]),
+            proposed_source_version_evidence_hash=str(row[17]),
+            current_restore_evidence_hash=str(row[18]),
+            source_object_write_guard_ref=str(row[19]),
+            transition_source_evidence_hash=str(row[20]) if row[20] is not None else None,
+            requested_by=str(row[21]),
+            persistence_allowed=bool(row[22]),
+            rag_indexing_allowed=bool(row[23]),
+            source_authority_verified=bool(row[24]),
+            audit_event_id=str(row[25]),
+            audit_chain_ref=str(row[26]),
+            source_system=str(row[27]),
+            evidence_hash=str(row[28]),
+            schema_version=str(row[29]),
         )
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
@@ -1745,6 +1820,11 @@ class KnowledgeBaseSourceObjectWriteGuard:
             blocking_reasons.append("proposed_source_content_hash_mismatch")
         if metadata.acl_version != evidence.proposed_acl_version:
             blocking_reasons.append("proposed_source_acl_version_mismatch")
+        if (
+            evidence.operation == KnowledgeBaseWriteOperation.CREATE
+            and metadata.source_system != evidence.source_system
+        ):
+            blocking_reasons.append("proposed_source_system_mismatch")
         if metadata.classification != DataClass.INTERNAL:
             blocking_reasons.append("proposed_source_classification_not_internal")
         if metadata.retention_policy_id != "rp-standard":
@@ -1903,8 +1983,11 @@ class KnowledgeBaseArticleService:
                 raise LookupError(f"knowledge base article not found: {command.article_object_id}")
             if existing_article.current_version_object_id != command.expected_current_version_object_id:
                 raise ValueError("expected current article version does not match")
-        if command.operation == KnowledgeBaseWriteOperation.CREATE and existing_article is not None:
-            raise ValueError("create dry-run cannot target an existing knowledge base article")
+        if command.operation == KnowledgeBaseWriteOperation.CREATE:
+            if existing_article is not None:
+                raise ValueError("create dry-run cannot target an existing knowledge base article")
+            if any(article.article_key == command.article_key for article in records):
+                raise ValueError("create dry-run cannot target an existing knowledge base article key")
 
         source_evidences = [self.source_version_evidence(record) for record in records]
         restore_evidence = build_knowledge_base_restore_evidence(
@@ -2329,8 +2412,6 @@ class KnowledgeBaseArticleService:
             evidence_hash=command.approved_write_approval_evidence_hash,
         )
         self._require_refresh_preview_approved_evidence(approved_evidence)
-        if approved_evidence.operation == KnowledgeBaseWriteOperation.CREATE:
-            raise ValueError("create write execution requires trusted article metadata in approval evidence")
 
         records = sorted(
             self.repository.list_articles(tenant_id=user_context.tenant_id),
@@ -2338,10 +2419,13 @@ class KnowledgeBaseArticleService:
         )
         records_by_object_id = {record.object_id: record for record in records}
         existing_article = records_by_object_id.get(approved_evidence.article_object_id)
-        if existing_article is None:
-            raise LookupError(f"knowledge base article not found: {approved_evidence.article_object_id}")
-        if existing_article.current_version_object_id != approved_evidence.expected_current_version_object_id:
-            raise ValueError("expected current article version does not match approved evidence")
+        if approved_evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            if existing_article is None:
+                raise LookupError(f"knowledge base article not found: {approved_evidence.article_object_id}")
+            if existing_article.current_version_object_id != approved_evidence.expected_current_version_object_id:
+                raise ValueError("expected current article version does not match approved evidence")
+        if approved_evidence.operation == KnowledgeBaseWriteOperation.CREATE and existing_article is not None:
+            raise ValueError("create execution cannot target an existing knowledge base article")
 
         source_evidences = [self.source_version_evidence(record) for record in records]
         restore_evidence = build_knowledge_base_restore_evidence(
@@ -2377,6 +2461,7 @@ class KnowledgeBaseArticleService:
             approved_evidence=approved_evidence,
             current_source_evidences=source_evidences,
         )
+        count_delta = 1 if approved_evidence.operation == KnowledgeBaseWriteOperation.CREATE else 0
         projected_restore_hash = build_knowledge_base_restore_evidence_preview_hash(
             tenant_id=user_context.tenant_id,
             approved_evidence=approved_evidence,
@@ -2384,11 +2469,11 @@ class KnowledgeBaseArticleService:
             current_source_version_evidence_hashes=current_source_hashes,
             projected_source_version_evidence_hashes=projected_source_hashes,
             article_count_before=len(records),
-            article_count_after=len(records),
+            article_count_after=len(records) + count_delta,
             article_version_count_before=len(records),
-            article_version_count_after=len(records),
+            article_version_count_after=len(records) + count_delta,
             source_version_evidence_count_before=len(source_evidences),
-            source_version_evidence_count_after=len(source_evidences),
+            source_version_evidence_count_after=len(source_evidences) + count_delta,
         )
         if projected_restore_hash != command.projected_restore_evidence_preview_hash:
             raise ValueError("projected restore evidence preview hash does not match current approved evidence")
@@ -2483,7 +2568,7 @@ class KnowledgeBaseArticleService:
             execution_command_hash=execution_command_hash,
             operation=approved_evidence.operation,
             article_object_id=approved_evidence.article_object_id,
-            previous_version_object_id=existing_article.current_version_object_id,
+            previous_version_object_id=existing_article.current_version_object_id if existing_article else None,
             current_version_object_id=updated_article.current_version_object_id,
             current_source_object_id=updated_article.current_source_object_id,
             current_source_version_id=updated_article.current_source_version_id,
@@ -2795,8 +2880,11 @@ def build_write_approval_evidence(
         operation=command.operation,
         approval_state=approval_state,
         article_object_id=command.article_object_id,
+        article_key=command.article_key,
+        title=command.title,
         expected_current_version_object_id=command.expected_current_version_object_id,
         proposed_version_object_id=command.proposed_version_object_id,
+        proposed_version_label=command.proposed_version_label,
         proposed_source_object_id=command.proposed_source_object_id,
         proposed_source_version_id=command.proposed_source_version_id,
         proposed_source_object_type=command.proposed_source_object_type,
@@ -2814,6 +2902,7 @@ def build_write_approval_evidence(
         source_authority_verified=source_authority_verified,
         audit_event_id=audit_event_id,
         audit_chain_ref=audit_chain_ref,
+        source_system=command.source_system,
         evidence_hash=ZERO_HASH,
     )
     return draft.model_copy(update={"evidence_hash": build_write_approval_evidence_hash(draft)})
@@ -2833,8 +2922,11 @@ def build_write_approval_transition_evidence(
         operation=source_evidence.operation,
         approval_state=KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
         article_object_id=source_evidence.article_object_id,
+        article_key=source_evidence.article_key,
+        title=source_evidence.title,
         expected_current_version_object_id=source_evidence.expected_current_version_object_id,
         proposed_version_object_id=source_evidence.proposed_version_object_id,
+        proposed_version_label=source_evidence.proposed_version_label,
         proposed_source_object_id=source_evidence.proposed_source_object_id,
         proposed_source_version_id=source_evidence.proposed_source_version_id,
         proposed_source_object_type=source_evidence.proposed_source_object_type,
@@ -2852,6 +2944,7 @@ def build_write_approval_transition_evidence(
         source_authority_verified=False,
         audit_event_id=audit_event_id,
         audit_chain_ref=audit_chain_ref,
+        source_system=source_evidence.source_system,
         evidence_hash=ZERO_HASH,
     )
     return draft.model_copy(update={"evidence_hash": build_write_approval_evidence_hash(draft)})

@@ -74,7 +74,7 @@ Initial API:
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` accepts approved write-approval evidence, a metadata-only source-object write-guard decision, the refresh-preview hashes, and an explicit human confirmation reference. It verifies that those inputs bind to the same tenant, article, proposed source version, and restore evidence, then returns an `execution_plan_hash`. It still sets `execution_allowed=false` and does not persist article metadata, source objects, source-version evidence, restore evidence, embeddings, indexes, or RAG state.
 
-`POST /v1/admin/kb/articles/write-approvals/execute` accepts the same approved evidence chain plus the authoritative proposed `SourceObjectRecord`. For edit operations it re-evaluates the source-object write guard against that record, verifies the skeleton `execution_plan_hash`, persists the source object, updates article/current-version metadata, refreshes source-version evidence and restore evidence, and returns `refreshed_restore_evidence_hash`. It does not store source text in audit metadata or responses, and it keeps search indexing, embeddings, and RAG state disabled. Create execution remains blocked until approval evidence carries trusted article-key, title, version-label, and source-system metadata.
+`POST /v1/admin/kb/articles/write-approvals/execute` accepts the same approved evidence chain plus the authoritative proposed `SourceObjectRecord`. For edit/create operations it re-evaluates the source-object write guard against that record, verifies the skeleton `execution_plan_hash`, persists the source object, updates article/current-version metadata, refreshes source-version evidence and restore evidence, and returns `refreshed_restore_evidence_hash`. Create execution uses article key, title, proposed version label, and source system from trusted approval evidence instead of trusting execution-time metadata. It does not store source text in audit metadata or responses, and it keeps search indexing, embeddings, and RAG state disabled.
 
 `KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
 
@@ -141,6 +141,7 @@ Initial migrations:
 - `0022_knowledge_base_source_restore_evidence.sql`
 - `0023_knowledge_base_write_approval_evidence.sql`
 - `0024_knowledge_base_write_approval_transition_lineage.sql`
+- `0025_knowledge_base_write_approval_trusted_article_metadata.sql`
 
 The first migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
 
@@ -150,7 +151,9 @@ The third migration creates append-only tenant-scoped `knowledge_base.write_appr
 
 The fourth migration adds `transition_source_evidence_hash` so non-dry-run approval states must point back to the dry-run ledger evidence that was approved. This keeps state transitions append-only and auditable.
 
-The refresh-preview, execution-skeleton, and current in-memory execute endpoints are runtime-only and do not need migrations. Future PostgreSQL write execution must consume their projected hash contracts inside one database transaction before refreshing append-only source-version and restore evidence.
+The fifth migration adds trusted create metadata to `knowledge_base.write_approval_evidence`: article key, title, proposed version label, and source system. This prevents create execution from introducing caller-supplied article metadata after approval.
+
+The refresh-preview, execution-skeleton, and current in-memory execute endpoints are runtime-only. Future PostgreSQL write execution must consume their projected hash contracts inside one database transaction before refreshing append-only source-version and restore evidence.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 

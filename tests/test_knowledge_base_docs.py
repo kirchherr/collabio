@@ -47,6 +47,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "0022_knowledge_base_source_restore_evidence.sql" in charter
     assert "0023_knowledge_base_write_approval_evidence.sql" in charter
     assert "0024_knowledge_base_write_approval_transition_lineage.sql" in charter
+    assert "0025_knowledge_base_write_approval_trusted_article_metadata.sql" in charter
     assert "current `kb.article_version`" in slice_doc
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
@@ -74,7 +75,11 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base.write_approval_evidence`" in ledger_doc
     assert "`0023_knowledge_base_write_approval_evidence.sql`" in ledger_doc
     assert "`0024_knowledge_base_write_approval_transition_lineage.sql`" in ledger_doc
+    assert "`0025_knowledge_base_write_approval_trusted_article_metadata.sql`" in ledger_doc
     assert "`transition_source_evidence_hash`" in ledger_doc
+    assert "article key" in ledger_doc.lower()
+    assert "proposed version label" in ledger_doc.lower()
+    assert "source system" in ledger_doc.lower()
     assert "`POST /v1/admin/kb/articles/write-approvals/refresh-preview`" in ledger_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/execution-skeleton`" in ledger_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/execute`" in ledger_doc

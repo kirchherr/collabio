@@ -90,13 +90,14 @@ Current sprint:
 80. [x] Metadata-only Knowledge Base restore/source evidence refresh preview for approved writes, still without article/source writes or RAG indexing.
 81. [x] Guarded Knowledge Base write-execution skeleton with approved evidence, source-guard decision, refresh-preview hash, explicit human confirmation, and no article/source writes.
 82. [x] Atomic Knowledge Base edit-write execution path that persists the source object, updates article/version metadata, refreshes source/restore evidence, and keeps RAG/indexing disabled.
+83. [x] Trusted Knowledge Base create metadata in approval evidence plus guarded in-memory create execution, with RAG/indexing still disabled.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, a blocked write-execution skeleton, and an atomic in-memory edit-write execution path. The next narrow step is persistent transaction hardening:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, and atomic in-memory edit/create execution paths. The next narrow step is persistent transaction hardening:
 
 - Add a PostgreSQL-backed transaction adapter for article/version metadata plus append-only source/restore evidence writes.
-- Extend approval evidence before create-writes so `article_key`, title, version label, and source-system metadata are trusted instead of caller-supplied at execution time.
+- Make the PostgreSQL write adapter consume the same trusted approval evidence fields for create/edit execution.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

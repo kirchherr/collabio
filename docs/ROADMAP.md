@@ -1252,7 +1252,8 @@ Empfohlene naechste Reihenfolge:
 82. [x] Metadata-only Restore-/Source-Evidence-Refresh-Preview fuer approved Knowledge-Base-Writes vorbereiten, bevor echte Artikel-/Source-Writes freigeschaltet werden.
 83. [x] Guarded Knowledge-Base-Write-Execution-Skeleton vorbereiten: approved Ledger-Evidence, Source-Object-Guard, Refresh-Preview und explizite Human Confirmation muessen gemeinsam vor echten Artikel-/Source-Writes vorliegen.
 84. [x] Atomaren Knowledge-Base-Edit-Write-Execution-Pfad entwerfen: Source-Object-Persistenz, Artikel-/Version-Metadaten, Source-Version-Evidence, Restore-Evidence und Audit-Linkage werden gemeinsam aktualisiert; RAG/Indexing bleibt weiter aus.
-85. [ ] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes und Approval-Evidence-Erweiterung fuer Create-Writes vorbereiten, damit Artikel-Key, Titel, Version-Label und Source-System nicht erst zur Execution-Zeit vertraut werden muessen.
+85. [x] Approval-Evidence fuer Knowledge-Base-Create-Writes um vertrauenswuerdige Artikel-Metadaten erweitern und guarded In-Memory-Create-Execution ermoeglichen; Artikel-Key, Titel, Version-Label und Source-System werden vor Execution gehasht.
+86. [ ] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes implementieren, damit Source-Object-Persistenz, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence gemeinsam committed oder gemeinsam verworfen werden.
 
 ## Release-Strategie
 

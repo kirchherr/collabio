@@ -220,6 +220,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:knowledge-base-write-approval-transition",
         ),
     ),
+    SqlMigration(
+        version="0025",
+        name="knowledge_base_write_approval_trusted_article_metadata",
+        resource_name="0025_knowledge_base_write_approval_trusted_article_metadata.sql",
+        module_id="knowledge_base",
+        evidence_refs=(
+            "doc:knowledge-base-write-approval-ledger",
+            "test:knowledge-base-write-approval-create",
+        ),
+    ),
 )
 
 
