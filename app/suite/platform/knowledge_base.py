@@ -310,9 +310,31 @@ class KnowledgeBaseArticlesResponse(BaseModel):
     audit_event_id: str
 
 
+class KnowledgeBaseEvidenceResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    continuity_domain: str = "knowledge_base_content"
+    source_version_evidence: list[KnowledgeBaseSourceVersionEvidence]
+    restore_evidence: KnowledgeBaseRestoreEvidence
+    audit_event_id: str
+
+
 class KnowledgeBaseArticleRepository(Protocol):
     def list_articles(self, *, tenant_id: str) -> Sequence[KnowledgeBaseArticleRecord]:
         pass
+
+
+def knowledge_base_audit_source_object_ids(records: Sequence[KnowledgeBaseArticleRecord]) -> list[str]:
+    source_object_ids: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        for object_id in (record.object_id, record.current_version_object_id, record.current_source_object_id):
+            if object_id not in seen:
+                source_object_ids.append(object_id)
+                seen.add(object_id)
+    return source_object_ids
 
 
 def knowledge_base_article_view(record: KnowledgeBaseArticleRecord) -> KnowledgeBaseArticleView:
@@ -468,11 +490,6 @@ class KnowledgeBaseArticleService:
             )
             for record in records
         ]
-        source_object_ids = [
-            source_object_id
-            for record in records
-            for source_object_id in (record.object_id, record.current_version_object_id)
-        ]
         restore_evidence = build_knowledge_base_restore_evidence(
             tenant_id=user_context.tenant_id,
             articles=records,
@@ -483,7 +500,7 @@ class KnowledgeBaseArticleService:
         event = self.audit_logger.record(
             user_context=user_context,
             event_type="knowledge_base.article.list",
-            source_object_ids=source_object_ids,
+            source_object_ids=knowledge_base_audit_source_object_ids(records),
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_FEATURE_ID,
@@ -502,6 +519,41 @@ class KnowledgeBaseArticleService:
             articles=views,
             source_version_evidence_hashes=sorted(evidence.evidence_hash for evidence in source_evidences),
             restore_evidence_hash=restore_evidence.evidence_hash,
+            audit_event_id=event.event_id,
+        )
+
+    def read_compliance_evidence(self, *, user_context: UserContext) -> KnowledgeBaseEvidenceResponse:
+        records = sorted(
+            self.repository.list_articles(tenant_id=user_context.tenant_id),
+            key=lambda record: (record.title.lower(), record.object_id),
+        )
+        source_evidences = [self.source_version_evidence(record) for record in records]
+        restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=user_context.tenant_id,
+            articles=records,
+            source_evidences=source_evidences,
+            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.evidence.read",
+            source_object_ids=knowledge_base_audit_source_object_ids(records),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "surface": "compliance_api",
+                "continuity_domain": restore_evidence.continuity_domain,
+                "article_count": len(records),
+                "source_version_evidence_count": len(source_evidences),
+                "result_contract": "metadata_only",
+                "source_version_evidence_hashes": sorted(evidence.evidence_hash for evidence in source_evidences),
+                "restore_evidence_hash": restore_evidence.evidence_hash,
+            },
+        )
+        return KnowledgeBaseEvidenceResponse(
+            tenant_id=user_context.tenant_id,
+            source_version_evidence=source_evidences,
+            restore_evidence=restore_evidence,
             audit_event_id=event.event_id,
         )
 

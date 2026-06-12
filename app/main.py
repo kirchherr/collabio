@@ -82,6 +82,7 @@ from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseArticleRepository,
     KnowledgeBaseArticleService,
     KnowledgeBaseArticlesResponse,
+    KnowledgeBaseEvidenceResponse,
     demo_knowledge_base_source_object_repository,
 )
 from suite.platform.modules import (
@@ -714,6 +715,19 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ModuleLifecycleError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/v1/admin/kb/evidence", response_model=KnowledgeBaseEvidenceResponse)
+    def read_knowledge_base_evidence(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+        ],
+    ) -> KnowledgeBaseEvidenceResponse:
+        del gate
+        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        return articles.read_compliance_evidence(user_context=context.user_context)
 
     @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
     def get_tenant_policy(

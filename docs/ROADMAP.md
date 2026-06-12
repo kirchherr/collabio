@@ -1243,8 +1243,8 @@ Empfohlene naechste Reihenfolge:
 73. [x] Modul-Implementierungsvertrag fuer Wissensdatenbank, LMS, Aufgaben, Tickets, Zeiterfassung und spaetere Suite-Module aus den CRM/ERP-Slices extrahieren.
 74. [x] Ersten Wissensdatenbank-Read-Slice mit `knowledge_base`, `kb.article`, `kb.article_version`, RLS, Audit und `GET /v1/kb/articles` implementieren.
 75. [x] Wissensdatenbank-Source-Version- und Restore-Evidence mit `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`, Audit-Metadaten und Backup-Domain-Nachweis haerten.
-76. [ ] Compliance/Admin-Read-Pfad fuer Wissensdatenbank-Source-/Restore-Evidence implementieren.
-77. [ ] Erst danach Wissensdatenbank-Write/Edit-Approval-Workflow starten.
+76. [x] Compliance/Admin-Read-Pfad fuer Wissensdatenbank-Source-/Restore-Evidence mit `GET /v1/admin/kb/evidence`, disabled-state access und metadata-only Audit implementieren.
+77. [ ] Wissensdatenbank-Write/Edit-Approval-Command-Modell und audit-only Dry-Run-Pfad starten.
 
 ## Release-Strategie
 

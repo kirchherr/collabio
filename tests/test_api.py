@@ -672,6 +672,55 @@ def test_knowledge_base_articles_endpoint_returns_metadata_after_feature_enable(
     assert new_events[-1].metadata["source_version_evidence_hashes"] == body["source_version_evidence_hashes"]
 
 
+def test_knowledge_base_admin_evidence_endpoint_is_compliance_scoped_and_metadata_only() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare knowledge base evidence"},
+    )
+    assert provision_response.status_code == 200
+    assert provision_response.json()["status"] == "disabled"
+
+    normal_response = client.get("/v1/kb/articles", headers=DEMO_KB_ARTICLE_HEADERS)
+    assert normal_response.status_code == 403
+    assert "not enabled" in normal_response.json()["detail"]
+
+    non_admin_response = client.get("/v1/admin/kb/evidence", headers=DEMO_HEADERS)
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+    response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    body_text = json.dumps(body)
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "knowledge_base"
+    assert body["continuity_domain"] == "knowledge_base_content"
+    assert len(body["source_version_evidence"]) == 2
+    assert body["restore_evidence"]["source_version_evidence_count"] == 2
+    assert body["restore_evidence"]["disabled_state_restore_verified"] is True
+    assert body["restore_evidence"]["legal_hold_restore_verified"] is True
+    assert body["restore_evidence"]["evidence_hash"].startswith("sha256:")
+    assert {evidence["source_version_id"] for evidence in body["source_version_evidence"]} == {"v1"}
+    assert all(evidence["evidence_hash"].startswith("sha256:") for evidence in body["source_version_evidence"])
+    assert "article_body" not in body_text
+    assert "source content" not in body_text
+    assert "prompt_text" not in body_text
+    assert "output_text" not in body_text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "knowledge_base.evidence.read"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["surface"] == "compliance_api"
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+    assert new_events[-1].metadata["restore_evidence_hash"] == body["restore_evidence"]["evidence_hash"]
+
+
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:
     reset_module_registry()
 

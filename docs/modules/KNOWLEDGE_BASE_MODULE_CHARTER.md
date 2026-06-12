@@ -57,6 +57,9 @@ Tenant Context
 Initial API:
 
 - `GET /v1/kb/articles`
+- `GET /v1/admin/kb/evidence`
+
+`GET /v1/admin/kb/evidence` is a tenant-admin compliance API. It remains available through the compliance module gate while the module is disabled, suspended, or in an active decommission workflow. It returns source-version evidence and restore evidence only, not article bodies or source text.
 
 Future workers:
 

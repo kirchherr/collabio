@@ -30,10 +30,13 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base.articles.read`" in charter
     assert "`kb.article`" in charter
     assert "`kb.article_version`" in charter
+    assert "`GET /v1/admin/kb/evidence`" in charter
     assert "Article bodies are not stored in the first slice" in charter
     assert "0022_knowledge_base_source_restore_evidence.sql" in charter
     assert "current `kb.article_version`" in slice_doc
+    assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
+    assert "`GET /v1/admin/kb/evidence`" in evidence_doc
     assert "`knowledge_base.source_version_evidence`" in evidence_doc
     assert "`knowledge_base.restore_evidence`" in evidence_doc
     assert "Drift blocks the evidence build" in evidence_doc

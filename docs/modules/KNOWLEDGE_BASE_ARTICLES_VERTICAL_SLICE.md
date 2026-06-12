@@ -62,6 +62,8 @@ The API returns only articles for the current tenant where the current user is a
 
 Each returned article includes a `source_version_evidence_hash`. The response includes `source_version_evidence_hashes` and a `restore_evidence_hash`, and the audit event records those hashes as metadata only.
 
+`GET /v1/admin/kb/evidence` exposes the full source-version and restore-evidence metadata to tenant admins through the compliance module gate. It remains available while normal article browsing is disabled, and it does not return article bodies or source text.
+
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
 ## Backup And Restore

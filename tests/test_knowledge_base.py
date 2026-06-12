@@ -156,6 +156,47 @@ def test_knowledge_base_article_service_filters_unreadable_versions() -> None:
     assert event.metadata["result_count"] == 1
 
 
+def test_knowledge_base_compliance_evidence_returns_metadata_for_admin_without_article_acl() -> None:
+    audit_logger = InMemoryAuditLogger()
+    service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+    )
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-demo",
+        role_ids={"tenant-admin"},
+        readable_object_ids=set(),
+    )
+
+    response = service.read_compliance_evidence(user_context=user_context)
+
+    assert response.tenant_id == "tenant-demo"
+    assert response.module_id == KNOWLEDGE_BASE_MODULE_ID
+    assert response.continuity_domain == "knowledge_base_content"
+    assert len(response.source_version_evidence) == 2
+    assert response.restore_evidence.source_version_evidence_count == 2
+    assert response.restore_evidence.evidence_hash.startswith("sha256:")
+    assert {evidence.source_version_id for evidence in response.source_version_evidence} == {"v1"}
+    assert {evidence.data_classification for evidence in response.source_version_evidence} == {DataClass.INTERNAL}
+
+    event = audit_logger.events[-1]
+    assert response.audit_event_id == event.event_id
+    assert event.event_type == "knowledge_base.evidence.read"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.source_object_ids == [
+        "kb-article-backup-runbook-demo",
+        "kb-article-version-backup-runbook-v1-demo",
+        "kb-article-security-baseline-demo",
+        "kb-article-version-security-baseline-v1-demo",
+    ]
+    assert event.metadata["surface"] == "compliance_api"
+    assert event.metadata["result_contract"] == "metadata_only"
+    assert event.metadata["restore_evidence_hash"] == response.restore_evidence.evidence_hash
+
+
 def test_knowledge_base_source_version_evidence_matches_authoritative_source_object() -> None:
     article = InMemoryKnowledgeBaseArticleRepository.demo().list_articles(tenant_id="tenant-demo")[0]
     source_record = demo_knowledge_base_source_object_repository().get(
