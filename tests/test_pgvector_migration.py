@@ -47,6 +47,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0013",
         "0014",
         "0015",
+        "0016",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -57,11 +58,13 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
 
 def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence() -> None:
     core_migrations = load_module_migrations("core")
+    crm_erp_migrations = load_module_migrations("crm_erp")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations())
+    assert len(core_migrations) == len(load_migrations()) - 1
+    assert [migration.version for migration in crm_erp_migrations] == ["0016"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert all(entry.module_id == "core" for entry in manifest)
+    assert manifest[-1].module_id == "crm_erp"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -441,6 +444,75 @@ def test_authz_admin_runtime_role_migration_declares_admin_write_boundary() -> N
     assert "grant select, delete on table collabio.jwt_replay_tokens to collabio_authz_admin" in sql
     assert "grant delete on table collabio.jwt_replay_tokens to collabio_app" not in sql
     assert "grant delete on table collabio.jwt_replay_events" not in sql
+
+
+def test_crm_erp_schema_scaffold_declares_schemas_object_rules_and_rls() -> None:
+    sql = normalized(get_migration("0016").sql())
+    schema_plans_body = table_body(get_migration("0016").sql(), "crm_erp.schema_plans")
+    object_rules_body = table_body(get_migration("0016").sql(), "crm_erp.object_type_rules")
+
+    for schema_name in ["crm_erp", "crm", "erp", "crm_erp_legacy"]:
+        assert f"create schema if not exists {schema_name}" in sql
+        assert "grant usage on schema crm_erp, crm, erp, crm_erp_legacy to collabio_app" in sql
+
+    for column in [
+        "tenant_id",
+        "module_id",
+        "schema_name",
+        "purpose",
+        "manifest_hash",
+        "backup_domain_id",
+        "rls_required",
+        "audit_required",
+        "raw_legacy_payload_allowed",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", schema_plans_body), f"{column} missing from CRM/ERP schema plan"
+
+    for column in [
+        "tenant_id",
+        "object_type",
+        "schema_name",
+        "table_name",
+        "feature_id",
+        "classification",
+        "retention_policy_id",
+        "lifecycle_states",
+        "legal_hold_supported",
+        "kms_key_ref_required",
+        "audit_required",
+        "rls_required",
+        "search_candidate_only",
+        "rag_indexing_default_enabled",
+        "raw_import_payload_allowed",
+        "required_metadata_fields",
+        "audit_chain_ref",
+        "schema_version",
+    ]:
+        assert re.search(rf"\b{column}\b", object_rules_body), f"{column} missing from CRM/ERP object rule"
+
+    for object_type in ["'crm.account'", "'erp.invoice'", "'legacy.row'"]:
+        assert object_type in object_rules_body
+
+    assert "required_metadata_fields @> array[" in object_rules_body
+    assert "'kms_key_ref'" in object_rules_body
+    assert "'audit_chain_ref'" in object_rules_body
+    assert "'source_system'" in object_rules_body
+    assert "retention_policy_id = 'rp-gobd-10y'" in object_rules_body
+    assert "lifecycle_states @> array['record']::text[]" in object_rules_body
+    assert "lifecycle_states @> array['quarantined']::text[]" in object_rules_body
+    assert "not raw_import_payload_allowed" in object_rules_body
+    assert "not rag_indexing_default_enabled" in object_rules_body
+    assert "alter table crm_erp.schema_plans enable row level security" in sql
+    assert "alter table crm_erp.object_type_rules enable row level security" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "create policy crm_erp_object_type_rules_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp.object_type_rules to collabio_app" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
+    assert "source_text" not in object_rules_body
+    assert "raw_payload" not in object_rules_body
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

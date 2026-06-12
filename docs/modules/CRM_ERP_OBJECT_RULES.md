@@ -7,6 +7,7 @@ This document defines the canonical planning contract for CRM/ERP schemas and bu
 Implementation:
 
 - Code: `app/suite/platform/crm_erp_object_rules.py`
+- Migration: `app/suite/persistence/migrations/0016_crm_erp_schema_scaffold.sql`
 - Tests: `tests/test_crm_erp_object_rules.py`
 - Cross-checks: `tests/test_crm_erp_subfeatures.py`
 
@@ -20,6 +21,13 @@ Implementation:
 | `crm_erp_legacy` | legacy staging | Metadata-only legacy rows, quarantine decisions, and source-row references until approved import exists. |
 
 All schemas require tenant RLS, audit evidence, backup coverage, and restore validation. The schema plan does not allow raw SQL Server payload storage yet.
+
+The `0016` migration creates the four schemas and the first tenant-scoped scaffold tables:
+
+- `crm_erp.schema_plans`
+- `crm_erp.object_type_rules`
+
+These tables are manifest/evidence anchors, not business-data tables. They are RLS-protected, append-only by policy, and do not store source text, raw legacy payloads, prompts, snippets, or generated answers.
 
 ## Required Object Metadata
 

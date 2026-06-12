@@ -154,6 +154,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("doc:auth-context", "test:authz-admin-store"),
     ),
+    SqlMigration(
+        version="0016",
+        name="crm_erp_schema_scaffold",
+        resource_name="0016_crm_erp_schema_scaffold.sql",
+        module_id="crm_erp",
+        evidence_refs=("doc:crm-erp-object-rules", "test:crm-erp-schema-scaffold"),
+    ),
 )
 
 

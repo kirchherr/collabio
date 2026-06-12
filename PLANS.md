@@ -73,12 +73,13 @@ Current sprint:
 63. [x] Audited authz administration APIs with a dedicated PostgreSQL admin role for principal, role, group, ACL, ABAC, and replay-retention mutations.
 64. [x] Keyword Indexer Boundary with candidate-only API results and Search Audit Events.
 65. [x] CRM/ERP schema and object-rule registry for `crm_erp`, `crm`, `erp`, and `crm_erp_legacy`.
+66. [x] Persistent CRM/ERP schema scaffold migration with RLS-protected schema and object-rule manifest tables.
 
 ## Next Engineering Step
 
 After review intake and keyword-search boundary hardening, resume the first product-facing platform slices without skipping hardening:
 
-- Add persistent CRM/ERP schema migration scaffolding or start the first gated CRM accounts vertical slice.
+- Start the first gated CRM accounts vertical slice on top of the CRM/ERP schema scaffold.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

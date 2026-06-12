@@ -321,6 +321,7 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
         "0009",
         "0010",
         "0011",
+        "0016",
     ]
 
     enable_response = client.post(
