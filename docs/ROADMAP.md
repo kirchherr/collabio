@@ -87,6 +87,7 @@ Bereits umgesetzt:
 - [x] In-memory Append-only Audit Hash Chain mit Verifier und Manipulationstests.
 - [x] File-backed Tenant Policy, Model Registry, Prompt Registry, Tool Permission und Audit JSONL Stores.
 - [x] PostgreSQL/RLS-backed Append-only Audit Store mit isolierter Audit-Writer-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence.
+- [x] Authorized ChunkRepository fuer RAG-Kontext mit exakter Chunk-Aufloesung statt ganzer Source Documents.
 - [x] Rollenbasierte Admin API fuer Tenant AI Settings und erlaubte Modelle.
 - [x] Erste Prompt-Injection- und unauthorized-RAG-output Regressionstests.
 - [x] Review-intake-Haertung fuer dev-only Header Auth, RAG-Datenklassenpropagation und lokale Dev-Krypto-Production-Sperren.
@@ -1221,7 +1222,7 @@ Empfohlene naechste Reihenfolge:
 62. [x] JWT Replay State von JSON auf PostgreSQL mit tenant-aware Audit Events umziehen.
 63. [x] Kanonische DataClass Registry einziehen und Runtime, Retention, KMS, DB Constraints, Prompt/Model Registry und Compliance Docs dagegen validieren.
 64. [x] Persistenten append-only Audit Store mit DB-Rollen, Sequencing, HMAC/Signatur-Checkpoints und WORM Export implementieren.
-65. [ ] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
+65. [x] Authorized ChunkRepository fuer RAG einziehen, damit nur exakte Chunks statt ganzer Source Documents in den Kontext gehen.
 66. [ ] Audited Authz Admin APIs fuer PostgreSQL Principal, Rollen, Gruppen, ACL, ABAC und Replay-Retention Mutationen implementieren.
 67. [ ] CRM/ERP Schemas und Objektregeln fuer `crm_erp`, `crm`, `erp` und `crm_erp_legacy` planen.
 

@@ -2,7 +2,7 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, InferenceRequest, Purpose, TenantPolicy, UserContext
 from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.rag.models import RagQuery, RagResponse, RagSource
-from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, VectorStore
+from suite.rag.repositories import AuthorizedChunkRepository, VectorStore
 
 
 def render_authorized_source_block(document_id: str, version_id: str, chunk_id: str, text: str) -> str:
@@ -20,14 +20,12 @@ class RagPipeline:
         self,
         *,
         vector_store: VectorStore,
-        source_repository: InMemorySourceRepository,
-        acl_authorizer: InMemoryAclAuthorizer,
+        chunk_repository: AuthorizedChunkRepository,
         llm_gateway: LocalLLMGateway,
         audit_logger: InMemoryAuditLogger,
     ) -> None:
         self.vector_store = vector_store
-        self.source_repository = source_repository
-        self.acl_authorizer = acl_authorizer
+        self.chunk_repository = chunk_repository
         self.llm_gateway = llm_gateway
         self.audit_logger = audit_logger
 
@@ -50,34 +48,33 @@ class RagPipeline:
         allowed_sources: list[RagSource] = []
         context_blocks: list[str] = []
         for candidate in candidates:
-            object_id = candidate.metadata.source_object_id
-            if not self.acl_authorizer.can_read(
-                user_context=user_context,
-                object_id=object_id,
-                acl_version=candidate.metadata.acl_version,
-            ):
+            chunk = self.chunk_repository.get_authorized_chunk(user_context=user_context, candidate=candidate)
+            if chunk is None:
                 continue
-            document = self.source_repository.get(object_id)
+            metadata = chunk.metadata
             allowed_sources.append(
                 RagSource(
-                    object_id=document.object_id,
-                    version_id=document.version_id,
-                    chunk_id=candidate.chunk_id,
-                    title=document.title,
-                    classification=document.classification,
+                    object_id=metadata.source_object_id,
+                    version_id=metadata.source_version_id,
+                    chunk_id=metadata.chunk_id,
+                    title=chunk.title,
+                    classification=metadata.classification,
                     access_checked=True,
                 )
             )
             context_blocks.append(
                 render_authorized_source_block(
-                    document_id=document.object_id,
-                    version_id=document.version_id,
-                    chunk_id=candidate.chunk_id,
-                    text=document.text,
+                    document_id=metadata.source_object_id,
+                    version_id=metadata.source_version_id,
+                    chunk_id=metadata.chunk_id,
+                    text=chunk.text,
                 )
             )
 
-        source_object_ids = [source.object_id for source in allowed_sources]
+        source_object_ids = unique_source_object_ids(allowed_sources)
+        authorized_chunk_refs = [
+            f"{source.object_id}:{source.version_id}:{source.chunk_id}" for source in allowed_sources
+        ]
         context_data_classes = {source.classification for source in allowed_sources}
         retrieval_audit = self.audit_logger.record(
             user_context=user_context,
@@ -87,8 +84,10 @@ class RagPipeline:
             metadata={
                 "candidate_count": len(candidates),
                 "authorized_source_count": len(allowed_sources),
+                "authorized_chunk_count": len(allowed_sources),
+                "authorized_chunk_refs": authorized_chunk_refs,
                 "authorized_source_data_classes": sorted(data_class.value for data_class in context_data_classes),
-                "retrieval_policy_id": "acl_first_v1",
+                "retrieval_policy_id": "authorized_chunk_v1",
             },
         )
 
@@ -112,6 +111,17 @@ class RagPipeline:
             sources=allowed_sources,
             model_id=response.model_id,
             prompt_template_id=response.prompt_template_id,
-            retrieval_policy_id="acl_first_v1",
+            retrieval_policy_id="authorized_chunk_v1",
             audit_event_id=retrieval_audit.event_id,
         )
+
+
+def unique_source_object_ids(sources: list[RagSource]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for source in sources:
+        if source.object_id in seen:
+            continue
+        seen.add(source.object_id)
+        ordered.append(source.object_id)
+    return ordered

@@ -15,7 +15,8 @@ RAG and search must follow:
 query
   -> candidate ids
     -> authoritative ACL check
-      -> source fetch
+      -> authorized chunk repository
+        -> exact chunk fetch
         -> redaction
           -> RAG context
             -> Local LLM Gateway
@@ -23,7 +24,7 @@ query
                 -> audit
 ```
 
-Vector search and keyword search may return candidate identifiers and metadata for filtering, but not final user-visible content before authorization and redaction.
+Vector search and keyword search may return candidate identifiers and metadata for filtering, but not final user-visible content before authorization and redaction. RAG context construction must fetch exact chunks by candidate identity and must validate tenant, ACL, source version, chunk ID, classification, ACL hash/version, embedding model version, and content hash before text enters the prompt.
 
 RAG answers must cite source object IDs and source versions. Answers without sources must be labeled unsupported.
 
@@ -52,4 +53,3 @@ RAG answers must cite source object IDs and source versions. Answers without sou
 - Legal-hold visibility tests for authorized roles.
 - Citation tests.
 - Prompt-injection tests with hostile source text.
-

@@ -125,6 +125,20 @@ class SourceDocument(BaseModel):
     content_bytes: bytes | None = None
 
 
+class SourceChunk(BaseModel):
+    metadata: ChunkMetadata
+    title: str
+    text: str
+
+    @field_validator("title", "text")
+    @classmethod
+    def require_non_empty_text_field(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("field must not be empty")
+        return normalized
+
+
 class RagQuery(BaseModel):
     question: str
     top_k: int = Field(default=3, ge=1, le=10)

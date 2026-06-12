@@ -18,14 +18,14 @@ The most important lesson is also correct: the next work must harden the foundat
 - JWT/OIDC replay state now has a PostgreSQL/RLS-backed runtime store with tenant-aware accepted/replayed events and no token-body storage.
 - Data classes now have a canonical runtime registry with drift tests covering runtime enum, retention, KMS, pgvector DB constraints, prompt/model registries, and classification docs.
 - Audit events now have a PostgreSQL/RLS-backed append-only runtime store with an isolated audit-writer role, tenant-local sequencing, HMAC checkpoints, and WORM export evidence.
+- RAG context now uses an Authorized ChunkRepository that validates tenant, ACL, and candidate/chunk metadata before exact chunks enter prompts.
 - RAG inference data classes are now derived from the actual authorized source classifications and include `ai_prompt` for the user question.
 - Local dev KMS and local dev envelope encryption now fail closed in production environments.
 - Tests cover the above regressions.
 
 ## Remaining P0 Gates
 
-1. Introduce an authorized ChunkRepository so RAG sends exact chunks, not whole source documents.
-2. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
+1. Add audited authz administration APIs for PostgreSQL principal, role, group, ACL, ABAC, and replay retention mutations.
 
 ## Release Gate
 

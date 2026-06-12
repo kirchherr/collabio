@@ -64,7 +64,12 @@ from suite.rag.embedding_model_admin import (
 )
 from suite.rag.models import RagQuery, RagResponse
 from suite.rag.pipeline import RagPipeline
-from suite.rag.repositories import InMemoryAclAuthorizer, InMemorySourceRepository, InMemoryVectorStore
+from suite.rag.repositories import (
+    AuthorizedChunkRepository,
+    InMemoryAclAuthorizer,
+    InMemorySourceChunkRepository,
+    InMemoryVectorStore,
+)
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
@@ -257,8 +262,10 @@ def build_app() -> FastAPI:
     )
     rag_pipeline = RagPipeline(
         vector_store=InMemoryVectorStore.demo(),
-        source_repository=InMemorySourceRepository.demo(),
-        acl_authorizer=InMemoryAclAuthorizer.demo(),
+        chunk_repository=AuthorizedChunkRepository(
+            chunk_repository=InMemorySourceChunkRepository.demo(),
+            acl_authorizer=InMemoryAclAuthorizer.demo(),
+        ),
         llm_gateway=llm_gateway,
         audit_logger=audit_logger,
     )

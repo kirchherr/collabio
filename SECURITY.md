@@ -20,7 +20,7 @@ Current skeleton guarantees:
 
 - AI is disabled by default unless tenant policy enables it.
 - LLM calls route through the Local LLM Gateway.
-- RAG candidates are ACL-checked before context construction.
+- RAG candidates are resolved through an Authorized ChunkRepository before context construction, with tenant, ACL, and candidate/chunk metadata checks.
 - RAG inference policy receives `ai_prompt` plus the classifications of authorized sources.
 - Dev header tenant context is disabled outside `SUITE_AUTH_MODE=dev` and in production environments.
 - `jwt` and `oidc` auth modes resolve the request context from signed bearer tokens and server-side membership/ACL state.

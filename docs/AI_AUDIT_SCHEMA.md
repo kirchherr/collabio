@@ -36,6 +36,8 @@ Vector worker events may store source IDs, source versions, counts, lifecycle ta
 
 Embedding model administration events may store model ID, model version, provider, deployment, dimensions, distance metric, checksum, approved data classes, approval or retirement references, and status timestamps. They must not store model weights, tokenizer files, prompts, outputs, source text, or embeddings.
 
+RAG retrieval events may store candidate counts, authorized source counts, authorized chunk counts, authorized chunk references, retrieval policy IDs, source object IDs, source versions, and source classifications. They must not store retrieved chunk text or generated answers.
+
 ## PostgreSQL audit store
 
 `collabio.audit_events` persists the same hash-chain fields with a tenant-local sequence number. The `collabio_audit_writer` role can only `SELECT` and `INSERT` tenant-scoped rows through RLS. The normal `collabio_app` role has no audit-table grants.

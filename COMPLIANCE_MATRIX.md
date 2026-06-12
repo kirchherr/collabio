@@ -17,8 +17,8 @@ This matrix maps external requirements and internal controls to product capabili
 | CM-006 | WORM | Business/evidence records require immutability | S3-compatible object lock | Object lock integration tests | planned |
 | CM-007 | Audit | Security and lifecycle actions need evidence | Append-only audit with hash chain, PostgreSQL/RLS writer role, HMAC checkpoints, and WORM export evidence | `tests/test_audit_chain.py`, `tests/test_pg_audit_store.py` | partial |
 | CM-008 | KMS | Keys must be tenant- and class-aware | KMS adapter and envelope encryption | Key rotation tests | planned |
-| CM-009 | Search security | Search must not leak unauthorized data | Candidate search, ACL check, redaction | Search leakage tests | planned |
-| CM-010 | Vector security | Embeddings are classified data | Vector metadata and ACL-aware retrieval | RAG leakage tests | partial |
+| CM-009 | Search security | Search must not leak unauthorized data | Candidate search, Authorized ChunkRepository, ACL check, redaction | `tests/test_rag_security.py` | partial |
+| CM-010 | Vector security | Embeddings are classified data | Vector metadata and exact authorized chunk retrieval | `tests/test_rag_security.py`, `tests/test_pgvector_integration.py` | partial |
 | CM-011 | AI governance | AI must follow tenant policy | AI Control Plane | AI policy tests | partial |
 | CM-012 | Human oversight | Critical actions require approval | Approval engine | Approval workflow tests | planned |
 | CM-013 | Voice privacy | Voice capture must be explicit | Push-to-talk guard | Voice tests | partial |

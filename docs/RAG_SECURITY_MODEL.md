@@ -8,7 +8,8 @@ user query
     -> policy engine
       -> vector search candidates
         -> authoritative ACL check
-          -> source fetch
+          -> authorized chunk repository
+            -> exact chunk fetch
             -> redaction
               -> prompt build
                 -> local LLM
@@ -20,7 +21,8 @@ user query
 
 - Vector search returns candidates only.
 - Candidate metadata is not sufficient authorization.
-- Source objects are fetched only after ACL validation.
+- Source chunks are fetched only through the Authorized ChunkRepository after tenant, ACL, and candidate/chunk metadata validation.
+- RAG context must contain exact authorized chunks, not whole source documents.
 - Vector metadata must carry the authoritative ACL hash and ACL version that were current at indexing time.
 - Index jobs with stale expected ACL versions must fail before writing vector metadata.
 - Reindex workers must not mix multiple ACL hashes or ACL versions in one source-version reindex.
