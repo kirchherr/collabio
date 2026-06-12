@@ -49,6 +49,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0015",
         "0016",
         "0017",
+        "0018",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -62,8 +63,8 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     crm_erp_migrations = load_module_migrations("crm_erp")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 2
-    assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017"]
+    assert len(core_migrations) == len(load_migrations()) - 3
+    assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "crm_erp"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -557,6 +558,62 @@ def test_crm_accounts_migration_declares_required_metadata_rls_and_no_hard_delet
     assert "using (false)" in sql
     assert "create trigger crm_accounts_touch_updated_at_utc" in sql
     assert "grant select, insert, update on table crm.accounts to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "source_text" not in sql
+    assert "raw_payload" not in sql
+
+
+def test_crm_contacts_migration_declares_required_metadata_rls_fk_and_no_hard_delete() -> None:
+    sql = normalized(get_migration("0018").sql())
+    body = table_body(get_migration("0018").sql(), "crm.contacts")
+
+    for column in [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+        "account_object_id",
+        "contact_number",
+        "display_name",
+        "given_name",
+        "family_name",
+        "primary_email",
+        "primary_phone",
+        "role_label",
+        "status",
+    ]:
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from crm.contacts"
+
+    assert "object_type text not null default 'crm.contact' check (object_type = 'crm.contact')" in body
+    assert "data_classification text not null default 'personal' check (data_classification = 'personal')" in body
+    assert "retention_policy_id text not null default 'rp-standard' check (retention_policy_id = 'rp-standard')" in body
+    assert "legal_hold_state text not null default 'none'" in body
+    assert "kms_key_ref text not null check" in body
+    assert "audit_chain_ref text not null check" in body
+    assert "foreign key (tenant_id, account_object_id)" in body
+    assert "references crm.accounts (tenant_id, object_id)" in body
+    assert "crm_erp.crm.contacts" in sql
+    assert "alter table crm.contacts enable row level security" in sql
+    assert "alter table crm.contacts force row level security" in sql
+    assert "create policy crm_contacts_tenant_select" in sql
+    assert "create policy crm_contacts_tenant_insert" in sql
+    assert "create policy crm_contacts_tenant_update" in sql
+    assert "create policy crm_contacts_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger crm_contacts_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table crm.contacts to collabio_app" in sql
     assert "grant delete" not in sql
     assert "source_text" not in sql
     assert "raw_payload" not in sql

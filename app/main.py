@@ -56,6 +56,12 @@ from suite.platform.crm_accounts import (
     CrmAccountsResponse,
     InMemoryCrmAccountRepository,
 )
+from suite.platform.crm_contacts import (
+    CRM_CONTACTS_FEATURE_ID,
+    CrmContactService,
+    CrmContactsResponse,
+    InMemoryCrmContactRepository,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -301,6 +307,10 @@ def build_app() -> FastAPI:
     )
     crm_account_service = CrmAccountService(
         repository=InMemoryCrmAccountRepository.demo(),
+        audit_logger=audit_logger,
+    )
+    crm_contact_service = CrmContactService(
+        repository=InMemoryCrmContactRepository.demo(),
         audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
@@ -1051,6 +1061,19 @@ def build_app() -> FastAPI:
         crm_accounts = cast(CrmAccountService, request.app.state.crm_account_service)
         return crm_accounts.list_accounts(user_context=context.user_context)
 
+    @app.get("/v1/crm/contacts", response_model=CrmContactsResponse)
+    def list_crm_contacts(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_CONTACTS_FEATURE_ID)),
+        ],
+    ) -> CrmContactsResponse:
+        del gate
+        crm_contacts = cast(CrmContactService, request.app.state.crm_contact_service)
+        return crm_contacts.list_contacts(user_context=context.user_context)
+
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(
         transcript_request: VoiceTranscriptRequest,
@@ -1068,6 +1091,7 @@ def build_app() -> FastAPI:
     app.state.audit_logger = audit_logger
     app.state.authz_admin_store = authz_admin_store
     app.state.crm_account_service = crm_account_service
+    app.state.crm_contact_service = crm_contact_service
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
