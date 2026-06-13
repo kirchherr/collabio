@@ -42,6 +42,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`projected_restore_evidence_preview_hash`" in charter
     assert "`execution_plan_hash`" in charter
     assert "`refreshed_restore_evidence_hash`" in charter
+    assert "`source_object_write_receipt_hash`" in charter
     assert "`execution_allowed=false`" in charter
     assert "`PgKnowledgeBaseArticleRepository`" in charter
     assert "Article bodies are not stored in the first slice" in charter
@@ -49,6 +50,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "0023_knowledge_base_write_approval_evidence.sql" in charter
     assert "0024_knowledge_base_write_approval_transition_lineage.sql" in charter
     assert "0025_knowledge_base_write_approval_trusted_article_metadata.sql" in charter
+    assert "0026_source_object_write_receipts.sql" in charter
     assert "current `kb.article_version`" in slice_doc
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
@@ -59,6 +61,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`projected_restore_evidence_preview_hash`" in slice_doc
     assert "`execution_plan_hash`" in slice_doc
     assert "`refreshed_restore_evidence_hash`" in slice_doc
+    assert "`source_object_write_receipt_hash`" in slice_doc
     assert "`PgKnowledgeBaseArticleRepository`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
     assert "`GET /v1/admin/kb/evidence`" in evidence_doc
@@ -69,7 +72,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`POST /v1/admin/kb/articles/write-approvals/execute`" in evidence_doc
     assert "`projected_restore_evidence_preview_hash`" in evidence_doc
     assert "`execution_plan_hash`" in evidence_doc
-    assert "source text out of audit metadata and responses" in evidence_doc
+    assert "`source_object_write_receipt_hash`" in evidence_doc
+    assert "source text out of audit metadata, receipts, and responses" in evidence_doc
     assert "`execution_allowed=false`" in evidence_doc
     assert "`PgKnowledgeBaseArticleRepository`" in evidence_doc
     assert "`knowledge_base.source_version_evidence`" in evidence_doc
@@ -79,6 +83,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`0023_knowledge_base_write_approval_evidence.sql`" in ledger_doc
     assert "`0024_knowledge_base_write_approval_transition_lineage.sql`" in ledger_doc
     assert "`0025_knowledge_base_write_approval_trusted_article_metadata.sql`" in ledger_doc
+    assert "`0026_source_object_write_receipts.sql`" in ledger_doc
     assert "`transition_source_evidence_hash`" in ledger_doc
     assert "article key" in ledger_doc.lower()
     assert "proposed version label" in ledger_doc.lower()
@@ -88,6 +93,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`POST /v1/admin/kb/articles/write-approvals/execute`" in ledger_doc
     assert "`projected_restore_evidence_preview_hash`" in ledger_doc
     assert "`execution_plan_hash`" in ledger_doc
+    assert "`source_object_write_receipt_hash`" in ledger_doc
     assert "refreshed source/restore evidence hashes" in ledger_doc
     assert "`execution_allowed=false`" in ledger_doc
     assert "`PgKnowledgeBaseArticleRepository`" in ledger_doc

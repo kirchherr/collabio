@@ -61,6 +61,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
+    assert "source_object_write_receipt_hash_check" in postgres.integrity_checks
     assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
@@ -130,6 +131,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "embedding model dimensions" in policy.domain("vector_indexes").state_artifacts
     assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
     assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
+    assert "source object write receipts" in policy.domain("postgres_metadata").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
     assert policy.domain("module_registry_state").criticality == "critical"
@@ -147,6 +149,9 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         in policy.domain("knowledge_base_content").state_artifacts
     )
     assert "Knowledge Base write-approval transition lineage" in policy.domain("knowledge_base_content").state_artifacts
+    assert (
+        "Knowledge Base source-object write receipt hashes" in policy.domain("knowledge_base_content").state_artifacts
+    )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
@@ -187,6 +192,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "module registry state" in runbook
     assert "CRM/ERP business records" in runbook
     assert "knowledge-base article versions" in runbook
+    assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
 
 

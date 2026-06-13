@@ -1068,6 +1068,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert write_body["feature_id"] == "knowledge_base.articles.write"
     assert write_body["execution_allowed"] is True
     assert write_body["source_object_persisted"] is True
+    assert write_body["source_object_write_receipt_persisted"] is True
     assert write_body["article_metadata_persisted"] is True
     assert write_body["article_version_metadata_persisted"] is True
     assert write_body["source_version_evidence_refreshed"] is True
@@ -1082,7 +1083,9 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     )
     assert write_body["refreshed_restore_evidence_hash"].startswith("sha256:")
     assert write_body["refreshed_restore_evidence_hash"] != write_body["previous_restore_evidence_hash"]
+    assert write_body["source_object_write_receipt_hash"].startswith("sha256:")
     assert "source_object_persisted" in write_body["required_evidence"]
+    assert "source_object_write_receipt_hash" in write_body["required_evidence"]
     assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == starting_ledger_count + 2
     assert "article_body" not in write_body_text
     assert "source content" not in write_body_text
@@ -1157,6 +1160,8 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert write_event.metadata["result_contract"] == "metadata_only"
     assert write_event.metadata["execution_reference"] == "execution:kb-write-api"
     assert write_event.metadata["source_object_persisted"] is True
+    assert write_event.metadata["source_object_write_receipt_persisted"] is True
+    assert write_event.metadata["source_object_write_receipt_hash"] == write_body["source_object_write_receipt_hash"]
     assert write_event.metadata["article_metadata_persisted"] is True
     assert write_event.metadata["refreshed_restore_evidence_hash"] == write_body["refreshed_restore_evidence_hash"]
 

@@ -15,6 +15,7 @@ from suite.rag.source_indexing import (
 from suite.rag.vector_worker import VectorIndexWorker
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
+    InMemorySourceObjectWriteReceiptStore,
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
@@ -23,6 +24,8 @@ from suite.storage.source_objects import (
     SourceObjectType,
     SourceObjectWriteDeniedError,
     build_source_object_manifest_hash,
+    build_source_object_write_receipt,
+    build_source_object_write_receipt_hash,
     sha256_bytes,
 )
 
@@ -268,6 +271,37 @@ def test_source_object_repository_rejects_mismatched_kms_key_reference_before_wr
 
     with pytest.raises(SourceObjectWriteDeniedError, match="tenant_id"):
         repository.add(tampered)
+
+
+def test_source_object_write_receipts_are_metadata_only_and_tenant_scoped() -> None:
+    record = record_for(text="Authoritative source text for receipt boundary.")
+    receipt = build_source_object_write_receipt(
+        record=record,
+        receipt_reference="receipt:unit-source-write",
+        audit_chain_ref="audit:unit-source-write",
+        captured_at_utc="2026-06-10T00:02:00Z",
+    )
+    store = InMemorySourceObjectWriteReceiptStore()
+
+    persisted = store.append(receipt)
+
+    assert persisted.receipt_hash == build_source_object_write_receipt_hash(receipt)
+    assert store.get(tenant_id="tenant-1", receipt_hash=receipt.receipt_hash) == receipt
+    assert store.list_receipts(tenant_id="tenant-1") == (receipt,)
+    assert store.list_receipts(tenant_id="tenant-2") == ()
+    receipt_json = receipt.model_dump_json()
+    assert "Authoritative source text for receipt boundary." not in receipt_json
+    assert "source_text" not in receipt_json
+    assert "article_body" not in receipt_json
+    assert "prompt_text" not in receipt_json
+    assert "output_text" not in receipt_json
+    assert "raw_payload" not in receipt_json
+
+    tampered = receipt.model_copy(update={"title": "Tampered title after receipt hash"})
+    with pytest.raises(ValueError, match="receipt hash"):
+        store.append(tampered)
+    with pytest.raises(ValueError, match="already exists"):
+        store.append(receipt)
 
 
 def test_source_object_resolver_feeds_indexing_pipeline_with_authoritative_metadata() -> None:

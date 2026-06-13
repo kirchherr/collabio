@@ -135,6 +135,7 @@ from suite.rag.repositories import (
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
 from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
+from suite.storage.source_objects import build_default_source_object_write_receipt_store
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -361,6 +362,7 @@ def build_app() -> FastAPI:
         source_repository=demo_knowledge_base_source_object_repository(),
         audit_logger=audit_logger,
         write_approval_ledger=build_default_knowledge_base_write_approval_ledger(),
+        source_object_write_receipt_store=build_default_source_object_write_receipt_store(),
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(

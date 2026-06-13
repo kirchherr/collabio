@@ -54,7 +54,7 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - tenant IAM and authorization
 - PostgreSQL metadata
 - audit evidence
-- source object metadata and object storage records
+- source object metadata, source-object write receipts, and object storage records
 - KMS metadata and secrets configuration
 - office documents and collaboration state
 - mail messages, threads, attachments, and security evidence
@@ -68,7 +68,7 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - background jobs and outbox state
 - module registry state and tenant module lifecycle
 - CRM/ERP business records, GoBD-relevant records, and SQL Server migration evidence
-- knowledge-base article versions, source attachments, and publication approvals
+- knowledge-base article versions, source-object write receipt hashes, source attachments, and publication approvals
 - LMS courses, enrollments, completion evidence, and certificates
 - tasks, activities, assignments, workflow state, and due dates
 - incident reports, tickets, SLA state, communications, and escalation evidence

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Protocol, Self
+from typing import Any, Protocol, Self
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+import psycopg
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import DataClass
 from suite.kms.adapter import KmsKeyReference, KmsKeyReferenceError
@@ -15,7 +17,10 @@ from suite.rag.source_indexing import ResolvedSource
 from suite.storage.content_hash import ContentHashVerificationError, compute_content_hash, verify_content_hash
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
+SHA256_REF_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 ManifestValue = str | int | None
+SOURCE_OBJECT_WRITE_RECEIPT_SCHEMA_VERSION = "source_object_write_receipt.v1"
+ZERO_HASH = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
 
 class SourceObjectWriteDeniedError(ValueError):
@@ -204,6 +209,430 @@ class SourceObjectRecord(BaseModel):
             mime_type=self.metadata.mime_type,
             content_bytes=self.content_bytes,
         )
+
+
+class SourceObjectWriteReceipt(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    receipt_reference: str
+    object_id: str
+    object_type: SourceObjectType
+    version_id: str
+    title: str
+    owner_principal_id: str
+    created_by: str
+    created_at_utc: str
+    updated_at_utc: str
+    classification: DataClass
+    retention_policy_id: str
+    legal_hold_state: LegalHoldState
+    kms_key_ref: str
+    manifest_hash: str
+    audit_chain_ref: str
+    source_system: str
+    source_schema_version: str
+    mime_type: str
+    acl_hash: str
+    acl_version: int = Field(ge=1)
+    content_hash: str
+    content_byte_length: int = Field(ge=0)
+    lifecycle_state: SourceLifecycleState
+    parent_object_id: str | None = None
+    thread_id: str | None = None
+    parser_profile_id: str | None = None
+    captured_at_utc: str
+    receipt_hash: str
+    receipt_schema_version: str = SOURCE_OBJECT_WRITE_RECEIPT_SCHEMA_VERSION
+
+    @field_validator(
+        "tenant_id",
+        "object_id",
+        "version_id",
+        "title",
+        "owner_principal_id",
+        "created_by",
+        "retention_policy_id",
+        "source_system",
+        "source_schema_version",
+        "mime_type",
+        "receipt_schema_version",
+    )
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("field must not be empty")
+        return normalized
+
+    @field_validator("created_at_utc", "updated_at_utc", "captured_at_utc")
+    @classmethod
+    def require_utc_timestamp(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("timestamp must not be empty")
+        candidate = normalized.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(candidate)
+        if parsed.tzinfo is None or parsed.utcoffset() != UTC.utcoffset(parsed):
+            raise ValueError("timestamp must be UTC")
+        return normalized
+
+    @field_validator("receipt_reference", "kms_key_ref", "audit_chain_ref", "acl_hash", "content_hash")
+    @classmethod
+    def require_namespaced_ref(cls, value: str, info: object) -> str:
+        normalized = value.strip()
+        if not NAMESPACED_REF_PATTERN.fullmatch(normalized):
+            field_name = getattr(info, "field_name", "reference")
+            raise ValueError(f"{field_name} must be a namespaced reference")
+        return normalized
+
+    @field_validator("manifest_hash", "receipt_hash")
+    @classmethod
+    def require_sha256_ref(cls, value: str, info: object) -> str:
+        normalized = value.strip()
+        if not SHA256_REF_PATTERN.fullmatch(normalized):
+            field_name = getattr(info, "field_name", "reference")
+            raise ValueError(f"{field_name} must be a sha256 reference")
+        return normalized
+
+
+def source_object_write_receipt_payload(receipt: SourceObjectWriteReceipt) -> dict[str, Any]:
+    return receipt.model_dump(mode="json", exclude={"receipt_hash"})
+
+
+def build_source_object_write_receipt_hash(receipt: SourceObjectWriteReceipt) -> str:
+    receipt_bytes = json.dumps(
+        source_object_write_receipt_payload(receipt),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return sha256_bytes(receipt_bytes)
+
+
+def build_source_object_write_receipt(
+    *,
+    record: SourceObjectRecord,
+    receipt_reference: str,
+    audit_chain_ref: str,
+    captured_at_utc: str | None = None,
+) -> SourceObjectWriteReceipt:
+    metadata = record.metadata
+    captured = captured_at_utc or datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    draft = SourceObjectWriteReceipt(
+        tenant_id=metadata.tenant_id,
+        receipt_reference=receipt_reference,
+        object_id=metadata.object_id,
+        object_type=metadata.object_type,
+        version_id=metadata.version_id,
+        title=metadata.title,
+        owner_principal_id=metadata.owner_principal_id,
+        created_by=metadata.created_by,
+        created_at_utc=metadata.created_at_utc,
+        updated_at_utc=metadata.updated_at_utc,
+        classification=metadata.classification,
+        retention_policy_id=metadata.retention_policy_id,
+        legal_hold_state=metadata.legal_hold_state,
+        kms_key_ref=metadata.kms_key_ref,
+        manifest_hash=metadata.manifest_hash,
+        audit_chain_ref=audit_chain_ref,
+        source_system=metadata.source_system,
+        source_schema_version=metadata.schema_version,
+        mime_type=metadata.mime_type,
+        acl_hash=metadata.acl_hash,
+        acl_version=metadata.acl_version,
+        content_hash=metadata.content_hash,
+        content_byte_length=metadata.content_byte_length,
+        lifecycle_state=metadata.lifecycle_state,
+        parent_object_id=metadata.parent_object_id,
+        thread_id=metadata.thread_id,
+        parser_profile_id=metadata.parser_profile_id,
+        captured_at_utc=captured,
+        receipt_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"receipt_hash": build_source_object_write_receipt_hash(draft)})
+
+
+class SourceObjectWriteReceiptStore(Protocol):
+    def append(self, receipt: SourceObjectWriteReceipt) -> SourceObjectWriteReceipt: ...
+
+    def get(self, *, tenant_id: str, receipt_hash: str) -> SourceObjectWriteReceipt: ...
+
+    def list_receipts(self, *, tenant_id: str) -> tuple[SourceObjectWriteReceipt, ...]: ...
+
+
+class InMemorySourceObjectWriteReceiptStore:
+    def __init__(self, receipts: tuple[SourceObjectWriteReceipt, ...] = ()) -> None:
+        self._receipts: dict[tuple[str, str], SourceObjectWriteReceipt] = {}
+        self._object_versions: set[tuple[str, str, str]] = set()
+        for receipt in receipts:
+            self.append(receipt)
+
+    def append(self, receipt: SourceObjectWriteReceipt) -> SourceObjectWriteReceipt:
+        expected_hash = build_source_object_write_receipt_hash(receipt)
+        if receipt.receipt_hash != expected_hash:
+            raise ValueError("source object write receipt hash is invalid")
+        key = (receipt.tenant_id, receipt.receipt_hash)
+        object_version_key = (receipt.tenant_id, receipt.object_id, receipt.version_id)
+        if key in self._receipts or object_version_key in self._object_versions:
+            raise ValueError("source object write receipt already exists")
+        self._receipts[key] = receipt
+        self._object_versions.add(object_version_key)
+        return receipt
+
+    def get(self, *, tenant_id: str, receipt_hash: str) -> SourceObjectWriteReceipt:
+        try:
+            return self._receipts[(tenant_id, receipt_hash)]
+        except KeyError as exc:
+            raise KeyError("source object write receipt not found") from exc
+
+    def list_receipts(self, *, tenant_id: str) -> tuple[SourceObjectWriteReceipt, ...]:
+        return tuple(
+            receipt
+            for (stored_tenant_id, _), receipt in sorted(self._receipts.items(), key=lambda item: item[0])
+            if stored_tenant_id == tenant_id
+        )
+
+
+class PgSourceObjectWriteReceiptStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, receipt: SourceObjectWriteReceipt) -> SourceObjectWriteReceipt:
+        expected_hash = build_source_object_write_receipt_hash(receipt)
+        if receipt.receipt_hash != expected_hash:
+            raise ValueError("source object write receipt hash is invalid")
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, receipt.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO collabio.source_object_write_receipts (
+                        tenant_id,
+                        receipt_reference,
+                        object_id,
+                        object_type,
+                        version_id,
+                        title,
+                        owner_principal_id,
+                        created_by,
+                        created_at_utc,
+                        updated_at_utc,
+                        classification,
+                        retention_policy_id,
+                        legal_hold_state,
+                        kms_key_ref,
+                        manifest_hash,
+                        audit_chain_ref,
+                        source_system,
+                        source_schema_version,
+                        mime_type,
+                        acl_hash,
+                        acl_version,
+                        content_hash,
+                        content_byte_length,
+                        lifecycle_state,
+                        parent_object_id,
+                        thread_id,
+                        parser_profile_id,
+                        captured_at_utc,
+                        receipt_hash,
+                        receipt_schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s
+                    )
+                    """,
+                    self._receipt_values(receipt),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object write receipt already exists") from exc
+        return receipt
+
+    def get(self, *, tenant_id: str, receipt_hash: str) -> SourceObjectWriteReceipt:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    receipt_reference,
+                    object_id,
+                    object_type,
+                    version_id,
+                    title,
+                    owner_principal_id,
+                    created_by,
+                    created_at_utc,
+                    updated_at_utc,
+                    classification,
+                    retention_policy_id,
+                    legal_hold_state,
+                    kms_key_ref,
+                    manifest_hash,
+                    audit_chain_ref,
+                    source_system,
+                    source_schema_version,
+                    mime_type,
+                    acl_hash,
+                    acl_version,
+                    content_hash,
+                    content_byte_length,
+                    lifecycle_state,
+                    parent_object_id,
+                    thread_id,
+                    parser_profile_id,
+                    captured_at_utc,
+                    receipt_hash,
+                    receipt_schema_version
+                FROM collabio.source_object_write_receipts
+                WHERE tenant_id = %s
+                  AND receipt_hash = %s
+                """,
+                (tenant_id, receipt_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("source object write receipt not found")
+        return self._receipt_from_row(row)
+
+    def list_receipts(self, *, tenant_id: str) -> tuple[SourceObjectWriteReceipt, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    receipt_reference,
+                    object_id,
+                    object_type,
+                    version_id,
+                    title,
+                    owner_principal_id,
+                    created_by,
+                    created_at_utc,
+                    updated_at_utc,
+                    classification,
+                    retention_policy_id,
+                    legal_hold_state,
+                    kms_key_ref,
+                    manifest_hash,
+                    audit_chain_ref,
+                    source_system,
+                    source_schema_version,
+                    mime_type,
+                    acl_hash,
+                    acl_version,
+                    content_hash,
+                    content_byte_length,
+                    lifecycle_state,
+                    parent_object_id,
+                    thread_id,
+                    parser_profile_id,
+                    captured_at_utc,
+                    receipt_hash,
+                    receipt_schema_version
+                FROM collabio.source_object_write_receipts
+                WHERE tenant_id = %s
+                ORDER BY captured_at_utc, receipt_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._receipt_from_row(row) for row in rows)
+
+    def _receipt_values(self, receipt: SourceObjectWriteReceipt) -> tuple[Any, ...]:
+        return (
+            receipt.tenant_id,
+            receipt.receipt_reference,
+            receipt.object_id,
+            receipt.object_type.value,
+            receipt.version_id,
+            receipt.title,
+            receipt.owner_principal_id,
+            receipt.created_by,
+            receipt.created_at_utc,
+            receipt.updated_at_utc,
+            receipt.classification.value,
+            receipt.retention_policy_id,
+            receipt.legal_hold_state.value,
+            receipt.kms_key_ref,
+            receipt.manifest_hash,
+            receipt.audit_chain_ref,
+            receipt.source_system,
+            receipt.source_schema_version,
+            receipt.mime_type,
+            receipt.acl_hash,
+            receipt.acl_version,
+            receipt.content_hash,
+            receipt.content_byte_length,
+            receipt.lifecycle_state.value,
+            receipt.parent_object_id,
+            receipt.thread_id,
+            receipt.parser_profile_id,
+            receipt.captured_at_utc,
+            receipt.receipt_hash,
+            receipt.receipt_schema_version,
+        )
+
+    def _receipt_from_row(self, row: tuple[Any, ...]) -> SourceObjectWriteReceipt:
+        return SourceObjectWriteReceipt(
+            tenant_id=str(row[0]),
+            receipt_reference=str(row[1]),
+            object_id=str(row[2]),
+            object_type=SourceObjectType(str(row[3])),
+            version_id=str(row[4]),
+            title=str(row[5]),
+            owner_principal_id=str(row[6]),
+            created_by=str(row[7]),
+            created_at_utc=self._utc_timestamp(row[8]),
+            updated_at_utc=self._utc_timestamp(row[9]),
+            classification=DataClass(str(row[10])),
+            retention_policy_id=str(row[11]),
+            legal_hold_state=LegalHoldState(str(row[12])),
+            kms_key_ref=str(row[13]),
+            manifest_hash=str(row[14]),
+            audit_chain_ref=str(row[15]),
+            source_system=str(row[16]),
+            source_schema_version=str(row[17]),
+            mime_type=str(row[18]),
+            acl_hash=str(row[19]),
+            acl_version=int(row[20]),
+            content_hash=str(row[21]),
+            content_byte_length=int(row[22]),
+            lifecycle_state=SourceLifecycleState(str(row[23])),
+            parent_object_id=str(row[24]) if row[24] is not None else None,
+            thread_id=str(row[25]) if row[25] is not None else None,
+            parser_profile_id=str(row[26]) if row[26] is not None else None,
+            captured_at_utc=self._utc_timestamp(row[27]),
+            receipt_hash=str(row[28]),
+            receipt_schema_version=str(row[29]),
+        )
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+    def _utc_timestamp(self, value: Any) -> str:
+        if isinstance(value, datetime):
+            return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        return str(value)
+
+
+def build_default_source_object_write_receipt_store() -> SourceObjectWriteReceiptStore:
+    backend = os.getenv("SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemorySourceObjectWriteReceiptStore()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL source object write receipt store requires "
+                "SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgSourceObjectWriteReceiptStore(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND: {backend}")
 
 
 class SourceObjectRepository(Protocol):

@@ -230,6 +230,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:knowledge-base-write-approval-create",
         ),
     ),
+    SqlMigration(
+        version="0026",
+        name="source_object_write_receipts",
+        resource_name="0026_source_object_write_receipts.sql",
+        module_id="core",
+        evidence_refs=("doc:source-object-model", "test:source-object-write-receipts"),
+    ),
 )
 
 

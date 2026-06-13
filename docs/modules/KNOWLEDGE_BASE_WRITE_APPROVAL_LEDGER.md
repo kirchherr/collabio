@@ -1,6 +1,6 @@
 # Knowledge Base Write Approval Ledger
 
-Status: wired for dry-run persistence, approval lineage, and trusted create metadata
+Status: wired for dry-run persistence, approval lineage, trusted create metadata, and source-object write receipts
 Date: 2026-06-12
 Module ID: `knowledge_base`
 Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
@@ -9,13 +9,14 @@ Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
 
 Knowledge Base create/edit actions require a persistent approval-evidence ledger before article metadata, source objects, search indexes, embeddings, or RAG state may change.
 
-The current implementation remains metadata-only in audit and API responses. It validates approval command metadata, creates command and evidence hashes, writes audit, persists approval evidence through the append-only ledger port, supports approval lineage, projects restore/source evidence before execution, and can commit guarded in-memory edit/create metadata writes without enabling search, embeddings, or RAG.
+The current implementation remains metadata-only in audit and API responses. It validates approval command metadata, creates command and evidence hashes, writes audit, persists approval evidence through the append-only ledger port, supports approval lineage, projects restore/source evidence before execution, persists metadata-only source-object write receipts during execution, and can commit guarded edit/create metadata writes without enabling search, embeddings, or RAG.
 
 ## Ledger Contract
 
 Migration `0023_knowledge_base_write_approval_evidence.sql` creates `knowledge_base.write_approval_evidence`.
 Migration `0024_knowledge_base_write_approval_transition_lineage.sql` adds `transition_source_evidence_hash`.
 Migration `0025_knowledge_base_write_approval_trusted_article_metadata.sql` adds trusted article metadata for create execution.
+Migration `0026_source_object_write_receipts.sql` creates `collabio.source_object_write_receipts` for source-object write receipt persistence.
 
 Each ledger row must carry:
 
@@ -67,7 +68,7 @@ Each ledger row must carry:
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, and explicit human confirmation. It verifies that the evidence binds to the same article and proposed source version, returns an `execution_plan_hash`, and still blocks execution with `execution_allowed=false`. It does not append ledger rows and does not persist article metadata, source objects, source-version evidence, restore evidence, source text, article bodies, embeddings, or RAG state.
 
-`POST /v1/admin/kb/articles/write-approvals/execute` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, the skeleton execution plan hash, explicit human confirmation, and the proposed source object. The service re-evaluates the guard against the submitted source object, persists the source object, updates edit/create article/current-version metadata, refreshes source-version evidence and restore evidence, and audits only metadata/hash evidence. Create execution uses article key, title, proposed version label, and source system from approved ledger evidence. It keeps RAG and search indexing disabled.
+`POST /v1/admin/kb/articles/write-approvals/execute` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, the skeleton execution plan hash, explicit human confirmation, and the proposed source object. The service re-evaluates the guard against the submitted source object, persists the source object, appends a metadata-only source-object write receipt, updates edit/create article/current-version metadata, refreshes source-version evidence and restore evidence, and audits only metadata/hash evidence. Create execution uses article key, title, proposed version label, and source system from approved ledger evidence. It returns `source_object_write_receipt_hash` and keeps RAG and search indexing disabled.
 
 Runtime wiring:
 
@@ -77,10 +78,11 @@ Runtime wiring:
 - `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
 - the refresh preview consumes exact tenant-scoped approved ledger evidence and produces hash/count projection only.
 - the execution skeleton consumes exact tenant-scoped approved ledger evidence, guard decision metadata, refresh-preview hashes, and human confirmation, then returns a blocked execution plan hash.
-- the execute path consumes the same evidence plus the proposed source object, commits edit/create writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
+- the execute path consumes the same evidence plus the proposed source object, persists a source-object write receipt, commits edit/create writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
 - `PgKnowledgeBaseArticleRepository` provides the PostgreSQL transaction adapter for article metadata, article-version metadata, source-version evidence, and restore evidence.
+- `PgSourceObjectWriteReceiptStore` provides the PostgreSQL/RLS receipt adapter for source-object write metadata and hashes.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction; durable source-object metadata/content persistence remains the next boundary before production API wiring.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes, records `source_object_write_receipt_hash`, and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction, and source-object write receipts are durable metadata evidence; durable source-object metadata/content persistence remains the next boundary before claiming atomic content persistence.
 
 ## Source-Object Write Guard
 
@@ -98,7 +100,7 @@ The decision stores only metadata, hashes, object IDs, and blocking reason codes
 
 ## Backup And Restore
 
-The ledger belongs to the `knowledge_base_content` continuity domain. Backup and restore drills must verify write-approval evidence hashes before approved write workflows are allowed.
+The ledger belongs to the `knowledge_base_content` continuity domain. Source-object write receipts belong to the `postgres_metadata` continuity domain and are referenced by Knowledge Base execution evidence. Backup and restore drills must verify write-approval evidence hashes and source-object write receipt hashes before approved write workflows are allowed.
 
 ## Verification
 
@@ -107,3 +109,4 @@ The ledger belongs to the `knowledge_base_content` continuity domain. Backup and
 - `tests/test_pgvector_migration.py`
 - `tests/test_knowledge_base_docs.py`
 - `tests/test_knowledge_base_write_approval_ledger.py`
+- `tests/test_source_object_write_receipts.py`

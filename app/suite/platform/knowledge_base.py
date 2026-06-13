@@ -14,6 +14,7 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, st
 from suite.ai_control_plane.models import DataClass, UserContext
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
+    InMemorySourceObjectWriteReceiptStore,
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
@@ -22,7 +23,9 @@ from suite.storage.source_objects import (
     SourceObjectType,
     SourceObjectWriteDeniedError,
     SourceObjectWriteGuard,
+    SourceObjectWriteReceiptStore,
     build_source_object_manifest_hash,
+    build_source_object_write_receipt,
     sha256_bytes,
     source_object_content_bytes,
 )
@@ -85,6 +88,7 @@ KB_WRITE_EXECUTION_REQUIRED_EVIDENCE = (
     "approved_write_approval_ledger_entry",
     "source_object_write_guard_decision",
     "source_object_write_guard_ref",
+    "source_object_write_receipt_hash",
     "restore_evidence_refresh_preview_hash",
     "write_execution_plan_hash",
     "explicit_human_confirmation_reference",
@@ -1108,6 +1112,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     approved_write_approval_evidence_hash: str
     transition_source_evidence_hash: str
     source_object_write_guard_ref: str
+    source_object_write_receipt_hash: str
     refresh_preview_command_hash: str
     projected_restore_evidence_preview_hash: str
     execution_skeleton_command_hash: str
@@ -1129,6 +1134,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     source_version_evidence_count_after: int = Field(ge=0)
     execution_allowed: bool = True
     source_object_persisted: bool = True
+    source_object_write_receipt_persisted: bool = True
     article_metadata_persisted: bool = True
     article_version_metadata_persisted: bool = True
     source_version_evidence_refreshed: bool = True
@@ -1163,6 +1169,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     @field_validator(
         "approved_write_approval_evidence_hash",
         "transition_source_evidence_hash",
+        "source_object_write_receipt_hash",
         "refresh_preview_command_hash",
         "projected_restore_evidence_preview_hash",
         "execution_skeleton_command_hash",
@@ -1195,6 +1202,8 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
             raise ValueError("knowledge base write execution response must represent an executed write")
         if not self.source_object_persisted:
             raise ValueError("knowledge base write execution must persist the source object")
+        if not self.source_object_write_receipt_persisted:
+            raise ValueError("knowledge base write execution must persist the source object write receipt")
         if not self.article_metadata_persisted:
             raise ValueError("knowledge base write execution must persist article metadata")
         if not self.article_version_metadata_persisted:
@@ -2406,12 +2415,16 @@ class KnowledgeBaseArticleService:
         audit_logger: InMemoryAuditLogger,
         write_approval_ledger: KnowledgeBaseWriteApprovalLedger | None = None,
         source_object_write_guard: KnowledgeBaseSourceObjectWriteGuard | None = None,
+        source_object_write_receipt_store: SourceObjectWriteReceiptStore | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
         self.audit_logger = audit_logger
         self.write_approval_ledger = write_approval_ledger or InMemoryKnowledgeBaseWriteApprovalLedger()
         self.source_object_write_guard = source_object_write_guard or KnowledgeBaseSourceObjectWriteGuard()
+        self.source_object_write_receipt_store = (
+            source_object_write_receipt_store or InMemorySourceObjectWriteReceiptStore()
+        )
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
         candidate_records = sorted(
@@ -3023,6 +3036,12 @@ class KnowledgeBaseArticleService:
         self._require_source_object_absent(tenant_id=user_context.tenant_id, evidence=approved_evidence)
         execution_command_hash = build_write_execution_command_hash(command)
         audit_chain_ref = f"audit:{command.execution_reference}"
+        source_object_write_receipt = build_source_object_write_receipt(
+            record=command.proposed_source_record,
+            receipt_reference=f"receipt:{command.execution_reference}",
+            audit_chain_ref=audit_chain_ref,
+        )
+        persisted_write_receipt = self.source_object_write_receipt_store.append(source_object_write_receipt)
         self.source_repository.add(command.proposed_source_record)
         updated_article = self.repository.apply_write(
             tenant_id=user_context.tenant_id,
@@ -3073,11 +3092,13 @@ class KnowledgeBaseArticleService:
                 "execution_skeleton_command_hash": command.execution_skeleton_command_hash,
                 "execution_plan_hash": command.execution_plan_hash,
                 "execution_command_hash": execution_command_hash,
+                "source_object_write_receipt_hash": persisted_write_receipt.receipt_hash,
                 "previous_restore_evidence_hash": restore_evidence.evidence_hash,
                 "refreshed_restore_evidence_hash": refreshed_restore_evidence.evidence_hash,
                 "refreshed_source_version_evidence_hash": refreshed_source_evidence.evidence_hash,
                 "source_version_evidence_hashes_after": list(refreshed_restore_evidence.source_version_evidence_hashes),
                 "source_object_persisted": True,
+                "source_object_write_receipt_persisted": True,
                 "article_metadata_persisted": True,
                 "article_version_metadata_persisted": True,
                 "source_version_evidence_refreshed": True,
@@ -3095,6 +3116,7 @@ class KnowledgeBaseArticleService:
             approved_write_approval_evidence_hash=approved_evidence.evidence_hash,
             transition_source_evidence_hash=str(approved_evidence.transition_source_evidence_hash),
             source_object_write_guard_ref=command.source_object_write_guard_decision.source_object_write_guard_ref,
+            source_object_write_receipt_hash=persisted_write_receipt.receipt_hash,
             refresh_preview_command_hash=command.refresh_preview_command_hash,
             projected_restore_evidence_preview_hash=command.projected_restore_evidence_preview_hash,
             execution_skeleton_command_hash=command.execution_skeleton_command_hash,

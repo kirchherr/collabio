@@ -32,6 +32,7 @@ from suite.platform.knowledge_base import (
     demo_knowledge_base_source_object_repository,
 )
 from suite.storage.source_objects import (
+    InMemorySourceObjectWriteReceiptStore,
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
@@ -715,11 +716,13 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     audit_logger = InMemoryAuditLogger()
     write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
     source_repository = demo_knowledge_base_source_object_repository()
+    source_object_write_receipt_store = InMemorySourceObjectWriteReceiptStore()
     service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=source_repository,
         audit_logger=audit_logger,
         write_approval_ledger=write_approval_ledger,
+        source_object_write_receipt_store=source_object_write_receipt_store,
     )
     proposed_source_record = knowledge_base_source_record_for_write()
     write_command = write_command_for_source_record(proposed_source_record)
@@ -797,7 +800,16 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.refreshed_restore_evidence_hash.startswith("sha256:")
     assert response.refreshed_restore_evidence_hash != response.previous_restore_evidence_hash
     assert "source_object_persisted" in response.required_evidence
+    assert response.source_object_write_receipt_hash.startswith("sha256:")
+    assert response.source_object_write_receipt_persisted is True
+    assert "source_object_write_receipt_hash" in response.required_evidence
     assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
+    receipts = source_object_write_receipt_store.list_receipts(tenant_id="tenant-demo")
+    assert len(receipts) == 1
+    assert receipts[0].receipt_hash == response.source_object_write_receipt_hash
+    assert receipts[0].object_id == proposed_source_record.metadata.object_id
+    assert receipts[0].version_id == proposed_source_record.metadata.version_id
+    assert "Backup restore runbook source content v2" not in receipts[0].model_dump_json()
 
     updated_article = next(
         article
@@ -826,6 +838,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only"
     assert event.metadata["source_object_persisted"] is True
+    assert event.metadata["source_object_write_receipt_persisted"] is True
+    assert event.metadata["source_object_write_receipt_hash"] == response.source_object_write_receipt_hash
     assert event.metadata["article_metadata_persisted"] is True
     assert event.metadata["refreshed_restore_evidence_hash"] == response.refreshed_restore_evidence_hash
 

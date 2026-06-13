@@ -89,6 +89,29 @@ It also verifies:
 
 This guard is the current shared entry point for storage writes. Future PostgreSQL, S3/MinIO, WORM, and KMS adapters must call the same guard or an equivalent stricter policy before accepting object data.
 
+## Durable Write Receipts
+
+`SourceObjectWriteReceipt` is the first durable persistence boundary for source-object writes.
+
+The receipt stores only:
+
+- tenant, object, version, lifecycle, retention, legal-hold, classification, KMS, ACL, source-system, and MIME metadata
+- source manifest hash
+- content hash and byte length
+- audit-chain reference
+- receipt reference
+- canonical receipt hash
+
+It does not store object text, article bodies, prompts, outputs, transcripts, embeddings, native bytes, or raw payloads.
+
+`collabio.source_object_write_receipts` is created by `0026_source_object_write_receipts.sql`. The table is tenant-scoped, RLS-protected, append-only by policy, unique per tenant/object/version, and grants no hard delete. It belongs to the `postgres_metadata` continuity domain and is also required evidence for Knowledge Base write execution.
+
+Runtime adapters:
+
+- `InMemorySourceObjectWriteReceiptStore` for tests and local in-memory slices.
+- `PgSourceObjectWriteReceiptStore` for durable metadata receipts.
+- `SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND=postgres` enables the PostgreSQL store, using `SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN` when set, otherwise `SUITE_DATABASE_DSN`.
+
 Content hash verification is documented in:
 
 ```text
@@ -161,6 +184,7 @@ Implemented now:
 - Versioned source object record wrapper.
 - Tenant/version-scoped in-memory repository.
 - Storage write guard for required metadata, tenant/data-class matching KMS references, shared content hash verification, and canonical manifest hashes.
+- Metadata-only source-object write receipt model with in-memory and PostgreSQL/RLS stores.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
@@ -169,7 +193,7 @@ Not implemented yet:
 
 - PostgreSQL-backed source metadata tables.
 
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, but it does not replace the shared source-object metadata/content store. Source object PostgreSQL metadata and object-storage durability remain separate adapter work.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. This does not replace the shared source-object metadata/content store. Source object PostgreSQL metadata and object-storage durability remain separate adapter work.
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.

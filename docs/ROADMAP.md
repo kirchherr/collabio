@@ -1254,7 +1254,8 @@ Empfohlene naechste Reihenfolge:
 84. [x] Atomaren Knowledge-Base-Edit-Write-Execution-Pfad entwerfen: Source-Object-Persistenz, Artikel-/Version-Metadaten, Source-Version-Evidence, Restore-Evidence und Audit-Linkage werden gemeinsam aktualisiert; RAG/Indexing bleibt weiter aus.
 85. [x] Approval-Evidence fuer Knowledge-Base-Create-Writes um vertrauenswuerdige Artikel-Metadaten erweitern und guarded In-Memory-Create-Execution ermoeglichen; Artikel-Key, Titel, Version-Label und Source-System werden vor Execution gehasht.
 86. [x] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes implementieren, der Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence fuer Create/Edit gemeinsam committed oder verwirft.
-87. [ ] Source-Object-Persistenzgrenze fuer Knowledge-Base-Writes haerten: PostgreSQL-Source-Metadatenadapter oder dauerhafte Write-Receipts so anbinden, dass API-Execution erst danach den PostgreSQL-KB-Transaktionsadapter produktiv nutzt.
+87. [x] Source-Object-Persistenzgrenze fuer Knowledge-Base-Writes haerten: dauerhafte metadata-only Write-Receipts mit `collabio.source_object_write_receipts`, RLS, Receipt-Hash und API-Execution-Evidence anbinden.
+88. [ ] PostgreSQL-Source-Metadatenadapter und Content-Store-Bridge fuer Source Objects entwerfen, damit Knowledge-Base-Writes spaeter Source-Metadata, Content-Manifest, Artikel-/Version-Metadaten und Evidence ohne Content-Leakage atomar koordinieren koennen.
 
 ## Release-Strategie
 

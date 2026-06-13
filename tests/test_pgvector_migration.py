@@ -57,6 +57,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0023",
         "0024",
         "0025",
+        "0026",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -81,7 +82,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0025",
     ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "knowledge_base"
+    assert manifest[-1].module_id == "core"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -1050,6 +1051,54 @@ def test_knowledge_base_write_approval_trusted_metadata_migration_extends_create
     assert "trusted source-system identifier captured before create execution" in sql
     assert "kb_write_approval_evidence_article_key_idx" in sql
     assert "kb_write_approval_evidence_source_system_idx" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+
+
+def test_source_object_write_receipts_migration_is_append_only_metadata_boundary() -> None:
+    sql = normalized(get_migration("0026").sql())
+    body = table_body(get_migration("0026").sql(), "collabio.source_object_write_receipts")
+
+    assert "create table if not exists collabio.source_object_write_receipts" in sql
+    for column in [
+        "tenant_id",
+        "receipt_reference",
+        "object_id",
+        "object_type",
+        "version_id",
+        "classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "kms_key_ref",
+        "manifest_hash",
+        "audit_chain_ref",
+        "source_system",
+        "source_schema_version",
+        "acl_hash",
+        "acl_version",
+        "content_hash",
+        "content_byte_length",
+        "lifecycle_state",
+        "captured_at_utc",
+        "receipt_hash",
+        "receipt_schema_version",
+    ]:
+        assert column in body
+    assert "primary key (tenant_id, receipt_hash)" in sql
+    assert "unique (tenant_id, object_id, version_id)" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "source_object_write_receipts_tenant_select" in sql
+    assert "source_object_write_receipts_tenant_insert" in sql
+    assert "source_object_write_receipts_no_update" in sql
+    assert "source_object_write_receipts_no_hard_delete" in sql
+    assert "grant select, insert on table collabio.source_object_write_receipts to collabio_app" in sql
+    assert "source_object_write_receipts_object_version_idx" in sql
+    assert "source_object_write_receipts_content_hash_idx" in sql
+    assert "source_object_write_receipts_audit_chain_idx" in sql
     assert "source_text" not in sql
     assert "article_body" not in sql
     assert "prompt_text" not in sql

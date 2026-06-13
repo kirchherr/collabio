@@ -92,13 +92,14 @@ Current sprint:
 82. [x] Atomic Knowledge Base edit-write execution path that persists the source object, updates article/version metadata, refreshes source/restore evidence, and keeps RAG/indexing disabled.
 83. [x] Trusted Knowledge Base create metadata in approval evidence plus guarded in-memory create execution, with RAG/indexing still disabled.
 84. [x] PostgreSQL-backed Knowledge Base article/version/source-evidence/restore-evidence transaction adapter for guarded create/edit writes.
+85. [x] Durable metadata-only source-object write receipts with PostgreSQL/RLS store, API execution evidence, and backup/failover coverage.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, and a PostgreSQL transaction adapter for article/version/evidence metadata. The next narrow step is source-object persistence hardening:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, and durable source-object write receipts. The next narrow step is source-object metadata/content persistence:
 
-- Add a PostgreSQL/source-object metadata adapter or durable receipt store that shares the same write boundary.
-- Wire the API execution path to the PostgreSQL KB transaction adapter only when the source-object persistence boundary is configured.
+- Add a PostgreSQL source-object metadata adapter and content-store bridge that reuses the write guard, manifest hash, content hash, retention, Legal Hold, KMS, and receipt evidence.
+- Wire API execution to the PostgreSQL KB transaction adapter only when the source-object metadata/content boundary is configured.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance
