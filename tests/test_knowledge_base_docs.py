@@ -35,6 +35,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`kb.article_version`" in charter
     assert "`POST /v1/admin/kb/runtime/activate`" in charter
     assert "`POST /v1/admin/kb/runtime/reconcile`" in charter
+    assert "`docker compose run --rm kb-runtime-reconciler`" in charter
+    assert "`knowledge_base_runtime_reconciliation_run_report.v1`" in charter
     assert "`GET /v1/admin/kb/evidence`" in charter
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in charter
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in charter
@@ -74,6 +76,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "`POST /v1/admin/kb/runtime/activate`" in slice_doc
     assert "`POST /v1/admin/kb/runtime/reconcile`" in slice_doc
+    assert "`docker compose run --rm kb-runtime-reconciler`" in slice_doc
+    assert "`knowledge_base_runtime_reconciliation_run_report.v1`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/refresh-preview`" in slice_doc
@@ -99,6 +103,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`GET /v1/admin/kb/evidence`" in evidence_doc
     assert "`POST /v1/admin/kb/runtime/activate`" in evidence_doc
     assert "`POST /v1/admin/kb/runtime/reconcile`" in evidence_doc
+    assert "`knowledge_base_runtime_reconciliation_run_report.v1`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/refresh-preview`" in evidence_doc

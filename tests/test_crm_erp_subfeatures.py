@@ -120,6 +120,7 @@ def test_default_crm_erp_subfeature_registry_declares_initial_feature_set() -> N
 def test_default_module_registry_uses_canonical_crm_erp_subfeature_defaults() -> None:
     module_registry = default_module_registry()
     tenant_state = module_registry.get_tenant_module("tenant-demo", "crm_erp")
+    knowledge_base_catalog = module_registry.get_catalog_entry("knowledge_base")
 
     assert tenant_state.enabled_features == default_crm_erp_subfeature_enabled_features()
     assert tenant_state.enabled_features["crm_erp.crm.accounts"]
@@ -128,6 +129,7 @@ def test_default_module_registry_uses_canonical_crm_erp_subfeature_defaults() ->
     assert not tenant_state.enabled_features["crm_erp.legacy_import.sqlserver"]
     assert not tenant_state.enabled_features["crm_erp.rag_indexing"]
     assert not tenant_state.enabled_features["crm_erp.ai_assist"]
+    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
 
 
 def test_crm_erp_subfeature_registry_covers_all_mapping_target_profiles() -> None:

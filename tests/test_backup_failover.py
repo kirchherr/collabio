@@ -63,9 +63,11 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
     assert "source_object_storage_manifest_hash_check" in postgres.integrity_checks
     assert "source_object_write_receipt_hash_check" in postgres.integrity_checks
+    assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
     assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
+    assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -77,10 +79,12 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "restore_drill_report_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_source_version_evidence_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_restore_evidence_hash_check" in object_storage.integrity_checks
+    assert "knowledge_base_runtime_reconciliation_restore_drill_binding_check" in object_storage.integrity_checks
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
+    assert "docker compose run --rm kb-runtime-reconciler" in object_storage.current_dev_commands
 
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks
@@ -154,6 +158,15 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert (
         "Knowledge Base source-object write receipt hashes" in policy.domain("knowledge_base_content").state_artifacts
     )
+    assert "Knowledge Base runtime activation evidence" in policy.domain("knowledge_base_content").state_artifacts
+    assert "Knowledge Base runtime reconciliation evidence" in policy.domain("knowledge_base_content").state_artifacts
+    assert (
+        "Knowledge Base runtime reconciliation run reports" in policy.domain("knowledge_base_content").state_artifacts
+    )
+    assert (
+        "Knowledge Base runtime reconciliation retry and alert contract"
+        in policy.domain("background_jobs_queues").state_artifacts
+    )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
@@ -170,6 +183,8 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "mail store" in rules
     assert "office store" in rules
     assert "continuity domain" in rules
+    assert "Knowledge Base runtime reconciliation run report hash when applicable" in policy.restore_drill_evidence
+    assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
 
 
 def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
@@ -179,6 +194,8 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "every new durable component must update this continuity model" in runbook
     assert "docker compose run --rm backup" in runbook
     assert "docker compose run --rm backup-verify" in runbook
+    assert "docker compose run --rm kb-runtime-reconciler" in runbook
+    assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
     assert "Continuity Domains" in runbook
     assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook
@@ -194,6 +211,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "module registry state" in runbook
     assert "CRM/ERP business records" in runbook
     assert "knowledge-base article versions" in runbook
+    assert "Knowledge Base runtime reconciliation run report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
@@ -204,7 +222,10 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
 
     assert "\n  backup:\n" in compose
     assert "\n  backup-verify:\n" in compose
+    assert "\n  kb-runtime-reconciler:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
+    assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
+    assert "SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres" in compose
     assert "./backups:/backups" in compose

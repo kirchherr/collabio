@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,6 +11,7 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
 from suite.platform.knowledge_base import (
+    KNOWLEDGE_BASE_MODULE_ID,
     InMemoryKnowledgeBaseArticleRepository,
     KnowledgeBaseArticleService,
     PostgresKnowledgeBaseWriteUnitOfWork,
@@ -37,6 +39,24 @@ from suite.platform.knowledge_base_runtime import (
     knowledge_base_runtime_activation_view,
     knowledge_base_runtime_backend_from_env,
     knowledge_base_runtime_reconciliation_view,
+)
+from suite.platform.knowledge_base_runtime_reconciliation_service import (
+    KnowledgeBaseRuntimeReconciliationAlertSeverity,
+    KnowledgeBaseRuntimeReconciliationRetryContract,
+    KnowledgeBaseRuntimeReconciliationRunConfig,
+    KnowledgeBaseRuntimeReconciliationRunner,
+    KnowledgeBaseRuntimeReconciliationTenantRunStatus,
+    KnowledgeBaseRuntimeReconciliationTenantSelector,
+    build_reconciliation_run_report_hash,
+    exit_code_for_report,
+)
+from suite.platform.modules import (
+    InMemoryModuleRegistry,
+    ModuleCatalogEntry,
+    ModuleKind,
+    ModuleStatus,
+    ModuleWorkerGate,
+    TenantModuleState,
 )
 from suite.storage.adapter_policy import ObjectLockMode, StorageAdapterPolicy, load_storage_adapter_policy
 from suite.storage.s3_compatible_content_store import (
@@ -109,6 +129,67 @@ def env_or_skip(name: str) -> str:
     if value is None:
         pytest.skip(f"{name} is not configured")
     return value
+
+
+def knowledge_base_catalog_entry() -> ModuleCatalogEntry:
+    return ModuleCatalogEntry(
+        module_id=KNOWLEDGE_BASE_MODULE_ID,
+        display_name="Knowledge Base",
+        module_version="0.1.0",
+        module_kind=ModuleKind.BUSINESS_DOMAIN,
+        status=ModuleStatus.INSTALLED,
+        description="Governed knowledge base module.",
+        manifest_hash="sha256:knowledge-base-module-manifest",
+    )
+
+
+def knowledge_base_tenant_module(tenant_id: str, status: ModuleStatus) -> TenantModuleState:
+    timestamp = datetime(2026, 6, 16, 8, tzinfo=UTC)
+    return TenantModuleState(
+        tenant_id=tenant_id,
+        module_id=KNOWLEDGE_BASE_MODULE_ID,
+        status=status,
+        enabled_features={},
+        policy_snapshot_hash="sha256:test-module-policy",
+        changed_by="system",
+        audit_chain_ref=f"audit:{tenant_id}:module-state",
+        disabled_at_utc=timestamp if status == ModuleStatus.DISABLED else None,
+        enabled_at_utc=timestamp if status == ModuleStatus.ENABLED else None,
+    )
+
+
+def runtime_activation_for_tenant(
+    *,
+    live_database: LiveDatabase,
+    storage_policy: StorageAdapterPolicy,
+    tenant_id: str,
+    provider_profile_id: str,
+    restore_hash_digit: str,
+) -> KnowledgeBaseRuntimeActivation:
+    restore_drill_report_hash = f"sha256:{restore_hash_digit * 64}"
+    wiring = build_postgres_s3_knowledge_base_runtime(
+        config=PostgresS3KnowledgeBaseRuntimeConfig(
+            tenant_id=tenant_id,
+            database_dsn=live_database.app_dsn,
+            restore_drill_report_hash=restore_drill_report_hash,
+            storage_policy_path=STORAGE_POLICY_PATH,
+            retention_policy_path=RETENTION_POLICY_PATH,
+            provider_profile_id=provider_profile_id,
+        ),
+        object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+    )
+    return build_knowledge_base_runtime_activation(
+        tenant_id=tenant_id,
+        activated_by="tenant-admin-runtime",
+        provider_profile_id=provider_profile_id,
+        restore_drill_report_hash=restore_drill_report_hash,
+        source_content_recovery_evidence=wiring.source_content_recovery_evidence,
+        provider_profile_evidence=wiring.provider_profile_evidence,
+        production_write_deployment_gate_evidence=wiring.production_write_deployment_gate_evidence,
+        approval_reference=f"approval:{tenant_id}:kb-runtime",
+        audit_chain_ref=f"audit:{tenant_id}:kb-runtime",
+        activated_at_utc="2026-06-16T08:00:00Z",
+    )
 
 
 @pytest.fixture(scope="module")
@@ -543,6 +624,158 @@ def test_runtime_reconciliation_deactivates_activation_on_provider_drift(
     assert activation_store.get_active(tenant_id=tenant_id) is None
     assert resolver.service_for_tenant(tenant_id=tenant_id) is default_service
     assert reconciliation_store.latest_for_activation(tenant_id=tenant_id, activation_id=activation.activation_id)
+
+
+def test_runtime_reconciliation_runner_selects_tenants_from_module_gate_and_activations(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    storage_policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    selected_tenant = f"tenant-runtime-runner-selected-{suffix}"
+    blocked_tenant = f"tenant-runtime-runner-blocked-{suffix}"
+    empty_tenant = f"tenant-runtime-runner-empty-{suffix}"
+    activation_store = InMemoryKnowledgeBaseRuntimeActivationStore()
+    reconciliation_store = InMemoryKnowledgeBaseRuntimeReconciliationStore()
+    selected_activation = activation_store.activate(
+        runtime_activation_for_tenant(
+            live_database=live_database,
+            storage_policy=storage_policy,
+            tenant_id=selected_tenant,
+            provider_profile_id=f"minio-runtime-runner-selected-{suffix}",
+            restore_hash_digit="8",
+        )
+    )
+    blocked_activation = activation_store.activate(
+        runtime_activation_for_tenant(
+            live_database=live_database,
+            storage_policy=storage_policy,
+            tenant_id=blocked_tenant,
+            provider_profile_id=f"minio-runtime-runner-blocked-{suffix}",
+            restore_hash_digit="9",
+        )
+    )
+    module_registry = InMemoryModuleRegistry(
+        catalog_entries=[knowledge_base_catalog_entry()],
+        tenant_modules=[
+            knowledge_base_tenant_module(selected_tenant, ModuleStatus.DISABLED),
+            knowledge_base_tenant_module(blocked_tenant, ModuleStatus.AVAILABLE),
+            knowledge_base_tenant_module(empty_tenant, ModuleStatus.DISABLED),
+        ],
+    )
+    selector = KnowledgeBaseRuntimeReconciliationTenantSelector(
+        activation_store=activation_store,
+        module_worker_gate=ModuleWorkerGate(module_registry),
+        module_registry=module_registry,
+    )
+    worker = KnowledgeBaseRuntimeReconciliationWorker(
+        activation_store=activation_store,
+        reconciliation_store=reconciliation_store,
+        environ={
+            "SUITE_DATABASE_DSN": live_database.app_dsn,
+            "SUITE_STORAGE_POLICY_PATH": str(STORAGE_POLICY_PATH),
+            "SUITE_RETENTION_POLICY_PATH": str(RETENTION_POLICY_PATH),
+        },
+        object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+    )
+    audit_logger = InMemoryAuditLogger()
+    runner = KnowledgeBaseRuntimeReconciliationRunner(
+        selector=selector,
+        worker=worker,
+        audit_logger=audit_logger,
+    )
+
+    report = runner.run_once(
+        KnowledgeBaseRuntimeReconciliationRunConfig(
+            checked_by="kb-runtime-reconciler-test",
+            retry_contract=KnowledgeBaseRuntimeReconciliationRetryContract(max_attempts=1),
+        )
+    )
+
+    results_by_tenant = {result.tenant_id: result for result in report.tenant_results}
+    assert report.attempted_count == 1
+    assert report.ready_count == 1
+    assert report.skipped_count == 2
+    assert report.alert_required is True
+    assert report.alert_severity == KnowledgeBaseRuntimeReconciliationAlertSeverity.WARNING
+    assert report.evidence_hash == build_reconciliation_run_report_hash(report)
+    assert report.runbook_evidence.selected_tenants == (selected_tenant,)
+    assert selected_activation.restore_drill_report_hash in report.runbook_evidence.restore_drill_report_hashes
+    assert blocked_activation.restore_drill_report_hash in report.runbook_evidence.restore_drill_report_hashes
+    assert results_by_tenant[selected_tenant].status == KnowledgeBaseRuntimeReconciliationTenantRunStatus.READY
+    assert results_by_tenant[blocked_tenant].status == (
+        KnowledgeBaseRuntimeReconciliationTenantRunStatus.MODULE_GATE_BLOCKED
+    )
+    assert results_by_tenant[blocked_tenant].alert_severity == KnowledgeBaseRuntimeReconciliationAlertSeverity.WARNING
+    assert results_by_tenant[empty_tenant].status == KnowledgeBaseRuntimeReconciliationTenantRunStatus.NO_ACTIVE_RUNTIME
+    assert activation_store.get_active(tenant_id=selected_tenant) is not None
+    assert reconciliation_store.latest_for_activation(
+        tenant_id=selected_tenant,
+        activation_id=selected_activation.activation_id,
+    )
+    assert len(audit_logger.events) == 1
+    assert audit_logger.events[0].metadata["surface"] == "compliance_worker"
+    assert audit_logger.events[0].metadata["result_contract"] == "metadata_only"
+    assert exit_code_for_report(report) == 1
+
+
+def test_runtime_reconciliation_runner_retries_and_reports_critical_failure(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-runtime-runner-failure-{suffix}"
+    storage_policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    activation_store = InMemoryKnowledgeBaseRuntimeActivationStore()
+    reconciliation_store = InMemoryKnowledgeBaseRuntimeReconciliationStore()
+    activation = activation_store.activate(
+        runtime_activation_for_tenant(
+            live_database=live_database,
+            storage_policy=storage_policy,
+            tenant_id=tenant_id,
+            provider_profile_id=f"minio-runtime-runner-failure-{suffix}",
+            restore_hash_digit="a",
+        )
+    )
+    module_registry = InMemoryModuleRegistry(
+        catalog_entries=[knowledge_base_catalog_entry()],
+        tenant_modules=[knowledge_base_tenant_module(tenant_id, ModuleStatus.DISABLED)],
+    )
+    selector = KnowledgeBaseRuntimeReconciliationTenantSelector(
+        activation_store=activation_store,
+        module_worker_gate=ModuleWorkerGate(module_registry),
+        module_registry=module_registry,
+    )
+    worker = KnowledgeBaseRuntimeReconciliationWorker(
+        activation_store=activation_store,
+        reconciliation_store=reconciliation_store,
+        environ={
+            "SUITE_STORAGE_POLICY_PATH": str(STORAGE_POLICY_PATH),
+            "SUITE_RETENTION_POLICY_PATH": str(RETENTION_POLICY_PATH),
+        },
+        object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+    )
+    runner = KnowledgeBaseRuntimeReconciliationRunner(
+        selector=selector,
+        worker=worker,
+        sleep_fn=lambda _: None,
+    )
+
+    report = runner.run_once(
+        KnowledgeBaseRuntimeReconciliationRunConfig(
+            retry_contract=KnowledgeBaseRuntimeReconciliationRetryContract(max_attempts=2),
+        )
+    )
+    result = report.tenant_results[0]
+
+    assert result.tenant_id == tenant_id
+    assert result.activation_id == activation.activation_id
+    assert result.status == KnowledgeBaseRuntimeReconciliationTenantRunStatus.FAILED
+    assert result.attempts == 2
+    assert result.alert_severity == KnowledgeBaseRuntimeReconciliationAlertSeverity.CRITICAL
+    assert result.last_error is not None
+    assert "SUITE_DATABASE_DSN" in result.last_error
+    assert report.failed_count == 1
+    assert report.alert_required is True
+    assert exit_code_for_report(report) == 2
 
 
 def test_pg_runtime_reconciliation_store_persists_evidence_and_deactivates_on_drift(

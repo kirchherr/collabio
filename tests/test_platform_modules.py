@@ -837,3 +837,19 @@ def test_module_registry_discovery_returns_public_tenant_module_view_only() -> N
     assert "audit_chain_ref" not in serialized
     assert "policy_snapshot_hash" not in serialized
     assert "changed_by" not in serialized
+
+
+def test_module_registry_lists_tenant_modules_for_worker_selection() -> None:
+    registry = InMemoryModuleRegistry(
+        catalog_entries=[crm_erp_catalog()],
+        tenant_modules=[
+            tenant_module(ModuleStatus.DISABLED, tenant_id="tenant-b", disabled_at_utc=NOW),
+            tenant_module(ModuleStatus.ENABLED, tenant_id="tenant-a"),
+        ],
+    )
+
+    states = registry.list_tenant_modules_for_module("crm_erp")
+
+    assert [state.tenant_id for state in states] == ["tenant-a", "tenant-b"]
+    with pytest.raises(LookupError, match="Unknown module catalog entry"):
+        registry.list_tenant_modules_for_module("knowledge_base")

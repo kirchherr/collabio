@@ -70,6 +70,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `POST /v1/admin/kb/runtime/reconcile` refreshes the active tenant runtime evidence. If provider capability, content recovery, storage-manifest reconciliation, or production-gate evidence drifts, it persists `knowledge_base_runtime_reconciliation_evidence.v1` and deactivates the runtime activation before further writes can rely on stale evidence.
 
+`docker compose run --rm kb-runtime-reconciler` is the scheduled-worker entrypoint for the same check. It selects tenants through the Knowledge Base compliance worker gate and active runtime activations, applies the retry contract, emits alert severity, and returns a metadata-only `knowledge_base_runtime_reconciliation_run_report.v1` with restore-drill report hashes for runbook evidence.
+
 `POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and produces audit-only dry-run evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
 
 `POST /v1/admin/kb/articles/write-approvals/approve` accepts a dry-run evidence hash and a new approval reference. It appends approved ledger evidence only; article rows, source objects, search indexes, embeddings, and RAG state remain unchanged.
@@ -86,7 +88,7 @@ Normal use is blocked unless the tenant has provisioned and enabled `knowledge_b
 
 ## Backup And Restore
 
-The slice belongs to the `knowledge_base_content` continuity domain. Source-object write receipts belong to `postgres_metadata` and are linked by hash from Knowledge Base execution evidence. Backup and restore evidence must cover article metadata, article-version metadata, source-version evidence, source write receipts, source references, tenant isolation, disabled-state restore behavior, and Legal Hold state before broader authoring or RAG work begins.
+The slice belongs to the `knowledge_base_content` continuity domain. Source-object write receipts belong to `postgres_metadata` and are linked by hash from Knowledge Base execution evidence. Backup and restore evidence must cover article metadata, article-version metadata, source-version evidence, source write receipts, runtime activation evidence, runtime reconciliation evidence, runtime reconciliation run-report hashes, source references, tenant isolation, disabled-state restore behavior, and Legal Hold state before broader authoring or RAG work begins.
 
 ## RAG Boundary
 

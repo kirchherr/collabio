@@ -1265,7 +1265,8 @@ Empfohlene naechste Reihenfolge:
 95. [x] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
 96. [x] Knowledge-Base-Produktivwiring tenant-sicher aktivierbar machen: Runtime-Gate-Evidence per Admin-/Deployment-Aktivierung tenant-spezifisch persistieren und die API vom prozessweiten `SUITE_KB_RUNTIME_TENANT_ID` in eine request-sichere Runtime-Auswahl ueberfuehren.
 97. [x] Knowledge-Base-Content-Reconciliation operationalisieren: aktivierte Runtime-Tenants regelmaessig gegen Object-Store-Inventar, Storage-Manifeste und Restore-Drill-Evidence pruefen, Aktivierungen bei Drift sperren und Refresh-/Reactivation-Evidence auditierbar machen.
-98. [ ] Knowledge-Base-Reconciliation als Worker-Betriebspfad ausbauen: tenant-Auswahl aus Modulstatus/Runtime-Aktivierungen, Compose-Worker-Entrypoint, Runbook-Evidence, Retry-/Alerting-Kontrakt und regelmaessige Restore-Drill-Bindung operationalisieren.
+98. [x] Knowledge-Base-Reconciliation als Worker-Betriebspfad ausbauen: tenant-Auswahl aus Modulstatus/Runtime-Aktivierungen, Compose-Worker-Entrypoint, Runbook-Evidence, Retry-/Alerting-Kontrakt und regelmaessige Restore-Drill-Bindung operationalisieren.
+99. [ ] Persistente Platform-Module-Registry fuer API und Worker angleichen: `collabio.module_catalog` und `collabio.tenant_modules` als Store anbinden, Migration-Evidence aus DB verwenden, tenant-sichere `ModuleWorkerGate`-Nutzung fuer API/Worker vereinheitlichen und Dev-Seeding/Backfill definieren.
 
 ## Release-Strategie
 

@@ -620,6 +620,11 @@ class InMemoryModuleRegistry:
         states = [state for (state_tenant_id, _), state in self._tenant_modules.items() if state_tenant_id == tenant_id]
         return tuple(sorted(states, key=lambda state: state.module_id))
 
+    def list_tenant_modules_for_module(self, module_id: str) -> tuple[TenantModuleState, ...]:
+        self.get_catalog_entry(module_id)
+        states = [state for (_, state_module_id), state in self._tenant_modules.items() if state_module_id == module_id]
+        return tuple(sorted(states, key=lambda state: (state.tenant_id, state.updated_at_utc, state.module_id)))
+
     def require_normal_use(self, *, tenant_id: str, module_id: str, feature_id: str | None = None) -> TenantModuleState:
         state = self.get_tenant_module(tenant_id, module_id)
         if not state.normal_use_enabled:
@@ -1241,6 +1246,11 @@ def default_module_registry() -> InMemoryModuleRegistry:
             "0022",
             "0023",
             "0024",
+            "0025",
+            "0026",
+            "0027",
+            "0028",
+            "0029",
         ),
     )
     crm_erp_demo_state = TenantModuleState(
