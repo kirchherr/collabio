@@ -820,6 +820,7 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.write_unit_of_work_transaction_scope == "coordinated_repository_calls"
     assert response.source_content_recovery_required is False
     assert response.source_content_recovery_evidence_hash is None
+    assert response.production_write_deployment_gate_evidence_hash is None
     assert response.source_version_evidence_refreshed is True
     assert response.restore_evidence_refreshed is True
     assert response.rag_indexing_allowed is False
@@ -840,6 +841,7 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert "write_unit_of_work_transaction_scope" in response.required_evidence
     assert "source_content_recovery_required" in response.required_evidence
     assert "source_content_recovery_evidence_hash" in response.required_evidence
+    assert "production_write_deployment_gate_evidence_hash" in response.required_evidence
     assert source_repository.add_calls == 0
     assert source_repository.receipt_hashes == [response.source_object_write_receipt_hash]
     assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
@@ -884,6 +886,7 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert event.metadata["write_unit_of_work_transaction_scope"] == "coordinated_repository_calls"
     assert event.metadata["source_content_recovery_required"] is False
     assert event.metadata["source_content_recovery_evidence_hash"] is None
+    assert event.metadata["production_write_deployment_gate_evidence_hash"] is None
     assert event.metadata["article_metadata_persisted"] is True
     assert event.metadata["refreshed_restore_evidence_hash"] == response.refreshed_restore_evidence_hash
 

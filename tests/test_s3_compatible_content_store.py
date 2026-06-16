@@ -8,8 +8,11 @@ from suite.storage.adapter_policy import ObjectLockMode, load_storage_adapter_po
 from suite.storage.s3_compatible_content_store import (
     S3CompatibleBucketCapabilities,
     S3CompatibleObjectWriteResult,
+    S3CompatibleProviderProfileStatus,
     S3CompatibleSourceObjectContentStore,
     S3CompatibleStoredObjectVersion,
+    build_s3_compatible_provider_profile_evidence,
+    build_s3_compatible_provider_profile_evidence_hash,
 )
 from suite.storage.source_object_storage import SourceObjectStorageError, StoredSourceObjectContent
 from suite.storage.source_objects import (
@@ -263,3 +266,44 @@ def test_s3_compatible_content_store_maps_legal_hold_to_object_lock_write() -> N
     fake_stored_object = client.stored_object(stored)
     assert fake_stored_object.object_lock_mode == ObjectLockMode.COMPLIANCE
     assert fake_stored_object.legal_hold is True
+
+
+def test_s3_compatible_provider_profile_evidence_allows_ready_profile() -> None:
+    policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    client = FakeS3CompatibleClient(s3_capabilities())
+
+    evidence = build_s3_compatible_provider_profile_evidence(
+        client=client,
+        storage_policy=policy,
+        provider_profile_id="minio-dev-object-lock",
+        checked_at_utc="2026-06-12T12:10:00Z",
+    )
+
+    assert evidence.provider_profile_ready is True
+    assert evidence.profile_status == S3CompatibleProviderProfileStatus.READY
+    assert evidence.bucket_profile_count == 4
+    assert evidence.object_lock_bucket_count == 2
+    assert evidence.versioning_verified is True
+    assert evidence.object_lock_verified is True
+    assert evidence.legal_hold_verified is True
+    assert evidence.blocking_reasons == ()
+    assert evidence.evidence_hash == build_s3_compatible_provider_profile_evidence_hash(evidence)
+
+
+def test_s3_compatible_provider_profile_evidence_blocks_missing_object_lock() -> None:
+    policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    client = FakeS3CompatibleClient(s3_capabilities(object_lock_enabled=False))
+
+    evidence = build_s3_compatible_provider_profile_evidence(
+        client=client,
+        storage_policy=policy,
+        provider_profile_id="minio-dev-object-lock",
+        checked_at_utc="2026-06-12T12:10:00Z",
+    )
+
+    assert evidence.provider_profile_ready is False
+    assert evidence.profile_status == S3CompatibleProviderProfileStatus.BLOCKED
+    assert evidence.object_lock_verified is False
+    assert evidence.legal_hold_verified is False
+    assert "business-records:object_lock_required" in evidence.blocking_reasons
+    assert "business-records:legal_hold_required" in evidence.blocking_reasons

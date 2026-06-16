@@ -77,6 +77,8 @@ def test_storage_adapter_docs_bind_sdk_behind_content_store_port() -> None:
 
     assert "`S3CompatibleObjectStoreClient`" in adapter_plan
     assert "`SourceObjectContentStore`" in adapter_plan
+    assert "`s3_compatible_provider_profile_evidence.v1`" in adapter_plan
     assert "No direct SDK calls from feature code." in adapter_plan
     assert "`S3CompatibleSourceObjectContentStore`" in storage_manifest
     assert "`source_object_content_recovery_evidence.v1`" in storage_manifest
+    assert "`s3_compatible_provider_profile_evidence.v1`" in storage_manifest

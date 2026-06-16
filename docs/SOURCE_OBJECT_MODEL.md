@@ -131,7 +131,7 @@ SourceObjectWriteGuard
   -> PostgreSQL source metadata + storage manifest insert
 ```
 
-The local content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. `S3CompatibleSourceObjectContentStore` is the S3/MinIO-compatible adapter port for production-style object storage. It depends on the `S3CompatibleObjectStoreClient` protocol so concrete MinIO/AWS SDK bindings stay outside feature code, and it checks bucket versioning, Object Lock/WORM capability, and legal-hold support before writes.
+The local content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. `S3CompatibleSourceObjectContentStore` is the S3/MinIO-compatible adapter port for production-style object storage. It depends on the `S3CompatibleObjectStoreClient` protocol so concrete MinIO/AWS SDK bindings stay outside feature code, and it checks bucket versioning, Object Lock/WORM capability, and legal-hold support before writes. `s3_compatible_provider_profile_evidence.v1` records bucket capability evidence for all bucket profiles and blocks production wiring when versioning, Object Lock, or legal-hold requirements are not met.
 
 `source_object_content_recovery_evidence.v1` is the API-wiring gate for production Knowledge Base writes. `PgSourceObjectRepository.build_content_recovery_evidence` compares tenant-scoped content-store inventory with `collabio.source_object_storage_manifests`, verifies manifest-backed content hashes through the content-store read path, records orphaned content reference hashes and missing manifest hashes, binds a restore-drill report hash, and returns `api_wiring_allowed=true` only when there are no orphaned or missing content objects. `SourceObjectContentReconciliationWorker` turns that evidence into a metadata-only recommended action: `ready_for_api_wiring` or `manual_reconciliation_required`. The evidence and worker run never include source bytes.
 
@@ -212,13 +212,14 @@ Implemented now:
 - Content-store recovery evidence with inventory comparison, orphan detection, restore-drill hash binding, and API-wiring gate signal.
 - Metadata-only source-object content reconciliation worker with explicit API-wiring recommendation.
 - S3/MinIO-compatible content-store adapter port with versioning, Object Lock/WORM, legal-hold, and content-hash checks.
+- S3/MinIO provider-profile evidence and Knowledge Base production write deployment gate.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
 
 Not implemented yet:
 
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Clean content-store recovery evidence can now gate the Postgres UoW for production API wiring through `source_content_recovery_evidence_hash`.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Clean content-store recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence now gate the Postgres UoW for production API wiring through `knowledge_base_production_write_deployment_gate.v1` and `production_write_deployment_gate_evidence_hash`.
 - Concrete MinIO/AWS SDK client binding behind `S3CompatibleObjectStoreClient`.
 - Persistent orphan-reconciliation worker for production object storage.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.

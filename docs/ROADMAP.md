@@ -1260,7 +1260,8 @@ Empfohlene naechste Reihenfolge:
 90. [x] Knowledge-Base-Production-Write-Grenze haerten: gemeinsamen PostgreSQL-Transaktionskontext fuer KB-Metadatenadapter, Source-Object-Receipts und Source-Metadata-Bridge entwerfen, damit API-Produktivwiring erst mit explizitem Atomicity-/Recovery-Nachweis aktiviert wird.
 91. [x] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Content-Store-Inventar, Orphan-Reconciliation-Nachweis, Restore-Drill-Hash und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
 92. [x] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
-93. [ ] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
+93. [x] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
+94. [ ] Konkreten MinIO/AWS-SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen.
 
 ## Release-Strategie
 

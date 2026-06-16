@@ -13,7 +13,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
-from suite.storage.source_object_storage import SourceObjectContentRecoveryEvidence
+from suite.storage.s3_compatible_content_store import (
+    S3CompatibleProviderProfileEvidence,
+    build_s3_compatible_provider_profile_evidence_hash,
+)
+from suite.storage.source_object_storage import (
+    SourceObjectContentRecoveryEvidence,
+    build_source_object_content_recovery_evidence_hash,
+)
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
     InMemorySourceObjectWriteReceiptStore,
@@ -96,6 +103,7 @@ KB_WRITE_EXECUTION_REQUIRED_EVIDENCE = (
     "write_unit_of_work_transaction_scope",
     "source_content_recovery_required",
     "source_content_recovery_evidence_hash",
+    "production_write_deployment_gate_evidence_hash",
     "restore_evidence_refresh_preview_hash",
     "write_execution_plan_hash",
     "explicit_human_confirmation_reference",
@@ -132,6 +140,11 @@ class KnowledgeBaseWriteApprovalState(StrEnum):
     APPROVED_FOR_WRITE = "approved_for_write"
     REJECTED = "rejected"
     EXPIRED = "expired"
+
+
+class KnowledgeBaseProductionWriteDeploymentGateStatus(StrEnum):
+    READY = "ready"
+    BLOCKED = "blocked"
 
 
 class KnowledgeBaseArticleRecord(BaseModel):
@@ -383,6 +396,68 @@ class KnowledgeBaseRestoreEvidence(BaseModel):
             raise ValueError("restore evidence must verify disabled-state restore behavior")
         if not self.legal_hold_restore_verified:
             raise ValueError("restore evidence must verify Legal Hold state")
+        return self
+
+
+class KnowledgeBaseProductionWriteDeploymentGateEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    continuity_domain: str = "knowledge_base_content"
+    source_content_recovery_evidence_hash: str
+    provider_profile_evidence_hash: str
+    restore_drill_report_hash: str
+    source_content_recovery_api_wiring_allowed: bool
+    provider_profile_ready: bool
+    restore_drill_bound: bool
+    blocking_reasons: tuple[str, ...] = ()
+    api_wiring_allowed: bool
+    gate_status: KnowledgeBaseProductionWriteDeploymentGateStatus
+    evidence_hash: str
+    schema_version: str = "knowledge_base_production_write_deployment_gate.v1"
+
+    @field_validator("tenant_id")
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base deployment gate tenant_id must not be empty")
+        return value
+
+    @field_validator(
+        "source_content_recovery_evidence_hash",
+        "provider_profile_evidence_hash",
+        "restore_drill_report_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base deployment gate hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def validate_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("knowledge base deployment gate blocking reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("knowledge base deployment gate blocking reasons must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_gate_consistency(self) -> KnowledgeBaseProductionWriteDeploymentGateEvidence:
+        if self.module_id != KNOWLEDGE_BASE_MODULE_ID:
+            raise ValueError("knowledge base deployment gate must belong to knowledge_base")
+        if self.continuity_domain != "knowledge_base_content":
+            raise ValueError("knowledge base deployment gate must use knowledge_base_content")
+        if self.api_wiring_allowed and self.blocking_reasons:
+            raise ValueError("knowledge base deployment gate cannot allow API wiring with blocking reasons")
+        if self.api_wiring_allowed and self.gate_status != KnowledgeBaseProductionWriteDeploymentGateStatus.READY:
+            raise ValueError("knowledge base deployment gate allowed state must be ready")
+        if not self.api_wiring_allowed and self.gate_status != KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED:
+            raise ValueError("knowledge base deployment gate blocked state must be blocked")
         return self
 
 
@@ -1147,6 +1222,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     write_unit_of_work_transaction_scope: str = "coordinated_repository_calls"
     source_content_recovery_required: bool = False
     source_content_recovery_evidence_hash: str | None = None
+    production_write_deployment_gate_evidence_hash: str | None = None
     article_metadata_persisted: bool = True
     article_version_metadata_persisted: bool = True
     source_version_evidence_refreshed: bool = True
@@ -1194,6 +1270,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
         "previous_restore_evidence_hash",
         "refreshed_restore_evidence_hash",
         "source_content_recovery_evidence_hash",
+        "production_write_deployment_gate_evidence_hash",
     )
     @classmethod
     def validate_sha256_refs(cls, value: str | None) -> str | None:
@@ -1293,6 +1370,7 @@ class KnowledgeBaseWriteUnitOfWorkCommit:
     transaction_scope: str = "coordinated_repository_calls"
     source_content_recovery_required: bool = False
     source_content_recovery_evidence_hash: str | None = None
+    production_write_deployment_gate_evidence_hash: str | None = None
 
 
 class KnowledgeBaseWriteUnitOfWork(Protocol):
@@ -1387,19 +1465,35 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
         source_repository: TransactionalSourceObjectRepository,
         source_object_write_receipt_store: TransactionalSourceObjectWriteReceiptStore,
         source_content_recovery_evidence: SourceObjectContentRecoveryEvidence | None = None,
+        production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence | None = None,
         require_source_content_recovery_gate: bool = False,
     ) -> None:
         if not database_dsn.strip():
             raise ValueError("database_dsn must not be empty")
-        if require_source_content_recovery_gate and source_content_recovery_evidence is None:
-            raise ValueError("source content recovery evidence is required before API wiring")
         if source_content_recovery_evidence is not None and not source_content_recovery_evidence.api_wiring_allowed:
             raise ValueError("source content recovery evidence does not allow API wiring")
+        if (
+            production_write_deployment_gate_evidence is not None
+            and not production_write_deployment_gate_evidence.api_wiring_allowed
+        ):
+            raise ValueError("knowledge base production write deployment gate does not allow API wiring")
+        if require_source_content_recovery_gate and source_content_recovery_evidence is None:
+            raise ValueError("source content recovery evidence is required before API wiring")
+        if require_source_content_recovery_gate and production_write_deployment_gate_evidence is None:
+            raise ValueError("knowledge base production write deployment gate evidence is required before API wiring")
+        if (
+            production_write_deployment_gate_evidence is not None
+            and source_content_recovery_evidence is not None
+            and production_write_deployment_gate_evidence.source_content_recovery_evidence_hash
+            != source_content_recovery_evidence.evidence_hash
+        ):
+            raise ValueError("deployment gate evidence does not match source content recovery evidence")
         self.database_dsn = database_dsn
         self.article_repository = article_repository
         self.source_repository = source_repository
         self.source_object_write_receipt_store = source_object_write_receipt_store
         self.source_content_recovery_evidence = source_content_recovery_evidence
+        self.production_write_deployment_gate_evidence = production_write_deployment_gate_evidence
 
     def commit(
         self,
@@ -1415,6 +1509,11 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
             and self.source_content_recovery_evidence.tenant_id != tenant_id
         ):
             raise ValueError("source content recovery evidence tenant does not match write tenant")
+        if (
+            self.production_write_deployment_gate_evidence is not None
+            and self.production_write_deployment_gate_evidence.tenant_id != tenant_id
+        ):
+            raise ValueError("production write deployment gate tenant does not match write tenant")
         try:
             with psycopg.connect(self.database_dsn) as connection, connection.transaction():
                 self._set_tenant(connection, tenant_id)
@@ -1444,6 +1543,11 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
             source_content_recovery_evidence_hash=(
                 self.source_content_recovery_evidence.evidence_hash
                 if self.source_content_recovery_evidence is not None
+                else None
+            ),
+            production_write_deployment_gate_evidence_hash=(
+                self.production_write_deployment_gate_evidence.evidence_hash
+                if self.production_write_deployment_gate_evidence is not None
                 else None
             ),
         )
@@ -3330,6 +3434,9 @@ class KnowledgeBaseArticleService:
                 "write_unit_of_work_transaction_scope": write_commit.transaction_scope,
                 "source_content_recovery_required": write_commit.source_content_recovery_required,
                 "source_content_recovery_evidence_hash": write_commit.source_content_recovery_evidence_hash,
+                "production_write_deployment_gate_evidence_hash": (
+                    write_commit.production_write_deployment_gate_evidence_hash
+                ),
                 "article_metadata_persisted": write_commit.article_metadata_persisted,
                 "article_version_metadata_persisted": write_commit.article_version_metadata_persisted,
                 "source_version_evidence_refreshed": write_commit.source_version_evidence_refreshed,
@@ -3374,6 +3481,9 @@ class KnowledgeBaseArticleService:
             write_unit_of_work_transaction_scope=write_commit.transaction_scope,
             source_content_recovery_required=write_commit.source_content_recovery_required,
             source_content_recovery_evidence_hash=write_commit.source_content_recovery_evidence_hash,
+            production_write_deployment_gate_evidence_hash=(
+                write_commit.production_write_deployment_gate_evidence_hash
+            ),
             article_metadata_persisted=write_commit.article_metadata_persisted,
             article_version_metadata_persisted=write_commit.article_version_metadata_persisted,
             source_version_evidence_refreshed=write_commit.source_version_evidence_refreshed,
@@ -3996,6 +4106,66 @@ def build_knowledge_base_restore_evidence(
 
 
 def build_restore_evidence_hash(evidence: KnowledgeBaseRestoreEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_knowledge_base_production_write_deployment_gate(
+    *,
+    tenant_id: str,
+    source_content_recovery_evidence: SourceObjectContentRecoveryEvidence,
+    provider_profile_evidence: S3CompatibleProviderProfileEvidence,
+    restore_drill_report_hash: str,
+) -> KnowledgeBaseProductionWriteDeploymentGateEvidence:
+    blocking_reasons: list[str] = []
+    if source_content_recovery_evidence.tenant_id != tenant_id:
+        blocking_reasons.append("source_content_recovery_tenant_mismatch")
+    if (
+        build_source_object_content_recovery_evidence_hash(source_content_recovery_evidence)
+        != source_content_recovery_evidence.evidence_hash
+    ):
+        blocking_reasons.append("source_content_recovery_evidence_hash_invalid")
+    if not source_content_recovery_evidence.api_wiring_allowed:
+        blocking_reasons.append("source_content_recovery_not_ready")
+    if build_s3_compatible_provider_profile_evidence_hash(provider_profile_evidence) != (
+        provider_profile_evidence.evidence_hash
+    ):
+        blocking_reasons.append("provider_profile_evidence_hash_invalid")
+    if not provider_profile_evidence.provider_profile_ready:
+        blocking_reasons.append("provider_profile_not_ready")
+    if provider_profile_evidence.blocking_reasons:
+        blocking_reasons.extend(f"provider_profile:{reason}" for reason in provider_profile_evidence.blocking_reasons)
+    restore_drill_bound = (
+        restore_drill_report_hash == source_content_recovery_evidence.restore_drill_report_hash
+        and SHA256_REF_PATTERN.fullmatch(restore_drill_report_hash) is not None
+    )
+    if not restore_drill_bound:
+        blocking_reasons.append("restore_drill_evidence_not_bound")
+
+    unique_blocking_reasons = tuple(sorted(set(blocking_reasons)))
+    api_wiring_allowed = not unique_blocking_reasons
+    draft = KnowledgeBaseProductionWriteDeploymentGateEvidence(
+        tenant_id=tenant_id,
+        source_content_recovery_evidence_hash=source_content_recovery_evidence.evidence_hash,
+        provider_profile_evidence_hash=provider_profile_evidence.evidence_hash,
+        restore_drill_report_hash=restore_drill_report_hash,
+        source_content_recovery_api_wiring_allowed=source_content_recovery_evidence.api_wiring_allowed,
+        provider_profile_ready=provider_profile_evidence.provider_profile_ready,
+        restore_drill_bound=restore_drill_bound,
+        blocking_reasons=unique_blocking_reasons,
+        api_wiring_allowed=api_wiring_allowed,
+        gate_status=(
+            KnowledgeBaseProductionWriteDeploymentGateStatus.READY
+            if api_wiring_allowed
+            else KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED
+        ),
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_production_write_deployment_gate_hash(draft)})
+
+
+def build_production_write_deployment_gate_hash(
+    evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence,
+) -> str:
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
 
 

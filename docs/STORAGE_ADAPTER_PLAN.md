@@ -92,6 +92,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 
 - No direct SDK calls from feature code.
 - S3/MinIO SDKs must stay behind `S3CompatibleObjectStoreClient`; feature code uses `SourceObjectContentStore`.
+- Provider profiles must produce `s3_compatible_provider_profile_evidence.v1` before production Knowledge Base writes are wired.
 - Every object write must pass `SourceObjectWriteGuard`.
 - Every bucket uses versioning.
 - Record/evidence buckets require Object Lock compliance mode.

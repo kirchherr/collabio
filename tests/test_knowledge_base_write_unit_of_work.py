@@ -15,6 +15,7 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseArticleRecord,
     KnowledgeBaseArticleService,
     KnowledgeBaseEvidenceRefreshPreviewCommand,
+    KnowledgeBaseProductionWriteDeploymentGateStatus,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalEvidence,
     KnowledgeBaseWriteApprovalTransitionCommand,
@@ -23,7 +24,9 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseWriteOperation,
     PgKnowledgeBaseArticleRepository,
     PostgresKnowledgeBaseWriteUnitOfWork,
+    build_knowledge_base_production_write_deployment_gate,
     build_knowledge_base_restore_evidence,
+    build_production_write_deployment_gate_hash,
     build_source_version_evidence_for_source_record,
     build_write_approval_command_hash,
     build_write_approval_evidence,
@@ -31,6 +34,11 @@ from suite.platform.knowledge_base import (
 )
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
+from suite.storage.s3_compatible_content_store import (
+    S3CompatibleProviderProfileEvidence,
+    S3CompatibleProviderProfileStatus,
+    build_s3_compatible_provider_profile_evidence_hash,
+)
 from suite.storage.source_object_storage import (
     InMemorySourceObjectContentStore,
     PgSourceObjectRepository,
@@ -149,6 +157,29 @@ def set_tenant(connection: psycopg.Connection[object], tenant_id: str) -> None:
     connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
 
 
+def provider_profile_evidence_for_unit_of_work(
+    *,
+    ready: bool = True,
+    blocking_reasons: tuple[str, ...] = (),
+) -> S3CompatibleProviderProfileEvidence:
+    draft = S3CompatibleProviderProfileEvidence(
+        provider_profile_id="minio-dev-object-lock",
+        checked_at_utc="2026-06-12T12:00:20Z",
+        storage_policy_hash=sha256_bytes(b"storage-adapter-policy-v1"),
+        bucket_profile_count=4,
+        object_lock_bucket_count=2,
+        bucket_capability_hashes=(sha256_bytes(b"working-objects"), sha256_bytes(b"business-records")),
+        versioning_verified=True,
+        object_lock_verified=ready,
+        legal_hold_verified=ready,
+        blocking_reasons=blocking_reasons,
+        provider_profile_ready=ready,
+        profile_status=S3CompatibleProviderProfileStatus.READY if ready else S3CompatibleProviderProfileStatus.BLOCKED,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    return draft.model_copy(update={"evidence_hash": build_s3_compatible_provider_profile_evidence_hash(draft)})
+
+
 class FailingTransactionalKnowledgeBaseArticleRepository:
     def apply_write_in_transaction(
         self,
@@ -225,6 +256,47 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
         checked_at_utc="2026-06-12T12:00:30Z",
     )
     assert clean_recovery_evidence.api_wiring_allowed is True
+    provider_profile_evidence = provider_profile_evidence_for_unit_of_work()
+    production_gate_evidence = build_knowledge_base_production_write_deployment_gate(
+        tenant_id=tenant_id,
+        source_content_recovery_evidence=clean_recovery_evidence,
+        provider_profile_evidence=provider_profile_evidence,
+        restore_drill_report_hash=clean_recovery_evidence.restore_drill_report_hash,
+    )
+    assert production_gate_evidence.gate_status == KnowledgeBaseProductionWriteDeploymentGateStatus.READY
+    assert production_gate_evidence.api_wiring_allowed is True
+    assert production_gate_evidence.evidence_hash == build_production_write_deployment_gate_hash(
+        production_gate_evidence
+    )
+    blocked_provider_gate = build_knowledge_base_production_write_deployment_gate(
+        tenant_id=tenant_id,
+        source_content_recovery_evidence=clean_recovery_evidence,
+        provider_profile_evidence=provider_profile_evidence_for_unit_of_work(
+            ready=False,
+            blocking_reasons=("business-records:object_lock_required",),
+        ),
+        restore_drill_report_hash=clean_recovery_evidence.restore_drill_report_hash,
+    )
+    assert blocked_provider_gate.gate_status == KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED
+    assert "provider_profile_not_ready" in blocked_provider_gate.blocking_reasons
+    restore_drift_gate = build_knowledge_base_production_write_deployment_gate(
+        tenant_id=tenant_id,
+        source_content_recovery_evidence=clean_recovery_evidence,
+        provider_profile_evidence=provider_profile_evidence,
+        restore_drill_report_hash="sha256:" + "e" * 64,
+    )
+    assert restore_drift_gate.gate_status == KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED
+    assert "restore_drill_evidence_not_bound" in restore_drift_gate.blocking_reasons
+    with pytest.raises(ValueError, match="production write deployment gate does not allow API wiring"):
+        PostgresKnowledgeBaseWriteUnitOfWork(
+            database_dsn=live_database.app_dsn,
+            article_repository=PgKnowledgeBaseArticleRepository(database_dsn=live_database.app_dsn),
+            source_repository=source_repository,
+            source_object_write_receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=live_database.app_dsn),
+            source_content_recovery_evidence=clean_recovery_evidence,
+            production_write_deployment_gate_evidence=blocked_provider_gate,
+            require_source_content_recovery_gate=True,
+        )
     article_repository = PgKnowledgeBaseArticleRepository(database_dsn=live_database.app_dsn)
     receipt_store = PgSourceObjectWriteReceiptStore(database_dsn=live_database.app_dsn)
     audit_logger = InMemoryAuditLogger()
@@ -240,6 +312,7 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
             source_repository=source_repository,
             source_object_write_receipt_store=receipt_store,
             source_content_recovery_evidence=clean_recovery_evidence,
+            production_write_deployment_gate_evidence=production_gate_evidence,
             require_source_content_recovery_gate=True,
         ),
     )
@@ -312,7 +385,9 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
     assert response.write_unit_of_work_transaction_scope == "shared_postgres_metadata_transaction"
     assert response.source_content_recovery_required is False
     assert response.source_content_recovery_evidence_hash == clean_recovery_evidence.evidence_hash
+    assert response.production_write_deployment_gate_evidence_hash == production_gate_evidence.evidence_hash
     assert "source_content_recovery_evidence_hash" in response.required_evidence
+    assert "production_write_deployment_gate_evidence_hash" in response.required_evidence
     assert response.source_object_write_receipt_hash.startswith("sha256:")
     assert response.current_version_object_id == source_record.metadata.object_id
     assert response.refreshed_source_version_evidence_hash == approval.proposed_source_version_evidence_hash
@@ -329,6 +404,9 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
     assert write_event.metadata["write_unit_of_work_transaction_scope"] == "shared_postgres_metadata_transaction"
     assert write_event.metadata["source_content_recovery_required"] is False
     assert write_event.metadata["source_content_recovery_evidence_hash"] == clean_recovery_evidence.evidence_hash
+    assert (
+        write_event.metadata["production_write_deployment_gate_evidence_hash"] == production_gate_evidence.evidence_hash
+    )
 
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)
