@@ -179,6 +179,117 @@ class KnowledgeBaseRuntimeActivationView(BaseModel):
     schema_version: str
 
 
+class KnowledgeBaseRuntimeReconciliationStatus(StrEnum):
+    READY = "ready"
+    DRIFT_BLOCKED = "drift_blocked"
+
+
+class KnowledgeBaseRuntimeReconciliationAction(StrEnum):
+    KEEP_ACTIVE = "keep_active"
+    DEACTIVATE_RUNTIME = "deactivate_runtime"
+
+
+class KnowledgeBaseRuntimeReconciliationEvidence(BaseModel):
+    tenant_id: str
+    activation_id: str
+    reconciliation_id: str = Field(default_factory=lambda: f"kb-runtime-reconciliation-{uuid4().hex}")
+    checked_at_utc: str = Field(default_factory=lambda: _utc_now())
+    checked_by: str
+    activation_evidence_hash: str
+    previous_source_content_recovery_evidence_hash: str
+    observed_source_content_recovery_evidence: SourceObjectContentRecoveryEvidence
+    previous_provider_profile_evidence_hash: str
+    observed_provider_profile_evidence: S3CompatibleProviderProfileEvidence
+    previous_production_write_deployment_gate_evidence_hash: str
+    observed_production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence
+    restore_drill_report_hash: str
+    blocking_reasons: tuple[str, ...] = ()
+    reconciliation_status: KnowledgeBaseRuntimeReconciliationStatus
+    recommended_action: KnowledgeBaseRuntimeReconciliationAction
+    runtime_deactivated: bool
+    audit_chain_ref: str
+    evidence_hash: str = ZERO_HASH
+    schema_version: str = "knowledge_base_runtime_reconciliation_evidence.v1"
+
+    @field_validator(
+        "tenant_id",
+        "activation_id",
+        "reconciliation_id",
+        "checked_by",
+        "activation_evidence_hash",
+        "previous_source_content_recovery_evidence_hash",
+        "previous_provider_profile_evidence_hash",
+        "previous_production_write_deployment_gate_evidence_hash",
+        "restore_drill_report_hash",
+        "audit_chain_ref",
+        "evidence_hash",
+    )
+    @classmethod
+    def require_non_empty_evidence_refs(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base runtime reconciliation references must not be empty")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def require_unique_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("blocking reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("blocking reasons must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_consistent_reconciliation_evidence(self) -> KnowledgeBaseRuntimeReconciliationEvidence:
+        if self.observed_source_content_recovery_evidence.tenant_id != self.tenant_id:
+            raise ValueError("observed source content recovery evidence tenant does not match")
+        if self.observed_production_write_deployment_gate_evidence.tenant_id != self.tenant_id:
+            raise ValueError("observed production gate evidence tenant does not match")
+        if self.observed_source_content_recovery_evidence.restore_drill_report_hash != self.restore_drill_report_hash:
+            raise ValueError("observed source recovery restore drill hash does not match")
+        if (
+            self.observed_production_write_deployment_gate_evidence.restore_drill_report_hash
+            != self.restore_drill_report_hash
+        ):
+            raise ValueError("observed production gate restore drill hash does not match")
+        if self.reconciliation_status == KnowledgeBaseRuntimeReconciliationStatus.READY and self.blocking_reasons:
+            raise ValueError("ready reconciliation evidence must not have blocking reasons")
+        if self.reconciliation_status == KnowledgeBaseRuntimeReconciliationStatus.DRIFT_BLOCKED and (
+            not self.blocking_reasons
+        ):
+            raise ValueError("blocked reconciliation evidence requires blocking reasons")
+        if (
+            self.recommended_action == KnowledgeBaseRuntimeReconciliationAction.DEACTIVATE_RUNTIME
+        ) != self.runtime_deactivated:
+            raise ValueError("runtime_deactivated must match recommended action")
+        if self.evidence_hash != ZERO_HASH and (
+            self.evidence_hash != build_knowledge_base_runtime_reconciliation_evidence_hash(self)
+        ):
+            raise ValueError("knowledge base runtime reconciliation evidence hash is invalid")
+        return self
+
+
+class KnowledgeBaseRuntimeReconciliationView(BaseModel):
+    tenant_id: str
+    activation_id: str
+    reconciliation_id: str
+    checked_at_utc: str
+    checked_by: str
+    activation_evidence_hash: str
+    observed_source_content_recovery_evidence_hash: str
+    observed_provider_profile_evidence_hash: str
+    observed_production_write_deployment_gate_evidence_hash: str
+    restore_drill_report_hash: str
+    blocking_reasons: tuple[str, ...]
+    reconciliation_status: KnowledgeBaseRuntimeReconciliationStatus
+    recommended_action: KnowledgeBaseRuntimeReconciliationAction
+    runtime_deactivated: bool
+    audit_chain_ref: str
+    evidence_hash: str
+    schema_version: str
+
+
 @dataclass(frozen=True)
 class PostgresS3KnowledgeBaseRuntimeConfig:
     tenant_id: str
@@ -216,6 +327,18 @@ class KnowledgeBasePostgresS3RuntimeWiring:
     write_unit_of_work: PostgresKnowledgeBaseWriteUnitOfWork
 
 
+@dataclass(frozen=True)
+class KnowledgeBasePostgresS3RuntimeGateEvidence:
+    config: PostgresS3KnowledgeBaseRuntimeConfig
+    storage_policy: StorageAdapterPolicy
+    retention_policy: RetentionManifestPolicy
+    content_store: S3CompatibleSourceObjectContentStore
+    source_repository: PgSourceObjectRepository
+    provider_profile_evidence: S3CompatibleProviderProfileEvidence
+    source_content_recovery_evidence: SourceObjectContentRecoveryEvidence
+    production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence
+
+
 class InMemoryKnowledgeBaseRuntimeActivationStore:
     def __init__(self, activations: tuple[KnowledgeBaseRuntimeActivation, ...] = ()) -> None:
         self._activations: dict[tuple[str, str], KnowledgeBaseRuntimeActivation] = {}
@@ -240,6 +363,30 @@ class InMemoryKnowledgeBaseRuntimeActivationStore:
             return None
         return sorted(candidates, key=lambda activation: activation.activated_at_utc)[-1]
 
+    def list_active(self) -> tuple[KnowledgeBaseRuntimeActivation, ...]:
+        return tuple(
+            sorted(
+                (activation for activation in self._activations.values() if activation.active),
+                key=lambda activation: (activation.tenant_id, activation.activated_at_utc, activation.activation_id),
+            )
+        )
+
+    def deactivate(
+        self,
+        *,
+        tenant_id: str,
+        activation_id: str,
+        deactivated_by: str,
+        reason: str,
+        reconciliation_evidence_hash: str,
+    ) -> None:
+        del deactivated_by, reason, reconciliation_evidence_hash
+        key = (tenant_id, activation_id)
+        activation = self._activations.get(key)
+        if activation is None:
+            raise LookupError("knowledge base runtime activation not found")
+        self._activations[key] = activation.model_copy(update={"active": False})
+
 
 class PgKnowledgeBaseRuntimeActivationStore:
     def __init__(self, *, database_dsn: str) -> None:
@@ -255,10 +402,18 @@ class PgKnowledgeBaseRuntimeActivationStore:
                 """
                 UPDATE collabio.knowledge_base_runtime_activations
                 SET active = false
+                    , deactivated_at_utc = COALESCE(deactivated_at_utc, %s)
+                    , deactivated_by = COALESCE(deactivated_by, %s)
+                    , deactivation_reason = COALESCE(deactivation_reason, %s)
                 WHERE tenant_id = %s
                   AND active = true
                 """,
-                (activation.tenant_id,),
+                (
+                    activation.activated_at_utc,
+                    activation.activated_by,
+                    "superseded_by_runtime_activation",
+                    activation.tenant_id,
+                ),
             )
             connection.execute(
                 """
@@ -324,6 +479,61 @@ class PgKnowledgeBaseRuntimeActivationStore:
             return None
         return self._activation_from_row(row)
 
+    def list_active(self) -> tuple[KnowledgeBaseRuntimeActivation, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    activation_id,
+                    backend,
+                    active,
+                    activated_at_utc,
+                    activated_by,
+                    provider_profile_id,
+                    restore_drill_report_hash,
+                    source_content_recovery_evidence,
+                    provider_profile_evidence,
+                    production_write_deployment_gate_evidence,
+                    approval_reference,
+                    audit_chain_ref,
+                    activation_evidence_hash,
+                    schema_version
+                FROM collabio.knowledge_base_runtime_activations
+                WHERE active = true
+                ORDER BY tenant_id, activated_at_utc DESC, activation_id DESC
+                """
+            ).fetchall()
+        return tuple(self._activation_from_row(row) for row in rows)
+
+    def deactivate(
+        self,
+        *,
+        tenant_id: str,
+        activation_id: str,
+        deactivated_by: str,
+        reason: str,
+        reconciliation_evidence_hash: str,
+    ) -> None:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, tenant_id)
+            result = connection.execute(
+                """
+                UPDATE collabio.knowledge_base_runtime_activations
+                SET active = false,
+                    deactivated_at_utc = now(),
+                    deactivated_by = %s,
+                    deactivation_reason = %s,
+                    deactivation_reconciliation_evidence_hash = %s
+                WHERE tenant_id = %s
+                  AND activation_id = %s
+                  AND active = true
+                """,
+                (deactivated_by, reason, reconciliation_evidence_hash, tenant_id, activation_id),
+            )
+            if result.rowcount != 1:
+                raise LookupError("active knowledge base runtime activation not found")
+
     def _activation_values(self, activation: KnowledgeBaseRuntimeActivation) -> tuple[Any, ...]:
         return (
             activation.tenant_id,
@@ -365,6 +575,186 @@ class PgKnowledgeBaseRuntimeActivationStore:
             audit_chain_ref=str(row[12]),
             activation_evidence_hash=str(row[13]),
             schema_version=str(row[14]),
+        )
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+class InMemoryKnowledgeBaseRuntimeReconciliationStore:
+    def __init__(self, evidences: tuple[KnowledgeBaseRuntimeReconciliationEvidence, ...] = ()) -> None:
+        self._evidences: dict[tuple[str, str], KnowledgeBaseRuntimeReconciliationEvidence] = {
+            (evidence.tenant_id, evidence.reconciliation_id): evidence for evidence in evidences
+        }
+
+    def append(
+        self,
+        evidence: KnowledgeBaseRuntimeReconciliationEvidence,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence:
+        key = (evidence.tenant_id, evidence.reconciliation_id)
+        if key in self._evidences:
+            raise ValueError("knowledge base runtime reconciliation evidence already exists")
+        self._evidences[key] = evidence
+        return evidence
+
+    def latest_for_activation(
+        self,
+        *,
+        tenant_id: str,
+        activation_id: str,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence | None:
+        candidates = [
+            evidence
+            for evidence in self._evidences.values()
+            if evidence.tenant_id == tenant_id and evidence.activation_id == activation_id
+        ]
+        if not candidates:
+            return None
+        return sorted(candidates, key=lambda evidence: evidence.checked_at_utc)[-1]
+
+
+class PgKnowledgeBaseRuntimeReconciliationStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(
+        self,
+        evidence: KnowledgeBaseRuntimeReconciliationEvidence,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, evidence.tenant_id)
+            connection.execute(
+                """
+                INSERT INTO collabio.knowledge_base_runtime_reconciliation_evidence (
+                    tenant_id,
+                    activation_id,
+                    reconciliation_id,
+                    checked_at_utc,
+                    checked_by,
+                    activation_evidence_hash,
+                    previous_source_content_recovery_evidence_hash,
+                    observed_source_content_recovery_evidence_hash,
+                    previous_provider_profile_evidence_hash,
+                    observed_provider_profile_evidence_hash,
+                    previous_production_write_deployment_gate_evidence_hash,
+                    observed_production_write_deployment_gate_evidence_hash,
+                    observed_source_content_recovery_evidence,
+                    observed_provider_profile_evidence,
+                    observed_production_write_deployment_gate_evidence,
+                    restore_drill_report_hash,
+                    blocking_reasons,
+                    reconciliation_status,
+                    recommended_action,
+                    runtime_deactivated,
+                    audit_chain_ref,
+                    evidence_hash,
+                    schema_version
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+                """,
+                self._evidence_values(evidence),
+            )
+        return evidence
+
+    def latest_for_activation(
+        self,
+        *,
+        tenant_id: str,
+        activation_id: str,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence | None:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    activation_id,
+                    reconciliation_id,
+                    checked_at_utc,
+                    checked_by,
+                    activation_evidence_hash,
+                    previous_source_content_recovery_evidence_hash,
+                    observed_source_content_recovery_evidence,
+                    previous_provider_profile_evidence_hash,
+                    observed_provider_profile_evidence,
+                    previous_production_write_deployment_gate_evidence_hash,
+                    observed_production_write_deployment_gate_evidence,
+                    restore_drill_report_hash,
+                    blocking_reasons,
+                    reconciliation_status,
+                    recommended_action,
+                    runtime_deactivated,
+                    audit_chain_ref,
+                    evidence_hash,
+                    schema_version
+                FROM collabio.knowledge_base_runtime_reconciliation_evidence
+                WHERE tenant_id = %s
+                  AND activation_id = %s
+                ORDER BY checked_at_utc DESC, reconciliation_id DESC
+                LIMIT 1
+                """,
+                (tenant_id, activation_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return self._evidence_from_row(row)
+
+    def _evidence_values(self, evidence: KnowledgeBaseRuntimeReconciliationEvidence) -> tuple[Any, ...]:
+        return (
+            evidence.tenant_id,
+            evidence.activation_id,
+            evidence.reconciliation_id,
+            evidence.checked_at_utc,
+            evidence.checked_by,
+            evidence.activation_evidence_hash,
+            evidence.previous_source_content_recovery_evidence_hash,
+            evidence.observed_source_content_recovery_evidence.evidence_hash,
+            evidence.previous_provider_profile_evidence_hash,
+            evidence.observed_provider_profile_evidence.evidence_hash,
+            evidence.previous_production_write_deployment_gate_evidence_hash,
+            evidence.observed_production_write_deployment_gate_evidence.evidence_hash,
+            Jsonb(evidence.observed_source_content_recovery_evidence.model_dump(mode="json")),
+            Jsonb(evidence.observed_provider_profile_evidence.model_dump(mode="json")),
+            Jsonb(evidence.observed_production_write_deployment_gate_evidence.model_dump(mode="json")),
+            evidence.restore_drill_report_hash,
+            Jsonb(list(evidence.blocking_reasons)),
+            evidence.reconciliation_status.value,
+            evidence.recommended_action.value,
+            evidence.runtime_deactivated,
+            evidence.audit_chain_ref,
+            evidence.evidence_hash,
+            evidence.schema_version,
+        )
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> KnowledgeBaseRuntimeReconciliationEvidence:
+        return KnowledgeBaseRuntimeReconciliationEvidence(
+            tenant_id=str(row[0]),
+            activation_id=str(row[1]),
+            reconciliation_id=str(row[2]),
+            checked_at_utc=_utc_timestamp(row[3]),
+            checked_by=str(row[4]),
+            activation_evidence_hash=str(row[5]),
+            previous_source_content_recovery_evidence_hash=str(row[6]),
+            observed_source_content_recovery_evidence=SourceObjectContentRecoveryEvidence.model_validate(row[7]),
+            previous_provider_profile_evidence_hash=str(row[8]),
+            observed_provider_profile_evidence=S3CompatibleProviderProfileEvidence.model_validate(row[9]),
+            previous_production_write_deployment_gate_evidence_hash=str(row[10]),
+            observed_production_write_deployment_gate_evidence=(
+                KnowledgeBaseProductionWriteDeploymentGateEvidence.model_validate(row[11])
+            ),
+            restore_drill_report_hash=str(row[12]),
+            blocking_reasons=tuple(str(reason) for reason in row[13]),
+            reconciliation_status=KnowledgeBaseRuntimeReconciliationStatus(str(row[14])),
+            recommended_action=KnowledgeBaseRuntimeReconciliationAction(str(row[15])),
+            runtime_deactivated=bool(row[16]),
+            audit_chain_ref=str(row[17]),
+            evidence_hash=str(row[18]),
+            schema_version=str(row[19]),
         )
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
@@ -470,6 +860,75 @@ class KnowledgeBaseArticleServiceResolver:
         )
 
 
+class KnowledgeBaseRuntimeReconciliationWorker:
+    def __init__(
+        self,
+        *,
+        activation_store: InMemoryKnowledgeBaseRuntimeActivationStore | PgKnowledgeBaseRuntimeActivationStore,
+        reconciliation_store: InMemoryKnowledgeBaseRuntimeReconciliationStore
+        | PgKnowledgeBaseRuntimeReconciliationStore,
+        environ: Mapping[str, str] | None = None,
+        object_store_client: S3CompatibleObjectStoreClient | None = None,
+    ) -> None:
+        self.activation_store = activation_store
+        self.reconciliation_store = reconciliation_store
+        self.environ = environ
+        self.object_store_client = object_store_client
+
+    def reconcile_active_tenant(
+        self,
+        *,
+        tenant_id: str,
+        checked_by: str,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence | None:
+        activation = self.activation_store.get_active(tenant_id=tenant_id)
+        if activation is None:
+            return None
+        return self.reconcile_activation(
+            activation=activation,
+            checked_by=checked_by,
+            audit_chain_ref=audit_chain_ref,
+        )
+
+    def reconcile_activation(
+        self,
+        *,
+        activation: KnowledgeBaseRuntimeActivation,
+        checked_by: str,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseRuntimeReconciliationEvidence:
+        config = build_postgres_s3_knowledge_base_runtime_config_for_tenant(
+            tenant_id=activation.tenant_id,
+            restore_drill_report_hash=activation.restore_drill_report_hash,
+            provider_profile_id=activation.provider_profile_id,
+            environ=self.environ,
+        )
+        gate_evidence = build_postgres_s3_knowledge_base_runtime_gate_evidence(
+            config=config,
+            object_store_client=self.object_store_client,
+            bootstrap_bucket_profiles=False,
+        )
+        evidence = build_knowledge_base_runtime_reconciliation_evidence(
+            activation=activation,
+            observed_source_content_recovery_evidence=gate_evidence.source_content_recovery_evidence,
+            observed_provider_profile_evidence=gate_evidence.provider_profile_evidence,
+            observed_production_write_deployment_gate_evidence=gate_evidence.production_write_deployment_gate_evidence,
+            checked_by=checked_by,
+            audit_chain_ref=audit_chain_ref,
+        )
+        appended = self.reconciliation_store.append(evidence)
+        if appended.runtime_deactivated:
+            self.activation_store.deactivate(
+                tenant_id=activation.tenant_id,
+                activation_id=activation.activation_id,
+                deactivated_by=checked_by,
+                reason="runtime_reconciliation_drift",
+                reconciliation_evidence_hash=appended.evidence_hash,
+            )
+        return appended
+
+
 def build_knowledge_base_runtime_activation(
     *,
     tenant_id: str,
@@ -505,6 +964,62 @@ def build_knowledge_base_runtime_activation_hash(activation: KnowledgeBaseRuntim
     )
 
 
+def build_knowledge_base_runtime_reconciliation_evidence(
+    *,
+    activation: KnowledgeBaseRuntimeActivation,
+    observed_source_content_recovery_evidence: SourceObjectContentRecoveryEvidence,
+    observed_provider_profile_evidence: S3CompatibleProviderProfileEvidence,
+    observed_production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence,
+    checked_by: str,
+    audit_chain_ref: str,
+    checked_at_utc: str | None = None,
+) -> KnowledgeBaseRuntimeReconciliationEvidence:
+    blocking_reasons = _runtime_reconciliation_blocking_reasons(
+        activation=activation,
+        observed_source_content_recovery_evidence=observed_source_content_recovery_evidence,
+        observed_provider_profile_evidence=observed_provider_profile_evidence,
+        observed_production_write_deployment_gate_evidence=observed_production_write_deployment_gate_evidence,
+    )
+    blocked = bool(blocking_reasons)
+    draft = KnowledgeBaseRuntimeReconciliationEvidence(
+        tenant_id=activation.tenant_id,
+        activation_id=activation.activation_id,
+        checked_at_utc=checked_at_utc or _utc_now(),
+        checked_by=checked_by,
+        activation_evidence_hash=activation.activation_evidence_hash,
+        previous_source_content_recovery_evidence_hash=activation.source_content_recovery_evidence.evidence_hash,
+        observed_source_content_recovery_evidence=observed_source_content_recovery_evidence,
+        previous_provider_profile_evidence_hash=activation.provider_profile_evidence.evidence_hash,
+        observed_provider_profile_evidence=observed_provider_profile_evidence,
+        previous_production_write_deployment_gate_evidence_hash=(
+            activation.production_write_deployment_gate_evidence.evidence_hash
+        ),
+        observed_production_write_deployment_gate_evidence=observed_production_write_deployment_gate_evidence,
+        restore_drill_report_hash=activation.restore_drill_report_hash,
+        blocking_reasons=blocking_reasons,
+        reconciliation_status=(
+            KnowledgeBaseRuntimeReconciliationStatus.DRIFT_BLOCKED
+            if blocked
+            else KnowledgeBaseRuntimeReconciliationStatus.READY
+        ),
+        recommended_action=(
+            KnowledgeBaseRuntimeReconciliationAction.DEACTIVATE_RUNTIME
+            if blocked
+            else KnowledgeBaseRuntimeReconciliationAction.KEEP_ACTIVE
+        ),
+        runtime_deactivated=blocked,
+        audit_chain_ref=audit_chain_ref,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_knowledge_base_runtime_reconciliation_evidence_hash(draft)})
+
+
+def build_knowledge_base_runtime_reconciliation_evidence_hash(
+    evidence: KnowledgeBaseRuntimeReconciliationEvidence,
+) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
 def knowledge_base_runtime_activation_view(
     activation: KnowledgeBaseRuntimeActivation,
 ) -> KnowledgeBaseRuntimeActivationView:
@@ -527,6 +1042,34 @@ def knowledge_base_runtime_activation_view(
     )
 
 
+def knowledge_base_runtime_reconciliation_view(
+    evidence: KnowledgeBaseRuntimeReconciliationEvidence,
+) -> KnowledgeBaseRuntimeReconciliationView:
+    return KnowledgeBaseRuntimeReconciliationView(
+        tenant_id=evidence.tenant_id,
+        activation_id=evidence.activation_id,
+        reconciliation_id=evidence.reconciliation_id,
+        checked_at_utc=evidence.checked_at_utc,
+        checked_by=evidence.checked_by,
+        activation_evidence_hash=evidence.activation_evidence_hash,
+        observed_source_content_recovery_evidence_hash=(
+            evidence.observed_source_content_recovery_evidence.evidence_hash
+        ),
+        observed_provider_profile_evidence_hash=evidence.observed_provider_profile_evidence.evidence_hash,
+        observed_production_write_deployment_gate_evidence_hash=(
+            evidence.observed_production_write_deployment_gate_evidence.evidence_hash
+        ),
+        restore_drill_report_hash=evidence.restore_drill_report_hash,
+        blocking_reasons=evidence.blocking_reasons,
+        reconciliation_status=evidence.reconciliation_status,
+        recommended_action=evidence.recommended_action,
+        runtime_deactivated=evidence.runtime_deactivated,
+        audit_chain_ref=evidence.audit_chain_ref,
+        evidence_hash=evidence.evidence_hash,
+        schema_version=evidence.schema_version,
+    )
+
+
 def build_default_knowledge_base_runtime_activation_store(
     environ: Mapping[str, str] | None = None,
 ) -> InMemoryKnowledgeBaseRuntimeActivationStore | PgKnowledgeBaseRuntimeActivationStore:
@@ -543,6 +1086,24 @@ def build_default_knowledge_base_runtime_activation_store(
             )
         return PgKnowledgeBaseRuntimeActivationStore(database_dsn=database_dsn)
     raise ValueError(f"Unsupported SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: {backend}")
+
+
+def build_default_knowledge_base_runtime_reconciliation_store(
+    environ: Mapping[str, str] | None = None,
+) -> InMemoryKnowledgeBaseRuntimeReconciliationStore | PgKnowledgeBaseRuntimeReconciliationStore:
+    env = environ or os.environ
+    backend = env.get("SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemoryKnowledgeBaseRuntimeReconciliationStore()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = env.get("SUITE_KB_RUNTIME_RECONCILIATION_DSN") or env.get("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL knowledge base runtime reconciliation store requires "
+                "SUITE_KB_RUNTIME_RECONCILIATION_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgKnowledgeBaseRuntimeReconciliationStore(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: {backend}")
 
 
 def knowledge_base_runtime_backend_from_env(
@@ -624,11 +1185,12 @@ def build_configured_knowledge_base_article_service(
     )
 
 
-def build_postgres_s3_knowledge_base_runtime(
+def build_postgres_s3_knowledge_base_runtime_gate_evidence(
     *,
     config: PostgresS3KnowledgeBaseRuntimeConfig,
     object_store_client: S3CompatibleObjectStoreClient | None = None,
-) -> KnowledgeBasePostgresS3RuntimeWiring:
+    bootstrap_bucket_profiles: bool | None = None,
+) -> KnowledgeBasePostgresS3RuntimeGateEvidence:
     storage_policy = load_storage_adapter_policy(config.storage_policy_path)
     retention_policy = load_retention_manifest_policy(config.retention_policy_path)
     client = object_store_client
@@ -641,7 +1203,10 @@ def build_postgres_s3_knowledge_base_runtime(
             region_name=config.s3_region_name,
             storage_provider=config.s3_storage_provider,
         )
-    if config.bootstrap_bucket_profiles:
+    should_bootstrap = (
+        config.bootstrap_bucket_profiles if bootstrap_bucket_profiles is None else bootstrap_bucket_profiles
+    )
+    if should_bootstrap:
         ensure_bucket_profiles = getattr(client, "ensure_bucket_profiles", None)
         if not callable(ensure_bucket_profiles):
             raise ValueError("configured S3-compatible client cannot bootstrap bucket profiles")
@@ -669,6 +1234,28 @@ def build_postgres_s3_knowledge_base_runtime(
         provider_profile_evidence=provider_profile_evidence,
         restore_drill_report_hash=config.restore_drill_report_hash,
     )
+    return KnowledgeBasePostgresS3RuntimeGateEvidence(
+        config=config,
+        storage_policy=storage_policy,
+        retention_policy=retention_policy,
+        content_store=content_store,
+        source_repository=source_repository,
+        provider_profile_evidence=provider_profile_evidence,
+        source_content_recovery_evidence=source_content_recovery_evidence,
+        production_write_deployment_gate_evidence=production_gate_evidence,
+    )
+
+
+def build_postgres_s3_knowledge_base_runtime(
+    *,
+    config: PostgresS3KnowledgeBaseRuntimeConfig,
+    object_store_client: S3CompatibleObjectStoreClient | None = None,
+) -> KnowledgeBasePostgresS3RuntimeWiring:
+    gate_evidence = build_postgres_s3_knowledge_base_runtime_gate_evidence(
+        config=config,
+        object_store_client=object_store_client,
+    )
+    production_gate_evidence = gate_evidence.production_write_deployment_gate_evidence
     if not production_gate_evidence.api_wiring_allowed:
         reasons = ", ".join(production_gate_evidence.blocking_reasons) or production_gate_evidence.gate_status
         raise ValueError(f"knowledge base production runtime gate is blocked: {reasons}")
@@ -678,22 +1265,22 @@ def build_postgres_s3_knowledge_base_runtime(
     write_unit_of_work = PostgresKnowledgeBaseWriteUnitOfWork(
         database_dsn=config.database_dsn,
         article_repository=article_repository,
-        source_repository=source_repository,
+        source_repository=gate_evidence.source_repository,
         source_object_write_receipt_store=receipt_store,
-        source_content_recovery_evidence=source_content_recovery_evidence,
+        source_content_recovery_evidence=gate_evidence.source_content_recovery_evidence,
         production_write_deployment_gate_evidence=production_gate_evidence,
         require_source_content_recovery_gate=True,
     )
     return KnowledgeBasePostgresS3RuntimeWiring(
         config=config,
-        storage_policy=storage_policy,
-        retention_policy=retention_policy,
-        content_store=content_store,
-        source_repository=source_repository,
+        storage_policy=gate_evidence.storage_policy,
+        retention_policy=gate_evidence.retention_policy,
+        content_store=gate_evidence.content_store,
+        source_repository=gate_evidence.source_repository,
         article_repository=article_repository,
         source_object_write_receipt_store=receipt_store,
-        provider_profile_evidence=provider_profile_evidence,
-        source_content_recovery_evidence=source_content_recovery_evidence,
+        provider_profile_evidence=gate_evidence.provider_profile_evidence,
+        source_content_recovery_evidence=gate_evidence.source_content_recovery_evidence,
         production_write_deployment_gate_evidence=production_gate_evidence,
         write_unit_of_work=write_unit_of_work,
     )
@@ -728,6 +1315,83 @@ def _env_flag(value: str) -> bool:
     if normalized in {"0", "false", "no", "off", ""}:
         return False
     raise ValueError(f"Unsupported boolean environment flag: {value}")
+
+
+def _runtime_reconciliation_blocking_reasons(
+    *,
+    activation: KnowledgeBaseRuntimeActivation,
+    observed_source_content_recovery_evidence: SourceObjectContentRecoveryEvidence,
+    observed_provider_profile_evidence: S3CompatibleProviderProfileEvidence,
+    observed_production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence,
+) -> tuple[str, ...]:
+    blocking_reasons: list[str] = []
+    if observed_source_content_recovery_evidence.tenant_id != activation.tenant_id:
+        blocking_reasons.append("source_content_recovery_tenant_mismatch")
+    if observed_production_write_deployment_gate_evidence.tenant_id != activation.tenant_id:
+        blocking_reasons.append("production_gate_tenant_mismatch")
+    if observed_source_content_recovery_evidence.restore_drill_report_hash != activation.restore_drill_report_hash:
+        blocking_reasons.append("source_content_recovery_restore_drill_mismatch")
+    if observed_production_write_deployment_gate_evidence.restore_drill_report_hash != (
+        activation.restore_drill_report_hash
+    ):
+        blocking_reasons.append("production_gate_restore_drill_mismatch")
+    if (
+        build_source_object_content_recovery_evidence_hash(observed_source_content_recovery_evidence)
+        != observed_source_content_recovery_evidence.evidence_hash
+    ):
+        blocking_reasons.append("source_content_recovery_evidence_hash_invalid")
+    if (
+        build_s3_compatible_provider_profile_evidence_hash(observed_provider_profile_evidence)
+        != observed_provider_profile_evidence.evidence_hash
+    ):
+        blocking_reasons.append("provider_profile_evidence_hash_invalid")
+    if (
+        build_production_write_deployment_gate_hash(observed_production_write_deployment_gate_evidence)
+        != observed_production_write_deployment_gate_evidence.evidence_hash
+    ):
+        blocking_reasons.append("production_gate_evidence_hash_invalid")
+    if not observed_source_content_recovery_evidence.api_wiring_allowed:
+        blocking_reasons.append("source_content_recovery_not_ready")
+    if not observed_provider_profile_evidence.provider_profile_ready:
+        blocking_reasons.append("provider_profile_not_ready")
+    if not observed_production_write_deployment_gate_evidence.api_wiring_allowed:
+        blocking_reasons.append("production_gate_not_ready")
+    if _source_recovery_state_hash(activation.source_content_recovery_evidence) != _source_recovery_state_hash(
+        observed_source_content_recovery_evidence
+    ):
+        blocking_reasons.append("source_content_recovery_state_drift")
+    if _provider_profile_state_hash(activation.provider_profile_evidence) != _provider_profile_state_hash(
+        observed_provider_profile_evidence
+    ):
+        blocking_reasons.append("provider_profile_state_drift")
+    if _production_gate_state_hash(activation.production_write_deployment_gate_evidence) != _production_gate_state_hash(
+        observed_production_write_deployment_gate_evidence
+    ):
+        blocking_reasons.append("production_gate_state_drift")
+    return tuple(sorted(set(blocking_reasons)))
+
+
+def _source_recovery_state_hash(evidence: SourceObjectContentRecoveryEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"checked_at_utc", "evidence_hash"})))
+
+
+def _provider_profile_state_hash(evidence: S3CompatibleProviderProfileEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"checked_at_utc", "evidence_hash"})))
+
+
+def _production_gate_state_hash(evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence) -> str:
+    return stable_hash(
+        canonical_json(
+            evidence.model_dump(
+                mode="json",
+                exclude={
+                    "source_content_recovery_evidence_hash",
+                    "provider_profile_evidence_hash",
+                    "evidence_hash",
+                },
+            )
+        )
+    )
 
 
 def _utc_now() -> str:

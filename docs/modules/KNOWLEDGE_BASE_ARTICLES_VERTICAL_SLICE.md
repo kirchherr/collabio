@@ -68,6 +68,8 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `POST /v1/admin/kb/runtime/activate` validates the configured S3-compatible content-store provider, source-content recovery evidence, restore-drill hash, and production deployment gate for the current tenant. It requires explicit human confirmation and persists `knowledge_base_runtime_activation.v1` evidence without source text, article bodies, prompts, outputs, embeddings, or raw payloads.
 
+`POST /v1/admin/kb/runtime/reconcile` refreshes the active tenant runtime evidence. If provider capability, content recovery, storage-manifest reconciliation, or production-gate evidence drifts, it persists `knowledge_base_runtime_reconciliation_evidence.v1` and deactivates the runtime activation before further writes can rely on stale evidence.
+
 `POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and produces audit-only dry-run evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
 
 `POST /v1/admin/kb/articles/write-approvals/approve` accepts a dry-run evidence hash and a new approval reference. It appends approved ledger evidence only; article rows, source objects, search indexes, embeddings, and RAG state remain unchanged.

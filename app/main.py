@@ -100,8 +100,12 @@ from suite.platform.knowledge_base_runtime import (
     KnowledgeBaseArticleServiceResolver,
     KnowledgeBaseRuntimeActivationCommand,
     KnowledgeBaseRuntimeActivationView,
+    KnowledgeBaseRuntimeReconciliationView,
+    KnowledgeBaseRuntimeReconciliationWorker,
     build_default_knowledge_base_runtime_activation_store,
+    build_default_knowledge_base_runtime_reconciliation_store,
     knowledge_base_runtime_activation_view,
+    knowledge_base_runtime_reconciliation_view,
 )
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -372,10 +376,15 @@ def build_app() -> FastAPI:
         source_object_write_receipt_store=build_default_source_object_write_receipt_store(),
     )
     knowledge_base_runtime_activation_store = build_default_knowledge_base_runtime_activation_store()
+    knowledge_base_runtime_reconciliation_store = build_default_knowledge_base_runtime_reconciliation_store()
     knowledge_base_article_service_resolver = KnowledgeBaseArticleServiceResolver(
         default_service=default_knowledge_base_article_service,
         audit_logger=audit_logger,
         activation_store=knowledge_base_runtime_activation_store,
+    )
+    knowledge_base_runtime_reconciliation_worker = KnowledgeBaseRuntimeReconciliationWorker(
+        activation_store=knowledge_base_runtime_activation_store,
+        reconciliation_store=knowledge_base_runtime_reconciliation_store,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(
@@ -787,6 +796,42 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         return knowledge_base_runtime_activation_view(activation)
+
+    @app.post("/v1/admin/kb/runtime/reconcile", response_model=KnowledgeBaseRuntimeReconciliationView)
+    def reconcile_knowledge_base_runtime(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+        ],
+    ) -> KnowledgeBaseRuntimeReconciliationView:
+        del gate
+        worker = cast(
+            KnowledgeBaseRuntimeReconciliationWorker,
+            request.app.state.knowledge_base_runtime_reconciliation_worker,
+        )
+        event = audit_logger.record(
+            user_context=context.user_context,
+            event_type="knowledge_base.runtime.reconcile",
+            source_object_ids=[f"knowledge_base_runtime:{context.user_context.tenant_id}"],
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only",
+            },
+        )
+        try:
+            evidence = worker.reconcile_active_tenant(
+                tenant_id=context.user_context.tenant_id,
+                checked_by=context.user_context.user_id,
+                audit_chain_ref=f"audit:{event.event_id}",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        if evidence is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active Knowledge Base runtime")
+        return knowledge_base_runtime_reconciliation_view(evidence)
 
     @app.get("/v1/admin/kb/evidence", response_model=KnowledgeBaseEvidenceResponse)
     def read_knowledge_base_evidence(
@@ -1383,6 +1428,8 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_article_service = default_knowledge_base_article_service
     app.state.knowledge_base_article_service_resolver = knowledge_base_article_service_resolver
     app.state.knowledge_base_runtime_activation_store = knowledge_base_runtime_activation_store
+    app.state.knowledge_base_runtime_reconciliation_store = knowledge_base_runtime_reconciliation_store
+    app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

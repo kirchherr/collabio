@@ -773,6 +773,33 @@ def test_knowledge_base_admin_evidence_endpoint_is_compliance_scoped_and_metadat
     assert new_events[-1].metadata["restore_evidence_hash"] == body["restore_evidence"]["evidence_hash"]
 
 
+def test_knowledge_base_runtime_reconcile_endpoint_requires_active_runtime() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare knowledge base runtime reconcile"},
+    )
+    assert provision_response.status_code == 200
+
+    non_admin_response = client.post("/v1/admin/kb/runtime/reconcile", headers=DEMO_HEADERS)
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+    response = client.post("/v1/admin/kb/runtime/reconcile", headers=DEMO_ADMIN_HEADERS)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No active Knowledge Base runtime"
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "knowledge_base.runtime.reconcile"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["surface"] == "compliance_api"
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
 def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persist() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)

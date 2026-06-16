@@ -60,6 +60,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0026",
         "0027",
         "0028",
+        "0029",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -74,7 +75,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 11
+    assert len(core_migrations) == len(load_migrations()) - 12
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -83,6 +84,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0024",
         "0025",
         "0028",
+        "0029",
     ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "knowledge_base"
@@ -1219,6 +1221,63 @@ def test_knowledge_base_runtime_activation_migration_is_tenant_scoped_metadata_o
     assert "knowledge_base_runtime_activations_no_hard_delete" in sql
     assert "grant select, insert on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
     assert "grant update (active) on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_knowledge_base_runtime_reconciliation_migration_blocks_drift_metadata_only() -> None:
+    sql = normalized(get_migration("0029").sql())
+    table = table_body(get_migration("0029").sql(), "collabio.knowledge_base_runtime_reconciliation_evidence")
+
+    assert "alter table collabio.knowledge_base_runtime_activations" in sql
+    assert "deactivation_reconciliation_evidence_hash" in sql
+    assert "create table if not exists collabio.knowledge_base_runtime_reconciliation_evidence" in sql
+    for column in [
+        "tenant_id",
+        "activation_id",
+        "reconciliation_id",
+        "checked_at_utc",
+        "checked_by",
+        "activation_evidence_hash",
+        "previous_source_content_recovery_evidence_hash",
+        "observed_source_content_recovery_evidence_hash",
+        "previous_provider_profile_evidence_hash",
+        "observed_provider_profile_evidence_hash",
+        "previous_production_write_deployment_gate_evidence_hash",
+        "observed_production_write_deployment_gate_evidence_hash",
+        "observed_source_content_recovery_evidence",
+        "observed_provider_profile_evidence",
+        "observed_production_write_deployment_gate_evidence",
+        "blocking_reasons",
+        "reconciliation_status",
+        "recommended_action",
+        "runtime_deactivated",
+        "audit_chain_ref",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "references collabio.knowledge_base_runtime_activations" in sql
+    assert "jsonb_typeof(observed_source_content_recovery_evidence) = 'object'" in sql
+    assert "jsonb_typeof(observed_provider_profile_evidence) = 'object'" in sql
+    assert "jsonb_typeof(observed_production_write_deployment_gate_evidence) = 'object'" in sql
+    assert "knowledge_base_runtime_reconciliation_tenant_select" in sql
+    assert "knowledge_base_runtime_reconciliation_tenant_insert" in sql
+    assert "knowledge_base_runtime_reconciliation_no_update" in sql
+    assert "knowledge_base_runtime_reconciliation_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert (
+        "grant select, insert on table collabio.knowledge_base_runtime_reconciliation_evidence to collabio_app" in sql
+    )
+    assert (
+        "grant update (active, deactivated_at_utc, deactivated_by, deactivation_reason, "
+        "deactivation_reconciliation_evidence_hash) on table collabio.knowledge_base_runtime_activations "
+        "to collabio_app" in sql
+    )
     assert "source_text" not in sql
     assert "article_body" not in sql
     assert "prompt_text" not in sql

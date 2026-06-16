@@ -251,6 +251,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="knowledge_base",
         evidence_refs=("doc:knowledge-base-source-restore-evidence", "test:knowledge-base-runtime-activation"),
     ),
+    SqlMigration(
+        version="0029",
+        name="knowledge_base_runtime_reconciliation",
+        resource_name="0029_knowledge_base_runtime_reconciliation.sql",
+        module_id="knowledge_base",
+        evidence_refs=("doc:knowledge-base-source-restore-evidence", "test:knowledge-base-runtime-reconciliation"),
+    ),
 )
 
 
