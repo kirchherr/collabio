@@ -37,6 +37,7 @@ from suite.storage.source_objects import (
     SourceLifecycleState,
     SourceObjectMetadata,
     SourceObjectRecord,
+    SourceObjectRepository,
     SourceObjectType,
     build_source_object_manifest_hash,
     sha256_bytes,
@@ -115,6 +116,33 @@ def write_command_for_source_record(
         legal_hold_state=metadata.legal_hold_state.value,
         source_system=metadata.source_system,
     )
+
+
+class ReceiptAwareSourceObjectRepository:
+    def __init__(self, delegate: SourceObjectRepository) -> None:
+        self.delegate = delegate
+        self.add_calls = 0
+        self.receipt_hashes: list[str] = []
+
+    def add(self, record: SourceObjectRecord) -> None:
+        self.add_calls += 1
+        raise AssertionError("write unit of work must use add_with_receipt for receipt-aware source repositories")
+
+    def add_with_receipt(
+        self,
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None:
+        assert source_object_write_receipt_hash is not None
+        self.receipt_hashes.append(source_object_write_receipt_hash)
+        self.delegate.add(record)
+
+    def get(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectRecord:
+        return self.delegate.get(tenant_id=tenant_id, object_id=object_id, version_id=version_id)
+
+    def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord:
+        return self.delegate.latest(tenant_id=tenant_id, object_id=object_id)
 
 
 def test_knowledge_base_article_records_require_internal_compliance_metadata() -> None:
@@ -715,7 +743,7 @@ def test_knowledge_base_write_execution_skeleton_verifies_preconditions_and_stil
 def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evidence() -> None:
     audit_logger = InMemoryAuditLogger()
     write_approval_ledger = InMemoryKnowledgeBaseWriteApprovalLedger()
-    source_repository = demo_knowledge_base_source_object_repository()
+    source_repository = ReceiptAwareSourceObjectRepository(demo_knowledge_base_source_object_repository())
     source_object_write_receipt_store = InMemorySourceObjectWriteReceiptStore()
     service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
@@ -787,6 +815,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.source_object_persisted is True
     assert response.article_metadata_persisted is True
     assert response.article_version_metadata_persisted is True
+    assert response.write_unit_of_work_committed is True
+    assert response.write_unit_of_work_contract == "knowledge_base_write_unit_of_work.v1"
     assert response.source_version_evidence_refreshed is True
     assert response.restore_evidence_refreshed is True
     assert response.rag_indexing_allowed is False
@@ -803,6 +833,9 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.source_object_write_receipt_hash.startswith("sha256:")
     assert response.source_object_write_receipt_persisted is True
     assert "source_object_write_receipt_hash" in response.required_evidence
+    assert "write_unit_of_work_commit_contract" in response.required_evidence
+    assert source_repository.add_calls == 0
+    assert source_repository.receipt_hashes == [response.source_object_write_receipt_hash]
     assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
     receipts = source_object_write_receipt_store.list_receipts(tenant_id="tenant-demo")
     assert len(receipts) == 1
@@ -840,6 +873,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert event.metadata["source_object_persisted"] is True
     assert event.metadata["source_object_write_receipt_persisted"] is True
     assert event.metadata["source_object_write_receipt_hash"] == response.source_object_write_receipt_hash
+    assert event.metadata["write_unit_of_work_committed"] is True
+    assert event.metadata["write_unit_of_work_contract"] == "knowledge_base_write_unit_of_work.v1"
     assert event.metadata["article_metadata_persisted"] is True
     assert event.metadata["refreshed_restore_evidence_hash"] == response.refreshed_restore_evidence_hash
 

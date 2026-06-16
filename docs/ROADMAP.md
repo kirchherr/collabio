@@ -1256,7 +1256,8 @@ Empfohlene naechste Reihenfolge:
 86. [x] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes implementieren, der Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence fuer Create/Edit gemeinsam committed oder verwirft.
 87. [x] Source-Object-Persistenzgrenze fuer Knowledge-Base-Writes haerten: dauerhafte metadata-only Write-Receipts mit `collabio.source_object_write_receipts`, RLS, Receipt-Hash und API-Execution-Evidence anbinden.
 88. [x] PostgreSQL-Source-Metadatenadapter und Content-Store-Bridge fuer Source Objects entwerfen, damit Knowledge-Base-Writes spaeter Source-Metadata, Content-Manifest, Artikel-/Version-Metadaten und Evidence ohne Content-Leakage atomar koordinieren koennen.
-89. [ ] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+89. [x] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+90. [ ] Knowledge-Base-Production-Write-Grenze haerten: gemeinsamen PostgreSQL-Transaktionskontext fuer KB-Metadatenadapter und Source-Metadata-Bridge entwerfen, damit API-Produktivwiring erst mit explizitem Atomicity-/Recovery-Nachweis aktiviert wird.
 
 ## Release-Strategie
 

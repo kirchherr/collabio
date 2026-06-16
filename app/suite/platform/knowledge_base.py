@@ -3,9 +3,10 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -23,6 +24,7 @@ from suite.storage.source_objects import (
     SourceObjectType,
     SourceObjectWriteDeniedError,
     SourceObjectWriteGuard,
+    SourceObjectWriteReceipt,
     SourceObjectWriteReceiptStore,
     build_source_object_manifest_hash,
     build_source_object_write_receipt,
@@ -89,6 +91,7 @@ KB_WRITE_EXECUTION_REQUIRED_EVIDENCE = (
     "source_object_write_guard_decision",
     "source_object_write_guard_ref",
     "source_object_write_receipt_hash",
+    "write_unit_of_work_commit_contract",
     "restore_evidence_refresh_preview_hash",
     "write_execution_plan_hash",
     "explicit_human_confirmation_reference",
@@ -1135,6 +1138,8 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     execution_allowed: bool = True
     source_object_persisted: bool = True
     source_object_write_receipt_persisted: bool = True
+    write_unit_of_work_committed: bool = True
+    write_unit_of_work_contract: str = "knowledge_base_write_unit_of_work.v1"
     article_metadata_persisted: bool = True
     article_version_metadata_persisted: bool = True
     source_version_evidence_refreshed: bool = True
@@ -1151,6 +1156,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
         "current_version_object_id",
         "current_source_object_id",
         "current_source_version_id",
+        "write_unit_of_work_contract",
         "audit_event_id",
     )
     @classmethod
@@ -1204,6 +1210,10 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
             raise ValueError("knowledge base write execution must persist the source object")
         if not self.source_object_write_receipt_persisted:
             raise ValueError("knowledge base write execution must persist the source object write receipt")
+        if not self.write_unit_of_work_committed:
+            raise ValueError("knowledge base write execution must commit through the write unit of work")
+        if self.write_unit_of_work_contract != "knowledge_base_write_unit_of_work.v1":
+            raise ValueError("knowledge base write execution must expose the expected write unit-of-work contract")
         if not self.article_metadata_persisted:
             raise ValueError("knowledge base write execution must persist article metadata")
         if not self.article_version_metadata_persisted:
@@ -1247,6 +1257,83 @@ class KnowledgeBaseWriteApprovalLedger(Protocol):
 
     def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
         pass
+
+
+@runtime_checkable
+class SourceObjectReceiptAwareRepository(Protocol):
+    def add_with_receipt(
+        self,
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None: ...
+
+
+@dataclass(frozen=True)
+class KnowledgeBaseWriteUnitOfWorkCommit:
+    article: KnowledgeBaseArticleRecord
+    source_object_write_receipt: SourceObjectWriteReceipt
+    source_object_persisted: bool = True
+    source_object_write_receipt_persisted: bool = True
+    write_unit_of_work_committed: bool = True
+    article_metadata_persisted: bool = True
+    article_version_metadata_persisted: bool = True
+    source_version_evidence_refreshed: bool = True
+    restore_evidence_refreshed: bool = True
+    contract_version: str = "knowledge_base_write_unit_of_work.v1"
+
+
+class KnowledgeBaseWriteUnitOfWork(Protocol):
+    def commit(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        source_object_write_receipt: SourceObjectWriteReceipt,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseWriteUnitOfWorkCommit: ...
+
+
+class CoordinatedKnowledgeBaseWriteUnitOfWork:
+    def __init__(
+        self,
+        *,
+        article_repository: KnowledgeBaseArticleRepository,
+        source_repository: SourceObjectRepository,
+        source_object_write_receipt_store: SourceObjectWriteReceiptStore,
+    ) -> None:
+        self.article_repository = article_repository
+        self.source_repository = source_repository
+        self.source_object_write_receipt_store = source_object_write_receipt_store
+
+    def commit(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        source_object_write_receipt: SourceObjectWriteReceipt,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseWriteUnitOfWorkCommit:
+        persisted_write_receipt = self.source_object_write_receipt_store.append(source_object_write_receipt)
+        if isinstance(self.source_repository, SourceObjectReceiptAwareRepository):
+            self.source_repository.add_with_receipt(
+                record=source_record,
+                source_object_write_receipt_hash=persisted_write_receipt.receipt_hash,
+            )
+        else:
+            self.source_repository.add(source_record)
+        updated_article = self.article_repository.apply_write(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            source_record=source_record,
+            audit_chain_ref=audit_chain_ref,
+        )
+        return KnowledgeBaseWriteUnitOfWorkCommit(
+            article=updated_article,
+            source_object_write_receipt=persisted_write_receipt,
+        )
 
 
 def knowledge_base_audit_source_object_ids(records: Sequence[KnowledgeBaseArticleRecord]) -> list[str]:
@@ -2416,6 +2503,7 @@ class KnowledgeBaseArticleService:
         write_approval_ledger: KnowledgeBaseWriteApprovalLedger | None = None,
         source_object_write_guard: KnowledgeBaseSourceObjectWriteGuard | None = None,
         source_object_write_receipt_store: SourceObjectWriteReceiptStore | None = None,
+        write_unit_of_work: KnowledgeBaseWriteUnitOfWork | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
@@ -2424,6 +2512,11 @@ class KnowledgeBaseArticleService:
         self.source_object_write_guard = source_object_write_guard or KnowledgeBaseSourceObjectWriteGuard()
         self.source_object_write_receipt_store = (
             source_object_write_receipt_store or InMemorySourceObjectWriteReceiptStore()
+        )
+        self.write_unit_of_work = write_unit_of_work or CoordinatedKnowledgeBaseWriteUnitOfWork(
+            article_repository=self.repository,
+            source_repository=self.source_repository,
+            source_object_write_receipt_store=self.source_object_write_receipt_store,
         )
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
@@ -3041,14 +3134,15 @@ class KnowledgeBaseArticleService:
             receipt_reference=f"receipt:{command.execution_reference}",
             audit_chain_ref=audit_chain_ref,
         )
-        persisted_write_receipt = self.source_object_write_receipt_store.append(source_object_write_receipt)
-        self.source_repository.add(command.proposed_source_record)
-        updated_article = self.repository.apply_write(
+        write_commit = self.write_unit_of_work.commit(
             tenant_id=user_context.tenant_id,
             evidence=approved_evidence,
             source_record=command.proposed_source_record,
+            source_object_write_receipt=source_object_write_receipt,
             audit_chain_ref=audit_chain_ref,
         )
+        persisted_write_receipt = write_commit.source_object_write_receipt
+        updated_article = write_commit.article
         refreshed_records = sorted(
             self.repository.list_articles(tenant_id=user_context.tenant_id),
             key=lambda record: (record.title.lower(), record.object_id),
@@ -3097,12 +3191,14 @@ class KnowledgeBaseArticleService:
                 "refreshed_restore_evidence_hash": refreshed_restore_evidence.evidence_hash,
                 "refreshed_source_version_evidence_hash": refreshed_source_evidence.evidence_hash,
                 "source_version_evidence_hashes_after": list(refreshed_restore_evidence.source_version_evidence_hashes),
-                "source_object_persisted": True,
-                "source_object_write_receipt_persisted": True,
-                "article_metadata_persisted": True,
-                "article_version_metadata_persisted": True,
-                "source_version_evidence_refreshed": True,
-                "restore_evidence_refreshed": True,
+                "source_object_persisted": write_commit.source_object_persisted,
+                "source_object_write_receipt_persisted": write_commit.source_object_write_receipt_persisted,
+                "write_unit_of_work_committed": write_commit.write_unit_of_work_committed,
+                "write_unit_of_work_contract": write_commit.contract_version,
+                "article_metadata_persisted": write_commit.article_metadata_persisted,
+                "article_version_metadata_persisted": write_commit.article_version_metadata_persisted,
+                "source_version_evidence_refreshed": write_commit.source_version_evidence_refreshed,
+                "restore_evidence_refreshed": write_commit.restore_evidence_refreshed,
                 "rag_indexing_allowed": False,
                 "search_indexing_allowed": False,
                 "result_contract": "metadata_only",
@@ -3136,6 +3232,14 @@ class KnowledgeBaseArticleService:
             article_count_after=refreshed_restore_evidence.article_count,
             article_version_count_after=refreshed_restore_evidence.article_version_count,
             source_version_evidence_count_after=refreshed_restore_evidence.source_version_evidence_count,
+            source_object_persisted=write_commit.source_object_persisted,
+            source_object_write_receipt_persisted=write_commit.source_object_write_receipt_persisted,
+            write_unit_of_work_committed=write_commit.write_unit_of_work_committed,
+            write_unit_of_work_contract=write_commit.contract_version,
+            article_metadata_persisted=write_commit.article_metadata_persisted,
+            article_version_metadata_persisted=write_commit.article_version_metadata_persisted,
+            source_version_evidence_refreshed=write_commit.source_version_evidence_refreshed,
+            restore_evidence_refreshed=write_commit.restore_evidence_refreshed,
             audit_event_id=event.event_id,
         )
 
