@@ -96,7 +96,13 @@ from suite.platform.knowledge_base import (
     build_default_knowledge_base_write_approval_ledger,
     demo_knowledge_base_source_object_repository,
 )
-from suite.platform.knowledge_base_runtime import build_configured_knowledge_base_article_service
+from suite.platform.knowledge_base_runtime import (
+    KnowledgeBaseArticleServiceResolver,
+    KnowledgeBaseRuntimeActivationCommand,
+    KnowledgeBaseRuntimeActivationView,
+    build_default_knowledge_base_runtime_activation_store,
+    knowledge_base_runtime_activation_view,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -365,9 +371,11 @@ def build_app() -> FastAPI:
         write_approval_ledger=build_default_knowledge_base_write_approval_ledger(),
         source_object_write_receipt_store=build_default_source_object_write_receipt_store(),
     )
-    knowledge_base_article_service = build_configured_knowledge_base_article_service(
+    knowledge_base_runtime_activation_store = build_default_knowledge_base_runtime_activation_store()
+    knowledge_base_article_service_resolver = KnowledgeBaseArticleServiceResolver(
         default_service=default_knowledge_base_article_service,
         audit_logger=audit_logger,
+        activation_store=knowledge_base_runtime_activation_store,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(
@@ -735,6 +743,51 @@ def build_app() -> FastAPI:
         except ModuleLifecycleError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    def knowledge_base_article_service_for_context(
+        *,
+        request: Request,
+        context: TenantRequestContext,
+    ) -> KnowledgeBaseArticleService:
+        resolver = cast(KnowledgeBaseArticleServiceResolver, request.app.state.knowledge_base_article_service_resolver)
+        return resolver.service_for_tenant(tenant_id=context.user_context.tenant_id)
+
+    @app.post("/v1/admin/kb/runtime/activate", response_model=KnowledgeBaseRuntimeActivationView)
+    def activate_knowledge_base_runtime(
+        command: KnowledgeBaseRuntimeActivationCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+        ],
+    ) -> KnowledgeBaseRuntimeActivationView:
+        del gate
+        resolver = cast(KnowledgeBaseArticleServiceResolver, request.app.state.knowledge_base_article_service_resolver)
+        event = audit_logger.record(
+            user_context=context.user_context,
+            event_type="knowledge_base.runtime.activate",
+            source_object_ids=[f"knowledge_base_runtime:{context.user_context.tenant_id}"],
+            input_text=command.reason,
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "surface": "compliance_api",
+                "approval_reference": command.approval_reference,
+                "provider_profile_id": command.provider_profile_id,
+                "restore_drill_report_hash": command.restore_drill_report_hash,
+                "human_confirmation": command.human_confirmation,
+                "result_contract": "metadata_only",
+            },
+        )
+        try:
+            activation = resolver.activate_postgres_s3_runtime(
+                command=command,
+                user_context=context.user_context,
+                audit_chain_ref=f"audit:{event.event_id}",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return knowledge_base_runtime_activation_view(activation)
+
     @app.get("/v1/admin/kb/evidence", response_model=KnowledgeBaseEvidenceResponse)
     def read_knowledge_base_evidence(
         request: Request,
@@ -745,7 +798,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseEvidenceResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         return articles.read_compliance_evidence(user_context=context.user_context)
 
     @app.post("/v1/admin/kb/articles/write-dry-run", response_model=KnowledgeBaseWriteDryRunResponse)
@@ -759,7 +812,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseWriteDryRunResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return articles.dry_run_write_approval(command=command, user_context=context.user_context)
         except LookupError as exc:
@@ -781,7 +834,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseWriteApprovalTransitionResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return articles.approve_write_approval(command=command, user_context=context.user_context)
         except LookupError as exc:
@@ -803,7 +856,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return articles.preview_write_evidence_refresh(command=command, user_context=context.user_context)
         except LookupError as exc:
@@ -825,7 +878,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseWriteExecutionSkeletonResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return articles.prepare_write_execution_skeleton(command=command, user_context=context.user_context)
         except LookupError as exc:
@@ -847,7 +900,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseWriteExecutionResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return articles.execute_write(command=command, user_context=context.user_context)
         except LookupError as exc:
@@ -1304,7 +1357,7 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseArticlesResponse:
         del gate
-        articles = cast(KnowledgeBaseArticleService, request.app.state.knowledge_base_article_service)
+        articles = knowledge_base_article_service_for_context(request=request, context=context)
         return articles.list_articles(user_context=context.user_context)
 
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
@@ -1327,7 +1380,9 @@ def build_app() -> FastAPI:
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.erp_product_service = erp_product_service
-    app.state.knowledge_base_article_service = knowledge_base_article_service
+    app.state.knowledge_base_article_service = default_knowledge_base_article_service
+    app.state.knowledge_base_article_service_resolver = knowledge_base_article_service_resolver
+    app.state.knowledge_base_runtime_activation_store = knowledge_base_runtime_activation_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

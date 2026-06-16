@@ -154,6 +154,7 @@ services:
       SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_AUTHZ_ADMIN_STORE_BACKEND: postgres
       SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: postgres
       SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND: postgres
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio

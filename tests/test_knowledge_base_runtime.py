@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+import psycopg
 import pytest
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
 from suite.platform.knowledge_base import (
     InMemoryKnowledgeBaseArticleRepository,
@@ -14,11 +16,19 @@ from suite.platform.knowledge_base import (
     demo_knowledge_base_source_object_repository,
 )
 from suite.platform.knowledge_base_runtime import (
+    InMemoryKnowledgeBaseRuntimeActivationStore,
+    KnowledgeBaseArticleServiceResolver,
+    KnowledgeBaseRuntimeActivation,
+    KnowledgeBaseRuntimeActivationCommand,
     KnowledgeBaseRuntimeBackend,
+    PgKnowledgeBaseRuntimeActivationStore,
     PostgresS3KnowledgeBaseRuntimeConfig,
     build_configured_knowledge_base_article_service,
+    build_knowledge_base_runtime_activation,
+    build_knowledge_base_runtime_activation_hash,
     build_postgres_s3_knowledge_base_runtime,
     build_postgres_s3_knowledge_base_runtime_config_from_env,
+    knowledge_base_runtime_activation_view,
     knowledge_base_runtime_backend_from_env,
 )
 from suite.storage.adapter_policy import ObjectLockMode, StorageAdapterPolicy, load_storage_adapter_policy
@@ -236,3 +246,154 @@ def test_postgres_s3_runtime_blocks_when_provider_profile_is_not_ready(
                 break_object_lock=True,
             ),
         )
+
+
+def test_runtime_activation_hash_and_view_bind_gate_evidence(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-runtime-activation-{suffix}"
+    storage_policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    wiring = build_postgres_s3_knowledge_base_runtime(
+        config=PostgresS3KnowledgeBaseRuntimeConfig(
+            tenant_id=tenant_id,
+            database_dsn=live_database.app_dsn,
+            restore_drill_report_hash="sha256:" + "1" * 64,
+            storage_policy_path=STORAGE_POLICY_PATH,
+            retention_policy_path=RETENTION_POLICY_PATH,
+            provider_profile_id=f"minio-runtime-activation-{suffix}",
+        ),
+        object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+    )
+
+    activation = build_knowledge_base_runtime_activation(
+        tenant_id=tenant_id,
+        activated_by="tenant-admin-runtime",
+        provider_profile_id=f"minio-runtime-activation-{suffix}",
+        restore_drill_report_hash="sha256:" + "1" * 64,
+        source_content_recovery_evidence=wiring.source_content_recovery_evidence,
+        provider_profile_evidence=wiring.provider_profile_evidence,
+        production_write_deployment_gate_evidence=wiring.production_write_deployment_gate_evidence,
+        approval_reference="approval:kb-runtime-activation",
+        audit_chain_ref="audit:kb-runtime-activation",
+        activated_at_utc="2026-06-16T08:00:00Z",
+    )
+    view = knowledge_base_runtime_activation_view(activation)
+
+    assert activation.activation_evidence_hash == build_knowledge_base_runtime_activation_hash(activation)
+    assert view.source_content_recovery_evidence_hash == wiring.source_content_recovery_evidence.evidence_hash
+    assert view.provider_profile_evidence_hash == wiring.provider_profile_evidence.evidence_hash
+    assert (
+        view.production_write_deployment_gate_evidence_hash
+        == wiring.production_write_deployment_gate_evidence.evidence_hash
+    )
+    view_payload = view.model_dump()
+    assert "source_content_recovery_evidence" not in view_payload
+    assert "source_content_recovery_evidence_hash" in view_payload
+
+
+def test_tenant_runtime_resolver_uses_activation_only_for_matching_tenant(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-runtime-resolver-{suffix}"
+    storage_policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    audit_logger = InMemoryAuditLogger()
+    default_service = KnowledgeBaseArticleService(
+        repository=InMemoryKnowledgeBaseArticleRepository.demo(),
+        source_repository=demo_knowledge_base_source_object_repository(),
+        audit_logger=audit_logger,
+        source_object_write_receipt_store=build_default_source_object_write_receipt_store(),
+    )
+    resolver = KnowledgeBaseArticleServiceResolver(
+        default_service=default_service,
+        audit_logger=audit_logger,
+        activation_store=InMemoryKnowledgeBaseRuntimeActivationStore(),
+        environ={
+            "SUITE_DATABASE_DSN": live_database.app_dsn,
+            "SUITE_STORAGE_POLICY_PATH": str(STORAGE_POLICY_PATH),
+            "SUITE_RETENTION_POLICY_PATH": str(RETENTION_POLICY_PATH),
+        },
+        object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+    )
+
+    assert resolver.service_for_tenant(tenant_id=f"tenant-other-{suffix}") is default_service
+    activation = resolver.activate_postgres_s3_runtime(
+        command=KnowledgeBaseRuntimeActivationCommand(
+            provider_profile_id=f"minio-runtime-resolver-{suffix}",
+            restore_drill_report_hash="sha256:" + "2" * 64,
+            approval_reference="approval:kb-runtime-resolver",
+            reason="activate tenant-scoped runtime resolver",
+            human_confirmation=True,
+        ),
+        user_context=UserContext(
+            user_id="tenant-admin-runtime",
+            tenant_id=tenant_id,
+            role_ids={"tenant-admin"},
+            readable_object_ids=set(),
+        ),
+        audit_chain_ref="audit:kb-runtime-resolver",
+    )
+    service = resolver.service_for_tenant(tenant_id=tenant_id)
+
+    assert resolver.service_for_tenant(tenant_id=f"tenant-other-{suffix}") is default_service
+    assert activation.tenant_id == tenant_id
+    assert isinstance(service.write_unit_of_work, PostgresKnowledgeBaseWriteUnitOfWork)
+    assert service.write_unit_of_work.production_write_deployment_gate_evidence is not None
+    assert service.write_unit_of_work.production_write_deployment_gate_evidence.tenant_id == tenant_id
+
+
+def test_pg_runtime_activation_store_persists_active_tenant_scope(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-runtime-pg-store-{suffix}"
+    storage_policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    store = PgKnowledgeBaseRuntimeActivationStore(database_dsn=live_database.app_dsn)
+
+    def activation_for_hash(hash_digit: str, provider_profile_id: str) -> KnowledgeBaseRuntimeActivation:
+        wiring = build_postgres_s3_knowledge_base_runtime(
+            config=PostgresS3KnowledgeBaseRuntimeConfig(
+                tenant_id=tenant_id,
+                database_dsn=live_database.app_dsn,
+                restore_drill_report_hash=f"sha256:{hash_digit * 64}",
+                storage_policy_path=STORAGE_POLICY_PATH,
+                retention_policy_path=RETENTION_POLICY_PATH,
+                provider_profile_id=provider_profile_id,
+            ),
+            object_store_client=EmptyS3CompatibleClient(storage_policy=storage_policy),
+        )
+        return build_knowledge_base_runtime_activation(
+            tenant_id=tenant_id,
+            activated_by="tenant-admin-runtime",
+            provider_profile_id=provider_profile_id,
+            restore_drill_report_hash=f"sha256:{hash_digit * 64}",
+            source_content_recovery_evidence=wiring.source_content_recovery_evidence,
+            provider_profile_evidence=wiring.provider_profile_evidence,
+            production_write_deployment_gate_evidence=wiring.production_write_deployment_gate_evidence,
+            approval_reference=f"approval:kb-runtime-pg-store-{hash_digit}",
+            audit_chain_ref=f"audit:kb-runtime-pg-store-{hash_digit}",
+            activated_at_utc=f"2026-06-16T08:0{hash_digit}:00Z",
+        )
+
+    first = store.activate(activation_for_hash("3", f"minio-runtime-pg-store-first-{suffix}"))
+    second = store.activate(activation_for_hash("4", f"minio-runtime-pg-store-second-{suffix}"))
+    active = store.get_active(tenant_id=tenant_id)
+
+    assert active is not None
+    assert active.activation_evidence_hash == second.activation_evidence_hash
+    assert store.get_active(tenant_id=f"tenant-other-{suffix}") is None
+    with psycopg.connect(live_database.app_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+        rows = connection.execute(
+            """
+            SELECT activation_evidence_hash, active
+            FROM collabio.knowledge_base_runtime_activations
+            WHERE tenant_id = %s
+            ORDER BY activated_at_utc
+            """,
+            (tenant_id,),
+        ).fetchall()
+
+    assert [row[0] for row in rows] == [first.activation_evidence_hash, second.activation_evidence_hash]
+    assert [row[1] for row in rows] == [False, True]

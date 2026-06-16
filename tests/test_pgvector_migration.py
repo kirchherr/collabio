@@ -59,6 +59,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0025",
         "0026",
         "0027",
+        "0028",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -73,7 +74,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 10
+    assert len(core_migrations) == len(load_migrations()) - 11
     assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -81,9 +82,10 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0023",
         "0024",
         "0025",
+        "0028",
     ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "core"
+    assert manifest[-1].module_id == "knowledge_base"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -1171,6 +1173,52 @@ def test_source_object_metadata_storage_bridge_migration_is_metadata_only_and_rl
     assert "force row level security" in sql
     assert "grant select, insert on table collabio.source_object_metadata to collabio_app" in sql
     assert "grant select, insert on table collabio.source_object_storage_manifests to collabio_app" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_knowledge_base_runtime_activation_migration_is_tenant_scoped_metadata_only() -> None:
+    sql = normalized(get_migration("0028").sql())
+    table = table_body(get_migration("0028").sql(), "collabio.knowledge_base_runtime_activations")
+
+    assert "create table if not exists collabio.knowledge_base_runtime_activations" in sql
+    for column in [
+        "tenant_id",
+        "activation_id",
+        "backend",
+        "active",
+        "activated_at_utc",
+        "activated_by",
+        "provider_profile_id",
+        "restore_drill_report_hash",
+        "source_content_recovery_evidence_hash",
+        "provider_profile_evidence_hash",
+        "production_write_deployment_gate_evidence_hash",
+        "source_content_recovery_evidence",
+        "provider_profile_evidence",
+        "production_write_deployment_gate_evidence",
+        "approval_reference",
+        "audit_chain_ref",
+        "activation_evidence_hash",
+    ]:
+        assert column in table
+    assert "jsonb_typeof(source_content_recovery_evidence) = 'object'" in sql
+    assert "jsonb_typeof(provider_profile_evidence) = 'object'" in sql
+    assert "jsonb_typeof(production_write_deployment_gate_evidence) = 'object'" in sql
+    assert "knowledge_base_runtime_activations_one_active_idx" in sql
+    assert "where active" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "knowledge_base_runtime_activations_tenant_select" in sql
+    assert "knowledge_base_runtime_activations_tenant_insert" in sql
+    assert "knowledge_base_runtime_activations_tenant_deactivate" in sql
+    assert "knowledge_base_runtime_activations_no_hard_delete" in sql
+    assert "grant select, insert on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
+    assert "grant update (active) on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
     assert "source_text" not in sql
     assert "article_body" not in sql
     assert "prompt_text" not in sql

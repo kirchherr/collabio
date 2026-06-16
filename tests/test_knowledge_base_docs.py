@@ -33,6 +33,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base.articles.read`" in charter
     assert "`kb.article`" in charter
     assert "`kb.article_version`" in charter
+    assert "`POST /v1/admin/kb/runtime/activate`" in charter
     assert "`GET /v1/admin/kb/evidence`" in charter
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in charter
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in charter
@@ -66,8 +67,10 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "0025_knowledge_base_write_approval_trusted_article_metadata.sql" in charter
     assert "0026_source_object_write_receipts.sql" in charter
     assert "0027_source_object_metadata_storage_bridge.sql" in charter
+    assert "0028_knowledge_base_runtime_activation.sql" in charter
     assert "current `kb.article_version`" in slice_doc
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
+    assert "`POST /v1/admin/kb/runtime/activate`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/refresh-preview`" in slice_doc
@@ -91,6 +94,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`PgSourceObjectRepository`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
     assert "`GET /v1/admin/kb/evidence`" in evidence_doc
+    assert "`POST /v1/admin/kb/runtime/activate`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/approve`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-approvals/refresh-preview`" in evidence_doc
