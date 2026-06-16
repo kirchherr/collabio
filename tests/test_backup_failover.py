@@ -61,6 +61,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
+    assert "source_object_storage_manifest_hash_check" in postgres.integrity_checks
     assert "source_object_write_receipt_hash_check" in postgres.integrity_checks
     assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands
@@ -132,6 +133,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "vector metadata schema" in policy.domain("vector_indexes").state_artifacts
     assert "benchmark report hashes" in policy.domain("vector_indexes").state_artifacts
     assert "source object write receipts" in policy.domain("postgres_metadata").state_artifacts
+    assert "source object storage manifests" in policy.domain("postgres_metadata").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
     assert policy.domain("module_registry_state").criticality == "critical"
@@ -192,6 +194,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "module registry state" in runbook
     assert "CRM/ERP business records" in runbook
     assert "knowledge-base article versions" in runbook
+    assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
 

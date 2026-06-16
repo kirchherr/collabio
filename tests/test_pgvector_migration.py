@@ -58,6 +58,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0024",
         "0025",
         "0026",
+        "0027",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -1104,6 +1105,78 @@ def test_source_object_write_receipts_migration_is_append_only_metadata_boundary
     assert "prompt_text" not in sql
     assert "output_text" not in sql
     assert "raw_payload" not in sql
+
+
+def test_source_object_metadata_storage_bridge_migration_is_metadata_only_and_rls_protected() -> None:
+    sql = normalized(get_migration("0027").sql())
+    metadata_body = table_body(get_migration("0027").sql(), "collabio.source_object_metadata")
+    storage_body = table_body(get_migration("0027").sql(), "collabio.source_object_storage_manifests")
+
+    assert "create table if not exists collabio.source_object_metadata" in sql
+    assert "create table if not exists collabio.source_object_storage_manifests" in sql
+    for column in [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "version_id",
+        "classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "kms_key_ref",
+        "manifest_hash",
+        "audit_chain_ref",
+        "source_system",
+        "source_schema_version",
+        "acl_hash",
+        "acl_version",
+        "content_hash",
+        "content_byte_length",
+        "lifecycle_state",
+        "retention_manifest_hash",
+        "retention_policy_snapshot_hash",
+        "storage_manifest_hash",
+        "source_object_write_receipt_hash",
+    ]:
+        assert column in metadata_body
+    for column in [
+        "tenant_id",
+        "object_id",
+        "source_version_id",
+        "bucket_id",
+        "object_key",
+        "object_version_id",
+        "storage_provider",
+        "source_manifest_hash",
+        "content_hash",
+        "retention_manifest_hash",
+        "retention_policy_snapshot_hash",
+        "object_lock_mode",
+        "object_lock_legal_hold",
+        "manifest_hash",
+    ]:
+        assert column in storage_body
+    assert "primary key (tenant_id, object_id, version_id)" in sql
+    assert "primary key (tenant_id, manifest_hash)" in sql
+    assert "references collabio.source_object_storage_manifests" in sql
+    assert "references collabio.source_object_write_receipts" in sql
+    assert "source_object_metadata_tenant_select" in sql
+    assert "source_object_metadata_tenant_insert" in sql
+    assert "source_object_metadata_no_update" in sql
+    assert "source_object_metadata_no_hard_delete" in sql
+    assert "source_object_storage_manifests_tenant_select" in sql
+    assert "source_object_storage_manifests_tenant_insert" in sql
+    assert "source_object_storage_manifests_no_update" in sql
+    assert "source_object_storage_manifests_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "grant select, insert on table collabio.source_object_metadata to collabio_app" in sql
+    assert "grant select, insert on table collabio.source_object_storage_manifests to collabio_app" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

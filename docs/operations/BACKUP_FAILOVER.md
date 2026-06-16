@@ -54,7 +54,7 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - tenant IAM and authorization
 - PostgreSQL metadata
 - audit evidence
-- source object metadata, source-object write receipts, and object storage records
+- source object metadata, source-object storage manifests, source-object write receipts, and object storage records
 - KMS metadata and secrets configuration
 - office documents and collaboration state
 - mail messages, threads, attachments, and security evidence

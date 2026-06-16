@@ -81,8 +81,9 @@ Runtime wiring:
 - the execute path consumes the same evidence plus the proposed source object, persists a source-object write receipt, commits edit/create writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
 - `PgKnowledgeBaseArticleRepository` provides the PostgreSQL transaction adapter for article metadata, article-version metadata, source-version evidence, and restore evidence.
 - `PgSourceObjectWriteReceiptStore` provides the PostgreSQL/RLS receipt adapter for source-object write metadata and hashes.
+- `PgSourceObjectRepository` provides the PostgreSQL/RLS source metadata and storage-manifest bridge behind a content-store interface.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes, records `source_object_write_receipt_hash`, and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction, and source-object write receipts are durable metadata evidence; durable source-object metadata/content persistence remains the next boundary before claiming atomic content persistence.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes, records `source_object_write_receipt_hash`, and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction; source-object write receipts, source metadata, and storage manifests are durable metadata evidence. The next boundary is a coordinated Knowledge Base unit-of-work with the production content-store adapter before claiming atomic content persistence.
 
 ## Source-Object Write Guard
 
@@ -110,3 +111,4 @@ The ledger belongs to the `knowledge_base_content` continuity domain. Source-obj
 - `tests/test_knowledge_base_docs.py`
 - `tests/test_knowledge_base_write_approval_ledger.py`
 - `tests/test_source_object_write_receipts.py`
+- `tests/test_source_object_storage_bridge.py`

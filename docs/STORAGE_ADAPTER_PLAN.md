@@ -106,7 +106,8 @@ The storage adapter must never be an authorization source. Read flows still requ
 1. Add a `StorageObjectAdapter` protocol with write/read/manifest/restore-check methods.
 2. Add a local MinIO Compose profile for integration tests.
 3. Add bucket bootstrap checks for versioning and Object Lock.
-4. Persist source object metadata in PostgreSQL.
-5. Write object version IDs and manifest evidence into audit/outbox events.
-6. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
-7. Add provider profile tests before allowing production object writes.
+4. [x] Persist source object metadata and storage-manifest references in PostgreSQL through `PgSourceObjectRepository`.
+5. Add a production S3/MinIO content-store adapter behind the `SourceObjectContentStore` contract.
+6. Write object version IDs and manifest evidence into audit/outbox events.
+7. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
+8. Add provider profile tests before allowing production object writes.

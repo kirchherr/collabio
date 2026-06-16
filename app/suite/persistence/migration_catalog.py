@@ -237,6 +237,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("doc:source-object-model", "test:source-object-write-receipts"),
     ),
+    SqlMigration(
+        version="0027",
+        name="source_object_metadata_storage_bridge",
+        resource_name="0027_source_object_metadata_storage_bridge.sql",
+        module_id="core",
+        evidence_refs=("doc:source-object-model", "test:source-object-storage-bridge"),
+    ),
 )
 
 

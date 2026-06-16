@@ -45,12 +45,14 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`source_object_write_receipt_hash`" in charter
     assert "`execution_allowed=false`" in charter
     assert "`PgKnowledgeBaseArticleRepository`" in charter
+    assert "`PgSourceObjectRepository`" in charter
     assert "Article bodies are not stored in the first slice" in charter
     assert "0022_knowledge_base_source_restore_evidence.sql" in charter
     assert "0023_knowledge_base_write_approval_evidence.sql" in charter
     assert "0024_knowledge_base_write_approval_transition_lineage.sql" in charter
     assert "0025_knowledge_base_write_approval_trusted_article_metadata.sql" in charter
     assert "0026_source_object_write_receipts.sql" in charter
+    assert "0027_source_object_metadata_storage_bridge.sql" in charter
     assert "current `kb.article_version`" in slice_doc
     assert "`GET /v1/admin/kb/evidence`" in slice_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in slice_doc
@@ -63,6 +65,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`refreshed_restore_evidence_hash`" in slice_doc
     assert "`source_object_write_receipt_hash`" in slice_doc
     assert "`PgKnowledgeBaseArticleRepository`" in slice_doc
+    assert "`PgSourceObjectRepository`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
     assert "`GET /v1/admin/kb/evidence`" in evidence_doc
     assert "`POST /v1/admin/kb/articles/write-dry-run`" in evidence_doc
@@ -76,6 +79,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "source text out of audit metadata, receipts, and responses" in evidence_doc
     assert "`execution_allowed=false`" in evidence_doc
     assert "`PgKnowledgeBaseArticleRepository`" in evidence_doc
+    assert "`PgSourceObjectRepository`" in evidence_doc
     assert "`knowledge_base.source_version_evidence`" in evidence_doc
     assert "`knowledge_base.restore_evidence`" in evidence_doc
     assert "Drift blocks the evidence build" in evidence_doc
@@ -97,6 +101,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "refreshed source/restore evidence hashes" in ledger_doc
     assert "`execution_allowed=false`" in ledger_doc
     assert "`PgKnowledgeBaseArticleRepository`" in ledger_doc
+    assert "`PgSourceObjectRepository`" in ledger_doc
     assert "Dry-run evidence cannot allow persistence" in ledger_doc
     assert "`KnowledgeBaseSourceObjectWriteGuard`" in ledger_doc
     assert "expected current version" in ledger_doc

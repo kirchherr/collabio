@@ -112,6 +112,27 @@ Runtime adapters:
 - `PgSourceObjectWriteReceiptStore` for durable metadata receipts.
 - `SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND=postgres` enables the PostgreSQL store, using `SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN` when set, otherwise `SUITE_DATABASE_DSN`.
 
+## PostgreSQL Metadata And Content Bridge
+
+`0027_source_object_metadata_storage_bridge.sql` adds two metadata-only tables:
+
+- `collabio.source_object_metadata`
+- `collabio.source_object_storage_manifests`
+
+They store authoritative source metadata, retention manifest hashes, storage manifest hashes, bucket/object-version references, ACL versions, KMS references, Legal Hold state, and content hashes. They do not store source text, article bodies, native bytes, prompts, outputs, transcripts, embeddings, or raw payloads.
+
+`PgSourceObjectRepository` coordinates:
+
+```text
+SourceObjectWriteGuard
+  -> RetentionManifest
+  -> StorageObjectManifest
+  -> SourceObjectContentStore
+  -> PostgreSQL source metadata + storage manifest insert
+```
+
+The first content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. Production still needs the S3/MinIO-compatible adapter from `docs/STORAGE_ADAPTER_PLAN.md`.
+
 Content hash verification is documented in:
 
 ```text
@@ -185,15 +206,14 @@ Implemented now:
 - Tenant/version-scoped in-memory repository.
 - Storage write guard for required metadata, tenant/data-class matching KMS references, shared content hash verification, and canonical manifest hashes.
 - Metadata-only source-object write receipt model with in-memory and PostgreSQL/RLS stores.
+- PostgreSQL/RLS source-object metadata and storage-manifest bridge with an explicit content-store interface.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
 
 Not implemented yet:
 
-- PostgreSQL-backed source metadata tables.
-
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. This does not replace the shared source-object metadata/content store. Source object PostgreSQL metadata and object-storage durability remain separate adapter work.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, but production Knowledge Base wiring still needs one coordinated unit-of-work across source metadata, content-store manifest, article metadata, source evidence, and restore evidence.
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.
