@@ -64,6 +64,7 @@ docker compose run --rm test
 docker compose run --rm migrate
 docker compose run --rm backup
 docker compose run --rm backup-verify
+docker compose --profile object-storage run --rm object-storage-profile-check
 docker compose up api
 ```
 
@@ -72,6 +73,8 @@ The `quality` service is the local and CI gate. It runs Ruff, Ruff format check,
 The Compose stack includes PostgreSQL 18 with pgvector on host port `5433`. `migrate` applies packaged SQL migrations with the owner DSN; application and integration tests use the non-owner `collabio_app` role to exercise RLS.
 
 Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
+
+The optional `object-storage` profile starts MinIO and runs `object-storage-profile-check`, which bootstraps S3-compatible bucket profiles and emits `s3_compatible_provider_profile_evidence.v1` for versioning, Object Lock, and Legal Hold readiness.
 
 API:
 

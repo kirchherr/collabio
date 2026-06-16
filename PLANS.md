@@ -99,14 +99,15 @@ Current sprint:
 89. [x] Content-store recovery evidence for Knowledge Base writes with inventory comparison, orphan detection, restore-drill hash, and API-wiring gate signal.
 90. [x] S3/MinIO-compatible content-store adapter port with Object-Lock/WORM capability checks, metadata-only orphan-reconciliation worker output, and clean recovery-evidence gate for `PostgresKnowledgeBaseWriteUnitOfWork`.
 91. [x] Knowledge Base production write deployment gate that requires clean source-content recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence before Postgres UoW API wiring can be enabled.
+92. [x] Concrete boto3/MinIO-compatible SDK client behind `S3CompatibleObjectStoreClient`, Compose `object-storage` profile, bucket bootstrap, and provider-profile evidence check service.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, a PostgreSQL source metadata/storage-manifest bridge, a coordinated write unit-of-work, a shared PostgreSQL metadata transaction for that unit of work, content-store recovery evidence, an S3/MinIO-compatible content-store adapter port, and a production write deployment gate. The next narrow step is concrete provider wiring:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, a PostgreSQL source metadata/storage-manifest bridge, a coordinated write unit-of-work, a shared PostgreSQL metadata transaction for that unit of work, content-store recovery evidence, an S3/MinIO-compatible content-store adapter port, a production write deployment gate, and a concrete SDK client behind the object-store protocol. The next narrow step is runtime provider configuration:
 
-- Keep the concrete SDK binding behind the S3-compatible client protocol and outside feature code.
-- Add a local MinIO Compose profile or equivalent provider test harness that produces provider-profile evidence.
-- Re-run restore-drill and source-content recovery evidence against the concrete object store before API writes are enabled.
+- Wire `S3CompatibleSourceObjectContentStore`, provider-profile evidence, source-content recovery evidence, and the Knowledge Base deployment gate from explicit runtime configuration.
+- Keep the object-store provider disabled by default until the evidence chain is present.
+- Re-run restore-drill and source-content recovery evidence against the configured object store before API writes are enabled.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance

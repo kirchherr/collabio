@@ -53,6 +53,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base_production_write_deployment_gate.v1`" in charter
     assert "`s3_compatible_provider_profile_evidence.v1`" in charter
     assert "`S3CompatibleSourceObjectContentStore`" in charter
+    assert "`Boto3S3CompatibleObjectStoreClient`" in charter
     assert "`source_object_content_recovery_evidence.v1`" in charter
     assert "`api_wiring_allowed=true`" in charter
     assert "`execution_allowed=false`" in charter
@@ -84,6 +85,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base_production_write_deployment_gate.v1`" in slice_doc
     assert "`s3_compatible_provider_profile_evidence.v1`" in slice_doc
     assert "`S3CompatibleSourceObjectContentStore`" in slice_doc
+    assert "`Boto3S3CompatibleObjectStoreClient`" in slice_doc
     assert "`api_wiring_allowed`" in slice_doc
     assert "`PgKnowledgeBaseArticleRepository`" in slice_doc
     assert "`PgSourceObjectRepository`" in slice_doc
@@ -105,6 +107,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base_production_write_deployment_gate.v1`" in evidence_doc
     assert "`s3_compatible_provider_profile_evidence.v1`" in evidence_doc
     assert "`S3CompatibleSourceObjectContentStore`" in evidence_doc
+    assert "`Boto3S3CompatibleObjectStoreClient`" in evidence_doc
     assert "source text out of audit metadata, receipts, and responses" in evidence_doc
     assert "`execution_allowed=false`" in evidence_doc
     assert "`PgKnowledgeBaseArticleRepository`" in evidence_doc
@@ -138,6 +141,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`knowledge_base_production_write_deployment_gate.v1`" in ledger_doc
     assert "`s3_compatible_provider_profile_evidence.v1`" in ledger_doc
     assert "`S3CompatibleSourceObjectContentStore`" in ledger_doc
+    assert "`Boto3S3CompatibleObjectStoreClient`" in ledger_doc
     assert "`api_wiring_allowed`" in ledger_doc
     assert "refreshed source/restore evidence hashes" in ledger_doc
     assert "`execution_allowed=false`" in ledger_doc

@@ -119,7 +119,7 @@ source object
 
 Feature code must not call S3, MinIO, or provider SDKs directly.
 
-`S3CompatibleSourceObjectContentStore` enforces the `SourceObjectContentStore` contract, verifies content hashes on write/read, checks bucket versioning and Object Lock/legal-hold capability before WORM writes, and exposes inventory for `source_object_content_recovery_evidence.v1`. `s3_compatible_provider_profile_evidence.v1` records provider capability readiness before production writes are wired. Concrete provider SDK clients stay behind `S3CompatibleObjectStoreClient`.
+`S3CompatibleSourceObjectContentStore` enforces the `SourceObjectContentStore` contract, verifies content hashes on write/read, checks bucket versioning and Object Lock/legal-hold capability before WORM writes, and exposes inventory for `source_object_content_recovery_evidence.v1`. `Boto3S3CompatibleObjectStoreClient` is the concrete MinIO/AWS-compatible SDK adapter behind `S3CompatibleObjectStoreClient`; feature code still never imports or calls the SDK directly. `s3_compatible_provider_profile_evidence.v1` records provider capability readiness before production writes are wired.
 
 ## Continuity
 

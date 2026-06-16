@@ -16,6 +16,42 @@ services:
       - postgres18_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
 
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    profiles: ["object-storage"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-collabio-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  object-storage-profile-check:
+    build:
+      context: .
+      target: dev
+    profiles: ["object-storage"]
+    command: python -m suite.storage.s3_provider_profile_check
+    depends_on:
+      - minio
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_S3_BOOTSTRAP_BUCKETS: "1"
+      SUITE_S3_PROFILE_CHECK_RETRIES: "30"
+    volumes:
+      - ./app:/workspace/app
+      - ./docs:/workspace/docs:ro
+
   migrate:
     build:
       context: .
@@ -153,6 +189,7 @@ services:
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -172,6 +209,7 @@ services:
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -187,6 +225,7 @@ services:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
 
   quality:
@@ -213,8 +252,10 @@ services:
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 volumes:
   postgres18_data:
+  minio_data:

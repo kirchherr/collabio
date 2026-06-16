@@ -106,11 +106,11 @@ The storage adapter must never be an authorization source. Read flows still requ
 ## Future Implementation Steps
 
 1. Add a `StorageObjectAdapter` protocol with write/read/manifest/restore-check methods.
-2. Add a local MinIO Compose profile for integration tests.
-3. Add bucket bootstrap checks for versioning and Object Lock.
+2. [x] Add a local MinIO Compose profile for integration tests.
+3. [x] Add bucket bootstrap checks for versioning and Object Lock.
 4. [x] Persist source object metadata and storage-manifest references in PostgreSQL through `PgSourceObjectRepository`.
 5. [x] Add an S3/MinIO-compatible content-store adapter port behind the `SourceObjectContentStore` contract, with versioning, Object Lock, and legal-hold capability checks.
 6. Write object version IDs and manifest evidence into audit/outbox events.
 7. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
-8. Add provider profile tests before allowing production object writes.
-9. Bind the concrete MinIO/AWS SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
+8. [x] Add provider profile tests before allowing production object writes.
+9. [x] Bind the concrete MinIO/AWS SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
