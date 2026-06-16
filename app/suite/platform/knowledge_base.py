@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
+from suite.storage.source_object_storage import SourceObjectContentRecoveryEvidence
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
     InMemorySourceObjectWriteReceiptStore,
@@ -94,6 +95,7 @@ KB_WRITE_EXECUTION_REQUIRED_EVIDENCE = (
     "write_unit_of_work_commit_contract",
     "write_unit_of_work_transaction_scope",
     "source_content_recovery_required",
+    "source_content_recovery_evidence_hash",
     "restore_evidence_refresh_preview_hash",
     "write_execution_plan_hash",
     "explicit_human_confirmation_reference",
@@ -1144,6 +1146,7 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     write_unit_of_work_contract: str = "knowledge_base_write_unit_of_work.v1"
     write_unit_of_work_transaction_scope: str = "coordinated_repository_calls"
     source_content_recovery_required: bool = False
+    source_content_recovery_evidence_hash: str | None = None
     article_metadata_persisted: bool = True
     article_version_metadata_persisted: bool = True
     source_version_evidence_refreshed: bool = True
@@ -1190,10 +1193,11 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
         "refreshed_source_version_evidence_hash",
         "previous_restore_evidence_hash",
         "refreshed_restore_evidence_hash",
+        "source_content_recovery_evidence_hash",
     )
     @classmethod
-    def validate_sha256_refs(cls, value: str) -> str:
-        if not SHA256_REF_PATTERN.fullmatch(value):
+    def validate_sha256_refs(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("knowledge base write execution response hashes must be sha256 references")
         return value
 
@@ -1288,6 +1292,7 @@ class KnowledgeBaseWriteUnitOfWorkCommit:
     contract_version: str = "knowledge_base_write_unit_of_work.v1"
     transaction_scope: str = "coordinated_repository_calls"
     source_content_recovery_required: bool = False
+    source_content_recovery_evidence_hash: str | None = None
 
 
 class KnowledgeBaseWriteUnitOfWork(Protocol):
@@ -1381,13 +1386,20 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
         article_repository: TransactionalKnowledgeBaseArticleRepository,
         source_repository: TransactionalSourceObjectRepository,
         source_object_write_receipt_store: TransactionalSourceObjectWriteReceiptStore,
+        source_content_recovery_evidence: SourceObjectContentRecoveryEvidence | None = None,
+        require_source_content_recovery_gate: bool = False,
     ) -> None:
         if not database_dsn.strip():
             raise ValueError("database_dsn must not be empty")
+        if require_source_content_recovery_gate and source_content_recovery_evidence is None:
+            raise ValueError("source content recovery evidence is required before API wiring")
+        if source_content_recovery_evidence is not None and not source_content_recovery_evidence.api_wiring_allowed:
+            raise ValueError("source content recovery evidence does not allow API wiring")
         self.database_dsn = database_dsn
         self.article_repository = article_repository
         self.source_repository = source_repository
         self.source_object_write_receipt_store = source_object_write_receipt_store
+        self.source_content_recovery_evidence = source_content_recovery_evidence
 
     def commit(
         self,
@@ -1398,6 +1410,11 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
         source_object_write_receipt: SourceObjectWriteReceipt,
         audit_chain_ref: str,
     ) -> KnowledgeBaseWriteUnitOfWorkCommit:
+        if (
+            self.source_content_recovery_evidence is not None
+            and self.source_content_recovery_evidence.tenant_id != tenant_id
+        ):
+            raise ValueError("source content recovery evidence tenant does not match write tenant")
         try:
             with psycopg.connect(self.database_dsn) as connection, connection.transaction():
                 self._set_tenant(connection, tenant_id)
@@ -1423,7 +1440,12 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
             article=updated_article,
             source_object_write_receipt=persisted_write_receipt,
             transaction_scope="shared_postgres_metadata_transaction",
-            source_content_recovery_required=True,
+            source_content_recovery_required=self.source_content_recovery_evidence is None,
+            source_content_recovery_evidence_hash=(
+                self.source_content_recovery_evidence.evidence_hash
+                if self.source_content_recovery_evidence is not None
+                else None
+            ),
         )
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
@@ -3307,6 +3329,7 @@ class KnowledgeBaseArticleService:
                 "write_unit_of_work_contract": write_commit.contract_version,
                 "write_unit_of_work_transaction_scope": write_commit.transaction_scope,
                 "source_content_recovery_required": write_commit.source_content_recovery_required,
+                "source_content_recovery_evidence_hash": write_commit.source_content_recovery_evidence_hash,
                 "article_metadata_persisted": write_commit.article_metadata_persisted,
                 "article_version_metadata_persisted": write_commit.article_version_metadata_persisted,
                 "source_version_evidence_refreshed": write_commit.source_version_evidence_refreshed,
@@ -3350,6 +3373,7 @@ class KnowledgeBaseArticleService:
             write_unit_of_work_contract=write_commit.contract_version,
             write_unit_of_work_transaction_scope=write_commit.transaction_scope,
             source_content_recovery_required=write_commit.source_content_recovery_required,
+            source_content_recovery_evidence_hash=write_commit.source_content_recovery_evidence_hash,
             article_metadata_persisted=write_commit.article_metadata_persisted,
             article_version_metadata_persisted=write_commit.article_version_metadata_persisted,
             source_version_evidence_refreshed=write_commit.source_version_evidence_refreshed,

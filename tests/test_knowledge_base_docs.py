@@ -48,6 +48,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`write_unit_of_work_committed=true`" in charter
     assert "`write_unit_of_work_contract`" in charter
     assert "`source_content_recovery_required=true`" in charter
+    assert "`source_content_recovery_evidence_hash`" in charter
+    assert "`S3CompatibleSourceObjectContentStore`" in charter
     assert "`source_object_content_recovery_evidence.v1`" in charter
     assert "`api_wiring_allowed=true`" in charter
     assert "`execution_allowed=false`" in charter
@@ -74,6 +76,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`KnowledgeBaseWriteUnitOfWork`" in slice_doc
     assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in slice_doc
     assert "`source_object_content_recovery_evidence.v1`" in slice_doc
+    assert "`source_content_recovery_evidence_hash`" in slice_doc
+    assert "`S3CompatibleSourceObjectContentStore`" in slice_doc
     assert "`api_wiring_allowed`" in slice_doc
     assert "`PgKnowledgeBaseArticleRepository`" in slice_doc
     assert "`PgSourceObjectRepository`" in slice_doc
@@ -90,6 +94,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`KnowledgeBaseWriteUnitOfWork`" in evidence_doc
     assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in evidence_doc
     assert "`source_object_content_recovery_evidence.v1`" in evidence_doc
+    assert "`source_content_recovery_evidence_hash`" in evidence_doc
+    assert "`S3CompatibleSourceObjectContentStore`" in evidence_doc
     assert "source text out of audit metadata, receipts, and responses" in evidence_doc
     assert "`execution_allowed=false`" in evidence_doc
     assert "`PgKnowledgeBaseArticleRepository`" in evidence_doc
@@ -118,6 +124,8 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`write_unit_of_work_contract`" in ledger_doc
     assert "shared PostgreSQL metadata transaction" in ledger_doc
     assert "`source_object_content_recovery_evidence.v1`" in ledger_doc
+    assert "`source_content_recovery_evidence_hash`" in ledger_doc
+    assert "`S3CompatibleSourceObjectContentStore`" in ledger_doc
     assert "`api_wiring_allowed`" in ledger_doc
     assert "refreshed source/restore evidence hashes" in ledger_doc
     assert "`execution_allowed=false`" in ledger_doc

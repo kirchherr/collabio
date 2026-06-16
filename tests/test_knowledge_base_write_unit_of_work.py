@@ -34,6 +34,8 @@ from suite.storage.retention import load_retention_manifest_policy
 from suite.storage.source_object_storage import (
     InMemorySourceObjectContentStore,
     PgSourceObjectRepository,
+    SourceObjectContentReconciliationAction,
+    SourceObjectContentReconciliationWorker,
     SourceObjectContentRecoveryStatus,
 )
 from suite.storage.source_objects import (
@@ -217,6 +219,12 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
         retention_policy=load_retention_manifest_policy(RETENTION_POLICY_PATH),
         storage_policy=load_storage_adapter_policy(STORAGE_POLICY_PATH),
     )
+    clean_recovery_evidence = source_repository.build_content_recovery_evidence(
+        tenant_id=tenant_id,
+        restore_drill_report_hash="sha256:" + "d" * 64,
+        checked_at_utc="2026-06-12T12:00:30Z",
+    )
+    assert clean_recovery_evidence.api_wiring_allowed is True
     article_repository = PgKnowledgeBaseArticleRepository(database_dsn=live_database.app_dsn)
     receipt_store = PgSourceObjectWriteReceiptStore(database_dsn=live_database.app_dsn)
     audit_logger = InMemoryAuditLogger()
@@ -231,6 +239,8 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
             article_repository=article_repository,
             source_repository=source_repository,
             source_object_write_receipt_store=receipt_store,
+            source_content_recovery_evidence=clean_recovery_evidence,
+            require_source_content_recovery_gate=True,
         ),
     )
     user_context = UserContext(
@@ -300,7 +310,9 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
     assert response.write_unit_of_work_committed is True
     assert response.write_unit_of_work_contract == "knowledge_base_write_unit_of_work.v1"
     assert response.write_unit_of_work_transaction_scope == "shared_postgres_metadata_transaction"
-    assert response.source_content_recovery_required is True
+    assert response.source_content_recovery_required is False
+    assert response.source_content_recovery_evidence_hash == clean_recovery_evidence.evidence_hash
+    assert "source_content_recovery_evidence_hash" in response.required_evidence
     assert response.source_object_write_receipt_hash.startswith("sha256:")
     assert response.current_version_object_id == source_record.metadata.object_id
     assert response.refreshed_source_version_evidence_hash == approval.proposed_source_version_evidence_hash
@@ -315,7 +327,8 @@ def test_pg_knowledge_base_write_unit_of_work_commits_receipt_source_and_article
     write_event = audit_logger.events[-1]
     assert write_event.event_type == "knowledge_base.write_approval.executed"
     assert write_event.metadata["write_unit_of_work_transaction_scope"] == "shared_postgres_metadata_transaction"
-    assert write_event.metadata["source_content_recovery_required"] is True
+    assert write_event.metadata["source_content_recovery_required"] is False
+    assert write_event.metadata["source_content_recovery_evidence_hash"] == clean_recovery_evidence.evidence_hash
 
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)
@@ -429,6 +442,26 @@ def test_pg_knowledge_base_write_unit_of_work_rolls_back_metadata_on_article_fai
     assert recovery_evidence.missing_content_count == 0
     assert recovery_evidence.source_content_recovery_required is True
     assert recovery_evidence.api_wiring_allowed is False
+    reconciliation_run = SourceObjectContentReconciliationWorker(source_repository).run(
+        tenant_id=tenant_id,
+        restore_drill_report_hash="sha256:" + "c" * 64,
+        checked_at_utc="2026-06-12T12:03:00Z",
+    )
+    assert reconciliation_run.evidence_hash == recovery_evidence.evidence_hash
+    assert (
+        reconciliation_run.recommended_action == SourceObjectContentReconciliationAction.MANUAL_RECONCILIATION_REQUIRED
+    )
+    assert reconciliation_run.api_wiring_allowed is False
+
+    with pytest.raises(ValueError, match="does not allow API wiring"):
+        PostgresKnowledgeBaseWriteUnitOfWork(
+            database_dsn=live_database.app_dsn,
+            article_repository=FailingTransactionalKnowledgeBaseArticleRepository(),
+            source_repository=source_repository,
+            source_object_write_receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=live_database.app_dsn),
+            source_content_recovery_evidence=recovery_evidence,
+            require_source_content_recovery_gate=True,
+        )
 
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)

@@ -7,6 +7,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = REPO_ROOT / "docs" / "storage_adapter_policy.json"
 ADR_PATH = REPO_ROOT / "ARCHITECTURE_DECISIONS" / "ADR-0024-s3-compatible-object-storage.md"
 BACKLOG_PATH = REPO_ROOT / "docs" / "ADR_BACKLOG.md"
+STORAGE_ADAPTER_PLAN_PATH = REPO_ROOT / "docs" / "STORAGE_ADAPTER_PLAN.md"
+STORAGE_MANIFEST_PATH = REPO_ROOT / "docs" / "STORAGE_MANIFEST.md"
 
 
 def test_storage_adapter_policy_declares_s3_minio_boundary() -> None:
@@ -67,3 +69,14 @@ def test_storage_adapter_adr_and_backlog_are_in_sync() -> None:
     assert "Object Lock" in adr
     assert "SourceObjectWriteGuard" in adr
     assert "- [x] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target." in backlog
+
+
+def test_storage_adapter_docs_bind_sdk_behind_content_store_port() -> None:
+    adapter_plan = STORAGE_ADAPTER_PLAN_PATH.read_text(encoding="utf-8")
+    storage_manifest = STORAGE_MANIFEST_PATH.read_text(encoding="utf-8")
+
+    assert "`S3CompatibleObjectStoreClient`" in adapter_plan
+    assert "`SourceObjectContentStore`" in adapter_plan
+    assert "No direct SDK calls from feature code." in adapter_plan
+    assert "`S3CompatibleSourceObjectContentStore`" in storage_manifest
+    assert "`source_object_content_recovery_evidence.v1`" in storage_manifest

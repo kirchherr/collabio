@@ -78,6 +78,24 @@ class SourceObjectContentRecoveryEvidence(BaseModel):
     schema_version: str = "source_object_content_recovery_evidence.v1"
 
 
+class SourceObjectContentReconciliationAction(StrEnum):
+    READY_FOR_API_WIRING = "ready_for_api_wiring"
+    MANUAL_RECONCILIATION_REQUIRED = "manual_reconciliation_required"
+
+
+class SourceObjectContentReconciliationRun(BaseModel):
+    tenant_id: str
+    checked_at_utc: str
+    restore_drill_report_hash: str
+    evidence_hash: str
+    reconciliation_status: SourceObjectContentRecoveryStatus
+    orphaned_content_count: int = Field(ge=0)
+    missing_content_count: int = Field(ge=0)
+    api_wiring_allowed: bool
+    recommended_action: SourceObjectContentReconciliationAction
+    schema_version: str = "source_object_content_reconciliation_run.v1"
+
+
 class SourceObjectContentStore(Protocol):
     def put(
         self,
@@ -93,6 +111,49 @@ class SourceObjectContentStore(Protocol):
 @runtime_checkable
 class SourceObjectContentRecoveryInventory(Protocol):
     def list_stored_objects(self, *, tenant_id: str) -> tuple[StoredSourceObjectContent, ...]: ...
+
+
+class SourceObjectContentRecoveryEvidenceBuilder(Protocol):
+    def build_content_recovery_evidence(
+        self,
+        *,
+        tenant_id: str,
+        restore_drill_report_hash: str,
+        checked_at_utc: str | None = None,
+    ) -> SourceObjectContentRecoveryEvidence: ...
+
+
+class SourceObjectContentReconciliationWorker:
+    def __init__(self, evidence_builder: SourceObjectContentRecoveryEvidenceBuilder) -> None:
+        self.evidence_builder = evidence_builder
+
+    def run(
+        self,
+        *,
+        tenant_id: str,
+        restore_drill_report_hash: str,
+        checked_at_utc: str | None = None,
+    ) -> SourceObjectContentReconciliationRun:
+        evidence = self.evidence_builder.build_content_recovery_evidence(
+            tenant_id=tenant_id,
+            restore_drill_report_hash=restore_drill_report_hash,
+            checked_at_utc=checked_at_utc,
+        )
+        return SourceObjectContentReconciliationRun(
+            tenant_id=evidence.tenant_id,
+            checked_at_utc=evidence.checked_at_utc,
+            restore_drill_report_hash=evidence.restore_drill_report_hash,
+            evidence_hash=evidence.evidence_hash,
+            reconciliation_status=evidence.reconciliation_status,
+            orphaned_content_count=evidence.orphaned_content_count,
+            missing_content_count=evidence.missing_content_count,
+            api_wiring_allowed=evidence.api_wiring_allowed,
+            recommended_action=(
+                SourceObjectContentReconciliationAction.READY_FOR_API_WIRING
+                if evidence.api_wiring_allowed
+                else SourceObjectContentReconciliationAction.MANUAL_RECONCILIATION_REQUIRED
+            ),
+        )
 
 
 def stored_source_object_content_ref_payload(content: StoredSourceObjectContent) -> dict[str, Any]:

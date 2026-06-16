@@ -103,7 +103,7 @@ Suite-level restore drills are orchestrated by `app/suite/operations/restore_dri
 
 ## Adapter Rule
 
-The future S3/MinIO adapter must treat this model as the acceptance boundary:
+The S3/MinIO-compatible adapter port must treat this model as the acceptance boundary:
 
 ```text
 source object
@@ -118,6 +118,8 @@ source object
 ```
 
 Feature code must not call S3, MinIO, or provider SDKs directly.
+
+`S3CompatibleSourceObjectContentStore` enforces the `SourceObjectContentStore` contract, verifies content hashes on write/read, checks bucket versioning and Object Lock/legal-hold capability before WORM writes, and exposes inventory for `source_object_content_recovery_evidence.v1`. Concrete provider SDK clients stay behind `S3CompatibleObjectStoreClient`.
 
 ## Continuity
 
