@@ -1262,7 +1262,8 @@ Empfohlene naechste Reihenfolge:
 92. [x] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
 93. [x] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
 94. [x] Konkreten MinIO/AWS-SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen.
-95. [ ] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
+95. [x] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
+96. [ ] Knowledge-Base-Produktivwiring tenant-sicher aktivierbar machen: Runtime-Gate-Evidence per Admin-/Deployment-Aktivierung tenant-spezifisch persistieren und die API vom prozessweiten `SUITE_KB_RUNTIME_TENANT_ID` in eine request-sichere Runtime-Auswahl ueberfuehren.
 
 ## Release-Strategie
 

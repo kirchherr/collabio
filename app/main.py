@@ -96,6 +96,7 @@ from suite.platform.knowledge_base import (
     build_default_knowledge_base_write_approval_ledger,
     demo_knowledge_base_source_object_repository,
 )
+from suite.platform.knowledge_base_runtime import build_configured_knowledge_base_article_service
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -357,12 +358,16 @@ def build_app() -> FastAPI:
         repository=InMemoryErpProductRepository.demo(),
         audit_logger=audit_logger,
     )
-    knowledge_base_article_service = KnowledgeBaseArticleService(
+    default_knowledge_base_article_service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
         audit_logger=audit_logger,
         write_approval_ledger=build_default_knowledge_base_write_approval_ledger(),
         source_object_write_receipt_store=build_default_source_object_write_receipt_store(),
+    )
+    knowledge_base_article_service = build_configured_knowledge_base_article_service(
+        default_service=default_knowledge_base_article_service,
+        audit_logger=audit_logger,
     )
     voice_guard = VoicePrivacyGuard(audit_logger=audit_logger)
     tenant_policy_repository = JsonFileTenantPolicyRepository.load_or_seed(
