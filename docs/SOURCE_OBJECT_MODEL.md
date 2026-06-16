@@ -133,6 +133,8 @@ SourceObjectWriteGuard
 
 The first content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. Production still needs the S3/MinIO-compatible adapter from `docs/STORAGE_ADAPTER_PLAN.md`.
 
+`source_object_content_recovery_evidence.v1` is the API-wiring gate for production Knowledge Base writes. `PgSourceObjectRepository.build_content_recovery_evidence` compares tenant-scoped content-store inventory with `collabio.source_object_storage_manifests`, verifies manifest-backed content hashes through the content-store read path, records orphaned content reference hashes and missing manifest hashes, binds a restore-drill report hash, and returns `api_wiring_allowed=true` only when there are no orphaned or missing content objects. The evidence is metadata-only and never includes source bytes.
+
 Content hash verification is documented in:
 
 ```text
@@ -207,14 +209,16 @@ Implemented now:
 - Storage write guard for required metadata, tenant/data-class matching KMS references, shared content hash verification, and canonical manifest hashes.
 - Metadata-only source-object write receipt model with in-memory and PostgreSQL/RLS stores.
 - PostgreSQL/RLS source-object metadata and storage-manifest bridge with an explicit content-store interface.
+- Content-store recovery evidence with inventory comparison, orphan detection, restore-drill hash binding, and API-wiring gate signal.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
 
 Not implemented yet:
 
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Production Knowledge Base wiring still needs content-store orphan reconciliation and restore evidence before claiming atomic content persistence.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Content-store recovery evidence now proves whether orphan reconciliation is clean. Production Knowledge Base wiring still needs the S3/MinIO-compatible content-store adapter and reconciliation worker before claiming atomic content persistence.
 - Concrete S3/MinIO-compatible content-store implementation.
+- Persistent orphan-reconciliation worker for production object storage.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.
 - Persistent legal-matter and legal-hold scope storage.

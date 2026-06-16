@@ -31,7 +31,11 @@ from suite.platform.knowledge_base import (
 )
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
-from suite.storage.source_object_storage import InMemorySourceObjectContentStore, PgSourceObjectRepository
+from suite.storage.source_object_storage import (
+    InMemorySourceObjectContentStore,
+    PgSourceObjectRepository,
+    SourceObjectContentRecoveryStatus,
+)
 from suite.storage.source_objects import (
     LegalHoldState,
     PgSourceObjectWriteReceiptStore,
@@ -412,6 +416,19 @@ def test_pg_knowledge_base_write_unit_of_work_rolls_back_metadata_on_article_fai
             object_id=source_record.metadata.object_id,
             version_id=source_record.metadata.version_id,
         )
+    recovery_evidence = source_repository.build_content_recovery_evidence(
+        tenant_id=tenant_id,
+        restore_drill_report_hash="sha256:" + "c" * 64,
+        checked_at_utc="2026-06-12T12:03:00Z",
+    )
+    assert recovery_evidence.reconciliation_status == SourceObjectContentRecoveryStatus.RECONCILIATION_REQUIRED
+    assert recovery_evidence.stored_object_count == 1
+    assert recovery_evidence.storage_manifest_count == 0
+    assert recovery_evidence.verified_content_count == 0
+    assert recovery_evidence.orphaned_content_count == 1
+    assert recovery_evidence.missing_content_count == 0
+    assert recovery_evidence.source_content_recovery_required is True
+    assert recovery_evidence.api_wiring_allowed is False
 
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)

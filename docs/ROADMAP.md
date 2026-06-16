@@ -1258,7 +1258,8 @@ Empfohlene naechste Reihenfolge:
 88. [x] PostgreSQL-Source-Metadatenadapter und Content-Store-Bridge fuer Source Objects entwerfen, damit Knowledge-Base-Writes spaeter Source-Metadata, Content-Manifest, Artikel-/Version-Metadaten und Evidence ohne Content-Leakage atomar koordinieren koennen.
 89. [x] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
 90. [x] Knowledge-Base-Production-Write-Grenze haerten: gemeinsamen PostgreSQL-Transaktionskontext fuer KB-Metadatenadapter, Source-Object-Receipts und Source-Metadata-Bridge entwerfen, damit API-Produktivwiring erst mit explizitem Atomicity-/Recovery-Nachweis aktiviert wird.
-91. [ ] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Produktions-Content-Store-Adapter, Orphan-Reconciliation, Restore-Drill und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
+91. [x] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Content-Store-Inventar, Orphan-Reconciliation-Nachweis, Restore-Drill-Hash und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
+92. [ ] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
 
 ## Release-Strategie
 
