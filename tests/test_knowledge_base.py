@@ -817,6 +817,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.article_version_metadata_persisted is True
     assert response.write_unit_of_work_committed is True
     assert response.write_unit_of_work_contract == "knowledge_base_write_unit_of_work.v1"
+    assert response.write_unit_of_work_transaction_scope == "coordinated_repository_calls"
+    assert response.source_content_recovery_required is False
     assert response.source_version_evidence_refreshed is True
     assert response.restore_evidence_refreshed is True
     assert response.rag_indexing_allowed is False
@@ -834,6 +836,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert response.source_object_write_receipt_persisted is True
     assert "source_object_write_receipt_hash" in response.required_evidence
     assert "write_unit_of_work_commit_contract" in response.required_evidence
+    assert "write_unit_of_work_transaction_scope" in response.required_evidence
+    assert "source_content_recovery_required" in response.required_evidence
     assert source_repository.add_calls == 0
     assert source_repository.receipt_hashes == [response.source_object_write_receipt_hash]
     assert len(write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == 2
@@ -875,6 +879,8 @@ def test_knowledge_base_write_execution_commits_edit_and_refreshes_restore_evide
     assert event.metadata["source_object_write_receipt_hash"] == response.source_object_write_receipt_hash
     assert event.metadata["write_unit_of_work_committed"] is True
     assert event.metadata["write_unit_of_work_contract"] == "knowledge_base_write_unit_of_work.v1"
+    assert event.metadata["write_unit_of_work_transaction_scope"] == "coordinated_repository_calls"
+    assert event.metadata["source_content_recovery_required"] is False
     assert event.metadata["article_metadata_persisted"] is True
     assert event.metadata["refreshed_restore_evidence_hash"] == response.refreshed_restore_evidence_hash
 

@@ -44,8 +44,10 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`refreshed_restore_evidence_hash`" in charter
     assert "`source_object_write_receipt_hash`" in charter
     assert "`KnowledgeBaseWriteUnitOfWork`" in charter
+    assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in charter
     assert "`write_unit_of_work_committed=true`" in charter
     assert "`write_unit_of_work_contract`" in charter
+    assert "`source_content_recovery_required=true`" in charter
     assert "`execution_allowed=false`" in charter
     assert "`PgKnowledgeBaseArticleRepository`" in charter
     assert "`PgSourceObjectRepository`" in charter
@@ -68,6 +70,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`refreshed_restore_evidence_hash`" in slice_doc
     assert "`source_object_write_receipt_hash`" in slice_doc
     assert "`KnowledgeBaseWriteUnitOfWork`" in slice_doc
+    assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in slice_doc
     assert "`PgKnowledgeBaseArticleRepository`" in slice_doc
     assert "`PgSourceObjectRepository`" in slice_doc
     assert "source-version evidence hash" in slice_doc.lower()
@@ -81,6 +84,7 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`execution_plan_hash`" in evidence_doc
     assert "`source_object_write_receipt_hash`" in evidence_doc
     assert "`KnowledgeBaseWriteUnitOfWork`" in evidence_doc
+    assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in evidence_doc
     assert "source text out of audit metadata, receipts, and responses" in evidence_doc
     assert "`execution_allowed=false`" in evidence_doc
     assert "`PgKnowledgeBaseArticleRepository`" in evidence_doc
@@ -104,8 +108,10 @@ def test_knowledge_base_docs_follow_module_implementation_contract() -> None:
     assert "`execution_plan_hash`" in ledger_doc
     assert "`source_object_write_receipt_hash`" in ledger_doc
     assert "`KnowledgeBaseWriteUnitOfWork`" in ledger_doc
+    assert "`PostgresKnowledgeBaseWriteUnitOfWork`" in ledger_doc
     assert "`write_unit_of_work_committed=true`" in ledger_doc
     assert "`write_unit_of_work_contract`" in ledger_doc
+    assert "shared PostgreSQL metadata transaction" in ledger_doc
     assert "refreshed source/restore evidence hashes" in ledger_doc
     assert "`execution_allowed=false`" in ledger_doc
     assert "`PgKnowledgeBaseArticleRepository`" in ledger_doc

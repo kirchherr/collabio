@@ -167,38 +167,35 @@ class PgSourceObjectRepository:
         record: SourceObjectRecord,
         source_object_write_receipt_hash: str | None,
     ) -> None:
-        self.write_guard.validate_before_write(record)
-        retention_manifest = build_retention_manifest(record, self.retention_policy)
-        bucket_profile = self.storage_policy.bucket(retention_manifest.storage_bucket_id)
-        object_key = build_storage_object_key(record)
-        stored_content = self.content_store.put(
-            record=record,
-            bucket_id=bucket_profile.bucket_id,
-            object_key=object_key,
-        )
-        storage_manifest = build_storage_object_manifest(
-            record=record,
-            retention_manifest=retention_manifest,
-            bucket_profile=bucket_profile,
-            object_version_id=stored_content.object_version_id,
-            stored_at_utc=stored_content.stored_at_utc,
-            object_key=stored_content.object_key,
-            storage_provider=stored_content.storage_provider,
-        )
-        self._require_stored_content_matches_manifest(stored_content, storage_manifest)
-
         try:
             with psycopg.connect(self.database_dsn) as connection:
-                self._set_tenant(connection, record.metadata.tenant_id)
-                self._insert_storage_manifest(connection, storage_manifest)
-                self._insert_source_metadata(
+                self.add_with_receipt_in_transaction(
                     connection,
                     record=record,
-                    retention_manifest=retention_manifest,
-                    storage_manifest=storage_manifest,
                     source_object_write_receipt_hash=source_object_write_receipt_hash,
                 )
                 connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object version already exists") from exc
+
+    def add_with_receipt_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None:
+        retention_manifest, storage_manifest = self._prepare_storage_metadata(record)
+        self._set_tenant(connection, record.metadata.tenant_id)
+        try:
+            self._insert_storage_manifest(connection, storage_manifest)
+            self._insert_source_metadata(
+                connection,
+                record=record,
+                retention_manifest=retention_manifest,
+                storage_manifest=storage_manifest,
+                source_object_write_receipt_hash=source_object_write_receipt_hash,
+            )
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("source object version already exists") from exc
 
@@ -359,6 +356,31 @@ class PgSourceObjectRepository:
                 source_object_write_receipt_hash,
             ),
         )
+
+    def _prepare_storage_metadata(
+        self,
+        record: SourceObjectRecord,
+    ) -> tuple[RetentionManifest, StorageObjectManifest]:
+        self.write_guard.validate_before_write(record)
+        retention_manifest = build_retention_manifest(record, self.retention_policy)
+        bucket_profile = self.storage_policy.bucket(retention_manifest.storage_bucket_id)
+        object_key = build_storage_object_key(record)
+        stored_content = self.content_store.put(
+            record=record,
+            bucket_id=bucket_profile.bucket_id,
+            object_key=object_key,
+        )
+        storage_manifest = build_storage_object_manifest(
+            record=record,
+            retention_manifest=retention_manifest,
+            bucket_profile=bucket_profile,
+            object_version_id=stored_content.object_version_id,
+            stored_at_utc=stored_content.stored_at_utc,
+            object_key=stored_content.object_key,
+            storage_provider=stored_content.storage_provider,
+        )
+        self._require_stored_content_matches_manifest(stored_content, storage_manifest)
+        return retention_manifest, storage_manifest
 
     def _insert_storage_manifest(
         self,

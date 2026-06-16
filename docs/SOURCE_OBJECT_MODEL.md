@@ -213,7 +213,7 @@ Implemented now:
 
 Not implemented yet:
 
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, but production Knowledge Base wiring still needs one coordinated unit-of-work across source metadata, content-store manifest, article metadata, source evidence, and restore evidence.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Production Knowledge Base wiring still needs content-store orphan reconciliation and restore evidence before claiming atomic content persistence.
 - Concrete S3/MinIO-compatible content-store implementation.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.

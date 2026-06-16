@@ -400,55 +400,24 @@ class PgSourceObjectWriteReceiptStore:
         self.database_dsn = database_dsn
 
     def append(self, receipt: SourceObjectWriteReceipt) -> SourceObjectWriteReceipt:
-        expected_hash = build_source_object_write_receipt_hash(receipt)
-        if receipt.receipt_hash != expected_hash:
-            raise ValueError("source object write receipt hash is invalid")
+        self._require_valid_receipt(receipt)
         try:
             with psycopg.connect(self.database_dsn) as connection:
                 self._set_tenant(connection, receipt.tenant_id)
-                connection.execute(
-                    """
-                    INSERT INTO collabio.source_object_write_receipts (
-                        tenant_id,
-                        receipt_reference,
-                        object_id,
-                        object_type,
-                        version_id,
-                        title,
-                        owner_principal_id,
-                        created_by,
-                        created_at_utc,
-                        updated_at_utc,
-                        classification,
-                        retention_policy_id,
-                        legal_hold_state,
-                        kms_key_ref,
-                        manifest_hash,
-                        audit_chain_ref,
-                        source_system,
-                        source_schema_version,
-                        mime_type,
-                        acl_hash,
-                        acl_version,
-                        content_hash,
-                        content_byte_length,
-                        lifecycle_state,
-                        parent_object_id,
-                        thread_id,
-                        parser_profile_id,
-                        captured_at_utc,
-                        receipt_hash,
-                        receipt_schema_version
-                    )
-                    VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s
-                    )
-                    """,
-                    self._receipt_values(receipt),
-                )
+                self._insert_receipt(connection, receipt)
                 connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object write receipt already exists") from exc
+        return receipt
+
+    def append_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        receipt: SourceObjectWriteReceipt,
+    ) -> SourceObjectWriteReceipt:
+        self._require_valid_receipt(receipt)
+        try:
+            self._insert_receipt(connection, receipt)
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("source object write receipt already exists") from exc
         return receipt
@@ -542,6 +511,59 @@ class PgSourceObjectWriteReceiptStore:
                 (tenant_id,),
             ).fetchall()
         return tuple(self._receipt_from_row(row) for row in rows)
+
+    def _require_valid_receipt(self, receipt: SourceObjectWriteReceipt) -> None:
+        expected_hash = build_source_object_write_receipt_hash(receipt)
+        if receipt.receipt_hash != expected_hash:
+            raise ValueError("source object write receipt hash is invalid")
+
+    def _insert_receipt(
+        self,
+        connection: psycopg.Connection[Any],
+        receipt: SourceObjectWriteReceipt,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO collabio.source_object_write_receipts (
+                tenant_id,
+                receipt_reference,
+                object_id,
+                object_type,
+                version_id,
+                title,
+                owner_principal_id,
+                created_by,
+                created_at_utc,
+                updated_at_utc,
+                classification,
+                retention_policy_id,
+                legal_hold_state,
+                kms_key_ref,
+                manifest_hash,
+                audit_chain_ref,
+                source_system,
+                source_schema_version,
+                mime_type,
+                acl_hash,
+                acl_version,
+                content_hash,
+                content_byte_length,
+                lifecycle_state,
+                parent_object_id,
+                thread_id,
+                parser_profile_id,
+                captured_at_utc,
+                receipt_hash,
+                receipt_schema_version
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s
+            )
+            """,
+            self._receipt_values(receipt),
+        )
 
     def _receipt_values(self, receipt: SourceObjectWriteReceipt) -> tuple[Any, ...]:
         return (

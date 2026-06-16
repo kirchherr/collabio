@@ -95,13 +95,14 @@ Current sprint:
 85. [x] Durable metadata-only source-object write receipts with PostgreSQL/RLS store, API execution evidence, and backup/failover coverage.
 86. [x] PostgreSQL/RLS source-object metadata and storage-manifest bridge with explicit content-store interface.
 87. [x] Coordinated Knowledge Base write unit-of-work that binds source-object receipts, source metadata, storage manifests, article/version metadata, source-version evidence, and restore evidence.
+88. [x] Shared PostgreSQL metadata transaction for Knowledge Base write unit-of-work across receipts, source metadata/storage manifests, and article/version/source/restore evidence.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, a PostgreSQL source metadata/storage-manifest bridge, and a coordinated write unit-of-work. The next narrow step is the production write boundary:
+After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, a PostgreSQL source metadata/storage-manifest bridge, a coordinated write unit-of-work, and a shared PostgreSQL metadata transaction for that unit of work. The next narrow step is content-store recovery evidence:
 
-- Design a shared PostgreSQL transaction context for the KB metadata adapter and source metadata bridge.
-- Wire API execution to PostgreSQL-backed writes only when the source-object bridge, KB transaction adapter, and recovery evidence are configured together.
+- Define production content-store orphan reconciliation and restore evidence for source bytes written before metadata commit.
+- Wire API execution to `PostgresKnowledgeBaseWriteUnitOfWork` only when the source-object bridge, KB transaction adapter, and content-store recovery evidence are configured together.
 - Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
 
 ## Module Expansion Stance
