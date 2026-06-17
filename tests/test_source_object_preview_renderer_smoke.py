@@ -8,7 +8,7 @@ from suite.persistence.migrator import apply_migrations
 from suite.platform.source_object_preview_decisions import PgSourceObjectPreviewDecisionLedger
 from suite.platform.source_object_preview_renderer import PgSourceObjectPreviewRendererEvidenceStore
 from suite.platform.source_object_preview_renderer_release_gate import (
-    JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore,
+    PgSourceObjectPreviewRendererReleaseGateEvidenceStore,
 )
 from suite.platform.source_object_preview_renderer_smoke import (
     build_source_object_preview_renderer_api_smoke_report_hash,
@@ -109,7 +109,8 @@ def test_preview_renderer_release_gate_smoke_persists_gate_evidence_for_compose_
     monkeypatch.setenv("SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN", live_database.app_dsn)
     monkeypatch.setenv("SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND", "postgres")
     monkeypatch.setenv("SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN", live_database.app_dsn)
-    monkeypatch.setenv("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND", "jsonl")
+    monkeypatch.setenv("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND", "postgres")
+    monkeypatch.setenv("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN", live_database.app_dsn)
     monkeypatch.setenv("SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID", "tenant-demo")
     monkeypatch.setenv("SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS", "tenant-demo")
 
@@ -130,9 +131,7 @@ def test_preview_renderer_release_gate_smoke_persists_gate_evidence_for_compose_
     assert "Board pack draft source content" not in report.model_dump_json()
     assert "preview renderer api smoke metadata-only" not in report.model_dump_json()
 
-    gate_store = JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore(
-        path=tmp_path / "preview_renderer_release_gates.jsonl"
-    )
+    gate_store = PgSourceObjectPreviewRendererReleaseGateEvidenceStore(database_dsn=live_database.app_dsn)
     gate = gate_store.get(tenant_id=report.tenant_id, evidence_hash=report.release_gate_evidence_hash)
     assert gate.api_smoke_report_hash == report.api_smoke_report_hash
     assert gate.recovery_drill_report_hash == report.recovery_drill_report_hash

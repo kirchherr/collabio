@@ -122,7 +122,8 @@ docker compose run --rm preview-renderer-smoke
 
 The smoke fixture creates preview renderer and preview decision evidence through the API, runs the recovery drill against
 the PostgreSQL-backed stores, creates a release gate from both hashes, persists that gate in the configured gate evidence
-store, and emits a metadata-only `source_object_preview_renderer_release_gate_smoke_report.v1` report. Use
+store, and emits a metadata-only `source_object_preview_renderer_release_gate_smoke_report.v1` report. In Compose this
+uses the PostgreSQL/RLS-backed `collabio.source_object_preview_renderer_release_gate_evidence` table. Use
 `python -m suite.platform.source_object_preview_renderer_smoke --api-only` only when diagnosing the lower-level API smoke
 report.
 

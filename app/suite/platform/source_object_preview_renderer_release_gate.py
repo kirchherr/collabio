@@ -7,8 +7,10 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
@@ -201,6 +203,125 @@ class JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore:
         )
 
 
+class PgSourceObjectPreviewRendererReleaseGateEvidenceStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(
+        self,
+        evidence: SourceObjectPreviewRendererReleaseGateEvidence,
+    ) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, evidence.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO collabio.source_object_preview_renderer_release_gate_evidence (
+                        tenant_id,
+                        api_smoke_report_hash,
+                        recovery_drill_report_hash,
+                        api_smoke_checked_at_utc,
+                        recovery_drill_checked_at_utc,
+                        evaluated_at_utc,
+                        freshness_window_hours,
+                        api_smoke_fresh,
+                        recovery_drill_fresh,
+                        api_smoke_passed,
+                        recovery_drill_ready,
+                        recovery_drill_bound,
+                        tenant_ready,
+                        metadata_only_boundary_verified,
+                        renderer_connection_allowed,
+                        viewer_connection_allowed,
+                        content_release_workflow_allowed,
+                        blocking_reasons,
+                        gate_status,
+                        gate_evidence,
+                        evidence_hash,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    self._evidence_values(evidence),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("preview renderer release gate evidence already exists") from exc
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT gate_evidence
+                FROM collabio.source_object_preview_renderer_release_gate_evidence
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("preview renderer release gate evidence not found")
+        return self._evidence_from_row(row)
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewRendererReleaseGateEvidence]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT gate_evidence
+                FROM collabio.source_object_preview_renderer_release_gate_evidence
+                WHERE tenant_id = %s
+                ORDER BY evaluated_at_utc, evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._evidence_from_row(row) for row in rows)
+
+    def _evidence_values(self, evidence: SourceObjectPreviewRendererReleaseGateEvidence) -> tuple[object, ...]:
+        return (
+            evidence.tenant_id,
+            evidence.api_smoke_report_hash,
+            evidence.recovery_drill_report_hash,
+            evidence.api_smoke_checked_at_utc,
+            evidence.recovery_drill_checked_at_utc,
+            evidence.evaluated_at_utc,
+            evidence.freshness_window_hours,
+            evidence.api_smoke_fresh,
+            evidence.recovery_drill_fresh,
+            evidence.api_smoke_passed,
+            evidence.recovery_drill_ready,
+            evidence.recovery_drill_bound,
+            evidence.tenant_ready,
+            evidence.metadata_only_boundary_verified,
+            evidence.renderer_connection_allowed,
+            evidence.viewer_connection_allowed,
+            evidence.content_release_workflow_allowed,
+            Jsonb(list(evidence.blocking_reasons)),
+            evidence.gate_status.value,
+            Jsonb(evidence.model_dump(mode="json")),
+            evidence.evidence_hash,
+            evidence.schema_version,
+        )
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        raw = row[0]
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+        evidence = SourceObjectPreviewRendererReleaseGateEvidence.model_validate(parsed)
+        _require_valid_release_gate_hash(evidence)
+        return evidence
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
 def build_source_object_preview_renderer_release_gate(
     *,
     tenant_id: str,
@@ -348,6 +469,11 @@ def build_default_source_object_preview_renderer_release_gate_evidence_store(
             Path(path_value) if path_value else (data_dir or suite_data_dir()) / "preview_renderer_release_gates.jsonl"
         )
         return JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore(path=path)
+    if backend in {"postgres", "pg"}:
+        database_dsn = env.get("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN") or env.get("SUITE_DATABASE_DSN")
+        if database_dsn is None:
+            raise ValueError("Postgres preview renderer release gate store requires a database DSN")
+        return PgSourceObjectPreviewRendererReleaseGateEvidenceStore(database_dsn=database_dsn)
     raise ValueError(f"Unsupported preview renderer release gate evidence store backend: {backend}")
 
 

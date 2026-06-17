@@ -1284,7 +1284,8 @@ Empfohlene naechste Reihenfolge:
 114. [x] Preview-Renderer-Drill mit realer Postgres-Smoke-Fixture erweitern: API erzeugt Decision-/Renderer-Evidence, `preview-renderer-drill` verifiziert sie im Compose-Pfad, und der Report-Hash wird als Release-/Restore-Evidence referenzierbar.
 115. [x] Preview-Renderer-Release-Gate definieren: frischen API-Smoke-Report-Hash und Recovery-Drill-Report-Hash als harte Voraussetzung modellieren, bevor echte Renderer, Viewer oder Content-Release-Workflows angeschlossen werden.
 116. [x] Preview-Renderer-Release-Gate-Evidence operationalisieren: Gate-Reports persistent referenzieren, Compose-Smoke um Gate-Erzeugung erweitern und echte Renderer-/Viewer-Anbindung erst hinter diesem Gate erlauben.
-117. [ ] Preview-Renderer-Release-Gate-Store produktionshart machen: PostgreSQL/RLS-Migration, Restore-Drill-Pruefung und Compose-Smoke auf persistenten Gate-Store umstellen, bevor Renderer-/Viewer-Gate-Hashes produktiv verwendet werden.
+117. [x] Preview-Renderer-Release-Gate-Store produktionshart machen: PostgreSQL/RLS-Migration, Restore-Drill-Pruefung und Compose-Smoke auf persistenten Gate-Store umstellen, bevor Renderer-/Viewer-Gate-Hashes produktiv verwendet werden.
+118. [ ] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: Adapter-Port, Wiring-Guard und metadata-only Dry-Run anbinden, ohne gerenderten Content oder Dateiinhalte auszugeben.
 
 ## Release-Strategie
 

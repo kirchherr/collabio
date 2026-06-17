@@ -1,8 +1,13 @@
+import os
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
+import psycopg
 import pytest
 
+from suite.persistence.migrator import apply_migrations
 from suite.platform.source_object_preview_renderer_operations import (
     SourceObjectPreviewRendererRecoveryDrillReport,
     SourceObjectPreviewRendererRecoveryRunbookEvidence,
@@ -13,6 +18,7 @@ from suite.platform.source_object_preview_renderer_operations import (
 from suite.platform.source_object_preview_renderer_release_gate import (
     InMemorySourceObjectPreviewRendererReleaseGateEvidenceStore,
     JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore,
+    PgSourceObjectPreviewRendererReleaseGateEvidenceStore,
     SourceObjectPreviewRendererReleaseGateStatus,
     build_source_object_preview_renderer_release_gate,
     build_source_object_preview_renderer_release_gate_hash,
@@ -26,6 +32,27 @@ from suite.platform.source_object_preview_renderer_smoke import (
 )
 
 ZERO_HASH = "sha256:" + "0" * 64
+
+
+@dataclass(frozen=True)
+class LiveDatabase:
+    migration_dsn: str
+    app_dsn: str
+
+
+def env_or_skip(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        pytest.skip(f"{name} is not configured")
+    return value
+
+
+@pytest.fixture(scope="module")
+def live_database() -> LiveDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn)
 
 
 def test_preview_renderer_release_gate_allows_wiring_only_with_fresh_bound_reports() -> None:
@@ -265,6 +292,60 @@ def test_preview_renderer_release_gate_wiring_requires_matching_tenant_and_hash(
             tenant_id="tenant-release-wiring",
             evidence_hash="sha256:" + "9" * 64,
         )
+
+
+def test_pg_preview_renderer_release_gate_store_is_tenant_scoped_append_only_and_metadata_only(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-release-gate-{suffix}"
+    checked_at = datetime(2026, 6, 17, 10, tzinfo=UTC)
+    drill_report = ready_drill_report(tenant_id=tenant_id, checked_at=checked_at)
+    smoke_report = passed_smoke_report(
+        tenant_id=tenant_id,
+        drill_report=drill_report,
+        checked_at=checked_at + timedelta(minutes=5),
+    )
+    gate = build_source_object_preview_renderer_release_gate(
+        tenant_id=tenant_id,
+        api_smoke_report=smoke_report,
+        recovery_drill_report=drill_report,
+        evaluated_at_utc=datetime(2026, 6, 17, 11, tzinfo=UTC),
+    )
+    store = PgSourceObjectPreviewRendererReleaseGateEvidenceStore(database_dsn=live_database.app_dsn)
+
+    persisted = store.append(gate)
+
+    assert persisted == gate
+    assert store.get(tenant_id=tenant_id, evidence_hash=gate.evidence_hash) == gate
+    assert store.list_evidence(tenant_id=tenant_id) == (gate,)
+    assert store.list_evidence(tenant_id=f"tenant-other-{suffix}") == ()
+    assert gate.renderer_connection_allowed is True
+    assert gate.viewer_connection_allowed is True
+    assert gate.content_release_workflow_allowed is True
+    assert gate.gate_status == SourceObjectPreviewRendererReleaseGateStatus.READY
+    assert "source content" not in gate.model_dump_json()
+    assert "mail body" not in gate.model_dump_json()
+    assert "prompt_text" not in gate.model_dump_json()
+    assert "output_text" not in gate.model_dump_json()
+
+    with pytest.raises(KeyError, match="not found"):
+        store.get(tenant_id=f"tenant-other-{suffix}", evidence_hash=gate.evidence_hash)
+    with pytest.raises(ValueError, match="already exists"):
+        store.append(gate)
+
+    with psycopg.connect(live_database.app_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+            connection.execute(
+                """
+                UPDATE collabio.source_object_preview_renderer_release_gate_evidence
+                SET renderer_connection_allowed = false
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, gate.evidence_hash),
+            )
 
 
 def ready_drill_report(*, tenant_id: str, checked_at: datetime) -> SourceObjectPreviewRendererRecoveryDrillReport:

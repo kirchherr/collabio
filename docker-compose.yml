@@ -257,7 +257,8 @@ services:
       SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
-      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: jsonl
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID: ${SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID:-tenant-demo}
       SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS: ${SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID:-tenant-demo}

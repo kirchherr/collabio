@@ -64,6 +64,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0030",
         "0031",
         "0032",
+        "0033",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -1406,6 +1407,63 @@ def test_source_object_preview_renderer_evidence_migration_is_metadata_only_and_
     assert "force row level security" in sql
     assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_app" in sql
     assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_worker" in sql
+    assert "source_text" not in sql
+    assert "rendered_html" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_renderer_release_gate_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0033").sql())
+    table = table_body(get_migration("0033").sql(), "collabio.source_object_preview_renderer_release_gate_evidence")
+
+    for column in [
+        "tenant_id",
+        "api_smoke_report_hash",
+        "recovery_drill_report_hash",
+        "api_smoke_checked_at_utc",
+        "recovery_drill_checked_at_utc",
+        "evaluated_at_utc",
+        "freshness_window_hours",
+        "api_smoke_fresh",
+        "recovery_drill_fresh",
+        "api_smoke_passed",
+        "recovery_drill_ready",
+        "recovery_drill_bound",
+        "tenant_ready",
+        "metadata_only_boundary_verified",
+        "renderer_connection_allowed",
+        "viewer_connection_allowed",
+        "content_release_workflow_allowed",
+        "blocking_reasons",
+        "gate_status",
+        "gate_evidence",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "source_object_preview_renderer_release_gate.v1" in table
+    assert "source_object_preview_renderer_api_smoke_report_hash" in table
+    assert "source_object_preview_renderer_recovery_drill_report_hash" in table
+    assert "gate_status in ('ready', 'blocked')" in table
+    assert "jsonb_array_length(blocking_reasons) = 0" in table
+    assert "source_object_preview_renderer_release_gate_tenant_select" in sql
+    assert "source_object_preview_renderer_release_gate_tenant_insert" in sql
+    assert "source_object_preview_renderer_release_gate_no_update" in sql
+    assert "source_object_preview_renderer_release_gate_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert (
+        "grant select, insert on table collabio.source_object_preview_renderer_release_gate_evidence to collabio_app"
+        in sql
+    )
+    assert (
+        "grant select, insert on table collabio.source_object_preview_renderer_release_gate_evidence to collabio_worker"
+        in sql
+    )
     assert "source_text" not in sql
     assert "rendered_html" not in sql
     assert "mail_body" not in sql

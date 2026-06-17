@@ -78,11 +78,13 @@ integrations must call the gate check before attaching any content-bearing path.
 
 `preview-renderer-smoke` now emits `source_object_preview_renderer_release_gate_smoke_report.v1` by default. It still
 creates the API smoke report and bound recovery drill report, then creates and persists a
-`source_object_preview_renderer_release_gate.v1` record in the configured release-gate evidence store. The default
-development store is append-only JSONL under `SUITE_DATA_DIR/preview_renderer_release_gates.jsonl`; use
-`--api-only` when only the lower-level API smoke report is needed for diagnostics.
+`source_object_preview_renderer_release_gate.v1` record in the configured release-gate evidence store. The Compose path
+uses `PgSourceObjectPreviewRendererReleaseGateEvidenceStore` with
+`collabio.source_object_preview_renderer_release_gate_evidence`, forced RLS, append-only insert/select policies, and no
+content-bearing columns. JSONL remains available for local diagnostics; use `--api-only` when only the lower-level API
+smoke report is needed.
 
 ## Next Boundary
 
-Harden the release-gate evidence store with PostgreSQL/RLS and migration coverage before any production renderer or
-viewer integration depends on release-gate hashes.
+Bind the first real renderer or viewer adapter behind `require_source_object_preview_renderer_release_gate_for_wiring`,
+with the adapter still unable to return rendered content until a separate content-release workflow is approved.
