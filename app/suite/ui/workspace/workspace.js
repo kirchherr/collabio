@@ -229,7 +229,7 @@ async function loadSourceObjectDetail() {
     );
     const body = await readJson(response);
     if (!response.ok) {
-      throw new Error(body.detail || `HTTP ${response.status}`);
+      throw new DetailLoadError(response.status, body.detail || `HTTP ${response.status}`);
     }
     if (token === detailLoadToken) {
       renderSourceObjectDetail(body);
@@ -238,9 +238,44 @@ async function loadSourceObjectDetail() {
     if (token !== detailLoadToken) {
       return;
     }
-    sourceDetailPanel.className = "detail-panel empty-state";
-    sourceDetailPanel.textContent = error.message || "SourceObject-Detail konnte nicht geladen werden.";
+    renderSourceObjectDetailError(error);
   }
+}
+
+class DetailLoadError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "DetailLoadError";
+    this.status = status;
+  }
+}
+
+function renderSourceObjectDetailError(error) {
+  const status = Number(error.status || 0);
+  const state =
+    status === 403
+      ? {
+          className: "denied",
+          title: "Zugriff verweigert",
+          detail: error.message || "Der aktuelle Nutzer darf diese SourceObject-Metadaten nicht lesen.",
+        }
+      : status === 404
+        ? {
+            className: "not-found",
+            title: "Nicht gefunden",
+            detail: error.message || "Fuer dieses SourceObject wurde kein Metadatenstand gefunden.",
+          }
+        : {
+            className: "error",
+            title: "Detailfehler",
+            detail: error.message || "SourceObject-Detail konnte nicht geladen werden.",
+          };
+  sourceDetailPanel.className = `detail-panel error-state ${state.className}`;
+  sourceDetailPanel.innerHTML = `
+    <div class="detail-error-title">${escapeHtml(state.title)}</div>
+    <div class="detail-error-detail">${escapeHtml(state.detail)}</div>
+    <div class="detail-error-meta">HTTP ${status || "n/a"} | metadata_only | content_included=false</div>
+  `;
 }
 
 function renderSourceObjectDetail(detail) {

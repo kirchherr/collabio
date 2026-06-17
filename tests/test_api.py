@@ -3,6 +3,7 @@ import hmac
 import json
 import os
 from hashlib import sha256
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -29,6 +30,9 @@ from suite.platform.modules import (
     default_module_registry,
 )
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
+from suite.storage.adapter_policy import load_storage_adapter_policy
+from suite.storage.retention import load_retention_manifest_policy
+from suite.storage.source_object_storage import InMemorySourceObjectContentStore, PgSourceObjectRepository
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
@@ -40,6 +44,9 @@ from suite.storage.source_objects import (
 )
 
 client = TestClient(app)
+REPO_ROOT = Path(__file__).resolve().parents[1]
+RETENTION_POLICY_PATH = REPO_ROOT / "docs" / "retention_manifest_policy.json"
+STORAGE_POLICY_PATH = REPO_ROOT / "docs" / "storage_adapter_policy.json"
 
 DEMO_HEADERS = {
     "X-Tenant-Id": "tenant-demo",
@@ -126,6 +133,12 @@ class LiveModuleRegistryDatabase:
         self.worker_dsn = worker_dsn
 
 
+class LiveSourceObjectDetailDatabase:
+    def __init__(self, *, migration_dsn: str, app_dsn: str) -> None:
+        self.migration_dsn = migration_dsn
+        self.app_dsn = app_dsn
+
+
 def env_or_skip(name: str) -> str:
     value = os.environ.get(name)
     if value is None:
@@ -140,6 +153,14 @@ def live_module_registry_database() -> LiveModuleRegistryDatabase:
     worker_dsn = env_or_skip("SUITE_WORKER_DATABASE_DSN")
     apply_migrations(migration_dsn)
     return LiveModuleRegistryDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn, worker_dsn=worker_dsn)
+
+
+@pytest.fixture(scope="module")
+def live_source_object_detail_database() -> LiveSourceObjectDetailDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveSourceObjectDetailDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn)
 
 
 def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
@@ -168,6 +189,38 @@ def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
         content_hash=sha256_bytes(content),
         content_byte_length=len(content),
         lifecycle_state=SourceLifecycleState.SAVED_VERSION,
+    )
+    return SourceObjectRecord(
+        metadata=draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)}),
+        text=text,
+    )
+
+
+def workspace_source_record_for_detail_smoke(*, tenant_id: str, object_id: str, text: str) -> SourceObjectRecord:
+    content = text.encode("utf-8")
+    draft = SourceObjectMetadata(
+        tenant_id=tenant_id,
+        object_id=object_id,
+        object_type=SourceObjectType.DOCUMENT,
+        version_id="v1",
+        title="Persistent detail smoke document",
+        owner_principal_id=f"user-{tenant_id}",
+        created_by=f"tenant-admin-{tenant_id}",
+        created_at_utc="2026-06-17T08:00:00Z",
+        updated_at_utc="2026-06-17T08:00:00Z",
+        classification=DataClass.INTERNAL,
+        retention_policy_id="rp-standard",
+        legal_hold_state=LegalHoldState.NONE,
+        kms_key_ref=f"kms://{tenant_id}/internal/v1",
+        manifest_hash="sha256:" + "0" * 64,
+        audit_chain_ref=f"audit:{object_id}",
+        source_system="collabio",
+        mime_type="text/plain",
+        acl_hash="sha256:" + "b" * 64,
+        acl_version=1,
+        content_hash=sha256_bytes(content),
+        content_byte_length=len(content),
+        lifecycle_state=SourceLifecycleState.WORKING,
     )
     return SourceObjectRecord(
         metadata=draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)}),
@@ -368,11 +421,16 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert css_response.status_code == 200
     assert "workspace-shell" in css_response.text
     assert "detail-panel" in css_response.text
+    assert ".detail-panel.denied" in css_response.text
+    assert ".detail-panel.not-found" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
     assert "/v1/source-objects/" in js_response.text
     assert "/metadata" in js_response.text
+    assert "Zugriff verweigert" in js_response.text
+    assert "Nicht gefunden" in js_response.text
+    assert "content_included=false" in js_response.text
     assert "/v1/admin/tenant-modules/" in js_response.text
     assert "X-Tenant-Id" in js_response.text
     assert "window.confirm" in js_response.text
@@ -599,6 +657,73 @@ def test_source_object_metadata_detail_denies_unreadable_object_and_audits_acl_c
     assert new_events[-1].source_object_ids == ["doc-other"]
     assert new_events[-1].metadata["denial_reason"] == "acl_object_not_readable"
     assert new_events[-1].metadata["access_checked"] is True
+
+
+def test_source_object_metadata_detail_returns_not_found_for_readable_missing_source() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get(
+        "/v1/source-objects/doc-missing/versions/v1/metadata",
+        headers={**DEMO_HEADERS, "X-Readable-Object-Ids": "doc-missing"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Source object metadata was not found"
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.metadata_detail.not_found"
+    assert new_events[-1].source_object_ids == ["doc-missing"]
+    assert new_events[-1].metadata["origin"] == "workspace"
+    assert new_events[-1].metadata["access_checked"] is True
+
+
+def test_source_object_metadata_detail_uses_pg_workspace_repository_without_content_leakage(
+    live_source_object_detail_database: LiveSourceObjectDetailDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = "tenant-demo"
+    object_id = f"doc-detail-{suffix}"
+    source_text = "Persistent detail smoke content must stay out of the metadata detail response."
+    record = workspace_source_record_for_detail_smoke(tenant_id=tenant_id, object_id=object_id, text=source_text)
+    repository = PgSourceObjectRepository(
+        database_dsn=live_source_object_detail_database.app_dsn,
+        content_store=InMemorySourceObjectContentStore(stored_at_clock=lambda: "2026-06-17T08:01:00Z"),
+        retention_policy=load_retention_manifest_policy(RETENTION_POLICY_PATH),
+        storage_policy=load_storage_adapter_policy(STORAGE_POLICY_PATH),
+    )
+    repository.add(record)
+    previous_repository = app.state.workspace_source_object_repository
+    app.state.workspace_source_object_repository = repository
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get(
+            f"/v1/source-objects/{object_id}/versions/v1/metadata",
+            headers={
+                "X-Tenant-Id": tenant_id,
+                "X-User-Id": "user-demo",
+                "X-Role-Ids": "knowledge-worker",
+                "X-Readable-Object-Ids": object_id,
+            },
+        )
+    finally:
+        app.state.workspace_source_object_repository = previous_repository
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == tenant_id
+    assert body["origin"] == "document"
+    assert body["source_object_id"] == object_id
+    assert body["source_version_id"] == "v1"
+    assert body["source_object_type"] == "document"
+    assert body["title"] == "Persistent detail smoke document"
+    assert body["access_checked"] is True
+    assert body["content_included"] is False
+    assert source_text not in json.dumps(body)
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.metadata_detail.read"
+    assert new_events[-1].metadata["origin"] == "document"
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
 def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_feature_enable() -> None:

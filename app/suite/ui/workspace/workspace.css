@@ -468,6 +468,41 @@ input {
   display: block;
 }
 
+.detail-panel.error-state {
+  gap: 8px;
+  border-left: 4px solid var(--line);
+  background: #fff;
+}
+
+.detail-panel.denied {
+  border-left-color: var(--red);
+}
+
+.detail-panel.not-found {
+  border-left-color: var(--amber);
+}
+
+.detail-panel.error {
+  border-left-color: var(--blue);
+}
+
+.detail-error-title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.detail-error-detail {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.detail-error-meta {
+  color: var(--muted);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
 .detail-summary {
   display: grid;
   gap: 6px;

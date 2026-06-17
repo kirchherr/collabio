@@ -160,7 +160,11 @@ from suite.rag.repositories import (
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
 from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
-from suite.storage.source_objects import InMemorySourceObjectRepository, build_default_source_object_write_receipt_store
+from suite.storage.source_objects import (
+    InMemorySourceObjectRepository,
+    SourceObjectRepository,
+    build_default_source_object_write_receipt_store,
+)
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -462,7 +466,7 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
     ) -> SourceObjectMetadataDetailResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
-        workspace_sources = cast(InMemorySourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
         knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
             return build_source_object_metadata_detail_response(
