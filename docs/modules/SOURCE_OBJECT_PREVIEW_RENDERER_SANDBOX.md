@@ -56,7 +56,12 @@ The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STOR
 renderer evidence recovery, worker queue binding replay, idempotency hash replay, tenant isolation smoke checks, and the
 metadata-only content boundary.
 
+`docker compose run --rm preview-renderer-smoke` creates renderer and decision evidence through the API, then runs the
+same recovery drill against the PostgreSQL-backed stores. It emits a metadata-only
+`source_object_preview_renderer_api_smoke_report.v1` report with a `preview-renderer-recovery-drill:sha256:...`
+release/restore evidence reference.
+
 ## Next Boundary
 
-Add a real Postgres smoke fixture that creates decision and renderer evidence through the API, then runs
-`preview-renderer-drill` against the Compose database and retains the report hash as release/restore evidence.
+Add a release-gate contract that requires a fresh API smoke report hash and recovery drill report hash before any real
+renderer, viewer, or content release workflow is connected.

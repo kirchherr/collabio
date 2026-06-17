@@ -1281,7 +1281,8 @@ Empfohlene naechste Reihenfolge:
 111. [x] Renderer-Sandbox-Worker-Skeleton aufbauen: isolierten Worker-Run als metadata-only Evidence erzeugen, Parser/Sanitizer/Backup/Restore-Evidence gegen Tenant und SourceObject binden und weiterhin keinen gerenderten Content ausgeben.
 112. [x] Renderer-Sandbox-Evidence produktionshart machen: PostgreSQL/RLS-Store, Restore-Drill-Pruefung und Worker-Queue-Anbindung fuer Preview-Renderer-Evidence ergaenzen, bevor echte Rendering-Engines oder Viewer eingebunden werden.
 113. [x] Renderer-Worker-Runbook und Restore-Drill operationalisieren: Queue-Wiederaufnahme, Idempotency-Replay, Tenant-Isolation-Smoke-Test und Preview-Decision-/Renderer-Evidence-Recovery als wiederholbaren Compose-Drill nachweisen.
-114. [ ] Preview-Renderer-Drill mit realer Postgres-Smoke-Fixture erweitern: API erzeugt Decision-/Renderer-Evidence, `preview-renderer-drill` verifiziert sie im Compose-Pfad, und der Report-Hash wird als Release-/Restore-Evidence referenzierbar.
+114. [x] Preview-Renderer-Drill mit realer Postgres-Smoke-Fixture erweitern: API erzeugt Decision-/Renderer-Evidence, `preview-renderer-drill` verifiziert sie im Compose-Pfad, und der Report-Hash wird als Release-/Restore-Evidence referenzierbar.
+115. [ ] Preview-Renderer-Release-Gate definieren: frischen API-Smoke-Report-Hash und Recovery-Drill-Report-Hash als harte Voraussetzung modellieren, bevor echte Renderer, Viewer oder Content-Release-Workflows angeschlossen werden.
 
 ## Release-Strategie
 
