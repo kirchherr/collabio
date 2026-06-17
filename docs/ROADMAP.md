@@ -1168,6 +1168,17 @@ Deliver:
 
 Empfohlene naechste Reihenfolge:
 
+Roadmap-Triage-Regel ab jetzt:
+
+- **Fundament jetzt:** Tenant-Isolation, Auth/Rights, Audit, Backup/Restore, RLS, Evidence-Gates, Datenmodell-Grenzen und
+  alles, was spaeter nur teuer oder riskant nachzuziehen waere.
+- **Produktzug jetzt:** schmale End-to-End-Pfade, die echte Nutzung beweisen und auf dem Fundament aufsetzen.
+- **Spaeter / nicht jetzt:** Adapter, Komfortfunktionen, breitere Moduloberflaechen, echte Renderer/Viewer,
+  Automatisierung und Integrationen, wenn sie keinen aktuellen Sicherheits- oder Datenmodell-Blocker loesen.
+
+Vor jedem neuen Roadmap-Punkt wird explizit entschieden: **Muss das jetzt?** Wenn nein, bleibt der Punkt sichtbar, wird
+aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt priorisiert.
+
 1. [x] Research Baseline, Open-Source-Stack-Matrix und ADR-Backlog anlegen.
 2. [x] `PRODUCT_CHARTER.md`, `SECURITY.md`, `THREAT_MODEL.md` und `COMPLIANCE_MATRIX.md` anlegen.
 3. [x] `ARCHITECTURE_DECISIONS/` mit ADR-Template und ADRs fuer Tenancy, WORM, KMS und Audit anlegen.
@@ -1285,7 +1296,11 @@ Empfohlene naechste Reihenfolge:
 115. [x] Preview-Renderer-Release-Gate definieren: frischen API-Smoke-Report-Hash und Recovery-Drill-Report-Hash als harte Voraussetzung modellieren, bevor echte Renderer, Viewer oder Content-Release-Workflows angeschlossen werden.
 116. [x] Preview-Renderer-Release-Gate-Evidence operationalisieren: Gate-Reports persistent referenzieren, Compose-Smoke um Gate-Erzeugung erweitern und echte Renderer-/Viewer-Anbindung erst hinter diesem Gate erlauben.
 117. [x] Preview-Renderer-Release-Gate-Store produktionshart machen: PostgreSQL/RLS-Migration, Restore-Drill-Pruefung und Compose-Smoke auf persistenten Gate-Store umstellen, bevor Renderer-/Viewer-Gate-Hashes produktiv verwendet werden.
-118. [ ] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: Adapter-Port, Wiring-Guard und metadata-only Dry-Run anbinden, ohne gerenderten Content oder Dateiinhalte auszugeben.
+118. [ ] Roadmap-Triage vor dem naechsten Ausbau anwenden: naechsten Schritt nur ziehen, wenn er Fundament oder unmittelbaren Produktzug staerkt; spaeter nachziehbare Adapter-/UI-/Automationsarbeit sichtbar parken.
+
+Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
+
+- [ ] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: Adapter-Port, Wiring-Guard und metadata-only Dry-Run anbinden, ohne gerenderten Content oder Dateiinhalte auszugeben.
 
 ## Release-Strategie
 
