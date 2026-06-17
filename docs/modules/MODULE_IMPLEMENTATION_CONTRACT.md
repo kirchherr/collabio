@@ -88,6 +88,8 @@ Rules:
 - Suspended modules default to compliance-only or explicitly documented read-only behavior.
 - Destructive, external, or compliance-relevant actions require explicit human confirmation.
 - Worker entry points must use the same module and feature gate as API routes.
+- Containerized API and worker paths must use the persistent module registry unless explicitly running an isolated unit test. The persistent store is `collabio.module_catalog` plus `collabio.tenant_modules`; it carries required migration versions and tenant provisioning evidence.
+- Compliance workers may discover tenant module rows only through the worker DB role and must still call `ModuleWorkerGate` per tenant before acting.
 
 ## 5. Data, Retention, And Legal Hold
 

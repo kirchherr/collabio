@@ -61,6 +61,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0027",
         "0028",
         "0029",
+        "0030",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -87,7 +88,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0029",
     ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "knowledge_base"
+    assert manifest[-1].module_id == "core"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -227,6 +228,22 @@ def test_platform_module_registry_migration_declares_lifecycle_tables_and_rls() 
     assert "tenant_id = collabio.current_tenant_id()" in sql
     assert "create policy tenant_modules_no_hard_delete" in sql
     assert "using (false)" in sql
+
+
+def test_platform_module_registry_runtime_store_migration_seeds_catalog_and_worker_select() -> None:
+    sql = normalized(get_migration("0030").sql())
+
+    assert "alter table collabio.module_catalog" in sql
+    assert "required_migration_versions jsonb not null default '[]'::jsonb" in sql
+    assert "module_catalog_required_migration_versions_json_check" in sql
+    assert "knowledge_base" in sql
+    assert '"0029"' in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "on conflict (tenant_id, module_id) do nothing" in sql
+    assert "tenant_modules_worker_module_select" in sql
+    assert "to collabio_worker using (true)" in sql
+    assert "grant select on table collabio.module_catalog to collabio_worker" in sql
+    assert "grant select on table collabio.tenant_modules to collabio_worker" in sql
 
 
 def test_tenant_module_decommission_evidence_migration_requires_evidence_refs() -> None:

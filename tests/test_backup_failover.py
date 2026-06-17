@@ -142,6 +142,9 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert policy.domain("mail_messages_threads").criticality == "critical"
     assert policy.domain("module_registry_state").criticality == "critical"
     assert "tenant module states" in policy.domain("module_registry_state").state_artifacts
+    assert "module required migration versions" in policy.domain("module_registry_state").state_artifacts
+    assert "tenant module migration evidence" in policy.domain("module_registry_state").state_artifacts
+    assert "persistent module registry seed/backfill evidence" in policy.domain("module_registry_state").state_artifacts
     assert policy.domain("crm_erp_business_records").criticality == "critical"
     assert "invoices" in policy.domain("crm_erp_business_records").state_artifacts
     assert "SQL Server migration manifests" in policy.domain("crm_erp_business_records").state_artifacts
@@ -227,5 +230,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
+    assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
+    assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
     assert "SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres" in compose
     assert "./backups:/backups" in compose

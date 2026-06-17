@@ -97,6 +97,8 @@ def test_module_implementation_contract_docs_cover_security_and_continuity() -> 
         "Local LLM Gateway",
         "Candidate-only",
         "explicit human confirmation",
+        "persistent module registry",
+        "collabio.module_catalog",
         "knowledge base",
         "LMS",
         "tasks and activities",

@@ -1,8 +1,12 @@
+import os
 from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
+from suite.persistence.migration_catalog import load_migration_manifest
+from suite.persistence.migrator import apply_migrations
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleCatalogEntry,
@@ -17,7 +21,9 @@ from suite.platform.modules import (
     ModuleMigrationEvidence,
     ModuleStatus,
     ModuleWorkerGate,
+    PgModuleRegistry,
     TenantModuleState,
+    build_default_module_registry,
 )
 
 NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
@@ -67,6 +73,29 @@ MIGRATION_EVIDENCE = (
         blocks_startup=True,
     ),
 )
+
+
+class LiveDatabase:
+    def __init__(self, *, migration_dsn: str, app_dsn: str, worker_dsn: str) -> None:
+        self.migration_dsn = migration_dsn
+        self.app_dsn = app_dsn
+        self.worker_dsn = worker_dsn
+
+
+def env_or_skip(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        pytest.skip(f"{name} is not configured")
+    return value
+
+
+@pytest.fixture(scope="module")
+def live_database() -> LiveDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    worker_dsn = env_or_skip("SUITE_WORKER_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn, worker_dsn=worker_dsn)
 
 
 def crm_erp_catalog(
@@ -853,3 +882,77 @@ def test_module_registry_lists_tenant_modules_for_worker_selection() -> None:
     assert [state.tenant_id for state in states] == ["tenant-a", "tenant-b"]
     with pytest.raises(LookupError, match="Unknown module catalog entry"):
         registry.list_tenant_modules_for_module("knowledge_base")
+
+
+def test_build_default_module_registry_selects_backend_from_env() -> None:
+    assert isinstance(build_default_module_registry({}), InMemoryModuleRegistry)
+
+    registry = build_default_module_registry(
+        {
+            "SUITE_MODULE_REGISTRY_BACKEND": "postgres",
+            "SUITE_MODULE_REGISTRY_DSN": "postgresql://example",
+        }
+    )
+
+    assert isinstance(registry, PgModuleRegistry)
+    with pytest.raises(ValueError, match="PostgreSQL module registry"):
+        build_default_module_registry({"SUITE_MODULE_REGISTRY_BACKEND": "postgres"})
+
+
+def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_database: LiveDatabase) -> None:
+    registry = PgModuleRegistry(database_dsn=live_database.app_dsn)
+
+    knowledge_base_catalog = registry.get_catalog_entry("knowledge_base")
+    response = registry.discover_tenant_modules("tenant-demo")
+    module_ids = {module.module_id for module in response.modules}
+
+    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
+    assert module_ids >= {"crm_erp", "knowledge_base"}
+    assert all(module.status == ModuleStatus.AVAILABLE for module in response.modules)
+
+
+def test_pg_module_registry_lifecycle_and_worker_gate_share_persistent_state(
+    live_database: LiveDatabase,
+) -> None:
+    tenant_id = f"tenant-pg-module-registry-{uuid4().hex}"
+    app_registry = PgModuleRegistry(database_dsn=live_database.app_dsn)
+    worker_registry = PgModuleRegistry(database_dsn=live_database.worker_dsn)
+
+    provisioned = app_registry.provision_tenant_module(
+        tenant_id=tenant_id,
+        module_id="knowledge_base",
+        policy_snapshot_hash="sha256:pg-module-policy",
+        changed_by="tenant-admin",
+        audit_chain_ref="audit:pg-module-provision",
+        enabled_features={"knowledge_base.articles.read": True},
+        migration_manifest_entries=load_migration_manifest(),
+        changed_at_utc=NOW,
+    )
+    compliance_decision = ModuleWorkerGate(worker_registry).require_compliance_worker(
+        tenant_id=tenant_id,
+        module_id="knowledge_base",
+    )
+    enabled = app_registry.enable_tenant_module(
+        tenant_id=tenant_id,
+        module_id="knowledge_base",
+        policy_snapshot_hash="sha256:pg-module-policy",
+        changed_by="tenant-admin",
+        audit_chain_ref="audit:pg-module-enable",
+        enabled_features={"knowledge_base.articles.read": True},
+        changed_at_utc=NOW,
+    )
+    feature_decision = app_registry.require_module_gate(
+        tenant_id=tenant_id,
+        module_id="knowledge_base",
+        surface=ModuleGateSurface.NORMAL_API,
+        feature_id="knowledge_base.articles.read",
+    )
+    worker_candidates = worker_registry.list_tenant_modules_for_module("knowledge_base")
+
+    assert provisioned.status == ModuleStatus.DISABLED
+    assert {evidence.version for evidence in provisioned.migration_evidence} >= {"0026", "0027", "0028", "0029"}
+    assert compliance_decision.surface == ModuleGateSurface.COMPLIANCE_WORKER
+    assert compliance_decision.status == ModuleStatus.DISABLED
+    assert enabled.status == ModuleStatus.ENABLED
+    assert feature_decision.normal_use_enabled
+    assert any(state.tenant_id == tenant_id and state.status == ModuleStatus.ENABLED for state in worker_candidates)

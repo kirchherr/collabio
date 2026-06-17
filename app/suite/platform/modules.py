@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import os
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
@@ -573,6 +577,26 @@ def tenant_module_admin_view(state: TenantModuleState) -> TenantModuleAdminView:
     )
 
 
+def _utc_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+    text = str(value)
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    parsed = datetime.fromisoformat(text)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _utc_datetime_or_none(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    return _utc_datetime(value)
+
+
 class InMemoryModuleRegistry:
     def __init__(
         self,
@@ -615,6 +639,9 @@ class InMemoryModuleRegistry:
             return self._tenant_modules[(tenant_id, module_id)]
         except KeyError as exc:
             raise LookupError(f"Unknown tenant module: {tenant_id}/{module_id}") from exc
+
+    def get_tenant_module_or_none(self, *, tenant_id: str, module_id: str) -> TenantModuleState | None:
+        return self._tenant_modules.get((tenant_id, module_id))
 
     def list_tenant_modules(self, tenant_id: str) -> tuple[TenantModuleState, ...]:
         states = [state for (state_tenant_id, _), state in self._tenant_modules.items() if state_tenant_id == tenant_id]
@@ -770,7 +797,7 @@ class InMemoryModuleRegistry:
     ) -> TenantModuleState:
         catalog_entry = self.get_catalog_entry(module_id)
         now = changed_at_utc or utc_now()
-        existing = self._tenant_modules.get((tenant_id, module_id))
+        existing = self.get_tenant_module_or_none(tenant_id=tenant_id, module_id=module_id)
         if existing is not None and existing.status in {
             ModuleStatus.ENABLED,
             ModuleStatus.DISABLED,
@@ -1175,8 +1202,309 @@ class InMemoryModuleRegistry:
         return self.upsert_tenant_module(TenantModuleState.model_validate(state.model_dump()))
 
 
+class PgModuleRegistry(InMemoryModuleRegistry):
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def add_catalog_entry(self, entry: ModuleCatalogEntry) -> ModuleCatalogEntry:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            existing = connection.execute(
+                "SELECT module_id FROM collabio.module_catalog WHERE module_id = %s",
+                (entry.module_id,),
+            ).fetchone()
+            if existing is not None:
+                raise ModuleLifecycleError(f"Module already exists in catalog: {entry.module_id}")
+            connection.execute(
+                """
+                INSERT INTO collabio.module_catalog (
+                    module_id,
+                    display_name,
+                    module_version,
+                    module_kind,
+                    status,
+                    min_core_version,
+                    description,
+                    installed_at_utc,
+                    manifest_hash,
+                    required_migration_versions,
+                    schema_version
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                self._catalog_entry_values(entry),
+            )
+        return entry
+
+    def get_catalog_entry(self, module_id: str) -> ModuleCatalogEntry:
+        with psycopg.connect(self.database_dsn) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    module_id,
+                    display_name,
+                    module_version,
+                    module_kind,
+                    status,
+                    min_core_version,
+                    description,
+                    installed_at_utc,
+                    manifest_hash,
+                    required_migration_versions,
+                    schema_version
+                FROM collabio.module_catalog
+                WHERE module_id = %s
+                """,
+                (module_id,),
+            ).fetchone()
+        if row is None:
+            raise LookupError(f"Unknown module catalog entry: {module_id}")
+        return self._catalog_entry_from_row(row)
+
+    def list_catalog_entries(self) -> tuple[ModuleCatalogEntry, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    module_id,
+                    display_name,
+                    module_version,
+                    module_kind,
+                    status,
+                    min_core_version,
+                    description,
+                    installed_at_utc,
+                    manifest_hash,
+                    required_migration_versions,
+                    schema_version
+                FROM collabio.module_catalog
+                ORDER BY module_id
+                """
+            ).fetchall()
+        return tuple(self._catalog_entry_from_row(row) for row in rows)
+
+    def upsert_tenant_module(self, state: TenantModuleState) -> TenantModuleState:
+        catalog_entry = self.get_catalog_entry(state.module_id)
+        if catalog_entry.status == ModuleStatus.NOT_INSTALLED:
+            raise ModuleLifecycleError(f"Module is not installed: {state.module_id}")
+
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, state.tenant_id)
+            connection.execute(
+                """
+                INSERT INTO collabio.tenant_modules (
+                    tenant_id,
+                    module_id,
+                    status,
+                    enabled_features,
+                    policy_snapshot_hash,
+                    provisioned_at_utc,
+                    enabled_at_utc,
+                    disabled_at_utc,
+                    decommission_requested_at_utc,
+                    decommission_blocked_at_utc,
+                    decommission_cancelled_at_utc,
+                    decommission_reopened_at_utc,
+                    decommissioned_at_utc,
+                    changed_by,
+                    audit_chain_ref,
+                    created_at_utc,
+                    updated_at_utc,
+                    schema_version,
+                    decommission_evidence_refs,
+                    migration_evidence
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+                ON CONFLICT (tenant_id, module_id) DO UPDATE
+                SET status = EXCLUDED.status,
+                    enabled_features = EXCLUDED.enabled_features,
+                    policy_snapshot_hash = EXCLUDED.policy_snapshot_hash,
+                    provisioned_at_utc = EXCLUDED.provisioned_at_utc,
+                    enabled_at_utc = EXCLUDED.enabled_at_utc,
+                    disabled_at_utc = EXCLUDED.disabled_at_utc,
+                    decommission_requested_at_utc = EXCLUDED.decommission_requested_at_utc,
+                    decommission_blocked_at_utc = EXCLUDED.decommission_blocked_at_utc,
+                    decommission_cancelled_at_utc = EXCLUDED.decommission_cancelled_at_utc,
+                    decommission_reopened_at_utc = EXCLUDED.decommission_reopened_at_utc,
+                    decommissioned_at_utc = EXCLUDED.decommissioned_at_utc,
+                    changed_by = EXCLUDED.changed_by,
+                    audit_chain_ref = EXCLUDED.audit_chain_ref,
+                    updated_at_utc = EXCLUDED.updated_at_utc,
+                    schema_version = EXCLUDED.schema_version,
+                    decommission_evidence_refs = EXCLUDED.decommission_evidence_refs,
+                    migration_evidence = EXCLUDED.migration_evidence
+                """,
+                self._tenant_module_values(state),
+            )
+        return state
+
+    def get_tenant_module(self, tenant_id: str, module_id: str) -> TenantModuleState:
+        state = self.get_tenant_module_or_none(tenant_id=tenant_id, module_id=module_id)
+        if state is None:
+            raise LookupError(f"Unknown tenant module: {tenant_id}/{module_id}")
+        return state
+
+    def get_tenant_module_or_none(self, *, tenant_id: str, module_id: str) -> TenantModuleState | None:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                self._tenant_module_select_sql()
+                + """
+                WHERE tenant_id = %s
+                  AND module_id = %s
+                """,
+                (tenant_id, module_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return self._tenant_module_from_row(row)
+
+    def list_tenant_modules(self, tenant_id: str) -> tuple[TenantModuleState, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                self._tenant_module_select_sql()
+                + """
+                WHERE tenant_id = %s
+                ORDER BY module_id
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._tenant_module_from_row(row) for row in rows)
+
+    def list_tenant_modules_for_module(self, module_id: str) -> tuple[TenantModuleState, ...]:
+        self.get_catalog_entry(module_id)
+        with psycopg.connect(self.database_dsn) as connection:
+            rows = connection.execute(
+                self._tenant_module_select_sql()
+                + """
+                WHERE module_id = %s
+                ORDER BY tenant_id, updated_at_utc, module_id
+                """,
+                (module_id,),
+            ).fetchall()
+        return tuple(self._tenant_module_from_row(row) for row in rows)
+
+    @staticmethod
+    def _set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+    @staticmethod
+    def _catalog_entry_values(entry: ModuleCatalogEntry) -> tuple[Any, ...]:
+        return (
+            entry.module_id,
+            entry.display_name,
+            entry.module_version,
+            entry.module_kind.value,
+            entry.status.value,
+            entry.min_core_version,
+            entry.description,
+            entry.installed_at_utc,
+            entry.manifest_hash,
+            Jsonb(list(entry.required_migration_versions)),
+            entry.schema_version,
+        )
+
+    @staticmethod
+    def _catalog_entry_from_row(row: tuple[Any, ...]) -> ModuleCatalogEntry:
+        return ModuleCatalogEntry(
+            module_id=str(row[0]),
+            display_name=str(row[1]),
+            module_version=str(row[2]),
+            module_kind=ModuleKind(str(row[3])),
+            status=ModuleStatus(str(row[4])),
+            min_core_version=str(row[5]) if row[5] is not None else None,
+            description=str(row[6]),
+            installed_at_utc=_utc_datetime(row[7]),
+            manifest_hash=str(row[8]),
+            required_migration_versions=tuple(str(version) for version in row[9]),
+            schema_version=str(row[10]),
+        )
+
+    @staticmethod
+    def _tenant_module_values(state: TenantModuleState) -> tuple[Any, ...]:
+        return (
+            state.tenant_id,
+            state.module_id,
+            state.status.value,
+            Jsonb(state.enabled_features),
+            state.policy_snapshot_hash,
+            state.provisioned_at_utc,
+            state.enabled_at_utc,
+            state.disabled_at_utc,
+            state.decommission_requested_at_utc,
+            state.decommission_blocked_at_utc,
+            state.decommission_cancelled_at_utc,
+            state.decommission_reopened_at_utc,
+            state.decommissioned_at_utc,
+            state.changed_by,
+            state.audit_chain_ref,
+            state.created_at_utc,
+            state.updated_at_utc,
+            state.schema_version,
+            Jsonb(state.decommission_evidence_refs),
+            Jsonb([evidence.model_dump(mode="json") for evidence in state.migration_evidence]),
+        )
+
+    @staticmethod
+    def _tenant_module_select_sql() -> str:
+        return """
+                SELECT
+                    tenant_id,
+                    module_id,
+                    status,
+                    enabled_features,
+                    policy_snapshot_hash,
+                    provisioned_at_utc,
+                    enabled_at_utc,
+                    disabled_at_utc,
+                    decommission_requested_at_utc,
+                    decommission_blocked_at_utc,
+                    decommission_cancelled_at_utc,
+                    decommission_reopened_at_utc,
+                    decommissioned_at_utc,
+                    changed_by,
+                    audit_chain_ref,
+                    created_at_utc,
+                    updated_at_utc,
+                    schema_version,
+                    decommission_evidence_refs,
+                    migration_evidence
+                FROM collabio.tenant_modules
+                """
+
+    @staticmethod
+    def _tenant_module_from_row(row: tuple[Any, ...]) -> TenantModuleState:
+        return TenantModuleState(
+            tenant_id=str(row[0]),
+            module_id=str(row[1]),
+            status=ModuleStatus(str(row[2])),
+            enabled_features=dict(row[3]),
+            policy_snapshot_hash=str(row[4]),
+            provisioned_at_utc=_utc_datetime_or_none(row[5]),
+            enabled_at_utc=_utc_datetime_or_none(row[6]),
+            disabled_at_utc=_utc_datetime_or_none(row[7]),
+            decommission_requested_at_utc=_utc_datetime_or_none(row[8]),
+            decommission_blocked_at_utc=_utc_datetime_or_none(row[9]),
+            decommission_cancelled_at_utc=_utc_datetime_or_none(row[10]),
+            decommission_reopened_at_utc=_utc_datetime_or_none(row[11]),
+            decommissioned_at_utc=_utc_datetime_or_none(row[12]),
+            changed_by=str(row[13]),
+            audit_chain_ref=str(row[14]),
+            created_at_utc=_utc_datetime(row[15]),
+            updated_at_utc=_utc_datetime(row[16]),
+            schema_version=str(row[17]),
+            decommission_evidence_refs=dict(row[18]),
+            migration_evidence=tuple(ModuleMigrationEvidence.model_validate(evidence) for evidence in row[19]),
+        )
+
+
 class ModuleWorkerGate:
-    def __init__(self, registry: InMemoryModuleRegistry) -> None:
+    def __init__(self, registry: InMemoryModuleRegistry | PgModuleRegistry) -> None:
         self.registry = registry
 
     def require_feature_worker(
@@ -1206,72 +1534,97 @@ class ModuleWorkerGate:
         )
 
 
+def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
+    return (
+        ModuleCatalogEntry(
+            module_id="crm_erp",
+            display_name="CRM/ERP",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.INSTALLED,
+            description="Optional CRM/ERP business module.",
+            manifest_hash="sha256:crm-erp-module-manifest",
+            required_migration_versions=(
+                "0007",
+                "0008",
+                "0009",
+                "0010",
+                "0011",
+                "0016",
+                "0017",
+                "0018",
+                "0019",
+                "0020",
+            ),
+        ),
+        ModuleCatalogEntry(
+            module_id="knowledge_base",
+            display_name="Knowledge Base",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.INSTALLED,
+            description="Optional governed knowledge base module.",
+            manifest_hash="sha256:knowledge-base-module-manifest",
+            required_migration_versions=(
+                "0007",
+                "0008",
+                "0009",
+                "0010",
+                "0011",
+                "0021",
+                "0022",
+                "0023",
+                "0024",
+                "0025",
+                "0026",
+                "0027",
+                "0028",
+                "0029",
+            ),
+        ),
+    )
+
+
+def default_tenant_module_seed_states() -> tuple[TenantModuleState, ...]:
+    return (
+        TenantModuleState(
+            tenant_id="tenant-demo",
+            module_id="crm_erp",
+            status=ModuleStatus.AVAILABLE,
+            enabled_features=default_crm_erp_subfeature_enabled_features(),
+            policy_snapshot_hash="sha256:demo-module-policy",
+            changed_by="system",
+            audit_chain_ref="audit:module-seed",
+        ),
+        TenantModuleState(
+            tenant_id="tenant-demo",
+            module_id="knowledge_base",
+            status=ModuleStatus.AVAILABLE,
+            enabled_features=default_knowledge_base_enabled_features(),
+            policy_snapshot_hash="sha256:demo-module-policy",
+            changed_by="system",
+            audit_chain_ref="audit:module-seed",
+        ),
+    )
+
+
 def default_module_registry() -> InMemoryModuleRegistry:
-    crm_erp_catalog = ModuleCatalogEntry(
-        module_id="crm_erp",
-        display_name="CRM/ERP",
-        module_version="0.1.0",
-        module_kind=ModuleKind.BUSINESS_DOMAIN,
-        status=ModuleStatus.INSTALLED,
-        description="Optional CRM/ERP business module.",
-        manifest_hash="sha256:crm-erp-module-manifest",
-        required_migration_versions=(
-            "0007",
-            "0008",
-            "0009",
-            "0010",
-            "0011",
-            "0016",
-            "0017",
-            "0018",
-            "0019",
-            "0020",
-        ),
-    )
-    knowledge_base_catalog = ModuleCatalogEntry(
-        module_id="knowledge_base",
-        display_name="Knowledge Base",
-        module_version="0.1.0",
-        module_kind=ModuleKind.BUSINESS_DOMAIN,
-        status=ModuleStatus.INSTALLED,
-        description="Optional governed knowledge base module.",
-        manifest_hash="sha256:knowledge-base-module-manifest",
-        required_migration_versions=(
-            "0007",
-            "0008",
-            "0009",
-            "0010",
-            "0011",
-            "0021",
-            "0022",
-            "0023",
-            "0024",
-            "0025",
-            "0026",
-            "0027",
-            "0028",
-            "0029",
-        ),
-    )
-    crm_erp_demo_state = TenantModuleState(
-        tenant_id="tenant-demo",
-        module_id="crm_erp",
-        status=ModuleStatus.AVAILABLE,
-        enabled_features=default_crm_erp_subfeature_enabled_features(),
-        policy_snapshot_hash="sha256:demo-module-policy",
-        changed_by="system",
-        audit_chain_ref="audit:module-seed",
-    )
-    knowledge_base_demo_state = TenantModuleState(
-        tenant_id="tenant-demo",
-        module_id="knowledge_base",
-        status=ModuleStatus.AVAILABLE,
-        enabled_features=default_knowledge_base_enabled_features(),
-        policy_snapshot_hash="sha256:demo-module-policy",
-        changed_by="system",
-        audit_chain_ref="audit:module-seed",
-    )
     return InMemoryModuleRegistry(
-        catalog_entries=[crm_erp_catalog, knowledge_base_catalog],
-        tenant_modules=[crm_erp_demo_state, knowledge_base_demo_state],
+        catalog_entries=list(default_module_catalog_entries()),
+        tenant_modules=list(default_tenant_module_seed_states()),
     )
+
+
+def build_default_module_registry(
+    environ: Mapping[str, str] | None = None,
+) -> InMemoryModuleRegistry | PgModuleRegistry:
+    env = os.environ if environ is None else environ
+    backend = env.get("SUITE_MODULE_REGISTRY_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return default_module_registry()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = env.get("SUITE_MODULE_REGISTRY_DSN") or env.get("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError("PostgreSQL module registry requires SUITE_MODULE_REGISTRY_DSN or SUITE_DATABASE_DSN")
+        return PgModuleRegistry(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported SUITE_MODULE_REGISTRY_BACKEND: {backend}")

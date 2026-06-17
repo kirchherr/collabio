@@ -121,7 +121,7 @@ from suite.platform.modules import (
     ModuleLifecycleError,
     PlatformModulesResponse,
     TenantModuleAdminView,
-    default_module_registry,
+    build_default_module_registry,
     tenant_module_admin_view,
 )
 from suite.platform.runtime import suite_auth_mode
@@ -391,7 +391,7 @@ def build_app() -> FastAPI:
         registry_dir / "tenant_policies.json",
         seed=InMemoryTenantPolicyRepository.default(),
     )
-    module_registry = default_module_registry()
+    module_registry = build_default_module_registry()
     migration_manifest = load_migration_manifest()
     authz_admin_store = build_default_authz_admin_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(

@@ -40,11 +40,13 @@ from suite.platform.modules import (
     ModuleLifecycleError,
     ModuleStatus,
     ModuleWorkerGate,
-    default_module_registry,
+    PgModuleRegistry,
+    build_default_module_registry,
 )
 
 ActivationStore = InMemoryKnowledgeBaseRuntimeActivationStore | PgKnowledgeBaseRuntimeActivationStore
 ReconciliationStore = InMemoryKnowledgeBaseRuntimeReconciliationStore | PgKnowledgeBaseRuntimeReconciliationStore
+ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
 
 CONTINUITY_DOMAINS = (
     "knowledge_base_content",
@@ -209,7 +211,7 @@ class KnowledgeBaseRuntimeReconciliationTenantSelector:
         *,
         activation_store: ActivationStore,
         module_worker_gate: ModuleWorkerGate,
-        module_registry: InMemoryModuleRegistry,
+        module_registry: ModuleRegistryStore,
         module_id: str = KNOWLEDGE_BASE_MODULE_ID,
     ) -> None:
         self.activation_store = activation_store
@@ -517,7 +519,7 @@ def build_default_reconciliation_runner(
     env = environ or os.environ
     activation_store = build_default_knowledge_base_runtime_activation_store(env)
     reconciliation_store = build_default_knowledge_base_runtime_reconciliation_store(env)
-    module_registry = default_module_registry()
+    module_registry = build_default_module_registry(env)
     selector = KnowledgeBaseRuntimeReconciliationTenantSelector(
         activation_store=activation_store,
         module_worker_gate=ModuleWorkerGate(module_registry),
