@@ -1275,7 +1275,8 @@ Empfohlene naechste Reihenfolge:
 105. [x] SourceObject-Detailzug weiter haerten: Detail-API auf persistente SourceObject-Repository-Backends fuer Dokumente/Mail vorbereiten, UI-Fehlerzustaende fuer 403/404 sichtbar differenzieren und Pg-basierte Detail-Smoke-Tests einziehen.
 106. [x] Dokument-/Mail-Detailzug als naechsten Produktpfad vorbereiten: persistente Repository-Auswahl operationalisieren, SourceObject-Flows von Demo-Seeding zu Backend-Konfiguration fuehren und Detailansichten um sichere Preview-Slots ohne Content-Bypass erweitern.
 107. [x] Dokument-/Mail-Preview-Gate konkretisieren: sichere metadata-first Preview-Policies, Parser-/Sanitizer-Grenzen, Mail-Header/Attachment-Metadaten und Content-Freigabe nur hinter explizitem Policy-/ACL-/Audit-Nachweis vorbereiten.
-108. [ ] Dokument-/Mail-Preview-Approval-Skeleton vorbereiten: Content-Preview-Anfragen als metadata-only Decision-Objekte modellieren, Tenant-Policy/ACL/Audit/Parser-Sanitizer-Evidence pruefen und weiterhin blockieren, bis explizite Freigabe und sichere Renderer-Grenzen nachgewiesen sind.
+108. [x] Dokument-/Mail-Preview-Approval-Skeleton vorbereiten: Content-Preview-Anfragen als metadata-only Decision-Objekte modellieren, Tenant-Policy/ACL/Audit/Parser-Sanitizer-Evidence pruefen und weiterhin blockieren, bis explizite Freigabe und sichere Renderer-Grenzen nachgewiesen sind.
+109. [ ] Dokument-/Mail-Preview-Approval operationalisieren: persistentes Preview-Decision-Ledger, Tenant-Policy-Schalter, Renderer-Sandbox-Evidence und Human-Confirmation-Workflow anbinden, ohne Content-Ausgabe freizuschalten.
 
 ## Release-Strategie
 

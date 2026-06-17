@@ -1,0 +1,316 @@
+from __future__ import annotations
+
+from enum import StrEnum
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from suite.ai_control_plane.audit import InMemoryAuditLogger, stable_hash
+from suite.ai_control_plane.models import TenantPolicy, UserContext
+from suite.platform.knowledge_base import KnowledgeBaseArticleService
+from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
+from suite.platform.source_object_details import (
+    SourceObjectMetadataDetailResponse,
+    build_source_object_metadata_detail_response,
+)
+from suite.platform.source_object_preview import SourceObjectPreviewGate
+from suite.storage.source_objects import SourceObjectRepository, SourceObjectType
+
+ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
+
+RENDERER_SANDBOX_EVIDENCE = "renderer_sandbox_evidence"
+
+
+class SourceObjectPreviewDecisionStatus(StrEnum):
+    BLOCKED = "blocked"
+
+
+class SourceObjectPreviewDecisionAccessDenied(PermissionError):
+    pass
+
+
+class SourceObjectPreviewDecisionInvalidRequest(ValueError):
+    pass
+
+
+class SourceObjectPreviewDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preview_slot_id: str
+    preview_policy_id: str
+    reason: str = Field(min_length=1)
+    parser_sanitizer_evidence_ref: str | None = None
+    renderer_sandbox_evidence_ref: str | None = None
+    human_confirmation_reference: str | None = None
+
+    @field_validator("preview_slot_id", "preview_policy_id", "reason")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("value must not be empty")
+        return stripped
+
+    @field_validator(
+        "parser_sanitizer_evidence_ref",
+        "renderer_sandbox_evidence_ref",
+        "human_confirmation_reference",
+    )
+    @classmethod
+    def validate_reference(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("reference must not be empty")
+        if ":" not in stripped:
+            raise ValueError("reference must include a namespace prefix")
+        return stripped
+
+
+class SourceObjectPreviewDecisionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    schema_version: str = "source_object_preview_decision.v1"
+    result_contract: str = "metadata_only_preview_decision"
+    decision_status: SourceObjectPreviewDecisionStatus = SourceObjectPreviewDecisionStatus.BLOCKED
+    content_release_allowed: bool = False
+    content_included: bool = False
+    access_checked: bool = True
+    source_object_id: str
+    source_version_id: str
+    source_object_type: SourceObjectType
+    preview_slot_id: str
+    preview_policy_id: str
+    gate: SourceObjectPreviewGate
+    tenant_policy_checked: bool = True
+    tenant_preview_policy_enabled: bool = False
+    required_content_release_evidence: tuple[str, ...]
+    provided_evidence: tuple[str, ...]
+    provided_evidence_refs: tuple[str, ...]
+    missing_evidence: tuple[str, ...]
+    blocking_reasons: tuple[str, ...]
+    parser_profile_id: str
+    sanitizer_profile_id: str
+    renderer_sandbox_required: bool = True
+    renderer_sandbox_evidence_ref: str | None = None
+    human_confirmation_reference: str | None = None
+    source_detail_audit_event_id: str
+    audit_event_id: str
+
+
+def build_source_object_preview_decision(
+    *,
+    user_context: UserContext,
+    tenant_policy: TenantPolicy,
+    workspace_source_repository: SourceObjectRepository,
+    module_registry: ModuleRegistryStore,
+    knowledge_base_article_service: KnowledgeBaseArticleService,
+    audit_logger: InMemoryAuditLogger,
+    source_object_id: str,
+    source_version_id: str,
+    request: SourceObjectPreviewDecisionRequest,
+) -> SourceObjectPreviewDecisionResponse:
+    if source_object_id not in user_context.readable_object_ids:
+        _audit_preview_decision_denial(
+            audit_logger=audit_logger,
+            user_context=user_context,
+            source_object_id=source_object_id,
+            source_version_id=source_version_id,
+            request=request,
+        )
+        raise SourceObjectPreviewDecisionAccessDenied("User cannot request preview decision for source object")
+
+    detail = build_source_object_metadata_detail_response(
+        user_context=user_context,
+        workspace_source_repository=workspace_source_repository,
+        module_registry=module_registry,
+        knowledge_base_article_service=knowledge_base_article_service,
+        audit_logger=audit_logger,
+        source_object_id=source_object_id,
+        source_version_id=source_version_id,
+    )
+    slot = next((candidate for candidate in detail.preview_slots if candidate.slot_id == request.preview_slot_id), None)
+    if slot is None:
+        _audit_preview_decision_rejection(
+            audit_logger=audit_logger,
+            user_context=user_context,
+            detail=detail,
+            request=request,
+            rejection_reason="unknown_preview_slot",
+        )
+        raise SourceObjectPreviewDecisionInvalidRequest("Preview slot is not available for source object")
+    if slot.gate.policy_id != request.preview_policy_id:
+        _audit_preview_decision_rejection(
+            audit_logger=audit_logger,
+            user_context=user_context,
+            detail=detail,
+            request=request,
+            rejection_reason="preview_policy_mismatch",
+        )
+        raise SourceObjectPreviewDecisionInvalidRequest("Preview policy does not match selected slot")
+
+    tenant_preview_policy_enabled = _tenant_preview_policy_enabled(tenant_policy)
+    required_evidence = _required_evidence(slot.gate)
+    provided_evidence = _provided_evidence(
+        tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+        request=request,
+    )
+    provided_evidence_refs = _provided_evidence_refs(
+        detail=detail,
+        request=request,
+        tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+    )
+    missing_evidence = tuple(evidence for evidence in required_evidence if evidence not in provided_evidence)
+    blocking_reasons = (
+        *slot.gate.blocking_reasons,
+        "content_preview_skeleton_blocks_release_until_renderer_operational",
+    )
+
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="source_object.preview_decision.blocked",
+        source_object_ids=[detail.source_object_id],
+        metadata={
+            "source_object_id": detail.source_object_id,
+            "source_version_id": detail.source_version_id,
+            "source_object_type": detail.source_object_type.value,
+            "preview_slot_id": slot.slot_id,
+            "preview_policy_id": slot.gate.policy_id,
+            "result_contract": "metadata_only",
+            "decision_status": SourceObjectPreviewDecisionStatus.BLOCKED.value,
+            "content_release_allowed": False,
+            "content_included": False,
+            "access_checked": True,
+            "tenant_policy_checked": True,
+            "tenant_preview_policy_enabled": tenant_preview_policy_enabled,
+            "required_content_release_evidence": list(required_evidence),
+            "provided_evidence": list(provided_evidence),
+            "provided_evidence_refs": list(provided_evidence_refs),
+            "missing_evidence": list(missing_evidence),
+            "blocking_reasons": list(blocking_reasons),
+            "source_detail_audit_event_id": detail.audit_event_id,
+            "reason_hash": stable_hash(request.reason),
+        },
+    )
+    return SourceObjectPreviewDecisionResponse(
+        tenant_id=detail.tenant_id,
+        source_object_id=detail.source_object_id,
+        source_version_id=detail.source_version_id,
+        source_object_type=detail.source_object_type,
+        preview_slot_id=slot.slot_id,
+        preview_policy_id=slot.gate.policy_id,
+        gate=slot.gate,
+        tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+        required_content_release_evidence=required_evidence,
+        provided_evidence=provided_evidence,
+        provided_evidence_refs=provided_evidence_refs,
+        missing_evidence=missing_evidence,
+        blocking_reasons=blocking_reasons,
+        parser_profile_id=slot.gate.parser_profile_id,
+        sanitizer_profile_id=slot.gate.sanitizer_profile_id,
+        renderer_sandbox_evidence_ref=request.renderer_sandbox_evidence_ref,
+        human_confirmation_reference=request.human_confirmation_reference,
+        source_detail_audit_event_id=detail.audit_event_id,
+        audit_event_id=event.event_id,
+    )
+
+
+def _tenant_preview_policy_enabled(tenant_policy: TenantPolicy) -> bool:
+    return getattr(tenant_policy, "content_preview_enabled", False) is True
+
+
+def _required_evidence(gate: SourceObjectPreviewGate) -> tuple[str, ...]:
+    return (*gate.required_content_release_evidence, RENDERER_SANDBOX_EVIDENCE)
+
+
+def _provided_evidence(
+    *,
+    tenant_preview_policy_enabled: bool,
+    request: SourceObjectPreviewDecisionRequest,
+) -> tuple[str, ...]:
+    evidence = ["source_object_acl_checked", "source_detail_audit_event"]
+    if tenant_preview_policy_enabled:
+        evidence.append("tenant_preview_policy_enabled")
+    if request.parser_sanitizer_evidence_ref is not None:
+        evidence.append("parser_sanitizer_evidence")
+    if request.human_confirmation_reference is not None:
+        evidence.append("human_content_release_confirmation")
+    if request.renderer_sandbox_evidence_ref is not None:
+        evidence.append(RENDERER_SANDBOX_EVIDENCE)
+    return tuple(evidence)
+
+
+def _provided_evidence_refs(
+    *,
+    detail: SourceObjectMetadataDetailResponse,
+    request: SourceObjectPreviewDecisionRequest,
+    tenant_preview_policy_enabled: bool,
+) -> tuple[str, ...]:
+    refs = [
+        f"acl:source_object:{detail.source_object_id}:v{detail.acl_version}",
+        f"audit:{detail.audit_event_id}",
+    ]
+    if tenant_preview_policy_enabled:
+        refs.append(f"tenant_policy:{detail.tenant_id}:content_preview_enabled")
+    if request.parser_sanitizer_evidence_ref is not None:
+        refs.append(request.parser_sanitizer_evidence_ref)
+    if request.renderer_sandbox_evidence_ref is not None:
+        refs.append(request.renderer_sandbox_evidence_ref)
+    if request.human_confirmation_reference is not None:
+        refs.append(request.human_confirmation_reference)
+    return tuple(refs)
+
+
+def _audit_preview_decision_denial(
+    *,
+    audit_logger: InMemoryAuditLogger,
+    user_context: UserContext,
+    source_object_id: str,
+    source_version_id: str,
+    request: SourceObjectPreviewDecisionRequest,
+) -> None:
+    audit_logger.record(
+        user_context=user_context,
+        event_type="source_object.preview_decision.denied",
+        source_object_ids=[source_object_id],
+        metadata={
+            "source_object_id": source_object_id,
+            "source_version_id": source_version_id,
+            "preview_slot_id": request.preview_slot_id,
+            "preview_policy_id": request.preview_policy_id,
+            "result_contract": "metadata_only",
+            "content_included": False,
+            "access_checked": True,
+            "denial_reason": "acl_object_not_readable",
+            "reason_hash": stable_hash(request.reason),
+        },
+    )
+
+
+def _audit_preview_decision_rejection(
+    *,
+    audit_logger: InMemoryAuditLogger,
+    user_context: UserContext,
+    detail: SourceObjectMetadataDetailResponse,
+    request: SourceObjectPreviewDecisionRequest,
+    rejection_reason: str,
+) -> None:
+    audit_logger.record(
+        user_context=user_context,
+        event_type="source_object.preview_decision.rejected",
+        source_object_ids=[detail.source_object_id],
+        metadata={
+            "source_object_id": detail.source_object_id,
+            "source_version_id": detail.source_version_id,
+            "source_object_type": detail.source_object_type.value,
+            "preview_slot_id": request.preview_slot_id,
+            "preview_policy_id": request.preview_policy_id,
+            "result_contract": "metadata_only",
+            "content_included": False,
+            "access_checked": True,
+            "rejection_reason": rejection_reason,
+            "source_detail_audit_event_id": detail.audit_event_id,
+            "reason_hash": stable_hash(request.reason),
+        },
+    )

@@ -906,6 +906,153 @@ def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_fea
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
+def test_source_object_preview_decision_blocks_content_release_without_required_evidence() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.post(
+        "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.document.metadata-first.v1",
+            "reason": "request safe document preview decision",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["schema_version"] == "source_object_preview_decision.v1"
+    assert body["result_contract"] == "metadata_only_preview_decision"
+    assert body["decision_status"] == "blocked"
+    assert body["content_release_allowed"] is False
+    assert body["content_included"] is False
+    assert body["access_checked"] is True
+    assert body["tenant_policy_checked"] is True
+    assert body["tenant_preview_policy_enabled"] is False
+    assert body["source_object_id"] == "doc-1"
+    assert body["source_version_id"] == "v1"
+    assert body["preview_slot_id"] == "office.document.preview.metadata"
+    assert body["preview_policy_id"] == "preview-policy.document.metadata-first.v1"
+    assert body["source_detail_audit_event_id"]
+    assert_metadata_first_preview_gate({"gate": body["gate"]})
+    assert "source_object_acl_checked" in body["provided_evidence"]
+    assert "source_detail_audit_event" in body["provided_evidence"]
+    assert "tenant_preview_policy_enabled" in body["missing_evidence"]
+    assert "parser_sanitizer_evidence" in body["missing_evidence"]
+    assert "human_content_release_confirmation" in body["missing_evidence"]
+    assert "renderer_sandbox_evidence" in body["missing_evidence"]
+    assert "content_preview_skeleton_blocks_release_until_renderer_operational" in body["blocking_reasons"]
+    assert "Board pack draft source content" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events] == [
+        "source_object.metadata_detail.read",
+        "source_object.preview_decision.blocked",
+    ]
+    event = new_events[-1]
+    assert event.source_object_ids == ["doc-1"]
+    assert event.metadata["result_contract"] == "metadata_only"
+    assert event.metadata["decision_status"] == "blocked"
+    assert event.metadata["content_release_allowed"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["access_checked"] is True
+    assert event.metadata["tenant_policy_checked"] is True
+    assert event.metadata["tenant_preview_policy_enabled"] is False
+    assert "renderer_sandbox_evidence" in event.metadata["missing_evidence"]
+    assert event.metadata["reason_hash"].startswith("sha256:")
+    assert "reason" not in event.metadata
+
+
+def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_release() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.post(
+        "/v1/source-objects/mail-1/versions/v1/preview-decisions",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "mail.message.preview.metadata",
+            "preview_policy_id": "preview-policy.mail.metadata-first.v1",
+            "reason": "request mail metadata preview decision",
+            "parser_sanitizer_evidence_ref": "parser-sanitizer:mail-preview-smoke-1",
+            "renderer_sandbox_evidence_ref": "renderer-sandbox:mail-preview-smoke-1",
+            "human_confirmation_reference": "approval:mail-preview-human-confirmation-1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision_status"] == "blocked"
+    assert body["content_release_allowed"] is False
+    assert body["source_object_type"] == "mail"
+    assert body["gate"]["policy_id"] == "preview-policy.mail.metadata-first.v1"
+    assert "parser_sanitizer_evidence" in body["provided_evidence"]
+    assert "renderer_sandbox_evidence" in body["provided_evidence"]
+    assert "human_content_release_confirmation" in body["provided_evidence"]
+    assert "tenant_preview_policy_enabled" in body["missing_evidence"]
+    assert "renderer_sandbox_evidence" not in body["missing_evidence"]
+    assert "parser-sanitizer:mail-preview-smoke-1" in body["provided_evidence_refs"]
+    assert "renderer-sandbox:mail-preview-smoke-1" in body["provided_evidence_refs"]
+    assert "approval:mail-preview-human-confirmation-1" in body["provided_evidence_refs"]
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.preview_decision.blocked"
+    assert "parser_sanitizer_evidence" in new_events[-1].metadata["provided_evidence"]
+    assert "renderer_sandbox_evidence" in new_events[-1].metadata["provided_evidence"]
+    assert "tenant_preview_policy_enabled" in new_events[-1].metadata["missing_evidence"]
+
+
+def test_source_object_preview_decision_denies_unreadable_object_and_audits_acl_check() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.post(
+        "/v1/source-objects/doc-other/versions/v1/preview-decisions",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.document.metadata-first.v1",
+            "reason": "request preview for unreadable document",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User cannot request preview decision for source object"
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events] == ["source_object.preview_decision.denied"]
+    assert new_events[-1].source_object_ids == ["doc-other"]
+    assert new_events[-1].metadata["denial_reason"] == "acl_object_not_readable"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["access_checked"] is True
+    assert new_events[-1].metadata["reason_hash"].startswith("sha256:")
+
+
+def test_source_object_preview_decision_rejects_preview_policy_mismatch() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.post(
+        "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.mail.metadata-first.v1",
+            "reason": "request preview with mismatched policy",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Preview policy does not match selected slot"
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events] == [
+        "source_object.metadata_detail.read",
+        "source_object.preview_decision.rejected",
+    ]
+    assert new_events[-1].metadata["rejection_reason"] == "preview_policy_mismatch"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["access_checked"] is True
+    assert new_events[-1].metadata["reason_hash"].startswith("sha256:")
+
+
 def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_routes() -> None:
     module_registry = default_module_registry()
     probe_client = TestClient(build_module_gate_probe_app(module_registry))

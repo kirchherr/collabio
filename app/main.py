@@ -138,6 +138,13 @@ from suite.platform.source_object_details import (
     SourceObjectMetadataDetailResponse,
     build_source_object_metadata_detail_response,
 )
+from suite.platform.source_object_preview_decisions import (
+    SourceObjectPreviewDecisionAccessDenied,
+    SourceObjectPreviewDecisionInvalidRequest,
+    SourceObjectPreviewDecisionRequest,
+    SourceObjectPreviewDecisionResponse,
+    build_source_object_preview_decision,
+)
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.platform.workspace_source_objects import (
@@ -483,6 +490,41 @@ def build_app() -> FastAPI:
                 source_object_id=source_object_id,
                 source_version_id=source_version_id,
             )
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions",
+        response_model=SourceObjectPreviewDecisionResponse,
+    )
+    def source_object_preview_decision(
+        source_object_id: str,
+        source_version_id: str,
+        decision_request: SourceObjectPreviewDecisionRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> SourceObjectPreviewDecisionResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_source_object_preview_decision(
+                user_context=context.user_context,
+                tenant_policy=context.tenant_policy,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+                request=decision_request,
+            )
+        except SourceObjectPreviewDecisionAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectPreviewDecisionInvalidRequest as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         except SourceObjectDetailAccessDenied as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
         except SourceObjectDetailNotFound as exc:
