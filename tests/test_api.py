@@ -29,6 +29,7 @@ from suite.platform.modules import (
     PgModuleRegistry,
     default_module_registry,
 )
+from suite.platform.source_object_preview_decisions import JsonlSourceObjectPreviewDecisionLedger
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 from suite.platform.workspace_source_objects import (
     ConfiguredWorkspaceSourceObjectCatalog,
@@ -908,6 +909,8 @@ def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_fea
 
 def test_source_object_preview_decision_blocks_content_release_without_required_evidence() -> None:
     starting_event_count = len(app.state.audit_logger.events)
+    ledger = app.state.source_object_preview_decision_ledger
+    starting_ledger_count = len(ledger.list_decisions(tenant_id="tenant-demo"))
 
     response = client.post(
         "/v1/source-objects/doc-1/versions/v1/preview-decisions",
@@ -943,6 +946,12 @@ def test_source_object_preview_decision_blocks_content_release_without_required_
     assert "human_content_release_confirmation" in body["missing_evidence"]
     assert "renderer_sandbox_evidence" in body["missing_evidence"]
     assert "content_preview_skeleton_blocks_release_until_renderer_operational" in body["blocking_reasons"]
+    assert body["renderer_sandbox_evidence_verified"] is False
+    assert body["human_confirmation_verified"] is False
+    assert body["content_release_evidence_complete"] is False
+    assert body["preview_decision_evidence_hash"].startswith("sha256:")
+    assert body["decision_ledger_ref"] == f"preview-decision-ledger:{body['preview_decision_evidence_hash']}"
+    assert body["ledger_entry_persisted"] is True
     assert "Board pack draft source content" not in json.dumps(body)
 
     new_events = app.state.audit_logger.events[starting_event_count:]
@@ -962,6 +971,16 @@ def test_source_object_preview_decision_blocks_content_release_without_required_
     assert "renderer_sandbox_evidence" in event.metadata["missing_evidence"]
     assert event.metadata["reason_hash"].startswith("sha256:")
     assert "reason" not in event.metadata
+
+    ledger_entries = ledger.list_decisions(tenant_id="tenant-demo")
+    assert len(ledger_entries) == starting_ledger_count + 1
+    ledger_evidence = ledger.get(tenant_id="tenant-demo", evidence_hash=body["preview_decision_evidence_hash"])
+    assert ledger_evidence.decision_status == "blocked"
+    assert ledger_evidence.content_release_allowed is False
+    assert ledger_evidence.content_included is False
+    assert ledger_evidence.audit_event_id == body["audit_event_id"]
+    assert ledger_evidence.reason_hash == event.metadata["reason_hash"]
+    assert "Board pack draft source content" not in ledger_evidence.model_dump_json()
 
 
 def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_release() -> None:
@@ -994,6 +1013,9 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     assert "parser-sanitizer:mail-preview-smoke-1" in body["provided_evidence_refs"]
     assert "renderer-sandbox:mail-preview-smoke-1" in body["provided_evidence_refs"]
     assert "approval:mail-preview-human-confirmation-1" in body["provided_evidence_refs"]
+    assert body["renderer_sandbox_evidence_verified"] is True
+    assert body["human_confirmation_verified"] is True
+    assert body["content_release_evidence_complete"] is False
     assert "Welcome message source" not in json.dumps(body)
 
     new_events = app.state.audit_logger.events[starting_event_count:]
@@ -1003,8 +1025,91 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     assert "tenant_preview_policy_enabled" in new_events[-1].metadata["missing_evidence"]
 
 
+def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_records_complete_evidence() -> None:
+    previous_policy_repository = app.state.tenant_policy_repository
+    app.state.tenant_policy_repository = InMemoryTenantPolicyRepository(
+        policies={
+            "tenant-demo": TenantPolicy(
+                tenant_id="tenant-demo",
+                ai_enabled=True,
+                rag_enabled=True,
+                voice_enabled=True,
+                content_preview_enabled=True,
+                raw_audio_storage_allowed=False,
+                allowed_model_ids={"mock-summarizer"},
+                allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL, DataClass.AI_PROMPT},
+            )
+        }
+    )
+
+    try:
+        response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "reason": "request fully evidenced preview decision",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:document-preview-smoke-1",
+                "renderer_sandbox_evidence_ref": "renderer-sandbox:document-preview-smoke-1",
+                "human_confirmation_reference": "approval:document-preview-human-confirmation-1",
+            },
+        )
+    finally:
+        app.state.tenant_policy_repository = previous_policy_repository
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_preview_policy_enabled"] is True
+    assert body["missing_evidence"] == []
+    assert body["content_release_evidence_complete"] is True
+    assert body["renderer_sandbox_evidence_verified"] is True
+    assert body["human_confirmation_verified"] is True
+    assert "tenant_policy:tenant-demo:content_preview_enabled" in body["provided_evidence_refs"]
+    assert body["decision_status"] == "blocked"
+    assert body["content_release_allowed"] is False
+    assert "content_preview_skeleton_blocks_release_until_renderer_operational" in body["blocking_reasons"]
+
+
+def test_source_object_preview_decision_jsonl_ledger_reloads_metadata_only(tmp_path: Path) -> None:
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    ledger_path = tmp_path / "preview_decisions.jsonl"
+    app.state.source_object_preview_decision_ledger = JsonlSourceObjectPreviewDecisionLedger(path=ledger_path)
+
+    try:
+        response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "reason": "request persisted preview decision",
+            },
+        )
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert ledger_path.exists()
+    reloaded_ledger = JsonlSourceObjectPreviewDecisionLedger(path=ledger_path)
+    reloaded = reloaded_ledger.get(
+        tenant_id="tenant-demo",
+        evidence_hash=body["preview_decision_evidence_hash"],
+    )
+    assert reloaded.source_object_id == "doc-1"
+    assert reloaded.content_included is False
+    assert reloaded.content_release_allowed is False
+    persisted_text = ledger_path.read_text(encoding="utf-8")
+    assert "Board pack draft source content" not in persisted_text
+    assert "request persisted preview decision" not in persisted_text
+    assert reloaded.reason_hash.startswith("sha256:")
+
+
 def test_source_object_preview_decision_denies_unreadable_object_and_audits_acl_check() -> None:
     starting_event_count = len(app.state.audit_logger.events)
+    ledger = app.state.source_object_preview_decision_ledger
+    starting_ledger_count = len(ledger.list_decisions(tenant_id="tenant-demo"))
 
     response = client.post(
         "/v1/source-objects/doc-other/versions/v1/preview-decisions",
@@ -1025,6 +1130,7 @@ def test_source_object_preview_decision_denies_unreadable_object_and_audits_acl_
     assert new_events[-1].metadata["content_included"] is False
     assert new_events[-1].metadata["access_checked"] is True
     assert new_events[-1].metadata["reason_hash"].startswith("sha256:")
+    assert len(ledger.list_decisions(tenant_id="tenant-demo")) == starting_ledger_count
 
 
 def test_source_object_preview_decision_rejects_preview_policy_mismatch() -> None:
@@ -2491,6 +2597,7 @@ def test_admin_can_update_tenant_ai_settings() -> None:
             "rag_enabled": True,
             "voice_enabled": True,
             "external_ai_enabled": False,
+            "content_preview_enabled": True,
             "allowed_model_ids": ["mock-summarizer"],
         },
     )
@@ -2501,6 +2608,7 @@ def test_admin_can_update_tenant_ai_settings() -> None:
     assert body["rag_enabled"] is True
     assert body["voice_enabled"] is True
     assert body["external_ai_enabled"] is False
+    assert body["content_preview_enabled"] is True
     assert set(body["allowed_model_ids"]) == {"mock-summarizer"}
 
     matching_audit_events = [
@@ -2508,6 +2616,7 @@ def test_admin_can_update_tenant_ai_settings() -> None:
     ]
     assert matching_audit_events
     assert matching_audit_events[-1].metadata["allowed_model_count"] == 1
+    assert matching_audit_events[-1].metadata["content_preview_enabled"] is True
 
 
 def test_security_admin_can_register_approve_and_retire_embedding_model_version() -> None:

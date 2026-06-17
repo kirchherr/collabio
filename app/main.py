@@ -143,6 +143,7 @@ from suite.platform.source_object_preview_decisions import (
     SourceObjectPreviewDecisionInvalidRequest,
     SourceObjectPreviewDecisionRequest,
     SourceObjectPreviewDecisionResponse,
+    build_default_source_object_preview_decision_ledger,
     build_source_object_preview_decision,
 )
 from suite.platform.storage_paths import suite_data_dir
@@ -384,6 +385,7 @@ def build_app() -> FastAPI:
     )
     workspace_source_object_repository = build_default_workspace_source_object_repository()
     workspace_source_object_catalog = build_default_workspace_source_object_catalog()
+    source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
     crm_account_service = CrmAccountService(
         repository=InMemoryCrmAccountRepository.demo(),
         audit_logger=audit_logger,
@@ -517,6 +519,7 @@ def build_app() -> FastAPI:
                 module_registry=module_registry,
                 knowledge_base_article_service=knowledge_base_articles,
                 audit_logger=audit_logger,
+                preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
                 source_object_id=source_object_id,
                 source_version_id=source_version_id,
                 request=decision_request,
@@ -1125,6 +1128,7 @@ def build_app() -> FastAPI:
                 "rag_enabled": persisted_policy.rag_enabled,
                 "voice_enabled": persisted_policy.voice_enabled,
                 "external_ai_enabled": persisted_policy.external_ai_enabled,
+                "content_preview_enabled": persisted_policy.content_preview_enabled,
                 "allowed_model_count": len(persisted_policy.allowed_model_ids),
             },
         )
@@ -1564,6 +1568,7 @@ def build_app() -> FastAPI:
     app.state.module_registry = module_registry
     app.state.principal_resolver = principal_resolver
     app.state.rag_pipeline = rag_pipeline
+    app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard
     app.state.workspace_source_object_catalog = workspace_source_object_catalog

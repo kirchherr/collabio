@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
+import os
+from collections.abc import Sequence
 from enum import StrEnum
+from pathlib import Path
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from suite.ai_control_plane.audit import InMemoryAuditLogger, stable_hash
+from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import TenantPolicy, UserContext
 from suite.platform.knowledge_base import KnowledgeBaseArticleService
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
@@ -97,6 +102,121 @@ class SourceObjectPreviewDecisionResponse(BaseModel):
     human_confirmation_reference: str | None = None
     source_detail_audit_event_id: str
     audit_event_id: str
+    renderer_sandbox_evidence_verified: bool = False
+    human_confirmation_verified: bool = False
+    content_release_evidence_complete: bool = False
+    preview_decision_evidence_hash: str
+    decision_ledger_ref: str
+    ledger_entry_persisted: bool = True
+
+
+class SourceObjectPreviewDecisionEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    source_object_id: str
+    source_version_id: str
+    source_object_type: SourceObjectType
+    preview_slot_id: str
+    preview_policy_id: str
+    decision_status: SourceObjectPreviewDecisionStatus
+    content_release_allowed: bool = False
+    content_included: bool = False
+    access_checked: bool = True
+    tenant_policy_checked: bool = True
+    tenant_preview_policy_enabled: bool = False
+    required_content_release_evidence: tuple[str, ...]
+    provided_evidence: tuple[str, ...]
+    provided_evidence_refs: tuple[str, ...]
+    missing_evidence: tuple[str, ...]
+    blocking_reasons: tuple[str, ...]
+    parser_profile_id: str
+    sanitizer_profile_id: str
+    renderer_sandbox_required: bool = True
+    renderer_sandbox_evidence_ref: str | None = None
+    human_confirmation_reference: str | None = None
+    renderer_sandbox_evidence_verified: bool = False
+    human_confirmation_verified: bool = False
+    content_release_evidence_complete: bool = False
+    source_detail_audit_event_id: str
+    audit_event_id: str
+    requested_by: str
+    reason_hash: str
+    evidence_hash: str
+    schema_version: str = "source_object_preview_decision_evidence.v1"
+
+
+class SourceObjectPreviewDecisionLedger(Protocol):
+    def append(self, evidence: SourceObjectPreviewDecisionEvidence) -> SourceObjectPreviewDecisionEvidence:
+        raise NotImplementedError
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewDecisionEvidence:
+        raise NotImplementedError
+
+    def list_decisions(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewDecisionEvidence]:
+        raise NotImplementedError
+
+
+class InMemorySourceObjectPreviewDecisionLedger:
+    def __init__(self, evidences: Sequence[SourceObjectPreviewDecisionEvidence] = ()) -> None:
+        self._evidences: dict[tuple[str, str], SourceObjectPreviewDecisionEvidence] = {}
+        for evidence in evidences:
+            self.append(evidence)
+
+    def append(self, evidence: SourceObjectPreviewDecisionEvidence) -> SourceObjectPreviewDecisionEvidence:
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("source object preview decision evidence already exists")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewDecisionEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("source object preview decision evidence not found") from exc
+
+    def list_decisions(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewDecisionEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
+
+
+class JsonlSourceObjectPreviewDecisionLedger:
+    def __init__(self, *, path: Path) -> None:
+        self.path = path
+        self._evidences: dict[tuple[str, str], SourceObjectPreviewDecisionEvidence] = {}
+        if not path.exists():
+            return
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            evidence = SourceObjectPreviewDecisionEvidence.model_validate_json(line)
+            key = (evidence.tenant_id, evidence.evidence_hash)
+            if key in self._evidences:
+                raise ValueError("duplicate source object preview decision evidence in ledger")
+            self._evidences[key] = evidence
+
+    def append(self, evidence: SourceObjectPreviewDecisionEvidence) -> SourceObjectPreviewDecisionEvidence:
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("source object preview decision evidence already exists")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(evidence.model_dump(mode="json"), sort_keys=True) + "\n")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewDecisionEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("source object preview decision evidence not found") from exc
+
+    def list_decisions(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewDecisionEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
 
 
 def build_source_object_preview_decision(
@@ -107,6 +227,7 @@ def build_source_object_preview_decision(
     module_registry: ModuleRegistryStore,
     knowledge_base_article_service: KnowledgeBaseArticleService,
     audit_logger: InMemoryAuditLogger,
+    preview_decision_ledger: SourceObjectPreviewDecisionLedger,
     source_object_id: str,
     source_version_id: str,
     request: SourceObjectPreviewDecisionRequest,
@@ -162,6 +283,9 @@ def build_source_object_preview_decision(
         tenant_preview_policy_enabled=tenant_preview_policy_enabled,
     )
     missing_evidence = tuple(evidence for evidence in required_evidence if evidence not in provided_evidence)
+    renderer_sandbox_evidence_verified = request.renderer_sandbox_evidence_ref is not None
+    human_confirmation_verified = request.human_confirmation_reference is not None
+    content_release_evidence_complete = not missing_evidence
     blocking_reasons = (
         *slot.gate.blocking_reasons,
         "content_preview_skeleton_blocks_release_until_renderer_operational",
@@ -190,9 +314,38 @@ def build_source_object_preview_decision(
             "missing_evidence": list(missing_evidence),
             "blocking_reasons": list(blocking_reasons),
             "source_detail_audit_event_id": detail.audit_event_id,
+            "renderer_sandbox_evidence_verified": renderer_sandbox_evidence_verified,
+            "human_confirmation_verified": human_confirmation_verified,
+            "content_release_evidence_complete": content_release_evidence_complete,
             "reason_hash": stable_hash(request.reason),
         },
     )
+    evidence = build_source_object_preview_decision_evidence(
+        tenant_id=detail.tenant_id,
+        source_object_id=detail.source_object_id,
+        source_version_id=detail.source_version_id,
+        source_object_type=detail.source_object_type,
+        preview_slot_id=slot.slot_id,
+        preview_policy_id=slot.gate.policy_id,
+        tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+        required_content_release_evidence=required_evidence,
+        provided_evidence=provided_evidence,
+        provided_evidence_refs=provided_evidence_refs,
+        missing_evidence=missing_evidence,
+        blocking_reasons=blocking_reasons,
+        parser_profile_id=slot.gate.parser_profile_id,
+        sanitizer_profile_id=slot.gate.sanitizer_profile_id,
+        renderer_sandbox_evidence_ref=request.renderer_sandbox_evidence_ref,
+        human_confirmation_reference=request.human_confirmation_reference,
+        renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        human_confirmation_verified=human_confirmation_verified,
+        content_release_evidence_complete=content_release_evidence_complete,
+        source_detail_audit_event_id=detail.audit_event_id,
+        audit_event_id=event.event_id,
+        requested_by=user_context.user_id,
+        reason_hash=stable_hash(request.reason),
+    )
+    persisted_evidence = preview_decision_ledger.append(evidence)
     return SourceObjectPreviewDecisionResponse(
         tenant_id=detail.tenant_id,
         source_object_id=detail.source_object_id,
@@ -213,11 +366,87 @@ def build_source_object_preview_decision(
         human_confirmation_reference=request.human_confirmation_reference,
         source_detail_audit_event_id=detail.audit_event_id,
         audit_event_id=event.event_id,
+        renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        human_confirmation_verified=human_confirmation_verified,
+        content_release_evidence_complete=content_release_evidence_complete,
+        preview_decision_evidence_hash=persisted_evidence.evidence_hash,
+        decision_ledger_ref=f"preview-decision-ledger:{persisted_evidence.evidence_hash}",
     )
 
 
 def _tenant_preview_policy_enabled(tenant_policy: TenantPolicy) -> bool:
-    return getattr(tenant_policy, "content_preview_enabled", False) is True
+    return tenant_policy.content_preview_enabled is True
+
+
+def build_source_object_preview_decision_evidence(
+    *,
+    tenant_id: str,
+    source_object_id: str,
+    source_version_id: str,
+    source_object_type: SourceObjectType,
+    preview_slot_id: str,
+    preview_policy_id: str,
+    tenant_preview_policy_enabled: bool,
+    required_content_release_evidence: tuple[str, ...],
+    provided_evidence: tuple[str, ...],
+    provided_evidence_refs: tuple[str, ...],
+    missing_evidence: tuple[str, ...],
+    blocking_reasons: tuple[str, ...],
+    parser_profile_id: str,
+    sanitizer_profile_id: str,
+    renderer_sandbox_evidence_ref: str | None,
+    human_confirmation_reference: str | None,
+    renderer_sandbox_evidence_verified: bool,
+    human_confirmation_verified: bool,
+    content_release_evidence_complete: bool,
+    source_detail_audit_event_id: str,
+    audit_event_id: str,
+    requested_by: str,
+    reason_hash: str,
+) -> SourceObjectPreviewDecisionEvidence:
+    draft = SourceObjectPreviewDecisionEvidence(
+        tenant_id=tenant_id,
+        source_object_id=source_object_id,
+        source_version_id=source_version_id,
+        source_object_type=source_object_type,
+        preview_slot_id=preview_slot_id,
+        preview_policy_id=preview_policy_id,
+        decision_status=SourceObjectPreviewDecisionStatus.BLOCKED,
+        tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+        required_content_release_evidence=required_content_release_evidence,
+        provided_evidence=provided_evidence,
+        provided_evidence_refs=provided_evidence_refs,
+        missing_evidence=missing_evidence,
+        blocking_reasons=blocking_reasons,
+        parser_profile_id=parser_profile_id,
+        sanitizer_profile_id=sanitizer_profile_id,
+        renderer_sandbox_evidence_ref=renderer_sandbox_evidence_ref,
+        human_confirmation_reference=human_confirmation_reference,
+        renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        human_confirmation_verified=human_confirmation_verified,
+        content_release_evidence_complete=content_release_evidence_complete,
+        source_detail_audit_event_id=source_detail_audit_event_id,
+        audit_event_id=audit_event_id,
+        requested_by=requested_by,
+        reason_hash=reason_hash,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    return draft.model_copy(update={"evidence_hash": build_source_object_preview_decision_evidence_hash(draft)})
+
+
+def build_source_object_preview_decision_evidence_hash(evidence: SourceObjectPreviewDecisionEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_default_source_object_preview_decision_ledger(data_dir: Path) -> SourceObjectPreviewDecisionLedger:
+    backend = os.getenv("SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemorySourceObjectPreviewDecisionLedger()
+    if backend in {"jsonl", "json-lines", "file"}:
+        ledger_path = os.getenv("SUITE_SOURCE_PREVIEW_DECISION_LEDGER_PATH")
+        path = Path(ledger_path) if ledger_path else data_dir / "source_preview" / "decision_ledger.jsonl"
+        return JsonlSourceObjectPreviewDecisionLedger(path=path)
+    raise ValueError(f"Unsupported SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: {backend}")
 
 
 def _required_evidence(gate: SourceObjectPreviewGate) -> tuple[str, ...]:
