@@ -127,8 +127,18 @@ from suite.platform.modules import (
     build_default_module_registry,
     tenant_module_admin_view,
 )
-from suite.platform.product_cockpit import ProductCockpitResponse, build_product_cockpit_response
+from suite.platform.product_cockpit import (
+    ProductCockpitResponse,
+    build_product_cockpit_response,
+    demo_workspace_source_object_records,
+)
 from suite.platform.runtime import suite_auth_mode
+from suite.platform.source_object_details import (
+    SourceObjectDetailAccessDenied,
+    SourceObjectDetailNotFound,
+    SourceObjectMetadataDetailResponse,
+    build_source_object_metadata_detail_response,
+)
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.rag.embedding_model_admin import (
@@ -150,7 +160,7 @@ from suite.rag.repositories import (
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
 from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
-from suite.storage.source_objects import build_default_source_object_write_receipt_store
+from suite.storage.source_objects import InMemorySourceObjectRepository, build_default_source_object_write_receipt_store
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -361,6 +371,7 @@ def build_app() -> FastAPI:
         acl_authorizer=acl_authorizer,
         audit_logger=audit_logger,
     )
+    workspace_source_object_repository = InMemorySourceObjectRepository(records=demo_workspace_source_object_records())
     crm_account_service = CrmAccountService(
         repository=InMemoryCrmAccountRepository.demo(),
         audit_logger=audit_logger,
@@ -439,6 +450,34 @@ def build_app() -> FastAPI:
             knowledge_base_article_service=knowledge_base_articles,
             audit_logger=audit_logger,
         )
+
+    @app.get(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/metadata",
+        response_model=SourceObjectMetadataDetailResponse,
+    )
+    def source_object_metadata_detail(
+        source_object_id: str,
+        source_version_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> SourceObjectMetadataDetailResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(InMemorySourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_source_object_metadata_detail_response(
+                user_context=context.user_context,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+            )
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     def tenant_policy_snapshot_hash(policy: TenantPolicy) -> str:
         return stable_hash(canonical_json(policy.model_dump(mode="json")))
@@ -1476,6 +1515,7 @@ def build_app() -> FastAPI:
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard
+    app.state.workspace_source_object_repository = workspace_source_object_repository
 
     return app
 

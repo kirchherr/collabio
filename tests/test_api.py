@@ -371,6 +371,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
+    assert "/v1/source-objects/" in js_response.text
+    assert "/metadata" in js_response.text
     assert "/v1/admin/tenant-modules/" in js_response.text
     assert "X-Tenant-Id" in js_response.text
     assert "window.confirm" in js_response.text
@@ -547,6 +549,86 @@ def test_platform_cockpit_includes_knowledge_base_source_flow_after_feature_enab
     modules = {module["module_id"]: module for module in body["modules"]}
     assert modules["knowledge_base"]["normal_use_enabled"] is True
     assert modules["knowledge_base"]["next_action"] == "open_module"
+
+
+def test_source_object_metadata_detail_requires_request_context() -> None:
+    response = client.get("/v1/source-objects/doc-1/versions/v1/metadata")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_source_object_metadata_detail_returns_document_metadata_without_content() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/source-objects/doc-1/versions/v1/metadata", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["schema_version"] == "source_object_metadata_detail.v1"
+    assert body["result_contract"] == "metadata_only_acl_checked_source_object_detail"
+    assert body["origin"] == "document"
+    assert body["source_object_id"] == "doc-1"
+    assert body["source_version_id"] == "v1"
+    assert body["source_object_type"] == "document"
+    assert body["title"] == "Board Pack Draft"
+    assert body["access_checked"] is True
+    assert body["content_included"] is False
+    assert body["manifest_hash"].startswith("sha256:")
+    assert body["content_hash"].startswith("sha256:")
+    assert "Board pack draft source content" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.metadata_detail.read"
+    assert new_events[-1].source_object_ids == ["doc-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+    assert new_events[-1].metadata["access_checked"] is True
+    assert new_events[-1].metadata["content_included"] is False
+
+
+def test_source_object_metadata_detail_denies_unreadable_object_and_audits_acl_check() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/source-objects/doc-other/versions/v1/metadata", headers=DEMO_HEADERS)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User cannot read requested source object metadata"
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.metadata_detail.denied"
+    assert new_events[-1].source_object_ids == ["doc-other"]
+    assert new_events[-1].metadata["denial_reason"] == "acl_object_not_readable"
+    assert new_events[-1].metadata["access_checked"] is True
+
+
+def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_feature_enable() -> None:
+    reset_module_registry()
+    provision_and_enable_knowledge_base_articles_for_demo()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get(
+        "/v1/source-objects/kb-article-version-backup-runbook-v1-demo/versions/v1/metadata",
+        headers=DEMO_KB_ARTICLE_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["origin"] == "knowledge_base"
+    assert body["module_id"] == "knowledge_base"
+    assert body["module_status"] == "enabled"
+    assert body["source_object_type"] == "wiki"
+    assert body["title"] == "Backup Restore Runbook v1"
+    assert body["access_checked"] is True
+    assert body["content_included"] is False
+    assert "knowledge_base.article.read" in body["downstream_surfaces"]
+    assert "object_type:kb.article" in body["evidence_refs"]
+    assert "Backup restore runbook source content" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "source_object.metadata_detail.read"
+    assert new_events[-1].source_object_ids == ["kb-article-version-backup-runbook-v1-demo"]
+    assert new_events[-1].metadata["origin"] == "knowledge_base"
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
 def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_routes() -> None:

@@ -1271,7 +1271,8 @@ Empfohlene naechste Reihenfolge:
 101. [x] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
 102. [x] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
 103. [x] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
-104. [ ] SourceObject-Detailzug produktionsnah machen: repository-backed metadata-only Detail-Endpoints fuer Dokumente, Mail und Wissensdatenbank anbinden, ACL-Pruefung pro Detailabruf auditieren und die Workspace-Shell von Cockpit-Flow-Snapshots auf diese Detail-API umstellen.
+104. [x] SourceObject-Detailzug produktionsnah machen: repository-backed metadata-only Detail-Endpoints fuer Dokumente, Mail und Wissensdatenbank anbinden, ACL-Pruefung pro Detailabruf auditieren und die Workspace-Shell von Cockpit-Flow-Snapshots auf diese Detail-API umstellen.
+105. [ ] SourceObject-Detailzug weiter haerten: Detail-API auf persistente SourceObject-Repository-Backends fuer Dokumente/Mail vorbereiten, UI-Fehlerzustaende fuer 403/404 sichtbar differenzieren und Pg-basierte Detail-Smoke-Tests einziehen.
 
 ## Release-Strategie
 

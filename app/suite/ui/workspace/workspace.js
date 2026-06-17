@@ -16,6 +16,7 @@ const sourceDetailPanel = document.querySelector("#source-detail-panel");
 const storageKey = "collabio.workspace.context";
 let currentCockpit = { modules: [], source_object_flows: [] };
 let selectedFlowId = "";
+let detailLoadToken = 0;
 
 function readContext() {
   return {
@@ -130,7 +131,7 @@ function renderCockpit(cockpit) {
   }
   renderModules(modules);
   renderFlows(flows);
-  renderSourceObjectDetail();
+  loadSourceObjectDetail();
 }
 
 function renderModules(modules) {
@@ -208,9 +209,42 @@ function renderFlows(flows) {
   }
 }
 
-function renderSourceObjectDetail() {
+async function loadSourceObjectDetail() {
   const flow = (currentCockpit.source_object_flows || []).find((item) => item.flow_id === selectedFlowId);
   if (!flow) {
+    renderSourceObjectDetail(null);
+    return;
+  }
+
+  const token = detailLoadToken + 1;
+  detailLoadToken = token;
+  sourceDetailPanel.className = "detail-panel empty-state";
+  sourceDetailPanel.textContent = "Lade metadata-only Detail ...";
+  try {
+    const response = await fetch(
+      `/v1/source-objects/${encodeURIComponent(flow.source_object_id)}/versions/${encodeURIComponent(flow.source_version_id)}/metadata`,
+      {
+        headers: headersForContext(readContext()),
+      },
+    );
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new Error(body.detail || `HTTP ${response.status}`);
+    }
+    if (token === detailLoadToken) {
+      renderSourceObjectDetail(body);
+    }
+  } catch (error) {
+    if (token !== detailLoadToken) {
+      return;
+    }
+    sourceDetailPanel.className = "detail-panel empty-state";
+    sourceDetailPanel.textContent = error.message || "SourceObject-Detail konnte nicht geladen werden.";
+  }
+}
+
+function renderSourceObjectDetail(detail) {
+  if (!detail) {
     sourceDetailPanel.className = "detail-panel empty-state";
     sourceDetailPanel.textContent = "Wähle einen autorisierten Flow aus.";
     return;
@@ -219,29 +253,32 @@ function renderSourceObjectDetail() {
   sourceDetailPanel.className = "detail-panel";
   sourceDetailPanel.innerHTML = `
     <div class="detail-summary">
-      <h3>${escapeHtml(flow.title)}</h3>
-      <span class="hash-text">${escapeHtml(flow.source_object_id)}:${escapeHtml(flow.source_version_id)}</span>
+      <h3>${escapeHtml(detail.title)}</h3>
+      <span class="hash-text">${escapeHtml(detail.source_object_id)}:${escapeHtml(detail.source_version_id)}</span>
     </div>
     <dl class="detail-grid">
-      ${detailItem("Quelle", flow.origin)}
-      ${detailItem("Objekttyp", flow.source_object_type)}
-      ${detailItem("Modul", flow.module_id || "workspace")}
-      ${detailItem("Modulstatus", flow.module_status || "n/a")}
-      ${detailItem("Klassifikation", flow.data_classification)}
-      ${detailItem("Retention", flow.retention_policy_id)}
-      ${detailItem("Legal Hold", flow.legal_hold_state)}
-      ${detailItem("Lifecycle", flow.lifecycle_state)}
-      ${detailItem("ACL Version", String(flow.acl_version))}
-      ${detailItem("KMS", flow.kms_key_ref)}
-      ${detailItem("Manifest", flow.manifest_hash)}
-      ${detailItem("Content Hash", flow.content_hash)}
-      ${detailItem("Content", flow.content_included === true ? "content_included" : "metadata_only")}
-      ${detailItem("Audit", flow.audit_chain_ref)}
-      ${detailItem("Access", flow.access_checked ? "checked" : "not_checked")}
+      ${detailItem("Quelle", detail.origin)}
+      ${detailItem("Objekttyp", detail.source_object_type)}
+      ${detailItem("Modul", detail.module_id || "workspace")}
+      ${detailItem("Modulstatus", detail.module_status || "n/a")}
+      ${detailItem("Klassifikation", detail.data_classification)}
+      ${detailItem("Retention", detail.retention_policy_id)}
+      ${detailItem("Legal Hold", detail.legal_hold_state)}
+      ${detailItem("Lifecycle", detail.lifecycle_state)}
+      ${detailItem("ACL Version", String(detail.acl_version))}
+      ${detailItem("MIME", detail.mime_type)}
+      ${detailItem("Bytes", String(detail.content_byte_length))}
+      ${detailItem("KMS", detail.kms_key_ref)}
+      ${detailItem("Manifest", detail.manifest_hash)}
+      ${detailItem("Content Hash", detail.content_hash)}
+      ${detailItem("Content", detail.content_included === true ? "content_included" : "metadata_only")}
+      ${detailItem("Audit", detail.audit_chain_ref)}
+      ${detailItem("Detail Audit", detail.audit_event_id)}
+      ${detailItem("Access", detail.access_checked ? "checked" : "not_checked")}
     </dl>
     <div class="evidence-list">
       <strong>Evidence / Downstream</strong>
-      ${evidenceList([...(flow.evidence_refs || []), ...(flow.downstream_surfaces || [])])}
+      ${evidenceList([...(detail.evidence_refs || []), ...(detail.downstream_surfaces || [])])}
     </div>
   `;
 }
@@ -304,7 +341,7 @@ function selectFlow(flowId, updateHash = true) {
     }
   }
   renderFlows(currentCockpit.source_object_flows || []);
-  renderSourceObjectDetail();
+  loadSourceObjectDetail();
 }
 
 function flowIdFromHash() {
