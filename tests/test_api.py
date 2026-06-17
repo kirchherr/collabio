@@ -1,6 +1,7 @@
 import base64
 import hmac
 import json
+import os
 from hashlib import sha256
 from typing import Annotated, Any
 from uuid import uuid4
@@ -10,8 +11,9 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from main import app, require_module_api_gate
-from suite.ai_control_plane.models import DataClass
+from suite.ai_control_plane.models import DataClass, TenantPolicy
 from suite.persistence.migration_catalog import load_migration_manifest
+from suite.persistence.migrator import apply_migrations
 from suite.platform.context import DEFAULT_DEV_JWT_SECRET, DEFAULT_JWT_AUDIENCE, DEFAULT_JWT_ISSUER
 from suite.platform.knowledge_base import (
     KnowledgeBaseSourceObjectWriteGuardDecision,
@@ -19,7 +21,13 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseWriteOperation,
     build_source_object_write_guard_ref,
 )
-from suite.platform.modules import InMemoryModuleRegistry, ModuleGateDecision, default_module_registry
+from suite.platform.modules import (
+    InMemoryModuleRegistry,
+    ModuleGateDecision,
+    ModuleWorkerGate,
+    PgModuleRegistry,
+    default_module_registry,
+)
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 from suite.storage.source_objects import (
     LegalHoldState,
@@ -109,6 +117,29 @@ DECOMMISSION_CANCEL_PAYLOAD = {
     "cancel_approval_ref": "approval:module-decommission-cancel",
     "cancel_audit_evidence_ref": "audit:decommission-cancel-evidence-1",
 }
+
+
+class LiveModuleRegistryDatabase:
+    def __init__(self, *, migration_dsn: str, app_dsn: str, worker_dsn: str) -> None:
+        self.migration_dsn = migration_dsn
+        self.app_dsn = app_dsn
+        self.worker_dsn = worker_dsn
+
+
+def env_or_skip(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        pytest.skip(f"{name} is not configured")
+    return value
+
+
+@pytest.fixture(scope="module")
+def live_module_registry_database() -> LiveModuleRegistryDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    worker_dsn = env_or_skip("SUITE_WORKER_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveModuleRegistryDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn, worker_dsn=worker_dsn)
 
 
 def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
@@ -1302,6 +1333,105 @@ def test_tenant_admin_can_provision_enable_disable_and_suspend_module() -> None:
     ]
     assert all(event.input_hash is not None and event.output_hash is None for event in new_events[-4:])
     assert all("reason" not in event.metadata for event in new_events[-4:])
+
+
+def test_pg_backed_tenant_module_lifecycle_api_smoke_drives_worker_discovery_and_audit(
+    live_module_registry_database: LiveModuleRegistryDatabase,
+) -> None:
+    tenant_id = f"tenant-api-module-smoke-{uuid4().hex}"
+    headers = {
+        "X-Tenant-Id": tenant_id,
+        "X-User-Id": "tenant-admin-api-smoke",
+        "X-Role-Ids": "tenant-admin",
+        "X-Readable-Object-Ids": "doc-1",
+    }
+    previous_module_registry = app.state.module_registry
+    previous_policy_repository = app.state.tenant_policy_repository
+    app.state.module_registry = PgModuleRegistry(database_dsn=live_module_registry_database.app_dsn)
+    app.state.tenant_policy_repository = InMemoryTenantPolicyRepository(
+        {
+            tenant_id: TenantPolicy(
+                tenant_id=tenant_id,
+                ai_enabled=False,
+                allowed_model_ids=set(),
+                allowed_data_classes={DataClass.INTERNAL, DataClass.PERSONAL},
+                rag_enabled=False,
+                voice_enabled=False,
+                raw_audio_storage_allowed=False,
+            )
+        }
+    )
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        provision_response = client.post(
+            "/v1/admin/tenant-modules/knowledge_base/provision",
+            headers=headers,
+            json={
+                "approval_reference": "approval:module-pg-smoke-provision",
+                "reason": "prepare postgres module registry smoke tenant",
+            },
+        )
+        enable_response = client.post(
+            "/v1/admin/tenant-modules/knowledge_base/enable",
+            headers=headers,
+            json={
+                "approval_reference": "approval:module-pg-smoke-enable",
+                "reason": "activate postgres module registry smoke tenant",
+                "enabled_features": {"knowledge_base.articles.read": True},
+            },
+        )
+        discovery_response = client.get("/v1/platform/modules", headers=headers)
+        disable_response = client.post(
+            "/v1/admin/tenant-modules/knowledge_base/disable",
+            headers=headers,
+            json={
+                "approval_reference": "approval:module-pg-smoke-disable",
+                "reason": "pause postgres module registry smoke tenant",
+            },
+        )
+
+        worker_registry = PgModuleRegistry(database_dsn=live_module_registry_database.worker_dsn)
+        worker_decision = ModuleWorkerGate(worker_registry).require_compliance_worker(
+            tenant_id=tenant_id,
+            module_id="knowledge_base",
+        )
+        worker_states = worker_registry.list_tenant_modules_for_module("knowledge_base")
+        new_events = app.state.audit_logger.events[starting_event_count:]
+    finally:
+        app.state.module_registry = previous_module_registry
+        app.state.tenant_policy_repository = previous_policy_repository
+
+    assert provision_response.status_code == 200
+    assert provision_response.json()["status"] == "disabled"
+    assert [evidence["version"] for evidence in provision_response.json()["migration_evidence"]][-5:] == [
+        "0025",
+        "0026",
+        "0027",
+        "0028",
+        "0029",
+    ]
+    assert enable_response.status_code == 200
+    assert enable_response.json()["status"] == "enabled"
+    assert discovery_response.status_code == 200
+    modules_by_id = {module["module_id"]: module for module in discovery_response.json()["modules"]}
+    assert modules_by_id["knowledge_base"]["status"] == "enabled"
+    assert modules_by_id["knowledge_base"]["normal_use_enabled"] is True
+    assert disable_response.status_code == 200
+    assert disable_response.json()["status"] == "disabled"
+    assert worker_decision.status == "disabled"
+    assert worker_decision.compliance_access_allowed
+    assert any(state.tenant_id == tenant_id and state.status == "disabled" for state in worker_states)
+
+    lifecycle_events = [event for event in new_events if event.event_type.startswith("tenant_module.")]
+    assert [event.event_type for event in lifecycle_events[-3:]] == [
+        "tenant_module.provisioned",
+        "tenant_module.enabled",
+        "tenant_module.disabled",
+    ]
+    assert all(event.metadata["continuity_domain"] == "module_registry_state" for event in lifecycle_events[-3:])
+    assert all(event.metadata["worker_discovery_drill_required"] is True for event in lifecycle_events[-3:])
+    assert all("tenant module states" in event.metadata["backup_evidence_artifacts"] for event in lifecycle_events[-3:])
 
 
 def test_tenant_module_decommission_check_is_admin_scoped_and_audited() -> None:

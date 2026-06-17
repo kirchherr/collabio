@@ -1267,7 +1267,8 @@ Empfohlene naechste Reihenfolge:
 97. [x] Knowledge-Base-Content-Reconciliation operationalisieren: aktivierte Runtime-Tenants regelmaessig gegen Object-Store-Inventar, Storage-Manifeste und Restore-Drill-Evidence pruefen, Aktivierungen bei Drift sperren und Refresh-/Reactivation-Evidence auditierbar machen.
 98. [x] Knowledge-Base-Reconciliation als Worker-Betriebspfad ausbauen: tenant-Auswahl aus Modulstatus/Runtime-Aktivierungen, Compose-Worker-Entrypoint, Runbook-Evidence, Retry-/Alerting-Kontrakt und regelmaessige Restore-Drill-Bindung operationalisieren.
 99. [x] Persistente Platform-Module-Registry fuer API und Worker angleichen: `collabio.module_catalog` und `collabio.tenant_modules` als Store anbinden, Migration-Evidence aus DB verwenden, tenant-sichere `ModuleWorkerGate`-Nutzung fuer API/Worker vereinheitlichen und Dev-Seeding/Backfill definieren.
-100. [ ] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
+100. [x] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
+101. [ ] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
 
 ## Release-Strategie
 

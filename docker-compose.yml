@@ -175,6 +175,33 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  module-registry-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.module_registry_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_MODULE_REGISTRY_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_MODULE_REGISTRY_WORKER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+
   api:
     build:
       context: .

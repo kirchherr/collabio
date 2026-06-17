@@ -176,7 +176,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore before feature routers and workers start; verify module gates, disabled state, suspended state, and decommission blockers",
-      "state_artifacts": ["module catalog", "module required migration versions", "tenant module states", "module feature flags", "tenant module migration evidence", "persistent module registry seed/backfill evidence", "CRM/ERP subfeature registry manifests", "CRM/ERP object rule manifests", "provisioning evidence", "module lifecycle audit references", "decommission precheck results"]
+      "state_artifacts": ["module catalog", "module required migration versions", "tenant module states", "module feature flags", "tenant module migration evidence", "persistent module registry seed/backfill evidence", "module registry operations report hashes", "worker discovery drill results", "CRM/ERP subfeature registry manifests", "CRM/ERP object rule manifests", "provisioning evidence", "module lifecycle audit references", "decommission precheck results"]
     },
     {
       "domain_id": "crm_erp_business_records",
@@ -388,6 +388,7 @@
     "mail delivery or journal consistency risk",
     "office record or WORM integrity risk",
     "module enablement state or decommission blocker mismatch",
+    "module registry seed, backfill, repair, or worker discovery drill fails",
     "Knowledge Base runtime reconciliation drift or worker failure is reported",
     "CRM/ERP, ticket, LMS, or time-tracking records cannot be restored within RTO",
     "search or vector index cannot be rebuilt within RTO",
@@ -406,6 +407,8 @@
     "restore drill report hash",
     "storage, envelope, retention, and KMS evidence hashes",
     "module registry state and tenant module lifecycle result",
+    "module registry operations report hash when applicable",
+    "module lifecycle audit event metadata for module_registry_state",
     "business module row-count and checksum evidence when applicable",
     "knowledge-base source-version evidence hashes when applicable",
     "knowledge-base restore evidence hash when applicable",

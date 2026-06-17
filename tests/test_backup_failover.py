@@ -5,6 +5,7 @@ from suite.operations.backup_failover import backup_policy_summary, load_backup_
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = REPO_ROOT / "docs" / "operations" / "backup_failover_policy.json"
 RUNBOOK_PATH = REPO_ROOT / "docs" / "operations" / "BACKUP_FAILOVER.md"
+MODULE_REGISTRY_RUNBOOK_PATH = REPO_ROOT / "docs" / "operations" / "MODULE_REGISTRY_OPERATIONS.md"
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
 
 REQUIRED_CONTINUITY_DOMAINS = {
@@ -145,6 +146,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "module required migration versions" in policy.domain("module_registry_state").state_artifacts
     assert "tenant module migration evidence" in policy.domain("module_registry_state").state_artifacts
     assert "persistent module registry seed/backfill evidence" in policy.domain("module_registry_state").state_artifacts
+    assert "module registry operations report hashes" in policy.domain("module_registry_state").state_artifacts
+    assert "worker discovery drill results" in policy.domain("module_registry_state").state_artifacts
     assert policy.domain("crm_erp_business_records").criticality == "critical"
     assert "invoices" in policy.domain("crm_erp_business_records").state_artifacts
     assert "SQL Server migration manifests" in policy.domain("crm_erp_business_records").state_artifacts
@@ -187,7 +190,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "office store" in rules
     assert "continuity domain" in rules
     assert "Knowledge Base runtime reconciliation run report hash when applicable" in policy.restore_drill_evidence
+    assert "module registry operations report hash when applicable" in policy.restore_drill_evidence
+    assert "module lifecycle audit event metadata for module_registry_state" in policy.restore_drill_evidence
     assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
+    assert "module registry seed, backfill, repair, or worker discovery drill fails" in policy.incident_triggers
 
 
 def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
@@ -197,6 +203,8 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "every new durable component must update this continuity model" in runbook
     assert "docker compose run --rm backup" in runbook
     assert "docker compose run --rm backup-verify" in runbook
+    assert "docker compose run --rm module-registry-drill" in runbook
+    assert "module_registry_operations_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
     assert "Continuity Domains" in runbook
@@ -220,17 +228,39 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "time entries" in runbook
 
 
+def test_module_registry_operations_runbook_names_seed_backfill_repair_and_smoke() -> None:
+    runbook = MODULE_REGISTRY_RUNBOOK_PATH.read_text(encoding="utf-8")
+
+    assert "Platform Module Registry Operations" in runbook
+    assert "module_registry_state" in runbook
+    assert "docker compose run --rm module-registry-drill" in runbook
+    assert "module_registry_operations_report.v1" in runbook
+    assert "Seed" in runbook
+    assert "Backfill" in runbook
+    assert "Repair" in runbook
+    assert "API Smoke" in runbook
+    assert "ModuleWorkerGate" in runbook
+    assert "continuity_domain=module_registry_state" in runbook
+    assert "no hard deletes of tenant module rows" in runbook
+
+
 def test_compose_exposes_backup_and_verification_commands() -> None:
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
 
     assert "\n  backup:\n" in compose
     assert "\n  backup-verify:\n" in compose
     assert "\n  kb-runtime-reconciler:\n" in compose
+    assert "\n  module-registry-drill:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
+    assert "python -m suite.platform.module_registry_operations --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
+    assert (
+        "SUITE_MODULE_REGISTRY_WORKER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio"
+        in compose
+    )
     assert "SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres" in compose
     assert "./backups:/backups" in compose

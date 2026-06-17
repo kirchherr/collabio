@@ -462,6 +462,13 @@ def build_app() -> FastAPI:
                 "approval_reference": command.approval_reference,
                 "target_status": target_status,
                 "feature_count": len(command.enabled_features or {}),
+                "continuity_domain": "module_registry_state",
+                "backup_evidence_artifacts": [
+                    "tenant module states",
+                    "module lifecycle audit references",
+                    "tenant module migration evidence",
+                ],
+                "worker_discovery_drill_required": True,
             },
         )
         return f"audit:{event.event_id}"
