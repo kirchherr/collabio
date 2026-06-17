@@ -106,6 +106,14 @@ docker compose run --rm module-registry-drill
 
 The drill emits metadata-only `module_registry_operations_report.v1` evidence for seed/backfill/repair readiness, required migration versions, worker discovery, lifecycle audit event expectations, and module-registry backup artifacts.
 
+Run the preview renderer recovery drill after preview decision or renderer evidence changes and after restore drills:
+
+```bash
+docker compose run --rm preview-renderer-drill
+```
+
+The drill emits metadata-only `source_object_preview_renderer_recovery_drill_report.v1` evidence for preview decision recovery, renderer evidence recovery, worker queue binding replay, idempotency hash replay, tenant isolation smoke checks, and content-boundary checks.
+
 Local dumps are written to `./backups/`, which is gitignored.
 
 ## Minimum Restore Drill
@@ -115,10 +123,11 @@ Monthly for active development and before every production-readiness milestone:
 1. Run `docker compose run --rm backup`.
 2. Run `docker compose run --rm backup-verify`.
 3. Run `docker compose run --rm module-registry-drill`.
-4. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-5. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, and Knowledge Base runtime reconciliation run report hash when applicable.
-6. For production, restore into an isolated environment and run the domain-specific checks from the policy.
-7. Update the policy and this runbook when the restore path changes.
+4. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
+5. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
+6. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, preview renderer recovery drill report hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+7. For production, restore into an isolated environment and run the domain-specific checks from the policy.
+8. Update the policy and this runbook when the restore path changes.
 
 Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, cryptoshred manifest hash when present, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 
@@ -186,4 +195,5 @@ Every drill or incident must leave enough evidence to answer:
 - Who approved failover or restore?
 - What tenant/data scope was affected?
 - Which module registry operations report hash was produced?
+- Which preview renderer recovery drill report hash was produced?
 - Which Knowledge Base runtime activations and reconciliation run reports were checked?

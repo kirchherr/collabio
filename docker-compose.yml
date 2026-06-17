@@ -202,6 +202,35 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-renderer-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.source_object_preview_renderer_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /workspace/data
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS: ${SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS:-tenant-demo}
+    volumes:
+      - ./app:/workspace/app:ro
+
   api:
     build:
       context: .

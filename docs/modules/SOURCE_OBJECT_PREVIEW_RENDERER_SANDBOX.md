@@ -51,8 +51,12 @@ blocked update/delete policies, metadata-only content boundary checks, and queue
 
 The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND=postgres`.
 
+`docker compose run --rm preview-renderer-drill` emits a metadata-only
+`source_object_preview_renderer_recovery_drill_report.v1` report. The report verifies preview decision recovery,
+renderer evidence recovery, worker queue binding replay, idempotency hash replay, tenant isolation smoke checks, and the
+metadata-only content boundary.
+
 ## Next Boundary
 
-Runbook the worker queue recovery path: replay idempotency keys after restore, verify tenant-isolated evidence lookup,
-and prove preview decision plus renderer evidence can be recovered before any real renderer, viewer, or content release
-workflow is connected.
+Add a real Postgres smoke fixture that creates decision and renderer evidence through the API, then runs
+`preview-renderer-drill` against the Compose database and retains the report hash as release/restore evidence.
