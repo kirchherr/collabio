@@ -11,8 +11,11 @@ const moduleGrid = document.querySelector("#module-grid");
 const flowTableBody = document.querySelector("#flow-table-body");
 const moduleCount = document.querySelector("#module-count");
 const flowCount = document.querySelector("#flow-count");
+const sourceDetailPanel = document.querySelector("#source-detail-panel");
 
 const storageKey = "collabio.workspace.context";
+let currentCockpit = { modules: [], source_object_flows: [] };
+let selectedFlowId = "";
 
 function readContext() {
   return {
@@ -64,27 +67,70 @@ async function loadCockpit() {
     const response = await fetch("/v1/platform/cockpit", {
       headers: headersForContext(context),
     });
-    const body = await response.json();
+    const body = await readJson(response);
     if (!response.ok) {
       throw new Error(body.detail || `HTTP ${response.status}`);
     }
+    currentCockpit = body;
     renderCockpit(body);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
-    renderCockpit({ modules: [], source_object_flows: [] });
+    currentCockpit = { modules: [], source_object_flows: [] };
+    renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
     refreshButton.disabled = false;
   }
 }
 
+async function executeModuleAction(module, action) {
+  const context = readContext();
+  const confirmationText = `${action.label} für ${module.display_name} ausführen?\n\nZielstatus: ${action.targetStatus}\nTenant: ${context.tenantId}`;
+  if (!window.confirm(confirmationText)) {
+    setStatus("Aktion abgebrochen.");
+    return;
+  }
+
+  const endpoint = `/v1/admin/tenant-modules/${encodeURIComponent(module.module_id)}/${action.apiAction}`;
+  const payload = {
+    approval_reference: approvalReferenceFor(module, action),
+    reason: `Workspace cockpit controlled ${action.apiAction} for ${module.module_id}; explicit browser confirmation captured before API call.`,
+  };
+  setStatus(`${action.label} läuft ...`);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        ...headersForContext(context),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new Error(body.detail || `HTTP ${response.status}`);
+    }
+    setStatus(`${module.display_name}: ${body.status} | Audit ${body.audit_chain_ref}`);
+    await loadCockpit();
+  } catch (error) {
+    setStatus(error.message || "Modulaktion konnte nicht ausgeführt werden.", true);
+  }
+}
+
 function renderCockpit(cockpit) {
   const modules = cockpit.modules || [];
   const flows = cockpit.source_object_flows || [];
+  const hashFlowId = flowIdFromHash();
   moduleCount.textContent = String(modules.length);
   flowCount.textContent = String(flows.length);
+  if (hashFlowId && flows.some((flow) => flow.flow_id === hashFlowId)) {
+    selectedFlowId = hashFlowId;
+  } else if (!selectedFlowId || !flows.some((flow) => flow.flow_id === selectedFlowId)) {
+    selectedFlowId = flows[0]?.flow_id || "";
+  }
   renderModules(modules);
   renderFlows(flows);
+  renderSourceObjectDetail();
 }
 
 function renderModules(modules) {
@@ -110,6 +156,7 @@ function renderModules(modules) {
         <span>Normalbetrieb: ${module.normal_use_enabled ? "aktiv" : "gesperrt"}</span>
         <span>Nächste Aktion: ${escapeHtml(module.next_action)}</span>
       </div>
+      ${moduleActions(module)}
     `;
     moduleGrid.appendChild(row);
   }
@@ -127,7 +174,19 @@ function renderFlows(flows) {
     const row = document.createElement("tr");
     const contentState = flow.content_included === true ? "content_included" : "metadata_only";
     row.innerHTML = `
-      <td><span class="status-pill ${originClass(flow.origin)}">${escapeHtml(flow.origin)}</span></td>
+      <td>
+        <div class="flow-source-cell">
+          <span class="status-pill ${originClass(flow.origin)}">${escapeHtml(flow.origin)}</span>
+          <button
+            class="detail-link"
+            type="button"
+            data-flow-id="${escapeHtml(flow.flow_id)}"
+            aria-current="${selectedFlowId === flow.flow_id ? "true" : "false"}"
+          >
+            Details
+          </button>
+        </div>
+      </td>
       <td>
         <div class="flow-title">
           <strong>${escapeHtml(flow.title)}</strong>
@@ -147,6 +206,133 @@ function renderFlows(flows) {
     `;
     flowTableBody.appendChild(row);
   }
+}
+
+function renderSourceObjectDetail() {
+  const flow = (currentCockpit.source_object_flows || []).find((item) => item.flow_id === selectedFlowId);
+  if (!flow) {
+    sourceDetailPanel.className = "detail-panel empty-state";
+    sourceDetailPanel.textContent = "Wähle einen autorisierten Flow aus.";
+    return;
+  }
+
+  sourceDetailPanel.className = "detail-panel";
+  sourceDetailPanel.innerHTML = `
+    <div class="detail-summary">
+      <h3>${escapeHtml(flow.title)}</h3>
+      <span class="hash-text">${escapeHtml(flow.source_object_id)}:${escapeHtml(flow.source_version_id)}</span>
+    </div>
+    <dl class="detail-grid">
+      ${detailItem("Quelle", flow.origin)}
+      ${detailItem("Objekttyp", flow.source_object_type)}
+      ${detailItem("Modul", flow.module_id || "workspace")}
+      ${detailItem("Modulstatus", flow.module_status || "n/a")}
+      ${detailItem("Klassifikation", flow.data_classification)}
+      ${detailItem("Retention", flow.retention_policy_id)}
+      ${detailItem("Legal Hold", flow.legal_hold_state)}
+      ${detailItem("Lifecycle", flow.lifecycle_state)}
+      ${detailItem("ACL Version", String(flow.acl_version))}
+      ${detailItem("KMS", flow.kms_key_ref)}
+      ${detailItem("Manifest", flow.manifest_hash)}
+      ${detailItem("Content Hash", flow.content_hash)}
+      ${detailItem("Content", flow.content_included === true ? "content_included" : "metadata_only")}
+      ${detailItem("Audit", flow.audit_chain_ref)}
+      ${detailItem("Access", flow.access_checked ? "checked" : "not_checked")}
+    </dl>
+    <div class="evidence-list">
+      <strong>Evidence / Downstream</strong>
+      ${evidenceList([...(flow.evidence_refs || []), ...(flow.downstream_surfaces || [])])}
+    </div>
+  `;
+}
+
+function moduleActions(module) {
+  const action = moduleActionFor(module);
+  if (!action) {
+    return '<div class="module-actions"><span class="action-note">Keine direkte Admin-Aktion im Cockpit.</span></div>';
+  }
+  const disabled = canUseAdminActions() ? "" : " disabled";
+  const note = canUseAdminActions() ? "Explizite Bestätigung vor Ausführung." : "Adminrolle fehlt im Kontext.";
+  return `
+    <div class="module-actions">
+      <button
+        class="action-button ${action.intent}"
+        type="button"
+        data-module-id="${escapeHtml(module.module_id)}"
+        data-module-action="${escapeHtml(action.apiAction)}"
+        ${disabled}
+      >
+        ${escapeHtml(action.label)}
+      </button>
+      <span class="action-note">${escapeHtml(note)}</span>
+    </div>
+  `;
+}
+
+function moduleActionFor(module) {
+  if (module.status === "available") {
+    return { apiAction: "provision", label: "Provisionieren", targetStatus: "disabled", intent: "primary" };
+  }
+  if (module.status === "disabled") {
+    return { apiAction: "enable", label: "Aktivieren", targetStatus: "enabled", intent: "primary" };
+  }
+  if (module.status === "enabled") {
+    return { apiAction: "disable", label: "Deaktivieren", targetStatus: "disabled", intent: "quiet" };
+  }
+  if (module.status === "suspended") {
+    return { apiAction: "enable", label: "Reaktivieren", targetStatus: "enabled", intent: "primary" };
+  }
+  return null;
+}
+
+function canUseAdminActions() {
+  const roles = new Set(readContext().roleIds.split(",").map((role) => role.trim()).filter(Boolean));
+  return roles.has("tenant-admin") || roles.has("security-admin");
+}
+
+function approvalReferenceFor(module, action) {
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+  return `approval:workspace-cockpit-${module.module_id}-${action.apiAction}-${stamp}`;
+}
+
+function selectFlow(flowId, updateHash = true) {
+  selectedFlowId = flowId;
+  if (updateHash && flowId) {
+    const nextHash = `#source-object=${encodeURIComponent(flowId)}`;
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, "", nextHash);
+    }
+  }
+  renderFlows(currentCockpit.source_object_flows || []);
+  renderSourceObjectDetail();
+}
+
+function flowIdFromHash() {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash.startsWith("source-object=")) {
+    return "";
+  }
+  try {
+    return decodeURIComponent(hash.slice("source-object=".length));
+  } catch {
+    return "";
+  }
+}
+
+function detailItem(label, value) {
+  return `
+    <div class="detail-item">
+      <dt class="detail-label">${escapeHtml(label)}</dt>
+      <dd class="detail-value"><code>${escapeHtml(value)}</code></dd>
+    </div>
+  `;
+}
+
+function evidenceList(values) {
+  if (!values.length) {
+    return "<span>Keine Evidence-Referenzen.</span>";
+  }
+  return values.map((value) => `<code>${escapeHtml(value)}</code>`).join("");
 }
 
 function routes(values) {
@@ -179,6 +365,14 @@ function setStatus(message, isError = false) {
   statusLine.classList.toggle("error", isError);
 }
 
+async function readJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -190,6 +384,29 @@ function escapeHtml(value) {
 
 restoreContext();
 refreshButton.addEventListener("click", loadCockpit);
+moduleGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-module-action]");
+  if (!button) {
+    return;
+  }
+  const module = (currentCockpit.modules || []).find((item) => item.module_id === button.dataset.moduleId);
+  const action = module ? moduleActionFor(module) : null;
+  if (module && action && action.apiAction === button.dataset.moduleAction) {
+    executeModuleAction(module, action);
+  }
+});
+flowTableBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-flow-id]");
+  if (button?.dataset.flowId) {
+    selectFlow(button.dataset.flowId);
+  }
+});
+window.addEventListener("hashchange", () => {
+  const flowId = flowIdFromHash();
+  if (flowId) {
+    selectFlow(flowId, false);
+  }
+});
 for (const input of Object.values(fields)) {
   input.addEventListener("change", loadCockpit);
 }

@@ -355,21 +355,31 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "Module-Cockpit" in response.text
     assert "/workspace/assets/workspace.css" in response.text
     assert "/workspace/assets/workspace.js" in response.text
+    assert "source-detail-panel" in response.text
+    assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
     assert "Welcome message source" not in response.text
 
 
-def test_workspace_shell_assets_are_served_and_call_cockpit_api() -> None:
+def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_actions() -> None:
     css_response = client.get("/workspace/assets/workspace.css")
     js_response = client.get("/workspace/assets/workspace.js")
 
     assert css_response.status_code == 200
     assert "workspace-shell" in css_response.text
+    assert "detail-panel" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
+    assert "/v1/admin/tenant-modules/" in js_response.text
     assert "X-Tenant-Id" in js_response.text
+    assert "window.confirm" in js_response.text
+    assert "approval:workspace-cockpit" in js_response.text
+    assert "source-object=" in js_response.text
     assert "content_included" in js_response.text
+    assert "metadata_only" in js_response.text
+    assert "Board pack draft source content" not in js_response.text
+    assert "Welcome message source" not in js_response.text
 
 
 def test_tenant_data_endpoints_require_request_context() -> None:

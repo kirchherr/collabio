@@ -1270,7 +1270,8 @@ Empfohlene naechste Reihenfolge:
 100. [x] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
 101. [x] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
 102. [x] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
-103. [ ] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
+103. [x] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
+104. [ ] SourceObject-Detailzug produktionsnah machen: repository-backed metadata-only Detail-Endpoints fuer Dokumente, Mail und Wissensdatenbank anbinden, ACL-Pruefung pro Detailabruf auditieren und die Workspace-Shell von Cockpit-Flow-Snapshots auf diese Detail-API umstellen.
 
 ## Release-Strategie
 
