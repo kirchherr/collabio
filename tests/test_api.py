@@ -1018,6 +1018,12 @@ def test_source_object_preview_renderer_run_records_metadata_only_evidence_and_a
     assert body["preview_slot_id"] == "office.document.preview.metadata"
     assert body["preview_policy_id"] == "preview-policy.document.metadata-first.v1"
     assert body["worker_profile_id"] == "source-preview-renderer-sandbox-worker:metadata-only.v1"
+    assert body["worker_queue_id"] == "source-preview-renderer-runs"
+    assert body["worker_job_id"].startswith("preview-renderer-job:sha256:")
+    assert body["worker_idempotency_key_hash"].startswith("sha256:")
+    assert body["worker_queue_binding_ref"] == (
+        f"worker-queue:source-preview-renderer-runs:{body['worker_idempotency_key_hash']}"
+    )
     assert body["access_checked"] is True
     assert body["rendering_allowed"] is False
     assert body["content_rendered"] is False
@@ -1041,6 +1047,10 @@ def test_source_object_preview_renderer_run_records_metadata_only_evidence_and_a
     assert evidence.source_manifest_hash.startswith("sha256:")
     assert evidence.source_content_hash.startswith("sha256:")
     assert evidence.source_acl_version == 1
+    assert evidence.worker_queue_id == "source-preview-renderer-runs"
+    assert evidence.worker_job_id == body["worker_job_id"]
+    assert evidence.worker_idempotency_key_hash == body["worker_idempotency_key_hash"]
+    assert evidence.worker_queue_binding_ref == body["worker_queue_binding_ref"]
     assert evidence.content_rendered is False
     assert evidence.content_included is False
     assert "Board pack draft source content" not in evidence.model_dump_json()
@@ -1054,6 +1064,9 @@ def test_source_object_preview_renderer_run_records_metadata_only_evidence_and_a
     event = new_events[-1]
     assert event.source_object_ids == ["doc-1"]
     assert event.metadata["result_contract"] == "metadata_only_renderer_sandbox_worker_evidence"
+    assert event.metadata["worker_queue_id"] == "source-preview-renderer-runs"
+    assert event.metadata["worker_job_id"] == body["worker_job_id"]
+    assert event.metadata["worker_idempotency_key_hash"] == body["worker_idempotency_key_hash"]
     assert event.metadata["content_rendered"] is False
     assert event.metadata["content_included"] is False
     assert event.metadata["reason_hash"].startswith("sha256:")

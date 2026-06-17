@@ -1,6 +1,6 @@
 # Source Object Preview Renderer Sandbox
 
-Status: metadata-only worker evidence skeleton
+Status: metadata-only worker evidence with PostgreSQL/RLS runtime store
 
 ## Purpose
 
@@ -23,9 +23,9 @@ The response is metadata-only:
 - `temporary_workspace_destroyed=true`
 
 The evidence includes tenant ID, source object ID, source version ID, source object type, manifest hash, content hash,
-ACL version, preview slot, preview policy, parser profile, sanitizer profile, worker profile, parser/sanitizer evidence
-reference, backup coverage reference, restore drill reference, audit event IDs, requester ID, reason hash, sandbox
-boundaries, and an evidence hash.
+ACL version, preview slot, preview policy, parser profile, sanitizer profile, worker profile, worker queue ID, worker job
+ID, worker idempotency key hash, worker queue binding reference, parser/sanitizer evidence reference, backup coverage
+reference, restore drill reference, audit event IDs, requester ID, reason hash, sandbox boundaries, and an evidence hash.
 
 It must not store source text, rendered HTML, mail bodies, attachment bytes, prompts, model outputs, embeddings,
 transcripts, or unredacted reason text.
@@ -43,6 +43,16 @@ reason while still preserving the attempted reference on the decision response.
 
 - `InMemorySourceObjectPreviewRendererEvidenceStore` for tests and ephemeral development.
 - `JsonlSourceObjectPreviewRendererEvidenceStore` for append-only local persistence under `SUITE_DATA_DIR`.
+- `PgSourceObjectPreviewRendererEvidenceStore` for PostgreSQL/RLS-backed API and worker runtime.
 
-The next production boundary is a PostgreSQL/RLS-backed store plus restore drill verification before any real renderer,
-viewer, or content release workflow is connected.
+Migration `0032_source_object_preview_renderer_evidence.sql` creates
+`collabio.source_object_preview_renderer_evidence` with forced row-level security, tenant-scoped select/insert,
+blocked update/delete policies, metadata-only content boundary checks, and queue/idempotency binding columns.
+
+The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND=postgres`.
+
+## Next Boundary
+
+Runbook the worker queue recovery path: replay idempotency keys after restore, verify tenant-isolated evidence lookup,
+and prove preview decision plus renderer evidence can be recovered before any real renderer, viewer, or content release
+workflow is connected.

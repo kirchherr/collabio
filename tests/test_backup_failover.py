@@ -176,6 +176,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         "Knowledge Base runtime reconciliation retry and alert contract"
         in policy.domain("background_jobs_queues").state_artifacts
     )
+    assert "preview renderer worker queue bindings" in policy.domain("background_jobs_queues").state_artifacts
+    assert "preview renderer idempotency key hashes" in policy.domain("background_jobs_queues").state_artifacts
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts

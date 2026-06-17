@@ -65,5 +65,5 @@ are separately implemented.
 
 ## Next Boundary
 
-Move renderer sandbox evidence from the current in-memory/JSONL skeleton to a PostgreSQL/RLS-backed store and add restore
-drills that prove preview decision and renderer evidence remain recoverable before considering any content rendering path.
+Run a repeatable restore drill that proves preview decision and renderer evidence remain recoverable, tenant-scoped, and
+queue-idempotent before considering any content rendering path.

@@ -168,7 +168,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "important",
       "recovery_strategy": "restore durable queue/outbox state; resume workers only after idempotency and tenant checks pass",
-      "state_artifacts": ["outbox events", "job cursors", "retry state", "idempotency keys", "worker checkpoints", "Knowledge Base runtime reconciliation retry and alert contract"]
+      "state_artifacts": ["outbox events", "job cursors", "retry state", "idempotency keys", "worker checkpoints", "preview renderer worker queue bindings", "preview renderer idempotency key hashes", "Knowledge Base runtime reconciliation retry and alert contract"]
     },
     {
       "domain_id": "module_registry_state",

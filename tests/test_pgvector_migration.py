@@ -63,6 +63,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0029",
         "0030",
         "0031",
+        "0032",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -1347,6 +1348,66 @@ def test_source_object_preview_decision_ledger_migration_is_metadata_only_and_rl
     assert "grant select, insert on table collabio.source_object_preview_decision_evidence to collabio_app" in sql
     assert "grant select on table collabio.source_object_preview_decision_evidence to collabio_worker" in sql
     assert "source_text" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_renderer_evidence_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0032").sql())
+    table = table_body(get_migration("0032").sql(), "collabio.source_object_preview_renderer_evidence")
+
+    for column in [
+        "tenant_id",
+        "source_object_id",
+        "source_version_id",
+        "source_object_type",
+        "source_manifest_hash",
+        "source_content_hash",
+        "source_acl_version",
+        "preview_slot_id",
+        "preview_policy_id",
+        "gate_id",
+        "parser_profile_id",
+        "sanitizer_profile_id",
+        "worker_profile_id",
+        "worker_queue_id",
+        "worker_job_id",
+        "worker_idempotency_key_hash",
+        "worker_queue_binding_ref",
+        "parser_sanitizer_evidence_ref",
+        "backup_coverage_evidence_ref",
+        "restore_evidence_ref",
+        "sandbox_boundaries",
+        "renderer_sandbox_evidence_hash",
+        "renderer_sandbox_evidence_ref",
+    ]:
+        assert column in table
+    assert "worker_queue_id = 'source-preview-renderer-runs'" in table
+    assert "content_rendered = false" in table
+    assert "content_included = false" in table
+    assert "rendering_allowed = false" in table
+    assert "output_persisted = false" in table
+    assert "external_fetch_allowed = false" in table
+    assert "temporary_workspace_destroyed = true" in table
+    assert "raw_source_content_returned=false" in table
+    assert "rendered_content_included=false" in table
+    assert "renderer_sandbox_evidence_ref = 'renderer-sandbox:' || renderer_sandbox_evidence_hash" in table
+    assert "source_object_preview_decision_renderer_verified_requires_ref" in sql
+    assert "renderer_sandbox_evidence_verified = false" in sql
+    assert "source_object_preview_renderer_tenant_select" in sql
+    assert "source_object_preview_renderer_tenant_insert" in sql
+    assert "source_object_preview_renderer_no_update" in sql
+    assert "source_object_preview_renderer_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_app" in sql
+    assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_worker" in sql
+    assert "source_text" not in sql
+    assert "rendered_html" not in sql
     assert "mail_body" not in sql
     assert "attachment_bytes" not in sql
     assert "prompt_text" not in sql

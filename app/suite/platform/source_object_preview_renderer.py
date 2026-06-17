@@ -5,8 +5,10 @@ import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
@@ -20,6 +22,7 @@ ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
 
 RENDERER_SANDBOX_EVIDENCE_REF_PREFIX = "renderer-sandbox:"
 RENDERER_SANDBOX_WORKER_PROFILE_ID = "source-preview-renderer-sandbox-worker:metadata-only.v1"
+RENDERER_SANDBOX_WORKER_QUEUE_ID = "source-preview-renderer-runs"
 RENDERER_SANDBOX_BOUNDARIES = (
     "network_access_allowed=false",
     "external_processes_allowed=false",
@@ -89,6 +92,10 @@ class SourceObjectPreviewRendererRunEvidence(BaseModel):
     parser_profile_id: str
     sanitizer_profile_id: str
     worker_profile_id: str
+    worker_queue_id: str
+    worker_job_id: str
+    worker_idempotency_key_hash: str
+    worker_queue_binding_ref: str
     parser_sanitizer_evidence_ref: str
     backup_coverage_evidence_ref: str
     restore_evidence_ref: str
@@ -121,6 +128,10 @@ class SourceObjectPreviewRendererRunResponse(BaseModel):
     preview_slot_id: str
     preview_policy_id: str
     worker_profile_id: str
+    worker_queue_id: str
+    worker_job_id: str
+    worker_idempotency_key_hash: str
+    worker_queue_binding_ref: str
     parser_profile_id: str
     sanitizer_profile_id: str
     parser_sanitizer_evidence_ref: str
@@ -214,6 +225,220 @@ class JsonlSourceObjectPreviewRendererEvidenceStore:
         )
 
 
+class PgSourceObjectPreviewRendererEvidenceStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, evidence: SourceObjectPreviewRendererRunEvidence) -> SourceObjectPreviewRendererRunEvidence:
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, evidence.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO collabio.source_object_preview_renderer_evidence (
+                        tenant_id,
+                        source_object_id,
+                        source_version_id,
+                        source_object_type,
+                        source_manifest_hash,
+                        source_content_hash,
+                        source_acl_version,
+                        preview_slot_id,
+                        preview_policy_id,
+                        gate_id,
+                        parser_profile_id,
+                        sanitizer_profile_id,
+                        worker_profile_id,
+                        worker_queue_id,
+                        worker_job_id,
+                        worker_idempotency_key_hash,
+                        worker_queue_binding_ref,
+                        parser_sanitizer_evidence_ref,
+                        backup_coverage_evidence_ref,
+                        restore_evidence_ref,
+                        sandbox_boundaries,
+                        access_checked,
+                        rendering_allowed,
+                        content_rendered,
+                        content_included,
+                        output_persisted,
+                        external_fetch_allowed,
+                        temporary_workspace_destroyed,
+                        source_detail_audit_event_id,
+                        audit_event_id,
+                        requested_by,
+                        reason_hash,
+                        renderer_sandbox_evidence_hash,
+                        renderer_sandbox_evidence_ref,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s
+                    )
+                    """,
+                    self._evidence_values(evidence),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object preview renderer evidence already exists") from exc
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewRendererRunEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                f"""
+                SELECT {self._select_columns()}
+                FROM collabio.source_object_preview_renderer_evidence
+                WHERE tenant_id = %s
+                  AND renderer_sandbox_evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("source object preview renderer evidence not found")
+        return self._evidence_from_row(row)
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewRendererRunEvidence]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                f"""
+                SELECT {self._select_columns()}
+                FROM collabio.source_object_preview_renderer_evidence
+                WHERE tenant_id = %s
+                ORDER BY captured_at_utc, renderer_sandbox_evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._evidence_from_row(row) for row in rows)
+
+    def _evidence_values(self, evidence: SourceObjectPreviewRendererRunEvidence) -> tuple[object, ...]:
+        return (
+            evidence.tenant_id,
+            evidence.source_object_id,
+            evidence.source_version_id,
+            evidence.source_object_type.value,
+            evidence.source_manifest_hash,
+            evidence.source_content_hash,
+            evidence.source_acl_version,
+            evidence.preview_slot_id,
+            evidence.preview_policy_id,
+            evidence.gate_id,
+            evidence.parser_profile_id,
+            evidence.sanitizer_profile_id,
+            evidence.worker_profile_id,
+            evidence.worker_queue_id,
+            evidence.worker_job_id,
+            evidence.worker_idempotency_key_hash,
+            evidence.worker_queue_binding_ref,
+            evidence.parser_sanitizer_evidence_ref,
+            evidence.backup_coverage_evidence_ref,
+            evidence.restore_evidence_ref,
+            Jsonb(list(evidence.sandbox_boundaries)),
+            evidence.access_checked,
+            evidence.rendering_allowed,
+            evidence.content_rendered,
+            evidence.content_included,
+            evidence.output_persisted,
+            evidence.external_fetch_allowed,
+            evidence.temporary_workspace_destroyed,
+            evidence.source_detail_audit_event_id,
+            evidence.audit_event_id,
+            evidence.requested_by,
+            evidence.reason_hash,
+            evidence.renderer_sandbox_evidence_hash,
+            evidence.renderer_sandbox_evidence_ref,
+            evidence.schema_version,
+        )
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> SourceObjectPreviewRendererRunEvidence:
+        return SourceObjectPreviewRendererRunEvidence(
+            tenant_id=str(row[0]),
+            source_object_id=str(row[1]),
+            source_version_id=str(row[2]),
+            source_object_type=SourceObjectType(str(row[3])),
+            source_manifest_hash=str(row[4]),
+            source_content_hash=str(row[5]),
+            source_acl_version=int(row[6]),
+            preview_slot_id=str(row[7]),
+            preview_policy_id=str(row[8]),
+            gate_id=str(row[9]),
+            parser_profile_id=str(row[10]),
+            sanitizer_profile_id=str(row[11]),
+            worker_profile_id=str(row[12]),
+            worker_queue_id=str(row[13]),
+            worker_job_id=str(row[14]),
+            worker_idempotency_key_hash=str(row[15]),
+            worker_queue_binding_ref=str(row[16]),
+            parser_sanitizer_evidence_ref=str(row[17]),
+            backup_coverage_evidence_ref=str(row[18]),
+            restore_evidence_ref=str(row[19]),
+            sandbox_boundaries=_row_json_tuple(row[20]),
+            access_checked=bool(row[21]),
+            rendering_allowed=bool(row[22]),
+            content_rendered=bool(row[23]),
+            content_included=bool(row[24]),
+            output_persisted=bool(row[25]),
+            external_fetch_allowed=bool(row[26]),
+            temporary_workspace_destroyed=bool(row[27]),
+            source_detail_audit_event_id=str(row[28]),
+            audit_event_id=str(row[29]),
+            requested_by=str(row[30]),
+            reason_hash=str(row[31]),
+            renderer_sandbox_evidence_hash=str(row[32]),
+            renderer_sandbox_evidence_ref=str(row[33]),
+            schema_version=str(row[34]),
+        )
+
+    def _select_columns(self) -> str:
+        return """
+            tenant_id,
+            source_object_id,
+            source_version_id,
+            source_object_type,
+            source_manifest_hash,
+            source_content_hash,
+            source_acl_version,
+            preview_slot_id,
+            preview_policy_id,
+            gate_id,
+            parser_profile_id,
+            sanitizer_profile_id,
+            worker_profile_id,
+            worker_queue_id,
+            worker_job_id,
+            worker_idempotency_key_hash,
+            worker_queue_binding_ref,
+            parser_sanitizer_evidence_ref,
+            backup_coverage_evidence_ref,
+            restore_evidence_ref,
+            sandbox_boundaries,
+            access_checked,
+            rendering_allowed,
+            content_rendered,
+            content_included,
+            output_persisted,
+            external_fetch_allowed,
+            temporary_workspace_destroyed,
+            source_detail_audit_event_id,
+            audit_event_id,
+            requested_by,
+            reason_hash,
+            renderer_sandbox_evidence_hash,
+            renderer_sandbox_evidence_ref,
+            schema_version
+        """
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
 @dataclass(frozen=True)
 class SourceObjectPreviewRendererEvidenceValidation:
     verified: bool
@@ -272,6 +497,18 @@ def build_source_object_preview_renderer_run(
         *slot.gate.sanitizer_boundaries,
         *RENDERER_SANDBOX_BOUNDARIES,
     )
+    worker_idempotency_key_hash = build_source_object_preview_renderer_worker_idempotency_key_hash(
+        tenant_id=detail.tenant_id,
+        source_object_id=detail.source_object_id,
+        source_version_id=detail.source_version_id,
+        preview_slot_id=slot.slot_id,
+        preview_policy_id=slot.gate.policy_id,
+        parser_sanitizer_evidence_ref=request.parser_sanitizer_evidence_ref,
+        backup_coverage_evidence_ref=request.backup_coverage_evidence_ref,
+        restore_evidence_ref=request.restore_evidence_ref,
+    )
+    worker_job_id = f"preview-renderer-job:{worker_idempotency_key_hash}"
+    worker_queue_binding_ref = f"worker-queue:{RENDERER_SANDBOX_WORKER_QUEUE_ID}:{worker_idempotency_key_hash}"
     event = audit_logger.record(
         user_context=user_context,
         event_type="source_object.preview_renderer_run.recorded",
@@ -283,6 +520,10 @@ def build_source_object_preview_renderer_run(
             "preview_slot_id": slot.slot_id,
             "preview_policy_id": slot.gate.policy_id,
             "worker_profile_id": request.worker_profile_id,
+            "worker_queue_id": RENDERER_SANDBOX_WORKER_QUEUE_ID,
+            "worker_job_id": worker_job_id,
+            "worker_idempotency_key_hash": worker_idempotency_key_hash,
+            "worker_queue_binding_ref": worker_queue_binding_ref,
             "result_contract": "metadata_only_renderer_sandbox_worker_evidence",
             "access_checked": True,
             "rendering_allowed": False,
@@ -313,6 +554,10 @@ def build_source_object_preview_renderer_run(
         parser_profile_id=slot.gate.parser_profile_id,
         sanitizer_profile_id=slot.gate.sanitizer_profile_id,
         worker_profile_id=request.worker_profile_id,
+        worker_queue_id=RENDERER_SANDBOX_WORKER_QUEUE_ID,
+        worker_job_id=worker_job_id,
+        worker_idempotency_key_hash=worker_idempotency_key_hash,
+        worker_queue_binding_ref=worker_queue_binding_ref,
         parser_sanitizer_evidence_ref=request.parser_sanitizer_evidence_ref,
         backup_coverage_evidence_ref=request.backup_coverage_evidence_ref,
         restore_evidence_ref=request.restore_evidence_ref,
@@ -331,6 +576,10 @@ def build_source_object_preview_renderer_run(
         preview_slot_id=persisted.preview_slot_id,
         preview_policy_id=persisted.preview_policy_id,
         worker_profile_id=persisted.worker_profile_id,
+        worker_queue_id=persisted.worker_queue_id,
+        worker_job_id=persisted.worker_job_id,
+        worker_idempotency_key_hash=persisted.worker_idempotency_key_hash,
+        worker_queue_binding_ref=persisted.worker_queue_binding_ref,
         parser_profile_id=persisted.parser_profile_id,
         sanitizer_profile_id=persisted.sanitizer_profile_id,
         parser_sanitizer_evidence_ref=persisted.parser_sanitizer_evidence_ref,
@@ -359,6 +608,10 @@ def build_source_object_preview_renderer_run_evidence(
     parser_profile_id: str,
     sanitizer_profile_id: str,
     worker_profile_id: str,
+    worker_queue_id: str,
+    worker_job_id: str,
+    worker_idempotency_key_hash: str,
+    worker_queue_binding_ref: str,
     parser_sanitizer_evidence_ref: str,
     backup_coverage_evidence_ref: str,
     restore_evidence_ref: str,
@@ -383,6 +636,10 @@ def build_source_object_preview_renderer_run_evidence(
         parser_profile_id=parser_profile_id,
         sanitizer_profile_id=sanitizer_profile_id,
         worker_profile_id=worker_profile_id,
+        worker_queue_id=worker_queue_id,
+        worker_job_id=worker_job_id,
+        worker_idempotency_key_hash=worker_idempotency_key_hash,
+        worker_queue_binding_ref=worker_queue_binding_ref,
         parser_sanitizer_evidence_ref=parser_sanitizer_evidence_ref,
         backup_coverage_evidence_ref=backup_coverage_evidence_ref,
         restore_evidence_ref=restore_evidence_ref,
@@ -416,6 +673,34 @@ def build_source_object_preview_renderer_evidence_hash(
     )
 
 
+def build_source_object_preview_renderer_worker_idempotency_key_hash(
+    *,
+    tenant_id: str,
+    source_object_id: str,
+    source_version_id: str,
+    preview_slot_id: str,
+    preview_policy_id: str,
+    parser_sanitizer_evidence_ref: str,
+    backup_coverage_evidence_ref: str,
+    restore_evidence_ref: str,
+) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "tenant_id": tenant_id,
+                "source_object_id": source_object_id,
+                "source_version_id": source_version_id,
+                "preview_slot_id": preview_slot_id,
+                "preview_policy_id": preview_policy_id,
+                "parser_sanitizer_evidence_ref": parser_sanitizer_evidence_ref,
+                "backup_coverage_evidence_ref": backup_coverage_evidence_ref,
+                "restore_evidence_ref": restore_evidence_ref,
+                "worker_queue_id": RENDERER_SANDBOX_WORKER_QUEUE_ID,
+            }
+        )
+    )
+
+
 def build_default_source_object_preview_renderer_evidence_store(
     data_dir: Path,
 ) -> SourceObjectPreviewRendererEvidenceStore:
@@ -426,6 +711,14 @@ def build_default_source_object_preview_renderer_evidence_store(
         evidence_path = os.getenv("SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_PATH")
         path = Path(evidence_path) if evidence_path else data_dir / "source_preview" / "renderer_evidence.jsonl"
         return JsonlSourceObjectPreviewRendererEvidenceStore(path=path)
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL source preview renderer evidence store requires "
+                "SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgSourceObjectPreviewRendererEvidenceStore(database_dsn=database_dsn)
     raise ValueError(f"Unsupported SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: {backend}")
 
 
@@ -530,3 +823,10 @@ def _audit_renderer_run_rejection(
             "reason_hash": stable_hash(request.reason),
         },
     )
+
+
+def _row_json_tuple(value: object) -> tuple[str, ...]:
+    loaded = json.loads(value) if isinstance(value, str) else value
+    if not isinstance(loaded, list) or not all(isinstance(item, str) for item in loaded):
+        raise ValueError("source object preview renderer evidence JSONB arrays must contain strings")
+    return tuple(loaded)

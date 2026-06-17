@@ -1279,7 +1279,8 @@ Empfohlene naechste Reihenfolge:
 109. [x] Dokument-/Mail-Preview-Approval operationalisieren: persistentes Preview-Decision-Ledger, Tenant-Policy-Schalter, Renderer-Sandbox-Evidence und Human-Confirmation-Workflow anbinden, ohne Content-Ausgabe freizuschalten.
 110. [x] Preview-Decision-Ledger produktionshart machen: PostgreSQL/RLS-Adapter, Restore-Evidence, Backup-Abdeckung und Renderer-Sandbox-Worker-Evidence anbinden, bevor irgendein Content-Rendering-Pfad geoeffnet wird.
 111. [x] Renderer-Sandbox-Worker-Skeleton aufbauen: isolierten Worker-Run als metadata-only Evidence erzeugen, Parser/Sanitizer/Backup/Restore-Evidence gegen Tenant und SourceObject binden und weiterhin keinen gerenderten Content ausgeben.
-112. [ ] Renderer-Sandbox-Evidence produktionshart machen: PostgreSQL/RLS-Store, Restore-Drill-Pruefung und Worker-Queue-Anbindung fuer Preview-Renderer-Evidence ergaenzen, bevor echte Rendering-Engines oder Viewer eingebunden werden.
+112. [x] Renderer-Sandbox-Evidence produktionshart machen: PostgreSQL/RLS-Store, Restore-Drill-Pruefung und Worker-Queue-Anbindung fuer Preview-Renderer-Evidence ergaenzen, bevor echte Rendering-Engines oder Viewer eingebunden werden.
+113. [ ] Renderer-Worker-Runbook und Restore-Drill operationalisieren: Queue-Wiederaufnahme, Idempotency-Replay, Tenant-Isolation-Smoke-Test und Preview-Decision-/Renderer-Evidence-Recovery als wiederholbaren Compose-Drill nachweisen.
 
 ## Release-Strategie
 

@@ -275,6 +275,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:source-object-preview-decision-ledger",
         ),
     ),
+    SqlMigration(
+        version="0032",
+        name="source_object_preview_renderer_evidence",
+        resource_name="0032_source_object_preview_renderer_evidence.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:source-object-preview-renderer-sandbox",
+            "test:source-object-preview-renderer-evidence",
+        ),
+    ),
 )
 
 
