@@ -944,9 +944,13 @@ def test_source_object_preview_decision_blocks_content_release_without_required_
     assert "tenant_preview_policy_enabled" in body["missing_evidence"]
     assert "parser_sanitizer_evidence" in body["missing_evidence"]
     assert "human_content_release_confirmation" in body["missing_evidence"]
-    assert "renderer_sandbox_evidence" in body["missing_evidence"]
+    assert "renderer_sandbox_worker_evidence" in body["missing_evidence"]
+    assert "backup_coverage_evidence" in body["missing_evidence"]
+    assert "restore_drill_evidence" in body["missing_evidence"]
     assert "content_preview_skeleton_blocks_release_until_renderer_operational" in body["blocking_reasons"]
     assert body["renderer_sandbox_evidence_verified"] is False
+    assert body["backup_coverage_evidence_verified"] is False
+    assert body["restore_evidence_verified"] is False
     assert body["human_confirmation_verified"] is False
     assert body["content_release_evidence_complete"] is False
     assert body["preview_decision_evidence_hash"].startswith("sha256:")
@@ -968,7 +972,9 @@ def test_source_object_preview_decision_blocks_content_release_without_required_
     assert event.metadata["access_checked"] is True
     assert event.metadata["tenant_policy_checked"] is True
     assert event.metadata["tenant_preview_policy_enabled"] is False
-    assert "renderer_sandbox_evidence" in event.metadata["missing_evidence"]
+    assert "renderer_sandbox_worker_evidence" in event.metadata["missing_evidence"]
+    assert "backup_coverage_evidence" in event.metadata["missing_evidence"]
+    assert "restore_drill_evidence" in event.metadata["missing_evidence"]
     assert event.metadata["reason_hash"].startswith("sha256:")
     assert "reason" not in event.metadata
 
@@ -1006,14 +1012,18 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     assert body["source_object_type"] == "mail"
     assert body["gate"]["policy_id"] == "preview-policy.mail.metadata-first.v1"
     assert "parser_sanitizer_evidence" in body["provided_evidence"]
-    assert "renderer_sandbox_evidence" in body["provided_evidence"]
+    assert "renderer_sandbox_worker_evidence" in body["provided_evidence"]
     assert "human_content_release_confirmation" in body["provided_evidence"]
     assert "tenant_preview_policy_enabled" in body["missing_evidence"]
-    assert "renderer_sandbox_evidence" not in body["missing_evidence"]
+    assert "renderer_sandbox_worker_evidence" not in body["missing_evidence"]
+    assert "backup_coverage_evidence" in body["missing_evidence"]
+    assert "restore_drill_evidence" in body["missing_evidence"]
     assert "parser-sanitizer:mail-preview-smoke-1" in body["provided_evidence_refs"]
     assert "renderer-sandbox:mail-preview-smoke-1" in body["provided_evidence_refs"]
     assert "approval:mail-preview-human-confirmation-1" in body["provided_evidence_refs"]
     assert body["renderer_sandbox_evidence_verified"] is True
+    assert body["backup_coverage_evidence_verified"] is False
+    assert body["restore_evidence_verified"] is False
     assert body["human_confirmation_verified"] is True
     assert body["content_release_evidence_complete"] is False
     assert "Welcome message source" not in json.dumps(body)
@@ -1021,7 +1031,7 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "source_object.preview_decision.blocked"
     assert "parser_sanitizer_evidence" in new_events[-1].metadata["provided_evidence"]
-    assert "renderer_sandbox_evidence" in new_events[-1].metadata["provided_evidence"]
+    assert "renderer_sandbox_worker_evidence" in new_events[-1].metadata["provided_evidence"]
     assert "tenant_preview_policy_enabled" in new_events[-1].metadata["missing_evidence"]
 
 
@@ -1052,6 +1062,8 @@ def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_rec
                 "reason": "request fully evidenced preview decision",
                 "parser_sanitizer_evidence_ref": "parser-sanitizer:document-preview-smoke-1",
                 "renderer_sandbox_evidence_ref": "renderer-sandbox:document-preview-smoke-1",
+                "backup_coverage_evidence_ref": "backup:preview-ledger-smoke-1",
+                "restore_evidence_ref": "restore-drill:preview-ledger-smoke-1",
                 "human_confirmation_reference": "approval:document-preview-human-confirmation-1",
             },
         )
@@ -1064,8 +1076,12 @@ def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_rec
     assert body["missing_evidence"] == []
     assert body["content_release_evidence_complete"] is True
     assert body["renderer_sandbox_evidence_verified"] is True
+    assert body["backup_coverage_evidence_verified"] is True
+    assert body["restore_evidence_verified"] is True
     assert body["human_confirmation_verified"] is True
     assert "tenant_policy:tenant-demo:content_preview_enabled" in body["provided_evidence_refs"]
+    assert "backup:preview-ledger-smoke-1" in body["provided_evidence_refs"]
+    assert "restore-drill:preview-ledger-smoke-1" in body["provided_evidence_refs"]
     assert body["decision_status"] == "blocked"
     assert body["content_release_allowed"] is False
     assert "content_preview_skeleton_blocks_release_until_renderer_operational" in body["blocking_reasons"]

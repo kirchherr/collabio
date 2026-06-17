@@ -223,7 +223,8 @@ services:
       SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: postgres
       SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres
       SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND: postgres
-      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: jsonl
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio

@@ -265,6 +265,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("adr:platform-module-system", "test:platform-module-registry-runtime-store"),
     ),
+    SqlMigration(
+        version="0031",
+        name="source_object_preview_decision_ledger",
+        resource_name="0031_source_object_preview_decision_ledger.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:source-object-preview-decision-ledger",
+            "test:source-object-preview-decision-ledger",
+        ),
+    ),
 )
 
 

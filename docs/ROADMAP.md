@@ -1277,7 +1277,8 @@ Empfohlene naechste Reihenfolge:
 107. [x] Dokument-/Mail-Preview-Gate konkretisieren: sichere metadata-first Preview-Policies, Parser-/Sanitizer-Grenzen, Mail-Header/Attachment-Metadaten und Content-Freigabe nur hinter explizitem Policy-/ACL-/Audit-Nachweis vorbereiten.
 108. [x] Dokument-/Mail-Preview-Approval-Skeleton vorbereiten: Content-Preview-Anfragen als metadata-only Decision-Objekte modellieren, Tenant-Policy/ACL/Audit/Parser-Sanitizer-Evidence pruefen und weiterhin blockieren, bis explizite Freigabe und sichere Renderer-Grenzen nachgewiesen sind.
 109. [x] Dokument-/Mail-Preview-Approval operationalisieren: persistentes Preview-Decision-Ledger, Tenant-Policy-Schalter, Renderer-Sandbox-Evidence und Human-Confirmation-Workflow anbinden, ohne Content-Ausgabe freizuschalten.
-110. [ ] Preview-Decision-Ledger produktionshart machen: PostgreSQL/RLS-Adapter, Restore-Evidence, Backup-Abdeckung und Renderer-Sandbox-Worker-Evidence anbinden, bevor irgendein Content-Rendering-Pfad geoeffnet wird.
+110. [x] Preview-Decision-Ledger produktionshart machen: PostgreSQL/RLS-Adapter, Restore-Evidence, Backup-Abdeckung und Renderer-Sandbox-Worker-Evidence anbinden, bevor irgendein Content-Rendering-Pfad geoeffnet wird.
+111. [ ] Renderer-Sandbox-Worker-Skeleton aufbauen: isolierten Worker-Run als metadata-only Evidence erzeugen, Parser/Sanitizer/Backup/Restore-Evidence gegen Tenant und SourceObject binden und weiterhin keinen gerenderten Content ausgeben.
 
 ## Release-Strategie
 

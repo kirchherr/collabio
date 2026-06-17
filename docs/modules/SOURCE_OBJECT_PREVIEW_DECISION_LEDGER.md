@@ -20,7 +20,9 @@ Each ledger entry carries:
 - TenantPolicy preview switch state
 - required, provided, and missing evidence names
 - parser and sanitizer profile IDs
-- renderer sandbox evidence reference, when supplied
+- renderer sandbox worker evidence reference, when supplied
+- backup coverage evidence reference, when supplied
+- restore drill evidence reference, when supplied
 - human confirmation reference, when supplied
 - source detail audit event ID
 - preview decision audit event ID
@@ -40,17 +42,23 @@ Supported local adapters:
 
 - `InMemorySourceObjectPreviewDecisionLedger` for tests and ephemeral development.
 - `JsonlSourceObjectPreviewDecisionLedger` for append-only local persistence under `SUITE_DATA_DIR`.
+- `PgSourceObjectPreviewDecisionLedger` for PostgreSQL/RLS-backed API runtime.
 
-The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND=jsonl`.
+Migration `0031_source_object_preview_decision_ledger.sql` creates
+`collabio.source_object_preview_decision_evidence` with forced row-level security, tenant-scoped select/insert,
+blocked update/delete policies, and checks that `content_release_allowed=false` and `content_included=false`.
+
+The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND=postgres`.
 
 ## Safety Boundary
 
 The `content_preview_enabled` TenantPolicy switch only satisfies one evidence item. Even when tenant policy, ACL,
-detail audit, parser/sanitizer evidence, renderer sandbox evidence, and human confirmation are all present, the
-endpoint still returns `decision_status=blocked` and `content_release_allowed=false` until a hardened renderer service,
-tenant-scoped sandbox proof, and release workflow are separately implemented.
+detail audit, parser/sanitizer evidence, renderer sandbox worker evidence, backup coverage evidence, restore drill
+evidence, and human confirmation are all present, the endpoint still returns `decision_status=blocked` and
+`content_release_allowed=false` until a hardened renderer service, tenant-scoped sandbox proof, and release workflow
+are separately implemented.
 
 ## Next Boundary
 
-Move the preview decision ledger to a PostgreSQL/RLS-backed adapter and bind renderer-sandbox evidence to a concrete,
-audited worker execution profile before considering any content rendering path.
+Bind renderer-sandbox evidence to a concrete audited worker execution record, then add restore drills that prove
+preview decision evidence remains recoverable before considering any content rendering path.

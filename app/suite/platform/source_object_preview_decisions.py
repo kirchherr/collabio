@@ -5,8 +5,10 @@ import os
 from collections.abc import Sequence
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
@@ -22,7 +24,9 @@ from suite.storage.source_objects import SourceObjectRepository, SourceObjectTyp
 
 ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
 
-RENDERER_SANDBOX_EVIDENCE = "renderer_sandbox_evidence"
+BACKUP_COVERAGE_EVIDENCE = "backup_coverage_evidence"
+RENDERER_SANDBOX_WORKER_EVIDENCE = "renderer_sandbox_worker_evidence"
+RESTORE_DRILL_EVIDENCE = "restore_drill_evidence"
 
 
 class SourceObjectPreviewDecisionStatus(StrEnum):
@@ -45,6 +49,8 @@ class SourceObjectPreviewDecisionRequest(BaseModel):
     reason: str = Field(min_length=1)
     parser_sanitizer_evidence_ref: str | None = None
     renderer_sandbox_evidence_ref: str | None = None
+    backup_coverage_evidence_ref: str | None = None
+    restore_evidence_ref: str | None = None
     human_confirmation_reference: str | None = None
 
     @field_validator("preview_slot_id", "preview_policy_id", "reason")
@@ -58,6 +64,8 @@ class SourceObjectPreviewDecisionRequest(BaseModel):
     @field_validator(
         "parser_sanitizer_evidence_ref",
         "renderer_sandbox_evidence_ref",
+        "backup_coverage_evidence_ref",
+        "restore_evidence_ref",
         "human_confirmation_reference",
     )
     @classmethod
@@ -99,10 +107,16 @@ class SourceObjectPreviewDecisionResponse(BaseModel):
     sanitizer_profile_id: str
     renderer_sandbox_required: bool = True
     renderer_sandbox_evidence_ref: str | None = None
+    backup_coverage_required: bool = True
+    backup_coverage_evidence_ref: str | None = None
+    restore_evidence_required: bool = True
+    restore_evidence_ref: str | None = None
     human_confirmation_reference: str | None = None
     source_detail_audit_event_id: str
     audit_event_id: str
     renderer_sandbox_evidence_verified: bool = False
+    backup_coverage_evidence_verified: bool = False
+    restore_evidence_verified: bool = False
     human_confirmation_verified: bool = False
     content_release_evidence_complete: bool = False
     preview_decision_evidence_hash: str
@@ -134,8 +148,14 @@ class SourceObjectPreviewDecisionEvidence(BaseModel):
     sanitizer_profile_id: str
     renderer_sandbox_required: bool = True
     renderer_sandbox_evidence_ref: str | None = None
+    backup_coverage_required: bool = True
+    backup_coverage_evidence_ref: str | None = None
+    restore_evidence_required: bool = True
+    restore_evidence_ref: str | None = None
     human_confirmation_reference: str | None = None
     renderer_sandbox_evidence_verified: bool = False
+    backup_coverage_evidence_verified: bool = False
+    restore_evidence_verified: bool = False
     human_confirmation_verified: bool = False
     content_release_evidence_complete: bool = False
     source_detail_audit_event_id: str
@@ -219,6 +239,234 @@ class JsonlSourceObjectPreviewDecisionLedger:
         )
 
 
+class PgSourceObjectPreviewDecisionLedger:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, evidence: SourceObjectPreviewDecisionEvidence) -> SourceObjectPreviewDecisionEvidence:
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, evidence.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO collabio.source_object_preview_decision_evidence (
+                        tenant_id,
+                        source_object_id,
+                        source_version_id,
+                        source_object_type,
+                        preview_slot_id,
+                        preview_policy_id,
+                        decision_status,
+                        content_release_allowed,
+                        content_included,
+                        access_checked,
+                        tenant_policy_checked,
+                        tenant_preview_policy_enabled,
+                        required_content_release_evidence,
+                        provided_evidence,
+                        provided_evidence_refs,
+                        missing_evidence,
+                        blocking_reasons,
+                        parser_profile_id,
+                        sanitizer_profile_id,
+                        renderer_sandbox_required,
+                        renderer_sandbox_evidence_ref,
+                        backup_coverage_required,
+                        backup_coverage_evidence_ref,
+                        restore_evidence_required,
+                        restore_evidence_ref,
+                        human_confirmation_reference,
+                        renderer_sandbox_evidence_verified,
+                        backup_coverage_evidence_verified,
+                        restore_evidence_verified,
+                        human_confirmation_verified,
+                        content_release_evidence_complete,
+                        source_detail_audit_event_id,
+                        audit_event_id,
+                        requested_by,
+                        reason_hash,
+                        evidence_hash,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    self._evidence_values(evidence),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object preview decision evidence already exists") from exc
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewDecisionEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                f"""
+                SELECT {self._select_columns()}
+                FROM collabio.source_object_preview_decision_evidence
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("source object preview decision evidence not found")
+        return self._evidence_from_row(row)
+
+    def list_decisions(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewDecisionEvidence]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                f"""
+                SELECT {self._select_columns()}
+                FROM collabio.source_object_preview_decision_evidence
+                WHERE tenant_id = %s
+                ORDER BY captured_at_utc, evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._evidence_from_row(row) for row in rows)
+
+    def _evidence_values(self, evidence: SourceObjectPreviewDecisionEvidence) -> tuple[object, ...]:
+        return (
+            evidence.tenant_id,
+            evidence.source_object_id,
+            evidence.source_version_id,
+            evidence.source_object_type.value,
+            evidence.preview_slot_id,
+            evidence.preview_policy_id,
+            evidence.decision_status.value,
+            evidence.content_release_allowed,
+            evidence.content_included,
+            evidence.access_checked,
+            evidence.tenant_policy_checked,
+            evidence.tenant_preview_policy_enabled,
+            Jsonb(list(evidence.required_content_release_evidence)),
+            Jsonb(list(evidence.provided_evidence)),
+            Jsonb(list(evidence.provided_evidence_refs)),
+            Jsonb(list(evidence.missing_evidence)),
+            Jsonb(list(evidence.blocking_reasons)),
+            evidence.parser_profile_id,
+            evidence.sanitizer_profile_id,
+            evidence.renderer_sandbox_required,
+            evidence.renderer_sandbox_evidence_ref,
+            evidence.backup_coverage_required,
+            evidence.backup_coverage_evidence_ref,
+            evidence.restore_evidence_required,
+            evidence.restore_evidence_ref,
+            evidence.human_confirmation_reference,
+            evidence.renderer_sandbox_evidence_verified,
+            evidence.backup_coverage_evidence_verified,
+            evidence.restore_evidence_verified,
+            evidence.human_confirmation_verified,
+            evidence.content_release_evidence_complete,
+            evidence.source_detail_audit_event_id,
+            evidence.audit_event_id,
+            evidence.requested_by,
+            evidence.reason_hash,
+            evidence.evidence_hash,
+            evidence.schema_version,
+        )
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> SourceObjectPreviewDecisionEvidence:
+        return SourceObjectPreviewDecisionEvidence(
+            tenant_id=str(row[0]),
+            source_object_id=str(row[1]),
+            source_version_id=str(row[2]),
+            source_object_type=SourceObjectType(str(row[3])),
+            preview_slot_id=str(row[4]),
+            preview_policy_id=str(row[5]),
+            decision_status=SourceObjectPreviewDecisionStatus(str(row[6])),
+            content_release_allowed=bool(row[7]),
+            content_included=bool(row[8]),
+            access_checked=bool(row[9]),
+            tenant_policy_checked=bool(row[10]),
+            tenant_preview_policy_enabled=bool(row[11]),
+            required_content_release_evidence=_row_json_tuple(row[12]),
+            provided_evidence=_row_json_tuple(row[13]),
+            provided_evidence_refs=_row_json_tuple(row[14]),
+            missing_evidence=_row_json_tuple(row[15]),
+            blocking_reasons=_row_json_tuple(row[16]),
+            parser_profile_id=str(row[17]),
+            sanitizer_profile_id=str(row[18]),
+            renderer_sandbox_required=bool(row[19]),
+            renderer_sandbox_evidence_ref=str(row[20]) if row[20] is not None else None,
+            backup_coverage_required=bool(row[21]),
+            backup_coverage_evidence_ref=str(row[22]) if row[22] is not None else None,
+            restore_evidence_required=bool(row[23]),
+            restore_evidence_ref=str(row[24]) if row[24] is not None else None,
+            human_confirmation_reference=str(row[25]) if row[25] is not None else None,
+            renderer_sandbox_evidence_verified=bool(row[26]),
+            backup_coverage_evidence_verified=bool(row[27]),
+            restore_evidence_verified=bool(row[28]),
+            human_confirmation_verified=bool(row[29]),
+            content_release_evidence_complete=bool(row[30]),
+            source_detail_audit_event_id=str(row[31]),
+            audit_event_id=str(row[32]),
+            requested_by=str(row[33]),
+            reason_hash=str(row[34]),
+            evidence_hash=str(row[35]),
+            schema_version=str(row[36]),
+        )
+
+    def _select_columns(self) -> str:
+        return """
+            tenant_id,
+            source_object_id,
+            source_version_id,
+            source_object_type,
+            preview_slot_id,
+            preview_policy_id,
+            decision_status,
+            content_release_allowed,
+            content_included,
+            access_checked,
+            tenant_policy_checked,
+            tenant_preview_policy_enabled,
+            required_content_release_evidence,
+            provided_evidence,
+            provided_evidence_refs,
+            missing_evidence,
+            blocking_reasons,
+            parser_profile_id,
+            sanitizer_profile_id,
+            renderer_sandbox_required,
+            renderer_sandbox_evidence_ref,
+            backup_coverage_required,
+            backup_coverage_evidence_ref,
+            restore_evidence_required,
+            restore_evidence_ref,
+            human_confirmation_reference,
+            renderer_sandbox_evidence_verified,
+            backup_coverage_evidence_verified,
+            restore_evidence_verified,
+            human_confirmation_verified,
+            content_release_evidence_complete,
+            source_detail_audit_event_id,
+            audit_event_id,
+            requested_by,
+            reason_hash,
+            evidence_hash,
+            schema_version
+        """
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+def _row_json_tuple(value: object) -> tuple[str, ...]:
+    loaded = json.loads(value) if isinstance(value, str) else value
+    if not isinstance(loaded, list) or not all(isinstance(item, str) for item in loaded):
+        raise ValueError("source object preview decision ledger JSONB arrays must contain strings")
+    return tuple(loaded)
+
+
 def build_source_object_preview_decision(
     *,
     user_context: UserContext,
@@ -284,6 +532,8 @@ def build_source_object_preview_decision(
     )
     missing_evidence = tuple(evidence for evidence in required_evidence if evidence not in provided_evidence)
     renderer_sandbox_evidence_verified = request.renderer_sandbox_evidence_ref is not None
+    backup_coverage_evidence_verified = request.backup_coverage_evidence_ref is not None
+    restore_evidence_verified = request.restore_evidence_ref is not None
     human_confirmation_verified = request.human_confirmation_reference is not None
     content_release_evidence_complete = not missing_evidence
     blocking_reasons = (
@@ -315,6 +565,8 @@ def build_source_object_preview_decision(
             "blocking_reasons": list(blocking_reasons),
             "source_detail_audit_event_id": detail.audit_event_id,
             "renderer_sandbox_evidence_verified": renderer_sandbox_evidence_verified,
+            "backup_coverage_evidence_verified": backup_coverage_evidence_verified,
+            "restore_evidence_verified": restore_evidence_verified,
             "human_confirmation_verified": human_confirmation_verified,
             "content_release_evidence_complete": content_release_evidence_complete,
             "reason_hash": stable_hash(request.reason),
@@ -336,8 +588,12 @@ def build_source_object_preview_decision(
         parser_profile_id=slot.gate.parser_profile_id,
         sanitizer_profile_id=slot.gate.sanitizer_profile_id,
         renderer_sandbox_evidence_ref=request.renderer_sandbox_evidence_ref,
+        backup_coverage_evidence_ref=request.backup_coverage_evidence_ref,
+        restore_evidence_ref=request.restore_evidence_ref,
         human_confirmation_reference=request.human_confirmation_reference,
         renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        backup_coverage_evidence_verified=backup_coverage_evidence_verified,
+        restore_evidence_verified=restore_evidence_verified,
         human_confirmation_verified=human_confirmation_verified,
         content_release_evidence_complete=content_release_evidence_complete,
         source_detail_audit_event_id=detail.audit_event_id,
@@ -363,10 +619,14 @@ def build_source_object_preview_decision(
         parser_profile_id=slot.gate.parser_profile_id,
         sanitizer_profile_id=slot.gate.sanitizer_profile_id,
         renderer_sandbox_evidence_ref=request.renderer_sandbox_evidence_ref,
+        backup_coverage_evidence_ref=request.backup_coverage_evidence_ref,
+        restore_evidence_ref=request.restore_evidence_ref,
         human_confirmation_reference=request.human_confirmation_reference,
         source_detail_audit_event_id=detail.audit_event_id,
         audit_event_id=event.event_id,
         renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        backup_coverage_evidence_verified=backup_coverage_evidence_verified,
+        restore_evidence_verified=restore_evidence_verified,
         human_confirmation_verified=human_confirmation_verified,
         content_release_evidence_complete=content_release_evidence_complete,
         preview_decision_evidence_hash=persisted_evidence.evidence_hash,
@@ -395,8 +655,12 @@ def build_source_object_preview_decision_evidence(
     parser_profile_id: str,
     sanitizer_profile_id: str,
     renderer_sandbox_evidence_ref: str | None,
+    backup_coverage_evidence_ref: str | None,
+    restore_evidence_ref: str | None,
     human_confirmation_reference: str | None,
     renderer_sandbox_evidence_verified: bool,
+    backup_coverage_evidence_verified: bool,
+    restore_evidence_verified: bool,
     human_confirmation_verified: bool,
     content_release_evidence_complete: bool,
     source_detail_audit_event_id: str,
@@ -421,8 +685,12 @@ def build_source_object_preview_decision_evidence(
         parser_profile_id=parser_profile_id,
         sanitizer_profile_id=sanitizer_profile_id,
         renderer_sandbox_evidence_ref=renderer_sandbox_evidence_ref,
+        backup_coverage_evidence_ref=backup_coverage_evidence_ref,
+        restore_evidence_ref=restore_evidence_ref,
         human_confirmation_reference=human_confirmation_reference,
         renderer_sandbox_evidence_verified=renderer_sandbox_evidence_verified,
+        backup_coverage_evidence_verified=backup_coverage_evidence_verified,
+        restore_evidence_verified=restore_evidence_verified,
         human_confirmation_verified=human_confirmation_verified,
         content_release_evidence_complete=content_release_evidence_complete,
         source_detail_audit_event_id=source_detail_audit_event_id,
@@ -446,11 +714,24 @@ def build_default_source_object_preview_decision_ledger(data_dir: Path) -> Sourc
         ledger_path = os.getenv("SUITE_SOURCE_PREVIEW_DECISION_LEDGER_PATH")
         path = Path(ledger_path) if ledger_path else data_dir / "source_preview" / "decision_ledger.jsonl"
         return JsonlSourceObjectPreviewDecisionLedger(path=path)
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = os.getenv("SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN") or os.getenv("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL source preview decision ledger requires "
+                "SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgSourceObjectPreviewDecisionLedger(database_dsn=database_dsn)
     raise ValueError(f"Unsupported SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: {backend}")
 
 
 def _required_evidence(gate: SourceObjectPreviewGate) -> tuple[str, ...]:
-    return (*gate.required_content_release_evidence, RENDERER_SANDBOX_EVIDENCE)
+    return (
+        *gate.required_content_release_evidence,
+        RENDERER_SANDBOX_WORKER_EVIDENCE,
+        BACKUP_COVERAGE_EVIDENCE,
+        RESTORE_DRILL_EVIDENCE,
+    )
 
 
 def _provided_evidence(
@@ -466,7 +747,11 @@ def _provided_evidence(
     if request.human_confirmation_reference is not None:
         evidence.append("human_content_release_confirmation")
     if request.renderer_sandbox_evidence_ref is not None:
-        evidence.append(RENDERER_SANDBOX_EVIDENCE)
+        evidence.append(RENDERER_SANDBOX_WORKER_EVIDENCE)
+    if request.backup_coverage_evidence_ref is not None:
+        evidence.append(BACKUP_COVERAGE_EVIDENCE)
+    if request.restore_evidence_ref is not None:
+        evidence.append(RESTORE_DRILL_EVIDENCE)
     return tuple(evidence)
 
 
@@ -486,6 +771,10 @@ def _provided_evidence_refs(
         refs.append(request.parser_sanitizer_evidence_ref)
     if request.renderer_sandbox_evidence_ref is not None:
         refs.append(request.renderer_sandbox_evidence_ref)
+    if request.backup_coverage_evidence_ref is not None:
+        refs.append(request.backup_coverage_evidence_ref)
+    if request.restore_evidence_ref is not None:
+        refs.append(request.restore_evidence_ref)
     if request.human_confirmation_reference is not None:
         refs.append(request.human_confirmation_reference)
     return tuple(refs)

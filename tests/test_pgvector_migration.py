@@ -62,6 +62,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0028",
         "0029",
         "0030",
+        "0031",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -1297,6 +1298,57 @@ def test_knowledge_base_runtime_reconciliation_migration_blocks_drift_metadata_o
     )
     assert "source_text" not in sql
     assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_decision_ledger_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0031").sql())
+    table = table_body(get_migration("0031").sql(), "collabio.source_object_preview_decision_evidence")
+
+    for column in [
+        "tenant_id",
+        "source_object_id",
+        "source_version_id",
+        "source_object_type",
+        "preview_slot_id",
+        "preview_policy_id",
+        "decision_status",
+        "content_release_allowed",
+        "content_included",
+        "tenant_preview_policy_enabled",
+        "required_content_release_evidence",
+        "provided_evidence",
+        "provided_evidence_refs",
+        "missing_evidence",
+        "blocking_reasons",
+        "renderer_sandbox_evidence_ref",
+        "backup_coverage_evidence_ref",
+        "restore_evidence_ref",
+        "human_confirmation_reference",
+        "reason_hash",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "decision_status = 'blocked'" in table
+    assert "content_release_allowed = false" in table
+    assert "content_included = false" in table
+    assert "renderer_sandbox_worker_evidence" in table
+    assert "backup_coverage_evidence" in table
+    assert "restore_drill_evidence" in table
+    assert "source_object_preview_decision_tenant_select" in sql
+    assert "source_object_preview_decision_tenant_insert" in sql
+    assert "source_object_preview_decision_no_update" in sql
+    assert "source_object_preview_decision_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "grant select, insert on table collabio.source_object_preview_decision_evidence to collabio_app" in sql
+    assert "grant select on table collabio.source_object_preview_decision_evidence to collabio_worker" in sql
+    assert "source_text" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
     assert "prompt_text" not in sql
     assert "output_text" not in sql
     assert "raw_payload" not in sql
