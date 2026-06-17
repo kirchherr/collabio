@@ -1269,7 +1269,8 @@ Empfohlene naechste Reihenfolge:
 99. [x] Persistente Platform-Module-Registry fuer API und Worker angleichen: `collabio.module_catalog` und `collabio.tenant_modules` als Store anbinden, Migration-Evidence aus DB verwenden, tenant-sichere `ModuleWorkerGate`-Nutzung fuer API/Worker vereinheitlichen und Dev-Seeding/Backfill definieren.
 100. [x] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
 101. [x] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
-102. [ ] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
+102. [x] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
+103. [ ] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
 
 ## Release-Strategie
 

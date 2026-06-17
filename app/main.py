@@ -1,8 +1,11 @@
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Annotated, cast
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from suite.ai_control_plane.audit import build_default_audit_logger, canonical_json, stable_hash
 from suite.ai_control_plane.models import (
@@ -301,6 +304,12 @@ def require_module_api_gate(
 
 def build_app() -> FastAPI:
     app = FastAPI(title="Compliance-First Enterprise Suite", version="0.1.0")
+    workspace_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "workspace"
+    app.mount(
+        "/workspace/assets",
+        StaticFiles(directory=workspace_ui_dir),
+        name="workspace-assets",
+    )
 
     data_dir = suite_data_dir()
     registry_dir = data_dir / "registries"
@@ -404,6 +413,10 @@ def build_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/workspace", response_class=FileResponse)
+    def workspace_shell() -> FileResponse:
+        return FileResponse(workspace_ui_dir / "index.html")
 
     @app.get("/v1/platform/modules", response_model=PlatformModulesResponse)
     def list_platform_modules(

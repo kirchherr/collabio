@@ -347,6 +347,31 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
+    response = client.get("/workspace")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Module-Cockpit" in response.text
+    assert "/workspace/assets/workspace.css" in response.text
+    assert "/workspace/assets/workspace.js" in response.text
+    assert "Board pack draft source content" not in response.text
+    assert "Welcome message source" not in response.text
+
+
+def test_workspace_shell_assets_are_served_and_call_cockpit_api() -> None:
+    css_response = client.get("/workspace/assets/workspace.css")
+    js_response = client.get("/workspace/assets/workspace.js")
+
+    assert css_response.status_code == 200
+    assert "workspace-shell" in css_response.text
+    assert "gradient" not in css_response.text.lower()
+    assert js_response.status_code == 200
+    assert "/v1/platform/cockpit" in js_response.text
+    assert "X-Tenant-Id" in js_response.text
+    assert "content_included" in js_response.text
+
+
 def test_tenant_data_endpoints_require_request_context() -> None:
     response = client.post("/v1/ai/inference", json={"input_text": "Bitte zusammenfassen."})
     assert response.status_code == 401
