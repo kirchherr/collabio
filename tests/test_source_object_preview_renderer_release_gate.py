@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -10,10 +11,14 @@ from suite.platform.source_object_preview_renderer_operations import (
     build_source_object_preview_renderer_recovery_drill_report_hash,
 )
 from suite.platform.source_object_preview_renderer_release_gate import (
+    InMemorySourceObjectPreviewRendererReleaseGateEvidenceStore,
+    JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore,
     SourceObjectPreviewRendererReleaseGateStatus,
     build_source_object_preview_renderer_release_gate,
     build_source_object_preview_renderer_release_gate_hash,
+    require_source_object_preview_renderer_release_gate_for_wiring,
     require_source_object_preview_renderer_release_gate_ready,
+    source_object_preview_renderer_release_gate_evidence_ref,
 )
 from suite.platform.source_object_preview_renderer_smoke import (
     SourceObjectPreviewRendererApiSmokeReport,
@@ -61,6 +66,17 @@ def test_preview_renderer_release_gate_allows_wiring_only_with_fresh_bound_repor
     )
     assert gate.evidence_hash == build_source_object_preview_renderer_release_gate_hash(gate)
     assert require_source_object_preview_renderer_release_gate_ready(gate) == gate
+    assert (
+        require_source_object_preview_renderer_release_gate_for_wiring(
+            gate=gate,
+            tenant_id="tenant-release-ready",
+            evidence_hash=gate.evidence_hash,
+        )
+        == gate
+    )
+    assert source_object_preview_renderer_release_gate_evidence_ref(gate) == (
+        f"preview-renderer-release-gate:{gate.evidence_hash}"
+    )
 
 
 def test_preview_renderer_release_gate_blocks_stale_reports() -> None:
@@ -140,6 +156,12 @@ def test_preview_renderer_release_gate_blocks_hash_tampering_and_tenant_mismatch
     assert "api_smoke_report_hash_invalid" in gate.blocking_reasons
     assert "api_smoke_tenant_mismatch" in gate.blocking_reasons
     assert "tenant_not_ready_for_release_gate" in gate.blocking_reasons
+    with pytest.raises(ValueError, match="api_smoke_report_hash_invalid"):
+        require_source_object_preview_renderer_release_gate_for_wiring(
+            gate=gate,
+            tenant_id="tenant-release-real",
+            evidence_hash=gate.evidence_hash,
+        )
 
 
 def test_preview_renderer_release_gate_blocks_failed_recovery_drill() -> None:
@@ -168,6 +190,81 @@ def test_preview_renderer_release_gate_blocks_failed_recovery_drill() -> None:
     assert "api_smoke_recovery_status_not_ready" in gate.blocking_reasons
     assert "metadata_only_boundary_not_verified" in gate.blocking_reasons
     assert "recovery_drill_not_ready" in gate.blocking_reasons
+
+
+def test_preview_renderer_release_gate_store_persists_hash_valid_tenant_scoped_evidence(tmp_path: Path) -> None:
+    checked_at = datetime(2026, 6, 17, 10, tzinfo=UTC)
+    drill_report = ready_drill_report(tenant_id="tenant-release-store", checked_at=checked_at)
+    smoke_report = passed_smoke_report(
+        tenant_id="tenant-release-store",
+        drill_report=drill_report,
+        checked_at=checked_at + timedelta(minutes=5),
+    )
+    gate = build_source_object_preview_renderer_release_gate(
+        tenant_id="tenant-release-store",
+        api_smoke_report=smoke_report,
+        recovery_drill_report=drill_report,
+        evaluated_at_utc=datetime(2026, 6, 17, 11, tzinfo=UTC),
+    )
+    path = tmp_path / "preview_renderer_release_gates.jsonl"
+    store = JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore(path=path)
+
+    persisted = store.append(gate)
+    reloaded = JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore(path=path)
+
+    assert persisted.evidence_hash == gate.evidence_hash
+    assert reloaded.get(tenant_id="tenant-release-store", evidence_hash=gate.evidence_hash) == gate
+    assert reloaded.list_evidence(tenant_id="tenant-release-store") == (gate,)
+    assert reloaded.list_evidence(tenant_id="tenant-other") == ()
+
+
+def test_preview_renderer_release_gate_store_rejects_tampered_evidence() -> None:
+    checked_at = datetime(2026, 6, 17, 10, tzinfo=UTC)
+    drill_report = ready_drill_report(tenant_id="tenant-release-tampered", checked_at=checked_at)
+    smoke_report = passed_smoke_report(
+        tenant_id="tenant-release-tampered",
+        drill_report=drill_report,
+        checked_at=checked_at + timedelta(minutes=5),
+    )
+    gate = build_source_object_preview_renderer_release_gate(
+        tenant_id="tenant-release-tampered",
+        api_smoke_report=smoke_report,
+        recovery_drill_report=drill_report,
+        evaluated_at_utc=datetime(2026, 6, 17, 11, tzinfo=UTC),
+    ).model_copy(update={"renderer_connection_allowed": False})
+    store = InMemorySourceObjectPreviewRendererReleaseGateEvidenceStore()
+
+    with pytest.raises(ValueError, match="evidence hash is invalid"):
+        store.append(gate)
+
+
+def test_preview_renderer_release_gate_wiring_requires_matching_tenant_and_hash() -> None:
+    checked_at = datetime(2026, 6, 17, 10, tzinfo=UTC)
+    drill_report = ready_drill_report(tenant_id="tenant-release-wiring", checked_at=checked_at)
+    smoke_report = passed_smoke_report(
+        tenant_id="tenant-release-wiring",
+        drill_report=drill_report,
+        checked_at=checked_at + timedelta(minutes=5),
+    )
+    gate = build_source_object_preview_renderer_release_gate(
+        tenant_id="tenant-release-wiring",
+        api_smoke_report=smoke_report,
+        recovery_drill_report=drill_report,
+        evaluated_at_utc=datetime(2026, 6, 17, 11, tzinfo=UTC),
+    )
+
+    with pytest.raises(ValueError, match="tenant does not match"):
+        require_source_object_preview_renderer_release_gate_for_wiring(
+            gate=gate,
+            tenant_id="tenant-other",
+            evidence_hash=gate.evidence_hash,
+        )
+    with pytest.raises(ValueError, match="evidence hash does not match"):
+        require_source_object_preview_renderer_release_gate_for_wiring(
+            gate=gate,
+            tenant_id="tenant-release-wiring",
+            evidence_hash="sha256:" + "9" * 64,
+        )
 
 
 def ready_drill_report(*, tenant_id: str, checked_at: datetime) -> SourceObjectPreviewRendererRecoveryDrillReport:

@@ -76,7 +76,13 @@ not ready, the tenant IDs do not match, the smoke report is not bound to the dri
 boundary is not verified. Future renderer, viewer, office, mail, knowledge-base, e-discovery, and content-release
 integrations must call the gate check before attaching any content-bearing path.
 
+`preview-renderer-smoke` now emits `source_object_preview_renderer_release_gate_smoke_report.v1` by default. It still
+creates the API smoke report and bound recovery drill report, then creates and persists a
+`source_object_preview_renderer_release_gate.v1` record in the configured release-gate evidence store. The default
+development store is append-only JSONL under `SUITE_DATA_DIR/preview_renderer_release_gates.jsonl`; use
+`--api-only` when only the lower-level API smoke report is needed for diagnostics.
+
 ## Next Boundary
 
-Persist release-gate evidence in the same operational evidence chain used for production readiness so release and restore
-reviews can prove which gate hash allowed a renderer or viewer integration.
+Harden the release-gate evidence store with PostgreSQL/RLS and migration coverage before any production renderer or
+viewer integration depends on release-gate hashes.

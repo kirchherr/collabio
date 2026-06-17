@@ -19,6 +19,7 @@ from suite.platform.source_object_preview_renderer_operations import (
 )
 
 PREVIEW_RENDERER_API_SMOKE_SCHEMA_VERSION = "source_object_preview_renderer_api_smoke_report.v1"
+PREVIEW_RENDERER_RELEASE_GATE_SMOKE_SCHEMA_VERSION = "source_object_preview_renderer_release_gate_smoke_report.v1"
 DEFAULT_SMOKE_TENANT_ID = "tenant-demo"
 DEFAULT_SMOKE_USER_ID = "preview-renderer-smoke"
 DEFAULT_SMOKE_SOURCE_OBJECT_ID = "doc-1"
@@ -55,6 +56,27 @@ class SourceObjectPreviewRendererApiSmokeReport(BaseModel):
     evidence_hash: str
 
 
+class SourceObjectPreviewRendererReleaseGateSmokeReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = PREVIEW_RENDERER_RELEASE_GATE_SMOKE_SCHEMA_VERSION
+    tenant_id: str
+    api_smoke_report_hash: str
+    api_smoke_report_ref: str
+    recovery_drill_report_hash: str
+    recovery_drill_report_ref: str
+    release_gate_evidence_hash: str
+    release_gate_evidence_ref: str
+    release_gate_status: str
+    renderer_connection_allowed: bool
+    viewer_connection_allowed: bool
+    content_release_workflow_allowed: bool
+    release_gate_persisted: bool
+    checked_by: str
+    checked_at_utc: datetime
+    evidence_hash: str
+
+
 def run_source_object_preview_renderer_api_smoke_from_env(
     environ: Mapping[str, str] | None = None,
 ) -> SourceObjectPreviewRendererApiSmokeReport:
@@ -63,6 +85,26 @@ def run_source_object_preview_renderer_api_smoke_from_env(
 
     client = TestClient(build_app())
     return run_source_object_preview_renderer_api_smoke(
+        client=client,
+        tenant_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID", DEFAULT_SMOKE_TENANT_ID),
+        user_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_USER_ID", DEFAULT_SMOKE_USER_ID),
+        source_object_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_SOURCE_OBJECT_ID", DEFAULT_SMOKE_SOURCE_OBJECT_ID),
+        source_version_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_SOURCE_VERSION_ID", DEFAULT_SMOKE_SOURCE_VERSION_ID),
+        preview_slot_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_PREVIEW_SLOT_ID", DEFAULT_SMOKE_PREVIEW_SLOT_ID),
+        preview_policy_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_PREVIEW_POLICY_ID", DEFAULT_SMOKE_PREVIEW_POLICY_ID),
+        checked_by=env.get("SUITE_PREVIEW_RENDERER_SMOKE_CHECKED_BY", "preview-renderer-smoke"),
+        environ=env,
+    )
+
+
+def run_source_object_preview_renderer_release_gate_smoke_from_env(
+    environ: Mapping[str, str] | None = None,
+) -> SourceObjectPreviewRendererReleaseGateSmokeReport:
+    env = os.environ if environ is None else environ
+    from main import build_app
+
+    client = TestClient(build_app())
+    return run_source_object_preview_renderer_release_gate_smoke(
         client=client,
         tenant_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID", DEFAULT_SMOKE_TENANT_ID),
         user_id=env.get("SUITE_PREVIEW_RENDERER_SMOKE_USER_ID", DEFAULT_SMOKE_USER_ID),
@@ -87,6 +129,90 @@ def run_source_object_preview_renderer_api_smoke(
     checked_by: str,
     environ: Mapping[str, str],
 ) -> SourceObjectPreviewRendererApiSmokeReport:
+    report, _ = _run_source_object_preview_renderer_api_smoke_with_drill(
+        client=client,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        source_object_id=source_object_id,
+        source_version_id=source_version_id,
+        preview_slot_id=preview_slot_id,
+        preview_policy_id=preview_policy_id,
+        checked_by=checked_by,
+        environ=environ,
+    )
+    return report
+
+
+def run_source_object_preview_renderer_release_gate_smoke(
+    *,
+    client: TestClient,
+    tenant_id: str,
+    user_id: str,
+    source_object_id: str,
+    source_version_id: str,
+    preview_slot_id: str,
+    preview_policy_id: str,
+    checked_by: str,
+    environ: Mapping[str, str],
+) -> SourceObjectPreviewRendererReleaseGateSmokeReport:
+    from suite.platform.source_object_preview_renderer_release_gate import (
+        build_default_source_object_preview_renderer_release_gate_evidence_store,
+        build_source_object_preview_renderer_release_gate,
+        source_object_preview_renderer_release_gate_evidence_ref,
+    )
+
+    api_smoke_report, drill_report = _run_source_object_preview_renderer_api_smoke_with_drill(
+        client=client,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        source_object_id=source_object_id,
+        source_version_id=source_version_id,
+        preview_slot_id=preview_slot_id,
+        preview_policy_id=preview_policy_id,
+        checked_by=checked_by,
+        environ=environ,
+    )
+    gate = build_source_object_preview_renderer_release_gate(
+        tenant_id=tenant_id,
+        api_smoke_report=api_smoke_report,
+        recovery_drill_report=drill_report,
+    )
+    gate_store = build_default_source_object_preview_renderer_release_gate_evidence_store(environ=environ)
+    persisted_gate = gate_store.append(gate)
+    draft = SourceObjectPreviewRendererReleaseGateSmokeReport(
+        tenant_id=tenant_id,
+        api_smoke_report_hash=api_smoke_report.evidence_hash,
+        api_smoke_report_ref=f"preview-renderer-api-smoke:{api_smoke_report.evidence_hash}",
+        recovery_drill_report_hash=drill_report.evidence_hash,
+        recovery_drill_report_ref=f"preview-renderer-recovery-drill:{drill_report.evidence_hash}",
+        release_gate_evidence_hash=persisted_gate.evidence_hash,
+        release_gate_evidence_ref=source_object_preview_renderer_release_gate_evidence_ref(persisted_gate),
+        release_gate_status=persisted_gate.gate_status,
+        renderer_connection_allowed=persisted_gate.renderer_connection_allowed,
+        viewer_connection_allowed=persisted_gate.viewer_connection_allowed,
+        content_release_workflow_allowed=persisted_gate.content_release_workflow_allowed,
+        release_gate_persisted=True,
+        checked_by=checked_by,
+        checked_at_utc=datetime.now(UTC),
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_source_object_preview_renderer_release_gate_smoke_report_hash(draft)}
+    )
+
+
+def _run_source_object_preview_renderer_api_smoke_with_drill(
+    *,
+    client: TestClient,
+    tenant_id: str,
+    user_id: str,
+    source_object_id: str,
+    source_version_id: str,
+    preview_slot_id: str,
+    preview_policy_id: str,
+    checked_by: str,
+    environ: Mapping[str, str],
+) -> tuple[SourceObjectPreviewRendererApiSmokeReport, SourceObjectPreviewRendererRecoveryDrillReport]:
     suffix = uuid4().hex
     parser_sanitizer_evidence_ref = f"parser-sanitizer:preview-renderer-api-smoke:{suffix}"
     backup_coverage_evidence_ref = f"backup:preview-renderer-api-smoke:{suffix}"
@@ -168,7 +294,10 @@ def run_source_object_preview_renderer_api_smoke(
         checked_at_utc=datetime.now(UTC),
         evidence_hash="sha256:" + "0" * 64,
     )
-    return draft.model_copy(update={"evidence_hash": build_source_object_preview_renderer_api_smoke_report_hash(draft)})
+    report = draft.model_copy(
+        update={"evidence_hash": build_source_object_preview_renderer_api_smoke_report_hash(draft)}
+    )
+    return report, drill_report
 
 
 def build_source_object_preview_renderer_api_smoke_report_hash(
@@ -177,20 +306,36 @@ def build_source_object_preview_renderer_api_smoke_report_hash(
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
 
 
+def build_source_object_preview_renderer_release_gate_smoke_report_hash(
+    report: SourceObjectPreviewRendererReleaseGateSmokeReport,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
 def exit_code_for_report(report: SourceObjectPreviewRendererApiSmokeReport) -> int:
     return 0 if report.smoke_passed else 1
+
+
+def exit_code_for_release_gate_smoke_report(report: SourceObjectPreviewRendererReleaseGateSmokeReport) -> int:
+    return 0 if report.release_gate_persisted and report.content_release_workflow_allowed else 1
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run the source object preview renderer API smoke fixture.")
     parser.add_argument("--once", action="store_true", help="Run one metadata-only smoke fixture and exit.")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print the metadata-only smoke report.")
+    parser.add_argument("--api-only", action="store_true", help="Emit only the API smoke report without release gate.")
     args = parser.parse_args(argv)
     del args.once
 
-    report = run_source_object_preview_renderer_api_smoke_from_env()
-    print(json.dumps(report.model_dump(mode="json"), indent=2 if args.pretty else None, sort_keys=True))
-    raise SystemExit(exit_code_for_report(report))
+    if args.api_only:
+        api_report = run_source_object_preview_renderer_api_smoke_from_env()
+        print(json.dumps(api_report.model_dump(mode="json"), indent=2 if args.pretty else None, sort_keys=True))
+        raise SystemExit(exit_code_for_report(api_report))
+
+    release_gate_report = run_source_object_preview_renderer_release_gate_smoke_from_env()
+    print(json.dumps(release_gate_report.model_dump(mode="json"), indent=2 if args.pretty else None, sort_keys=True))
+    raise SystemExit(exit_code_for_release_gate_smoke_report(release_gate_report))
 
 
 def _tenant_result(

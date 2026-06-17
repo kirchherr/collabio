@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -16,6 +21,7 @@ from suite.platform.source_object_preview_renderer_smoke import (
     SourceObjectPreviewRendererApiSmokeReport,
     build_source_object_preview_renderer_api_smoke_report_hash,
 )
+from suite.platform.storage_paths import suite_data_dir
 
 PREVIEW_RENDERER_RELEASE_GATE_SCHEMA_VERSION = "source_object_preview_renderer_release_gate.v1"
 PREVIEW_RENDERER_RELEASE_GATE_CONTINUITY_DOMAIN = "source_object_preview_renderer"
@@ -24,6 +30,7 @@ PREVIEW_RENDERER_RELEASE_GATE_REQUIRED_INPUTS = (
     "source_object_preview_renderer_recovery_drill_report_hash",
 )
 PREVIEW_RENDERER_RELEASE_GATE_ALLOWED_HOURS = 24
+PREVIEW_RENDERER_RELEASE_GATE_REF_PREFIX = "preview-renderer-release-gate"
 SHA256_REF_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 ZERO_HASH = "sha256:" + "0" * 64
 
@@ -107,6 +114,91 @@ class SourceObjectPreviewRendererReleaseGateEvidence(BaseModel):
         if not allowed and self.gate_status != SourceObjectPreviewRendererReleaseGateStatus.BLOCKED:
             raise ValueError("preview renderer release gate blocked state must be blocked")
         return self
+
+
+class SourceObjectPreviewRendererReleaseGateEvidenceStore(Protocol):
+    def append(
+        self,
+        evidence: SourceObjectPreviewRendererReleaseGateEvidence,
+    ) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        raise NotImplementedError
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        raise NotImplementedError
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewRendererReleaseGateEvidence]:
+        raise NotImplementedError
+
+
+class InMemorySourceObjectPreviewRendererReleaseGateEvidenceStore:
+    def __init__(self, evidences: Sequence[SourceObjectPreviewRendererReleaseGateEvidence] = ()) -> None:
+        self._evidences: dict[tuple[str, str], SourceObjectPreviewRendererReleaseGateEvidence] = {}
+        for evidence in evidences:
+            self.append(evidence)
+
+    def append(
+        self,
+        evidence: SourceObjectPreviewRendererReleaseGateEvidence,
+    ) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("preview renderer release gate evidence already exists")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("preview renderer release gate evidence not found") from exc
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewRendererReleaseGateEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
+
+
+class JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore:
+    def __init__(self, *, path: Path) -> None:
+        self.path = path
+        self._evidences: dict[tuple[str, str], SourceObjectPreviewRendererReleaseGateEvidence] = {}
+        if not path.exists():
+            return
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            evidence = SourceObjectPreviewRendererReleaseGateEvidence.model_validate_json(line)
+            _require_valid_release_gate_hash(evidence)
+            key = (evidence.tenant_id, evidence.evidence_hash)
+            if key in self._evidences:
+                raise ValueError("duplicate preview renderer release gate evidence in store")
+            self._evidences[key] = evidence
+
+    def append(
+        self,
+        evidence: SourceObjectPreviewRendererReleaseGateEvidence,
+    ) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("preview renderer release gate evidence already exists")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(evidence.model_dump(mode="json"), sort_keys=True) + "\n")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> SourceObjectPreviewRendererReleaseGateEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("preview renderer release gate evidence not found") from exc
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[SourceObjectPreviewRendererReleaseGateEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
 
 
 def build_source_object_preview_renderer_release_gate(
@@ -216,10 +308,47 @@ def require_source_object_preview_renderer_release_gate_ready(
     return gate
 
 
+def require_source_object_preview_renderer_release_gate_for_wiring(
+    *,
+    gate: SourceObjectPreviewRendererReleaseGateEvidence,
+    tenant_id: str,
+    evidence_hash: str,
+) -> SourceObjectPreviewRendererReleaseGateEvidence:
+    if gate.tenant_id != tenant_id:
+        raise ValueError("preview renderer release gate tenant does not match wiring tenant")
+    if gate.evidence_hash != evidence_hash:
+        raise ValueError("preview renderer release gate evidence hash does not match wiring hash")
+    _require_valid_release_gate_hash(gate)
+    return require_source_object_preview_renderer_release_gate_ready(gate)
+
+
 def build_source_object_preview_renderer_release_gate_hash(
     evidence: SourceObjectPreviewRendererReleaseGateEvidence,
 ) -> str:
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def source_object_preview_renderer_release_gate_evidence_ref(
+    evidence: SourceObjectPreviewRendererReleaseGateEvidence,
+) -> str:
+    return f"{PREVIEW_RENDERER_RELEASE_GATE_REF_PREFIX}:{evidence.evidence_hash}"
+
+
+def build_default_source_object_preview_renderer_release_gate_evidence_store(
+    data_dir: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> SourceObjectPreviewRendererReleaseGateEvidenceStore:
+    env = os.environ if environ is None else environ
+    backend = env.get("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND", "jsonl").strip().lower()
+    if backend in {"memory", "in_memory"}:
+        return InMemorySourceObjectPreviewRendererReleaseGateEvidenceStore()
+    if backend == "jsonl":
+        path_value = env.get("SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_PATH")
+        path = (
+            Path(path_value) if path_value else (data_dir or suite_data_dir()) / "preview_renderer_release_gates.jsonl"
+        )
+        return JsonlSourceObjectPreviewRendererReleaseGateEvidenceStore(path=path)
+    raise ValueError(f"Unsupported preview renderer release gate evidence store backend: {backend}")
 
 
 def _release_gate_blocking_reasons(
@@ -276,3 +405,8 @@ def _aware(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _require_valid_release_gate_hash(evidence: SourceObjectPreviewRendererReleaseGateEvidence) -> None:
+    if build_source_object_preview_renderer_release_gate_hash(evidence) != evidence.evidence_hash:
+        raise ValueError("preview renderer release gate evidence hash is invalid")
