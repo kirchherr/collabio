@@ -448,6 +448,72 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
         assert "changed_by" not in module
 
 
+def test_platform_cockpit_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_flows() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["schema_version"] == "product_cockpit.v1"
+    assert body["result_contract"] == "metadata_only_authorized_source_object_flow"
+    modules = {module["module_id"]: module for module in body["modules"]}
+    assert modules["knowledge_base"]["status"] == "available"
+    assert modules["knowledge_base"]["next_action"] == "provision_module"
+    assert modules["knowledge_base"]["continuity_domain"] == "knowledge_base_content"
+    assert modules["crm_erp"]["continuity_domain"] == "crm_erp_business_records"
+
+    flows = {flow["source_object_id"]: flow for flow in body["source_object_flows"]}
+    assert set(flows) == {"doc-1", "mail-1"}
+    assert flows["doc-1"]["origin"] == "document"
+    assert flows["doc-1"]["source_object_type"] == "document"
+    assert flows["mail-1"]["origin"] == "mail"
+    assert flows["mail-1"]["source_object_type"] == "mail"
+    assert flows["mail-1"]["data_classification"] == "personal"
+    assert all(flow["access_checked"] is True for flow in flows.values())
+    assert all(flow["content_included"] is False for flow in flows.values())
+    assert all(flow["manifest_hash"].startswith("sha256:") for flow in flows.values())
+    assert all(flow["content_hash"].startswith("sha256:") for flow in flows.values())
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "platform.module_cockpit.read"
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["access_checked"] is True
+
+
+def test_platform_cockpit_includes_knowledge_base_source_flow_after_feature_enable() -> None:
+    reset_module_registry()
+    provision_and_enable_knowledge_base_articles_for_demo()
+
+    response = client.get("/v1/platform/cockpit", headers=DEMO_KB_ARTICLE_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    knowledge_flows = [flow for flow in body["source_object_flows"] if flow["origin"] == "knowledge_base"]
+    assert len(knowledge_flows) == 2
+    assert {flow["module_id"] for flow in knowledge_flows} == {"knowledge_base"}
+    assert {flow["module_status"] for flow in knowledge_flows} == {"enabled"}
+    assert all(flow["source_object_type"] == "wiki" for flow in knowledge_flows)
+    assert all("knowledge_base.article.read" in flow["downstream_surfaces"] for flow in knowledge_flows)
+    assert all("object_type:kb.article" in flow["evidence_refs"] for flow in knowledge_flows)
+    assert all(flow["content_included"] is False for flow in knowledge_flows)
+
+    modules = {module["module_id"]: module for module in body["modules"]}
+    assert modules["knowledge_base"]["normal_use_enabled"] is True
+    assert modules["knowledge_base"]["next_action"] == "open_module"
+
+
 def test_module_api_gate_dependency_blocks_normal_routes_and_allows_compliance_routes() -> None:
     module_registry = default_module_registry()
     probe_client = TestClient(build_module_gate_probe_app(module_registry))

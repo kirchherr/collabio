@@ -124,6 +124,7 @@ from suite.platform.modules import (
     build_default_module_registry,
     tenant_module_admin_view,
 )
+from suite.platform.product_cockpit import ProductCockpitResponse, build_product_cockpit_response
 from suite.platform.runtime import suite_auth_mode
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
@@ -411,6 +412,20 @@ def build_app() -> FastAPI:
     ) -> PlatformModulesResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
         return module_registry.discover_tenant_modules(context.user_context.tenant_id)
+
+    @app.get("/v1/platform/cockpit", response_model=ProductCockpitResponse)
+    def product_cockpit(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ProductCockpitResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        return build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            knowledge_base_article_service=knowledge_base_articles,
+            audit_logger=audit_logger,
+        )
 
     def tenant_policy_snapshot_hash(policy: TenantPolicy) -> str:
         return stable_hash(canonical_json(policy.model_dump(mode="json")))
