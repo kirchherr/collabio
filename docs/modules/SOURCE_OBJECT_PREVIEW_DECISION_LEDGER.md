@@ -20,7 +20,7 @@ Each ledger entry carries:
 - TenantPolicy preview switch state
 - required, provided, and missing evidence names
 - parser and sanitizer profile IDs
-- renderer sandbox worker evidence reference, when supplied
+- renderer sandbox worker evidence reference, when verified against the tenant-scoped renderer evidence store
 - backup coverage evidence reference, when supplied
 - restore drill evidence reference, when supplied
 - human confirmation reference, when supplied
@@ -37,6 +37,11 @@ or unredacted reason text.
 
 `POST /v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions` appends a blocked decision
 to the configured ledger after ACL-checked metadata detail lookup and audit logging.
+
+Renderer sandbox evidence is no longer accepted as a free-form string. The decision path only marks
+`renderer_sandbox_worker_evidence` as provided when the supplied `renderer-sandbox:sha256:...` reference resolves to a
+metadata-only renderer run for the same tenant, source object, source version, preview slot, preview policy,
+parser/sanitizer evidence reference, backup coverage reference, and restore drill reference.
 
 Supported local adapters:
 
@@ -60,5 +65,5 @@ are separately implemented.
 
 ## Next Boundary
 
-Bind renderer-sandbox evidence to a concrete audited worker execution record, then add restore drills that prove
-preview decision evidence remains recoverable before considering any content rendering path.
+Move renderer sandbox evidence from the current in-memory/JSONL skeleton to a PostgreSQL/RLS-backed store and add restore
+drills that prove preview decision and renderer evidence remain recoverable before considering any content rendering path.

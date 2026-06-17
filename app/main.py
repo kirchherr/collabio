@@ -146,6 +146,12 @@ from suite.platform.source_object_preview_decisions import (
     build_default_source_object_preview_decision_ledger,
     build_source_object_preview_decision,
 )
+from suite.platform.source_object_preview_renderer import (
+    SourceObjectPreviewRendererRunRequest,
+    SourceObjectPreviewRendererRunResponse,
+    build_default_source_object_preview_renderer_evidence_store,
+    build_source_object_preview_renderer_run,
+)
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.platform.workspace_source_objects import (
@@ -386,6 +392,9 @@ def build_app() -> FastAPI:
     workspace_source_object_repository = build_default_workspace_source_object_repository()
     workspace_source_object_catalog = build_default_workspace_source_object_catalog()
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
+    source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
+        data_dir
+    )
     crm_account_service = CrmAccountService(
         repository=InMemoryCrmAccountRepository.demo(),
         audit_logger=audit_logger,
@@ -498,6 +507,39 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     @app.post(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-renderer-runs",
+        response_model=SourceObjectPreviewRendererRunResponse,
+    )
+    def source_object_preview_renderer_run(
+        source_object_id: str,
+        source_version_id: str,
+        renderer_request: SourceObjectPreviewRendererRunRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> SourceObjectPreviewRendererRunResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_source_object_preview_renderer_run(
+                user_context=context.user_context,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                renderer_evidence_store=request.app.state.source_object_preview_renderer_evidence_store,
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+                request=renderer_request,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post(
         "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions",
         response_model=SourceObjectPreviewDecisionResponse,
     )
@@ -520,6 +562,7 @@ def build_app() -> FastAPI:
                 knowledge_base_article_service=knowledge_base_articles,
                 audit_logger=audit_logger,
                 preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+                preview_renderer_evidence_store=request.app.state.source_object_preview_renderer_evidence_store,
                 source_object_id=source_object_id,
                 source_version_id=source_version_id,
                 request=decision_request,
@@ -1569,6 +1612,7 @@ def build_app() -> FastAPI:
     app.state.principal_resolver = principal_resolver
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger
+    app.state.source_object_preview_renderer_evidence_store = source_object_preview_renderer_evidence_store
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard
     app.state.workspace_source_object_catalog = workspace_source_object_catalog

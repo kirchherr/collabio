@@ -989,8 +989,119 @@ def test_source_object_preview_decision_blocks_content_release_without_required_
     assert "Board pack draft source content" not in ledger_evidence.model_dump_json()
 
 
+def test_source_object_preview_renderer_run_records_metadata_only_evidence_and_audits() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+    store = app.state.source_object_preview_renderer_evidence_store
+    starting_store_count = len(store.list_evidence(tenant_id="tenant-demo"))
+
+    response = client.post(
+        "/v1/source-objects/doc-1/versions/v1/preview-renderer-runs",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.document.metadata-first.v1",
+            "parser_sanitizer_evidence_ref": "parser-sanitizer:document-preview-worker-1",
+            "backup_coverage_evidence_ref": "backup:document-preview-worker-1",
+            "restore_evidence_ref": "restore-drill:document-preview-worker-1",
+            "reason": "record metadata only renderer sandbox evidence",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["schema_version"] == "source_object_preview_renderer_sandbox_run.v1"
+    assert body["result_contract"] == "metadata_only_renderer_sandbox_worker_evidence"
+    assert body["source_object_id"] == "doc-1"
+    assert body["source_version_id"] == "v1"
+    assert body["source_object_type"] == "document"
+    assert body["preview_slot_id"] == "office.document.preview.metadata"
+    assert body["preview_policy_id"] == "preview-policy.document.metadata-first.v1"
+    assert body["worker_profile_id"] == "source-preview-renderer-sandbox-worker:metadata-only.v1"
+    assert body["access_checked"] is True
+    assert body["rendering_allowed"] is False
+    assert body["content_rendered"] is False
+    assert body["content_included"] is False
+    assert body["output_persisted"] is False
+    assert body["external_fetch_allowed"] is False
+    assert body["temporary_workspace_destroyed"] is True
+    assert body["renderer_sandbox_evidence_hash"].startswith("sha256:")
+    assert body["renderer_sandbox_evidence_ref"] == f"renderer-sandbox:{body['renderer_sandbox_evidence_hash']}"
+    assert "raw_source_content_returned=false" in body["sandbox_boundaries"]
+    assert "rendered_content_included=false" in body["sandbox_boundaries"]
+    assert "Board pack draft source content" not in json.dumps(body)
+
+    evidence = store.get(
+        tenant_id="tenant-demo",
+        evidence_hash=body["renderer_sandbox_evidence_hash"],
+    )
+    assert len(store.list_evidence(tenant_id="tenant-demo")) == starting_store_count + 1
+    assert evidence.renderer_sandbox_evidence_ref == body["renderer_sandbox_evidence_ref"]
+    assert evidence.source_object_id == "doc-1"
+    assert evidence.source_manifest_hash.startswith("sha256:")
+    assert evidence.source_content_hash.startswith("sha256:")
+    assert evidence.source_acl_version == 1
+    assert evidence.content_rendered is False
+    assert evidence.content_included is False
+    assert "Board pack draft source content" not in evidence.model_dump_json()
+    assert "record metadata only renderer sandbox evidence" not in evidence.model_dump_json()
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events] == [
+        "source_object.metadata_detail.read",
+        "source_object.preview_renderer_run.recorded",
+    ]
+    event = new_events[-1]
+    assert event.source_object_ids == ["doc-1"]
+    assert event.metadata["result_contract"] == "metadata_only_renderer_sandbox_worker_evidence"
+    assert event.metadata["content_rendered"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["reason_hash"].startswith("sha256:")
+    assert "reason" not in event.metadata
+
+
+def test_source_object_preview_renderer_run_denies_unreadable_object_without_evidence() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+    store = app.state.source_object_preview_renderer_evidence_store
+    starting_store_count = len(store.list_evidence(tenant_id="tenant-demo"))
+
+    response = client.post(
+        "/v1/source-objects/doc-other/versions/v1/preview-renderer-runs",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.document.metadata-first.v1",
+            "parser_sanitizer_evidence_ref": "parser-sanitizer:denied-worker-1",
+            "backup_coverage_evidence_ref": "backup:denied-worker-1",
+            "restore_evidence_ref": "restore-drill:denied-worker-1",
+            "reason": "attempt renderer evidence for unreadable document",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "User cannot read requested source object metadata"
+    assert len(store.list_evidence(tenant_id="tenant-demo")) == starting_store_count
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events] == ["source_object.metadata_detail.denied"]
+    assert new_events[-1].metadata["content_included"] is False
+
+
 def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_release() -> None:
     starting_event_count = len(app.state.audit_logger.events)
+    renderer_response = client.post(
+        "/v1/source-objects/mail-1/versions/v1/preview-renderer-runs",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "mail.message.preview.metadata",
+            "preview_policy_id": "preview-policy.mail.metadata-first.v1",
+            "parser_sanitizer_evidence_ref": "parser-sanitizer:mail-preview-smoke-1",
+            "backup_coverage_evidence_ref": "backup:mail-preview-smoke-1",
+            "restore_evidence_ref": "restore-drill:mail-preview-smoke-1",
+            "reason": "record mail metadata renderer evidence",
+        },
+    )
+    assert renderer_response.status_code == 200
+    renderer_ref = renderer_response.json()["renderer_sandbox_evidence_ref"]
 
     response = client.post(
         "/v1/source-objects/mail-1/versions/v1/preview-decisions",
@@ -1000,7 +1111,9 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
             "preview_policy_id": "preview-policy.mail.metadata-first.v1",
             "reason": "request mail metadata preview decision",
             "parser_sanitizer_evidence_ref": "parser-sanitizer:mail-preview-smoke-1",
-            "renderer_sandbox_evidence_ref": "renderer-sandbox:mail-preview-smoke-1",
+            "renderer_sandbox_evidence_ref": renderer_ref,
+            "backup_coverage_evidence_ref": "backup:mail-preview-smoke-1",
+            "restore_evidence_ref": "restore-drill:mail-preview-smoke-1",
             "human_confirmation_reference": "approval:mail-preview-human-confirmation-1",
         },
     )
@@ -1016,14 +1129,16 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     assert "human_content_release_confirmation" in body["provided_evidence"]
     assert "tenant_preview_policy_enabled" in body["missing_evidence"]
     assert "renderer_sandbox_worker_evidence" not in body["missing_evidence"]
-    assert "backup_coverage_evidence" in body["missing_evidence"]
-    assert "restore_drill_evidence" in body["missing_evidence"]
+    assert "backup_coverage_evidence" not in body["missing_evidence"]
+    assert "restore_drill_evidence" not in body["missing_evidence"]
     assert "parser-sanitizer:mail-preview-smoke-1" in body["provided_evidence_refs"]
-    assert "renderer-sandbox:mail-preview-smoke-1" in body["provided_evidence_refs"]
+    assert renderer_ref in body["provided_evidence_refs"]
+    assert "backup:mail-preview-smoke-1" in body["provided_evidence_refs"]
+    assert "restore-drill:mail-preview-smoke-1" in body["provided_evidence_refs"]
     assert "approval:mail-preview-human-confirmation-1" in body["provided_evidence_refs"]
     assert body["renderer_sandbox_evidence_verified"] is True
-    assert body["backup_coverage_evidence_verified"] is False
-    assert body["restore_evidence_verified"] is False
+    assert body["backup_coverage_evidence_verified"] is True
+    assert body["restore_evidence_verified"] is True
     assert body["human_confirmation_verified"] is True
     assert body["content_release_evidence_complete"] is False
     assert "Welcome message source" not in json.dumps(body)
@@ -1033,6 +1148,32 @@ def test_source_object_preview_decision_records_evidence_refs_but_still_blocks_r
     assert "parser_sanitizer_evidence" in new_events[-1].metadata["provided_evidence"]
     assert "renderer_sandbox_worker_evidence" in new_events[-1].metadata["provided_evidence"]
     assert "tenant_preview_policy_enabled" in new_events[-1].metadata["missing_evidence"]
+
+
+def test_source_object_preview_decision_rejects_unstored_renderer_evidence_as_missing() -> None:
+    response = client.post(
+        "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+        headers=DEMO_HEADERS,
+        json={
+            "preview_slot_id": "office.document.preview.metadata",
+            "preview_policy_id": "preview-policy.document.metadata-first.v1",
+            "reason": "request preview with unknown renderer evidence",
+            "parser_sanitizer_evidence_ref": "parser-sanitizer:unknown-renderer-1",
+            "renderer_sandbox_evidence_ref": "renderer-sandbox:sha256:" + "0" * 64,
+            "backup_coverage_evidence_ref": "backup:unknown-renderer-1",
+            "restore_evidence_ref": "restore-drill:unknown-renderer-1",
+            "human_confirmation_reference": "approval:unknown-renderer-1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["renderer_sandbox_evidence_verified"] is False
+    assert "renderer_sandbox_worker_evidence" in body["missing_evidence"]
+    assert "renderer_sandbox_worker_evidence_not_found" in body["blocking_reasons"]
+    assert "renderer-sandbox:sha256:" + "0" * 64 not in body["provided_evidence_refs"]
+    assert body["renderer_sandbox_evidence_ref"] == "renderer-sandbox:sha256:" + "0" * 64
+    assert body["content_release_evidence_complete"] is False
 
 
 def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_records_complete_evidence() -> None:
@@ -1053,6 +1194,21 @@ def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_rec
     )
 
     try:
+        renderer_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-renderer-runs",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:document-preview-smoke-1",
+                "backup_coverage_evidence_ref": "backup:preview-ledger-smoke-1",
+                "restore_evidence_ref": "restore-drill:preview-ledger-smoke-1",
+                "reason": "record document renderer evidence for complete decision",
+            },
+        )
+        assert renderer_response.status_code == 200
+        renderer_ref = renderer_response.json()["renderer_sandbox_evidence_ref"]
+
         response = client.post(
             "/v1/source-objects/doc-1/versions/v1/preview-decisions",
             headers=DEMO_HEADERS,
@@ -1061,7 +1217,7 @@ def test_source_object_preview_decision_with_enabled_policy_still_blocks_but_rec
                 "preview_policy_id": "preview-policy.document.metadata-first.v1",
                 "reason": "request fully evidenced preview decision",
                 "parser_sanitizer_evidence_ref": "parser-sanitizer:document-preview-smoke-1",
-                "renderer_sandbox_evidence_ref": "renderer-sandbox:document-preview-smoke-1",
+                "renderer_sandbox_evidence_ref": renderer_ref,
                 "backup_coverage_evidence_ref": "backup:preview-ledger-smoke-1",
                 "restore_evidence_ref": "restore-drill:preview-ledger-smoke-1",
                 "human_confirmation_reference": "approval:document-preview-human-confirmation-1",

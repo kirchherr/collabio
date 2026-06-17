@@ -20,6 +20,10 @@ from suite.platform.source_object_details import (
     build_source_object_metadata_detail_response,
 )
 from suite.platform.source_object_preview import SourceObjectPreviewGate
+from suite.platform.source_object_preview_renderer import (
+    SourceObjectPreviewRendererEvidenceStore,
+    validate_source_object_preview_renderer_evidence,
+)
 from suite.storage.source_objects import SourceObjectRepository, SourceObjectType
 
 ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
@@ -476,6 +480,7 @@ def build_source_object_preview_decision(
     knowledge_base_article_service: KnowledgeBaseArticleService,
     audit_logger: InMemoryAuditLogger,
     preview_decision_ledger: SourceObjectPreviewDecisionLedger,
+    preview_renderer_evidence_store: SourceObjectPreviewRendererEvidenceStore,
     source_object_id: str,
     source_version_id: str,
     request: SourceObjectPreviewDecisionRequest,
@@ -521,23 +526,39 @@ def build_source_object_preview_decision(
 
     tenant_preview_policy_enabled = _tenant_preview_policy_enabled(tenant_policy)
     required_evidence = _required_evidence(slot.gate)
+    renderer_validation = validate_source_object_preview_renderer_evidence(
+        store=preview_renderer_evidence_store,
+        tenant_id=detail.tenant_id,
+        source_object_id=detail.source_object_id,
+        source_version_id=detail.source_version_id,
+        source_object_type=detail.source_object_type,
+        preview_slot_id=slot.slot_id,
+        preview_policy_id=slot.gate.policy_id,
+        parser_sanitizer_evidence_ref=request.parser_sanitizer_evidence_ref,
+        backup_coverage_evidence_ref=request.backup_coverage_evidence_ref,
+        restore_evidence_ref=request.restore_evidence_ref,
+        renderer_sandbox_evidence_ref=request.renderer_sandbox_evidence_ref,
+    )
     provided_evidence = _provided_evidence(
         tenant_preview_policy_enabled=tenant_preview_policy_enabled,
         request=request,
+        renderer_sandbox_evidence_verified=renderer_validation.verified,
     )
     provided_evidence_refs = _provided_evidence_refs(
         detail=detail,
         request=request,
         tenant_preview_policy_enabled=tenant_preview_policy_enabled,
+        renderer_sandbox_evidence_verified=renderer_validation.verified,
     )
     missing_evidence = tuple(evidence for evidence in required_evidence if evidence not in provided_evidence)
-    renderer_sandbox_evidence_verified = request.renderer_sandbox_evidence_ref is not None
+    renderer_sandbox_evidence_verified = renderer_validation.verified
     backup_coverage_evidence_verified = request.backup_coverage_evidence_ref is not None
     restore_evidence_verified = request.restore_evidence_ref is not None
     human_confirmation_verified = request.human_confirmation_reference is not None
     content_release_evidence_complete = not missing_evidence
     blocking_reasons = (
         *slot.gate.blocking_reasons,
+        *renderer_validation.blocking_reasons,
         "content_preview_skeleton_blocks_release_until_renderer_operational",
     )
 
@@ -738,6 +759,7 @@ def _provided_evidence(
     *,
     tenant_preview_policy_enabled: bool,
     request: SourceObjectPreviewDecisionRequest,
+    renderer_sandbox_evidence_verified: bool,
 ) -> tuple[str, ...]:
     evidence = ["source_object_acl_checked", "source_detail_audit_event"]
     if tenant_preview_policy_enabled:
@@ -746,7 +768,7 @@ def _provided_evidence(
         evidence.append("parser_sanitizer_evidence")
     if request.human_confirmation_reference is not None:
         evidence.append("human_content_release_confirmation")
-    if request.renderer_sandbox_evidence_ref is not None:
+    if renderer_sandbox_evidence_verified:
         evidence.append(RENDERER_SANDBOX_WORKER_EVIDENCE)
     if request.backup_coverage_evidence_ref is not None:
         evidence.append(BACKUP_COVERAGE_EVIDENCE)
@@ -760,6 +782,7 @@ def _provided_evidence_refs(
     detail: SourceObjectMetadataDetailResponse,
     request: SourceObjectPreviewDecisionRequest,
     tenant_preview_policy_enabled: bool,
+    renderer_sandbox_evidence_verified: bool,
 ) -> tuple[str, ...]:
     refs = [
         f"acl:source_object:{detail.source_object_id}:v{detail.acl_version}",
@@ -769,7 +792,7 @@ def _provided_evidence_refs(
         refs.append(f"tenant_policy:{detail.tenant_id}:content_preview_enabled")
     if request.parser_sanitizer_evidence_ref is not None:
         refs.append(request.parser_sanitizer_evidence_ref)
-    if request.renderer_sandbox_evidence_ref is not None:
+    if renderer_sandbox_evidence_verified and request.renderer_sandbox_evidence_ref is not None:
         refs.append(request.renderer_sandbox_evidence_ref)
     if request.backup_coverage_evidence_ref is not None:
         refs.append(request.backup_coverage_evidence_ref)
