@@ -124,6 +124,11 @@ The smoke fixture creates preview renderer and preview decision evidence through
 the PostgreSQL-backed stores, and emits a metadata-only `source_object_preview_renderer_api_smoke_report.v1` report with
 a release/restore evidence reference to the drill report hash.
 
+Before any production renderer, viewer, or content release workflow is connected, create
+`source_object_preview_renderer_release_gate.v1` evidence from a fresh API smoke report and its bound recovery drill
+report. A blocked release gate keeps renderer, viewer, and content-release wiring disabled even if lower-level evidence
+exists.
+
 Local dumps are written to `./backups/`, which is gitignored.
 
 ## Minimum Restore Drill
@@ -136,7 +141,7 @@ Monthly for active development and before every production-readiness milestone:
 4. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
 5. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
 6. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-7. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+7. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
 8. For production, restore into an isolated environment and run the domain-specific checks from the policy.
 9. Update the policy and this runbook when the restore path changes.
 
@@ -208,4 +213,5 @@ Every drill or incident must leave enough evidence to answer:
 - Which module registry operations report hash was produced?
 - Which preview renderer API smoke report hash was produced?
 - Which preview renderer recovery drill report hash was produced?
+- Which preview renderer release gate evidence hash allowed or blocked wiring?
 - Which Knowledge Base runtime activations and reconciliation run reports were checked?

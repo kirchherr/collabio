@@ -68,6 +68,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "source_object_preview_renderer_evidence_hash_check" in postgres.integrity_checks
     assert "preview_renderer_api_smoke_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_recovery_drill_report_hash_check" in postgres.integrity_checks
+    assert "preview_renderer_release_gate_evidence_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
     assert "benchmark_report_hash_check" in postgres.integrity_checks
     assert "docker compose run --rm backup" in postgres.current_dev_commands

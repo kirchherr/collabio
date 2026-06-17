@@ -61,7 +61,22 @@ same recovery drill against the PostgreSQL-backed stores. It emits a metadata-on
 `source_object_preview_renderer_api_smoke_report.v1` report with a `preview-renderer-recovery-drill:sha256:...`
 release/restore evidence reference.
 
+## Release Gate
+
+`source_object_preview_renderer_release_gate.v1` is the hard prerequisite before any real renderer engine, viewer, or
+content release workflow is wired. The gate is tenant-scoped and only becomes `ready` when both required evidence inputs
+are present, hash-valid, fresh, and bound to each other:
+
+- `source_object_preview_renderer_api_smoke_report_hash`
+- `source_object_preview_renderer_recovery_drill_report_hash`
+
+The gate keeps `renderer_connection_allowed=false`, `viewer_connection_allowed=false`, and
+`content_release_workflow_allowed=false` whenever the API smoke report is stale or failed, the recovery drill is stale or
+not ready, the tenant IDs do not match, the smoke report is not bound to the drill report hash, or the metadata-only
+boundary is not verified. Future renderer, viewer, office, mail, knowledge-base, e-discovery, and content-release
+integrations must call the gate check before attaching any content-bearing path.
+
 ## Next Boundary
 
-Add a release-gate contract that requires a fresh API smoke report hash and recovery drill report hash before any real
-renderer, viewer, or content release workflow is connected.
+Persist release-gate evidence in the same operational evidence chain used for production readiness so release and restore
+reviews can prove which gate hash allowed a renderer or viewer integration.
