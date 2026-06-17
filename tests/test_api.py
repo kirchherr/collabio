@@ -234,6 +234,25 @@ def workspace_source_record_for_detail_smoke(*, tenant_id: str, object_id: str, 
     )
 
 
+def assert_metadata_first_preview_gate(slot: dict[str, Any]) -> dict[str, Any]:
+    gate = dict(slot["gate"])
+    assert gate["schema_version"] == "source_object_preview_gate.v1"
+    assert gate["status"] == "metadata_ready_content_blocked"
+    assert gate["metadata_first"] is True
+    assert gate["raw_content_included"] is False
+    assert gate["content_release_allowed"] is False
+    assert "tenant_preview_policy_enabled" in gate["required_content_release_evidence"]
+    assert "source_object_acl_checked" in gate["required_content_release_evidence"]
+    assert "source_detail_audit_event" in gate["required_content_release_evidence"]
+    assert "parser_sanitizer_evidence" in gate["required_content_release_evidence"]
+    assert "human_content_release_confirmation" in gate["required_content_release_evidence"]
+    assert "network_access_allowed=false" in gate["parser_boundaries"]
+    assert "external_processes_allowed=false" in gate["parser_boundaries"]
+    assert "strip_active_content=true" in gate["sanitizer_boundaries"]
+    assert "external_resource_loading=false" in gate["sanitizer_boundaries"]
+    return gate
+
+
 DECOMMISSION_REOPEN_PAYLOAD = {
     "approval_reference": "approval:module-decommission-reopen",
     "reason": "decommission blocker has remediation evidence",
@@ -449,6 +468,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "Nicht gefunden" in js_response.text
     assert "Preview Slots" in js_response.text
     assert "metadata_only_no_source_content" in js_response.text
+    assert "metadata_ready_content_blocked" in js_response.text
+    assert "content_release_allowed=false" in js_response.text
     assert "content_included=false" in js_response.text
     assert "/v1/admin/tenant-modules/" in js_response.text
     assert "X-Tenant-Id" in js_response.text
@@ -595,6 +616,15 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert flows["mail-1"]["data_classification"] == "personal"
     assert flows["doc-1"]["preview_slots"][0]["surface"] == "office.document.preview"
     assert flows["mail-1"]["preview_slots"][0]["surface"] == "mail.message.preview"
+    document_gate = assert_metadata_first_preview_gate(flows["doc-1"]["preview_slots"][0])
+    mail_gate = assert_metadata_first_preview_gate(flows["mail-1"]["preview_slots"][0])
+    assert document_gate["policy_id"] == "preview-policy.document.metadata-first.v1"
+    assert document_gate["parser_profile_id"] == "rich-document-parser-worker:1"
+    assert mail_gate["policy_id"] == "preview-policy.mail.metadata-first.v1"
+    assert mail_gate["parser_profile_id"] == "policy-enforced-parser-worker:1"
+    assert "subject" in mail_gate["mail_header_metadata_fields"]
+    assert "filename" in mail_gate["attachment_metadata_fields"]
+    assert "attachment_opening_requires_scan_and_explicit_confirmation" in mail_gate["blocking_reasons"]
     assert all(
         slot["render_contract"] == "metadata_only_no_source_content"
         for flow in flows.values()
@@ -646,6 +676,7 @@ def test_platform_cockpit_uses_configured_workspace_source_refs_without_unreadab
     assert [flow["source_object_id"] for flow in flows] == [object_id]
     assert flows[0]["preview_slots"][0]["render_contract"] == "metadata_only_no_source_content"
     assert flows[0]["preview_slots"][0]["allowed_actions"] == ["open_metadata_detail"]
+    assert_metadata_first_preview_gate(flows[0]["preview_slots"][0])
     assert source_text not in json.dumps(body)
 
 
@@ -686,6 +717,7 @@ def test_platform_cockpit_uses_pg_workspace_repository_and_configured_refs_witho
     assert flows[0]["origin"] == "document"
     assert flows[0]["content_included"] is False
     assert flows[0]["preview_slots"][0]["content_included"] is False
+    assert_metadata_first_preview_gate(flows[0]["preview_slots"][0])
     assert source_text not in json.dumps(body)
 
 
@@ -706,6 +738,10 @@ def test_platform_cockpit_includes_knowledge_base_source_flow_after_feature_enab
     assert all("object_type:kb.article" in flow["evidence_refs"] for flow in knowledge_flows)
     assert all(flow["preview_slots"][0]["surface"] == "knowledge_base.article.preview" for flow in knowledge_flows)
     assert all(flow["preview_slots"][0]["content_included"] is False for flow in knowledge_flows)
+    assert all(
+        flow["preview_slots"][0]["gate"]["policy_id"] == "preview-policy.knowledge-base.metadata-first.v1"
+        for flow in knowledge_flows
+    )
     assert all(flow["content_included"] is False for flow in knowledge_flows)
 
     modules = {module["module_id"]: module for module in body["modules"]}
@@ -740,6 +776,7 @@ def test_source_object_metadata_detail_returns_document_metadata_without_content
     assert body["preview_slots"][0]["surface"] == "office.document.preview"
     assert body["preview_slots"][0]["render_contract"] == "metadata_only_no_source_content"
     assert body["preview_slots"][0]["content_included"] is False
+    assert_metadata_first_preview_gate(body["preview_slots"][0])
     assert body["manifest_hash"].startswith("sha256:")
     assert body["content_hash"].startswith("sha256:")
     assert "Board pack draft source content" not in json.dumps(body)
@@ -828,6 +865,7 @@ def test_source_object_metadata_detail_uses_pg_workspace_repository_without_cont
     assert body["content_included"] is False
     assert body["preview_slots"][0]["surface"] == "office.document.preview"
     assert body["preview_slots"][0]["allowed_actions"] == ["open_metadata_detail"]
+    assert_metadata_first_preview_gate(body["preview_slots"][0])
     assert source_text not in json.dumps(body)
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "source_object.metadata_detail.read"
@@ -856,6 +894,7 @@ def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_fea
     assert body["content_included"] is False
     assert body["preview_slots"][0]["surface"] == "knowledge_base.article.preview"
     assert body["preview_slots"][0]["content_included"] is False
+    assert_metadata_first_preview_gate(body["preview_slots"][0])
     assert "knowledge_base.article.read" in body["downstream_surfaces"]
     assert "object_type:kb.article" in body["evidence_refs"]
     assert "Backup restore runbook source content" not in json.dumps(body)

@@ -421,11 +421,23 @@ function previewSlotList(slots) {
         <div class="preview-slot">
           <span>${escapeHtml(slot.label)} | ${escapeHtml(slot.surface)}</span>
           <code>${escapeHtml(slot.render_contract || "metadata_only_no_source_content")} | content_included=${slot.content_included === true ? "true" : "false"}</code>
+          ${previewGateSummary(slot.gate)}
           <code>${escapeHtml(slot.blocking_reason || "policy_gate_required")}</code>
         </div>
       `,
     )
     .join("");
+}
+
+function previewGateSummary(gate) {
+  if (!gate) {
+    return "<code>gate=missing | content_release_allowed=false</code>";
+  }
+  return `
+    <code>${escapeHtml(gate.status || "metadata_ready_content_blocked")} | ${escapeHtml(gate.policy_id || "preview-policy.missing")}</code>
+    <code>parser=${escapeHtml(gate.parser_profile_id || "n/a")} | sanitizer=${escapeHtml(gate.sanitizer_profile_id || "n/a")}</code>
+    <code>content_release_allowed=${gate.content_release_allowed === true ? "true" : "false"}</code>
+  `;
 }
 
 function routes(values) {
