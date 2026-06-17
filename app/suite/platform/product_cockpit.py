@@ -13,14 +13,14 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseArticleService,
 )
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, PlatformModuleView
+from suite.platform.source_object_preview import SourceObjectPreviewSlot, build_source_object_preview_slots
+from suite.platform.workspace_source_objects import WorkspaceSourceObjectRef
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
-    SourceObjectMetadata,
     SourceObjectRecord,
+    SourceObjectRepository,
     SourceObjectType,
-    build_source_object_manifest_hash,
-    sha256_bytes,
 )
 
 ModuleRegistryStore = InMemoryModuleRegistry | PgModuleRegistry
@@ -69,6 +69,7 @@ class ProductCockpitSourceObjectFlowView(BaseModel):
     audit_chain_ref: str
     downstream_surfaces: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+    preview_slots: tuple[SourceObjectPreviewSlot, ...]
     access_checked: bool = True
     content_included: bool = False
 
@@ -89,6 +90,8 @@ def build_product_cockpit_response(
     *,
     user_context: UserContext,
     module_registry: ModuleRegistryStore,
+    workspace_source_repository: SourceObjectRepository,
+    workspace_source_refs: tuple[WorkspaceSourceObjectRef, ...],
     knowledge_base_article_service: KnowledgeBaseArticleService,
     audit_logger: InMemoryAuditLogger,
 ) -> ProductCockpitResponse:
@@ -98,7 +101,11 @@ def build_product_cockpit_response(
     source_object_flows = tuple(
         sorted(
             [
-                *_workspace_source_object_flows(user_context=user_context),
+                *_workspace_source_object_flows(
+                    user_context=user_context,
+                    workspace_source_repository=workspace_source_repository,
+                    workspace_source_refs=workspace_source_refs,
+                ),
                 *_knowledge_base_source_object_flows(
                     user_context=user_context,
                     knowledge_base_article_service=knowledge_base_article_service,
@@ -131,56 +138,26 @@ def build_product_cockpit_response(
     )
 
 
-def demo_workspace_source_object_records() -> tuple[SourceObjectRecord, ...]:
-    return (
-        _source_object_record(
-            tenant_id="tenant-demo",
-            object_id="doc-1",
-            object_type=SourceObjectType.DOCUMENT,
-            version_id="v1",
-            title="Board Pack Draft",
-            text="Board pack draft source content.",
-            mime_type="text/plain",
-            data_classification=DataClass.INTERNAL,
-            lifecycle_state=SourceLifecycleState.WORKING,
-            audit_chain_ref="audit:doc-1",
-        ),
-        _source_object_record(
-            tenant_id="tenant-demo",
-            object_id="mail-1",
-            object_type=SourceObjectType.MAIL,
-            version_id="v1",
-            title="Welcome Message",
-            text="From: team@example.test\nTo: demo@example.test\nSubject: Welcome\n\nWelcome message source.",
-            mime_type="message/rfc822",
-            data_classification=DataClass.PERSONAL,
-            lifecycle_state=SourceLifecycleState.SAVED_VERSION,
-            audit_chain_ref="audit:mail-1",
-            thread_id="mail-thread-demo-1",
-        ),
-        _source_object_record(
-            tenant_id="tenant-other",
-            object_id="doc-other",
-            object_type=SourceObjectType.DOCUMENT,
-            version_id="v1",
-            title="Other Tenant Document",
-            text="Other tenant document source.",
-            mime_type="text/plain",
-            data_classification=DataClass.INTERNAL,
-            lifecycle_state=SourceLifecycleState.WORKING,
-            audit_chain_ref="audit:doc-other",
-        ),
-    )
-
-
 def _workspace_source_object_flows(
     *,
     user_context: UserContext,
+    workspace_source_repository: SourceObjectRepository,
+    workspace_source_refs: tuple[WorkspaceSourceObjectRef, ...],
 ) -> tuple[ProductCockpitSourceObjectFlowView, ...]:
     flows: list[ProductCockpitSourceObjectFlowView] = []
-    for record in demo_workspace_source_object_records():
+    for source_ref in workspace_source_refs:
+        if source_ref.object_id not in user_context.readable_object_ids:
+            continue
+        try:
+            record = workspace_source_repository.get(
+                tenant_id=user_context.tenant_id,
+                object_id=source_ref.object_id,
+                version_id=source_ref.version_id,
+            )
+        except KeyError:
+            continue
         metadata = record.metadata
-        if metadata.tenant_id != user_context.tenant_id or metadata.object_id not in user_context.readable_object_ids:
+        if metadata.object_type not in {SourceObjectType.DOCUMENT, SourceObjectType.MAIL}:
             continue
         origin = (
             ProductCockpitSourceOrigin.MAIL
@@ -302,52 +279,7 @@ def _source_object_flow(
         audit_chain_ref=metadata.audit_chain_ref,
         downstream_surfaces=downstream_surfaces,
         evidence_refs=evidence_refs,
-    )
-
-
-def _source_object_record(
-    *,
-    tenant_id: str,
-    object_id: str,
-    object_type: SourceObjectType,
-    version_id: str,
-    title: str,
-    text: str,
-    mime_type: str,
-    data_classification: DataClass,
-    lifecycle_state: SourceLifecycleState,
-    audit_chain_ref: str,
-    thread_id: str | None = None,
-) -> SourceObjectRecord:
-    content = text.encode("utf-8")
-    draft = SourceObjectMetadata(
-        tenant_id=tenant_id,
-        object_id=object_id,
-        object_type=object_type,
-        version_id=version_id,
-        title=title,
-        owner_principal_id="user-demo" if tenant_id == "tenant-demo" else "user-other",
-        created_by="system",
-        created_at_utc="2026-06-17T08:00:00Z",
-        updated_at_utc="2026-06-17T08:00:00Z",
-        classification=data_classification,
-        retention_policy_id="rp-standard",
-        legal_hold_state=LegalHoldState.NONE,
-        kms_key_ref=f"kms://{tenant_id}/{data_classification.value}/v1",
-        manifest_hash="sha256:" + "0" * 64,
-        audit_chain_ref=audit_chain_ref,
-        source_system="collabio",
-        mime_type=mime_type,
-        acl_hash=sha256_bytes(f"{tenant_id}:{object_id}:acl".encode()),
-        acl_version=1,
-        content_hash=sha256_bytes(content),
-        content_byte_length=len(content),
-        lifecycle_state=lifecycle_state,
-        thread_id=thread_id,
-    )
-    return SourceObjectRecord(
-        metadata=draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)}),
-        text=text,
+        preview_slots=build_source_object_preview_slots(metadata.object_type),
     )
 
 

@@ -130,7 +130,6 @@ from suite.platform.modules import (
 from suite.platform.product_cockpit import (
     ProductCockpitResponse,
     build_product_cockpit_response,
-    demo_workspace_source_object_records,
 )
 from suite.platform.runtime import suite_auth_mode
 from suite.platform.source_object_details import (
@@ -141,6 +140,11 @@ from suite.platform.source_object_details import (
 )
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
+from suite.platform.workspace_source_objects import (
+    WorkspaceSourceObjectCatalog,
+    build_default_workspace_source_object_catalog,
+    build_default_workspace_source_object_repository,
+)
 from suite.rag.embedding_model_admin import (
     EmbeddingModelVersionAdminService,
     EmbeddingModelVersionApprovalRequest,
@@ -160,11 +164,7 @@ from suite.rag.repositories import (
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
 from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
-from suite.storage.source_objects import (
-    InMemorySourceObjectRepository,
-    SourceObjectRepository,
-    build_default_source_object_write_receipt_store,
-)
+from suite.storage.source_objects import SourceObjectRepository, build_default_source_object_write_receipt_store
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
 
@@ -375,7 +375,8 @@ def build_app() -> FastAPI:
         acl_authorizer=acl_authorizer,
         audit_logger=audit_logger,
     )
-    workspace_source_object_repository = InMemorySourceObjectRepository(records=demo_workspace_source_object_records())
+    workspace_source_object_repository = build_default_workspace_source_object_repository()
+    workspace_source_object_catalog = build_default_workspace_source_object_catalog()
     crm_account_service = CrmAccountService(
         repository=InMemoryCrmAccountRepository.demo(),
         audit_logger=audit_logger,
@@ -447,10 +448,14 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
     ) -> ProductCockpitResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(WorkspaceSourceObjectCatalog, request.app.state.workspace_source_object_catalog)
         knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
         return build_product_cockpit_response(
             user_context=context.user_context,
             module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
             knowledge_base_article_service=knowledge_base_articles,
             audit_logger=audit_logger,
         )
@@ -1519,6 +1524,7 @@ def build_app() -> FastAPI:
     app.state.rag_pipeline = rag_pipeline
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard
+    app.state.workspace_source_object_catalog = workspace_source_object_catalog
     app.state.workspace_source_object_repository = workspace_source_object_repository
 
     return app

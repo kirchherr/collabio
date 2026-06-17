@@ -315,6 +315,10 @@ function renderSourceObjectDetail(detail) {
       <strong>Evidence / Downstream</strong>
       ${evidenceList([...(detail.evidence_refs || []), ...(detail.downstream_surfaces || [])])}
     </div>
+    <div class="preview-slot-list">
+      <strong>Preview Slots</strong>
+      ${previewSlotList(detail.preview_slots || [])}
+    </div>
   `;
 }
 
@@ -405,6 +409,23 @@ function evidenceList(values) {
     return "<span>Keine Evidence-Referenzen.</span>";
   }
   return values.map((value) => `<code>${escapeHtml(value)}</code>`).join("");
+}
+
+function previewSlotList(slots) {
+  if (!slots.length) {
+    return "<span>Keine Preview-Slots.</span>";
+  }
+  return slots
+    .map(
+      (slot) => `
+        <div class="preview-slot">
+          <span>${escapeHtml(slot.label)} | ${escapeHtml(slot.surface)}</span>
+          <code>${escapeHtml(slot.render_contract || "metadata_only_no_source_content")} | content_included=${slot.content_included === true ? "true" : "false"}</code>
+          <code>${escapeHtml(slot.blocking_reason || "policy_gate_required")}</code>
+        </div>
+      `,
+    )
+    .join("");
 }
 
 function routes(values) {

@@ -547,17 +547,30 @@ input {
   font-size: 12px;
 }
 
-.evidence-list {
+.evidence-list,
+.preview-slot-list {
   display: grid;
   gap: 5px;
   min-width: 0;
   color: var(--muted);
 }
 
-.evidence-list code {
+.evidence-list code,
+.preview-slot code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.preview-slot {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.preview-slot span {
+  color: var(--text);
+  font-size: 13px;
 }
 
 .empty-state {

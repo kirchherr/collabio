@@ -13,6 +13,7 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseArticleService,
 )
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, PlatformModuleView
+from suite.platform.source_object_preview import SourceObjectPreviewSlot, build_source_object_preview_slots
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
@@ -68,6 +69,7 @@ class SourceObjectMetadataDetailResponse(BaseModel):
     parser_profile_id: str | None = None
     downstream_surfaces: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+    preview_slots: tuple[SourceObjectPreviewSlot, ...]
     access_checked: bool = True
     content_included: bool = False
     audit_event_id: str
@@ -269,6 +271,7 @@ def _detail_response(
         parser_profile_id=metadata.parser_profile_id,
         downstream_surfaces=downstream_surfaces,
         evidence_refs=evidence_refs,
+        preview_slots=build_source_object_preview_slots(metadata.object_type),
         audit_event_id=event.event_id,
     )
 

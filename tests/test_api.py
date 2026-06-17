@@ -30,10 +30,16 @@ from suite.platform.modules import (
     default_module_registry,
 )
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
+from suite.platform.workspace_source_objects import (
+    ConfiguredWorkspaceSourceObjectCatalog,
+    WorkspaceSourceObjectRef,
+    parse_workspace_source_object_refs,
+)
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore, PgSourceObjectRepository
 from suite.storage.source_objects import (
+    InMemorySourceObjectRepository,
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
@@ -268,6 +274,17 @@ def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
 
 
+def test_workspace_source_object_refs_parse_explicit_backend_config() -> None:
+    refs = parse_workspace_source_object_refs(" doc-a:v1 , mail-a:v2 ")
+
+    assert refs == (
+        WorkspaceSourceObjectRef(object_id="doc-a", version_id="v1"),
+        WorkspaceSourceObjectRef(object_id="mail-a", version_id="v2"),
+    )
+    with pytest.raises(ValueError, match="object_id:version_id"):
+        parse_workspace_source_object_refs("doc-a")
+
+
 def provision_and_enable_crm_accounts_for_demo() -> None:
     provision_response = client.post(
         "/v1/admin/tenant-modules/crm_erp/provision",
@@ -430,6 +447,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "/metadata" in js_response.text
     assert "Zugriff verweigert" in js_response.text
     assert "Nicht gefunden" in js_response.text
+    assert "Preview Slots" in js_response.text
+    assert "metadata_only_no_source_content" in js_response.text
     assert "content_included=false" in js_response.text
     assert "/v1/admin/tenant-modules/" in js_response.text
     assert "X-Tenant-Id" in js_response.text
@@ -574,10 +593,20 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert flows["mail-1"]["origin"] == "mail"
     assert flows["mail-1"]["source_object_type"] == "mail"
     assert flows["mail-1"]["data_classification"] == "personal"
+    assert flows["doc-1"]["preview_slots"][0]["surface"] == "office.document.preview"
+    assert flows["mail-1"]["preview_slots"][0]["surface"] == "mail.message.preview"
+    assert all(
+        slot["render_contract"] == "metadata_only_no_source_content"
+        for flow in flows.values()
+        for slot in flow["preview_slots"]
+    )
+    assert all(slot["content_included"] is False for flow in flows.values() for slot in flow["preview_slots"])
     assert all(flow["access_checked"] is True for flow in flows.values())
     assert all(flow["content_included"] is False for flow in flows.values())
     assert all(flow["manifest_hash"].startswith("sha256:") for flow in flows.values())
     assert all(flow["content_hash"].startswith("sha256:") for flow in flows.values())
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
 
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "platform.module_cockpit.read"
@@ -585,6 +614,79 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
     assert new_events[-1].metadata["content_included"] is False
     assert new_events[-1].metadata["access_checked"] is True
+
+
+def test_platform_cockpit_uses_configured_workspace_source_refs_without_unreadable_lookup() -> None:
+    reset_module_registry()
+    object_id = f"doc-configured-{uuid4().hex}"
+    source_text = "Configured cockpit source content must not leave the repository response boundary."
+    record = workspace_source_record_for_detail_smoke(tenant_id="tenant-demo", object_id=object_id, text=source_text)
+    previous_repository = app.state.workspace_source_object_repository
+    previous_catalog = app.state.workspace_source_object_catalog
+    app.state.workspace_source_object_repository = InMemorySourceObjectRepository(records=(record,))
+    app.state.workspace_source_object_catalog = ConfiguredWorkspaceSourceObjectCatalog(
+        refs=(
+            WorkspaceSourceObjectRef(object_id=object_id, version_id="v1"),
+            WorkspaceSourceObjectRef(object_id="doc-not-readable", version_id="v1"),
+        )
+    )
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit",
+            headers={**DEMO_HEADERS, "X-Readable-Object-Ids": object_id},
+        )
+    finally:
+        app.state.workspace_source_object_repository = previous_repository
+        app.state.workspace_source_object_catalog = previous_catalog
+
+    assert response.status_code == 200
+    body = response.json()
+    flows = body["source_object_flows"]
+    assert [flow["source_object_id"] for flow in flows] == [object_id]
+    assert flows[0]["preview_slots"][0]["render_contract"] == "metadata_only_no_source_content"
+    assert flows[0]["preview_slots"][0]["allowed_actions"] == ["open_metadata_detail"]
+    assert source_text not in json.dumps(body)
+
+
+def test_platform_cockpit_uses_pg_workspace_repository_and_configured_refs_without_content_leakage(
+    live_source_object_detail_database: LiveSourceObjectDetailDatabase,
+) -> None:
+    reset_module_registry()
+    object_id = f"doc-cockpit-pg-{uuid4().hex}"
+    source_text = "Persistent cockpit source content must stay out of configured flow responses."
+    record = workspace_source_record_for_detail_smoke(tenant_id="tenant-demo", object_id=object_id, text=source_text)
+    repository = PgSourceObjectRepository(
+        database_dsn=live_source_object_detail_database.app_dsn,
+        content_store=InMemorySourceObjectContentStore(stored_at_clock=lambda: "2026-06-17T08:02:00Z"),
+        retention_policy=load_retention_manifest_policy(RETENTION_POLICY_PATH),
+        storage_policy=load_storage_adapter_policy(STORAGE_POLICY_PATH),
+    )
+    repository.add(record)
+    previous_repository = app.state.workspace_source_object_repository
+    previous_catalog = app.state.workspace_source_object_catalog
+    app.state.workspace_source_object_repository = repository
+    app.state.workspace_source_object_catalog = ConfiguredWorkspaceSourceObjectCatalog(
+        refs=(WorkspaceSourceObjectRef(object_id=object_id, version_id="v1"),)
+    )
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit",
+            headers={**DEMO_HEADERS, "X-Readable-Object-Ids": object_id},
+        )
+    finally:
+        app.state.workspace_source_object_repository = previous_repository
+        app.state.workspace_source_object_catalog = previous_catalog
+
+    assert response.status_code == 200
+    body = response.json()
+    flows = body["source_object_flows"]
+    assert [flow["source_object_id"] for flow in flows] == [object_id]
+    assert flows[0]["origin"] == "document"
+    assert flows[0]["content_included"] is False
+    assert flows[0]["preview_slots"][0]["content_included"] is False
+    assert source_text not in json.dumps(body)
 
 
 def test_platform_cockpit_includes_knowledge_base_source_flow_after_feature_enable() -> None:
@@ -602,6 +704,8 @@ def test_platform_cockpit_includes_knowledge_base_source_flow_after_feature_enab
     assert all(flow["source_object_type"] == "wiki" for flow in knowledge_flows)
     assert all("knowledge_base.article.read" in flow["downstream_surfaces"] for flow in knowledge_flows)
     assert all("object_type:kb.article" in flow["evidence_refs"] for flow in knowledge_flows)
+    assert all(flow["preview_slots"][0]["surface"] == "knowledge_base.article.preview" for flow in knowledge_flows)
+    assert all(flow["preview_slots"][0]["content_included"] is False for flow in knowledge_flows)
     assert all(flow["content_included"] is False for flow in knowledge_flows)
 
     modules = {module["module_id"]: module for module in body["modules"]}
@@ -633,6 +737,9 @@ def test_source_object_metadata_detail_returns_document_metadata_without_content
     assert body["title"] == "Board Pack Draft"
     assert body["access_checked"] is True
     assert body["content_included"] is False
+    assert body["preview_slots"][0]["surface"] == "office.document.preview"
+    assert body["preview_slots"][0]["render_contract"] == "metadata_only_no_source_content"
+    assert body["preview_slots"][0]["content_included"] is False
     assert body["manifest_hash"].startswith("sha256:")
     assert body["content_hash"].startswith("sha256:")
     assert "Board pack draft source content" not in json.dumps(body)
@@ -719,6 +826,8 @@ def test_source_object_metadata_detail_uses_pg_workspace_repository_without_cont
     assert body["title"] == "Persistent detail smoke document"
     assert body["access_checked"] is True
     assert body["content_included"] is False
+    assert body["preview_slots"][0]["surface"] == "office.document.preview"
+    assert body["preview_slots"][0]["allowed_actions"] == ["open_metadata_detail"]
     assert source_text not in json.dumps(body)
     new_events = app.state.audit_logger.events[starting_event_count:]
     assert new_events[-1].event_type == "source_object.metadata_detail.read"
@@ -745,6 +854,8 @@ def test_source_object_metadata_detail_returns_knowledge_base_metadata_after_fea
     assert body["title"] == "Backup Restore Runbook v1"
     assert body["access_checked"] is True
     assert body["content_included"] is False
+    assert body["preview_slots"][0]["surface"] == "knowledge_base.article.preview"
+    assert body["preview_slots"][0]["content_included"] is False
     assert "knowledge_base.article.read" in body["downstream_surfaces"]
     assert "object_type:kb.article" in body["evidence_refs"]
     assert "Backup restore runbook source content" not in json.dumps(body)
