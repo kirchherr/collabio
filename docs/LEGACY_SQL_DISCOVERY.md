@@ -146,10 +146,21 @@ redigierte Metadata-Worker-Command-Ansicht und einen Command-Hash, aber keine Se
 keine Import-Freigabe. `docker compose run --rm legacy-sql-host-profile-adapter-smoke` beweist zusaetzlich, dass eine
 blocked Gate-Evidence nicht planbar ist und der Default-Compose-Pfad keine Legacy-SQL-Netzwerkverbindung oeffnet.
 
+`app/suite/platform/legacy_sql_metadata_worker_queue.py` persistiert diese Schedule-Evidence als tenant-sichere,
+idempotente Queue-Jobs. Migration `0036_legacy_sql_metadata_worker_queue.sql` legt
+`collabio.legacy_sql_metadata_worker_queue` mit RLS, Idempotency-Key, Lease-/Retry-Status, Restore-Evidence-Hash und
+metadata-only JSON-Checks an. Die Queue speichert nur redigierte Schedule-Evidence, Job-Hashes und Worker-Steuerdaten:
+keine DSN, keine Secret-Ref, keine Tabelleninhalte, keine Rohdaten und keine Import-Payloads.
+
+`docker compose run --rm legacy-sql-metadata-worker-queue-drill` operationalisiert den Pfad. Der Drill erzeugt eine
+frische ready Release-Gate-Evidence, plant daraus Schedule-Evidence, persistiert den Queue-Job idempotent im
+PostgreSQL/RLS-Store, leased ihn einmal, schreibt Retry-Evidence mit Restore-Hash-Bindung und beweist Tenant-Isolation
+sowie blocked-gate rejection. Auch dieser Drill oeffnet im Default-Compose keine Legacy-SQL-Netzwerkverbindung.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist eine tenant-sichere Scheduling-Queue fuer diese Schedule-Evidence. Sie darf nur
-hashbare, redigierte Scheduling-Jobs halten; echte Verbindung, Rohdaten, Import-Dry-Run und Import-Writes bleiben
-weiterhin getrennte spaetere Gates.
+Der naechste technische Schritt ist ein isolierter Lease-Consumer-Skeleton fuer diese Queue. Er darf geleaste Jobs nur
+validieren und redigierte Worker-Befehle vorbereiten; echte Verbindung, Rohdaten, Import-Dry-Run und Import-Writes
+bleiben weiterhin getrennte spaetere Gates.

@@ -1307,7 +1307,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 126. [x] Legacy-SQL-Host-Profile-Release-Gate vorbereiten: echte Host-Profile nur nach Ledger-Operations-Report, Connector-Policy-Hash, Secret-Ref, Egress-Freigabe und expliziter menschlicher Bestaetigung aktivierbar machen; keine DSN, keine Rohdaten und kein Import-Dry-Run im Gate.
 127. [x] Legacy-SQL-Host-Profile-Release-Gate operationalisieren: Gate-Evidence tenant-sicher persistieren, Compose-Smoke fuer Ready/Blocked-Pfade anbinden und erst danach einen echten Host-Profile-Adapter vorbereiten.
 128. [x] Legacy-SQL-Host-Profile-Adapter-Skeleton vorbereiten: Persistierte Ready-Gate-Evidence tenant-sicher laden, Secret-/Egress-Handles nur an metadata-only Worker-Scheduling binden und weiterhin keine echte Netzwerkverbindung im Default-Compose oeffnen.
-129. [ ] Legacy-SQL-Metadata-Worker-Scheduling-Queue vorbereiten: Schedule-Evidence tenant-sicher und idempotent persistieren, Worker-Lease/Retry/Restore-Evidence modellieren und weiterhin keine echte Legacy-Verbindung im Default-Compose oeffnen.
+129. [x] Legacy-SQL-Metadata-Worker-Scheduling-Queue vorbereiten: Schedule-Evidence tenant-sicher und idempotent persistieren, Worker-Lease/Retry/Restore-Evidence modellieren und weiterhin keine echte Legacy-Verbindung im Default-Compose oeffnen.
+130. [ ] Legacy-SQL-Metadata-Worker-Lease-Consumer-Skeleton vorbereiten: geleaste Queue-Jobs in einem isolierten Offline-Runner validieren, Secret-/Egress-Aufloesung weiterhin nur als Handle pruefen und echte Legacy-Verbindung weiter gesperrt lassen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

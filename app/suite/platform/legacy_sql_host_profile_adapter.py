@@ -372,6 +372,47 @@ def legacy_sql_host_profile_adapter_schedule_ref(evidence: LegacySqlHostProfileA
     return f"{LEGACY_SQL_HOST_PROFILE_ADAPTER_SCHEDULE_REF_PREFIX}:{evidence.evidence_hash}"
 
 
+def build_legacy_sql_host_profile_adapter_schedule_request_from_gate_smoke(
+    *,
+    env: Mapping[str, str],
+    gate_smoke: LegacySqlHostProfileReleaseGateSmokeReport,
+    release_gate_evidence_hash: str,
+    checked_by: str,
+) -> LegacySqlHostProfileAdapterScheduleRequest:
+    return LegacySqlHostProfileAdapterScheduleRequest(
+        tenant_id=gate_smoke.tenant_id,
+        source_system_ref=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SOURCE_REF",
+            "legacy-sql:production-sqlserver",
+        ),
+        host_profile_ref=gate_smoke.host_profile_ref,
+        connector_policy_ref=gate_smoke.connector_policy_ref,
+        policy_snapshot_hash=gate_smoke.policy_snapshot_hash,
+        approved_egress_ref=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_EGRESS_REF",
+            "egress:legacy-sql-production-metadata",
+        ),
+        connection_secret_ref=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SECRET_REF",
+            "secret:legacy-sql-production-metadata",
+        ),
+        connection_fingerprint_hash=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_FINGERPRINT_HASH",
+            "sha256:legacy-sql-production-fingerprint",
+        ),
+        release_gate_evidence_hash=release_gate_evidence_hash,
+        requested_by=checked_by,
+        approval_reference=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_ADAPTER_APPROVAL_REF",
+            "approval:legacy-sql-host-profile-adapter-smoke",
+        ),
+        audit_chain_ref=env.get(
+            "SUITE_LEGACY_SQL_HOST_PROFILE_ADAPTER_AUDIT_REF",
+            "audit:legacy-sql-host-profile-adapter-smoke",
+        ),
+    )
+
+
 def build_legacy_sql_host_profile_adapter_smoke_report_hash(
     report: LegacySqlHostProfileAdapterSmokeReport,
 ) -> str:
@@ -467,37 +508,11 @@ def _schedule_request_from_gate_smoke(
     release_gate_evidence_hash: str,
     checked_by: str,
 ) -> LegacySqlHostProfileAdapterScheduleRequest:
-    return LegacySqlHostProfileAdapterScheduleRequest(
-        tenant_id=gate_smoke.tenant_id,
-        source_system_ref=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SOURCE_REF",
-            "legacy-sql:production-sqlserver",
-        ),
-        host_profile_ref=gate_smoke.host_profile_ref,
-        connector_policy_ref=gate_smoke.connector_policy_ref,
-        policy_snapshot_hash=gate_smoke.policy_snapshot_hash,
-        approved_egress_ref=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_EGRESS_REF",
-            "egress:legacy-sql-production-metadata",
-        ),
-        connection_secret_ref=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SECRET_REF",
-            "secret:legacy-sql-production-metadata",
-        ),
-        connection_fingerprint_hash=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_FINGERPRINT_HASH",
-            "sha256:legacy-sql-production-fingerprint",
-        ),
+    return build_legacy_sql_host_profile_adapter_schedule_request_from_gate_smoke(
+        env=env,
+        gate_smoke=gate_smoke,
         release_gate_evidence_hash=release_gate_evidence_hash,
-        requested_by=checked_by,
-        approval_reference=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_ADAPTER_APPROVAL_REF",
-            "approval:legacy-sql-host-profile-adapter-smoke",
-        ),
-        audit_chain_ref=env.get(
-            "SUITE_LEGACY_SQL_HOST_PROFILE_ADAPTER_AUDIT_REF",
-            "audit:legacy-sql-host-profile-adapter-smoke",
-        ),
+        checked_by=checked_by,
     )
 
 

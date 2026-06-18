@@ -315,6 +315,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-host-profile-release-gate",
         ),
     ),
+    SqlMigration(
+        version="0036",
+        name="legacy_sql_metadata_worker_queue",
+        resource_name="0036_legacy_sql_metadata_worker_queue.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-metadata-worker-queue",
+        ),
+    ),
 )
 
 
