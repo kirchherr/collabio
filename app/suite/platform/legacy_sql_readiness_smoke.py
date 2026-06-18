@@ -22,6 +22,11 @@ from suite.platform.crm_erp_legacy_mapping import (
     build_crm_erp_legacy_import_readiness_evidence,
 )
 from suite.platform.legacy_sql_discovery import LegacySqlConnectorKind, LegacySqlDiscoveryRequest
+from suite.platform.legacy_sql_evidence_ledger import (
+    LegacySqlEvidenceType,
+    build_default_legacy_sql_evidence_ledger_store,
+    build_legacy_sql_evidence_ledger_entry,
+)
 from suite.platform.legacy_sql_server_metadata import (
     DEFAULT_CONNECTOR_POLICY_PATH,
     LegacySqlMetadataQuery,
@@ -235,7 +240,9 @@ def run_legacy_sql_readiness_smoke_from_env(
         evidence_hash="sha256:" + "0" * 64,
     )
     _assert_smoke_report_has_no_raw_or_table_metadata(draft)
-    return draft.model_copy(update={"evidence_hash": build_legacy_sql_readiness_smoke_report_hash(draft)})
+    report = draft.model_copy(update={"evidence_hash": build_legacy_sql_readiness_smoke_report_hash(draft)})
+    _append_readiness_smoke_report_to_ledger_if_enabled(report=report, env=env)
+    return report
 
 
 def exit_code_for_report(report: LegacySqlReadinessSmokeReport) -> int:
@@ -319,6 +326,54 @@ def _recommended_actions(*, smoke_passed: bool) -> tuple[str, ...]:
     return ("repair metadata-only legacy SQL readiness smoke before connecting real legacy SQL",)
 
 
+def _append_readiness_smoke_report_to_ledger_if_enabled(
+    *,
+    report: LegacySqlReadinessSmokeReport,
+    env: Mapping[str, str],
+) -> None:
+    if not _env_bool(env, "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE", default=False):
+        return
+    restore_evidence_hash = env.get("SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH")
+    if restore_evidence_hash is None or not restore_evidence_hash.strip():
+        raise ValueError("SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH is required when ledger writes are enabled")
+
+    related_hashes = _unique_evidence_hashes(
+        report.discovery_manifest_hash,
+        report.import_evidence_plan_hash,
+        *(scenario.mapping_manifest_hash for scenario in report.scenarios),
+        *(scenario.readiness_evidence_hash for scenario in report.scenarios),
+    )
+    entry = build_legacy_sql_evidence_ledger_entry(
+        tenant_id=report.tenant_id,
+        module_id=report.module_id,
+        source_system_ref=report.source_system_ref,
+        evidence_type=LegacySqlEvidenceType.READINESS_SMOKE_REPORT,
+        evidence_ref=f"legacy-sql-readiness-smoke:{report.evidence_hash}",
+        evidence_hash=report.evidence_hash,
+        evidence_status="smoke_passed" if report.smoke_passed else "smoke_failed",
+        related_evidence_hashes=related_hashes,
+        restore_evidence_hash=restore_evidence_hash,
+        captured_by=report.checked_by,
+        metadata={
+            "scenario_count": str(len(report.scenarios)),
+            "schema_version": report.schema_version,
+            "smoke_passed": str(report.smoke_passed).lower(),
+        },
+    )
+    build_default_legacy_sql_evidence_ledger_store(environ=env).append(entry)
+
+
+def _unique_evidence_hashes(*values: str | None) -> tuple[str, ...]:
+    hashes: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value is None or value in seen:
+            continue
+        hashes.append(value)
+        seen.add(value)
+    return tuple(hashes)
+
+
 def _assert_smoke_report_has_no_raw_or_table_metadata(report: LegacySqlReadinessSmokeReport) -> None:
     payload = report.model_dump_json()
     for fragment in FORBIDDEN_REPORT_FRAGMENTS:
@@ -384,6 +439,13 @@ def _column_row(
         "is_identity": ordinal_position == 1,
         "default_present": False,
     }
+
+
+def _env_bool(env: Mapping[str, str], name: str, *, default: bool) -> bool:
+    value = env.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 if __name__ == "__main__":

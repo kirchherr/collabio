@@ -113,6 +113,12 @@ Report-Payloads, keine Tabelleninhalte, keine Sample Values, keine DSNs und kein
 eine `restore_evidence_hash`, damit Restore-Drills spaeter beweisen koennen, welche Legacy-Migrations-Evidence wieder
 verfuegbar ist, bevor echte Legacy-Verbindungen oder Import-Dry-Runs freigegeben werden.
 
+Die Drills schreiben nur optional in dieses Ledger. Fuer lokale/CI-Nachweise kann `SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE=true`
+gesetzt werden; dann sind zusaetzlich `SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH` und entweder
+`SUITE_LEGACY_SQL_EVIDENCE_LEDGER_PATH` fuer JSONL oder `SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN`/`SUITE_DATABASE_DSN` fuer
+Postgres erforderlich. Ohne diesen Schalter bleiben die Reports reine stdout-Evidence, mit Schalter werden nur Report-,
+Intake-, Command-, Discovery-, Mapping- und Readiness-Hashes persistiert.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

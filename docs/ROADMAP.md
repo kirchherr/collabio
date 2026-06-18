@@ -1302,7 +1302,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 121. [x] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
 122. [x] Legacy-SQL-Discovery-Intake operationalisieren: Admin-/Worker-Entry-Point fuer Intake-Evidence und Metadata-Worker-Command anbinden, ohne echte Verbindung, Import-Dry-Run oder Rohdatenfreigabe.
 123. [x] Legacy-SQL-Evidence-Ledger persistieren: Intake-, Discovery-, Mapping-, Readiness- und Smoke-Report-Hashes tenant-sicher mit RLS/Restore-Evidence speichern, bevor echte Legacy-Verbindungen zugelassen werden.
-124. [ ] Legacy-SQL-Evidence-Ledger in Intake-/Readiness-Drills verdrahten: Operations-Reports optional in `collabio.legacy_sql_evidence_ledger` schreiben und Restore-Drill-Nachweis mit Report-Hashes verbinden.
+124. [x] Legacy-SQL-Evidence-Ledger in Intake-/Readiness-Drills verdrahten: Operations-Reports optional in `collabio.legacy_sql_evidence_ledger` schreiben und Restore-Drill-Nachweis mit Report-Hashes verbinden.
+125. [ ] Legacy-SQL-Evidence-Ledger-Backends operationalisieren: JSONL/Postgres-Schreibpfad in Compose-Drills pruefen, Restore-Drill gegen Ledger-Eintraege laufen lassen und erst danach echte Legacy-Host-Profile freigeben.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

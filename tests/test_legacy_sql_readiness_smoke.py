@@ -1,4 +1,10 @@
+from pathlib import Path
+
 from suite.platform.crm_erp_legacy_mapping import CrmErpLegacyImportReadinessStatus
+from suite.platform.legacy_sql_evidence_ledger import (
+    JsonlLegacySqlEvidenceLedgerStore,
+    LegacySqlEvidenceType,
+)
 from suite.platform.legacy_sql_readiness_smoke import (
     LEGACY_SQL_READINESS_CONTINUITY_DOMAIN,
     build_legacy_sql_readiness_smoke_report_hash,
@@ -65,3 +71,40 @@ def test_legacy_sql_readiness_smoke_reports_manual_block_and_ready_override() ->
     assert "Email" not in report_json
     assert "secret:legacy-sql-smoke" not in report_json
     assert "connection_secret_ref" not in report_json
+
+
+def test_legacy_sql_readiness_smoke_writes_optional_ledger_entry(tmp_path: Path) -> None:
+    ledger_path = tmp_path / "legacy-sql-evidence-ledger.jsonl"
+    restore_hash = "sha256:" + "2" * 64
+
+    report = run_legacy_sql_readiness_smoke_from_env(
+        {
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE": "true",
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_BACKEND": "jsonl",
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_PATH": str(ledger_path),
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH": restore_hash,
+        }
+    )
+
+    store = JsonlLegacySqlEvidenceLedgerStore(path=ledger_path)
+    entries = store.list_entries(tenant_id=report.tenant_id)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.tenant_id == report.tenant_id
+    assert entry.module_id == report.module_id
+    assert entry.source_system_ref == report.source_system_ref
+    assert entry.evidence_type == LegacySqlEvidenceType.READINESS_SMOKE_REPORT
+    assert entry.evidence_ref == f"legacy-sql-readiness-smoke:{report.evidence_hash}"
+    assert entry.evidence_hash == report.evidence_hash
+    assert entry.evidence_status == "smoke_passed"
+    assert entry.restore_evidence_hash == restore_hash
+    assert entry.captured_by == report.checked_by
+    assert report.discovery_manifest_hash in entry.related_evidence_hashes
+    assert report.import_evidence_plan_hash in entry.related_evidence_hashes
+    for scenario in report.scenarios:
+        assert scenario.mapping_manifest_hash in entry.related_evidence_hashes
+        assert scenario.readiness_evidence_hash in entry.related_evidence_hashes
+    assert not entry.raw_payload_included
+    assert not entry.import_write_executed
+    assert not entry.destructive_actions_executed

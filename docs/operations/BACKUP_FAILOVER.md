@@ -123,6 +123,11 @@ append-only policies, restore-evidence hashes, evidence type, source-system refe
 status. It must not store report payloads, table data, DSNs, Secret references, sample values, raw rows, or import write
 payloads.
 
+The intake and readiness drills can append their report hashes to this ledger by setting
+`SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE=true` and providing `SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH`. The write path
+keeps stdout reports unchanged and persists only hashes plus metadata-only status fields, so restore drills can bind
+ledger entries back to the exact report hash chain without storing legacy data.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash

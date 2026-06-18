@@ -18,6 +18,11 @@ from suite.platform.legacy_sql_discovery_intake import (
     LegacySqlDiscoveryIntakeRequest,
     LegacySqlDiscoveryIntakeStatus,
 )
+from suite.platform.legacy_sql_evidence_ledger import (
+    LegacySqlEvidenceType,
+    build_default_legacy_sql_evidence_ledger_store,
+    build_legacy_sql_evidence_ledger_entry,
+)
 from suite.platform.legacy_sql_server_metadata import (
     DEFAULT_CONNECTOR_POLICY_PATH,
     LegacySqlServerMetadataDiscoveryCommand,
@@ -177,11 +182,13 @@ def run_legacy_sql_discovery_intake_operations_from_env(
         policy_snapshot_hash=request_policy_hash,
         include_row_counts=_env_bool(env, "SUITE_LEGACY_SQL_INTAKE_INCLUDE_ROW_COUNTS", default=True),
     )
-    return build_legacy_sql_discovery_intake_operations_report(
+    report = build_legacy_sql_discovery_intake_operations_report(
         request=request,
         host_profile=host_profile,
         checked_by=checked_by,
     )
+    _append_intake_operations_report_to_ledger_if_enabled(report=report, env=env)
+    return report
 
 
 def exit_code_for_report(report: LegacySqlDiscoveryIntakeOperationsReport) -> int:
@@ -233,6 +240,52 @@ def _recommended_actions(*, report_passed: bool) -> tuple[str, ...]:
             "keep real connection execution disabled until approved host-network profile exists",
         )
     return ("repair legacy SQL discovery intake blockers before creating a metadata-worker command",)
+
+
+def _append_intake_operations_report_to_ledger_if_enabled(
+    *,
+    report: LegacySqlDiscoveryIntakeOperationsReport,
+    env: Mapping[str, str],
+) -> None:
+    if not _env_bool(env, "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE", default=False):
+        return
+    restore_evidence_hash = env.get("SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH")
+    if restore_evidence_hash is None or not restore_evidence_hash.strip():
+        raise ValueError("SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH is required when ledger writes are enabled")
+
+    related_hashes = _unique_evidence_hashes(
+        report.intake_evidence_hash,
+        report.metadata_worker_command_hash,
+    )
+    entry = build_legacy_sql_evidence_ledger_entry(
+        tenant_id=report.tenant_id,
+        module_id=report.module_id,
+        source_system_ref=report.source_system_ref,
+        evidence_type=LegacySqlEvidenceType.DISCOVERY_INTAKE_OPERATIONS_REPORT,
+        evidence_ref=f"legacy-sql-intake-ops:{report.evidence_hash}",
+        evidence_hash=report.evidence_hash,
+        evidence_status=report.intake_status.value,
+        related_evidence_hashes=related_hashes,
+        restore_evidence_hash=restore_evidence_hash,
+        captured_by=report.checked_by,
+        metadata={
+            "metadata_worker_ready": str(report.metadata_worker_command_ready).lower(),
+            "report_passed": str(report.report_passed).lower(),
+            "schema_version": report.schema_version,
+        },
+    )
+    build_default_legacy_sql_evidence_ledger_store(environ=env).append(entry)
+
+
+def _unique_evidence_hashes(*values: str | None) -> tuple[str, ...]:
+    hashes: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value is None or value in seen:
+            continue
+        hashes.append(value)
+        seen.add(value)
+    return tuple(hashes)
 
 
 def _assert_intake_operations_report_safe(report: LegacySqlDiscoveryIntakeOperationsReport) -> None:

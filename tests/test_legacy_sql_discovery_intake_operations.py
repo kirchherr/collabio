@@ -1,9 +1,15 @@
+from pathlib import Path
+
 from suite.platform.legacy_sql_discovery_intake import LegacySqlDiscoveryIntakeStatus
 from suite.platform.legacy_sql_discovery_intake_operations import (
     LEGACY_SQL_DISCOVERY_INTAKE_CONTINUITY_DOMAIN,
     build_legacy_sql_discovery_intake_operations_report_hash,
     exit_code_for_report,
     run_legacy_sql_discovery_intake_operations_from_env,
+)
+from suite.platform.legacy_sql_evidence_ledger import (
+    JsonlLegacySqlEvidenceLedgerStore,
+    LegacySqlEvidenceType,
 )
 
 
@@ -56,3 +62,37 @@ def test_legacy_sql_discovery_intake_operations_report_blocks_policy_mismatch() 
     assert report.blocking_reasons == ("connector_policy_hash_mismatch",)
     assert not report.report_passed
     assert exit_code_for_report(report) == 1
+
+
+def test_legacy_sql_discovery_intake_operations_writes_optional_ledger_entry(tmp_path: Path) -> None:
+    ledger_path = tmp_path / "legacy-sql-evidence-ledger.jsonl"
+    restore_hash = "sha256:" + "1" * 64
+
+    report = run_legacy_sql_discovery_intake_operations_from_env(
+        {
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_WRITE": "true",
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_BACKEND": "jsonl",
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_PATH": str(ledger_path),
+            "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH": restore_hash,
+        }
+    )
+
+    store = JsonlLegacySqlEvidenceLedgerStore(path=ledger_path)
+    entries = store.list_entries(tenant_id=report.tenant_id)
+
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.tenant_id == report.tenant_id
+    assert entry.module_id == report.module_id
+    assert entry.source_system_ref == report.source_system_ref
+    assert entry.evidence_type == LegacySqlEvidenceType.DISCOVERY_INTAKE_OPERATIONS_REPORT
+    assert entry.evidence_ref == f"legacy-sql-intake-ops:{report.evidence_hash}"
+    assert entry.evidence_hash == report.evidence_hash
+    assert entry.evidence_status == report.intake_status.value
+    assert entry.restore_evidence_hash == restore_hash
+    assert entry.captured_by == report.checked_by
+    assert report.intake_evidence_hash in entry.related_evidence_hashes
+    assert report.metadata_worker_command_hash in entry.related_evidence_hashes
+    assert not entry.raw_payload_included
+    assert not entry.import_write_executed
+    assert not entry.destructive_actions_executed
