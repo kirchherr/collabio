@@ -216,10 +216,23 @@ die komplette Evidence-Kette bis Provider-Attestation und Enablement-Gate, baut 
 Preflight-Gate und beweist, dass fehlende MFA, Secret-Material-Anfragen und manipulierte Enablement-Gate-Hashes
 blockiert werden.
 
+`app/suite/platform/legacy_sql_connector_real_connection_executor.py` legt dahinter den weiterhin nicht-ausfuehrenden
+Real-Connection-Executor-Contract fest. Er bindet das Preflight-Gate an
+`legacy_sql_connector_real_connection_timeout_retry_policy.v1`,
+`legacy_sql_connector_real_connection_audit_plan.v1`,
+`legacy_sql_connector_real_connection_kill_switch_policy.v1` und
+`legacy_sql_connector_real_connection_executor_contract.v1`. Der Contract beschreibt Timeout-/Retry-Grenzen,
+metadata-only Audit-Events, Redaction, Tenant-/Global-Kill-Switches und Restore-Evidence, oeffnet aber weiterhin keinen
+Socket und loest kein Secret-Material auf.
+
+`docker compose run --rm legacy-sql-connector-real-connection-executor-smoke` beweist diesen Vertrag. Der Smoke erzeugt
+die komplette Evidence-Kette bis zum Preflight-Gate, baut die drei Policies und den Executor-Contract und beweist, dass
+Socket-/Secret-Materialisierung, deaktivierte Kill-Switches und manipulierte Preflight-Hashes blockiert werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein Real-Connection-Executor-Skeleton. Er darf erst hinter dem Preflight-Gate
-entstehen und muss zunaechst weiterhin als nicht-ausfuehrender Contract modelliert werden, bevor ein echter Socket
-ueberhaupt implementiert wird. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.
+Der naechste technische Schritt ist ein persistierbarer Executor-Policy-Store fuer diese Contracts. Echte Socket-
+Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere
+Gates.
