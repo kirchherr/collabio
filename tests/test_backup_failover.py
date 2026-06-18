@@ -69,6 +69,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "preview_renderer_api_smoke_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_recovery_drill_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_release_gate_evidence_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_evidence_ledger_hash_check" in postgres.integrity_checks
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -82,6 +83,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
+    assert "Legacy SQL evidence ledger entries" in crm_erp.state_artifacts
+    assert "Legacy SQL evidence ledger restore evidence hashes" in crm_erp.state_artifacts
     assert "Legacy SQL discovery intake evidence" in crm_erp.state_artifacts
     assert "Legacy SQL discovery intake operation report hashes" in crm_erp.state_artifacts
     assert "Legacy SQL import readiness evidence" in crm_erp.state_artifacts
@@ -211,6 +214,7 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "continuity domain" in rules
     assert "Knowledge Base runtime reconciliation run report hash when applicable" in policy.restore_drill_evidence
     assert "module registry operations report hash when applicable" in policy.restore_drill_evidence
+    assert "Legacy SQL evidence ledger hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL discovery intake operations report hash when applicable" in policy.restore_drill_evidence
     assert "module lifecycle audit event metadata for module_registry_state" in policy.restore_drill_evidence
     assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
@@ -229,6 +233,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm legacy-sql-readiness-smoke" in runbook
     assert "module_registry_operations_report.v1" in runbook
     assert "legacy_sql_discovery_intake_operations_report.v1" in runbook
+    assert "legacy_sql_evidence_ledger_entry.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -248,6 +253,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "CRM/ERP business records" in runbook
     assert "knowledge-base article versions" in runbook
     assert "Knowledge Base runtime reconciliation run report hash" in runbook
+    assert "Legacy SQL evidence ledger hash" in runbook
     assert "Legacy SQL discovery intake operations report hash" in runbook
     assert "Legacy SQL readiness smoke report hash" in runbook
     assert "source-object storage manifests" in runbook

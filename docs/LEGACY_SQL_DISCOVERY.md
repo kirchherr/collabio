@@ -102,6 +102,17 @@ Import-Dry-Runs, Import-Writes, destruktive Aktionen, Policy-Hash-Mismatch und R
 Metadata-Worker-Command-Ansicht. Secret-Referenzen, DSN-Werte, echte Verbindungen, Import-Dry-Runs und Import-Writes
 bleiben ausserhalb des Reports und ausserhalb dieses Pfads.
 
+## Evidence-Ledger
+
+`app/suite/platform/legacy_sql_evidence_ledger.py` speichert Legacy-SQL-Evidence als tenant-sichere, append-only
+Hash-Eintraege. Migration `0034_legacy_sql_evidence_ledger.sql` legt dafuer
+`collabio.legacy_sql_evidence_ledger` mit RLS, No-Update-/No-Delete-Policies und Restore-Evidence-Hash an.
+
+Das Ledger nimmt Intake-, Discovery-, Import-Plan-, Mapping-, Readiness- und Smoke-Report-Hashes auf. Es speichert keine
+Report-Payloads, keine Tabelleninhalte, keine Sample Values, keine DSNs und keine Secret-Referenzen. Jeder Eintrag bindet
+eine `restore_evidence_hash`, damit Restore-Drills spaeter beweisen koennen, welche Legacy-Migrations-Evidence wieder
+verfuegbar ist, bevor echte Legacy-Verbindungen oder Import-Dry-Runs freigegeben werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

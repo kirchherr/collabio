@@ -1301,7 +1301,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 120. [x] Legacy-SQL-Readiness als Compose/Worker-Smoke operationalisieren: Metadata-Worker-Ergebnis, Mapping-Manifest und Readiness-Evidence als Report ausgeben, bevor reale SQL-Verbindung oder Import-Dry-Run zugelassen wird.
 121. [x] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
 122. [x] Legacy-SQL-Discovery-Intake operationalisieren: Admin-/Worker-Entry-Point fuer Intake-Evidence und Metadata-Worker-Command anbinden, ohne echte Verbindung, Import-Dry-Run oder Rohdatenfreigabe.
-123. [ ] Legacy-SQL-Evidence-Ledger persistieren: Intake-, Discovery-, Mapping-, Readiness- und Smoke-Report-Hashes tenant-sicher mit RLS/Restore-Evidence speichern, bevor echte Legacy-Verbindungen zugelassen werden.
+123. [x] Legacy-SQL-Evidence-Ledger persistieren: Intake-, Discovery-, Mapping-, Readiness- und Smoke-Report-Hashes tenant-sicher mit RLS/Restore-Evidence speichern, bevor echte Legacy-Verbindungen zugelassen werden.
+124. [ ] Legacy-SQL-Evidence-Ledger in Intake-/Readiness-Drills verdrahten: Operations-Reports optional in `collabio.legacy_sql_evidence_ledger` schreiben und Restore-Drill-Nachweis mit Report-Hashes verbinden.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
