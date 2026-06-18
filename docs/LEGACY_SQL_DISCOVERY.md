@@ -125,6 +125,12 @@ wieder, prueft Restore-Hash-Bindung, Tenant-Isolation und Duplicate-Append-Sperr
 `legacy_sql_evidence_ledger_operations_report.v1`. Erst ein gruener Report ist die technische Vorbedingung fuer echte
 Legacy-Host-Profile; er oeffnet selbst keine reale Verbindung.
 
+`legacy_sql_host_profile_release_gate.v1` ist das naechste Wiring-Gate fuer echte Host-Profile. Es akzeptiert nur einen
+frischen Ledger-Operations-Report, den Connector-Policy-Hash, Host-Profil-Ref, freigegebene Egress-Ref, gehashte
+Secret-Ref-Bindung und eine explizite menschliche Bestaetigung. Das Gate aktiviert nur metadata-only Discovery-Profile:
+keine DSN, keine Rohdaten, kein Import-Dry-Run, kein Import-Write und keine destruktive Aktion. Der erste echte
+Host-Profil-Adapter muss `require_legacy_sql_host_profile_release_gate_for_wiring` aufrufen.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
