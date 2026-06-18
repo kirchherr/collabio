@@ -24,18 +24,24 @@ from suite.platform.legacy_sql_connector_provider_attestation_adapter import (
     build_legacy_sql_connector_secret_resolver_deployment_profile,
 )
 from suite.platform.legacy_sql_connector_real_connection_executor import (
+    InMemoryLegacySqlConnectorRealConnectionExecutorPolicyStore,
+    JsonlLegacySqlConnectorRealConnectionExecutorPolicyStore,
     LegacySqlConnectorRealConnectionExecutorStatus,
     build_legacy_sql_connector_real_connection_audit_plan,
     build_legacy_sql_connector_real_connection_audit_plan_hash,
     build_legacy_sql_connector_real_connection_executor_command,
     build_legacy_sql_connector_real_connection_executor_contract,
     build_legacy_sql_connector_real_connection_executor_contract_hash,
+    build_legacy_sql_connector_real_connection_executor_policy_bundle,
+    build_legacy_sql_connector_real_connection_executor_policy_bundle_hash,
+    build_legacy_sql_connector_real_connection_executor_policy_store_smoke_report_hash,
     build_legacy_sql_connector_real_connection_executor_smoke_report_hash,
     build_legacy_sql_connector_real_connection_kill_switch_policy,
     build_legacy_sql_connector_real_connection_kill_switch_policy_hash,
     build_legacy_sql_connector_real_connection_timeout_retry_policy,
     build_legacy_sql_connector_real_connection_timeout_retry_policy_hash,
     exit_code_for_report,
+    run_legacy_sql_connector_real_connection_executor_policy_store_smoke_from_env,
     run_legacy_sql_connector_real_connection_executor_smoke_from_env,
 )
 from suite.platform.legacy_sql_connector_sandbox_enablement_gate import (
@@ -248,6 +254,93 @@ def test_legacy_sql_real_connection_executor_contract_blocks_materialization_kil
     assert "preflight_hash_invalid" in tampered.blocking_reasons
 
 
+def test_legacy_sql_real_connection_executor_policy_store_roundtrips_tenant_safely(tmp_path: Path) -> None:
+    preflight = ready_preflight()
+    checked_at = datetime(2026, 6, 18, 14, 20, tzinfo=UTC)
+    timeout_retry_policy = build_legacy_sql_connector_real_connection_timeout_retry_policy(
+        preflight=preflight,
+        checked_by="real-connection-executor-test",
+        checked_at_utc=checked_at,
+    )
+    audit_plan = build_legacy_sql_connector_real_connection_audit_plan(
+        preflight=preflight,
+        checked_by="real-connection-executor-test",
+        checked_at_utc=checked_at + timedelta(seconds=1),
+    )
+    kill_switch_policy = build_legacy_sql_connector_real_connection_kill_switch_policy(
+        preflight=preflight,
+        checked_by="real-connection-executor-test",
+        checked_at_utc=checked_at + timedelta(seconds=2),
+    )
+    command = build_legacy_sql_connector_real_connection_executor_command(
+        preflight=preflight,
+        timeout_retry_policy=timeout_retry_policy,
+        audit_plan=audit_plan,
+        kill_switch_policy=kill_switch_policy,
+        restore_evidence_hash="sha256:" + "a" * 64,
+        requested_by="real-connection-executor-test",
+    )
+    contract = build_legacy_sql_connector_real_connection_executor_contract(
+        command=command,
+        preflight=preflight,
+        timeout_retry_policy=timeout_retry_policy,
+        audit_plan=audit_plan,
+        kill_switch_policy=kill_switch_policy,
+        checked_by="real-connection-executor-test",
+        checked_at_utc=checked_at + timedelta(seconds=3),
+    )
+    bundle = build_legacy_sql_connector_real_connection_executor_policy_bundle(
+        timeout_retry_policy=timeout_retry_policy,
+        audit_plan=audit_plan,
+        kill_switch_policy=kill_switch_policy,
+        executor_contract=contract,
+        checked_by="real-connection-executor-test",
+        checked_at_utc=checked_at + timedelta(seconds=4),
+    )
+
+    assert bundle.schema_version == "legacy_sql_connector_real_connection_executor_policy_bundle.v1"
+    assert bundle.bundle_status == LegacySqlConnectorRealConnectionExecutorStatus.READY
+    assert bundle.store_persistence_allowed
+    assert bundle.policy_chain_bound
+    assert bundle.tenant_scope_verified
+    assert bundle.restore_evidence_hash_valid
+    assert bundle.evidence_hash == build_legacy_sql_connector_real_connection_executor_policy_bundle_hash(bundle)
+    assert not bundle.network_socket_opened
+    assert not bundle.secret_material_resolved
+    assert not bundle.real_connection_opened
+
+    memory_store = InMemoryLegacySqlConnectorRealConnectionExecutorPolicyStore()
+    assert memory_store.append(bundle).evidence_hash == bundle.evidence_hash
+    assert memory_store.append(bundle).evidence_hash == bundle.evidence_hash
+    assert len(memory_store.list_bundles(tenant_id=bundle.tenant_id)) == 1
+    assert (
+        memory_store.get(
+            tenant_id=bundle.tenant_id,
+            executor_contract_evidence_hash=bundle.executor_contract_evidence_hash,
+        ).evidence_hash
+        == bundle.evidence_hash
+    )
+    with pytest.raises(KeyError):
+        memory_store.get(
+            tenant_id=f"{bundle.tenant_id}-other",
+            executor_contract_evidence_hash=bundle.executor_contract_evidence_hash,
+        )
+
+    jsonl_path = tmp_path / "executor_policy_store.jsonl"
+    jsonl_store = JsonlLegacySqlConnectorRealConnectionExecutorPolicyStore(path=jsonl_path)
+    jsonl_store.append(bundle)
+    assert jsonl_store.append(bundle).evidence_hash == bundle.evidence_hash
+    reloaded = JsonlLegacySqlConnectorRealConnectionExecutorPolicyStore(path=jsonl_path)
+    assert len(reloaded.list_bundles(tenant_id=bundle.tenant_id)) == 1
+    assert (
+        reloaded.get(
+            tenant_id=bundle.tenant_id,
+            executor_contract_evidence_hash=bundle.executor_contract_evidence_hash,
+        ).evidence_hash
+        == bundle.evidence_hash
+    )
+
+
 def test_pg_legacy_sql_real_connection_executor_smoke_keeps_contract_non_executing(
     live_database: LiveDatabase,
     tmp_path: Path,
@@ -279,6 +372,44 @@ def test_pg_legacy_sql_real_connection_executor_smoke_keeps_contract_non_executi
     assert not report.import_write_allowed
     assert not report.destructive_actions_allowed
     assert report.evidence_hash == build_legacy_sql_connector_real_connection_executor_smoke_report_hash(report)
+    assert exit_code_for_report(report) == 0
+
+    payload = report.model_dump_json().lower()
+    assert '"connection_secret_ref":' not in payload
+    assert "secret:legacy-sql-production-metadata" not in payload
+    assert "sqlserver://" not in payload
+
+
+def test_pg_legacy_sql_real_connection_executor_policy_store_smoke_persists_bundle(
+    live_database: LiveDatabase,
+    tmp_path: Path,
+) -> None:
+    env = postgres_policy_store_env(tmp_path=tmp_path, worker_resource=live_database.worker_resource)
+
+    report = run_legacy_sql_connector_real_connection_executor_policy_store_smoke_from_env(env)
+
+    assert report.schema_version == "legacy_sql_connector_real_connection_executor_policy_store_smoke_report.v1"
+    assert report.store_backend == "postgres"
+    assert report.bundle_ready
+    assert report.persistence_roundtrip_ok
+    assert report.duplicate_append_idempotent
+    assert report.tenant_isolation_ok
+    assert report.restore_evidence_required
+    assert report.policy_store_operational
+    assert report.future_socket_materialization_gate_required
+    assert report.future_secret_materialization_gate_required
+    assert report.future_execution_implementation_required
+    assert not report.network_socket_opened
+    assert not report.network_connection_opened
+    assert not report.real_connection_opened
+    assert not report.secret_material_resolved
+    assert not report.raw_data_access_allowed
+    assert not report.import_dry_run_allowed
+    assert not report.import_write_allowed
+    assert not report.destructive_actions_allowed
+    assert report.evidence_hash == build_legacy_sql_connector_real_connection_executor_policy_store_smoke_report_hash(
+        report
+    )
     assert exit_code_for_report(report) == 0
 
     payload = report.model_dump_json().lower()
@@ -440,5 +571,29 @@ def postgres_executor_env(*, tmp_path: Path, worker_resource: str) -> dict[str, 
         "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_ENABLEMENT_RESTORE_HASH": "sha256:" + "e" * 64,
         "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_PREFLIGHT_RESTORE_HASH": "sha256:" + "f" * 64,
         "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_RESTORE_HASH": "sha256:" + "a" * 64,
+        "SUITE_DATABASE_DSN": worker_resource,
+    }
+
+
+def postgres_policy_store_env(*, tmp_path: Path, worker_resource: str) -> dict[str, str]:
+    return {
+        "SUITE_DATA_DIR": str(tmp_path),
+        "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS": "jsonl,postgres",
+        "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH": "sha256:" + "c" * 64,
+        "SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN": worker_resource,
+        "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND": "postgres",
+        "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN": worker_resource,
+        "SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND": "postgres",
+        "SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN": worker_resource,
+        "SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH": "sha256:" + "d" * 64,
+        "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND": "postgres",
+        "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN": worker_resource,
+        "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH": (
+            "sha256:" + "e" * 64
+        ),
+        "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH": (
+            "sha256:" + "f" * 64
+        ),
+        "SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH": "sha256:" + "a" * 64,
         "SUITE_DATABASE_DSN": worker_resource,
     }

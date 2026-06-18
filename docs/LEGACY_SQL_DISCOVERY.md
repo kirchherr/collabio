@@ -229,10 +229,20 @@ Socket und loest kein Secret-Material auf.
 die komplette Evidence-Kette bis zum Preflight-Gate, baut die drei Policies und den Executor-Contract und beweist, dass
 Socket-/Secret-Materialisierung, deaktivierte Kill-Switches und manipulierte Preflight-Hashes blockiert werden.
 
+`legacy_sql_connector_real_connection_executor_policy_bundle.v1` und die Tabelle
+`collabio.legacy_sql_real_connection_executor_policy_store` machen diese Contracts tenant-sicher persistierbar. Der
+Bundle enthaelt Timeout-/Retry-Policy, Audit-Plan, Kill-Switch-Policy und Executor-Contract als hashgebundene Evidence.
+Die Postgres-Tabelle erzwingt RLS, Append-only Verhalten, Restore-Evidence, idempotente Contract-Speicherung und
+SQL-seitige No-Socket/No-Secret/No-Import-Checks.
+
+`docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke` beweist diesen Store. Der
+Smoke schreibt den Policy-Bundle, liest ihn tenant-sicher zurueck, prueft idempotente Duplikate und beweist, dass
+tenant-fremde Reads keinen Bundle sehen.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein persistierbarer Executor-Policy-Store fuer diese Contracts. Echte Socket-
+Der naechste technische Schritt ist ein Execution-Readiness-Review-Gate fuer gespeicherte Contracts. Echte Socket-
 Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere
-Gates.
+Gates und duerfen nicht aus dem Store heraus direkt gestartet werden.

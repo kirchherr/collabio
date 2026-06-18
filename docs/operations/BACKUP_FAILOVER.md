@@ -250,6 +250,20 @@ defines timeout/retry limits, audit event coverage, redaction, manual abort, ten
 still non-executing: no Secret material is resolved, no socket is opened, no raw data is read, and no import dry-run or
 import write is allowed.
 
+Run the Legacy SQL real-connection executor policy-store smoke before any executor contract is trusted across restarts:
+
+```bash
+docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke
+```
+
+The smoke emits metadata-only `legacy_sql_connector_real_connection_executor_policy_store_smoke_report.v1` evidence. It
+persists `legacy_sql_connector_real_connection_executor_policy_bundle.v1` in the tenant-scoped policy store, roundtrips
+the bundle, proves duplicate appends are idempotent, and checks tenant isolation. The persisted bundle contains only
+`legacy_sql_connector_real_connection_timeout_retry_policy.v1`,
+`legacy_sql_connector_real_connection_audit_plan.v1`,
+`legacy_sql_connector_real_connection_kill_switch_policy.v1`, and the non-executing executor contract. It still does
+not resolve Secret material, open sockets, read raw data, or allow import dry-run/write.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash
@@ -307,12 +321,13 @@ Monthly for active development and before every production-readiness milestone:
 12. Before CRM/ERP Legacy SQL provider handles are trusted, run `docker compose run --rm legacy-sql-connector-provider-attestation-adapter-smoke`.
 13. Before CRM/ERP Legacy SQL real connection executor contracts are trusted, run `docker compose run --rm legacy-sql-connector-connection-preflight-gate-smoke`.
 14. Before CRM/ERP Legacy SQL socket or Secret materialization is designed, run `docker compose run --rm legacy-sql-connector-real-connection-executor-smoke`.
-15. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
-16. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
-17. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-18. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, Legacy SQL metadata worker queue operations report hash, Legacy SQL metadata worker lease consumer smoke report hash, Legacy SQL connector sandbox profile smoke report hash, Legacy SQL connector sandbox enablement gate smoke report hash, Legacy SQL connector provider attestation adapter smoke report hash, Legacy SQL connector connection preflight gate smoke report hash, Legacy SQL connector real connection executor smoke report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
-19. For production, restore into an isolated environment and run the domain-specific checks from the policy.
-20. Update the policy and this runbook when the restore path changes.
+15. Before CRM/ERP Legacy SQL executor contracts are trusted across restarts, run `docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke`.
+16. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
+17. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
+18. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
+19. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, Legacy SQL metadata worker queue operations report hash, Legacy SQL metadata worker lease consumer smoke report hash, Legacy SQL connector sandbox profile smoke report hash, Legacy SQL connector sandbox enablement gate smoke report hash, Legacy SQL connector provider attestation adapter smoke report hash, Legacy SQL connector connection preflight gate smoke report hash, Legacy SQL connector real connection executor smoke report hash, Legacy SQL connector real connection executor policy store smoke report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+20. For production, restore into an isolated environment and run the domain-specific checks from the policy.
+21. Update the policy and this runbook when the restore path changes.
 
 Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, cryptoshred manifest hash when present, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 

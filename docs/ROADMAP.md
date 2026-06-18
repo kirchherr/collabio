@@ -1314,7 +1314,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 133. [x] Legacy-SQL-Connector-Provider-Attestation-Adapter vorbereiten: Netzwerk-, Secret-Resolver- und Audit-Provider-Handles gegen echte Deployment-Profile validieren, aber weiterhin keine Verbindung oeffnen und kein Secret-Material aufloesen.
 134. [x] Legacy-SQL-Connector-Connection-Attempt-Preflight-Gate vorbereiten: Enablement-Gate, Provider-Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor spaeter echte Verbindungsversuche implementiert werden.
 135. [x] Legacy-SQL-Connector-Real-Connection-Executor-Skeleton vorbereiten: hinter dem Preflight-Gate einen weiterhin nicht-ausfuehrenden Executor-Contract modellieren, der Secret-/Socket-Materialisierung, Timeout-/Retry-Policy, Audit und Kill-Switches vor echter Implementierung festlegt.
-136. [ ] Legacy-SQL-Connector-Real-Connection-Executor-Policy-Store vorbereiten: Executor-Contracts, Timeout-/Retry-Policies, Audit-Plaene und Kill-Switch-Policies tenant-sicher persistierbar machen, bevor echte Socket-Ausfuehrung implementiert wird.
+136. [x] Legacy-SQL-Connector-Real-Connection-Executor-Policy-Store vorbereiten: Executor-Contracts, Timeout-/Retry-Policies, Audit-Plaene und Kill-Switch-Policies tenant-sicher persistierbar machen, bevor echte Socket-Ausfuehrung implementiert wird.
+137. [ ] Legacy-SQL-Connector-Execution-Readiness-Review-Gate vorbereiten: gespeicherte Executor-Policy-Bundles gegen Human-Review, Change-Control, Restore-Drill und Kill-Switch-Zustand pruefen, bevor echte Socket- oder Secret-Materialisierung ueberhaupt geplant wird.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

@@ -325,6 +325,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-metadata-worker-queue",
         ),
     ),
+    SqlMigration(
+        version="0037",
+        name="legacy_sql_real_connection_executor_policy_store",
+        resource_name="0037_legacy_sql_real_connection_executor_policy_store.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-real-connection-executor-policy-store",
+        ),
+    ),
 )
 
 
