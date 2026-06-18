@@ -86,6 +86,17 @@ bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockie
 Korrektur erlaubt ausschliesslich metadata-only Dry-Run. Der Report enthaelt keine Tabellen-/Spaltennamen,
 Secret-Referenzen oder Rohdaten.
 
+## Discovery-Intake-Gate
+
+`app/suite/platform/legacy_sql_discovery_intake.py` ist die Annahmegrenze fuer echte Discovery-Anfragen. Das Gate nimmt
+nur Tenant, Modul, Source-System-Referenz, Approval, Audit-Referenz, Connector-Policy-Hash und ein freigegebenes
+Host-Profil an. Die eigentliche Secret-Referenz kommt ausschliesslich aus dem Host-Profil und wird nicht in der
+Intake-Evidence ausgegeben.
+
+Das Gate erzeugt erst dann ein `LegacySqlServerMetadataDiscoveryCommand`, wenn Request und Host-Profil exakt
+zusammenpassen. Blockiert werden insbesondere DSN-Werte, Rohdaten-/Sample-/Stored-Procedure-Body-Anfragen,
+Import-Dry-Runs, Import-Writes, destruktive Aktionen, Policy-Hash-Mismatch und Row-Count-Anfragen ohne Host-Freigabe.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

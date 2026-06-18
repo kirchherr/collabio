@@ -1299,7 +1299,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 118. [x] Roadmap-Triage vor dem naechsten Ausbau anwenden: naechsten Schritt nur ziehen, wenn er Fundament oder unmittelbaren Produktzug staerkt; spaeter nachziehbare Adapter-/UI-/Automationsarbeit sichtbar parken.
 119. [x] Legacy-SQL-Import-Readiness-Evidence definieren: Discovery-/Import-/Mapping-Hashes zusammenfuehren, Dry-Run nur bei sauberer Mapping-Kette erlauben und Quarantaene/`legacy.row` als manuellen Mapping-Blocker ausweisen.
 120. [x] Legacy-SQL-Readiness als Compose/Worker-Smoke operationalisieren: Metadata-Worker-Ergebnis, Mapping-Manifest und Readiness-Evidence als Report ausgeben, bevor reale SQL-Verbindung oder Import-Dry-Run zugelassen wird.
-121. [ ] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
+121. [x] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
+122. [ ] Legacy-SQL-Discovery-Intake operationalisieren: Admin-/Worker-Entry-Point fuer Intake-Evidence und Metadata-Worker-Command anbinden, ohne echte Verbindung, Import-Dry-Run oder Rohdatenfreigabe.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
