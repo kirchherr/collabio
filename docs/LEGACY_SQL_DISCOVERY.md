@@ -131,8 +131,18 @@ Secret-Ref-Bindung und eine explizite menschliche Bestaetigung. Das Gate aktivie
 keine DSN, keine Rohdaten, kein Import-Dry-Run, kein Import-Write und keine destruktive Aktion. Der erste echte
 Host-Profil-Adapter muss `require_legacy_sql_host_profile_release_gate_for_wiring` aufrufen.
 
+Migration `0035_legacy_sql_host_profile_release_gate_evidence.sql` persistiert diese Gate-Evidence in
+`collabio.legacy_sql_host_profile_release_gate_evidence` mit Tenant-RLS, Append-only-Policies und metadata-only Checks.
+`docker compose run --rm legacy-sql-host-profile-release-gate-smoke` operationalisiert den Pfad: Der Smoke erzeugt erst
+einen frischen Ledger-Operations-Report, schreibt danach eine ready und eine blocked Gate-Evidence in den
+PostgreSQL-Store und prueft, dass nur die ready Evidence den Wiring-Guard passieren kann. Damit wird vor einem echten
+Host-Profil-Adapter nicht nur die Modelllogik, sondern auch Persistenz, Tenant-Isolation, Restore-Evidence-Anbindung und
+Blocked-Path-Verhalten nachgewiesen.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist die CRM/ERP-Subfeature-Registry: Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen und Rechnungen werden erst nach Mapping-Evidence als aktivierbare Feature-Bausteine modelliert.
+Der naechste technische Schritt ist ein echter Host-Profile-Adapter-Skeleton hinter dem Release-Gate. Er darf nur die
+persistierte ready Evidence, Secret-/Egress-Handles und metadata-only Worker-Scheduling vorbereiten; echte Verbindung,
+Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.

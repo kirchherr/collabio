@@ -305,6 +305,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-evidence-ledger",
         ),
     ),
+    SqlMigration(
+        version="0035",
+        name="legacy_sql_host_profile_release_gate_evidence",
+        resource_name="0035_legacy_sql_host_profile_release_gate_evidence.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-host-profile-release-gate",
+        ),
+    ),
 )
 
 

@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Self
+from pathlib import Path
+from typing import Any, Protocol, Self
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
@@ -25,6 +31,7 @@ from suite.platform.legacy_sql_server_metadata import (
     LegacySqlServerNetworkMode,
     build_legacy_sql_connector_policy_hash,
 )
+from suite.platform.storage_paths import suite_data_dir
 
 LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SCHEMA_VERSION = "legacy_sql_host_profile_release_gate.v1"
 LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_REF_PREFIX = "legacy-sql-host-profile-release-gate"
@@ -243,6 +250,248 @@ class LegacySqlHostProfileReleaseGateEvidence(BaseModel):
         return self
 
 
+class LegacySqlHostProfileReleaseGateEvidenceStore(Protocol):
+    def append(
+        self,
+        evidence: LegacySqlHostProfileReleaseGateEvidence,
+    ) -> LegacySqlHostProfileReleaseGateEvidence:
+        raise NotImplementedError
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlHostProfileReleaseGateEvidence:
+        raise NotImplementedError
+
+    def list_evidence(self, *, tenant_id: str) -> tuple[LegacySqlHostProfileReleaseGateEvidence, ...]:
+        raise NotImplementedError
+
+
+class InMemoryLegacySqlHostProfileReleaseGateEvidenceStore:
+    def __init__(self, evidences: tuple[LegacySqlHostProfileReleaseGateEvidence, ...] = ()) -> None:
+        self._evidences: dict[tuple[str, str], LegacySqlHostProfileReleaseGateEvidence] = {}
+        for evidence in evidences:
+            self.append(evidence)
+
+    def append(
+        self,
+        evidence: LegacySqlHostProfileReleaseGateEvidence,
+    ) -> LegacySqlHostProfileReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("legacy SQL host profile release gate evidence already exists")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlHostProfileReleaseGateEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL host profile release gate evidence not found") from exc
+
+    def list_evidence(self, *, tenant_id: str) -> tuple[LegacySqlHostProfileReleaseGateEvidence, ...]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
+
+
+class JsonlLegacySqlHostProfileReleaseGateEvidenceStore:
+    def __init__(self, *, path: Path) -> None:
+        self.path = path
+        self._evidences: dict[tuple[str, str], LegacySqlHostProfileReleaseGateEvidence] = {}
+        if not path.exists():
+            return
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            evidence = LegacySqlHostProfileReleaseGateEvidence.model_validate_json(line)
+            _require_valid_release_gate_hash(evidence)
+            key = (evidence.tenant_id, evidence.evidence_hash)
+            if key in self._evidences:
+                raise ValueError("duplicate legacy SQL host profile release gate evidence in store")
+            self._evidences[key] = evidence
+
+    def append(
+        self,
+        evidence: LegacySqlHostProfileReleaseGateEvidence,
+    ) -> LegacySqlHostProfileReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        key = (evidence.tenant_id, evidence.evidence_hash)
+        if key in self._evidences:
+            raise ValueError("legacy SQL host profile release gate evidence already exists")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(evidence.model_dump(mode="json"), sort_keys=True) + "\n")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlHostProfileReleaseGateEvidence:
+        try:
+            return self._evidences[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL host profile release gate evidence not found") from exc
+
+    def list_evidence(self, *, tenant_id: str) -> tuple[LegacySqlHostProfileReleaseGateEvidence, ...]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
+        )
+
+
+class PgLegacySqlHostProfileReleaseGateEvidenceStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(
+        self,
+        evidence: LegacySqlHostProfileReleaseGateEvidence,
+    ) -> LegacySqlHostProfileReleaseGateEvidence:
+        _require_valid_release_gate_hash(evidence)
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, evidence.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO collabio.legacy_sql_host_profile_release_gate_evidence (
+                        tenant_id,
+                        module_id,
+                        source_system_ref,
+                        host_profile_ref,
+                        connector_kind,
+                        connector_policy_ref,
+                        policy_snapshot_hash,
+                        approved_egress_ref,
+                        connection_secret_ref_hash,
+                        connection_fingerprint_hash,
+                        ledger_operations_report_hash,
+                        ledger_operations_checked_at_utc,
+                        evaluated_at_utc,
+                        freshness_window_hours,
+                        requested_by,
+                        human_confirmation_reference,
+                        ledger_operations_report_hash_valid,
+                        ledger_operations_report_fresh,
+                        ledger_operations_gate_passed,
+                        postgres_ledger_backend_ready,
+                        connector_policy_hash_valid,
+                        host_profile_policy_bound,
+                        host_profile_egress_bound,
+                        host_profile_secret_bound,
+                        host_profile_fingerprint_bound,
+                        host_profile_metadata_only,
+                        human_confirmation_verified,
+                        metadata_only_boundary_verified,
+                        host_profile_activation_allowed,
+                        metadata_worker_scheduling_allowed,
+                        real_connection_used,
+                        raw_data_access_allowed,
+                        import_dry_run_allowed,
+                        import_write_allowed,
+                        destructive_actions_allowed,
+                        blocking_reasons,
+                        gate_status,
+                        gate_evidence,
+                        evidence_hash,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    self._evidence_values(evidence),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("legacy SQL host profile release gate evidence already exists") from exc
+        return evidence
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlHostProfileReleaseGateEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT gate_evidence
+                FROM collabio.legacy_sql_host_profile_release_gate_evidence
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("legacy SQL host profile release gate evidence not found")
+        return self._evidence_from_row(row)
+
+    def list_evidence(self, *, tenant_id: str) -> tuple[LegacySqlHostProfileReleaseGateEvidence, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT gate_evidence
+                FROM collabio.legacy_sql_host_profile_release_gate_evidence
+                WHERE tenant_id = %s
+                ORDER BY evaluated_at_utc, evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._evidence_from_row(row) for row in rows)
+
+    def _evidence_values(self, evidence: LegacySqlHostProfileReleaseGateEvidence) -> tuple[object, ...]:
+        return (
+            evidence.tenant_id,
+            evidence.module_id,
+            evidence.source_system_ref,
+            evidence.host_profile_ref,
+            evidence.connector_kind.value,
+            evidence.connector_policy_ref,
+            evidence.policy_snapshot_hash,
+            evidence.approved_egress_ref,
+            evidence.connection_secret_ref_hash,
+            evidence.connection_fingerprint_hash,
+            evidence.ledger_operations_report_hash,
+            evidence.ledger_operations_checked_at_utc,
+            evidence.evaluated_at_utc,
+            evidence.freshness_window_hours,
+            evidence.requested_by,
+            evidence.human_confirmation_reference,
+            evidence.ledger_operations_report_hash_valid,
+            evidence.ledger_operations_report_fresh,
+            evidence.ledger_operations_gate_passed,
+            evidence.postgres_ledger_backend_ready,
+            evidence.connector_policy_hash_valid,
+            evidence.host_profile_policy_bound,
+            evidence.host_profile_egress_bound,
+            evidence.host_profile_secret_bound,
+            evidence.host_profile_fingerprint_bound,
+            evidence.host_profile_metadata_only,
+            evidence.human_confirmation_verified,
+            evidence.metadata_only_boundary_verified,
+            evidence.host_profile_activation_allowed,
+            evidence.metadata_worker_scheduling_allowed,
+            evidence.real_connection_used,
+            evidence.raw_data_access_allowed,
+            evidence.import_dry_run_allowed,
+            evidence.import_write_allowed,
+            evidence.destructive_actions_allowed,
+            Jsonb(list(evidence.blocking_reasons)),
+            evidence.gate_status.value,
+            Jsonb(evidence.model_dump(mode="json")),
+            evidence.evidence_hash,
+            evidence.schema_version,
+        )
+
+    def _evidence_from_row(self, row: tuple[Any, ...]) -> LegacySqlHostProfileReleaseGateEvidence:
+        raw = row[0]
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+        evidence = LegacySqlHostProfileReleaseGateEvidence.model_validate(parsed)
+        _require_valid_release_gate_hash(evidence)
+        return evidence
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
 def build_legacy_sql_host_profile_release_gate(
     *,
     command: LegacySqlHostProfileReleaseGateCommand,
@@ -407,6 +656,28 @@ def build_legacy_sql_host_profile_release_gate_hash(
 
 def legacy_sql_host_profile_release_gate_ref(evidence: LegacySqlHostProfileReleaseGateEvidence) -> str:
     return f"{LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_REF_PREFIX}:{evidence.evidence_hash}"
+
+
+def build_default_legacy_sql_host_profile_release_gate_evidence_store(
+    data_dir: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> LegacySqlHostProfileReleaseGateEvidenceStore:
+    env = os.environ if environ is None else environ
+    backend = env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND", "jsonl").strip().lower()
+    if backend in {"memory", "in_memory"}:
+        return InMemoryLegacySqlHostProfileReleaseGateEvidenceStore()
+    if backend == "jsonl":
+        path_value = env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_PATH")
+        path = (
+            Path(path_value) if path_value else (data_dir or suite_data_dir()) / "legacy_sql_host_profile_gates.jsonl"
+        )
+        return JsonlLegacySqlHostProfileReleaseGateEvidenceStore(path=path)
+    if backend in {"postgres", "pg"}:
+        database_dsn = env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN") or env.get("SUITE_DATABASE_DSN")
+        if database_dsn is None:
+            raise ValueError("Postgres legacy SQL host profile release gate store requires a database DSN")
+        return PgLegacySqlHostProfileReleaseGateEvidenceStore(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported legacy SQL host profile release gate store backend: {backend}")
 
 
 def _release_gate_blocking_reasons(

@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import os
+import re
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
+import psycopg
 import pytest
 
+from suite.persistence.migration_catalog import get_migration
+from suite.persistence.migrator import apply_migrations
 from suite.platform.legacy_sql_discovery import LegacySqlConnectorKind
 from suite.platform.legacy_sql_discovery_intake import LegacySqlApprovedHostProfile
 from suite.platform.legacy_sql_evidence_ledger import LegacySqlEvidenceType
@@ -16,8 +23,12 @@ from suite.platform.legacy_sql_evidence_ledger_operations import (
     build_legacy_sql_evidence_ledger_operations_report_hash,
 )
 from suite.platform.legacy_sql_host_profile_release_gate import (
+    InMemoryLegacySqlHostProfileReleaseGateEvidenceStore,
+    JsonlLegacySqlHostProfileReleaseGateEvidenceStore,
     LegacySqlHostProfileReleaseGateCommand,
+    LegacySqlHostProfileReleaseGateEvidence,
     LegacySqlHostProfileReleaseGateStatus,
+    PgLegacySqlHostProfileReleaseGateEvidenceStore,
     build_legacy_sql_host_profile_release_gate,
     build_legacy_sql_host_profile_release_gate_hash,
     legacy_sql_host_profile_release_gate_ref,
@@ -26,11 +37,37 @@ from suite.platform.legacy_sql_host_profile_release_gate import (
 )
 from suite.platform.legacy_sql_server_metadata import (
     DEFAULT_CONNECTOR_POLICY_PATH,
+    LegacySqlServerConnectorPolicy,
     build_legacy_sql_connector_policy_hash,
     load_legacy_sql_connector_policy,
 )
 
 ZERO_HASH = "sha256:" + "0" * 64
+
+
+@dataclass(frozen=True)
+class LiveDatabase:
+    migration_dsn: str
+    app_dsn: str
+
+
+def env_or_skip(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        pytest.skip(f"{name} is not configured")
+    return value
+
+
+@pytest.fixture(scope="module")
+def live_database() -> LiveDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveDatabase(migration_dsn=migration_dsn, app_dsn=app_dsn)
+
+
+def normalized(sql: str) -> str:
+    return re.sub(r"\s+", " ", sql.lower()).strip()
 
 
 def test_legacy_sql_host_profile_release_gate_allows_only_confirmed_metadata_profile() -> None:
@@ -226,6 +263,118 @@ def test_legacy_sql_host_profile_release_gate_rejects_dsn_or_import_requests() -
         )
 
 
+def test_legacy_sql_host_profile_release_gate_jsonl_store_reloads_tenant_scoped_evidence(tmp_path: Path) -> None:
+    policy = load_legacy_sql_connector_policy(DEFAULT_CONNECTOR_POLICY_PATH)
+    policy_hash = build_legacy_sql_connector_policy_hash(policy)
+    gate = ready_gate(
+        tenant_id="tenant-host-gate-jsonl-store",
+        policy=policy,
+        policy_hash=policy_hash,
+        checked_at=datetime(2026, 6, 18, 8, tzinfo=UTC),
+    )
+    path = tmp_path / "legacy_sql_host_profile_gates.jsonl"
+    store = JsonlLegacySqlHostProfileReleaseGateEvidenceStore(path=path)
+
+    persisted = store.append(gate)
+    reloaded = JsonlLegacySqlHostProfileReleaseGateEvidenceStore(path=path)
+
+    assert persisted == gate
+    assert reloaded.get(tenant_id=gate.tenant_id, evidence_hash=gate.evidence_hash) == gate
+    assert reloaded.list_evidence(tenant_id=gate.tenant_id) == (gate,)
+    assert reloaded.list_evidence(tenant_id="tenant-other") == ()
+    with pytest.raises(ValueError, match="already exists"):
+        reloaded.append(gate)
+
+
+def test_legacy_sql_host_profile_release_gate_store_rejects_tampered_evidence() -> None:
+    policy = load_legacy_sql_connector_policy(DEFAULT_CONNECTOR_POLICY_PATH)
+    policy_hash = build_legacy_sql_connector_policy_hash(policy)
+    gate = ready_gate(
+        tenant_id="tenant-host-gate-tampered",
+        policy=policy,
+        policy_hash=policy_hash,
+        checked_at=datetime(2026, 6, 18, 8, tzinfo=UTC),
+    ).model_copy(update={"host_profile_activation_allowed": False})
+    store = InMemoryLegacySqlHostProfileReleaseGateEvidenceStore()
+
+    with pytest.raises(ValueError, match="evidence hash is invalid"):
+        store.append(gate)
+
+
+def test_pg_legacy_sql_host_profile_release_gate_store_is_tenant_scoped_append_only_and_metadata_only(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = os.urandom(4).hex()
+    tenant_id = f"tenant-host-gate-pg-{suffix}"
+    policy = load_legacy_sql_connector_policy(DEFAULT_CONNECTOR_POLICY_PATH)
+    policy_hash = build_legacy_sql_connector_policy_hash(policy)
+    gate = ready_gate(
+        tenant_id=tenant_id,
+        policy=policy,
+        policy_hash=policy_hash,
+        checked_at=datetime(2026, 6, 18, 8, tzinfo=UTC),
+    )
+    store = PgLegacySqlHostProfileReleaseGateEvidenceStore(database_dsn=live_database.app_dsn)
+
+    persisted = store.append(gate)
+
+    assert persisted == gate
+    assert store.get(tenant_id=tenant_id, evidence_hash=gate.evidence_hash) == gate
+    assert store.list_evidence(tenant_id=tenant_id) == (gate,)
+    assert store.list_evidence(tenant_id=f"tenant-other-{suffix}") == ()
+    assert gate.host_profile_activation_allowed is True
+    assert gate.metadata_worker_scheduling_allowed is True
+    assert gate.gate_status == LegacySqlHostProfileReleaseGateStatus.READY
+    gate_json = gate.model_dump_json()
+    assert "secret:legacy-sql-production-metadata" not in gate_json
+    assert "sqlserver://" not in gate_json
+
+    with pytest.raises(KeyError, match="not found"):
+        store.get(tenant_id=f"tenant-other-{suffix}", evidence_hash=gate.evidence_hash)
+    with pytest.raises(ValueError, match="already exists"):
+        store.append(gate)
+
+    with psycopg.connect(live_database.app_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+            connection.execute(
+                """
+                UPDATE collabio.legacy_sql_host_profile_release_gate_evidence
+                SET host_profile_activation_allowed = false
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, gate.evidence_hash),
+            )
+
+
+def test_legacy_sql_host_profile_release_gate_migration_declares_rls_append_only_and_metadata_boundary() -> None:
+    migration = get_migration("0035")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "crm_erp"
+    assert "create table if not exists collabio.legacy_sql_host_profile_release_gate_evidence" in sql
+    assert "legacy_sql_host_profile_release_gate.v1" in sql
+    assert "connection_secret_ref_hash" in sql
+    assert "real_connection_used boolean not null default false check (real_connection_used = false)" in sql
+    assert "raw_data_access_allowed boolean not null default false check (raw_data_access_allowed = false)" in sql
+    assert "import_dry_run_allowed boolean not null default false check (import_dry_run_allowed = false)" in sql
+    assert "import_write_allowed boolean not null default false check (import_write_allowed = false)" in sql
+    assert "destructive_actions_allowed boolean not null default false check" in sql
+    assert "alter table collabio.legacy_sql_host_profile_release_gate_evidence enable row level security" in sql
+    assert "alter table collabio.legacy_sql_host_profile_release_gate_evidence force row level security" in sql
+    assert "create policy legacy_sql_host_profile_release_gate_tenant_select" in sql
+    assert "create policy legacy_sql_host_profile_release_gate_tenant_insert" in sql
+    assert "create policy legacy_sql_host_profile_release_gate_no_update" in sql
+    assert "create policy legacy_sql_host_profile_release_gate_no_hard_delete" in sql
+    assert "grant select, insert on table collabio.legacy_sql_host_profile_release_gate_evidence to collabio_app" in sql
+    assert (
+        "grant select, insert on table collabio.legacy_sql_host_profile_release_gate_evidence to collabio_worker" in sql
+    )
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
+
+
 def approved_host_profile(*, policy_hash: str) -> LegacySqlApprovedHostProfile:
     return LegacySqlApprovedHostProfile(
         host_profile_ref="legacy-host:sqlserver-production-metadata",
@@ -296,6 +445,27 @@ def ready_ledger_operations_report(
         evidence_hash=ZERO_HASH,
     )
     return draft.model_copy(update={"evidence_hash": build_legacy_sql_evidence_ledger_operations_report_hash(draft)})
+
+
+def ready_gate(
+    *,
+    tenant_id: str,
+    policy: LegacySqlServerConnectorPolicy,
+    policy_hash: str,
+    checked_at: datetime,
+) -> LegacySqlHostProfileReleaseGateEvidence:
+    ledger_report = ready_ledger_operations_report(tenant_id=tenant_id, checked_at=checked_at)
+    return build_legacy_sql_host_profile_release_gate(
+        command=release_command(
+            tenant_id=tenant_id,
+            policy_hash=policy_hash,
+            ledger_report_hash=ledger_report.evidence_hash,
+        ),
+        host_profile=approved_host_profile(policy_hash=policy_hash),
+        connector_policy=policy,
+        ledger_operations_report=ledger_report,
+        evaluated_at_utc=checked_at + timedelta(hours=1),
+    )
 
 
 def ready_backend_result(
