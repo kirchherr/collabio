@@ -97,6 +97,11 @@ Das Gate erzeugt erst dann ein `LegacySqlServerMetadataDiscoveryCommand`, wenn R
 zusammenpassen. Blockiert werden insbesondere DSN-Werte, Rohdaten-/Sample-/Stored-Procedure-Body-Anfragen,
 Import-Dry-Runs, Import-Writes, destruktive Aktionen, Policy-Hash-Mismatch und Row-Count-Anfragen ohne Host-Freigabe.
 
+`docker compose run --rm legacy-sql-discovery-intake` operationalisiert dieses Gate als metadata-only Drill. Der Report
+`legacy_sql_discovery_intake_operations_report.v1` enthaelt Intake-Evidence-Hash, Status und einen Hash der redigierten
+Metadata-Worker-Command-Ansicht. Secret-Referenzen, DSN-Werte, echte Verbindungen, Import-Dry-Runs und Import-Writes
+bleiben ausserhalb des Reports und ausserhalb dieses Pfads.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

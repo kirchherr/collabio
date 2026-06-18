@@ -106,6 +106,17 @@ docker compose run --rm module-registry-drill
 
 The drill emits metadata-only `module_registry_operations_report.v1` evidence for seed/backfill/repair readiness, required migration versions, worker discovery, lifecycle audit event expectations, and module-registry backup artifacts.
 
+Run the Legacy SQL discovery intake drill before any real SQL metadata worker command is scheduled:
+
+```bash
+docker compose run --rm legacy-sql-discovery-intake
+```
+
+The drill emits metadata-only `legacy_sql_discovery_intake_operations_report.v1` evidence. It verifies that a
+tenant-scoped discovery request, approval reference, connector policy hash, and approved host profile can produce a
+redacted metadata-worker command view. The report includes the intake evidence hash and redacted command hash, but no
+Secret reference, DSN, real connection execution, import dry-run, import write, raw data import, or destructive action.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash
@@ -152,13 +163,14 @@ Monthly for active development and before every production-readiness milestone:
 1. Run `docker compose run --rm backup`.
 2. Run `docker compose run --rm backup-verify`.
 3. Run `docker compose run --rm module-registry-drill`.
-4. Before CRM/ERP Legacy SQL migration readiness claims, run `docker compose run --rm legacy-sql-readiness-smoke`.
-5. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
-6. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
-7. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-8. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL readiness smoke report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
-9. For production, restore into an isolated environment and run the domain-specific checks from the policy.
-10. Update the policy and this runbook when the restore path changes.
+4. Before CRM/ERP Legacy SQL metadata worker scheduling, run `docker compose run --rm legacy-sql-discovery-intake`.
+5. Before CRM/ERP Legacy SQL migration readiness claims, run `docker compose run --rm legacy-sql-readiness-smoke`.
+6. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
+7. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
+8. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
+9. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+10. For production, restore into an isolated environment and run the domain-specific checks from the policy.
+11. Update the policy and this runbook when the restore path changes.
 
 Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, cryptoshred manifest hash when present, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 
