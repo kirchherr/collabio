@@ -169,10 +169,21 @@ frischen Queue-Job, leased ihn, validiert ihn im Offline-Consumer und beweist zu
 abgelaufene Jobs blockiert werden. Der Report `legacy_sql_metadata_worker_lease_consumer_smoke_report.v1` ist damit der
 naechste Nachweis vor einem spaeteren echten Connector-Sandbox-Profil.
 
+`app/suite/platform/legacy_sql_connector_sandbox_profile.py` modelliert dieses spaetere Connector-Sandbox-Profil
+bewusst default-off. Aus einer validierten `legacy_sql_metadata_worker_lease_consumer_activation.v1` entsteht nur
+`legacy_sql_connector_sandbox_profile.v1`: sichtbar hinter Release-Gate, Queue-Lease und Consumer-Activation, aber
+weiterhin ausgeschaltet. Netzwerkprofil, Secret-Resolver-Profil und Audit-Profil werden nur als Handles referenziert.
+Secret-Materialisierung, Egress-Materialisierung, echte Verbindung, Rohdatenzugriff, Import-Dry-Run, Import-Write und
+destruktive Aktionen bleiben `false`.
+
+`docker compose run --rm legacy-sql-connector-sandbox-profile-smoke` beweist das Profil. Der Smoke erzeugt die komplette
+Evidence-Kette bis zur Consumer-Activation, baut daraus ein default-off Sandbox-Profil und beweist, dass blocked
+Activation-Evidence sowie direkte Profil-Aktivierung abgelehnt werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein default-off Connector-Sandbox-Profil fuer den spaeteren realen Legacy-Host-Zugriff.
-Es darf nur hinter Release-Gate, Queue-Lease und Lease-Consumer-Activation sichtbar werden; echte Verbindung, Rohdaten,
+Der naechste technische Schritt ist ein Enablement-Gate fuer dieses Sandbox-Profil. Es darf spaeter nur mit expliziter
+menschlicher Freigabe, Provider-Attestation und Restore-Evidence ueberhaupt echte Konnektivitaet vorbereiten; Rohdaten,
 Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.

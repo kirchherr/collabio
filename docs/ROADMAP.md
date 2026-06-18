@@ -1309,7 +1309,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 128. [x] Legacy-SQL-Host-Profile-Adapter-Skeleton vorbereiten: Persistierte Ready-Gate-Evidence tenant-sicher laden, Secret-/Egress-Handles nur an metadata-only Worker-Scheduling binden und weiterhin keine echte Netzwerkverbindung im Default-Compose oeffnen.
 129. [x] Legacy-SQL-Metadata-Worker-Scheduling-Queue vorbereiten: Schedule-Evidence tenant-sicher und idempotent persistieren, Worker-Lease/Retry/Restore-Evidence modellieren und weiterhin keine echte Legacy-Verbindung im Default-Compose oeffnen.
 130. [x] Legacy-SQL-Metadata-Worker-Lease-Consumer-Skeleton vorbereiten: geleaste Queue-Jobs in einem isolierten Offline-Runner validieren, Secret-/Egress-Aufloesung weiterhin nur als Handle pruefen und echte Legacy-Verbindung weiter gesperrt lassen.
-131. [ ] Legacy-SQL-Connector-Sandbox-Profil vorbereiten: default-off Netzwerk-/Secret-Handle-Profil fuer spaetere reale Legacy-Host-Konnektivitaet modellieren, nur hinter Release-Gate, Queue-Lease und Consumer-Activation sichtbar machen und Rohdaten/Import weiterhin blockieren.
+131. [x] Legacy-SQL-Connector-Sandbox-Profil vorbereiten: default-off Netzwerk-/Secret-Handle-Profil fuer spaetere reale Legacy-Host-Konnektivitaet modellieren, nur hinter Release-Gate, Queue-Lease und Consumer-Activation sichtbar machen und Rohdaten/Import weiterhin blockieren.
+132. [ ] Legacy-SQL-Connector-Sandbox-Enablement-Gate vorbereiten: explizite menschliche Freigabe, Provider-Attestation, Restore-Evidence und Sandbox-Profil-Hash als hartes Gate fuer spaetere echte Verbindungsversuche modellieren; Raw Data, Import-Dry-Run und Import-Write bleiben getrennt blockiert.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
