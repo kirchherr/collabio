@@ -128,6 +128,19 @@ The intake and readiness drills can append their report hashes to this ledger by
 keeps stdout reports unchanged and persists only hashes plus metadata-only status fields, so restore drills can bind
 ledger entries back to the exact report hash chain without storing legacy data.
 
+Run the Legacy SQL evidence ledger backend drill before real Legacy SQL host profiles are approved:
+
+```bash
+docker compose run --rm legacy-sql-evidence-ledger-drill
+```
+
+The drill emits metadata-only `legacy_sql_evidence_ledger_operations_report.v1` evidence. It writes intake and readiness
+report hashes through the JSONL and PostgreSQL ledger backends, reloads entries by tenant, checks restore-evidence hash
+binding, rejects duplicate appends, verifies tenant isolation, and keeps real connections, import dry-runs, import writes,
+raw SQL rows, and destructive actions outside the path. Its report hash is the release/restore precondition for enabling
+real Legacy SQL host profiles later. The Legacy SQL evidence ledger operations report hash must be retained with restore
+evidence.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash

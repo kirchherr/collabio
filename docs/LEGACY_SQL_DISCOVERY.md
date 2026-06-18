@@ -119,6 +119,12 @@ gesetzt werden; dann sind zusaetzlich `SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_
 Postgres erforderlich. Ohne diesen Schalter bleiben die Reports reine stdout-Evidence, mit Schalter werden nur Report-,
 Intake-, Command-, Discovery-, Mapping- und Readiness-Hashes persistiert.
 
+`docker compose run --rm legacy-sql-evidence-ledger-drill` operationalisiert den JSONL- und PostgreSQL-Schreibpfad als
+metadata-only Restore-Nachweis. Der Drill schreibt die Intake- und Readiness-Report-Hashes, laedt sie tenant-scoped
+wieder, prueft Restore-Hash-Bindung, Tenant-Isolation und Duplicate-Append-Sperre und erzeugt
+`legacy_sql_evidence_ledger_operations_report.v1`. Erst ein gruener Report ist die technische Vorbedingung fuer echte
+Legacy-Host-Profile; er oeffnet selbst keine reale Verbindung.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

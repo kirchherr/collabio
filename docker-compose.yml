@@ -176,6 +176,34 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  legacy-sql-evidence-ledger-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_evidence_ledger_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-evidence-ledger-drill-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
   kb-runtime-reconciler:
     build:
       context: .
