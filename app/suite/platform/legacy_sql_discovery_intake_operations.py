@@ -100,8 +100,8 @@ def build_legacy_sql_discovery_intake_operations_report(
     checked_by: str = "legacy-sql-discovery-intake",
 ) -> LegacySqlDiscoveryIntakeOperationsReport:
     result = LegacySqlDiscoveryIntakeGate().evaluate(request=request, host_profile=host_profile)
-    command_view = _command_view(result.command)
-    command_hash = _command_hash(result.command)
+    command_view = build_legacy_sql_metadata_worker_command_view(result.command)
+    command_hash = build_legacy_sql_metadata_worker_command_hash(result.command)
     report_passed = (
         result.evidence.status == LegacySqlDiscoveryIntakeStatus.READY_FOR_METADATA_WORKER
         and result.command is not None
@@ -207,7 +207,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     raise SystemExit(exit_code_for_report(report))
 
 
-def _command_view(
+def build_legacy_sql_metadata_worker_command_view(
     command: LegacySqlServerMetadataDiscoveryCommand | None,
 ) -> LegacySqlMetadataWorkerCommandView | None:
     if command is None:
@@ -225,8 +225,10 @@ def _command_view(
     )
 
 
-def _command_hash(command: LegacySqlServerMetadataDiscoveryCommand | None) -> str | None:
-    view = _command_view(command)
+def build_legacy_sql_metadata_worker_command_hash(
+    command: LegacySqlServerMetadataDiscoveryCommand | None,
+) -> str | None:
+    view = build_legacy_sql_metadata_worker_command_view(command)
     if view is None:
         return None
     return stable_hash(canonical_json(view.model_dump(mode="json")))

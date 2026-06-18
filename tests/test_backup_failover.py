@@ -84,6 +84,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm legacy-sql-readiness-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-evidence-ledger-drill" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-host-profile-release-gate-smoke" in postgres.current_dev_commands
+    assert "docker compose run --rm legacy-sql-host-profile-adapter-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -241,12 +242,15 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm legacy-sql-readiness-smoke" in runbook
     assert "docker compose run --rm legacy-sql-evidence-ledger-drill" in runbook
     assert "docker compose run --rm legacy-sql-host-profile-release-gate-smoke" in runbook
+    assert "docker compose run --rm legacy-sql-host-profile-adapter-smoke" in runbook
     assert "module_registry_operations_report.v1" in runbook
     assert "legacy_sql_discovery_intake_operations_report.v1" in runbook
     assert "legacy_sql_evidence_ledger_entry.v1" in runbook
     assert "legacy_sql_evidence_ledger_operations_report.v1" in runbook
     assert "legacy_sql_host_profile_release_gate.v1" in runbook
     assert "legacy_sql_host_profile_release_gate_smoke_report.v1" in runbook
+    assert "legacy_sql_host_profile_adapter_schedule.v1" in runbook
+    assert "legacy_sql_host_profile_adapter_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -303,6 +307,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "\n  legacy-sql-readiness-smoke:\n" in compose
     assert "\n  legacy-sql-evidence-ledger-drill:\n" in compose
     assert "\n  legacy-sql-host-profile-release-gate-smoke:\n" in compose
+    assert "\n  legacy-sql-host-profile-adapter-smoke:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
@@ -311,6 +316,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_readiness_smoke --once" in compose
     assert "python -m suite.platform.legacy_sql_evidence_ledger_operations --once" in compose
     assert "python -m suite.platform.legacy_sql_host_profile_release_gate_smoke --once" in compose
+    assert "python -m suite.platform.legacy_sql_host_profile_adapter --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose

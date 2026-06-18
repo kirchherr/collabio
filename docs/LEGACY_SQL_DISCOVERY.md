@@ -139,10 +139,17 @@ PostgreSQL-Store und prueft, dass nur die ready Evidence den Wiring-Guard passie
 Host-Profil-Adapter nicht nur die Modelllogik, sondern auch Persistenz, Tenant-Isolation, Restore-Evidence-Anbindung und
 Blocked-Path-Verhalten nachgewiesen.
 
+`app/suite/platform/legacy_sql_host_profile_adapter.py` ist der erste Adapter-Skeleton hinter diesem Gate. Er laedt die
+persistierte Gate-Evidence tenant-scoped, prueft Host-Profil, Connector-Policy, Egress-Ref, Fingerprint und gehashte
+Secret-Ref-Bindung und erzeugt nur `legacy_sql_host_profile_adapter_schedule.v1`. Diese Evidence enthaelt eine
+redigierte Metadata-Worker-Command-Ansicht und einen Command-Hash, aber keine Secret-Ref, keine DSN, keine Rohdaten und
+keine Import-Freigabe. `docker compose run --rm legacy-sql-host-profile-adapter-smoke` beweist zusaetzlich, dass eine
+blocked Gate-Evidence nicht planbar ist und der Default-Compose-Pfad keine Legacy-SQL-Netzwerkverbindung oeffnet.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein echter Host-Profile-Adapter-Skeleton hinter dem Release-Gate. Er darf nur die
-persistierte ready Evidence, Secret-/Egress-Handles und metadata-only Worker-Scheduling vorbereiten; echte Verbindung,
-Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.
+Der naechste technische Schritt ist eine tenant-sichere Scheduling-Queue fuer diese Schedule-Evidence. Sie darf nur
+hashbare, redigierte Scheduling-Jobs halten; echte Verbindung, Rohdaten, Import-Dry-Run und Import-Writes bleiben
+weiterhin getrennte spaetere Gates.

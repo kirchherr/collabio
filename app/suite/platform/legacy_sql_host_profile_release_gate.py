@@ -658,6 +658,10 @@ def legacy_sql_host_profile_release_gate_ref(evidence: LegacySqlHostProfileRelea
     return f"{LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_REF_PREFIX}:{evidence.evidence_hash}"
 
 
+def legacy_sql_connection_secret_ref_hash(connection_secret_ref: str) -> str:
+    return _connection_secret_ref_hash(connection_secret_ref)
+
+
 def build_default_legacy_sql_host_profile_release_gate_evidence_store(
     data_dir: Path | None = None,
     environ: Mapping[str, str] | None = None,

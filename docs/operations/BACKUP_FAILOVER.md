@@ -153,6 +153,17 @@ PostgreSQL/RLS-backed release-gate store. The ready path must pass the wiring gu
 The report and stored gate evidence contain no DSN, raw SQL rows, table data, Secret reference, import payload, or
 destructive action payload. A real host-profile adapter may only be prepared after this smoke is green.
 
+Run the Legacy SQL host-profile adapter smoke before a metadata worker queue or real host-network profile is connected:
+
+```bash
+docker compose run --rm legacy-sql-host-profile-adapter-smoke
+```
+
+The smoke emits metadata-only `legacy_sql_host_profile_adapter_smoke_report.v1` evidence. It loads persisted ready
+release-gate evidence tenant-scoped, binds the approved egress reference and hashed Secret reference to a redacted
+metadata-worker command view, proves the blocked gate cannot be scheduled, and keeps the default Compose path from
+opening any Legacy SQL network connection. The schedule evidence is `legacy_sql_host_profile_adapter_schedule.v1`.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash
@@ -202,12 +213,13 @@ Monthly for active development and before every production-readiness milestone:
 4. Before CRM/ERP Legacy SQL metadata worker scheduling, run `docker compose run --rm legacy-sql-discovery-intake`.
 5. Before CRM/ERP Legacy SQL migration readiness claims, run `docker compose run --rm legacy-sql-readiness-smoke`.
 6. Before CRM/ERP Legacy SQL host-profile adapters are prepared, run `docker compose run --rm legacy-sql-host-profile-release-gate-smoke`.
-7. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
-8. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
-9. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-10. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
-11. For production, restore into an isolated environment and run the domain-specific checks from the policy.
-12. Update the policy and this runbook when the restore path changes.
+7. Before CRM/ERP Legacy SQL metadata-worker scheduling is wired, run `docker compose run --rm legacy-sql-host-profile-adapter-smoke`.
+8. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
+9. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
+10. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
+11. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+12. For production, restore into an isolated environment and run the domain-specific checks from the policy.
+13. Update the policy and this runbook when the restore path changes.
 
 Object-storage restore evidence must include the verifier context, expected content hash, actual content hash, byte length, source object version, storage manifest hash, envelope manifest hash, retention manifest hash, cryptoshred manifest hash when present, restore drill report hash, object version ID, bucket profile, object-lock state, legal-hold state, KMS evidence hash, rotation evidence hash when present, and source manifest hash result before data is served to office, mail, parser, search, RAG, or e-discovery flows.
 
