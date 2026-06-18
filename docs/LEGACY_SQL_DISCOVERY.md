@@ -80,6 +80,12 @@ Das Manifest enthaelt Zielobjekt, Feature-Gate, Data Class, Retention Policy, Qu
 zu einem Dry-Run-Gate zusammen. Nur eine konsistente Evidence-Kette ohne Quarantaene- oder `legacy.row`-Blocker wird als
 `ready_for_dry_run` markiert; alle anderen Zustaende bleiben manuell reviewpflichtig oder hart blockiert.
 
+`docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
+aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
+bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-
+Korrektur erlaubt ausschliesslich metadata-only Dry-Run. Der Report enthaelt keine Tabellen-/Spaltennamen,
+Secret-Referenzen oder Rohdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.

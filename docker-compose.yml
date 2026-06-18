@@ -138,6 +138,25 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  legacy-sql-readiness-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_readiness_smoke --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
   kb-runtime-reconciler:
     build:
       context: .
