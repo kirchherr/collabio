@@ -203,11 +203,23 @@ erzeugt die komplette Evidence-Kette bis zum Sandbox-Profil, validiert die drei 
 nachgelagerte Enablement-Gate-Akzeptanz und beweist zusaetzlich, dass Netzwerkprofil-Mismatch, Secret-Material-Anfragen
 und manipulierte Sandbox-Profil-Hashes blockiert werden.
 
+`app/suite/platform/legacy_sql_connector_connection_preflight_gate.py` ist das letzte No-Secret/No-Socket-Gate vor
+spaeteren echten Verbindungsversuchen. Es bindet Enablement-Gate, Provider-Attestation-Adapter, Restore-Evidence und
+`legacy_sql_connector_operator_context.v1` zusammen. Der Operator-Kontext enthaelt Operator-Ref, Rolle,
+Change-Request, Maintenance-Window, Approval-Referenz, Audit-Chain-Ref, Autorisierung, MFA-Status und Compliance-
+Fenster. Das Ergebnis `legacy_sql_connector_connection_attempt_preflight_gate.v1` darf nur die Vorflugreife fuer einen
+spaeteren Real-Connection-Executor belegen; Secret-Aufloesung, Netzwerk-Socket, Rohdatenzugriff, Import-Dry-Run,
+Import-Write und destruktive Aktionen bleiben gesperrt.
+
+`docker compose run --rm legacy-sql-connector-connection-preflight-gate-smoke` beweist diesen Vertrag. Der Smoke erzeugt
+die komplette Evidence-Kette bis Provider-Attestation und Enablement-Gate, baut den Operator-Kontext, erzeugt das
+Preflight-Gate und beweist, dass fehlende MFA, Secret-Material-Anfragen und manipulierte Enablement-Gate-Hashes
+blockiert werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein Connection-Attempt-Preflight-Gate. Es darf Enablement-Gate, Provider-
-Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor
-spaeter echte Verbindungsversuche implementiert werden. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin
-getrennte spaetere Gates.
+Der naechste technische Schritt ist ein Real-Connection-Executor-Skeleton. Er darf erst hinter dem Preflight-Gate
+entstehen und muss zunaechst weiterhin als nicht-ausfuehrender Contract modelliert werden, bevor ein echter Socket
+ueberhaupt implementiert wird. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.

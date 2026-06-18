@@ -78,6 +78,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legacy_sql_connector_sandbox_profile_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_sandbox_enablement_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_provider_attestation_adapter_smoke_report_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_connector_connection_preflight_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -98,6 +99,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm legacy-sql-connector-provider-attestation-adapter-smoke" in (
         postgres.current_dev_commands
     )
+    assert "docker compose run --rm legacy-sql-connector-connection-preflight-gate-smoke" in (
+        postgres.current_dev_commands
+    )
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -114,6 +118,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL connector sandbox profile hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector sandbox enablement gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector provider attestation adapter hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL connector connection preflight gate hashes" in crm_erp.state_artifacts
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -245,6 +250,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         "Legacy SQL connector provider attestation adapter evidence"
         in policy.domain("background_jobs_queues").state_artifacts
     )
+    assert (
+        "Legacy SQL connector connection preflight gate evidence"
+        in policy.domain("background_jobs_queues").state_artifacts
+    )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
@@ -280,6 +289,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
         "Legacy SQL connector provider attestation adapter smoke report hash when applicable"
         in policy.restore_drill_evidence
     )
+    assert (
+        "Legacy SQL connector connection preflight gate smoke report hash when applicable"
+        in policy.restore_drill_evidence
+    )
     assert "module lifecycle audit event metadata for module_registry_state" in policy.restore_drill_evidence
     assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
     assert "module registry seed, backfill, repair, or worker discovery drill fails" in policy.incident_triggers
@@ -303,6 +316,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm legacy-sql-connector-sandbox-profile-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-sandbox-enablement-gate-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-provider-attestation-adapter-smoke" in runbook
+    assert "docker compose run --rm legacy-sql-connector-connection-preflight-gate-smoke" in runbook
     assert "module_registry_operations_report.v1" in runbook
     assert "legacy_sql_discovery_intake_operations_report.v1" in runbook
     assert "legacy_sql_evidence_ledger_entry.v1" in runbook
@@ -325,6 +339,9 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_connector_provider_audit_profile.v1" in runbook
     assert "legacy_sql_connector_provider_attestation_adapter.v1" in runbook
     assert "legacy_sql_connector_provider_attestation_adapter_smoke_report.v1" in runbook
+    assert "legacy_sql_connector_operator_context.v1" in runbook
+    assert "legacy_sql_connector_connection_attempt_preflight_gate.v1" in runbook
+    assert "legacy_sql_connector_connection_attempt_preflight_gate_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -354,6 +371,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL connector sandbox profile smoke report hash" in runbook
     assert "Legacy SQL connector sandbox enablement gate smoke report hash" in runbook
     assert "Legacy SQL connector provider attestation adapter smoke report hash" in runbook
+    assert "Legacy SQL connector connection preflight gate smoke report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
@@ -392,6 +410,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "\n  legacy-sql-connector-sandbox-profile-smoke:\n" in compose
     assert "\n  legacy-sql-connector-sandbox-enablement-gate-smoke:\n" in compose
     assert "\n  legacy-sql-connector-provider-attestation-adapter-smoke:\n" in compose
+    assert "\n  legacy-sql-connector-connection-preflight-gate-smoke:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
@@ -406,6 +425,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_sandbox_profile --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_sandbox_enablement_gate --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_provider_attestation_adapter --once" in compose
+    assert "python -m suite.platform.legacy_sql_connector_connection_preflight_gate --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
