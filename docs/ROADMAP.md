@@ -1311,7 +1311,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 130. [x] Legacy-SQL-Metadata-Worker-Lease-Consumer-Skeleton vorbereiten: geleaste Queue-Jobs in einem isolierten Offline-Runner validieren, Secret-/Egress-Aufloesung weiterhin nur als Handle pruefen und echte Legacy-Verbindung weiter gesperrt lassen.
 131. [x] Legacy-SQL-Connector-Sandbox-Profil vorbereiten: default-off Netzwerk-/Secret-Handle-Profil fuer spaetere reale Legacy-Host-Konnektivitaet modellieren, nur hinter Release-Gate, Queue-Lease und Consumer-Activation sichtbar machen und Rohdaten/Import weiterhin blockieren.
 132. [x] Legacy-SQL-Connector-Sandbox-Enablement-Gate vorbereiten: explizite menschliche Freigabe, Provider-Attestation, Restore-Evidence und Sandbox-Profil-Hash als hartes Gate fuer spaetere echte Verbindungsversuche modellieren; Raw Data, Import-Dry-Run und Import-Write bleiben getrennt blockiert.
-133. [ ] Legacy-SQL-Connector-Provider-Attestation-Adapter vorbereiten: Netzwerk-, Secret-Resolver- und Audit-Provider-Handles gegen echte Deployment-Profile validieren, aber weiterhin keine Verbindung oeffnen und kein Secret-Material aufloesen.
+133. [x] Legacy-SQL-Connector-Provider-Attestation-Adapter vorbereiten: Netzwerk-, Secret-Resolver- und Audit-Provider-Handles gegen echte Deployment-Profile validieren, aber weiterhin keine Verbindung oeffnen und kein Secret-Material aufloesen.
+134. [ ] Legacy-SQL-Connector-Connection-Attempt-Preflight-Gate vorbereiten: Enablement-Gate, Provider-Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor spaeter echte Verbindungsversuche implementiert werden.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

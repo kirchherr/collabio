@@ -191,11 +191,23 @@ Import-Dry-Run, Import-Write und destruktive Aktionen bleiben `false`.
 die komplette Evidence-Kette bis zum Sandbox-Profil, baut Provider-Attestation und Enablement-Gate und beweist, dass
 fehlende Human Confirmation, Import-Dry-Run-Anfragen und manipulierte Sandbox-Profil-Hashes blockiert werden.
 
+`app/suite/platform/legacy_sql_connector_provider_attestation_adapter.py` ist der erste Adapter fuer echte
+Deployment-Profile hinter diesem Gate. Er validiert `legacy_sql_connector_provider_network_profile.v1`,
+`legacy_sql_connector_provider_secret_resolver_profile.v1` und `legacy_sql_connector_provider_audit_profile.v1` gegen
+das default-off Sandbox-Profil. Daraus entsteht `legacy_sql_connector_provider_attestation_adapter.v1` plus eine
+Provider-Attestation, die das Enablement-Gate akzeptieren kann. Der Adapter oeffnet keine Verbindung, loest kein
+Secret-Material auf und erlaubt weiterhin keinen Rohdatenzugriff, keinen Import-Dry-Run und keinen Import-Write.
+
+`docker compose run --rm legacy-sql-connector-provider-attestation-adapter-smoke` beweist diesen Vertrag. Der Smoke
+erzeugt die komplette Evidence-Kette bis zum Sandbox-Profil, validiert die drei Deployment-Profile, prueft die
+nachgelagerte Enablement-Gate-Akzeptanz und beweist zusaetzlich, dass Netzwerkprofil-Mismatch, Secret-Material-Anfragen
+und manipulierte Sandbox-Profil-Hashes blockiert werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein Provider-Attestation-Adapter fuer echte Infrastruktur-Handles. Er muss Netzwerk-,
-Secret-Resolver- und Audit-Provider gegen konkrete Deployment-Profile validieren, aber weiterhin keine Verbindung
-oeffnen und kein Secret-Material an die Gate-Schicht geben. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin
+Der naechste technische Schritt ist ein Connection-Attempt-Preflight-Gate. Es darf Enablement-Gate, Provider-
+Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor
+spaeter echte Verbindungsversuche implementiert werden. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin
 getrennte spaetere Gates.
