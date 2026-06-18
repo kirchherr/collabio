@@ -180,10 +180,22 @@ destruktive Aktionen bleiben `false`.
 Evidence-Kette bis zur Consumer-Activation, baut daraus ein default-off Sandbox-Profil und beweist, dass blocked
 Activation-Evidence sowie direkte Profil-Aktivierung abgelehnt werden.
 
+`app/suite/platform/legacy_sql_connector_sandbox_enablement_gate.py` legt darueber das Enablement-Gate fuer spaetere
+echte Verbindungsversuche. Das Gate akzeptiert nur ein gueltiges default-off
+`legacy_sql_connector_sandbox_profile.v1`, eine `legacy_sql_connector_sandbox_provider_attestation.v1`, explizite
+menschliche Bestaetigung und einen Restore-Evidence-Hash. Es erlaubt ausschliesslich Control-Plane-Vorbereitung fuer ein
+spaeteres Real-Connection-Gate; Secret-Materialisierung, Egress-Materialisierung, echte Verbindung, Rohdatenzugriff,
+Import-Dry-Run, Import-Write und destruktive Aktionen bleiben `false`.
+
+`docker compose run --rm legacy-sql-connector-sandbox-enablement-gate-smoke` beweist diesen Vertrag. Der Smoke erzeugt
+die komplette Evidence-Kette bis zum Sandbox-Profil, baut Provider-Attestation und Enablement-Gate und beweist, dass
+fehlende Human Confirmation, Import-Dry-Run-Anfragen und manipulierte Sandbox-Profil-Hashes blockiert werden.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein Enablement-Gate fuer dieses Sandbox-Profil. Es darf spaeter nur mit expliziter
-menschlicher Freigabe, Provider-Attestation und Restore-Evidence ueberhaupt echte Konnektivitaet vorbereiten; Rohdaten,
-Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.
+Der naechste technische Schritt ist ein Provider-Attestation-Adapter fuer echte Infrastruktur-Handles. Er muss Netzwerk-,
+Secret-Resolver- und Audit-Provider gegen konkrete Deployment-Profile validieren, aber weiterhin keine Verbindung
+oeffnen und kein Secret-Material an die Gate-Schicht geben. Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin
+getrennte spaetere Gates.
