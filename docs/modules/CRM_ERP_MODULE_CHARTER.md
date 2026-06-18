@@ -173,6 +173,8 @@ SQL Server
 legacy discovery manifest
   -> mapping evidence
 crm_erp_legacy.*
+  -> import readiness evidence
+dry-run gate
   -> dry-run validation
 crm.* / erp.*
   -> transform
@@ -188,6 +190,7 @@ Migration evidence must include:
 - source table row counts
 - discovery manifest hash
 - mapping manifest hash
+- import readiness hash and status
 - quarantine decisions and `legacy.row` fallbacks
 - target table row counts
 - source checksums where possible

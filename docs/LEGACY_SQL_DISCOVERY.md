@@ -53,10 +53,15 @@ Ein Import darf erst starten, wenn folgende Evidenz vorliegt:
 - Import-Evidence-Plan mit Quarantaene-Liste.
 - Mapping-Entscheidung fuer jede Tabelle oder bewusstes `legacy.row`-Fallback.
 - CRM/ERP-Mapping-Manifest mit Zielobjekt, Feature-Gate, Klassifikation und Retention Policy pro Tabelle.
+- Legacy-Import-Readiness-Evidence mit Discovery-, Import-Plan- und Mapping-Hash.
 - Dry-Run-Report mit Row Counts, Checksums, Validierungsfehlern und Audit-Referenz.
 - Human Approval fuer produktive Migration.
 
-Rohdatenimport, destruktive Aktionen und automatische Zielobjektanlage bleiben default-off. Dieser Default gilt auch fuer spaetere Module wie Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
+Die Readiness-Evidence darf nur einen metadata-only Dry Run erlauben. Quarantaene-Tabellen, `legacy.row`-Fallbacks
+oder eine gebrochene Hash-Kette blockieren den Dry Run bis zur manuellen Mapping-Klaerung.
+
+Rohdatenimport, produktive Import-Writes, destruktive Aktionen und automatische Zielobjektanlage bleiben default-off.
+Dieser Default gilt auch fuer spaetere Module wie Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
 ## CRM/ERP-Mapping-Evidence
 
@@ -70,6 +75,10 @@ Jede Tabelle erhaelt eine Entscheidung:
 - `defer`: bewusst vertagt, aber weiterhin als `legacy.row` nachvollziehbar.
 
 Das Manifest enthaelt Zielobjekt, Feature-Gate, Data Class, Retention Policy, Quarantaene-Status, Approval-Referenz und Hash. Es erlaubt weiterhin keinen Rohdatenimport und keine destruktiven Aktionen.
+
+`build_crm_erp_legacy_import_readiness_evidence` fasst Discovery-Manifest, Import-Evidence-Plan und Mapping-Manifest
+zu einem Dry-Run-Gate zusammen. Nur eine konsistente Evidence-Kette ohne Quarantaene- oder `legacy.row`-Blocker wird als
+`ready_for_dry_run` markiert; alle anderen Zustaende bleiben manuell reviewpflichtig oder hart blockiert.
 
 ## Zukunftssichere Erweiterung
 

@@ -4,10 +4,12 @@ import pytest
 
 from suite.ai_control_plane.models import DataClass
 from suite.platform.crm_erp_legacy_mapping import (
+    CrmErpLegacyImportReadinessStatus,
     CrmErpLegacyMappingAction,
     CrmErpLegacyMappingEvidenceError,
     CrmErpLegacyMappingEvidenceService,
     CrmErpLegacyMappingOverride,
+    build_crm_erp_legacy_import_readiness_evidence,
     default_crm_erp_target_profiles,
 )
 from suite.platform.legacy_sql_discovery import (
@@ -146,6 +148,93 @@ def test_crm_erp_mapping_override_can_promote_quarantined_table_with_approval() 
     assert mapping.quarantine_table_refs == ()
     assert mapping.legacy_row_table_refs == ()
     assert mapping.target_object_counts == {"crm.account": 1, "crm.contact": 1}
+
+
+def test_crm_erp_import_readiness_requires_manual_mapping_for_quarantined_legacy_rows() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(discovery_manifest=manifest, import_evidence_plan=plan)
+
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+
+    assert readiness.schema_version == "crm_erp_legacy_import_readiness.v1"
+    assert readiness.status == CrmErpLegacyImportReadinessStatus.MANUAL_MAPPING_REQUIRED
+    assert not readiness.dry_run_allowed
+    assert not readiness.import_write_allowed
+    assert not readiness.raw_data_import_allowed
+    assert not readiness.destructive_actions_allowed
+    assert readiness.table_count == 2
+    assert readiness.candidate_count == 2
+    assert readiness.target_mapping_count == 1
+    assert readiness.quarantine_table_count == 1
+    assert readiness.legacy_row_table_count == 1
+    assert readiness.manual_review_required
+    assert "quarantine_tables_require_manual_mapping" in readiness.blocking_reasons
+    assert "legacy_row_fallbacks_require_mapping_review" in readiness.blocking_reasons
+    assert readiness.evidence_hash.startswith("sha256:")
+    assert "KundenId" not in readiness.model_dump_json()
+    assert "Email" not in readiness.model_dump_json()
+
+
+def test_crm_erp_import_readiness_allows_metadata_dry_run_after_approved_mapping_override() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        overrides=(
+            CrmErpLegacyMappingOverride(
+                source_table_ref="dbo.FreieTabelle",
+                action=CrmErpLegacyMappingAction.MAP_TO_TARGET,
+                target_object_type="crm.contact",
+                mapping_reason="manual schema review identified contact table",
+                approval_reference="approval:legacy-mapping-freie-tabelle",
+            ),
+        ),
+    )
+
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+
+    assert readiness.status == CrmErpLegacyImportReadinessStatus.READY_FOR_DRY_RUN
+    assert readiness.dry_run_allowed
+    assert readiness.dry_run_required
+    assert readiness.manual_review_required
+    assert not readiness.import_write_allowed
+    assert not readiness.raw_data_import_allowed
+    assert readiness.blocking_reasons == ()
+    assert readiness.target_mapping_count == 2
+    assert readiness.quarantine_table_count == 0
+    assert readiness.legacy_row_table_count == 0
+    assert "run metadata-only legacy import dry-run validation" in readiness.next_actions
+
+
+def test_crm_erp_import_readiness_blocks_mismatched_mapping_manifest() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+    ).model_copy(update={"import_evidence_plan_hash": "sha256:other"})
+
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+
+    assert readiness.status == CrmErpLegacyImportReadinessStatus.BLOCKED
+    assert not readiness.dry_run_allowed
+    assert "mapping_manifest_import_plan_hash_mismatch" in readiness.blocking_reasons
+    assert "mapping_manifest_hash_invalid" in readiness.blocking_reasons
+    assert "repair legacy SQL evidence chain before dry-run" in readiness.next_actions
 
 
 def test_crm_erp_mapping_rejects_quarantined_target_override_without_approval() -> None:
