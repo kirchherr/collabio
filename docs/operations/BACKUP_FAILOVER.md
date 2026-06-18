@@ -176,6 +176,17 @@ The drill emits metadata-only `legacy_sql_metadata_worker_queue_operations_repor
 evidence with restore-hash binding, verifies tenant isolation, and keeps the default Compose path from opening any
 Legacy SQL network connection. The persistent table is `collabio.legacy_sql_metadata_worker_queue`.
 
+Run the Legacy SQL metadata worker lease-consumer smoke before any real connector sandbox profile is enabled:
+
+```bash
+docker compose run --rm legacy-sql-metadata-worker-lease-consumer-smoke
+```
+
+The smoke emits metadata-only `legacy_sql_metadata_worker_lease_consumer_smoke_report.v1` evidence. It acquires a
+tenant-scoped queue lease, validates `legacy_sql_metadata_worker_lease_consumer_activation.v1` evidence, rejects queued
+or expired jobs, verifies egress/Secret/Fingerprint handles as handles only, and keeps Secret material resolution,
+Legacy SQL network connections, raw data reads, import dry-runs, import writes, and destructive actions disabled.
+
 Run the Legacy SQL readiness smoke before real SQL connections, import dry-runs, or CRM/ERP migration readiness claims:
 
 ```bash
@@ -227,10 +238,11 @@ Monthly for active development and before every production-readiness milestone:
 6. Before CRM/ERP Legacy SQL host-profile adapters are prepared, run `docker compose run --rm legacy-sql-host-profile-release-gate-smoke`.
 7. Before CRM/ERP Legacy SQL metadata-worker scheduling is wired, run `docker compose run --rm legacy-sql-host-profile-adapter-smoke`.
 8. Before CRM/ERP Legacy SQL metadata-worker leases are consumed, run `docker compose run --rm legacy-sql-metadata-worker-queue-drill`.
-9. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
-10. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
-11. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
-12. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, Legacy SQL metadata worker queue operations report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
+9. Before CRM/ERP Legacy SQL connector sandbox profiles are enabled, run `docker compose run --rm legacy-sql-metadata-worker-lease-consumer-smoke`.
+10. For preview-renderer release gates, run `docker compose run --rm preview-renderer-smoke`.
+11. For tenants with preview decision or renderer evidence, run `docker compose run --rm preview-renderer-drill`.
+12. For tenants with active Knowledge Base production runtime evidence, run `docker compose run --rm kb-runtime-reconciler`.
+13. Record backup filename, SHA-256 checksum, migration versions, operator, date, result, restore drill report hash, module registry operations report hash, Legacy SQL evidence ledger hash, Legacy SQL discovery intake operations report hash, Legacy SQL readiness smoke report hash, Legacy SQL host profile release gate evidence hash, Legacy SQL metadata worker queue operations report hash, Legacy SQL metadata worker lease consumer smoke report hash, preview renderer API smoke report hash, preview renderer recovery drill report hash, preview renderer release gate evidence hash, and Knowledge Base runtime reconciliation run report hash when applicable.
 12. For production, restore into an isolated environment and run the domain-specific checks from the policy.
 13. Update the policy and this runbook when the restore path changes.
 

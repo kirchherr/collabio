@@ -157,10 +157,22 @@ frische ready Release-Gate-Evidence, plant daraus Schedule-Evidence, persistiert
 PostgreSQL/RLS-Store, leased ihn einmal, schreibt Retry-Evidence mit Restore-Hash-Bindung und beweist Tenant-Isolation
 sowie blocked-gate rejection. Auch dieser Drill oeffnet im Default-Compose keine Legacy-SQL-Netzwerkverbindung.
 
+`app/suite/platform/legacy_sql_metadata_worker_lease_consumer.py` ist der erste Consumer-Skeleton hinter dieser Queue.
+Er nimmt nur bereits geleaste `legacy_sql_metadata_worker_queue_job.v1` Jobs an, prueft Queue-Hash,
+Schedule-Evidence-Hash, Command-Hash, Lease-ID, Lease-Ablauf, Egress-Handle, gehashte Secret-Ref und Fingerprint-Handle
+und erzeugt `legacy_sql_metadata_worker_lease_consumer_activation.v1`. Diese Activation-Evidence bleibt offline:
+Secret-Material wird nicht aufgeloest, Egress wird nicht materialisiert, der Default-Compose-Pfad oeffnet keine
+Legacy-SQL-Verbindung und Rohdaten/Import-Pfade bleiben gesperrt.
+
+`docker compose run --rm legacy-sql-metadata-worker-lease-consumer-smoke` beweist diesen Vertrag. Der Smoke plant einen
+frischen Queue-Job, leased ihn, validiert ihn im Offline-Consumer und beweist zusaetzlich, dass ungelease-te oder
+abgelaufene Jobs blockiert werden. Der Report `legacy_sql_metadata_worker_lease_consumer_smoke_report.v1` ist damit der
+naechste Nachweis vor einem spaeteren echten Connector-Sandbox-Profil.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein isolierter Lease-Consumer-Skeleton fuer diese Queue. Er darf geleaste Jobs nur
-validieren und redigierte Worker-Befehle vorbereiten; echte Verbindung, Rohdaten, Import-Dry-Run und Import-Writes
-bleiben weiterhin getrennte spaetere Gates.
+Der naechste technische Schritt ist ein default-off Connector-Sandbox-Profil fuer den spaeteren realen Legacy-Host-Zugriff.
+Es darf nur hinter Release-Gate, Queue-Lease und Lease-Consumer-Activation sichtbar werden; echte Verbindung, Rohdaten,
+Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates.
