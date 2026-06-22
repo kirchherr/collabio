@@ -295,6 +295,38 @@ input {
   line-height: 1.1;
 }
 
+.foundation-gap-plan {
+  display: grid;
+  gap: 8px;
+}
+
+.foundation-gap-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.foundation-gap-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.foundation-gap-copy code {
+  overflow: hidden;
+  color: #455057;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mvp-readiness-next {
   display: flex;
   flex-wrap: wrap;
@@ -988,6 +1020,10 @@ input {
   .mvp-readiness-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .foundation-gap-action {
+    grid-template-columns: 1fr;
   }
 
   .readiness-metric,

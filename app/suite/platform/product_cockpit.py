@@ -210,6 +210,27 @@ class ProductCockpitMvpReadinessSummary(BaseModel):
     persistent_task_created: bool = False
 
 
+class ProductCockpitFoundationGapAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_foundation_gap_action.v1"
+    priority: int = Field(ge=1)
+    gap_id: str
+    status: str
+    next_action: str
+    covered_by_work_item_ids: tuple[str, ...] = ()
+    source_object_ids: tuple[str, ...] = ()
+    module_ids: tuple[str, ...] = ()
+    ui_actions: tuple[str, ...] = ()
+    required_roles: tuple[str, ...] = ()
+    requires_confirmation: bool = False
+    metadata_only: bool = True
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    deferred_reason: str | None = None
+
+
 class ProductCockpitModuleView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -267,6 +288,8 @@ class ProductCockpitResponse(BaseModel):
     work_item_count: int = Field(ge=0)
     work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
     mvp_readiness_summary: ProductCockpitMvpReadinessSummary
+    foundation_gap_action_count: int = Field(ge=0)
+    foundation_gap_actions: tuple[ProductCockpitFoundationGapAction, ...]
     audit_event_id: str
 
 
@@ -337,6 +360,8 @@ class ProductCockpitMvpSnapshotResponse(BaseModel):
     module_refs: tuple[ProductCockpitMvpSnapshotModuleRef, ...]
     source_object_flow_refs: tuple[ProductCockpitMvpSnapshotSourceObjectFlowRef, ...]
     work_item_refs: tuple[ProductCockpitMvpSnapshotWorkItemRef, ...]
+    foundation_gap_action_count: int = Field(ge=0)
+    foundation_gap_actions: tuple[ProductCockpitFoundationGapAction, ...]
     next_foundation_action: str
     content_included: bool = False
     persistent_task_created: bool = False
@@ -389,6 +414,11 @@ def build_product_cockpit_response(
         readiness_summary=readiness_summary,
         work_item_summary=preliminary_work_item_summary,
     )
+    preliminary_foundation_gap_actions = _foundation_gap_actions(
+        mvp_readiness_summary=mvp_readiness_summary,
+        work_items=preliminary_work_items,
+        source_object_flows=source_object_flows,
+    )
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -433,11 +463,27 @@ def build_product_cockpit_response(
             "mvp_next_foundation_action": mvp_readiness_summary.next_foundation_action,
             "mvp_content_included": mvp_readiness_summary.content_included,
             "mvp_persistent_task_created": mvp_readiness_summary.persistent_task_created,
+            "foundation_gap_action_count": len(preliminary_foundation_gap_actions),
+            "foundation_gap_action_ids": tuple(action.gap_id for action in preliminary_foundation_gap_actions),
+            "foundation_gap_ready_action_count": sum(
+                1 for action in preliminary_foundation_gap_actions if action.status == "ready"
+            ),
+            "foundation_gap_deferred_action_count": sum(
+                1 for action in preliminary_foundation_gap_actions if action.status == "deferred"
+            ),
+            "foundation_gap_content_included": False,
+            "foundation_gap_persistent_task_created": False,
+            "foundation_gap_automation_created": False,
         },
     )
     source_object_flows = _attach_cockpit_audit_event_id(source_object_flows, event.event_id)
     work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
     work_item_operational_summary = _work_item_operational_summary(work_items)
+    foundation_gap_actions = _foundation_gap_actions(
+        mvp_readiness_summary=mvp_readiness_summary,
+        work_items=work_items,
+        source_object_flows=source_object_flows,
+    )
     return ProductCockpitResponse(
         tenant_id=user_context.tenant_id,
         modules=modules,
@@ -448,6 +494,8 @@ def build_product_cockpit_response(
         work_item_count=len(work_items),
         work_item_operational_summary=work_item_operational_summary,
         mvp_readiness_summary=mvp_readiness_summary,
+        foundation_gap_action_count=len(foundation_gap_actions),
+        foundation_gap_actions=foundation_gap_actions,
         audit_event_id=event.event_id,
     )
 
@@ -470,6 +518,7 @@ def build_product_cockpit_mvp_snapshot_response(
         "module_refs",
         "source_object_flow_refs",
         "work_item_refs",
+        "foundation_gap_actions",
     )
     event = audit_logger.record(
         user_context=user_context,
@@ -482,6 +531,14 @@ def build_product_cockpit_mvp_snapshot_response(
             "module_ref_count": len(module_refs),
             "source_object_flow_ref_count": len(source_object_flow_refs),
             "work_item_ref_count": len(work_item_refs),
+            "foundation_gap_action_count": cockpit_response.foundation_gap_action_count,
+            "foundation_gap_action_ids": tuple(action.gap_id for action in cockpit_response.foundation_gap_actions),
+            "foundation_gap_ready_action_count": sum(
+                1 for action in cockpit_response.foundation_gap_actions if action.status == "ready"
+            ),
+            "foundation_gap_deferred_action_count": sum(
+                1 for action in cockpit_response.foundation_gap_actions if action.status == "deferred"
+            ),
             "mvp_entry_ready": cockpit_response.mvp_readiness_summary.mvp_entry_ready,
             "mvp_foundation_gap_count": cockpit_response.mvp_readiness_summary.foundation_gap_count,
             "mvp_deferred_item_count": cockpit_response.mvp_readiness_summary.deferred_item_count,
@@ -489,6 +546,9 @@ def build_product_cockpit_mvp_snapshot_response(
             "content_included": False,
             "persistent_task_created": False,
             "automation_created": False,
+            "foundation_gap_content_included": False,
+            "foundation_gap_persistent_task_created": False,
+            "foundation_gap_automation_created": False,
         },
     )
     return ProductCockpitMvpSnapshotResponse(
@@ -501,6 +561,8 @@ def build_product_cockpit_mvp_snapshot_response(
         module_refs=module_refs,
         source_object_flow_refs=source_object_flow_refs,
         work_item_refs=work_item_refs,
+        foundation_gap_action_count=cockpit_response.foundation_gap_action_count,
+        foundation_gap_actions=cockpit_response.foundation_gap_actions,
         next_foundation_action=cockpit_response.mvp_readiness_summary.next_foundation_action,
         audit_event_id=event.event_id,
     )
@@ -898,6 +960,185 @@ def _work_item_operational_summary(
         content_included=any(item.content_included for item in work_items)
         or any(hint.content_included for hint in action_hints),
     )
+
+
+def _foundation_gap_actions(
+    *,
+    mvp_readiness_summary: ProductCockpitMvpReadinessSummary,
+    work_items: tuple[ProductCockpitWorkItem, ...],
+    source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> tuple[ProductCockpitFoundationGapAction, ...]:
+    gap_order = (
+        "preview_decisions_pending",
+        "preview_decisions_blocked",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    )
+    gaps = set(mvp_readiness_summary.foundation_gaps)
+    ordered_gaps = tuple(gap for gap in gap_order if gap in gaps) + tuple(
+        gap for gap in mvp_readiness_summary.foundation_gaps if gap not in gap_order
+    )
+    actions: list[ProductCockpitFoundationGapAction] = []
+    for gap_id in ordered_gaps:
+        action = _foundation_gap_action(
+            priority=len(actions) + 1,
+            gap_id=gap_id,
+            work_items=work_items,
+            source_object_flows=source_object_flows,
+        )
+        actions.append(action)
+    return tuple(actions)
+
+
+def _foundation_gap_action(
+    *,
+    priority: int,
+    gap_id: str,
+    work_items: tuple[ProductCockpitWorkItem, ...],
+    source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> ProductCockpitFoundationGapAction:
+    if gap_id == "preview_decisions_pending":
+        pending_items = tuple(
+            item
+            for item in work_items
+            if item.scope == ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW
+            and item.action == "request_preview_decision"
+        )
+        return _foundation_gap_action_from_work_items(
+            priority=priority,
+            gap_id=gap_id,
+            status="ready" if pending_items else "blocked",
+            next_action="resolve_preview_decision_work_items",
+            work_items=pending_items,
+        )
+    if gap_id == "preview_decisions_blocked":
+        blocked_flows = tuple(
+            flow
+            for flow in source_object_flows
+            if flow.readiness.status
+            in {
+                ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_BLOCKED,
+                ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED,
+            }
+        )
+        blocked_items = tuple(
+            item
+            for item in work_items
+            if item.scope == ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW
+            and item.action == "review_latest_preview_decision"
+        )
+        return _foundation_gap_action_from_work_items(
+            priority=priority,
+            gap_id=gap_id,
+            status="ready" if blocked_items else "blocked",
+            next_action="complete_preview_release_evidence",
+            work_items=blocked_items,
+            source_object_ids=_source_object_ids_for_flows(blocked_flows),
+        )
+    if gap_id == "module_activation_work_items_open":
+        module_items = tuple(item for item in work_items if item.scope == ProductCockpitWorkItemScope.MODULE)
+        return _foundation_gap_action_from_work_items(
+            priority=priority,
+            gap_id=gap_id,
+            status="ready" if module_items else "blocked",
+            next_action="complete_module_activation_work_items",
+            work_items=module_items,
+        )
+    if gap_id == "human_confirmation_required":
+        confirmation_items = tuple(item for item in work_items if _work_item_requires_confirmation(item))
+        return _foundation_gap_action_from_work_items(
+            priority=priority,
+            gap_id=gap_id,
+            status="ready" if confirmation_items else "blocked",
+            next_action="complete_explicit_human_confirmations",
+            work_items=confirmation_items,
+        )
+    if gap_id == "content_release_gate_blocks_content":
+        gated_flows = tuple(flow for flow in source_object_flows if not flow.readiness.content_release_allowed)
+        return ProductCockpitFoundationGapAction(
+            priority=priority,
+            gap_id=gap_id,
+            status="deferred",
+            next_action="keep_content_release_gate_until_renderer_ready",
+            source_object_ids=_source_object_ids_for_flows(gated_flows),
+            metadata_only=True,
+            content_included=False,
+            persistent_task_created=False,
+            automation_created=False,
+            deferred_reason="full_content_preview_rendering_is_deferred_from_mvp_path",
+        )
+    return ProductCockpitFoundationGapAction(
+        priority=priority,
+        gap_id=gap_id,
+        status="blocked",
+        next_action=gap_id,
+        deferred_reason="foundation_gap_has_no_safe_workspace_action_yet",
+    )
+
+
+def _foundation_gap_action_from_work_items(
+    *,
+    priority: int,
+    gap_id: str,
+    status: str,
+    next_action: str,
+    work_items: tuple[ProductCockpitWorkItem, ...],
+    source_object_ids: tuple[str, ...] | None = None,
+) -> ProductCockpitFoundationGapAction:
+    return ProductCockpitFoundationGapAction(
+        priority=priority,
+        gap_id=gap_id,
+        status=status,
+        next_action=next_action,
+        covered_by_work_item_ids=tuple(item.work_item_id for item in work_items),
+        source_object_ids=source_object_ids
+        if source_object_ids is not None
+        else _source_object_ids_for_work_items(work_items),
+        module_ids=_module_ids_for_work_items(work_items),
+        ui_actions=_ui_actions_for_work_items(work_items),
+        required_roles=_required_roles_for_work_items(work_items),
+        requires_confirmation=any(_work_item_requires_confirmation(item) for item in work_items),
+        metadata_only=True,
+        content_included=any(item.content_included for item in work_items),
+        persistent_task_created=any(item.persistent_task_created for item in work_items),
+        automation_created=False,
+    )
+
+
+def _work_item_requires_confirmation(item: ProductCockpitWorkItem) -> bool:
+    return any(hint.requires_confirmation for hint in (item.primary_action_hint, *item.secondary_action_hints))
+
+
+def _source_object_ids_for_work_items(work_items: tuple[ProductCockpitWorkItem, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(item.source_object_id for item in work_items if item.source_object_id))
+
+
+def _source_object_ids_for_flows(
+    flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(flow.source_object_id for flow in flows))
+
+
+def _module_ids_for_work_items(work_items: tuple[ProductCockpitWorkItem, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(item.module_id for item in work_items if item.module_id))
+
+
+def _ui_actions_for_work_items(work_items: tuple[ProductCockpitWorkItem, ...]) -> tuple[str, ...]:
+    actions = {
+        hint.ui_action.value for item in work_items for hint in (item.primary_action_hint, *item.secondary_action_hints)
+    }
+    return tuple(sorted(actions))
+
+
+def _required_roles_for_work_items(work_items: tuple[ProductCockpitWorkItem, ...]) -> tuple[str, ...]:
+    roles = {
+        role
+        for item in work_items
+        for hint in (item.primary_action_hint, *item.secondary_action_hints)
+        for role in hint.required_roles
+    }
+    return tuple(sorted(roles))
 
 
 def _mvp_readiness_summary(

@@ -474,6 +474,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".readiness-cell" in css_response.text
     assert ".mvp-readiness-panel" in css_response.text
     assert ".mvp-readiness-grid" in css_response.text
+    assert ".foundation-gap-plan" in css_response.text
+    assert ".foundation-gap-action" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -497,7 +499,10 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "work_items" in js_response.text
     assert "work_item_operational_summary" in js_response.text
     assert "mvp_readiness_summary" in js_response.text
+    assert "foundation_gap_actions" in js_response.text
     assert "renderMvpReadinessSummary" in js_response.text
+    assert "renderFoundationGapActionPlan" in js_response.text
+    assert "data-foundation-gap-id" in js_response.text
     assert "mvpReadinessTagList" in js_response.text
     assert "foundation_gaps" in js_response.text
     assert "deferred_items" in js_response.text
@@ -749,6 +754,92 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "content_included": False,
         "persistent_task_created": False,
     }
+    assert body["foundation_gap_action_count"] == 4
+    assert body["foundation_gap_actions"] == [
+        {
+            "schema_version": "product_cockpit_foundation_gap_action.v1",
+            "priority": 1,
+            "gap_id": "preview_decisions_pending",
+            "status": "ready",
+            "next_action": "resolve_preview_decision_work_items",
+            "covered_by_work_item_ids": [
+                "source-object-flow:document:doc-1:v1:request_preview_decision",
+                "source-object-flow:mail:mail-1:v1:request_preview_decision",
+            ],
+            "source_object_ids": ["doc-1", "mail-1"],
+            "module_ids": [],
+            "ui_actions": ["guided_preview_decision", "open_flow"],
+            "required_roles": [],
+            "requires_confirmation": True,
+            "metadata_only": True,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "deferred_reason": None,
+        },
+        {
+            "schema_version": "product_cockpit_foundation_gap_action.v1",
+            "priority": 2,
+            "gap_id": "module_activation_work_items_open",
+            "status": "ready",
+            "next_action": "complete_module_activation_work_items",
+            "covered_by_work_item_ids": [
+                "module:crm_erp:provision_module",
+                "module:knowledge_base:provision_module",
+            ],
+            "source_object_ids": [],
+            "module_ids": ["crm_erp", "knowledge_base"],
+            "ui_actions": ["module_provision"],
+            "required_roles": ["security-admin", "tenant-admin"],
+            "requires_confirmation": True,
+            "metadata_only": True,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "deferred_reason": None,
+        },
+        {
+            "schema_version": "product_cockpit_foundation_gap_action.v1",
+            "priority": 3,
+            "gap_id": "human_confirmation_required",
+            "status": "ready",
+            "next_action": "complete_explicit_human_confirmations",
+            "covered_by_work_item_ids": [
+                "source-object-flow:document:doc-1:v1:request_preview_decision",
+                "source-object-flow:mail:mail-1:v1:request_preview_decision",
+                "module:crm_erp:provision_module",
+                "module:knowledge_base:provision_module",
+            ],
+            "source_object_ids": ["doc-1", "mail-1"],
+            "module_ids": ["crm_erp", "knowledge_base"],
+            "ui_actions": ["guided_preview_decision", "module_provision", "open_flow"],
+            "required_roles": ["security-admin", "tenant-admin"],
+            "requires_confirmation": True,
+            "metadata_only": True,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "deferred_reason": None,
+        },
+        {
+            "schema_version": "product_cockpit_foundation_gap_action.v1",
+            "priority": 4,
+            "gap_id": "content_release_gate_blocks_content",
+            "status": "deferred",
+            "next_action": "keep_content_release_gate_until_renderer_ready",
+            "covered_by_work_item_ids": [],
+            "source_object_ids": ["doc-1", "mail-1"],
+            "module_ids": [],
+            "ui_actions": [],
+            "required_roles": [],
+            "requires_confirmation": False,
+            "metadata_only": True,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "deferred_reason": "full_content_preview_rendering_is_deferred_from_mvp_path",
+        },
+    ]
     assert all(
         item["primary_action_hint"]["schema_version"] == "product_cockpit_work_item_action_hint.v1"
         for item in work_items
@@ -899,6 +990,18 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "full_content_preview_rendering",
     )
     assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["foundation_gap_action_count"] == 4
+    assert new_events[-1].metadata["foundation_gap_action_ids"] == (
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    )
+    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 3
+    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 1
+    assert new_events[-1].metadata["foundation_gap_content_included"] is False
+    assert new_events[-1].metadata["foundation_gap_persistent_task_created"] is False
+    assert new_events[-1].metadata["foundation_gap_automation_created"] is False
     assert new_events[-1].metadata["mvp_content_included"] is False
     assert new_events[-1].metadata["mvp_persistent_task_created"] is False
 
@@ -938,6 +1041,7 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
         "module_refs",
         "source_object_flow_refs",
         "work_item_refs",
+        "foundation_gap_actions",
     ]
     assert body["mvp_readiness_summary"]["foundation_gaps"] == [
         "preview_decisions_pending",
@@ -952,6 +1056,26 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
         "lms_time_tracking_activity_modules",
         "full_content_preview_rendering",
     ]
+    assert body["foundation_gap_action_count"] == 4
+    assert [action["gap_id"] for action in body["foundation_gap_actions"]] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert [action["status"] for action in body["foundation_gap_actions"]] == [
+        "ready",
+        "ready",
+        "ready",
+        "deferred",
+    ]
+    assert all(action["content_included"] is False for action in body["foundation_gap_actions"])
+    assert all(action["persistent_task_created"] is False for action in body["foundation_gap_actions"])
+    assert all(action["automation_created"] is False for action in body["foundation_gap_actions"])
+    assert body["foundation_gap_actions"][2]["next_action"] == "complete_explicit_human_confirmations"
+    assert body["foundation_gap_actions"][3]["deferred_reason"] == (
+        "full_content_preview_rendering_is_deferred_from_mvp_path"
+    )
     assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
@@ -998,6 +1122,18 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert new_events[-1].metadata["module_ref_count"] == 2
     assert new_events[-1].metadata["source_object_flow_ref_count"] == 2
     assert new_events[-1].metadata["work_item_ref_count"] == 4
+    assert new_events[-1].metadata["foundation_gap_action_count"] == 4
+    assert new_events[-1].metadata["foundation_gap_action_ids"] == (
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    )
+    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 3
+    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 1
+    assert new_events[-1].metadata["foundation_gap_content_included"] is False
+    assert new_events[-1].metadata["foundation_gap_persistent_task_created"] is False
+    assert new_events[-1].metadata["foundation_gap_automation_created"] is False
     assert new_events[-1].metadata["mvp_entry_ready"] is True
     assert new_events[-1].metadata["mvp_foundation_gap_count"] == 4
     assert new_events[-1].metadata["mvp_deferred_item_count"] == 5

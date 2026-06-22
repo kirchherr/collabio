@@ -32,6 +32,7 @@ let currentCockpit = {
   work_items: [],
   work_item_operational_summary: null,
   mvp_readiness_summary: null,
+  foundation_gap_actions: [],
 };
 let selectedFlowId = "";
 let detailLoadToken = 0;
@@ -101,6 +102,7 @@ async function loadCockpit() {
       work_items: [],
       work_item_operational_summary: null,
       mvp_readiness_summary: null,
+      foundation_gap_actions: [],
     };
     renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
@@ -254,6 +256,7 @@ function renderCockpit(cockpit) {
   const workItems = cockpit.work_items || [];
   const workSummary = cockpit.work_item_operational_summary || {};
   const mvpSummary = cockpit.mvp_readiness_summary || {};
+  const foundationGapActions = cockpit.foundation_gap_actions || [];
   moduleCount.textContent = String(modules.length);
   workItemCount.textContent = String(workItems.length);
   flowCount.textContent = String(flows.length);
@@ -269,14 +272,14 @@ function renderCockpit(cockpit) {
     selectedFlowId = flows[0]?.flow_id || "";
   }
   renderModules(modules);
-  renderMvpReadinessSummary(mvpSummary);
+  renderMvpReadinessSummary(mvpSummary, foundationGapActions);
   renderWorkItemOperationalSummary(workSummary);
   renderWorkItems(workItems);
   renderFlows(flows);
   loadSourceObjectDetail();
 }
 
-function renderMvpReadinessSummary(summary) {
+function renderMvpReadinessSummary(summary, foundationGapActions) {
   if (!summary || !summary.schema_version) {
     mvpReadinessPanel.innerHTML = '<div class="empty-state compact">Keine MVP-Readiness-Evidence.</div>';
     return;
@@ -292,7 +295,7 @@ function renderMvpReadinessSummary(summary) {
     mvpReadinessMetric("Surfaces", summary.ready_surface_count),
     mvpReadinessMetric("Gaps", summary.foundation_gap_count),
     mvpReadinessMetric("Deferred", summary.deferred_item_count),
-    mvpReadinessMetric("Work items", summary.work_item_count),
+    mvpReadinessMetric("Gap actions", foundationGapActions.length),
     '</div>',
     '<div class="mvp-readiness-next"><span>Naechste Foundation-Aktion</span><code>',
     escapeHtml(summary.next_foundation_action || "continue_foundation_review"),
@@ -302,12 +305,42 @@ function renderMvpReadinessSummary(summary) {
     mvpReadinessTagList("Foundation", summary.foundation_gaps || []),
     mvpReadinessTagList("Deferred", summary.deferred_items || []),
     '</div>',
+    renderFoundationGapActionPlan(foundationGapActions),
     '<div class="mvp-readiness-contract"><code>',
     escapeHtml(summary.schema_version),
     ' | content_included=' + (summary.content_included === true ? "true" : "false"),
     ' | persistent_task_created=' + (summary.persistent_task_created === true ? "true" : "false"),
     '</code></div>',
   ].join("");
+}
+
+function renderFoundationGapActionPlan(actions) {
+  if (!actions.length) {
+    return '<div class="foundation-gap-plan empty-state compact">Keine Foundation-Gap-Aktionen.</div>';
+  }
+  const items = actions.map((action) => [
+    '<div class="foundation-gap-action" data-foundation-gap-id="' + escapeHtml(action.gap_id) + '">',
+    '<span class="status-pill ' + foundationGapStatusClass(action.status) + '">' + escapeHtml(action.status) + '</span>',
+    '<div class="foundation-gap-copy">',
+    '<strong>#' + Number(action.priority || 0) + ' ' + escapeHtml(action.gap_id) + '</strong>',
+    '<code>' + escapeHtml(action.next_action || 'continue_foundation_review') + '</code>',
+    '<code>work_items=' + Number((action.covered_by_work_item_ids || []).length)
+      + ' | roles=' + escapeHtml((action.required_roles || []).join(',') || 'context')
+      + ' | confirm=' + (action.requires_confirmation === true ? 'true' : 'false') + '</code>',
+    '</div>',
+    '</div>',
+  ].join('')).join('');
+  return '<div class="foundation-gap-plan">' + items + '</div>';
+}
+
+function foundationGapStatusClass(status) {
+  if (status === "ready") {
+    return "mvp-ready";
+  }
+  if (status === "deferred") {
+    return "priority-low";
+  }
+  return "mvp-gapped";
 }
 
 function mvpReadinessMetric(label, value) {
