@@ -124,6 +124,79 @@ async function executeModuleAction(module, action) {
   }
 }
 
+async function executeGuidedPreviewDecision(flow) {
+  const context = readContext();
+  const slot = previewSlotForFlow(flow);
+  const gate = slot?.gate || {};
+  if (!slot?.slot_id || !gate.policy_id) {
+    setStatus("Preview-Gate fehlt fuer diesen Flow.", true);
+    return;
+  }
+
+  const confirmationText = `Metadata-only Preview-Evidence und Preview-Decision fuer ${flow.source_object_id}:${flow.source_version_id} anfordern?\n\nEs werden keine Inhalte gerendert, keine Rohdaten freigegeben und content_release_allowed bleibt policy-gesteuert blockiert.`;
+  if (!window.confirm(confirmationText)) {
+    setStatus("Preview-Flow abgebrochen.");
+    return;
+  }
+
+  const refs = metadataEvidenceRefsFor(flow);
+  const baseEndpoint = `/v1/source-objects/${encodeURIComponent(flow.source_object_id)}/versions/${encodeURIComponent(flow.source_version_id)}`;
+  const sharedPayload = {
+    preview_slot_id: slot.slot_id,
+    preview_policy_id: gate.policy_id,
+    parser_sanitizer_evidence_ref: refs.parserSanitizer,
+    backup_coverage_evidence_ref: refs.backupCoverage,
+    restore_evidence_ref: refs.restore,
+  };
+
+  setStatus(`Renderer-Sandbox-Evidence fuer ${flow.source_object_id}:${flow.source_version_id} wird erfasst ...`);
+  try {
+    const rendererResponse = await fetch(`${baseEndpoint}/preview-renderer-runs`, {
+      method: "POST",
+      headers: {
+        ...headersForContext(context),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...sharedPayload,
+        reason: `Workspace guided metadata-only preview renderer evidence for ${flow.source_object_id}:${flow.source_version_id}; no source content, rendered content or raw payload is requested.`,
+      }),
+    });
+    const rendererBody = await readJson(rendererResponse);
+    if (!rendererResponse.ok) {
+      throw new Error(rendererBody.detail || `HTTP ${rendererResponse.status}`);
+    }
+    if (!rendererBody.renderer_sandbox_evidence_ref) {
+      throw new Error("Renderer-Sandbox-Evidence fehlt in der Antwort.");
+    }
+
+    setStatus(`Preview-Decision fuer ${flow.source_object_id}:${flow.source_version_id} wird angefordert ...`);
+    const decisionResponse = await fetch(`${baseEndpoint}/preview-decisions`, {
+      method: "POST",
+      headers: {
+        ...headersForContext(context),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...sharedPayload,
+        renderer_sandbox_evidence_ref: rendererBody.renderer_sandbox_evidence_ref,
+        human_confirmation_reference: refs.humanConfirmation,
+        reason: `Workspace guided metadata-only preview decision for ${flow.source_object_id}:${flow.source_version_id}; no content rendering or raw data release requested.`,
+      }),
+    });
+    const decisionBody = await readJson(decisionResponse);
+    if (!decisionResponse.ok) {
+      throw new Error(decisionBody.detail || `HTTP ${decisionResponse.status}`);
+    }
+
+    selectedFlowId = flow.flow_id;
+    setStatus(`Preview-Decision: ${decisionBody.decision_status || "recorded"} | ${decisionBody.decision_ledger_ref || "ledger_ref_pending"}`);
+    await loadCockpit();
+  } catch (error) {
+    setStatus(error.message || "Preview-Decision-Flow konnte nicht ausgefuehrt werden.", true);
+  }
+}
+
 function renderCockpit(cockpit) {
   const modules = cockpit.modules || [];
   const flows = cockpit.source_object_flows || [];
@@ -351,10 +424,52 @@ function readinessCell(flow) {
       <span>${escapeHtml(readiness.next_action || "request_preview_decision")}</span>
       <span class="hash-text">${escapeHtml(decisionRef)}</span>
       <span class="hash-text">missing_evidence=${missingCount}</span>
+      ${guidedPreviewActionButton(flow)}
     </div>
   `;
 }
 
+function guidedPreviewActionButton(flow) {
+  const slot = previewSlotForFlow(flow);
+  const gate = slot?.gate || {};
+  if (!slot?.slot_id || !gate.policy_id) {
+    return "";
+  }
+  return `
+    <button
+      class="action-button quiet guided-preview-action"
+      type="button"
+      data-preview-action="guided-preview-decision"
+      data-flow-id="${escapeHtml(flow.flow_id)}"
+    >
+      Evidence + Decision
+    </button>
+  `;
+}
+
+function previewSlotForFlow(flow) {
+  const slots = flow.preview_slots || [];
+  return slots.find((slot) => slot?.gate?.policy_id) || slots[0] || null;
+}
+
+function metadataEvidenceRefsFor(flow) {
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+  const refBase = `${safeRefPart(flow.source_object_id)}-${safeRefPart(flow.source_version_id)}-${stamp}`;
+  return {
+    parserSanitizer: `parser-sanitizer:workspace-preview-${refBase}`,
+    backupCoverage: `backup:workspace-preview-${refBase}`,
+    restore: `restore-drill:workspace-preview-${refBase}`,
+    humanConfirmation: `approval:workspace-preview-decision-${refBase}`,
+  };
+}
+
+function safeRefPart(value) {
+  return String(value || "flow")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64) || "flow";
+}
 function readinessList(readiness) {
   if (!readiness) {
     return "<span>Keine Flow-Readiness.</span>";
@@ -566,6 +681,15 @@ moduleGrid.addEventListener("click", (event) => {
   }
 });
 flowTableBody.addEventListener("click", (event) => {
+  const actionButton = event.target.closest("button[data-preview-action]");
+  if (actionButton?.dataset.flowId) {
+    const flow = (currentCockpit.source_object_flows || []).find((item) => item.flow_id === actionButton.dataset.flowId);
+    if (flow && actionButton.dataset.previewAction === "guided-preview-decision") {
+      executeGuidedPreviewDecision(flow);
+    }
+    return;
+  }
+
   const button = event.target.closest("button[data-flow-id]");
   if (button?.dataset.flowId) {
     selectFlow(button.dataset.flowId);

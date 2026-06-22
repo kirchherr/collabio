@@ -479,6 +479,15 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "metadata_ready_preview_decision_pending" in js_response.text
     assert "metadata_ready_preview_blocked" in js_response.text
     assert "metadata_only_no_source_content" in js_response.text
+    assert ".guided-preview-action" in css_response.text
+    assert "guided-preview-decision" in js_response.text
+    assert "/preview-renderer-runs" in js_response.text
+    assert "/preview-decisions" in js_response.text
+    assert "renderer_sandbox_evidence_ref" in js_response.text
+    assert "human_confirmation_reference" in js_response.text
+    assert "window.confirm" in js_response.text
+    assert "no source content, rendered content or raw payload" in js_response.text
+    assert "content_release_allowed bleibt policy-gesteuert blockiert" in js_response.text
     assert "metadata_ready_content_blocked" in js_response.text
     assert "content_release_allowed=false" in js_response.text
     assert "content_included=false" in js_response.text
@@ -736,6 +745,70 @@ def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_con
     assert decision["decision_ledger_ref"] in doc_readiness["evidence_refs"]
     assert f"audit:{body['audit_event_id']}" in doc_readiness["evidence_refs"]
     assert mail_readiness["status"] == "metadata_ready_preview_decision_pending"
+    assert "Board pack draft source content" not in json.dumps(body)
+
+
+def test_workspace_guided_preview_sequence_updates_cockpit_readiness_without_content() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+
+    try:
+        renderer_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-renderer-runs",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:workspace-preview-doc-1-v1-test",
+                "backup_coverage_evidence_ref": "backup:workspace-preview-doc-1-v1-test",
+                "restore_evidence_ref": "restore-drill:workspace-preview-doc-1-v1-test",
+                "reason": "workspace guided metadata-only renderer evidence smoke",
+            },
+        )
+        renderer_ref = renderer_response.json().get("renderer_sandbox_evidence_ref")
+        decision_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:workspace-preview-doc-1-v1-test",
+                "renderer_sandbox_evidence_ref": renderer_ref,
+                "backup_coverage_evidence_ref": "backup:workspace-preview-doc-1-v1-test",
+                "restore_evidence_ref": "restore-drill:workspace-preview-doc-1-v1-test",
+                "human_confirmation_reference": "approval:workspace-preview-decision-doc-1-v1-test",
+                "reason": "workspace guided metadata-only preview decision smoke",
+            },
+        )
+        response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert renderer_response.status_code == 200
+    assert decision_response.status_code == 200
+    decision = decision_response.json()
+    assert renderer_ref in decision["provided_evidence_refs"]
+    assert "parser_sanitizer_evidence" in decision["provided_evidence"]
+    assert "renderer_sandbox_worker_evidence" in decision["provided_evidence"]
+    assert "human_content_release_confirmation" in decision["provided_evidence"]
+    assert "renderer_sandbox_worker_evidence" not in decision["missing_evidence"]
+    assert "backup_coverage_evidence" not in decision["missing_evidence"]
+    assert "restore_drill_evidence" not in decision["missing_evidence"]
+    assert decision["content_release_allowed"] is False
+    assert decision["content_included"] is False
+
+    assert response.status_code == 200
+    body = response.json()
+    flows = {flow["source_object_id"]: flow for flow in body["source_object_flows"]}
+    doc_readiness = flows["doc-1"]["readiness"]
+    assert doc_readiness["status"] == "metadata_ready_preview_blocked"
+    assert doc_readiness["latest_preview_decision_ledger_ref"] == decision["decision_ledger_ref"]
+    assert "renderer_sandbox_worker_evidence" not in doc_readiness["latest_preview_decision_missing_evidence"]
+    assert doc_readiness["content_release_allowed"] is False
+    assert doc_readiness["content_included"] is False
+    assert body["flow_readiness_summary"]["preview_decision_pending_count"] == 1
+    assert body["flow_readiness_summary"]["preview_decision_blocked_count"] == 1
     assert "Board pack draft source content" not in json.dumps(body)
 
 

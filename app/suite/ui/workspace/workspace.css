@@ -500,6 +500,12 @@ input {
   font-size: 12px;
 }
 
+.guided-preview-action {
+  justify-self: start;
+  margin-top: 2px;
+  min-width: 132px;
+}
+
 .flow-source-cell {
   display: grid;
   gap: 8px;
