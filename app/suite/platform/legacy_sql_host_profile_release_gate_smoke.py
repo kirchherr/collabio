@@ -73,17 +73,26 @@ def run_legacy_sql_host_profile_release_gate_smoke_from_env(
     checked_by = env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SMOKE_CHECKED_BY", "legacy-sql-host-gate-smoke")
     ledger_report = run_legacy_sql_evidence_ledger_operations_from_env(env)
     tenant_id = _release_gate_tenant_id(ledger_report=ledger_report, env=env)
-    policy = load_legacy_sql_connector_policy(
+    loaded_policy = load_legacy_sql_connector_policy(
         Path(env.get("SUITE_LEGACY_SQL_CONNECTOR_POLICY_PATH", str(DEFAULT_CONNECTOR_POLICY_PATH)))
     )
-    policy_hash = build_legacy_sql_connector_policy_hash(policy)
     connector_policy_ref = env.get("SUITE_LEGACY_SQL_CONNECTOR_POLICY_REF", "policy:legacy-sql-connector")
+    connector_kind = LegacySqlConnectorKind(
+        env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_CONNECTOR_KIND", LegacySqlConnectorKind.SQLSERVER.value)
+    )
+    policy = loaded_policy.model_copy(update={"connector_kind": connector_kind})
+    policy_hash = build_legacy_sql_connector_policy_hash(policy)
+    default_host_profile_ref = (
+        "legacy-host:postgres-production-metadata"
+        if connector_kind == LegacySqlConnectorKind.POSTGRES
+        else "legacy-host:sqlserver-production-metadata"
+    )
     host_profile = LegacySqlApprovedHostProfile(
         host_profile_ref=env.get(
             "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_HOST_PROFILE_REF",
-            "legacy-host:sqlserver-production-metadata",
+            default_host_profile_ref,
         ),
-        connector_kind=LegacySqlConnectorKind.SQLSERVER,
+        connector_kind=connector_kind,
         connector_policy_ref=connector_policy_ref,
         policy_snapshot_hash=policy_hash,
         approved_egress_ref=env.get(
@@ -231,9 +240,11 @@ def _release_gate_command(
         tenant_id=tenant_id,
         source_system_ref=env.get(
             "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SOURCE_REF",
-            "legacy-sql:production-sqlserver",
+            "legacy-sql:production-postgres"
+            if host_profile.connector_kind == LegacySqlConnectorKind.POSTGRES
+            else "legacy-sql:production-sqlserver",
         ),
-        connector_kind=LegacySqlConnectorKind.SQLSERVER,
+        connector_kind=host_profile.connector_kind,
         host_profile_ref=host_profile.host_profile_ref,
         connector_policy_ref=host_profile.connector_policy_ref,
         policy_snapshot_hash=policy_hash,

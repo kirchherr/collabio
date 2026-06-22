@@ -725,7 +725,7 @@ def _release_gate_blocking_reasons(
         reasons.append("host_profile_secret_not_bound")
     if not host_profile_fingerprint_bound:
         reasons.append("host_profile_fingerprint_not_bound")
-    if host_profile.connector_kind != LegacySqlConnectorKind.SQLSERVER:
+    if host_profile.connector_kind not in {LegacySqlConnectorKind.SQLSERVER, LegacySqlConnectorKind.POSTGRES}:
         reasons.append("unsupported_connector_kind")
     if not host_profile_metadata_only:
         reasons.append("host_profile_not_metadata_only")

@@ -368,12 +368,31 @@ Socket, materialisiert kein Secret, gibt keine Tabellen-/Spaltennamen aus und er
 `docker compose run --rm legacy-sql-connector-metadata-connection-probe-skeleton-smoke` prueft diesen Skeleton im
 Betriebsweg.
 
+`legacy_sql_connector_metadata_connection_probe_live_adapter_command.v1`,
+`legacy_sql_connector_metadata_connection_probe_live_adapter_evidence.v1` und
+`legacy_sql_connector_metadata_connection_probe_live_adapter_smoke_report.v1` bilden den ersten gehaerteten
+Live-Adapter hinter dem Skeleton. Der Adapter ist weiterhin default-off und materialisiert Secret-Material nur innerhalb
+des isolierten Workers. Ohne aktivierte Runtime, freigegebene Netzwerkroute oder bei Emergency-Stop bleibt der Pfad
+blockiert, bevor ein Provider-Treiber ein Secret oder einen Socket beruehrt.
+
+`docker compose run --rm legacy-sql-connector-metadata-connection-probe-live-adapter-smoke` beweist diesen Pfad zuerst
+fuer PostgreSQL. Der Smoke prueft Default-Off, fehlende Secret-Materialisierung, fehlende Netzwerkroute,
+Emergency-Stop und einen echten metadata-only Postgres-Probe gegen freigegebene Compose-Infrastruktur. Der Probe
+erzwingt Read-only-Transaktion, Timeout-/Circuit-Breaker, Audit-/Redaction-Grenze und Metadata-Query-Allowlist. Die
+Evidence enthaelt nur Counts und Hashes fuer Relationen, Spalten und Primary Keys, aber keine DSN, keine Credentials,
+keine Tabellen-/Spaltennamen, keine Rohdaten, keinen Import-Dry-Run und keine Writes.
+
 ## Zukunftssichere Erweiterung
 
-Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
+Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL,
+Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen
+Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein gehaerteter Live-Adapter hinter dem Skeleton. Echte Rohdaten, Import-Dry-Run und
-Import-Writes bleiben weiterhin getrennte spaetere Gates und duerfen nicht aus dem Store, Review-Gate,
-Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate, Runtime-Merge-Gate, Runtime-Activation-Gate,
-Live-Connection-Gate, Metadata-Connection-Probe-Gate oder Metadata-Connection-Probe-Skeleton heraus direkt gestartet
-werden.
+Der aktuelle ausfuehrende Live-Adapter ist bewusst auf PostgreSQL begrenzt, weil dafuer der Compose-Testcontainer, die
+Least-Privilege-Worker-Rolle und ein beweisbarer Read-only-Metadata-Pfad vorliegen. Ein ausfuehrender SQL-Server-
+Adapter wird erst angeschlossen, wenn Treibercontainer, Netzwerkprofil und Testinstanz dieselbe Evidenz liefern. Echte
+Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates und duerfen nicht aus dem Store,
+Review-Gate, Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate, Runtime-Merge-Gate, Runtime-Activation-Gate,
+Live-Connection-Gate, Metadata-Connection-Probe-Gate, Metadata-Connection-Probe-Skeleton oder Live-Adapter heraus direkt
+gestartet werden. Legacy-SQL bleibt damit nach diesem Schritt auf metadata-only Connection-Probe eingefroren, bis ein
+konkreter Produkt- oder Migrationsbedarf den naechsten Adapter rechtfertigt.

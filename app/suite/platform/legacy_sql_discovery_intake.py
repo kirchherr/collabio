@@ -61,8 +61,8 @@ class LegacySqlApprovedHostProfile(BaseModel):
 
     @model_validator(mode="after")
     def require_safe_host_profile(self) -> Self:
-        if self.connector_kind != LegacySqlConnectorKind.SQLSERVER:
-            raise ValueError("initial legacy SQL discovery intake supports sqlserver only")
+        if self.connector_kind not in {LegacySqlConnectorKind.SQLSERVER, LegacySqlConnectorKind.POSTGRES}:
+            raise ValueError("legacy SQL host profile supports sqlserver or postgres metadata profiles")
         if self.worker_network_mode != LegacySqlServerNetworkMode.APPROVED_LEGACY_HOST_ONLY:
             raise ValueError("legacy SQL host profile must require approved legacy host egress")
         if not self.approved_for_metadata_discovery:

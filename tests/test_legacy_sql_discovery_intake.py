@@ -104,6 +104,18 @@ def test_legacy_sql_discovery_intake_rejects_dsn_and_import_requests() -> None:
         intake_request(import_dry_run_requested=True)
 
 
+def test_legacy_sql_host_profile_allows_postgres_metadata_profile_without_discovery_command() -> None:
+    profile = approved_host_profile(
+        host_profile_ref="legacy-host:postgres-prod",
+        connector_kind=LegacySqlConnectorKind.POSTGRES,
+    )
+
+    assert profile.connector_kind == LegacySqlConnectorKind.POSTGRES
+    assert profile.approved_for_metadata_discovery
+    assert not profile.raw_data_access_allowed
+    assert not profile.import_write_allowed
+
+
 def test_legacy_sql_host_profile_rejects_raw_access_or_import_capabilities() -> None:
     with pytest.raises(ValidationError, match="raw data"):
         approved_host_profile(raw_data_access_allowed=True)

@@ -335,6 +335,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-real-connection-executor-policy-store",
         ),
     ),
+    SqlMigration(
+        version="0038",
+        name="legacy_sql_postgres_metadata_probe_provider_constraints",
+        resource_name="0038_legacy_sql_postgres_metadata_probe_provider_constraints.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-metadata-connection-probe-live-adapter",
+        ),
+    ),
 )
 
 

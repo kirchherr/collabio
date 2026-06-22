@@ -308,28 +308,42 @@ class LegacySqlHostProfileAdapter:
             connection_fingerprint_hash=request.connection_fingerprint_hash,
             row_count_estimates_allowed=True,
         )
-        intake_request = LegacySqlDiscoveryIntakeRequest(
-            tenant_id=request.tenant_id,
-            module_id=request.module_id,
-            source_system_ref=request.source_system_ref,
-            connector_kind=request.connector_kind,
-            requested_by=request.requested_by,
-            approval_reference=request.approval_reference,
-            audit_chain_ref=request.audit_chain_ref,
-            host_profile_ref=request.host_profile_ref,
-            connector_policy_ref=request.connector_policy_ref,
-            policy_snapshot_hash=request.policy_snapshot_hash,
-            include_row_counts=request.include_row_counts,
-        )
-        intake_result = LegacySqlDiscoveryIntakeGate().evaluate(request=intake_request, host_profile=host_profile)
-        if intake_result.command is None:
-            reasons = ", ".join(intake_result.evidence.blocking_reasons) or "unknown"
-            raise ValueError(f"legacy SQL host profile adapter schedule is blocked: {reasons}")
+        if request.connector_kind == LegacySqlConnectorKind.SQLSERVER:
+            intake_request = LegacySqlDiscoveryIntakeRequest(
+                tenant_id=request.tenant_id,
+                module_id=request.module_id,
+                source_system_ref=request.source_system_ref,
+                connector_kind=request.connector_kind,
+                requested_by=request.requested_by,
+                approval_reference=request.approval_reference,
+                audit_chain_ref=request.audit_chain_ref,
+                host_profile_ref=request.host_profile_ref,
+                connector_policy_ref=request.connector_policy_ref,
+                policy_snapshot_hash=request.policy_snapshot_hash,
+                include_row_counts=request.include_row_counts,
+            )
+            intake_result = LegacySqlDiscoveryIntakeGate().evaluate(request=intake_request, host_profile=host_profile)
+            if intake_result.command is None:
+                reasons = ", ".join(intake_result.evidence.blocking_reasons) or "unknown"
+                raise ValueError(f"legacy SQL host profile adapter schedule is blocked: {reasons}")
 
-        command_view = build_legacy_sql_metadata_worker_command_view(intake_result.command)
-        command_hash = build_legacy_sql_metadata_worker_command_hash(intake_result.command)
-        if command_view is None or command_hash is None:
-            raise ValueError("legacy SQL host profile adapter could not build metadata worker command view")
+            command_view = build_legacy_sql_metadata_worker_command_view(intake_result.command)
+            command_hash = build_legacy_sql_metadata_worker_command_hash(intake_result.command)
+            if command_view is None or command_hash is None:
+                raise ValueError("legacy SQL host profile adapter could not build metadata worker command view")
+        else:
+            command_view = LegacySqlMetadataWorkerCommandView(
+                tenant_id=request.tenant_id,
+                module_id=request.module_id,
+                source_system_ref=request.source_system_ref,
+                connector_kind=request.connector_kind,
+                include_row_counts=False,
+                connector_policy_ref=request.connector_policy_ref,
+                policy_snapshot_hash=request.policy_snapshot_hash,
+                connection_fingerprint_hash=request.connection_fingerprint_hash,
+                secret_reference_available=bool(request.connection_secret_ref.strip()),
+            )
+            command_hash = stable_hash(canonical_json(command_view.model_dump(mode="json")))
 
         draft = LegacySqlHostProfileAdapterScheduleEvidence(
             tenant_id=request.tenant_id,
@@ -379,12 +393,18 @@ def build_legacy_sql_host_profile_adapter_schedule_request_from_gate_smoke(
     release_gate_evidence_hash: str,
     checked_by: str,
 ) -> LegacySqlHostProfileAdapterScheduleRequest:
+    connector_kind = LegacySqlConnectorKind(
+        env.get("SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_CONNECTOR_KIND", LegacySqlConnectorKind.SQLSERVER.value)
+    )
     return LegacySqlHostProfileAdapterScheduleRequest(
         tenant_id=gate_smoke.tenant_id,
         source_system_ref=env.get(
             "SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SOURCE_REF",
-            "legacy-sql:production-sqlserver",
+            "legacy-sql:production-postgres"
+            if connector_kind == LegacySqlConnectorKind.POSTGRES
+            else "legacy-sql:production-sqlserver",
         ),
+        connector_kind=connector_kind,
         host_profile_ref=gate_smoke.host_profile_ref,
         connector_policy_ref=gate_smoke.connector_policy_ref,
         policy_snapshot_hash=gate_smoke.policy_snapshot_hash,
