@@ -4,7 +4,7 @@ import json
 import os
 from hashlib import sha256
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 from uuid import uuid4
 
 import pytest
@@ -847,6 +847,112 @@ def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_pers
 
     assert "Board pack draft source content" not in json.dumps(bodies)
     assert "Welcome message source" not in json.dumps(bodies)
+
+
+def test_platform_cockpit_work_items_recompute_after_preview_and_module_state_transitions() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+
+    def cockpit_body() -> dict[str, Any]:
+        response = client.get("/v1/platform/cockpit", headers=DEMO_ADMIN_HEADERS)
+        assert response.status_code == 200
+        return cast(dict[str, Any], response.json())
+
+    def work_item_by_source(body: dict[str, Any], source_object_id: str) -> dict[str, Any]:
+        return next(item for item in body["work_items"] if item["source_object_id"] == source_object_id)
+
+    def work_item_by_module(body: dict[str, Any], module_id: str) -> dict[str, Any]:
+        return next(item for item in body["work_items"] if item["module_id"] == module_id)
+
+    try:
+        initial = cockpit_body()
+        initial_doc_item = work_item_by_source(initial, "doc-1")
+        initial_kb_item = work_item_by_module(initial, "knowledge_base")
+        assert initial["work_item_count"] == 4
+        assert initial_doc_item["action"] == "request_preview_decision"
+        assert initial_doc_item["primary_action_hint"]["ui_action"] == "guided_preview_decision"
+        assert initial_kb_item["action"] == "provision_module"
+        assert initial_kb_item["primary_action_hint"]["ui_action"] == "module_provision"
+
+        renderer_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-renderer-runs",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:workspace-transition-doc-1-v1",
+                "backup_coverage_evidence_ref": "backup:workspace-transition-doc-1-v1",
+                "restore_evidence_ref": "restore-drill:workspace-transition-doc-1-v1",
+                "reason": "workspace transition renderer evidence",
+            },
+        )
+        assert renderer_response.status_code == 200
+        decision_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "parser_sanitizer_evidence_ref": "parser-sanitizer:workspace-transition-doc-1-v1",
+                "renderer_sandbox_evidence_ref": renderer_response.json()["renderer_sandbox_evidence_ref"],
+                "backup_coverage_evidence_ref": "backup:workspace-transition-doc-1-v1",
+                "restore_evidence_ref": "restore-drill:workspace-transition-doc-1-v1",
+                "human_confirmation_reference": "approval:workspace-transition-doc-1-v1",
+                "reason": "workspace transition preview decision",
+            },
+        )
+        assert decision_response.status_code == 200
+
+        after_preview = cockpit_body()
+        after_preview_doc_item = work_item_by_source(after_preview, "doc-1")
+        assert after_preview["work_item_count"] == 4
+        assert initial_doc_item["work_item_id"] not in {item["work_item_id"] for item in after_preview["work_items"]}
+        assert after_preview_doc_item["action"] == "review_latest_preview_decision"
+        assert after_preview_doc_item["primary_action_hint"]["ui_action"] == "open_flow"
+        assert after_preview_doc_item["primary_action_hint"]["requires_confirmation"] is False
+        assert after_preview_doc_item["secondary_action_hints"] == []
+        assert work_item_by_source(after_preview, "mail-1")["action"] == "request_preview_decision"
+
+        provision_response = client.post(
+            "/v1/admin/tenant-modules/knowledge_base/provision",
+            headers=DEMO_ADMIN_HEADERS,
+            json={
+                "approval_reference": "approval:workspace-transition-kb-provision",
+                "reason": "workspace transition provision",
+            },
+        )
+        assert provision_response.status_code == 200
+
+        after_provision = cockpit_body()
+        after_provision_kb_item = work_item_by_module(after_provision, "knowledge_base")
+        assert initial_kb_item["work_item_id"] not in {item["work_item_id"] for item in after_provision["work_items"]}
+        assert after_provision_kb_item["action"] == "enable_module"
+        assert after_provision_kb_item["primary_action_hint"]["ui_action"] == "module_enable"
+        assert after_provision_kb_item["primary_action_hint"]["api_action"] == "enable"
+        assert after_provision_kb_item["primary_action_hint"]["required_roles"] == ["tenant-admin", "security-admin"]
+
+        enable_response = client.post(
+            "/v1/admin/tenant-modules/knowledge_base/enable",
+            headers=DEMO_ADMIN_HEADERS,
+            json={
+                "approval_reference": "approval:workspace-transition-kb-enable",
+                "reason": "workspace transition enable",
+                "enabled_features": {"knowledge_base.articles.read": True},
+            },
+        )
+        assert enable_response.status_code == 200
+
+        after_enable = cockpit_body()
+        module_items_after_enable = [item for item in after_enable["work_items"] if item["scope"] == "module"]
+        assert {item["module_id"] for item in module_items_after_enable} == {"crm_erp"}
+        assert all(item["module_id"] != "knowledge_base" for item in after_enable["work_items"])
+        assert after_enable["work_item_count"] == 3
+        assert work_item_by_source(after_enable, "doc-1")["action"] == "review_latest_preview_decision"
+        assert work_item_by_source(after_enable, "mail-1")["action"] == "request_preview_decision"
+        assert "Board pack draft source content" not in json.dumps(after_enable)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
 
 
 def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_content() -> None:
