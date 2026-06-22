@@ -347,6 +347,7 @@ function renderCockpit(cockpit) {
   const workItems = cockpit.work_items || [];
   const workSummary = cockpit.work_item_operational_summary || {};
   const mvpSummary = cockpit.mvp_readiness_summary || {};
+  const mvpDecision = cockpit.mvp_readiness_decision || {};
   const foundationGapActions = cockpit.foundation_gap_actions || [];
   moduleCount.textContent = String(modules.length);
   workItemCount.textContent = String(workItems.length);
@@ -363,14 +364,14 @@ function renderCockpit(cockpit) {
     selectedFlowId = flows[0]?.flow_id || "";
   }
   renderModules(modules);
-  renderMvpReadinessSummary(mvpSummary, foundationGapActions);
+  renderMvpReadinessSummary(mvpSummary, foundationGapActions, mvpDecision);
   renderWorkItemOperationalSummary(workSummary);
   renderWorkItems(workItems);
   renderFlows(flows);
   loadSourceObjectDetail();
 }
 
-function renderMvpReadinessSummary(summary, foundationGapActions) {
+function renderMvpReadinessSummary(summary, foundationGapActions, decision) {
   if (!summary || !summary.schema_version) {
     mvpReadinessPanel.innerHTML = '<div class="empty-state compact">Keine MVP-Readiness-Evidence.</div>';
     return;
@@ -391,6 +392,7 @@ function renderMvpReadinessSummary(summary, foundationGapActions) {
     '<div class="mvp-readiness-next"><span>Naechste Foundation-Aktion</span><code>',
     escapeHtml(summary.next_foundation_action || "continue_foundation_review"),
     '</code></div>',
+    renderMvpReadinessDecision(decision),
     '<div class="mvp-readiness-tags">',
     mvpReadinessTagList("Ready", summary.ready_surfaces || []),
     mvpReadinessTagList("Foundation", summary.foundation_gaps || []),
@@ -403,6 +405,26 @@ function renderMvpReadinessSummary(summary, foundationGapActions) {
     ' | persistent_task_created=' + (summary.persistent_task_created === true ? "true" : "false"),
     '</code></div>',
   ].join("");
+}
+
+function renderMvpReadinessDecision(decision) {
+  if (!decision || !decision.schema_version) {
+    return "";
+  }
+  return [
+    '<div class="mvp-readiness-decision" data-mvp-readiness-decision="true">',
+    '<code>decision=' + escapeHtml(decision.decision || 'foundation_work_required')
+      + ' | productive=' + (decision.metadata_only_productive_path === true ? 'true' : 'false') + '</code>',
+    '<code>roles=' + escapeHtml((decision.required_roles || []).join(',') || 'context')
+      + ' | role_gate=' + escapeHtml(decision.role_gate_status || 'context_only') + '</code>',
+    '<code>audit=' + escapeHtml(decision.audit_gate_status || 'audit_not_ready')
+      + ' ' + Number(decision.audit_visible_flow_count || 0) + '/' + Number(decision.audit_required_flow_count || 0)
+      + ' | backup_failover=' + escapeHtml(decision.backup_failover_gate_status || 'review') + '</code>',
+    '<code>modules=' + escapeHtml(decision.module_gate_status || 'review')
+      + ' | content_gate=' + escapeHtml(decision.content_gate_status || 'review')
+      + ' | foundation=' + escapeHtml(decision.foundation_gap_status || 'review') + '</code>',
+    '</div>',
+  ].join('');
 }
 
 function renderFoundationGapActionPlan(actions) {

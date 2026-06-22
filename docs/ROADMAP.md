@@ -1341,7 +1341,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 160. [x] Modulaktivierungs-Gap fokussiert abbauen: nach Preview-Evidence-Brief nur die notwendigen Modul-Provisioning-/Enablement-Aktionen fuer den MVP-Arbeitsbereich operationalisieren, ohne spaetere Modulfachlichkeit, Tickets oder Automationen vorzuziehen.
 161. [x] Human-Confirmation-Gap scharf stellen: verbleibende explizite Bestaetigungen nach Preview- und Modul-Gap getrennt sichtbar fuehren und nur notwendige bestaetigungsgebundene Foundation-Schritte behandeln, ohne persistente Aufgaben, Tickets oder Automationen vorzuziehen.
 162. [x] Content-Release-Gate bewusst halten: nach geschaerftem Human-Confirmation-Gap den verbleibenden Content-Release-Block als Policy-/Viewer-Deferred-Entscheidung dokumentieren und nur pruefen, ob MVP-Readiness ohne Content-Preview produktiv genug ist.
-163. [ ] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
+163. [x] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
+164. [ ] MVP-Produktivpfad als Release-Kandidat pruefen: Demo-Tenant, Rollenmatrix, Audit-Events, Snapshot-Export und Backup-/Failover-Schutzsignale als zusammenhaengenden Smoke-Run dokumentieren, ohne neue Module oder Content-Preview-Funktionalitaet vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

@@ -226,6 +226,37 @@ class ProductCockpitMvpReadinessSummary(BaseModel):
     persistent_task_created: bool = False
 
 
+class ProductCockpitMvpReadinessDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_readiness_decision.v1"
+    decision: str
+    metadata_only_productive_path: bool
+    entrypoint_route: str = "/workspace"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    role_gate_status: str
+    required_roles: tuple[str, ...] = ()
+    audit_gate_status: str
+    audit_visible_flow_count: int = Field(ge=0)
+    audit_required_flow_count: int = Field(ge=0)
+    backup_failover_gate_status: str
+    backup_restore_verified_flow_count: int = Field(ge=0)
+    backup_restore_deferred_flow_count: int = Field(ge=0)
+    module_gate_status: str
+    module_count: int = Field(ge=0)
+    enabled_module_ids: tuple[str, ...] = ()
+    module_action_required_ids: tuple[str, ...] = ()
+    foundation_gap_status: str
+    active_foundation_gap_ids: tuple[str, ...] = ()
+    ready_foundation_gap_ids: tuple[str, ...] = ()
+    deferred_foundation_gap_ids: tuple[str, ...] = ()
+    content_gate_status: str
+    next_foundation_action: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+
+
 class ProductCockpitFoundationGapEvidenceBrief(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -361,6 +392,7 @@ class ProductCockpitResponse(BaseModel):
     work_item_count: int = Field(ge=0)
     work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
     mvp_readiness_summary: ProductCockpitMvpReadinessSummary
+    mvp_readiness_decision: ProductCockpitMvpReadinessDecision
     foundation_gap_action_count: int = Field(ge=0)
     foundation_gap_actions: tuple[ProductCockpitFoundationGapAction, ...]
     audit_event_id: str
@@ -428,6 +460,7 @@ class ProductCockpitMvpSnapshotResponse(BaseModel):
     generated_from_cockpit_audit_event_id: str
     review_sections: tuple[str, ...]
     mvp_readiness_summary: ProductCockpitMvpReadinessSummary
+    mvp_readiness_decision: ProductCockpitMvpReadinessDecision
     flow_readiness_summary: ProductCockpitReadinessSummary
     work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
     module_refs: tuple[ProductCockpitMvpSnapshotModuleRef, ...]
@@ -492,6 +525,13 @@ def build_product_cockpit_response(
         work_items=preliminary_work_items,
         source_object_flows=source_object_flows,
     )
+    preliminary_mvp_readiness_decision = _mvp_readiness_decision(
+        modules=modules,
+        source_object_flows=source_object_flows,
+        work_item_summary=preliminary_work_item_summary,
+        mvp_readiness_summary=mvp_readiness_summary,
+        foundation_gap_actions=preliminary_foundation_gap_actions,
+    )
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -534,6 +574,13 @@ def build_product_cockpit_response(
             "mvp_foundation_gaps": mvp_readiness_summary.foundation_gaps,
             "mvp_deferred_items": mvp_readiness_summary.deferred_items,
             "mvp_next_foundation_action": mvp_readiness_summary.next_foundation_action,
+            "mvp_readiness_decision": preliminary_mvp_readiness_decision.decision,
+            "mvp_metadata_only_productive_path": preliminary_mvp_readiness_decision.metadata_only_productive_path,
+            "mvp_role_gate_status": preliminary_mvp_readiness_decision.role_gate_status,
+            "mvp_audit_gate_status": preliminary_mvp_readiness_decision.audit_gate_status,
+            "mvp_backup_failover_gate_status": preliminary_mvp_readiness_decision.backup_failover_gate_status,
+            "mvp_module_gate_status": preliminary_mvp_readiness_decision.module_gate_status,
+            "mvp_content_gate_status": preliminary_mvp_readiness_decision.content_gate_status,
             "mvp_content_included": mvp_readiness_summary.content_included,
             "mvp_persistent_task_created": mvp_readiness_summary.persistent_task_created,
             "foundation_gap_action_count": len(preliminary_foundation_gap_actions),
@@ -557,6 +604,13 @@ def build_product_cockpit_response(
         work_items=work_items,
         source_object_flows=source_object_flows,
     )
+    mvp_readiness_decision = _mvp_readiness_decision(
+        modules=modules,
+        source_object_flows=source_object_flows,
+        work_item_summary=work_item_operational_summary,
+        mvp_readiness_summary=mvp_readiness_summary,
+        foundation_gap_actions=foundation_gap_actions,
+    )
     return ProductCockpitResponse(
         tenant_id=user_context.tenant_id,
         modules=modules,
@@ -567,6 +621,7 @@ def build_product_cockpit_response(
         work_item_count=len(work_items),
         work_item_operational_summary=work_item_operational_summary,
         mvp_readiness_summary=mvp_readiness_summary,
+        mvp_readiness_decision=mvp_readiness_decision,
         foundation_gap_action_count=len(foundation_gap_actions),
         foundation_gap_actions=foundation_gap_actions,
         audit_event_id=event.event_id,
@@ -586,6 +641,7 @@ def build_product_cockpit_mvp_snapshot_response(
     work_item_refs = tuple(_mvp_snapshot_work_item_ref(item) for item in cockpit_response.work_items)
     review_sections = (
         "mvp_readiness_summary",
+        "mvp_readiness_decision",
         "flow_readiness_summary",
         "work_item_operational_summary",
         "module_refs",
@@ -616,6 +672,13 @@ def build_product_cockpit_mvp_snapshot_response(
             "mvp_foundation_gap_count": cockpit_response.mvp_readiness_summary.foundation_gap_count,
             "mvp_deferred_item_count": cockpit_response.mvp_readiness_summary.deferred_item_count,
             "mvp_next_foundation_action": cockpit_response.mvp_readiness_summary.next_foundation_action,
+            "mvp_readiness_decision": cockpit_response.mvp_readiness_decision.decision,
+            "mvp_metadata_only_productive_path": cockpit_response.mvp_readiness_decision.metadata_only_productive_path,
+            "mvp_role_gate_status": cockpit_response.mvp_readiness_decision.role_gate_status,
+            "mvp_audit_gate_status": cockpit_response.mvp_readiness_decision.audit_gate_status,
+            "mvp_backup_failover_gate_status": cockpit_response.mvp_readiness_decision.backup_failover_gate_status,
+            "mvp_module_gate_status": cockpit_response.mvp_readiness_decision.module_gate_status,
+            "mvp_content_gate_status": cockpit_response.mvp_readiness_decision.content_gate_status,
             "content_included": False,
             "persistent_task_created": False,
             "automation_created": False,
@@ -629,6 +692,7 @@ def build_product_cockpit_mvp_snapshot_response(
         generated_from_cockpit_audit_event_id=cockpit_response.audit_event_id,
         review_sections=review_sections,
         mvp_readiness_summary=cockpit_response.mvp_readiness_summary,
+        mvp_readiness_decision=cockpit_response.mvp_readiness_decision,
         flow_readiness_summary=cockpit_response.flow_readiness_summary,
         work_item_operational_summary=cockpit_response.work_item_operational_summary,
         module_refs=module_refs,
@@ -1370,6 +1434,106 @@ def _required_roles_for_work_items(work_items: tuple[ProductCockpitWorkItem, ...
         for role in hint.required_roles
     }
     return tuple(sorted(roles))
+
+
+def _mvp_readiness_decision(
+    *,
+    modules: tuple[ProductCockpitModuleView, ...],
+    source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+    work_item_summary: ProductCockpitWorkItemOperationalSummary,
+    mvp_readiness_summary: ProductCockpitMvpReadinessSummary,
+    foundation_gap_actions: tuple[ProductCockpitFoundationGapAction, ...],
+) -> ProductCockpitMvpReadinessDecision:
+    required_roles = _dedupe_strings(role for action in foundation_gap_actions for role in action.required_roles)
+    enabled_module_ids = tuple(module.module_id for module in modules if module.normal_use_enabled)
+    module_action_required_ids = tuple(module.module_id for module in modules if not module.normal_use_enabled)
+    audit_visible_flow_count = sum(1 for flow in source_object_flows if flow.readiness.audit_visible)
+    backup_restore_verified_flow_count = sum(
+        1
+        for flow in source_object_flows
+        if flow.readiness.backup_coverage_evidence_verified and flow.readiness.restore_evidence_verified
+    )
+    content_included = work_item_summary.content_included or any(
+        action.content_included for action in foundation_gap_actions
+    )
+    persistent_task_created = work_item_summary.persistent_task_created_count > 0 or any(
+        action.persistent_task_created for action in foundation_gap_actions
+    )
+    automation_created = any(action.automation_created for action in foundation_gap_actions)
+    no_side_effects = (
+        not content_included
+        and not persistent_task_created
+        and not automation_created
+        and work_item_summary.destructive_action_count == 0
+        and work_item_summary.external_side_effect_action_count == 0
+    )
+    audit_gate_status = (
+        "audit_visible"
+        if source_object_flows and audit_visible_flow_count == len(source_object_flows)
+        else "audit_not_ready"
+    )
+    content_action = next(
+        (action for action in foundation_gap_actions if action.gap_id == "content_release_gate_blocks_content"),
+        None,
+    )
+    content_gate_status = (
+        "content_gate_clear"
+        if content_action is None
+        else "deferred_metadata_only_ready"
+        if content_action.content_release_brief is not None
+        and content_action.content_release_brief.metadata_only_mvp_ready
+        else "content_gate_blocking_mvp"
+    )
+    metadata_only_productive_path = (
+        mvp_readiness_summary.mvp_entry_ready
+        and audit_gate_status == "audit_visible"
+        and no_side_effects
+        and content_gate_status != "content_gate_blocking_mvp"
+    )
+    decision = (
+        "metadata_only_mvp_ready_with_deferred_content_release"
+        if metadata_only_productive_path and content_action is not None
+        else "metadata_only_mvp_ready"
+        if metadata_only_productive_path
+        else "foundation_work_required"
+    )
+    return ProductCockpitMvpReadinessDecision(
+        decision=decision,
+        metadata_only_productive_path=metadata_only_productive_path,
+        role_gate_status="role_gated_actions_visible" if required_roles else "context_only",
+        required_roles=required_roles,
+        audit_gate_status=audit_gate_status,
+        audit_visible_flow_count=audit_visible_flow_count,
+        audit_required_flow_count=len(source_object_flows),
+        backup_failover_gate_status="metadata_only_no_state_change"
+        if no_side_effects
+        else "backup_restore_evidence_required",
+        backup_restore_verified_flow_count=backup_restore_verified_flow_count,
+        backup_restore_deferred_flow_count=len(source_object_flows) - backup_restore_verified_flow_count,
+        module_gate_status="module_registry_empty"
+        if not modules
+        else "module_activation_required"
+        if module_action_required_ids
+        else "modules_enabled",
+        module_count=len(modules),
+        enabled_module_ids=enabled_module_ids,
+        module_action_required_ids=module_action_required_ids,
+        foundation_gap_status="clear"
+        if not foundation_gap_actions
+        else "deferred_only"
+        if all(action.status == "deferred" for action in foundation_gap_actions)
+        else "work_items_open",
+        active_foundation_gap_ids=tuple(action.gap_id for action in foundation_gap_actions),
+        ready_foundation_gap_ids=tuple(action.gap_id for action in foundation_gap_actions if action.status == "ready"),
+        deferred_foundation_gap_ids=tuple(
+            action.gap_id for action in foundation_gap_actions if action.status == "deferred"
+        ),
+        content_gate_status=content_gate_status,
+        next_foundation_action=mvp_readiness_summary.next_foundation_action,
+        content_included=content_included,
+        persistent_task_created=persistent_task_created,
+        automation_created=automation_created,
+    )
 
 
 def _mvp_readiness_summary(

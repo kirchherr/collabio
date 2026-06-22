@@ -474,6 +474,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".readiness-cell" in css_response.text
     assert ".mvp-readiness-panel" in css_response.text
     assert ".mvp-readiness-grid" in css_response.text
+    assert ".mvp-readiness-decision" in css_response.text
     assert ".foundation-gap-plan" in css_response.text
     assert ".foundation-gap-action" in css_response.text
     assert ".foundation-gap-controls" in css_response.text
@@ -503,8 +504,13 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "work_items" in js_response.text
     assert "work_item_operational_summary" in js_response.text
     assert "mvp_readiness_summary" in js_response.text
+    assert "mvp_readiness_decision" in js_response.text
     assert "foundation_gap_actions" in js_response.text
     assert "renderMvpReadinessSummary" in js_response.text
+    assert "renderMvpReadinessDecision" in js_response.text
+    assert "data-mvp-readiness-decision" in js_response.text
+    assert "metadata_only_productive_path" in js_response.text
+    assert "backup_failover_gate_status" in js_response.text
     assert "renderFoundationGapActionPlan" in js_response.text
     assert "foundationGapEvidenceBrief" in js_response.text
     assert "foundationGapConfirmationBrief" in js_response.text
@@ -775,6 +781,39 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "detail_surface_ready": True,
         "content_included": False,
         "persistent_task_created": False,
+    }
+    assert body["mvp_readiness_decision"] == {
+        "schema_version": "product_cockpit_mvp_readiness_decision.v1",
+        "decision": "metadata_only_mvp_ready_with_deferred_content_release",
+        "metadata_only_productive_path": True,
+        "entrypoint_route": "/workspace",
+        "snapshot_route": "/v1/platform/cockpit/mvp-snapshot",
+        "role_gate_status": "role_gated_actions_visible",
+        "required_roles": ["security-admin", "tenant-admin"],
+        "audit_gate_status": "audit_visible",
+        "audit_visible_flow_count": 2,
+        "audit_required_flow_count": 2,
+        "backup_failover_gate_status": "metadata_only_no_state_change",
+        "backup_restore_verified_flow_count": 0,
+        "backup_restore_deferred_flow_count": 2,
+        "module_gate_status": "module_activation_required",
+        "module_count": 2,
+        "enabled_module_ids": [],
+        "module_action_required_ids": ["crm_erp", "knowledge_base"],
+        "foundation_gap_status": "work_items_open",
+        "active_foundation_gap_ids": [
+            "preview_decisions_pending",
+            "module_activation_work_items_open",
+            "human_confirmation_required",
+            "content_release_gate_blocks_content",
+        ],
+        "ready_foundation_gap_ids": ["preview_decisions_pending", "module_activation_work_items_open"],
+        "deferred_foundation_gap_ids": ["human_confirmation_required", "content_release_gate_blocks_content"],
+        "content_gate_status": "deferred_metadata_only_ready",
+        "next_foundation_action": "resolve_preview_decision_work_items",
+        "content_included": False,
+        "persistent_task_created": False,
+        "automation_created": False,
     }
     assert body["foundation_gap_action_count"] == 4
     assert body["foundation_gap_actions"] == [
@@ -1072,6 +1111,13 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "full_content_preview_rendering",
     )
     assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["mvp_readiness_decision"] == "metadata_only_mvp_ready_with_deferred_content_release"
+    assert new_events[-1].metadata["mvp_metadata_only_productive_path"] is True
+    assert new_events[-1].metadata["mvp_role_gate_status"] == "role_gated_actions_visible"
+    assert new_events[-1].metadata["mvp_audit_gate_status"] == "audit_visible"
+    assert new_events[-1].metadata["mvp_backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert new_events[-1].metadata["mvp_module_gate_status"] == "module_activation_required"
+    assert new_events[-1].metadata["mvp_content_gate_status"] == "deferred_metadata_only_ready"
     assert new_events[-1].metadata["foundation_gap_action_count"] == 4
     assert new_events[-1].metadata["foundation_gap_action_ids"] == (
         "preview_decisions_pending",
@@ -1118,6 +1164,7 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert body["audit_event_id"] != body["generated_from_cockpit_audit_event_id"]
     assert body["review_sections"] == [
         "mvp_readiness_summary",
+        "mvp_readiness_decision",
         "flow_readiness_summary",
         "work_item_operational_summary",
         "module_refs",
@@ -1137,6 +1184,19 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
         "persistent_tasks_and_ticketing",
         "lms_time_tracking_activity_modules",
         "full_content_preview_rendering",
+    ]
+    assert body["mvp_readiness_decision"]["decision"] == "metadata_only_mvp_ready_with_deferred_content_release"
+    assert body["mvp_readiness_decision"]["metadata_only_productive_path"] is True
+    assert body["mvp_readiness_decision"]["role_gate_status"] == "role_gated_actions_visible"
+    assert body["mvp_readiness_decision"]["audit_gate_status"] == "audit_visible"
+    assert body["mvp_readiness_decision"]["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["mvp_readiness_decision"]["module_gate_status"] == "module_activation_required"
+    assert body["mvp_readiness_decision"]["content_gate_status"] == "deferred_metadata_only_ready"
+    assert body["mvp_readiness_decision"]["active_foundation_gap_ids"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
     ]
     assert body["foundation_gap_action_count"] == 4
     assert [action["gap_id"] for action in body["foundation_gap_actions"]] == [
@@ -1243,6 +1303,13 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert new_events[-1].metadata["mvp_foundation_gap_count"] == 4
     assert new_events[-1].metadata["mvp_deferred_item_count"] == 5
     assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["mvp_readiness_decision"] == "metadata_only_mvp_ready_with_deferred_content_release"
+    assert new_events[-1].metadata["mvp_metadata_only_productive_path"] is True
+    assert new_events[-1].metadata["mvp_role_gate_status"] == "role_gated_actions_visible"
+    assert new_events[-1].metadata["mvp_audit_gate_status"] == "audit_visible"
+    assert new_events[-1].metadata["mvp_backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert new_events[-1].metadata["mvp_module_gate_status"] == "module_activation_required"
+    assert new_events[-1].metadata["mvp_content_gate_status"] == "deferred_metadata_only_ready"
     assert new_events[-1].metadata["content_included"] is False
     assert new_events[-1].metadata["persistent_task_created"] is False
     assert new_events[-1].metadata["automation_created"] is False
@@ -1510,6 +1577,10 @@ def test_module_activation_foundation_gap_is_removed_after_modules_enabled() -> 
         assert enabled_modules["crm_erp"]["normal_use_enabled"] is True
         assert enabled_modules["knowledge_base"]["normal_use_enabled"] is True
         assert "module_activation_work_items_open" not in after_enable["mvp_readiness_summary"]["foundation_gaps"]
+        assert after_enable["mvp_readiness_decision"]["module_gate_status"] == "modules_enabled"
+        assert after_enable["mvp_readiness_decision"]["enabled_module_ids"] == ["crm_erp", "knowledge_base"]
+        assert after_enable["mvp_readiness_decision"]["module_action_required_ids"] == []
+        assert after_enable["mvp_readiness_decision"]["metadata_only_productive_path"] is True
         assert "module_activation_work_items_open" not in [
             action["gap_id"] for action in after_enable["foundation_gap_actions"]
         ]
@@ -1541,6 +1612,8 @@ def test_module_activation_foundation_gap_is_removed_after_modules_enabled() -> 
         assert "module_activation_work_items_open" not in [
             action["gap_id"] for action in snapshot["foundation_gap_actions"]
         ]
+        assert snapshot["mvp_readiness_decision"]["module_gate_status"] == "modules_enabled"
+        assert snapshot["mvp_readiness_decision"]["metadata_only_productive_path"] is True
         assert snapshot["content_included"] is False
         assert snapshot["persistent_task_created"] is False
         assert snapshot["automation_created"] is False
@@ -1683,6 +1756,9 @@ def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions(
         assert snapshot_response.status_code == 200
         snapshot = snapshot_response.json()
         assert snapshot["next_foundation_action"] == "complete_preview_release_evidence"
+        assert snapshot["mvp_readiness_decision"]["next_foundation_action"] == "complete_preview_release_evidence"
+        assert snapshot["mvp_readiness_decision"]["backup_restore_verified_flow_count"] == 2
+        assert snapshot["mvp_readiness_decision"]["backup_restore_deferred_flow_count"] == 0
         assert "preview_decisions_pending" not in [action["gap_id"] for action in snapshot["foundation_gap_actions"]]
         assert snapshot["foundation_gap_actions"][0]["gap_id"] == "preview_decisions_blocked"
         assert snapshot["foundation_gap_actions"][0]["evidence_brief"]["evidence_required_now"] == [
