@@ -12,9 +12,15 @@ const flowTableBody = document.querySelector("#flow-table-body");
 const moduleCount = document.querySelector("#module-count");
 const flowCount = document.querySelector("#flow-count");
 const sourceDetailPanel = document.querySelector("#source-detail-panel");
+const readinessCounts = {
+  metadataReady: document.querySelector("#metadata-ready-count"),
+  previewPending: document.querySelector("#preview-pending-count"),
+  previewBlocked: document.querySelector("#preview-blocked-count"),
+  evidenceComplete: document.querySelector("#preview-evidence-complete-count"),
+};
 
 const storageKey = "collabio.workspace.context";
-let currentCockpit = { modules: [], source_object_flows: [] };
+let currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {} };
 let selectedFlowId = "";
 let detailLoadToken = 0;
 
@@ -76,7 +82,7 @@ async function loadCockpit() {
     renderCockpit(body);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
-    currentCockpit = { modules: [], source_object_flows: [] };
+    currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {} };
     renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
@@ -122,8 +128,15 @@ function renderCockpit(cockpit) {
   const modules = cockpit.modules || [];
   const flows = cockpit.source_object_flows || [];
   const hashFlowId = flowIdFromHash();
+  const readinessSummary = cockpit.flow_readiness_summary || {};
   moduleCount.textContent = String(modules.length);
   flowCount.textContent = String(flows.length);
+  readinessCounts.metadataReady.textContent = String(readinessSummary.metadata_ready_flow_count || 0);
+  readinessCounts.previewPending.textContent = String(readinessSummary.preview_decision_pending_count || 0);
+  readinessCounts.previewBlocked.textContent = String(readinessSummary.preview_decision_blocked_count || 0);
+  readinessCounts.evidenceComplete.textContent = String(
+    readinessSummary.preview_evidence_complete_but_content_blocked_count || 0,
+  );
   if (hashFlowId && flows.some((flow) => flow.flow_id === hashFlowId)) {
     selectedFlowId = hashFlowId;
   } else if (!selectedFlowId || !flows.some((flow) => flow.flow_id === selectedFlowId)) {
@@ -203,6 +216,7 @@ function renderFlows(flows) {
           <span class="hash-text">${escapeHtml(flow.manifest_hash)}</span>
           <span class="hash-text">${escapeHtml(flow.content_hash)}</span>
         </div>
+        ${readinessCell(flow)}
       </td>
     `;
     flowTableBody.appendChild(row);
@@ -285,6 +299,7 @@ function renderSourceObjectDetail(detail) {
     return;
   }
 
+  const selectedFlow = (currentCockpit.source_object_flows || []).find((flow) => flow.flow_id === selectedFlowId);
   sourceDetailPanel.className = "detail-panel";
   sourceDetailPanel.innerHTML = `
     <div class="detail-summary">
@@ -311,6 +326,10 @@ function renderSourceObjectDetail(detail) {
       ${detailItem("Detail Audit", detail.audit_event_id)}
       ${detailItem("Access", detail.access_checked ? "checked" : "not_checked")}
     </dl>
+    <div class="readiness-list">
+      <strong>Flow Readiness</strong>
+      ${readinessList(selectedFlow?.readiness)}
+    </div>
     <div class="evidence-list">
       <strong>Evidence / Downstream</strong>
       ${evidenceList([...(detail.evidence_refs || []), ...(detail.downstream_surfaces || [])])}
@@ -322,6 +341,39 @@ function renderSourceObjectDetail(detail) {
   `;
 }
 
+function readinessCell(flow) {
+  const readiness = flow.readiness || {};
+  const decisionRef = readiness.latest_preview_decision_evidence_hash || "preview_decision_not_requested";
+  const missingCount = (readiness.latest_preview_decision_missing_evidence || []).length;
+  return `
+    <div class="readiness-cell">
+      <span class="status-pill ${readinessStatusClass(readiness.status)}">${escapeHtml(readiness.status || "metadata_ready")}</span>
+      <span>${escapeHtml(readiness.next_action || "request_preview_decision")}</span>
+      <span class="hash-text">${escapeHtml(decisionRef)}</span>
+      <span class="hash-text">missing_evidence=${missingCount}</span>
+    </div>
+  `;
+}
+
+function readinessList(readiness) {
+  if (!readiness) {
+    return "<span>Keine Flow-Readiness.</span>";
+  }
+  const missing = readiness.latest_preview_decision_missing_evidence || [];
+  return `
+    <div class="readiness-grid">
+      ${detailItem("Status", readiness.status)}
+      ${detailItem("Next", readiness.next_action)}
+      ${detailItem("Preview Gate", readiness.preview_gate_status)}
+      ${detailItem("Preview Decision", readiness.latest_preview_decision_ledger_ref || "not_requested")}
+      ${detailItem("Missing Evidence", missing.length ? missing.join(",") : "none")}
+      ${detailItem("Evidence Complete", readiness.content_release_evidence_complete ? "true" : "false")}
+      ${detailItem("Content Release", readiness.content_release_allowed ? "allowed" : "blocked")}
+      ${detailItem("Cockpit Audit", readiness.cockpit_audit_event_id || "n/a")}
+    </div>
+    <div class="evidence-list compact">${evidenceList(readiness.evidence_refs || [])}</div>
+  `;
+}
 function moduleActions(module) {
   const action = moduleActionFor(module);
   if (!action) {
@@ -451,6 +503,19 @@ function statusClass(status) {
   const normalized = String(status || "other").replace(/[^a-z0-9_]/g, "_");
   if (["enabled", "available", "disabled", "suspended", "decommission_requested", "decommission_blocked"].includes(normalized)) {
     return `status-${normalized}`;
+  }
+  return "status-other";
+}
+
+function readinessStatusClass(status) {
+  if (status === "metadata_ready_preview_decision_pending") {
+    return "readiness-pending";
+  }
+  if (status === "metadata_ready_preview_evidence_complete_content_blocked") {
+    return "readiness-complete-blocked";
+  }
+  if (status === "metadata_ready_preview_blocked") {
+    return "readiness-blocked";
   }
   return "status-other";
 }

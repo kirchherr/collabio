@@ -197,6 +197,7 @@ input:focus-visible {
 }
 
 .tenant-band,
+.readiness-band,
 .module-band,
 .flow-band,
 .detail-band {
@@ -240,6 +241,35 @@ input {
 
 .status-line.error {
   color: var(--red);
+}
+
+.readiness-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+}
+
+.readiness-metric {
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  border-right: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.readiness-metric:last-child {
+  border-right: 0;
+}
+
+.readiness-metric span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.readiness-metric strong {
+  font-size: 24px;
+  line-height: 1.1;
 }
 
 .section-heading {
@@ -392,6 +422,21 @@ input {
   color: var(--blue);
 }
 
+.readiness-pending {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.readiness-blocked {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.readiness-complete-blocked {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
 .flow-table-wrap {
   max-width: 100%;
   min-width: 0;
@@ -444,6 +489,15 @@ input {
 .flow-title {
   display: grid;
   gap: 4px;
+}
+
+.readiness-cell {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .flow-source-cell {
@@ -547,12 +601,23 @@ input {
   font-size: 12px;
 }
 
+.readiness-list,
 .evidence-list,
 .preview-slot-list {
   display: grid;
   gap: 5px;
   min-width: 0;
   color: var(--muted);
+}
+
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.evidence-list.compact {
+  margin-top: 4px;
 }
 
 .evidence-list code,
@@ -611,7 +676,20 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .detail-grid {
+  .readiness-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .readiness-metric:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .readiness-metric:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .detail-grid,
+  .readiness-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -640,7 +718,22 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .detail-grid {
+  .readiness-band {
+    grid-template-columns: 1fr;
+  }
+
+  .readiness-metric,
+  .readiness-metric:nth-child(2n) {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .readiness-metric:last-child {
+    border-bottom: 0;
+  }
+
+  .detail-grid,
+  .readiness-grid {
     grid-template-columns: 1fr;
   }
 

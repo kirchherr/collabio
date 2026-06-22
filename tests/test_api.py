@@ -29,7 +29,10 @@ from suite.platform.modules import (
     PgModuleRegistry,
     default_module_registry,
 )
-from suite.platform.source_object_preview_decisions import JsonlSourceObjectPreviewDecisionLedger
+from suite.platform.source_object_preview_decisions import (
+    InMemorySourceObjectPreviewDecisionLedger,
+    JsonlSourceObjectPreviewDecisionLedger,
+)
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 from suite.platform.workspace_source_objects import (
     ConfiguredWorkspaceSourceObjectCatalog,
@@ -446,6 +449,8 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "/workspace/assets/workspace.css" in response.text
     assert "/workspace/assets/workspace.js" in response.text
     assert "source-detail-panel" in response.text
+    assert "Flow Readiness" in response.text
+    assert "metadata-ready-count" in response.text
     assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
     assert "Welcome message source" not in response.text
@@ -460,6 +465,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "detail-panel" in css_response.text
     assert ".detail-panel.denied" in css_response.text
     assert ".detail-panel.not-found" in css_response.text
+    assert ".readiness-band" in css_response.text
+    assert ".readiness-cell" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
@@ -468,6 +475,9 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "Zugriff verweigert" in js_response.text
     assert "Nicht gefunden" in js_response.text
     assert "Preview Slots" in js_response.text
+    assert "Flow Readiness" in js_response.text
+    assert "metadata_ready_preview_decision_pending" in js_response.text
+    assert "metadata_ready_preview_blocked" in js_response.text
     assert "metadata_only_no_source_content" in js_response.text
     assert "metadata_ready_content_blocked" in js_response.text
     assert "content_release_allowed=false" in js_response.text
@@ -593,9 +603,14 @@ def test_platform_cockpit_requires_request_context() -> None:
 
 def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_flows() -> None:
     reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
     starting_event_count = len(app.state.audit_logger.events)
 
-    response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+    try:
+        response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
 
     assert response.status_code == 200
     body = response.json()
@@ -632,8 +647,34 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         for slot in flow["preview_slots"]
     )
     assert all(slot["content_included"] is False for flow in flows.values() for slot in flow["preview_slots"])
+    assert body["flow_readiness_summary"] == {
+        "schema_version": "product_cockpit_readiness_summary.v1",
+        "metadata_ready_flow_count": 2,
+        "access_checked_flow_count": 2,
+        "audit_visible_flow_count": 2,
+        "preview_decision_pending_count": 2,
+        "preview_decision_blocked_count": 0,
+        "preview_evidence_complete_but_content_blocked_count": 0,
+        "content_release_allowed_count": 0,
+        "content_included_count": 0,
+    }
     assert all(flow["access_checked"] is True for flow in flows.values())
     assert all(flow["content_included"] is False for flow in flows.values())
+    assert all(
+        flow["readiness"]["schema_version"] == "product_cockpit_source_object_flow_readiness.v1"
+        for flow in flows.values()
+    )
+    assert all(flow["readiness"]["status"] == "metadata_ready_preview_decision_pending" for flow in flows.values())
+    assert all(flow["readiness"]["source_detail_ready"] is True for flow in flows.values())
+    assert all(flow["readiness"]["access_checked"] is True for flow in flows.values())
+    assert all(flow["readiness"]["audit_visible"] is True for flow in flows.values())
+    assert all(flow["readiness"]["cockpit_audit_event_id"] == body["audit_event_id"] for flow in flows.values())
+    assert all(flow["readiness"]["preview_decision_available"] is False for flow in flows.values())
+    assert all(flow["readiness"]["content_release_allowed"] is False for flow in flows.values())
+    assert all(flow["readiness"]["content_included"] is False for flow in flows.values())
+    assert all(flow["readiness"]["next_action"] == "request_preview_decision" for flow in flows.values())
+    assert all("preview_decision_not_requested" in flow["readiness"]["blocking_reasons"] for flow in flows.values())
+    assert all(f"audit:{body['audit_event_id']}" in flow["readiness"]["evidence_refs"] for flow in flows.values())
     assert all(flow["manifest_hash"].startswith("sha256:") for flow in flows.values())
     assert all(flow["content_hash"].startswith("sha256:") for flow in flows.values())
     assert "Board pack draft source content" not in json.dumps(body)
@@ -645,6 +686,57 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
     assert new_events[-1].metadata["content_included"] is False
     assert new_events[-1].metadata["access_checked"] is True
+    assert new_events[-1].metadata["preview_decision_pending_count"] == 2
+    assert new_events[-1].metadata["preview_decision_blocked_count"] == 0
+
+
+def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_content() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+
+    try:
+        decision_response = client.post(
+            "/v1/source-objects/doc-1/versions/v1/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": "office.document.preview.metadata",
+                "preview_policy_id": "preview-policy.document.metadata-first.v1",
+                "reason": "request safe document preview decision for cockpit readiness",
+            },
+        )
+        response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert decision_response.status_code == 200
+    decision = decision_response.json()
+    assert response.status_code == 200
+    body = response.json()
+    flows = {flow["source_object_id"]: flow for flow in body["source_object_flows"]}
+    doc_readiness = flows["doc-1"]["readiness"]
+    mail_readiness = flows["mail-1"]["readiness"]
+
+    assert body["flow_readiness_summary"]["metadata_ready_flow_count"] == 2
+    assert body["flow_readiness_summary"]["preview_decision_pending_count"] == 1
+    assert body["flow_readiness_summary"]["preview_decision_blocked_count"] == 1
+    assert body["flow_readiness_summary"]["content_release_allowed_count"] == 0
+    assert body["flow_readiness_summary"]["content_included_count"] == 0
+    assert doc_readiness["status"] == "metadata_ready_preview_blocked"
+    assert doc_readiness["preview_decision_available"] is True
+    assert doc_readiness["latest_preview_decision_status"] == "blocked"
+    assert doc_readiness["latest_preview_decision_evidence_hash"] == decision["preview_decision_evidence_hash"]
+    assert doc_readiness["latest_preview_decision_ledger_ref"] == decision["decision_ledger_ref"]
+    assert doc_readiness["latest_preview_decision_audit_event_id"] == decision["audit_event_id"]
+    assert "tenant_preview_policy_enabled" in doc_readiness["latest_preview_decision_missing_evidence"]
+    assert "content_preview_skeleton_blocks_release_until_renderer_operational" in doc_readiness["blocking_reasons"]
+    assert doc_readiness["content_release_allowed"] is False
+    assert doc_readiness["content_included"] is False
+    assert doc_readiness["cockpit_audit_event_id"] == body["audit_event_id"]
+    assert decision["decision_ledger_ref"] in doc_readiness["evidence_refs"]
+    assert f"audit:{body['audit_event_id']}" in doc_readiness["evidence_refs"]
+    assert mail_readiness["status"] == "metadata_ready_preview_decision_pending"
+    assert "Board pack draft source content" not in json.dumps(body)
 
 
 def test_platform_cockpit_uses_configured_workspace_source_refs_without_unreadable_lookup() -> None:

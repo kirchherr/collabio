@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Workspace</title>
-    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=106" />
+    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=147" />
   </head>
   <body>
     <div class="workspace-shell">
@@ -72,6 +72,25 @@
 
         <div class="status-line" id="status-line" role="status">Bereit</div>
 
+        <section class="readiness-band" aria-label="Flow Readiness">
+          <div class="readiness-metric">
+            <span>Metadata ready</span>
+            <strong id="metadata-ready-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Preview pending</span>
+            <strong id="preview-pending-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Preview blocked</span>
+            <strong id="preview-blocked-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Evidence complete</span>
+            <strong id="preview-evidence-complete-count">0</strong>
+          </div>
+        </section>
+
         <section class="module-band" aria-label="Module">
           <div class="section-heading">
             <div>
@@ -100,7 +119,7 @@
                   <th>Typ</th>
                   <th>Klassifikation</th>
                   <th>Retention</th>
-                  <th>Evidence</th>
+                  <th>Evidence / Readiness</th>
                 </tr>
               </thead>
               <tbody id="flow-table-body"></tbody>
@@ -123,6 +142,6 @@
       </main>
     </div>
 
-    <script src="/workspace/assets/workspace.js?v=106" defer></script>
+    <script src="/workspace/assets/workspace.js?v=147" defer></script>
   </body>
 </html>

@@ -13,7 +13,16 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseArticleService,
 )
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, PlatformModuleView
-from suite.platform.source_object_preview import SourceObjectPreviewSlot, build_source_object_preview_slots
+from suite.platform.source_object_preview import (
+    SourceObjectPreviewGateStatus,
+    SourceObjectPreviewSlot,
+    build_source_object_preview_slots,
+)
+from suite.platform.source_object_preview_decisions import (
+    SourceObjectPreviewDecisionEvidence,
+    SourceObjectPreviewDecisionLedger,
+    SourceObjectPreviewDecisionStatus,
+)
 from suite.platform.workspace_source_objects import WorkspaceSourceObjectRef
 from suite.storage.source_objects import (
     LegalHoldState,
@@ -30,6 +39,60 @@ class ProductCockpitSourceOrigin(StrEnum):
     KNOWLEDGE_BASE = "knowledge_base"
     DOCUMENT = "document"
     MAIL = "mail"
+
+
+class ProductCockpitFlowReadinessStatus(StrEnum):
+    METADATA_READY_PREVIEW_DECISION_PENDING = "metadata_ready_preview_decision_pending"
+    METADATA_READY_PREVIEW_BLOCKED = "metadata_ready_preview_blocked"
+    METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED = (
+        "metadata_ready_preview_evidence_complete_content_blocked"
+    )
+
+
+class ProductCockpitSourceObjectFlowReadiness(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_source_object_flow_readiness.v1"
+    status: ProductCockpitFlowReadinessStatus
+    source_detail_ready: bool = True
+    access_checked: bool = True
+    acl_version: int = Field(ge=1)
+    audit_visible: bool = True
+    source_audit_chain_ref: str
+    cockpit_audit_event_id: str | None = None
+    preview_gate_status: SourceObjectPreviewGateStatus
+    preview_decision_required: bool = True
+    preview_decision_available: bool = False
+    latest_preview_decision_status: SourceObjectPreviewDecisionStatus | None = None
+    latest_preview_decision_evidence_hash: str | None = None
+    latest_preview_decision_ledger_ref: str | None = None
+    latest_preview_decision_audit_event_id: str | None = None
+    latest_preview_decision_missing_evidence: tuple[str, ...] = ()
+    latest_preview_decision_blocking_reasons: tuple[str, ...] = ()
+    renderer_sandbox_evidence_verified: bool = False
+    backup_coverage_evidence_verified: bool = False
+    restore_evidence_verified: bool = False
+    human_confirmation_verified: bool = False
+    content_release_evidence_complete: bool = False
+    content_release_allowed: bool = False
+    content_included: bool = False
+    next_action: str
+    blocking_reasons: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+
+
+class ProductCockpitReadinessSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_readiness_summary.v1"
+    metadata_ready_flow_count: int = Field(ge=0)
+    access_checked_flow_count: int = Field(ge=0)
+    audit_visible_flow_count: int = Field(ge=0)
+    preview_decision_pending_count: int = Field(ge=0)
+    preview_decision_blocked_count: int = Field(ge=0)
+    preview_evidence_complete_but_content_blocked_count: int = Field(ge=0)
+    content_release_allowed_count: int = Field(ge=0)
+    content_included_count: int = Field(ge=0)
 
 
 class ProductCockpitModuleView(BaseModel):
@@ -70,6 +133,7 @@ class ProductCockpitSourceObjectFlowView(BaseModel):
     downstream_surfaces: tuple[str, ...]
     evidence_refs: tuple[str, ...]
     preview_slots: tuple[SourceObjectPreviewSlot, ...]
+    readiness: ProductCockpitSourceObjectFlowReadiness
     access_checked: bool = True
     content_included: bool = False
 
@@ -83,6 +147,7 @@ class ProductCockpitResponse(BaseModel):
     modules: tuple[ProductCockpitModuleView, ...]
     source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...]
     source_object_flow_count: int = Field(ge=0)
+    flow_readiness_summary: ProductCockpitReadinessSummary
     audit_event_id: str
 
 
@@ -93,11 +158,16 @@ def build_product_cockpit_response(
     workspace_source_repository: SourceObjectRepository,
     workspace_source_refs: tuple[WorkspaceSourceObjectRef, ...],
     knowledge_base_article_service: KnowledgeBaseArticleService,
+    preview_decision_ledger: SourceObjectPreviewDecisionLedger,
     audit_logger: InMemoryAuditLogger,
 ) -> ProductCockpitResponse:
     module_response = module_registry.discover_tenant_modules(user_context.tenant_id)
     modules = tuple(_module_view(module) for module in module_response.modules)
     module_by_id = {module.module_id: module for module in module_response.modules}
+    latest_preview_decisions = _latest_preview_decision_by_source(
+        tenant_id=user_context.tenant_id,
+        preview_decision_ledger=preview_decision_ledger,
+    )
     source_object_flows = tuple(
         sorted(
             [
@@ -105,16 +175,19 @@ def build_product_cockpit_response(
                     user_context=user_context,
                     workspace_source_repository=workspace_source_repository,
                     workspace_source_refs=workspace_source_refs,
+                    latest_preview_decisions=latest_preview_decisions,
                 ),
                 *_knowledge_base_source_object_flows(
                     user_context=user_context,
                     knowledge_base_article_service=knowledge_base_article_service,
                     module=module_by_id.get(KNOWLEDGE_BASE_MODULE_ID),
+                    latest_preview_decisions=latest_preview_decisions,
                 ),
             ],
             key=lambda flow: (flow.origin.value, flow.title.lower(), flow.source_object_id),
         )
     )
+    readiness_summary = _flow_readiness_summary(source_object_flows)
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -127,13 +200,20 @@ def build_product_cockpit_response(
             "origins": sorted({flow.origin.value for flow in source_object_flows}),
             "content_included": False,
             "access_checked": True,
+            "preview_decision_pending_count": readiness_summary.preview_decision_pending_count,
+            "preview_decision_blocked_count": readiness_summary.preview_decision_blocked_count,
+            "preview_evidence_complete_but_content_blocked_count": (
+                readiness_summary.preview_evidence_complete_but_content_blocked_count
+            ),
         },
     )
+    source_object_flows = _attach_cockpit_audit_event_id(source_object_flows, event.event_id)
     return ProductCockpitResponse(
         tenant_id=user_context.tenant_id,
         modules=modules,
         source_object_flows=source_object_flows,
         source_object_flow_count=len(source_object_flows),
+        flow_readiness_summary=readiness_summary,
         audit_event_id=event.event_id,
     )
 
@@ -143,6 +223,7 @@ def _workspace_source_object_flows(
     user_context: UserContext,
     workspace_source_repository: SourceObjectRepository,
     workspace_source_refs: tuple[WorkspaceSourceObjectRef, ...],
+    latest_preview_decisions: dict[tuple[str, str], SourceObjectPreviewDecisionEvidence],
 ) -> tuple[ProductCockpitSourceObjectFlowView, ...]:
     flows: list[ProductCockpitSourceObjectFlowView] = []
     for source_ref in workspace_source_refs:
@@ -177,6 +258,7 @@ def _workspace_source_object_flows(
                 module_status=None,
                 downstream_surfaces=downstream,
                 evidence_refs=(metadata.manifest_hash, metadata.content_hash),
+                latest_preview_decision=latest_preview_decisions.get((metadata.object_id, metadata.version_id)),
             )
         )
     return tuple(flows)
@@ -187,6 +269,7 @@ def _knowledge_base_source_object_flows(
     user_context: UserContext,
     knowledge_base_article_service: KnowledgeBaseArticleService,
     module: PlatformModuleView | None,
+    latest_preview_decisions: dict[tuple[str, str], SourceObjectPreviewDecisionEvidence],
 ) -> tuple[ProductCockpitSourceObjectFlowView, ...]:
     kb_articles_enabled = (
         module is not None
@@ -228,6 +311,9 @@ def _knowledge_base_source_object_flows(
                     f"article:{article.object_id}",
                     f"object_type:{KB_ARTICLE_OBJECT_TYPE}",
                 ),
+                latest_preview_decision=latest_preview_decisions.get(
+                    (source_record.metadata.object_id, source_record.metadata.version_id)
+                ),
             )
         )
     return tuple(flows)
@@ -256,8 +342,10 @@ def _source_object_flow(
     module_status: ModuleStatus | None,
     downstream_surfaces: tuple[str, ...],
     evidence_refs: tuple[str, ...],
+    latest_preview_decision: SourceObjectPreviewDecisionEvidence | None,
 ) -> ProductCockpitSourceObjectFlowView:
     metadata = record.metadata
+    preview_slots = build_source_object_preview_slots(metadata.object_type)
     return ProductCockpitSourceObjectFlowView(
         flow_id=f"{origin.value}:{metadata.object_id}:{metadata.version_id}",
         origin=origin,
@@ -279,8 +367,145 @@ def _source_object_flow(
         audit_chain_ref=metadata.audit_chain_ref,
         downstream_surfaces=downstream_surfaces,
         evidence_refs=evidence_refs,
-        preview_slots=build_source_object_preview_slots(metadata.object_type),
+        preview_slots=preview_slots,
+        readiness=_flow_readiness(
+            record=record,
+            preview_slots=preview_slots,
+            source_evidence_refs=evidence_refs,
+            latest_preview_decision=latest_preview_decision,
+        ),
     )
+
+
+def _latest_preview_decision_by_source(
+    *,
+    tenant_id: str,
+    preview_decision_ledger: SourceObjectPreviewDecisionLedger,
+) -> dict[tuple[str, str], SourceObjectPreviewDecisionEvidence]:
+    latest_by_source: dict[tuple[str, str], SourceObjectPreviewDecisionEvidence] = {}
+    for evidence in preview_decision_ledger.list_decisions(tenant_id=tenant_id):
+        latest_by_source[(evidence.source_object_id, evidence.source_version_id)] = evidence
+    return latest_by_source
+
+
+def _flow_readiness(
+    *,
+    record: SourceObjectRecord,
+    preview_slots: tuple[SourceObjectPreviewSlot, ...],
+    source_evidence_refs: tuple[str, ...],
+    latest_preview_decision: SourceObjectPreviewDecisionEvidence | None,
+) -> ProductCockpitSourceObjectFlowReadiness:
+    metadata = record.metadata
+    preview_gate = preview_slots[0].gate
+    base_evidence_refs = (
+        metadata.manifest_hash,
+        metadata.content_hash,
+        metadata.audit_chain_ref,
+        *source_evidence_refs,
+    )
+    if latest_preview_decision is None:
+        return ProductCockpitSourceObjectFlowReadiness(
+            status=ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_DECISION_PENDING,
+            acl_version=metadata.acl_version,
+            source_audit_chain_ref=metadata.audit_chain_ref,
+            preview_gate_status=preview_gate.status,
+            next_action="request_preview_decision",
+            blocking_reasons=("preview_decision_not_requested", *preview_gate.blocking_reasons),
+            evidence_refs=_dedupe_refs(base_evidence_refs),
+        )
+
+    status = (
+        ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED
+        if latest_preview_decision.content_release_evidence_complete
+        else ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_BLOCKED
+    )
+    latest_ref = f"preview-decision-ledger:{latest_preview_decision.evidence_hash}"
+    return ProductCockpitSourceObjectFlowReadiness(
+        status=status,
+        acl_version=metadata.acl_version,
+        source_audit_chain_ref=metadata.audit_chain_ref,
+        preview_gate_status=preview_gate.status,
+        preview_decision_available=True,
+        latest_preview_decision_status=latest_preview_decision.decision_status,
+        latest_preview_decision_evidence_hash=latest_preview_decision.evidence_hash,
+        latest_preview_decision_ledger_ref=latest_ref,
+        latest_preview_decision_audit_event_id=latest_preview_decision.audit_event_id,
+        latest_preview_decision_missing_evidence=latest_preview_decision.missing_evidence,
+        latest_preview_decision_blocking_reasons=latest_preview_decision.blocking_reasons,
+        renderer_sandbox_evidence_verified=latest_preview_decision.renderer_sandbox_evidence_verified,
+        backup_coverage_evidence_verified=latest_preview_decision.backup_coverage_evidence_verified,
+        restore_evidence_verified=latest_preview_decision.restore_evidence_verified,
+        human_confirmation_verified=latest_preview_decision.human_confirmation_verified,
+        content_release_evidence_complete=latest_preview_decision.content_release_evidence_complete,
+        content_release_allowed=latest_preview_decision.content_release_allowed,
+        content_included=latest_preview_decision.content_included,
+        next_action="review_latest_preview_decision",
+        blocking_reasons=latest_preview_decision.blocking_reasons,
+        evidence_refs=_dedupe_refs(
+            (
+                *base_evidence_refs,
+                latest_preview_decision.evidence_hash,
+                latest_ref,
+                f"audit:{latest_preview_decision.audit_event_id}",
+                f"audit:{latest_preview_decision.source_detail_audit_event_id}",
+            )
+        ),
+    )
+
+
+def _attach_cockpit_audit_event_id(
+    flows: tuple[ProductCockpitSourceObjectFlowView, ...], audit_event_id: str
+) -> tuple[ProductCockpitSourceObjectFlowView, ...]:
+    return tuple(
+        flow.model_copy(
+            update={
+                "readiness": flow.readiness.model_copy(
+                    update={
+                        "cockpit_audit_event_id": audit_event_id,
+                        "evidence_refs": _dedupe_refs((*flow.readiness.evidence_refs, f"audit:{audit_event_id}")),
+                    }
+                )
+            }
+        )
+        for flow in flows
+    )
+
+
+def _flow_readiness_summary(
+    flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> ProductCockpitReadinessSummary:
+    readinesses = tuple(flow.readiness for flow in flows)
+    return ProductCockpitReadinessSummary(
+        metadata_ready_flow_count=len(readinesses),
+        access_checked_flow_count=sum(1 for readiness in readinesses if readiness.access_checked),
+        audit_visible_flow_count=sum(1 for readiness in readinesses if readiness.audit_visible),
+        preview_decision_pending_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status == ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_DECISION_PENDING
+        ),
+        preview_decision_blocked_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status
+            in {
+                ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_BLOCKED,
+                ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED,
+            }
+        ),
+        preview_evidence_complete_but_content_blocked_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status
+            == ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED
+        ),
+        content_release_allowed_count=sum(1 for readiness in readinesses if readiness.content_release_allowed),
+        content_included_count=sum(1 for readiness in readinesses if readiness.content_included),
+    )
+
+
+def _dedupe_refs(refs: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(ref for ref in refs if ref.strip()))
 
 
 def _continuity_domain(module_id: str) -> str:

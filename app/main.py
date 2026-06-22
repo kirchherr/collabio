@@ -475,6 +475,7 @@ def build_app() -> FastAPI:
             workspace_source_repository=workspace_sources,
             workspace_source_refs=workspace_source_catalog.list_refs(),
             knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
             audit_logger=audit_logger,
         )
 
