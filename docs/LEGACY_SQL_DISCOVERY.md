@@ -251,10 +251,22 @@ laedt den gespeicherten Bundle aus dem Policy Store, erzeugt metadata-only Revie
 fehlende Reviews, unvollstaendige Change-Control, deaktivierte Kill-Switches und jeden Materialisierungsplanungswunsch.
 Er oeffnet weiterhin keinen Socket, loest kein Secret-Material auf und liest keine Rohdaten.
 
+`legacy_sql_connector_materialization_provider_profile_snapshot.v1`,
+`legacy_sql_connector_materialization_operator_mfa_snapshot.v1`,
+`legacy_sql_connector_materialization_kill_switch_snapshot.v1` und
+`legacy_sql_connector_materialization_plan_gate.v1` bilden den naechsten nicht-ausfuehrenden Plan-Stop. Das Gate bindet
+Review-Gate, Provider-Profil-Snapshot, Operator-MFA und Kill-Switch-Snapshot, bevor spaeter ueberhaupt eine
+Socket-/Secret-Implementierung entworfen wird.
+
+`docker compose run --rm legacy-sql-connector-materialization-plan-gate-smoke` beweist diesen Plan-Stop. Der Smoke
+blockiert fehlende Review-Gates, fehlende Operator-MFA, deaktivierte Kill-Switches sowie direkte Socket-, Secret- oder
+Execution-Implementierungsanforderungen. Er oeffnet weiterhin keinen Socket, loest kein Secret-Material auf und liest
+keine Rohdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein nicht-ausfuehrendes Materialization-Plan-Gate. Echte Socket-Materialisierung,
-Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates und duerfen
-nicht aus dem Store oder Review-Gate heraus direkt gestartet werden.
+Der naechste technische Schritt ist ein ADR- und Implementation-Readiness-Gate fuer echte Socket-/Secret-Implementierung.
+Echte Socket-Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte
+spaetere Gates und duerfen nicht aus dem Store, Review-Gate oder Materialization-Plan-Gate heraus direkt gestartet werden.

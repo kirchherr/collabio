@@ -1316,7 +1316,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 135. [x] Legacy-SQL-Connector-Real-Connection-Executor-Skeleton vorbereiten: hinter dem Preflight-Gate einen weiterhin nicht-ausfuehrenden Executor-Contract modellieren, der Secret-/Socket-Materialisierung, Timeout-/Retry-Policy, Audit und Kill-Switches vor echter Implementierung festlegt.
 136. [x] Legacy-SQL-Connector-Real-Connection-Executor-Policy-Store vorbereiten: Executor-Contracts, Timeout-/Retry-Policies, Audit-Plaene und Kill-Switch-Policies tenant-sicher persistierbar machen, bevor echte Socket-Ausfuehrung implementiert wird.
 137. [x] Legacy-SQL-Connector-Execution-Readiness-Review-Gate vorbereiten: gespeicherte Executor-Policy-Bundles gegen Human-Review, Change-Control, Restore-Drill und Kill-Switch-Zustand pruefen, bevor echte Socket- oder Secret-Materialisierung ueberhaupt geplant wird.
-138. [ ] Legacy-SQL-Connector-Materialization-Plan-Gate vorbereiten: Review-Gate-Ergebnis, Provider-Profile, Operator-MFA und Kill-Switch-Snapshot in einen weiterhin nicht-ausfuehrenden Materialisierungsplan binden, bevor Socket- oder Secret-Materialisierung implementiert wird.
+138. [x] Legacy-SQL-Connector-Materialization-Plan-Gate vorbereiten: Review-Gate-Ergebnis, Provider-Profile, Operator-MFA und Kill-Switch-Snapshot in einen weiterhin nicht-ausfuehrenden Materialisierungsplan binden, bevor Socket- oder Secret-Materialisierung implementiert wird.
+139. [ ] Legacy-SQL-Connector-Socket-Secret-Implementation-ADR vorbereiten: Materialization-Plan-Gate-Ergebnis, echte Provider-Limits, Netzwerkroute, Secret-Manager, Rollback und Kill-Switch-Runbook als ADR-Gate dokumentieren, bevor eine ausfuehrende Implementierung geschrieben wird.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
