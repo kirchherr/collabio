@@ -8,6 +8,7 @@ const fields = {
 const statusLine = document.querySelector("#status-line");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
+const workEvidencePanel = document.querySelector("#work-evidence-panel");
 const workItemList = document.querySelector("#work-item-list");
 const flowTableBody = document.querySelector("#flow-table-body");
 const moduleCount = document.querySelector("#module-count");
@@ -22,7 +23,13 @@ const readinessCounts = {
 };
 
 const storageKey = "collabio.workspace.context";
-let currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {}, work_items: [] };
+let currentCockpit = {
+  modules: [],
+  source_object_flows: [],
+  flow_readiness_summary: {},
+  work_items: [],
+  work_item_operational_summary: null,
+};
 let selectedFlowId = "";
 let detailLoadToken = 0;
 
@@ -84,7 +91,13 @@ async function loadCockpit() {
     renderCockpit(body);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
-    currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {}, work_items: [] };
+    currentCockpit = {
+      modules: [],
+      source_object_flows: [],
+      flow_readiness_summary: {},
+      work_items: [],
+      work_item_operational_summary: null,
+    };
     renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
@@ -205,6 +218,7 @@ function renderCockpit(cockpit) {
   const hashFlowId = flowIdFromHash();
   const readinessSummary = cockpit.flow_readiness_summary || {};
   const workItems = cockpit.work_items || [];
+  const workSummary = cockpit.work_item_operational_summary || {};
   moduleCount.textContent = String(modules.length);
   workItemCount.textContent = String(workItems.length);
   flowCount.textContent = String(flows.length);
@@ -220,9 +234,52 @@ function renderCockpit(cockpit) {
     selectedFlowId = flows[0]?.flow_id || "";
   }
   renderModules(modules);
+  renderWorkItemOperationalSummary(workSummary);
   renderWorkItems(workItems);
   renderFlows(flows);
   loadSourceObjectDetail();
+}
+
+function renderWorkItemOperationalSummary(summary) {
+  if (!summary || !summary.schema_version) {
+    workEvidencePanel.innerHTML = '<div class="empty-state compact">Keine Arbeitskorb-Evidence.</div>';
+    return;
+  }
+  workEvidencePanel.innerHTML = `
+    <div class="work-evidence-grid">
+      ${workEvidenceMetric("Actions", summary.action_hint_count)}
+      ${workEvidenceMetric("Confirm", summary.confirmation_required_action_count)}
+      ${workEvidenceMetric("Role gates", summary.role_required_action_count)}
+      ${workEvidenceMetric("State signals", summary.state_transition_signal_count)}
+      ${workEvidenceMetric("Persistent tasks", summary.persistent_task_created_count)}
+      ${workEvidenceMetric("Content", summary.content_included_action_count)}
+    </div>
+    <div class="work-evidence-tags">
+      ${workEvidenceTagList("UI", summary.ui_actions || [])}
+      ${workEvidenceTagList("State", summary.state_gates || [])}
+      ${workEvidenceTagList("Roles", summary.role_gates || [])}
+      ${workEvidenceTagList("Transitions", summary.state_transition_signals || [])}
+    </div>
+    <div class="work-evidence-contract">
+      <code>${escapeHtml(summary.schema_version)} | content_included=${summary.content_included === true ? "true" : "false"} | destructive=${Number(summary.destructive_action_count || 0)} | external=${Number(summary.external_side_effect_action_count || 0)}</code>
+    </div>
+  `;
+}
+
+function workEvidenceMetric(label, value) {
+  return `
+    <div class="work-evidence-metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${Number(value || 0)}</strong>
+    </div>
+  `;
+}
+
+function workEvidenceTagList(label, values) {
+  const tags = values.length
+    ? values.map((value) => `<code>${escapeHtml(value)}</code>`).join("")
+    : "<code>none</code>";
+  return `<div class="work-evidence-tag-group"><span>${escapeHtml(label)}</span>${tags}</div>`;
 }
 
 function renderWorkItems(items) {

@@ -1332,7 +1332,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 151. [x] Arbeitskorb-Rollenmatrix absichern: Tenant-Admin, Security-Admin und Reader-Kontexte gegen dieselben Work-Items pruefen und UI-/Contract-Gates nachweisen, ohne eine neue RBAC-Engine oder persistente Aufgaben einzufuehren.
 152. [x] Arbeitskorb-State-Transitions nachweisen: nach Preview-Decision und Modul-Provision/Enable Work-Items neu berechnen und obsolete Actions ausblenden oder umstufen, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
 153. [x] Arbeitskorb-Operational-Evidence schaerfen: Work-Item-Zaehler, Confirmation-Gates und State-Transition-Signale in Audit-/Cockpit-Metadaten nachvollziehbar machen, ohne Rohdaten, Inhalte oder persistente Aufgaben zu speichern.
-154. [ ] Arbeitskorb-Operational-Summary im Workspace sichtbar machen: die read-only Evidence aus Work-Item-Zaehlern, Rollen-/Confirmation-Gates und State-Transition-Signalen kompakt anzeigen, ohne neue Aktionen, persistente Aufgaben oder Rohdaten einzufuehren.
+154. [x] Arbeitskorb-Operational-Summary im Workspace sichtbar machen: die read-only Evidence aus Work-Item-Zaehlern, Rollen-/Confirmation-Gates und State-Transition-Signalen kompakt anzeigen, ohne neue Aktionen, persistente Aufgaben oder Rohdaten einzufuehren.
+155. [ ] Workspace-Cockpit als MVP-Startpunkt konsolidieren: Module, Arbeitskorb, SourceObject-Flows und Detailansicht als produktiven Einstieg pruefen, offene Foundation-Luecken priorisieren und spaetere Nice-to-haves aus dem unmittelbaren Pfad entfernen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

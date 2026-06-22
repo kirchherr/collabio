@@ -452,6 +452,7 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "Flow Readiness" in response.text
     assert "Arbeitskorb" in response.text
     assert "work-item-list" in response.text
+    assert "work-evidence-panel" in response.text
     assert "metadata-ready-count" in response.text
     assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
@@ -470,6 +471,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".readiness-band" in css_response.text
     assert ".readiness-cell" in css_response.text
     assert ".work-item-list" in css_response.text
+    assert ".work-evidence-panel" in css_response.text
+    assert ".work-evidence-grid" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
@@ -483,6 +486,10 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "metadata_ready_preview_blocked" in js_response.text
     assert "metadata_only_no_source_content" in js_response.text
     assert "work_items" in js_response.text
+    assert "work_item_operational_summary" in js_response.text
+    assert "renderWorkItemOperationalSummary" in js_response.text
+    assert "workEvidenceMetric" in js_response.text
+    assert "workEvidenceTagList" in js_response.text
     assert "renderWorkItems" in js_response.text
     assert "data-work-item-id" in js_response.text
     assert "data-work-ui-action" in js_response.text
@@ -497,6 +504,10 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "canUseAnyRole" in js_response.text
     assert "Action-Hint verletzt metadata-only Arbeitskorb-Regeln" in js_response.text
     assert "persistent_task_created=" in js_response.text
+    assert "content_included=" in js_response.text
+    assert "destructive=" in js_response.text
+    assert "external=" in js_response.text
+    assert "State signals" in js_response.text
     assert ".guided-preview-action" in css_response.text
     assert "guided-preview-decision" in js_response.text
     assert "guided_preview_decision" in js_response.text
