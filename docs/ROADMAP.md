@@ -1319,7 +1319,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 138. [x] Legacy-SQL-Connector-Materialization-Plan-Gate vorbereiten: Review-Gate-Ergebnis, Provider-Profile, Operator-MFA und Kill-Switch-Snapshot in einen weiterhin nicht-ausfuehrenden Materialisierungsplan binden, bevor Socket- oder Secret-Materialisierung implementiert wird.
 139. [x] Legacy-SQL-Connector-Socket-Secret-Implementation-ADR vorbereiten: Materialization-Plan-Gate-Ergebnis, echte Provider-Limits, Netzwerkroute, Secret-Manager, Rollback und Kill-Switch-Runbook als ADR-Gate dokumentieren, bevor eine ausfuehrende Implementierung geschrieben wird.
 140. [x] Legacy-SQL-Connector-Runtime-PR-Gate vorbereiten: ADR-Gate-Ergebnis, Runtime-Code-Review, Testcontainer, Secret-Manager-Binding, Netzwerkroute, Rollback-Probe und Kill-Switch-Probe als letztes nicht-ausfuehrendes PR-Gate binden, bevor Socket- oder Secret-Runtime-Code gemergt wird.
-141. [ ] Legacy-SQL-Connector-Runtime-Merge-Gate vorbereiten: Runtime-PR-Gate-Ergebnis, Branch-Protection-Status, Security-Scan, Container-Provenance, Secret-Rotation-Plan und Kill-Switch-Drill als Merge-Gate binden, bevor ausfuehrender Socket-/Secret-Code in eine aktivierbare Runtime gelangt.
+141. [x] Legacy-SQL-Connector-Runtime-Merge-Gate vorbereiten: Runtime-PR-Gate-Ergebnis, Branch-Protection-Status, Security-Scan, Container-Provenance, Secret-Rotation-Plan und Kill-Switch-Drill als Merge-Gate binden, bevor ausfuehrender Socket-/Secret-Code in eine aktivierbare Runtime gelangt.
+142. [ ] Legacy-SQL-Connector-Runtime-Activation-Gate vorbereiten: Runtime-Merge-Gate-Ergebnis, tenant-spezifische Aktivierungsfreigabe, Runtime-Feature-Flag, Secret-Rotation-Bestaetigung, Netzwerkfreigabe, Rollback-Freeze und Kill-Switch-Arming als weiterhin nicht-ausfuehrendes Activation-Gate binden, bevor echte Verbindungsversuche aktivierbar werden.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

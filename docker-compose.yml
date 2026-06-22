@@ -690,6 +690,43 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
+  legacy-sql-connector-runtime-merge-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_runtime_merge_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-runtime-merge-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
   kb-runtime-reconciler:
     build:
       context: .
