@@ -85,6 +85,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     )
     assert "legacy_sql_connector_execution_readiness_review_gate_smoke_report_hash_check" in (postgres.integrity_checks)
     assert "legacy_sql_connector_materialization_plan_gate_smoke_report_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_connector_socket_secret_implementation_adr_gate_smoke_report_hash_check" in (
+        postgres.integrity_checks
+    )
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -122,6 +125,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert (
         "docker compose run --rm legacy-sql-connector-materialization-plan-gate-smoke" in postgres.current_dev_commands
     )
+    assert (
+        "docker compose run --rm legacy-sql-connector-socket-secret-implementation-adr-gate-smoke"
+        in postgres.current_dev_commands
+    )
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -143,6 +150,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL connector real connection executor policy store hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector execution readiness review gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector materialization plan gate hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL connector socket-secret implementation ADR gate hashes" in crm_erp.state_artifacts
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -411,6 +419,13 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_connector_materialization_kill_switch_snapshot.v1" in runbook
     assert "legacy_sql_connector_materialization_plan_gate.v1" in runbook
     assert "legacy_sql_connector_materialization_plan_gate_smoke_report.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_provider_limits_snapshot.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_network_route_snapshot.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_secret_manager_snapshot.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_rollback_runbook_snapshot.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_kill_switch_runbook_snapshot.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_implementation_adr_gate.v1" in runbook
+    assert "legacy_sql_connector_socket_secret_implementation_adr_gate_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -445,6 +460,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL connector real connection executor policy store smoke report hash" in runbook
     assert "Legacy SQL connector execution readiness review gate smoke report hash" in runbook
     assert "Legacy SQL connector materialization plan gate smoke report hash" in runbook
+    assert "Legacy SQL connector socket-secret implementation ADR gate smoke report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
@@ -488,6 +504,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "\n  legacy-sql-connector-real-connection-executor-policy-store-smoke:\n" in compose
     assert "\n  legacy-sql-connector-execution-readiness-review-gate-smoke:\n" in compose
     assert "\n  legacy-sql-connector-materialization-plan-gate-smoke:\n" in compose
+    assert "\n  legacy-sql-connector-socket-secret-implementation-adr-gate-smoke:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
@@ -507,6 +524,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_real_connection_executor --policy-store-once" in compose
     assert "python -m suite.platform.legacy_sql_connector_execution_readiness_review_gate --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_materialization_plan_gate --once" in compose
+    assert "python -m suite.platform.legacy_sql_connector_socket_secret_implementation_adr_gate --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
