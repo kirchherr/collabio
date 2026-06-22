@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import StrEnum
 from urllib.parse import quote
 
@@ -50,6 +51,13 @@ class ProductCockpitFlowReadinessStatus(StrEnum):
     )
 
 
+BLOCKED_PREVIEW_DEFERRED_EVIDENCE = (
+    "content_release_gate_policy_review",
+    "viewer_adapter_runtime",
+    "full_content_preview_rendering",
+)
+
+
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -68,6 +76,8 @@ class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     latest_preview_decision_evidence_hash: str | None = None
     latest_preview_decision_ledger_ref: str | None = None
     latest_preview_decision_audit_event_id: str | None = None
+    latest_preview_decision_required_evidence: tuple[str, ...] = ()
+    latest_preview_decision_provided_evidence: tuple[str, ...] = ()
     latest_preview_decision_missing_evidence: tuple[str, ...] = ()
     latest_preview_decision_blocking_reasons: tuple[str, ...] = ()
     renderer_sandbox_evidence_verified: bool = False
@@ -210,6 +220,23 @@ class ProductCockpitMvpReadinessSummary(BaseModel):
     persistent_task_created: bool = False
 
 
+class ProductCockpitFoundationGapEvidenceBrief(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_foundation_gap_evidence_brief.v1"
+    required_evidence: tuple[str, ...] = ()
+    provided_evidence: tuple[str, ...] = ()
+    missing_evidence: tuple[str, ...] = ()
+    evidence_required_now: tuple[str, ...] = ()
+    deferred_evidence: tuple[str, ...] = ()
+    verified_evidence: tuple[str, ...] = ()
+    decision_ledger_refs: tuple[str, ...] = ()
+    audit_refs: tuple[str, ...] = ()
+    policy_blocking_reasons: tuple[str, ...] = ()
+    content_release_allowed: bool = False
+    content_included: bool = False
+
+
 class ProductCockpitFoundationGapAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -229,6 +256,7 @@ class ProductCockpitFoundationGapAction(BaseModel):
     persistent_task_created: bool = False
     automation_created: bool = False
     deferred_reason: str | None = None
+    evidence_brief: ProductCockpitFoundationGapEvidenceBrief | None = None
 
 
 class ProductCockpitModuleView(BaseModel):
@@ -832,6 +860,8 @@ def _flow_readiness(
         latest_preview_decision_evidence_hash=latest_preview_decision.evidence_hash,
         latest_preview_decision_ledger_ref=latest_ref,
         latest_preview_decision_audit_event_id=latest_preview_decision.audit_event_id,
+        latest_preview_decision_required_evidence=latest_preview_decision.required_content_release_evidence,
+        latest_preview_decision_provided_evidence=latest_preview_decision.provided_evidence,
         latest_preview_decision_missing_evidence=latest_preview_decision.missing_evidence,
         latest_preview_decision_blocking_reasons=latest_preview_decision.blocking_reasons,
         renderer_sandbox_evidence_verified=latest_preview_decision.renderer_sandbox_evidence_verified,
@@ -1035,6 +1065,7 @@ def _foundation_gap_action(
             next_action="complete_preview_release_evidence",
             work_items=blocked_items,
             source_object_ids=_source_object_ids_for_flows(blocked_flows),
+            evidence_brief=_foundation_gap_evidence_brief_for_blocked_flows(blocked_flows),
         )
     if gap_id == "module_activation_work_items_open":
         module_items = tuple(item for item in work_items if item.scope == ProductCockpitWorkItemScope.MODULE)
@@ -1085,6 +1116,7 @@ def _foundation_gap_action_from_work_items(
     next_action: str,
     work_items: tuple[ProductCockpitWorkItem, ...],
     source_object_ids: tuple[str, ...] | None = None,
+    evidence_brief: ProductCockpitFoundationGapEvidenceBrief | None = None,
 ) -> ProductCockpitFoundationGapAction:
     return ProductCockpitFoundationGapAction(
         priority=priority,
@@ -1103,7 +1135,64 @@ def _foundation_gap_action_from_work_items(
         content_included=any(item.content_included for item in work_items),
         persistent_task_created=any(item.persistent_task_created for item in work_items),
         automation_created=False,
+        evidence_brief=evidence_brief,
     )
+
+
+def _foundation_gap_evidence_brief_for_blocked_flows(
+    flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> ProductCockpitFoundationGapEvidenceBrief | None:
+    readinesses = tuple(flow.readiness for flow in flows if flow.readiness.preview_decision_available)
+    if not readinesses:
+        return None
+    return ProductCockpitFoundationGapEvidenceBrief(
+        required_evidence=_dedupe_strings(
+            evidence for readiness in readinesses for evidence in readiness.latest_preview_decision_required_evidence
+        ),
+        provided_evidence=_dedupe_strings(
+            evidence for readiness in readinesses for evidence in readiness.latest_preview_decision_provided_evidence
+        ),
+        missing_evidence=_dedupe_strings(
+            evidence for readiness in readinesses for evidence in readiness.latest_preview_decision_missing_evidence
+        ),
+        evidence_required_now=_dedupe_strings(
+            evidence for readiness in readinesses for evidence in readiness.latest_preview_decision_missing_evidence
+        ),
+        deferred_evidence=BLOCKED_PREVIEW_DEFERRED_EVIDENCE,
+        verified_evidence=_dedupe_strings(
+            evidence for readiness in readinesses for evidence in _verified_preview_evidence(readiness)
+        ),
+        decision_ledger_refs=_dedupe_strings(
+            ref for readiness in readinesses if (ref := readiness.latest_preview_decision_ledger_ref) is not None
+        ),
+        audit_refs=_dedupe_strings(
+            f"audit:{audit_id}"
+            for readiness in readinesses
+            if (audit_id := readiness.latest_preview_decision_audit_event_id) is not None
+        ),
+        policy_blocking_reasons=_dedupe_strings(
+            reason for readiness in readinesses for reason in readiness.latest_preview_decision_blocking_reasons
+        ),
+        content_release_allowed=any(readiness.content_release_allowed for readiness in readinesses),
+        content_included=any(readiness.content_included for readiness in readinesses),
+    )
+
+
+def _verified_preview_evidence(readiness: ProductCockpitSourceObjectFlowReadiness) -> tuple[str, ...]:
+    verified: list[str] = []
+    if readiness.renderer_sandbox_evidence_verified:
+        verified.append("renderer_sandbox_worker_evidence")
+    if readiness.backup_coverage_evidence_verified:
+        verified.append("backup_coverage_evidence")
+    if readiness.restore_evidence_verified:
+        verified.append("restore_drill_evidence")
+    if readiness.human_confirmation_verified:
+        verified.append("human_content_release_confirmation")
+    return tuple(verified)
+
+
+def _dedupe_strings(values: Iterable[str]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(value for value in values if value))
 
 
 def _work_item_requires_confirmation(item: ProductCockpitWorkItem) -> bool:

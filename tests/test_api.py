@@ -477,6 +477,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".foundation-gap-plan" in css_response.text
     assert ".foundation-gap-action" in css_response.text
     assert ".foundation-gap-controls" in css_response.text
+    assert ".foundation-gap-evidence-brief" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -503,6 +504,9 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "foundation_gap_actions" in js_response.text
     assert "renderMvpReadinessSummary" in js_response.text
     assert "renderFoundationGapActionPlan" in js_response.text
+    assert "foundationGapEvidenceBrief" in js_response.text
+    assert "evidence_required_now" in js_response.text
+    assert "policy_blocking_reasons" in js_response.text
     assert "executeFoundationGapAction" in js_response.text
     assert "data-foundation-gap-id" in js_response.text
     assert "data-foundation-gap-action" in js_response.text
@@ -781,6 +785,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "persistent_task_created": False,
             "automation_created": False,
             "deferred_reason": None,
+            "evidence_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -802,6 +807,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "persistent_task_created": False,
             "automation_created": False,
             "deferred_reason": None,
+            "evidence_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -825,6 +831,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "persistent_task_created": False,
             "automation_created": False,
             "deferred_reason": None,
+            "evidence_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -843,6 +850,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "persistent_task_created": False,
             "automation_created": False,
             "deferred_reason": "full_content_preview_rendering_is_deferred_from_mvp_path",
+            "evidence_brief": None,
         },
     ]
     assert all(
@@ -1427,6 +1435,32 @@ def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions(
         assert blocked_action["source_object_ids"] == ["doc-1", "mail-1"]
         assert blocked_action["ui_actions"] == ["open_flow"]
         assert blocked_action["requires_confirmation"] is False
+        evidence_brief = blocked_action["evidence_brief"]
+        assert evidence_brief["schema_version"] == "product_cockpit_foundation_gap_evidence_brief.v1"
+        assert evidence_brief["evidence_required_now"] == ["tenant_preview_policy_enabled"]
+        assert evidence_brief["missing_evidence"] == ["tenant_preview_policy_enabled"]
+        assert "parser_sanitizer_evidence" in evidence_brief["provided_evidence"]
+        assert evidence_brief["verified_evidence"] == [
+            "renderer_sandbox_worker_evidence",
+            "backup_coverage_evidence",
+            "restore_drill_evidence",
+            "human_content_release_confirmation",
+        ]
+        assert evidence_brief["deferred_evidence"] == [
+            "content_release_gate_policy_review",
+            "viewer_adapter_runtime",
+            "full_content_preview_rendering",
+        ]
+        assert len(evidence_brief["decision_ledger_refs"]) == 2
+        assert all(ref.startswith("preview-decision-ledger:sha256:") for ref in evidence_brief["decision_ledger_refs"])
+        assert len(evidence_brief["audit_refs"]) == 2
+        assert all(ref.startswith("audit:") for ref in evidence_brief["audit_refs"])
+        assert (
+            "content_preview_skeleton_blocks_release_until_renderer_operational"
+            in evidence_brief["policy_blocking_reasons"]
+        )
+        assert evidence_brief["content_release_allowed"] is False
+        assert evidence_brief["content_included"] is False
         assert all(action["content_included"] is False for action in after["foundation_gap_actions"])
         assert all(action["persistent_task_created"] is False for action in after["foundation_gap_actions"])
         assert all(action["automation_created"] is False for action in after["foundation_gap_actions"])
@@ -1437,6 +1471,14 @@ def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions(
         assert snapshot["next_foundation_action"] == "complete_preview_release_evidence"
         assert "preview_decisions_pending" not in [action["gap_id"] for action in snapshot["foundation_gap_actions"]]
         assert snapshot["foundation_gap_actions"][0]["gap_id"] == "preview_decisions_blocked"
+        assert snapshot["foundation_gap_actions"][0]["evidence_brief"]["evidence_required_now"] == [
+            "tenant_preview_policy_enabled"
+        ]
+        assert snapshot["foundation_gap_actions"][0]["evidence_brief"]["deferred_evidence"] == [
+            "content_release_gate_policy_review",
+            "viewer_adapter_runtime",
+            "full_content_preview_rendering",
+        ]
         assert snapshot["content_included"] is False
         assert snapshot["persistent_task_created"] is False
         assert snapshot["automation_created"] is False
@@ -1491,6 +1533,8 @@ def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_con
     assert doc_readiness["status"] == "metadata_ready_preview_blocked"
     assert doc_readiness["preview_decision_available"] is True
     assert doc_readiness["latest_preview_decision_status"] == "blocked"
+    assert "tenant_preview_policy_enabled" in doc_readiness["latest_preview_decision_required_evidence"]
+    assert "source_object_acl_checked" in doc_readiness["latest_preview_decision_provided_evidence"]
     assert doc_readiness["latest_preview_decision_evidence_hash"] == decision["preview_decision_evidence_hash"]
     assert doc_readiness["latest_preview_decision_ledger_ref"] == decision["decision_ledger_ref"]
     assert doc_readiness["latest_preview_decision_audit_event_id"] == decision["audit_event_id"]

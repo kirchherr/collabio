@@ -1337,7 +1337,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 156. [x] MVP-Startpunkt-Snapshot als Review-Artefakt vorbereiten: Cockpit-Readiness, offene Foundation-Gaps, Deferred-Themen und naechste sichere Aktion in einem metadata-only Handover-Report exportierbar machen, ohne produktive Automationen oder neue Module vorzuziehen.
 157. [x] Foundation-Gap-Abbau aus dem MVP-Snapshot starten: Preview-Decision-Gaps, Modulaktivierung und Human-Confirmation als naechsten produktiven Pfad priorisieren, waehrend Office/Mail-Vollclients, Tickets, LMS und Zeiterfassung bewusst deferred bleiben.
 158. [x] Preview-Decision-Gap konkret abbauen: aus dem Foundation-Gap-Plan die pending Preview-Decision-Arbeitsschritte zuerst operationalisieren und nach Ausfuehrung die Gap-Liste automatisch reduzieren, ohne Content-Release oder Viewer-Adapter vorzuziehen.
-159. [ ] Preview-Blocked-Gap klaeren: nach abgebautem Pending-Gap die geblockten Preview-Decisions als Evidence-/Policy-Thema sichtbar fuehren und entscheiden, welche Evidence wirklich jetzt noetig ist, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+159. [x] Preview-Blocked-Gap klaeren: nach abgebautem Pending-Gap die geblockten Preview-Decisions als Evidence-/Policy-Thema sichtbar fuehren und entscheiden, welche Evidence wirklich jetzt noetig ist, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+160. [ ] Modulaktivierungs-Gap fokussiert abbauen: nach Preview-Evidence-Brief nur die notwendigen Modul-Provisioning-/Enablement-Aktionen fuer den MVP-Arbeitsbereich operationalisieren, ohne spaetere Modulfachlichkeit, Tickets oder Automationen vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

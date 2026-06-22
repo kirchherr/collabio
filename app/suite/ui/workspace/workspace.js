@@ -366,11 +366,34 @@ function renderFoundationGapActionPlan(actions) {
     '<code>work_items=' + Number((action.covered_by_work_item_ids || []).length)
       + ' | roles=' + escapeHtml((action.required_roles || []).join(',') || 'context')
       + ' | confirm=' + (action.requires_confirmation === true ? 'true' : 'false') + '</code>',
+    foundationGapEvidenceBrief(action.evidence_brief),
     foundationGapActionButton(action),
     '</div>',
     '</div>',
   ].join('')).join('');
   return '<div class="foundation-gap-plan">' + items + '</div>';
+}
+
+function foundationGapEvidenceBrief(brief) {
+  if (!brief) {
+    return "";
+  }
+  const needed = brief.evidence_required_now || [];
+  const missing = brief.missing_evidence || [];
+  const deferred = brief.deferred_evidence || [];
+  const verified = brief.verified_evidence || [];
+  const ledgerCount = (brief.decision_ledger_refs || []).length;
+  const policyBlockCount = (brief.policy_blocking_reasons || []).length;
+  return [
+    '<div class="foundation-gap-evidence-brief" data-evidence-brief="true">',
+    '<code>needed_now=' + escapeHtml(needed.length ? needed.join(',') : 'none') + '</code>',
+    '<code>missing=' + escapeHtml(missing.length ? missing.join(',') : 'none') + '</code>',
+    '<code>verified=' + escapeHtml(verified.length ? verified.join(',') : 'none') + '</code>',
+    '<code>deferred=' + escapeHtml(deferred.length ? deferred.join(',') : 'none') + '</code>',
+    '<code>ledger_refs=' + Number(ledgerCount) + ' | policy_blocks=' + Number(policyBlockCount)
+      + ' | content_release=' + (brief.content_release_allowed === true ? 'allowed' : 'blocked') + '</code>',
+    '</div>',
+  ].join('');
 }
 
 function foundationGapActionButton(action) {
