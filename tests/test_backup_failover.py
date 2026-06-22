@@ -83,6 +83,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legacy_sql_connector_real_connection_executor_policy_store_smoke_report_hash_check" in (
         postgres.integrity_checks
     )
+    assert "legacy_sql_connector_execution_readiness_review_gate_smoke_report_hash_check" in (postgres.integrity_checks)
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -113,6 +114,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke"
         in postgres.current_dev_commands
     )
+    assert (
+        "docker compose run --rm legacy-sql-connector-execution-readiness-review-gate-smoke"
+        in postgres.current_dev_commands
+    )
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -132,6 +137,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL connector connection preflight gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector real connection executor contract hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector real connection executor policy store hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL connector execution readiness review gate hashes" in crm_erp.state_artifacts
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -275,6 +281,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         "Legacy SQL connector real connection executor policy store bundles"
         in policy.domain("background_jobs_queues").state_artifacts
     )
+    assert (
+        "Legacy SQL connector execution readiness review gate evidence"
+        in policy.domain("background_jobs_queues").state_artifacts
+    )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
@@ -348,6 +358,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm legacy-sql-connector-connection-preflight-gate-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-real-connection-executor-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke" in runbook
+    assert "docker compose run --rm legacy-sql-connector-execution-readiness-review-gate-smoke" in runbook
     assert "module_registry_operations_report.v1" in runbook
     assert "legacy_sql_discovery_intake_operations_report.v1" in runbook
     assert "legacy_sql_evidence_ledger_entry.v1" in runbook
@@ -380,6 +391,11 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_connector_real_connection_executor_smoke_report.v1" in runbook
     assert "legacy_sql_connector_real_connection_executor_policy_bundle.v1" in runbook
     assert "legacy_sql_connector_real_connection_executor_policy_store_smoke_report.v1" in runbook
+    assert "legacy_sql_connector_execution_readiness_human_review.v1" in runbook
+    assert "legacy_sql_connector_execution_readiness_change_control.v1" in runbook
+    assert "legacy_sql_connector_execution_readiness_restore_drill.v1" in runbook
+    assert "legacy_sql_connector_execution_readiness_review_gate.v1" in runbook
+    assert "legacy_sql_connector_execution_readiness_review_gate_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -412,6 +428,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL connector connection preflight gate smoke report hash" in runbook
     assert "Legacy SQL connector real connection executor smoke report hash" in runbook
     assert "Legacy SQL connector real connection executor policy store smoke report hash" in runbook
+    assert "Legacy SQL connector execution readiness review gate smoke report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
@@ -453,6 +470,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "\n  legacy-sql-connector-connection-preflight-gate-smoke:\n" in compose
     assert "\n  legacy-sql-connector-real-connection-executor-smoke:\n" in compose
     assert "\n  legacy-sql-connector-real-connection-executor-policy-store-smoke:\n" in compose
+    assert "\n  legacy-sql-connector-execution-readiness-review-gate-smoke:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
@@ -470,6 +488,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_connection_preflight_gate --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_real_connection_executor --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_real_connection_executor --policy-store-once" in compose
+    assert "python -m suite.platform.legacy_sql_connector_execution_readiness_review_gate --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose

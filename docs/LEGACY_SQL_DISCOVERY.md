@@ -239,10 +239,22 @@ SQL-seitige No-Socket/No-Secret/No-Import-Checks.
 Smoke schreibt den Policy-Bundle, liest ihn tenant-sicher zurueck, prueft idempotente Duplikate und beweist, dass
 tenant-fremde Reads keinen Bundle sehen.
 
+`legacy_sql_connector_execution_readiness_human_review.v1`,
+`legacy_sql_connector_execution_readiness_change_control.v1`,
+`legacy_sql_connector_execution_readiness_restore_drill.v1` und
+`legacy_sql_connector_execution_readiness_review_gate.v1` bilden den Review-Stop vor jeder weiteren Materialisierungs-
+Planung. Das Gate bindet gespeicherte Executor-Policy-Bundles an Human Review, Change Control, Restore Drill,
+Kill-Switch-Zustand und explizite Blockaden fuer Socket-/Secret-Materialisierungsplanung.
+
+`docker compose run --rm legacy-sql-connector-execution-readiness-review-gate-smoke` beweist dieses Gate. Der Smoke
+laedt den gespeicherten Bundle aus dem Policy Store, erzeugt metadata-only Review-/Change-/Restore-Evidence, blockiert
+fehlende Reviews, unvollstaendige Change-Control, deaktivierte Kill-Switches und jeden Materialisierungsplanungswunsch.
+Er oeffnet weiterhin keinen Socket, loest kein Secret-Material auf und liest keine Rohdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein Execution-Readiness-Review-Gate fuer gespeicherte Contracts. Echte Socket-
-Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere
-Gates und duerfen nicht aus dem Store heraus direkt gestartet werden.
+Der naechste technische Schritt ist ein nicht-ausfuehrendes Materialization-Plan-Gate. Echte Socket-Materialisierung,
+Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates und duerfen
+nicht aus dem Store oder Review-Gate heraus direkt gestartet werden.
