@@ -1327,7 +1327,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 146. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Live-Adapter haerten: echten Postgres-Provider hinter dem Skeleton mit Secret-Broker-Materialisierung, freigegebener Netzwerkroute, Redaction/Audit, Timeout-/Circuit-Breaker und Emergency-Stop in einem isolierten Worker aktivieren, weiterhin ohne Rohdaten, Import-Dry-Run oder Writes. SQL Server bleibt bis zu Treibercontainer-, Netzwerkprofil- und Testinstanz-Evidence bewusst Adapter-spaeter.
 147. [x] Produktzug-Re-Fokus nach Legacy-SQL-Metadata-Probe: Legacy-SQL bei metadata-only Live-Probe einfrieren und als naechsten MVP-Slice Workspace/Module-Cockpit, KB-/Dokument-/Mail-SourceObject-Flow, Preview-Entscheidung und Rechte-/Audit-Sichtbarkeit produktnah zusammenfuehren, ohne neue Import- oder Rohdatenpfade.
 148. [x] Workspace-Preview-Entscheidung produktiver fuehren: aus der Flow-Readiness heraus einen gefuehrten metadata-only Action-Flow fuer Renderer-Sandbox-Evidence und Preview-Decision-Anforderung bauen, weiter ohne Content-Rendering oder Rohdatenfreigabe.
-149. [ ] Produktiver Arbeitskorb als naechster MVP-Slice: aus Modulstatus, SourceObject-Readiness und Preview-Entscheidungen eine einfache Aufgaben-/Naechste-Schritte-Sicht ableiten, ohne das spaetere Aufgabenmodul, Tickets oder Automationen vorwegzunehmen.
+149. [x] Produktiver Arbeitskorb als naechster MVP-Slice: aus Modulstatus, SourceObject-Readiness und Preview-Entscheidungen eine einfache Aufgaben-/Naechste-Schritte-Sicht ableiten, ohne das spaetere Aufgabenmodul, Tickets oder Automationen vorwegzunehmen.
+150. [ ] Arbeitskorb-Aktionen rollen- und zustandsgefuehrt schaerfen: Work-Items mit sicheren Action-Hints, Modul-/Flow-Sprungzielen und UI-Gates verbinden, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

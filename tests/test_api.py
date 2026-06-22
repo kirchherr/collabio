@@ -450,6 +450,8 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "/workspace/assets/workspace.js" in response.text
     assert "source-detail-panel" in response.text
     assert "Flow Readiness" in response.text
+    assert "Arbeitskorb" in response.text
+    assert "work-item-list" in response.text
     assert "metadata-ready-count" in response.text
     assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
@@ -467,6 +469,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".detail-panel.not-found" in css_response.text
     assert ".readiness-band" in css_response.text
     assert ".readiness-cell" in css_response.text
+    assert ".work-item-list" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
@@ -479,6 +482,10 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "metadata_ready_preview_decision_pending" in js_response.text
     assert "metadata_ready_preview_blocked" in js_response.text
     assert "metadata_only_no_source_content" in js_response.text
+    assert "work_items" in js_response.text
+    assert "renderWorkItems" in js_response.text
+    assert "data-work-preview-flow-id" in js_response.text
+    assert "persistent_task_created=" in js_response.text
     assert ".guided-preview-action" in css_response.text
     assert "guided-preview-decision" in js_response.text
     assert "/preview-renderer-runs" in js_response.text
@@ -632,6 +639,23 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert modules["knowledge_base"]["continuity_domain"] == "knowledge_base_content"
     assert modules["crm_erp"]["continuity_domain"] == "crm_erp_business_records"
 
+    work_items = body["work_items"]
+    assert body["work_item_count"] == 4
+    assert len(work_items) == 4
+    assert all(item["schema_version"] == "product_cockpit_work_item.v1" for item in work_items)
+    assert all(item["persistent_task_created"] is False for item in work_items)
+    assert all(item["content_included"] is False for item in work_items)
+    source_work_items = [item for item in work_items if item["scope"] == "source_object_flow"]
+    module_work_items = [item for item in work_items if item["scope"] == "module"]
+    assert len(source_work_items) == 2
+    assert len(module_work_items) == 2
+    assert {item["priority"] for item in source_work_items} == {"high"}
+    assert {item["action"] for item in source_work_items} == {"request_preview_decision"}
+    assert {item["source_object_id"] for item in source_work_items} == {"doc-1", "mail-1"}
+    assert {item["module_id"] for item in module_work_items} == {"crm_erp", "knowledge_base"}
+    assert {item["priority"] for item in module_work_items} == {"medium"}
+    assert {item["action"] for item in module_work_items} == {"provision_module"}
+
     flows = {flow["source_object_id"]: flow for flow in body["source_object_flows"]}
     assert set(flows) == {"doc-1", "mail-1"}
     assert flows["doc-1"]["origin"] == "document"
@@ -697,6 +721,8 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["access_checked"] is True
     assert new_events[-1].metadata["preview_decision_pending_count"] == 2
     assert new_events[-1].metadata["preview_decision_blocked_count"] == 0
+    assert new_events[-1].metadata["work_item_count"] == 4
+    assert new_events[-1].metadata["high_priority_work_item_count"] == 2
 
 
 def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_content() -> None:
@@ -731,6 +757,13 @@ def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_con
     assert body["flow_readiness_summary"]["preview_decision_blocked_count"] == 1
     assert body["flow_readiness_summary"]["content_release_allowed_count"] == 0
     assert body["flow_readiness_summary"]["content_included_count"] == 0
+    assert body["work_item_count"] == 4
+    doc_item = next(item for item in body["work_items"] if item["source_object_id"] == "doc-1")
+    mail_item = next(item for item in body["work_items"] if item["source_object_id"] == "mail-1")
+    assert doc_item["action"] == "review_latest_preview_decision"
+    assert doc_item["priority"] == "high"
+    assert mail_item["action"] == "request_preview_decision"
+    assert mail_item["priority"] == "high"
     assert doc_readiness["status"] == "metadata_ready_preview_blocked"
     assert doc_readiness["preview_decision_available"] is True
     assert doc_readiness["latest_preview_decision_status"] == "blocked"

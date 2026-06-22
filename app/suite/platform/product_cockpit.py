@@ -95,6 +95,41 @@ class ProductCockpitReadinessSummary(BaseModel):
     content_included_count: int = Field(ge=0)
 
 
+class ProductCockpitWorkItemScope(StrEnum):
+    MODULE = "module"
+    SOURCE_OBJECT_FLOW = "source_object_flow"
+
+
+class ProductCockpitWorkItemPriority(StrEnum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class ProductCockpitWorkItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_work_item.v1"
+    work_item_id: str
+    scope: ProductCockpitWorkItemScope
+    priority: ProductCockpitWorkItemPriority
+    action: str
+    title: str
+    target_label: str
+    module_id: str | None = None
+    module_status: ModuleStatus | None = None
+    flow_id: str | None = None
+    source_object_id: str | None = None
+    source_version_id: str | None = None
+    source_object_type: SourceObjectType | None = None
+    origin: ProductCockpitSourceOrigin | None = None
+    reason: str
+    blocking_reasons: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    persistent_task_created: bool = False
+    content_included: bool = False
+
+
 class ProductCockpitModuleView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -148,6 +183,8 @@ class ProductCockpitResponse(BaseModel):
     source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...]
     source_object_flow_count: int = Field(ge=0)
     flow_readiness_summary: ProductCockpitReadinessSummary
+    work_items: tuple[ProductCockpitWorkItem, ...]
+    work_item_count: int = Field(ge=0)
     audit_event_id: str
 
 
@@ -188,6 +225,7 @@ def build_product_cockpit_response(
         )
     )
     readiness_summary = _flow_readiness_summary(source_object_flows)
+    preliminary_work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -205,15 +243,22 @@ def build_product_cockpit_response(
             "preview_evidence_complete_but_content_blocked_count": (
                 readiness_summary.preview_evidence_complete_but_content_blocked_count
             ),
+            "work_item_count": len(preliminary_work_items),
+            "high_priority_work_item_count": sum(
+                1 for item in preliminary_work_items if item.priority == ProductCockpitWorkItemPriority.HIGH
+            ),
         },
     )
     source_object_flows = _attach_cockpit_audit_event_id(source_object_flows, event.event_id)
+    work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
     return ProductCockpitResponse(
         tenant_id=user_context.tenant_id,
         modules=modules,
         source_object_flows=source_object_flows,
         source_object_flow_count=len(source_object_flows),
         flow_readiness_summary=readiness_summary,
+        work_items=work_items,
+        work_item_count=len(work_items),
         audit_event_id=event.event_id,
     )
 
@@ -501,6 +546,106 @@ def _flow_readiness_summary(
         ),
         content_release_allowed_count=sum(1 for readiness in readinesses if readiness.content_release_allowed),
         content_included_count=sum(1 for readiness in readinesses if readiness.content_included),
+    )
+
+
+def _product_work_items(
+    *,
+    modules: tuple[ProductCockpitModuleView, ...],
+    source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> tuple[ProductCockpitWorkItem, ...]:
+    items = [
+        *(_source_object_work_item(flow) for flow in source_object_flows),
+        *(_module_work_item(module) for module in modules if module.next_action != "open_module"),
+    ]
+    return tuple(sorted(items, key=_work_item_sort_key))
+
+
+def _source_object_work_item(flow: ProductCockpitSourceObjectFlowView) -> ProductCockpitWorkItem:
+    readiness = flow.readiness
+    if readiness.next_action == "request_preview_decision":
+        priority = ProductCockpitWorkItemPriority.HIGH
+        title = "Preview Decision anfordern"
+        reason = "SourceObject ist metadata-ready; Preview Decision fehlt."
+    else:
+        priority = (
+            ProductCockpitWorkItemPriority.MEDIUM
+            if readiness.content_release_evidence_complete
+            else ProductCockpitWorkItemPriority.HIGH
+        )
+        title = "Preview Decision pruefen"
+        reason = "Preview Decision liegt vor; Content Release bleibt policy- und renderer-gesteuert blockiert."
+    return ProductCockpitWorkItem(
+        work_item_id=f"source-object-flow:{flow.flow_id}:{readiness.next_action}",
+        scope=ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW,
+        priority=priority,
+        action=readiness.next_action,
+        title=title,
+        target_label=flow.title,
+        module_id=flow.module_id,
+        module_status=flow.module_status,
+        flow_id=flow.flow_id,
+        source_object_id=flow.source_object_id,
+        source_version_id=flow.source_version_id,
+        source_object_type=flow.source_object_type,
+        origin=flow.origin,
+        reason=reason,
+        blocking_reasons=readiness.blocking_reasons,
+        evidence_refs=readiness.evidence_refs,
+    )
+
+
+def _module_work_item(module: ProductCockpitModuleView) -> ProductCockpitWorkItem:
+    return ProductCockpitWorkItem(
+        work_item_id=f"module:{module.module_id}:{module.next_action}",
+        scope=ProductCockpitWorkItemScope.MODULE,
+        priority=_module_work_item_priority(module.next_action),
+        action=module.next_action,
+        title=_module_work_item_title(module.next_action),
+        target_label=module.display_name,
+        module_id=module.module_id,
+        module_status=module.status,
+        reason="Modul ist im Cockpit sichtbar, aber noch nicht im Normalbetrieb offen.",
+        blocking_reasons=(module.next_action,),
+        evidence_refs=(f"module:{module.module_id}", f"status:{module.status.value}"),
+    )
+
+
+def _module_work_item_priority(action: str) -> ProductCockpitWorkItemPriority:
+    if action in {"resolve_suspension", "continue_decommission_workflow"}:
+        return ProductCockpitWorkItemPriority.HIGH
+    if action in {"retain_compliance_evidence", "review_module_state"}:
+        return ProductCockpitWorkItemPriority.LOW
+    return ProductCockpitWorkItemPriority.MEDIUM
+
+
+def _module_work_item_title(action: str) -> str:
+    titles = {
+        "provision_module": "Modul provisionieren",
+        "enable_module": "Modul aktivieren",
+        "resolve_suspension": "Modulsperre klaeren",
+        "continue_decommission_workflow": "Decommissioning fortsetzen",
+        "retain_compliance_evidence": "Compliance Evidence sichern",
+        "review_module_state": "Modulstatus pruefen",
+    }
+    return titles.get(action, "Modulstatus pruefen")
+
+
+def _work_item_sort_key(item: ProductCockpitWorkItem) -> tuple[int, int, str, str]:
+    priority_order = {
+        ProductCockpitWorkItemPriority.HIGH: 0,
+        ProductCockpitWorkItemPriority.MEDIUM: 1,
+        ProductCockpitWorkItemPriority.LOW: 2,
+    }
+    scope_order = {
+        ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW: 0,
+        ProductCockpitWorkItemScope.MODULE: 1,
+    }
+    return (
+        priority_order[item.priority],
+        scope_order[item.scope],
+        item.target_label.lower(),
+        item.work_item_id,
     )
 
 

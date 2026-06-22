@@ -8,8 +8,10 @@ const fields = {
 const statusLine = document.querySelector("#status-line");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
+const workItemList = document.querySelector("#work-item-list");
 const flowTableBody = document.querySelector("#flow-table-body");
 const moduleCount = document.querySelector("#module-count");
+const workItemCount = document.querySelector("#work-item-count");
 const flowCount = document.querySelector("#flow-count");
 const sourceDetailPanel = document.querySelector("#source-detail-panel");
 const readinessCounts = {
@@ -20,7 +22,7 @@ const readinessCounts = {
 };
 
 const storageKey = "collabio.workspace.context";
-let currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {} };
+let currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {}, work_items: [] };
 let selectedFlowId = "";
 let detailLoadToken = 0;
 
@@ -82,7 +84,7 @@ async function loadCockpit() {
     renderCockpit(body);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
-    currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {} };
+    currentCockpit = { modules: [], source_object_flows: [], flow_readiness_summary: {}, work_items: [] };
     renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
@@ -202,7 +204,9 @@ function renderCockpit(cockpit) {
   const flows = cockpit.source_object_flows || [];
   const hashFlowId = flowIdFromHash();
   const readinessSummary = cockpit.flow_readiness_summary || {};
+  const workItems = cockpit.work_items || [];
   moduleCount.textContent = String(modules.length);
+  workItemCount.textContent = String(workItems.length);
   flowCount.textContent = String(flows.length);
   readinessCounts.metadataReady.textContent = String(readinessSummary.metadata_ready_flow_count || 0);
   readinessCounts.previewPending.textContent = String(readinessSummary.preview_decision_pending_count || 0);
@@ -216,8 +220,68 @@ function renderCockpit(cockpit) {
     selectedFlowId = flows[0]?.flow_id || "";
   }
   renderModules(modules);
+  renderWorkItems(workItems);
   renderFlows(flows);
   loadSourceObjectDetail();
+}
+
+function renderWorkItems(items) {
+  workItemList.innerHTML = "";
+  if (!items.length) {
+    workItemList.innerHTML = '<div class="empty-state compact">Keine offenen Cockpit-Arbeitsschritte.</div>';
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement("article");
+    row.className = `work-item ${workPriorityClass(item.priority)}`;
+    row.innerHTML = `
+      <div class="work-item-main">
+        <span class="status-pill ${workPriorityClass(item.priority)}">${escapeHtml(item.priority)}</span>
+        <div class="work-item-copy">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.target_label)}</span>
+          <code>${escapeHtml(item.action)} | ${escapeHtml(item.scope)}</code>
+        </div>
+      </div>
+      <div class="work-item-meta">
+        <code>${escapeHtml(item.reason)}</code>
+        <code>persistent_task_created=${item.persistent_task_created === true ? "true" : "false"} | content_included=${item.content_included === true ? "true" : "false"}</code>
+      </div>
+      ${workItemActions(item)}
+    `;
+    workItemList.appendChild(row);
+  }
+}
+
+function workItemActions(item) {
+  if (item.scope !== "source_object_flow" || !item.flow_id) {
+    return '<div class="work-item-actions"><span class="action-note">Aktion im Modulbereich ausfuehren.</span></div>';
+  }
+  const previewAction = item.action === "request_preview_decision" ? `
+    <button
+      class="action-button primary"
+      type="button"
+      data-work-preview-flow-id="${escapeHtml(item.flow_id)}"
+    >
+      Evidence + Decision
+    </button>
+  ` : "";
+  return `
+    <div class="work-item-actions">
+      <button class="action-button quiet" type="button" data-work-flow-id="${escapeHtml(item.flow_id)}">Flow oeffnen</button>
+      ${previewAction}
+    </div>
+  `;
+}
+
+function workPriorityClass(priority) {
+  if (priority === "high") {
+    return "priority-high";
+  }
+  if (priority === "medium") {
+    return "priority-medium";
+  }
+  return "priority-low";
 }
 
 function renderModules(modules) {
