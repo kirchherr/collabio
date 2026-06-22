@@ -489,6 +489,11 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "primary_action_hint" in js_response.text
     assert "secondary_action_hints" in js_response.text
     assert "required_roles" in js_response.text
+    assert "data-work-required-roles" in js_response.text
+    assert "data-work-state-gate" in js_response.text
+    assert "data-work-requires-confirmation" in js_response.text
+    assert "aria-disabled" in js_response.text
+    assert "Erforderliche Rolle fehlt im aktuellen Kontext" in js_response.text
     assert "canUseAnyRole" in js_response.text
     assert "Action-Hint verletzt metadata-only Arbeitskorb-Regeln" in js_response.text
     assert "persistent_task_created=" in js_response.text
@@ -767,6 +772,81 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["work_item_count"] == 4
     assert new_events[-1].metadata["high_priority_work_item_count"] == 2
     assert new_events[-1].metadata["confirmation_required_work_item_count"] == 4
+
+
+def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    role_contexts = {
+        "tenant-admin": DEMO_ADMIN_HEADERS,
+        "security-admin": DEMO_SECURITY_ADMIN_HEADERS,
+        "reader": DEMO_HEADERS,
+    }
+
+    try:
+        bodies = {}
+        for role_name, headers in role_contexts.items():
+            response = client.get("/v1/platform/cockpit", headers=headers)
+            assert response.status_code == 200
+            bodies[role_name] = response.json()
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    def comparable_work_items(body: dict[str, Any]) -> list[dict[str, Any]]:
+        return [
+            {
+                "work_item_id": item["work_item_id"],
+                "scope": item["scope"],
+                "action": item["action"],
+                "priority": item["priority"],
+                "module_id": item["module_id"],
+                "source_object_id": item["source_object_id"],
+                "ui_action": item["primary_action_hint"]["ui_action"],
+                "required_roles": item["primary_action_hint"]["required_roles"],
+                "state_gate": item["primary_action_hint"]["state_gate"],
+                "requires_confirmation": item["primary_action_hint"]["requires_confirmation"],
+                "target_route": item["primary_action_hint"]["target_route"],
+                "secondary_ui_actions": [hint["ui_action"] for hint in item["secondary_action_hints"]],
+            }
+            for item in body["work_items"]
+        ]
+
+    tenant_admin_items = comparable_work_items(bodies["tenant-admin"])
+    assert comparable_work_items(bodies["security-admin"]) == tenant_admin_items
+    assert comparable_work_items(bodies["reader"]) == tenant_admin_items
+
+    expected_actionability = {
+        "tenant-admin": {"module": True, "source_object_flow": True},
+        "security-admin": {"module": True, "source_object_flow": True},
+        "reader": {"module": False, "source_object_flow": True},
+    }
+    for role_name, headers in role_contexts.items():
+        role_ids = set(headers["X-Role-Ids"].split(","))
+        body = bodies[role_name]
+        assert body["work_item_count"] == 4
+        assert body["source_object_flow_count"] == 2
+        for item in body["work_items"]:
+            hint = item["primary_action_hint"]
+            required_roles = set(hint["required_roles"])
+            action_allowed = not required_roles or bool(required_roles & role_ids)
+            assert action_allowed is expected_actionability[role_name][item["scope"]]
+            assert hint["metadata_only"] is True
+            assert hint["content_included"] is False
+            assert hint["persistent_task_created"] is False
+            assert hint["destructive"] is False
+            assert hint["external_side_effect"] is False
+            if item["scope"] == "module":
+                assert hint["required_roles"] == ["tenant-admin", "security-admin"]
+                assert hint["requires_confirmation"] is True
+                assert hint["state_gate"].endswith("_and_admin_role")
+            else:
+                assert hint["required_roles"] == []
+                assert item["source_object_id"] in {"doc-1", "mail-1"}
+                assert hint["target_route"].startswith("/workspace#source-object=")
+
+    assert "Board pack draft source content" not in json.dumps(bodies)
+    assert "Welcome message source" not in json.dumps(bodies)
 
 
 def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_content() -> None:

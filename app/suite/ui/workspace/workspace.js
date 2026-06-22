@@ -275,6 +275,10 @@ function workItemActionButton(item, hint, index) {
       data-work-item-id="${escapeHtml(item.work_item_id)}"
       data-work-action-index="${index}"
       data-work-ui-action="${escapeHtml(hint.ui_action)}"
+      data-work-required-roles="${escapeHtml((hint.required_roles || []).join(","))}"
+      data-work-state-gate="${escapeHtml(hint.state_gate || "none")}"
+      data-work-requires-confirmation="${hint.requires_confirmation === true ? "true" : "false"}"
+      aria-disabled="${disabledReason ? "true" : "false"}"
       ${disabled}${title}
     >
       ${escapeHtml(hint.label)}
