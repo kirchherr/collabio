@@ -340,11 +340,28 @@ Least-Privilege-Rolle, fehlende Timeout-/Circuit-Breaker-Regeln, fehlenden Audit
 direkte Probe-/Secret-/Rohdaten-Anfragen. Er fuehrt weiterhin keinen metadata-only Probe aus, oeffnet keinen Socket,
 loest kein Secret-Material auf und liest keine Rohdaten.
 
+`legacy_sql_connector_metadata_connection_probe_provider_driver_snapshot.v1`,
+`legacy_sql_connector_metadata_connection_probe_secret_broker_read_path_snapshot.v1`,
+`legacy_sql_connector_metadata_connection_probe_query_allowlist_snapshot.v1`,
+`legacy_sql_connector_metadata_connection_probe_timeout_circuit_breaker_execution_snapshot.v1`,
+`legacy_sql_connector_metadata_connection_probe_audit_sink_execution_snapshot.v1`,
+`legacy_sql_connector_metadata_connection_probe_emergency_disable_execution_snapshot.v1` und
+`legacy_sql_connector_metadata_connection_probe_gate.v1` bilden das letzte nicht-ausfuehrende Gate vor einem echten
+metadata-only Probe. Es bindet das Live-Connection-Gate an Provider-Treiber-Readiness, Secret-Broker-Read-Path,
+Metadata-Query-Allowlist, Timeout-/Circuit-Breaker-Ausfuehrung, Audit-Sink und Emergency-Disable.
+
+`docker compose run --rm legacy-sql-connector-metadata-connection-probe-gate-smoke` beweist diesen Stop. Der Smoke
+blockiert fehlendes Live-Connection-Gate, fehlende Provider-Treiber-Freigabe, fehlenden Secret-Broker-Read-Path,
+fehlende Metadata-Query-Allowlist, fehlende Timeout-/Circuit-Breaker-Ausfuehrung, fehlenden Audit-Sink, fehlendes
+Emergency-Disable und direkte Provider-/Secret-/Query-/Socket-/Rohdaten-Anfragen. Er laedt weiterhin keinen echten
+Treiber, liest kein Secret-Material, oeffnet keinen Socket, fuehrt keine Metadata-Query aus, liest keine Rohdaten und
+schreibt keine Importdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein eng begrenztes Metadata-Connection-Probe-Gate hinter dem Live-
-Connection-Gate. Echte Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte
-spaetere Gates und duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate,
-Runtime-Merge-Gate, Runtime-Activation-Gate oder Live-Connection-Gate heraus direkt gestartet werden.
+Der naechste technische Schritt ist ein eng begrenztes Metadata-Connection-Probe-Skeleton hinter dem Metadata-
+Connection-Probe-Gate. Echte Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates und
+duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate, Runtime-Merge-Gate,
+Runtime-Activation-Gate, Live-Connection-Gate oder Metadata-Connection-Probe-Gate heraus direkt gestartet werden.

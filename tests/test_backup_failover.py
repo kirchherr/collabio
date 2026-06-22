@@ -92,6 +92,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legacy_sql_connector_runtime_merge_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_runtime_activation_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_live_connection_gate_smoke_report_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_connector_metadata_connection_probe_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -137,6 +138,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm legacy-sql-connector-runtime-merge-gate-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-connector-runtime-activation-gate-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-connector-live-connection-gate-smoke" in postgres.current_dev_commands
+    assert (
+        "docker compose run --rm legacy-sql-connector-metadata-connection-probe-gate-smoke"
+        in postgres.current_dev_commands
+    )
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -163,6 +168,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL connector runtime merge gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector runtime activation gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector live connection gate hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL connector metadata connection probe gate hashes" in crm_erp.state_artifacts
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -314,6 +320,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         "Legacy SQL connector materialization plan gate evidence"
         in policy.domain("background_jobs_queues").state_artifacts
     )
+    assert (
+        "Legacy SQL connector metadata connection probe gate evidence"
+        in policy.domain("background_jobs_queues").state_artifacts
+    )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
@@ -361,6 +371,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
         "Legacy SQL connector real connection executor policy store smoke report hash when applicable"
         in policy.restore_drill_evidence
     )
+    assert (
+        "Legacy SQL connector metadata connection probe gate smoke report hash when applicable"
+        in policy.restore_drill_evidence
+    )
     assert "module lifecycle audit event metadata for module_registry_state" in policy.restore_drill_evidence
     assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
     assert "module registry seed, backfill, repair, or worker discovery drill fails" in policy.incident_triggers
@@ -389,6 +403,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm legacy-sql-connector-real-connection-executor-policy-store-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-execution-readiness-review-gate-smoke" in runbook
     assert "docker compose run --rm legacy-sql-connector-materialization-plan-gate-smoke" in runbook
+    assert "docker compose run --rm legacy-sql-connector-metadata-connection-probe-gate-smoke" in runbook
     assert "module_registry_operations_report.v1" in runbook
     assert "legacy_sql_discovery_intake_operations_report.v1" in runbook
     assert "legacy_sql_evidence_ledger_entry.v1" in runbook
@@ -469,6 +484,14 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_connector_live_connection_emergency_disable_snapshot.v1" in runbook
     assert "legacy_sql_connector_live_connection_gate.v1" in runbook
     assert "legacy_sql_connector_live_connection_gate_smoke_report.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_provider_driver_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_secret_broker_read_path_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_query_allowlist_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_timeout_circuit_breaker_execution_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_audit_sink_execution_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_emergency_disable_execution_snapshot.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_gate.v1" in runbook
+    assert "legacy_sql_connector_metadata_connection_probe_gate_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -508,6 +531,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL connector runtime merge gate smoke report hash" in runbook
     assert "Legacy SQL connector runtime activation gate smoke report hash" in runbook
     assert "Legacy SQL connector live connection gate smoke report hash" in runbook
+    assert "Legacy SQL connector metadata connection probe gate smoke report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
