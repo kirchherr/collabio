@@ -128,7 +128,9 @@ from suite.platform.modules import (
     tenant_module_admin_view,
 )
 from suite.platform.product_cockpit import (
+    ProductCockpitMvpSnapshotResponse,
     ProductCockpitResponse,
+    build_product_cockpit_mvp_snapshot_response,
     build_product_cockpit_response,
 )
 from suite.platform.runtime import suite_auth_mode
@@ -476,6 +478,30 @@ def build_app() -> FastAPI:
             workspace_source_refs=workspace_source_catalog.list_refs(),
             knowledge_base_article_service=knowledge_base_articles,
             preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+
+    @app.get("/v1/platform/cockpit/mvp-snapshot", response_model=ProductCockpitMvpSnapshotResponse)
+    def product_cockpit_mvp_snapshot(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ProductCockpitMvpSnapshotResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(WorkspaceSourceObjectCatalog, request.app.state.workspace_source_object_catalog)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        cockpit_response = build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
+            knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+        return build_product_cockpit_mvp_snapshot_response(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
             audit_logger=audit_logger,
         )
 

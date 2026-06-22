@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Workspace</title>
-    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=155" />
+    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=156" />
   </head>
   <body>
     <div class="workspace-shell">
@@ -39,12 +39,15 @@
             <p class="eyebrow">Tenant Workspace</p>
             <h1>Module-Cockpit</h1>
           </div>
-          <button class="icon-button" type="button" id="refresh-button" title="Aktualisieren" aria-label="Aktualisieren">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 11a8 8 0 1 1-2.34-5.66" />
-              <path d="M20 4v7h-7" />
-            </svg>
-          </button>
+          <div class="workspace-actions">
+            <button class="action-button quiet" type="button" id="snapshot-button">Snapshot</button>
+            <button class="icon-button" type="button" id="refresh-button" title="Aktualisieren" aria-label="Aktualisieren">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 1-2.34-5.66" />
+                <path d="M20 4v7h-7" />
+              </svg>
+            </button>
+          </div>
         </header>
 
         <section class="tenant-band" aria-label="Tenant Kontext">
@@ -156,6 +159,6 @@
       </main>
     </div>
 
-    <script src="/workspace/assets/workspace.js?v=155" defer></script>
+    <script src="/workspace/assets/workspace.js?v=156" defer></script>
   </body>
 </html>

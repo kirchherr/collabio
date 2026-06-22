@@ -1334,7 +1334,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 153. [x] Arbeitskorb-Operational-Evidence schaerfen: Work-Item-Zaehler, Confirmation-Gates und State-Transition-Signale in Audit-/Cockpit-Metadaten nachvollziehbar machen, ohne Rohdaten, Inhalte oder persistente Aufgaben zu speichern.
 154. [x] Arbeitskorb-Operational-Summary im Workspace sichtbar machen: die read-only Evidence aus Work-Item-Zaehlern, Rollen-/Confirmation-Gates und State-Transition-Signalen kompakt anzeigen, ohne neue Aktionen, persistente Aufgaben oder Rohdaten einzufuehren.
 155. [x] Workspace-Cockpit als MVP-Startpunkt konsolidieren: Module, Arbeitskorb, SourceObject-Flows und Detailansicht als produktiven Einstieg pruefen, offene Foundation-Luecken priorisieren und spaetere Nice-to-haves aus dem unmittelbaren Pfad entfernen.
-156. [ ] MVP-Startpunkt-Snapshot als Review-Artefakt vorbereiten: Cockpit-Readiness, offene Foundation-Gaps, Deferred-Themen und naechste sichere Aktion in einem metadata-only Handover-Report exportierbar machen, ohne produktive Automationen oder neue Module vorzuziehen.
+156. [x] MVP-Startpunkt-Snapshot als Review-Artefakt vorbereiten: Cockpit-Readiness, offene Foundation-Gaps, Deferred-Themen und naechste sichere Aktion in einem metadata-only Handover-Report exportierbar machen, ohne produktive Automationen oder neue Module vorzuziehen.
+157. [ ] Foundation-Gap-Abbau aus dem MVP-Snapshot starten: Preview-Decision-Gaps, Modulaktivierung und Human-Confirmation als naechsten produktiven Pfad priorisieren, waehrend Office/Mail-Vollclients, Tickets, LMS und Zeiterfassung bewusst deferred bleiben.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

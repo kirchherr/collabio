@@ -270,6 +270,80 @@ class ProductCockpitResponse(BaseModel):
     audit_event_id: str
 
 
+class ProductCockpitMvpSnapshotModuleRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    module_id: str
+    status: ModuleStatus
+    normal_use_enabled: bool
+    compliance_access_allowed: bool
+    next_action: str
+    continuity_domain: str
+
+
+class ProductCockpitMvpSnapshotSourceObjectFlowRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    flow_id: str
+    origin: ProductCockpitSourceOrigin
+    module_id: str | None = None
+    module_status: ModuleStatus | None = None
+    source_object_id: str
+    source_version_id: str
+    source_object_type: SourceObjectType
+    acl_version: int = Field(ge=1)
+    readiness_status: ProductCockpitFlowReadinessStatus
+    next_action: str
+    content_release_allowed: bool
+    content_included: bool = False
+    latest_preview_decision_status: SourceObjectPreviewDecisionStatus | None = None
+    cockpit_audit_event_id: str | None = None
+    evidence_ref_count: int = Field(ge=0)
+
+
+class ProductCockpitMvpSnapshotWorkItemRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    work_item_id: str
+    scope: ProductCockpitWorkItemScope
+    priority: ProductCockpitWorkItemPriority
+    action: str
+    module_id: str | None = None
+    flow_id: str | None = None
+    source_object_id: str | None = None
+    source_version_id: str | None = None
+    primary_ui_action: ProductCockpitWorkItemUiAction
+    requires_confirmation: bool
+    required_roles: tuple[str, ...]
+    state_gate: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+
+
+class ProductCockpitMvpSnapshotResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    schema_version: str = "product_cockpit_mvp_snapshot.v1"
+    result_contract: str = "metadata_only_mvp_handover_snapshot"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    cockpit_route: str = "/v1/platform/cockpit"
+    entrypoint_route: str = "/workspace"
+    generated_from_cockpit_audit_event_id: str
+    review_sections: tuple[str, ...]
+    mvp_readiness_summary: ProductCockpitMvpReadinessSummary
+    flow_readiness_summary: ProductCockpitReadinessSummary
+    work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
+    module_refs: tuple[ProductCockpitMvpSnapshotModuleRef, ...]
+    source_object_flow_refs: tuple[ProductCockpitMvpSnapshotSourceObjectFlowRef, ...]
+    work_item_refs: tuple[ProductCockpitMvpSnapshotWorkItemRef, ...]
+    next_foundation_action: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    audit_event_id: str
+
+
 def build_product_cockpit_response(
     *,
     user_context: UserContext,
@@ -375,6 +449,112 @@ def build_product_cockpit_response(
         work_item_operational_summary=work_item_operational_summary,
         mvp_readiness_summary=mvp_readiness_summary,
         audit_event_id=event.event_id,
+    )
+
+
+def build_product_cockpit_mvp_snapshot_response(
+    *,
+    user_context: UserContext,
+    cockpit_response: ProductCockpitResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpSnapshotResponse:
+    module_refs = tuple(_mvp_snapshot_module_ref(module) for module in cockpit_response.modules)
+    source_object_flow_refs = tuple(
+        _mvp_snapshot_source_object_flow_ref(flow) for flow in cockpit_response.source_object_flows
+    )
+    work_item_refs = tuple(_mvp_snapshot_work_item_ref(item) for item in cockpit_response.work_items)
+    review_sections = (
+        "mvp_readiness_summary",
+        "flow_readiness_summary",
+        "work_item_operational_summary",
+        "module_refs",
+        "source_object_flow_refs",
+        "work_item_refs",
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_snapshot.export",
+        source_object_ids=[flow.source_object_id for flow in cockpit_response.source_object_flows],
+        metadata={
+            "result_contract": "metadata_only_mvp_handover_snapshot",
+            "generated_from_cockpit_audit_event_id": cockpit_response.audit_event_id,
+            "review_sections": review_sections,
+            "module_ref_count": len(module_refs),
+            "source_object_flow_ref_count": len(source_object_flow_refs),
+            "work_item_ref_count": len(work_item_refs),
+            "mvp_entry_ready": cockpit_response.mvp_readiness_summary.mvp_entry_ready,
+            "mvp_foundation_gap_count": cockpit_response.mvp_readiness_summary.foundation_gap_count,
+            "mvp_deferred_item_count": cockpit_response.mvp_readiness_summary.deferred_item_count,
+            "mvp_next_foundation_action": cockpit_response.mvp_readiness_summary.next_foundation_action,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    return ProductCockpitMvpSnapshotResponse(
+        tenant_id=cockpit_response.tenant_id,
+        generated_from_cockpit_audit_event_id=cockpit_response.audit_event_id,
+        review_sections=review_sections,
+        mvp_readiness_summary=cockpit_response.mvp_readiness_summary,
+        flow_readiness_summary=cockpit_response.flow_readiness_summary,
+        work_item_operational_summary=cockpit_response.work_item_operational_summary,
+        module_refs=module_refs,
+        source_object_flow_refs=source_object_flow_refs,
+        work_item_refs=work_item_refs,
+        next_foundation_action=cockpit_response.mvp_readiness_summary.next_foundation_action,
+        audit_event_id=event.event_id,
+    )
+
+
+def _mvp_snapshot_module_ref(module: ProductCockpitModuleView) -> ProductCockpitMvpSnapshotModuleRef:
+    return ProductCockpitMvpSnapshotModuleRef(
+        module_id=module.module_id,
+        status=module.status,
+        normal_use_enabled=module.normal_use_enabled,
+        compliance_access_allowed=module.compliance_access_allowed,
+        next_action=module.next_action,
+        continuity_domain=module.continuity_domain,
+    )
+
+
+def _mvp_snapshot_source_object_flow_ref(
+    flow: ProductCockpitSourceObjectFlowView,
+) -> ProductCockpitMvpSnapshotSourceObjectFlowRef:
+    return ProductCockpitMvpSnapshotSourceObjectFlowRef(
+        flow_id=flow.flow_id,
+        origin=flow.origin,
+        module_id=flow.module_id,
+        module_status=flow.module_status,
+        source_object_id=flow.source_object_id,
+        source_version_id=flow.source_version_id,
+        source_object_type=flow.source_object_type,
+        acl_version=flow.acl_version,
+        readiness_status=flow.readiness.status,
+        next_action=flow.readiness.next_action,
+        content_release_allowed=flow.readiness.content_release_allowed,
+        content_included=flow.content_included or flow.readiness.content_included,
+        latest_preview_decision_status=flow.readiness.latest_preview_decision_status,
+        cockpit_audit_event_id=flow.readiness.cockpit_audit_event_id,
+        evidence_ref_count=len(flow.readiness.evidence_refs),
+    )
+
+
+def _mvp_snapshot_work_item_ref(item: ProductCockpitWorkItem) -> ProductCockpitMvpSnapshotWorkItemRef:
+    return ProductCockpitMvpSnapshotWorkItemRef(
+        work_item_id=item.work_item_id,
+        scope=item.scope,
+        priority=item.priority,
+        action=item.action,
+        module_id=item.module_id,
+        flow_id=item.flow_id,
+        source_object_id=item.source_object_id,
+        source_version_id=item.source_version_id,
+        primary_ui_action=item.primary_action_hint.ui_action,
+        requires_confirmation=item.primary_action_hint.requires_confirmation,
+        required_roles=item.primary_action_hint.required_roles,
+        state_gate=item.primary_action_hint.state_gate,
+        content_included=item.content_included or item.primary_action_hint.content_included,
+        persistent_task_created=item.persistent_task_created or item.primary_action_hint.persistent_task_created,
     )
 
 

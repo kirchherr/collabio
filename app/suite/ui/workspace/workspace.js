@@ -7,6 +7,7 @@ const fields = {
 
 const statusLine = document.querySelector("#status-line");
 const mvpReadinessPanel = document.querySelector("#mvp-readiness-panel");
+const snapshotButton = document.querySelector("#snapshot-button");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
 const workEvidencePanel = document.querySelector("#work-evidence-panel");
@@ -108,6 +109,36 @@ async function loadCockpit() {
   }
 }
 
+async function downloadMvpSnapshot() {
+  const context = readContext();
+  persistContext();
+  snapshotButton.disabled = true;
+  setStatus("MVP-Snapshot wird erzeugt ...");
+  try {
+    const response = await fetch("/v1/platform/cockpit/mvp-snapshot", {
+      headers: headersForContext(context),
+    });
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new Error(body.detail || "HTTP " + response.status);
+    }
+    const serialized = JSON.stringify(body, null, 2);
+    const blob = new Blob([serialized], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "collabio-mvp-snapshot-" + safeRefPart(body.audit_event_id || "snapshot") + ".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setStatus("MVP-Snapshot exportiert | Audit " + body.audit_event_id);
+  } catch (error) {
+    setStatus(error.message || "MVP-Snapshot konnte nicht erzeugt werden.", true);
+  } finally {
+    snapshotButton.disabled = false;
+  }
+}
 async function executeModuleAction(module, action) {
   const context = readContext();
   const confirmationText = `${action.label} für ${module.display_name} ausführen?\n\nZielstatus: ${action.targetStatus}\nTenant: ${context.tenantId}`;
@@ -878,6 +909,7 @@ function escapeHtml(value) {
 }
 
 restoreContext();
+snapshotButton.addEventListener("click", downloadMvpSnapshot);
 refreshButton.addEventListener("click", loadCockpit);
 moduleGrid.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-module-action]");

@@ -454,6 +454,7 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "work-item-list" in response.text
     assert "work-evidence-panel" in response.text
     assert "mvp-readiness-panel" in response.text
+    assert "snapshot-button" in response.text
     assert "metadata-ready-count" in response.text
     assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
@@ -473,12 +474,17 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".readiness-cell" in css_response.text
     assert ".mvp-readiness-panel" in css_response.text
     assert ".mvp-readiness-grid" in css_response.text
+    assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
     assert ".work-evidence-grid" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
+    assert "/v1/platform/cockpit/mvp-snapshot" in js_response.text
+    assert "downloadMvpSnapshot" in js_response.text
+    assert "collabio-mvp-snapshot-" in js_response.text
+    assert "JSON.stringify(body, null, 2)" in js_response.text
     assert "/v1/source-objects/" in js_response.text
     assert "/metadata" in js_response.text
     assert "Zugriff verweigert" in js_response.text
@@ -895,6 +901,110 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
     assert new_events[-1].metadata["mvp_content_included"] is False
     assert new_events[-1].metadata["mvp_persistent_task_created"] is False
+
+
+def test_platform_cockpit_mvp_snapshot_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-snapshot")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get("/v1/platform/cockpit/mvp-snapshot", headers=DEMO_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["schema_version"] == "product_cockpit_mvp_snapshot.v1"
+    assert body["result_contract"] == "metadata_only_mvp_handover_snapshot"
+    assert body["snapshot_route"] == "/v1/platform/cockpit/mvp-snapshot"
+    assert body["cockpit_route"] == "/v1/platform/cockpit"
+    assert body["entrypoint_route"] == "/workspace"
+    assert body["generated_from_cockpit_audit_event_id"]
+    assert body["audit_event_id"] != body["generated_from_cockpit_audit_event_id"]
+    assert body["review_sections"] == [
+        "mvp_readiness_summary",
+        "flow_readiness_summary",
+        "work_item_operational_summary",
+        "module_refs",
+        "source_object_flow_refs",
+        "work_item_refs",
+    ]
+    assert body["mvp_readiness_summary"]["foundation_gaps"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["mvp_readiness_summary"]["deferred_items"] == [
+        "office_editor_suite",
+        "mail_client_runtime",
+        "persistent_tasks_and_ticketing",
+        "lms_time_tracking_activity_modules",
+        "full_content_preview_rendering",
+    ]
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+
+    module_refs = {module["module_id"]: module for module in body["module_refs"]}
+    assert set(module_refs) == {"crm_erp", "knowledge_base"}
+    assert module_refs["knowledge_base"]["next_action"] == "provision_module"
+    assert module_refs["crm_erp"]["continuity_domain"] == "crm_erp_business_records"
+
+    flow_refs = {flow["source_object_id"]: flow for flow in body["source_object_flow_refs"]}
+    assert set(flow_refs) == {"doc-1", "mail-1"}
+    assert all(flow["content_included"] is False for flow in flow_refs.values())
+    assert all(flow["readiness_status"] == "metadata_ready_preview_decision_pending" for flow in flow_refs.values())
+    assert all(flow["next_action"] == "request_preview_decision" for flow in flow_refs.values())
+    assert all(
+        flow["cockpit_audit_event_id"] == body["generated_from_cockpit_audit_event_id"] for flow in flow_refs.values()
+    )
+    assert all(flow["evidence_ref_count"] > 0 for flow in flow_refs.values())
+
+    assert len(body["work_item_refs"]) == 4
+    assert {item["scope"] for item in body["work_item_refs"]} == {"module", "source_object_flow"}
+    assert all(item["content_included"] is False for item in body["work_item_refs"])
+    assert all(item["persistent_task_created"] is False for item in body["work_item_refs"])
+    assert {item["primary_ui_action"] for item in body["work_item_refs"]} == {
+        "guided_preview_decision",
+        "module_provision",
+    }
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-2:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_handover_snapshot"
+    assert (
+        new_events[-1].metadata["generated_from_cockpit_audit_event_id"]
+        == body["generated_from_cockpit_audit_event_id"]
+    )
+    assert new_events[-1].metadata["review_sections"] == tuple(body["review_sections"])
+    assert new_events[-1].metadata["module_ref_count"] == 2
+    assert new_events[-1].metadata["source_object_flow_ref_count"] == 2
+    assert new_events[-1].metadata["work_item_ref_count"] == 4
+    assert new_events[-1].metadata["mvp_entry_ready"] is True
+    assert new_events[-1].metadata["mvp_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["mvp_deferred_item_count"] == 5
+    assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
 
 
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
