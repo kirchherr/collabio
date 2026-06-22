@@ -175,7 +175,7 @@ async function executeModuleAction(module, action) {
   }
 }
 
-async function executeGuidedPreviewDecision(flow) {
+async function executeGuidedPreviewDecision(flow, options = {}) {
   const context = readContext();
   const slot = previewSlotForFlow(flow);
   const gate = slot?.gate || {};
@@ -184,10 +184,12 @@ async function executeGuidedPreviewDecision(flow) {
     return;
   }
 
-  const confirmationText = `Metadata-only Preview-Evidence und Preview-Decision fuer ${flow.source_object_id}:${flow.source_version_id} anfordern?\n\nEs werden keine Inhalte gerendert, keine Rohdaten freigegeben und content_release_allowed bleibt policy-gesteuert blockiert.`;
-  if (!window.confirm(confirmationText)) {
-    setStatus("Preview-Flow abgebrochen.");
-    return;
+  if (options.skipConfirmation !== true) {
+    const confirmationText = `Metadata-only Preview-Evidence und Preview-Decision fuer ${flow.source_object_id}:${flow.source_version_id} anfordern?\n\nEs werden keine Inhalte gerendert, keine Rohdaten freigegeben und content_release_allowed bleibt policy-gesteuert blockiert.`;
+    if (!window.confirm(confirmationText)) {
+      setStatus("Preview-Flow abgebrochen.");
+      return null;
+    }
   }
 
   const refs = metadataEvidenceRefsFor(flow);
@@ -242,10 +244,47 @@ async function executeGuidedPreviewDecision(flow) {
 
     selectedFlowId = flow.flow_id;
     setStatus(`Preview-Decision: ${decisionBody.decision_status || "recorded"} | ${decisionBody.decision_ledger_ref || "ledger_ref_pending"}`);
-    await loadCockpit();
+    if (options.reloadAfter !== false) {
+      await loadCockpit();
+    }
+    return decisionBody;
   } catch (error) {
     setStatus(error.message || "Preview-Decision-Flow konnte nicht ausgefuehrt werden.", true);
+    return null;
   }
+}
+
+async function executeFoundationGapAction(action) {
+  if (action.next_action !== "resolve_preview_decision_work_items") {
+    setStatus("Foundation-Gap-Aktion ist aktuell nur als Review-Hinweis verfuegbar.");
+    return;
+  }
+  const pendingItems = (currentCockpit.work_items || []).filter((item) =>
+    (action.covered_by_work_item_ids || []).includes(item.work_item_id)
+    && item.action === "request_preview_decision"
+    && item.primary_action_hint?.ui_action === "guided_preview_decision"
+  );
+  const flows = pendingItems
+    .map((item) => (currentCockpit.source_object_flows || []).find((flow) => flow.flow_id === item.flow_id))
+    .filter(Boolean);
+  if (!flows.length) {
+    setStatus("Keine pending Preview-Decisions im aktuellen Cockpit.", true);
+    return;
+  }
+  const context = readContext();
+  const confirmationText = `${flows.length} metadata-only Preview-Decisions fuer Tenant ${context.tenantId} anfordern?\n\nEs werden keine Inhalte gerendert, keine Rohdaten freigegeben und content_release_allowed bleibt blockiert.`;
+  if (!window.confirm(confirmationText)) {
+    setStatus("Foundation-Gap-Aktion abgebrochen.");
+    return;
+  }
+  for (const flow of flows) {
+    const result = await executeGuidedPreviewDecision(flow, { skipConfirmation: true, reloadAfter: false });
+    if (!result) {
+      return;
+    }
+  }
+  await loadCockpit();
+  setStatus(`Preview-Decision-Gap aktualisiert: ${flows.length} Decision(s) metadata-only angefordert.`);
 }
 
 function renderCockpit(cockpit) {
@@ -327,10 +366,23 @@ function renderFoundationGapActionPlan(actions) {
     '<code>work_items=' + Number((action.covered_by_work_item_ids || []).length)
       + ' | roles=' + escapeHtml((action.required_roles || []).join(',') || 'context')
       + ' | confirm=' + (action.requires_confirmation === true ? 'true' : 'false') + '</code>',
+    foundationGapActionButton(action),
     '</div>',
     '</div>',
   ].join('')).join('');
   return '<div class="foundation-gap-plan">' + items + '</div>';
+}
+
+function foundationGapActionButton(action) {
+  if (action.status !== "ready" || action.next_action !== "resolve_preview_decision_work_items") {
+    return "";
+  }
+  return [
+    '<div class="foundation-gap-controls">',
+    '<button class="action-button primary" type="button" data-foundation-gap-action="'
+      + escapeHtml(action.gap_id) + '">Pending Decisions</button>',
+    '</div>',
+  ].join("");
 }
 
 function foundationGapStatusClass(status) {
@@ -944,6 +996,18 @@ function escapeHtml(value) {
 restoreContext();
 snapshotButton.addEventListener("click", downloadMvpSnapshot);
 refreshButton.addEventListener("click", loadCockpit);
+mvpReadinessPanel.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-foundation-gap-action]");
+  if (!button) {
+    return;
+  }
+  const action = (currentCockpit.foundation_gap_actions || []).find(
+    (candidate) => candidate.gap_id === button.dataset.foundationGapAction,
+  );
+  if (action) {
+    executeFoundationGapAction(action);
+  }
+});
 moduleGrid.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-module-action]");
   if (!button) {

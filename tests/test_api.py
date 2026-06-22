@@ -476,6 +476,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".mvp-readiness-grid" in css_response.text
     assert ".foundation-gap-plan" in css_response.text
     assert ".foundation-gap-action" in css_response.text
+    assert ".foundation-gap-controls" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -502,7 +503,11 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "foundation_gap_actions" in js_response.text
     assert "renderMvpReadinessSummary" in js_response.text
     assert "renderFoundationGapActionPlan" in js_response.text
+    assert "executeFoundationGapAction" in js_response.text
     assert "data-foundation-gap-id" in js_response.text
+    assert "data-foundation-gap-action" in js_response.text
+    assert "Pending Decisions" in js_response.text
+    assert "skipConfirmation" in js_response.text
     assert "mvpReadinessTagList" in js_response.text
     assert "foundation_gaps" in js_response.text
     assert "deferred_items" in js_response.text
@@ -1330,6 +1335,113 @@ def test_platform_cockpit_work_items_recompute_after_preview_and_module_state_tr
         assert work_item_by_source(after_enable, "doc-1")["action"] == "review_latest_preview_decision"
         assert work_item_by_source(after_enable, "mail-1")["action"] == "request_preview_decision"
         assert "Board pack draft source content" not in json.dumps(after_enable)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+
+def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+
+    def cockpit_body() -> dict[str, Any]:
+        response = client.get("/v1/platform/cockpit", headers=DEMO_HEADERS)
+        assert response.status_code == 200
+        return cast(dict[str, Any], response.json())
+
+    def request_metadata_only_preview_decision(
+        *, source_object_id: str, version_id: str, preview_slot_id: str, preview_policy_id: str
+    ) -> None:
+        ref_suffix = f"{source_object_id}-{version_id}-gap-reduction"
+        renderer_response = client.post(
+            f"/v1/source-objects/{source_object_id}/versions/{version_id}/preview-renderer-runs",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": preview_slot_id,
+                "preview_policy_id": preview_policy_id,
+                "parser_sanitizer_evidence_ref": f"parser-sanitizer:{ref_suffix}",
+                "backup_coverage_evidence_ref": f"backup:{ref_suffix}",
+                "restore_evidence_ref": f"restore-drill:{ref_suffix}",
+                "reason": "foundation gap reduction renderer evidence",
+            },
+        )
+        assert renderer_response.status_code == 200
+        decision_response = client.post(
+            f"/v1/source-objects/{source_object_id}/versions/{version_id}/preview-decisions",
+            headers=DEMO_HEADERS,
+            json={
+                "preview_slot_id": preview_slot_id,
+                "preview_policy_id": preview_policy_id,
+                "parser_sanitizer_evidence_ref": f"parser-sanitizer:{ref_suffix}",
+                "renderer_sandbox_evidence_ref": renderer_response.json()["renderer_sandbox_evidence_ref"],
+                "backup_coverage_evidence_ref": f"backup:{ref_suffix}",
+                "restore_evidence_ref": f"restore-drill:{ref_suffix}",
+                "human_confirmation_reference": f"approval:{ref_suffix}",
+                "reason": "foundation gap reduction metadata-only preview decision",
+            },
+        )
+        assert decision_response.status_code == 200
+        decision = decision_response.json()
+        assert decision["content_release_allowed"] is False
+        assert decision["content_included"] is False
+
+    try:
+        initial = cockpit_body()
+        assert initial["flow_readiness_summary"]["preview_decision_pending_count"] == 2
+        assert initial["flow_readiness_summary"]["preview_decision_blocked_count"] == 0
+        assert initial["mvp_readiness_summary"]["next_foundation_action"] == "resolve_preview_decision_work_items"
+        assert initial["foundation_gap_actions"][0]["gap_id"] == "preview_decisions_pending"
+        assert initial["foundation_gap_actions"][0]["next_action"] == "resolve_preview_decision_work_items"
+        assert initial["foundation_gap_actions"][0]["status"] == "ready"
+
+        request_metadata_only_preview_decision(
+            source_object_id="doc-1",
+            version_id="v1",
+            preview_slot_id="office.document.preview.metadata",
+            preview_policy_id="preview-policy.document.metadata-first.v1",
+        )
+        request_metadata_only_preview_decision(
+            source_object_id="mail-1",
+            version_id="v1",
+            preview_slot_id="mail.message.preview.metadata",
+            preview_policy_id="preview-policy.mail.metadata-first.v1",
+        )
+
+        after = cockpit_body()
+        assert after["flow_readiness_summary"]["preview_decision_pending_count"] == 0
+        assert after["flow_readiness_summary"]["preview_decision_blocked_count"] == 2
+        assert "preview_decisions_pending" not in after["mvp_readiness_summary"]["foundation_gaps"]
+        assert after["mvp_readiness_summary"]["foundation_gaps"][0] == "preview_decisions_blocked"
+        assert after["mvp_readiness_summary"]["next_foundation_action"] == "complete_preview_release_evidence"
+        action_ids = [action["gap_id"] for action in after["foundation_gap_actions"]]
+        assert "preview_decisions_pending" not in action_ids
+        assert action_ids == [
+            "preview_decisions_blocked",
+            "module_activation_work_items_open",
+            "human_confirmation_required",
+            "content_release_gate_blocks_content",
+        ]
+        blocked_action = after["foundation_gap_actions"][0]
+        assert blocked_action["status"] == "ready"
+        assert blocked_action["next_action"] == "complete_preview_release_evidence"
+        assert blocked_action["source_object_ids"] == ["doc-1", "mail-1"]
+        assert blocked_action["ui_actions"] == ["open_flow"]
+        assert blocked_action["requires_confirmation"] is False
+        assert all(action["content_included"] is False for action in after["foundation_gap_actions"])
+        assert all(action["persistent_task_created"] is False for action in after["foundation_gap_actions"])
+        assert all(action["automation_created"] is False for action in after["foundation_gap_actions"])
+
+        snapshot_response = client.get("/v1/platform/cockpit/mvp-snapshot", headers=DEMO_HEADERS)
+        assert snapshot_response.status_code == 200
+        snapshot = snapshot_response.json()
+        assert snapshot["next_foundation_action"] == "complete_preview_release_evidence"
+        assert "preview_decisions_pending" not in [action["gap_id"] for action in snapshot["foundation_gap_actions"]]
+        assert snapshot["foundation_gap_actions"][0]["gap_id"] == "preview_decisions_blocked"
+        assert snapshot["content_included"] is False
+        assert snapshot["persistent_task_created"] is False
+        assert snapshot["automation_created"] is False
+        assert "Board pack draft source content" not in json.dumps(snapshot)
+        assert "Welcome message source" not in json.dumps(snapshot)
     finally:
         app.state.source_object_preview_decision_ledger = previous_ledger
 

@@ -318,6 +318,12 @@ input {
   min-width: 0;
 }
 
+.foundation-gap-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .foundation-gap-copy code {
   overflow: hidden;
   color: #455057;
