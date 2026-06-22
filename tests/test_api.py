@@ -479,6 +479,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".foundation-gap-controls" in css_response.text
     assert ".foundation-gap-evidence-brief" in css_response.text
     assert ".foundation-gap-confirmation-brief" in css_response.text
+    assert ".foundation-gap-content-release-brief" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -507,7 +508,11 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "renderFoundationGapActionPlan" in js_response.text
     assert "foundationGapEvidenceBrief" in js_response.text
     assert "foundationGapConfirmationBrief" in js_response.text
+    assert "foundationGapContentReleaseBrief" in js_response.text
     assert "data-confirmation-brief" in js_response.text
+    assert "data-content-release-brief" in js_response.text
+    assert "content_release_brief" in js_response.text
+    assert "metadata_only_mvp_ready" in js_response.text
     assert "next_confirmation_action" in js_response.text
     assert "evidence_required_now" in js_response.text
     assert "policy_blocking_reasons" in js_response.text
@@ -795,6 +800,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "deferred_reason": None,
             "evidence_brief": None,
             "confirmation_brief": None,
+            "content_release_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -818,6 +824,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "deferred_reason": None,
             "evidence_brief": None,
             "confirmation_brief": None,
+            "content_release_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -864,13 +871,14 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
                 "persistent_task_created": False,
                 "automation_created": False,
             },
+            "content_release_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
             "priority": 4,
             "gap_id": "content_release_gate_blocks_content",
             "status": "deferred",
-            "next_action": "keep_content_release_gate_until_renderer_ready",
+            "next_action": "keep_content_release_gate_deferred_for_mvp",
             "covered_by_work_item_ids": [],
             "source_object_ids": ["doc-1", "mail-1"],
             "module_ids": [],
@@ -881,9 +889,37 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "content_included": False,
             "persistent_task_created": False,
             "automation_created": False,
-            "deferred_reason": "full_content_preview_rendering_is_deferred_from_mvp_path",
+            "deferred_reason": "content_release_requires_policy_viewer_runtime_after_mvp",
             "evidence_brief": None,
             "confirmation_brief": None,
+            "content_release_brief": {
+                "schema_version": "product_cockpit_foundation_gap_content_release_brief.v1",
+                "blocked_flow_ids": ["document:doc-1:v1", "mail:mail-1:v1"],
+                "blocked_source_object_ids": ["doc-1", "mail-1"],
+                "content_release_blocked_count": 2,
+                "content_release_allowed_count": 0,
+                "content_included_count": 0,
+                "preview_decision_pending_count": 2,
+                "preview_decision_blocked_count": 0,
+                "preview_evidence_complete_but_content_blocked_count": 0,
+                "metadata_only_mvp_ready": True,
+                "deferred_dependencies": [
+                    "content_release_gate_policy_review",
+                    "viewer_adapter_runtime",
+                    "full_content_preview_rendering",
+                ],
+                "next_release_action": "keep_content_release_gate_deferred_for_mvp",
+                "blocking_reasons": [
+                    "preview_decision_not_requested",
+                    "content_release_requires_policy_acl_audit_and_sanitizer_evidence",
+                    "mail_body_release_requires_policy_acl_audit_and_sanitizer_evidence",
+                    "attachment_opening_requires_scan_and_explicit_confirmation",
+                ],
+                "content_release_allowed": False,
+                "content_included": False,
+                "persistent_task_created": False,
+                "automation_created": False,
+            },
         },
     ]
     assert all(
@@ -1129,8 +1165,22 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert body["foundation_gap_actions"][2]["confirmation_brief"]["standalone_work_item_ids"] == []
     assert body["foundation_gap_actions"][2]["confirmation_brief"]["requires_separate_foundation_action"] is False
     assert body["foundation_gap_actions"][3]["deferred_reason"] == (
-        "full_content_preview_rendering_is_deferred_from_mvp_path"
+        "content_release_requires_policy_viewer_runtime_after_mvp"
     )
+    content_release_brief = body["foundation_gap_actions"][3]["content_release_brief"]
+    assert content_release_brief["schema_version"] == "product_cockpit_foundation_gap_content_release_brief.v1"
+    assert content_release_brief["blocked_source_object_ids"] == ["doc-1", "mail-1"]
+    assert content_release_brief["content_release_blocked_count"] == 2
+    assert content_release_brief["preview_decision_pending_count"] == 2
+    assert content_release_brief["metadata_only_mvp_ready"] is True
+    assert content_release_brief["deferred_dependencies"] == [
+        "content_release_gate_policy_review",
+        "viewer_adapter_runtime",
+        "full_content_preview_rendering",
+    ]
+    assert content_release_brief["content_included"] is False
+    assert content_release_brief["persistent_task_created"] is False
+    assert content_release_brief["automation_created"] is False
     assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False

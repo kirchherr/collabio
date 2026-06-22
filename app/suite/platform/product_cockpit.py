@@ -57,6 +57,12 @@ BLOCKED_PREVIEW_DEFERRED_EVIDENCE = (
     "full_content_preview_rendering",
 )
 
+CONTENT_RELEASE_GATE_DEFERRED_DEPENDENCIES = (
+    "content_release_gate_policy_review",
+    "viewer_adapter_runtime",
+    "full_content_preview_rendering",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -252,6 +258,28 @@ class ProductCockpitFoundationGapConfirmationBrief(BaseModel):
     automation_created: bool = False
 
 
+class ProductCockpitFoundationGapContentReleaseBrief(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_foundation_gap_content_release_brief.v1"
+    blocked_flow_ids: tuple[str, ...] = ()
+    blocked_source_object_ids: tuple[str, ...] = ()
+    content_release_blocked_count: int = Field(ge=0)
+    content_release_allowed_count: int = Field(ge=0)
+    content_included_count: int = Field(ge=0)
+    preview_decision_pending_count: int = Field(ge=0)
+    preview_decision_blocked_count: int = Field(ge=0)
+    preview_evidence_complete_but_content_blocked_count: int = Field(ge=0)
+    metadata_only_mvp_ready: bool = False
+    deferred_dependencies: tuple[str, ...] = ()
+    next_release_action: str = "keep_content_release_gate_deferred_for_mvp"
+    blocking_reasons: tuple[str, ...] = ()
+    content_release_allowed: bool = False
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+
+
 class ProductCockpitFoundationGapAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -273,6 +301,7 @@ class ProductCockpitFoundationGapAction(BaseModel):
     deferred_reason: str | None = None
     evidence_brief: ProductCockpitFoundationGapEvidenceBrief | None = None
     confirmation_brief: ProductCockpitFoundationGapConfirmationBrief | None = None
+    content_release_brief: ProductCockpitFoundationGapContentReleaseBrief | None = None
 
 
 class ProductCockpitModuleView(BaseModel):
@@ -1122,13 +1151,14 @@ def _foundation_gap_action(
             priority=priority,
             gap_id=gap_id,
             status="deferred",
-            next_action="keep_content_release_gate_until_renderer_ready",
+            next_action="keep_content_release_gate_deferred_for_mvp",
             source_object_ids=_source_object_ids_for_flows(gated_flows),
             metadata_only=True,
             content_included=False,
             persistent_task_created=False,
             automation_created=False,
-            deferred_reason="full_content_preview_rendering_is_deferred_from_mvp_path",
+            deferred_reason="content_release_requires_policy_viewer_runtime_after_mvp",
+            content_release_brief=_foundation_gap_content_release_brief_for_flows(gated_flows),
         )
     return ProductCockpitFoundationGapAction(
         priority=priority,
@@ -1234,6 +1264,46 @@ def _foundation_gap_confirmation_brief_for_work_items(
         requires_separate_foundation_action=bool(standalone_items),
         content_included=any(item.content_included for item in work_items),
         persistent_task_created=any(item.persistent_task_created for item in work_items),
+        automation_created=False,
+    )
+
+
+def _foundation_gap_content_release_brief_for_flows(
+    flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+) -> ProductCockpitFoundationGapContentReleaseBrief:
+    readinesses = tuple(flow.readiness for flow in flows)
+    return ProductCockpitFoundationGapContentReleaseBrief(
+        blocked_flow_ids=tuple(flow.flow_id for flow in flows if not flow.readiness.content_release_allowed),
+        blocked_source_object_ids=_source_object_ids_for_flows(
+            tuple(flow for flow in flows if not flow.readiness.content_release_allowed)
+        ),
+        content_release_blocked_count=sum(1 for readiness in readinesses if not readiness.content_release_allowed),
+        content_release_allowed_count=sum(1 for readiness in readinesses if readiness.content_release_allowed),
+        content_included_count=sum(1 for readiness in readinesses if readiness.content_included),
+        preview_decision_pending_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status == ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_DECISION_PENDING
+        ),
+        preview_decision_blocked_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status == ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_BLOCKED
+        ),
+        preview_evidence_complete_but_content_blocked_count=sum(
+            1
+            for readiness in readinesses
+            if readiness.status
+            == ProductCockpitFlowReadinessStatus.METADATA_READY_PREVIEW_EVIDENCE_COMPLETE_CONTENT_BLOCKED
+        ),
+        metadata_only_mvp_ready=bool(flows)
+        and all(flow.access_checked and flow.readiness.source_detail_ready for flow in flows)
+        and not any(flow.content_included or flow.readiness.content_included for flow in flows),
+        deferred_dependencies=CONTENT_RELEASE_GATE_DEFERRED_DEPENDENCIES,
+        blocking_reasons=_dedupe_strings(reason for readiness in readinesses for reason in readiness.blocking_reasons),
+        content_release_allowed=any(readiness.content_release_allowed for readiness in readinesses),
+        content_included=any(flow.content_included or flow.readiness.content_included for flow in flows),
+        persistent_task_created=False,
         automation_created=False,
     )
 
@@ -1382,7 +1452,7 @@ def _next_mvp_foundation_action(foundation_gaps: tuple[str, ...]) -> str:
     if "human_confirmation_required" in foundation_gaps:
         return "complete_explicit_human_confirmations"
     if "content_release_gate_blocks_content" in foundation_gaps:
-        return "keep_content_release_gate_until_renderer_ready"
+        return "keep_content_release_gate_deferred_for_mvp"
     if foundation_gaps:
         return foundation_gaps[0]
     return "continue_foundation_review"

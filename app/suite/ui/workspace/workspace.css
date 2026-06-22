@@ -325,7 +325,8 @@ input {
 }
 
 .foundation-gap-evidence-brief,
-.foundation-gap-confirmation-brief {
+.foundation-gap-confirmation-brief,
+.foundation-gap-content-release-brief {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -338,6 +339,10 @@ input {
   border-left-color: #7b6d42;
 }
 
+.foundation-gap-content-release-brief {
+  border-left-color: #8a5b3c;
+}
+
 .foundation-gap-copy code {
   overflow: hidden;
   color: #455057;
@@ -348,7 +353,8 @@ input {
 }
 
 .foundation-gap-evidence-brief code,
-.foundation-gap-confirmation-brief code {
+.foundation-gap-confirmation-brief code,
+.foundation-gap-content-release-brief code {
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;

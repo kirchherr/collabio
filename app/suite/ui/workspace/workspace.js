@@ -420,6 +420,7 @@ function renderFoundationGapActionPlan(actions) {
       + ' | confirm=' + (action.requires_confirmation === true ? 'true' : 'false') + '</code>',
     foundationGapEvidenceBrief(action.evidence_brief),
     foundationGapConfirmationBrief(action.confirmation_brief),
+    foundationGapContentReleaseBrief(action.content_release_brief),
     foundationGapActionButton(action),
     '</div>',
     '</div>',
@@ -464,6 +465,30 @@ function foundationGapConfirmationBrief(brief) {
     '<code>covering_gaps=' + escapeHtml(coveringGaps.length ? coveringGaps.join(',') : 'none') + '</code>',
     '<code>next_confirmation_action=' + escapeHtml(brief.next_confirmation_action || 'review')
       + ' | separate=' + (brief.requires_separate_foundation_action === true ? 'true' : 'false') + '</code>',
+    '</div>',
+  ].join('');
+}
+
+function foundationGapContentReleaseBrief(brief) {
+  if (!brief) {
+    return "";
+  }
+  const dependencies = brief.deferred_dependencies || [];
+  const blockingReasons = brief.blocking_reasons || [];
+  return [
+    '<div class="foundation-gap-content-release-brief" data-content-release-brief="true">',
+    '<code>blocked_flows=' + Number(brief.content_release_blocked_count || 0)
+      + ' | allowed=' + Number(brief.content_release_allowed_count || 0)
+      + ' | content=' + Number(brief.content_included_count || 0) + '</code>',
+    '<code>preview_pending=' + Number(brief.preview_decision_pending_count || 0)
+      + ' | preview_blocked=' + Number(brief.preview_decision_blocked_count || 0)
+      + ' | evidence_complete=' + Number(brief.preview_evidence_complete_but_content_blocked_count || 0)
+      + '</code>',
+    '<code>metadata_only_mvp_ready=' + (brief.metadata_only_mvp_ready === true ? 'true' : 'false')
+      + ' | next_release_action=' + escapeHtml(brief.next_release_action || 'review_content_release_gate')
+      + '</code>',
+    '<code>deferred=' + escapeHtml(dependencies.length ? dependencies.join(',') : 'none')
+      + ' | policy_blocks=' + Number(blockingReasons.length) + '</code>',
     '</div>',
   ].join('');
 }

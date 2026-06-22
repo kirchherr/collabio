@@ -1340,7 +1340,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 159. [x] Preview-Blocked-Gap klaeren: nach abgebautem Pending-Gap die geblockten Preview-Decisions als Evidence-/Policy-Thema sichtbar fuehren und entscheiden, welche Evidence wirklich jetzt noetig ist, ohne Content-Release oder Viewer-Adapter vorzuziehen.
 160. [x] Modulaktivierungs-Gap fokussiert abbauen: nach Preview-Evidence-Brief nur die notwendigen Modul-Provisioning-/Enablement-Aktionen fuer den MVP-Arbeitsbereich operationalisieren, ohne spaetere Modulfachlichkeit, Tickets oder Automationen vorzuziehen.
 161. [x] Human-Confirmation-Gap scharf stellen: verbleibende explizite Bestaetigungen nach Preview- und Modul-Gap getrennt sichtbar fuehren und nur notwendige bestaetigungsgebundene Foundation-Schritte behandeln, ohne persistente Aufgaben, Tickets oder Automationen vorzuziehen.
-162. [ ] Content-Release-Gate bewusst halten: nach geschaerftem Human-Confirmation-Gap den verbleibenden Content-Release-Block als Policy-/Viewer-Deferred-Entscheidung dokumentieren und nur pruefen, ob MVP-Readiness ohne Content-Preview produktiv genug ist.
+162. [x] Content-Release-Gate bewusst halten: nach geschaerftem Human-Confirmation-Gap den verbleibenden Content-Release-Block als Policy-/Viewer-Deferred-Entscheidung dokumentieren und nur pruefen, ob MVP-Readiness ohne Content-Preview produktiv genug ist.
+163. [ ] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
