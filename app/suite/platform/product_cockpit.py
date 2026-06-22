@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -106,6 +107,35 @@ class ProductCockpitWorkItemPriority(StrEnum):
     LOW = "low"
 
 
+class ProductCockpitWorkItemUiAction(StrEnum):
+    OPEN_FLOW = "open_flow"
+    GUIDED_PREVIEW_DECISION = "guided_preview_decision"
+    MODULE_PROVISION = "module_provision"
+    MODULE_ENABLE = "module_enable"
+    MODULE_REVIEW = "module_review"
+
+
+class ProductCockpitWorkItemActionHint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_work_item_action_hint.v1"
+    ui_action: ProductCockpitWorkItemUiAction
+    label: str
+    target_route: str | None = None
+    api_method: str | None = None
+    api_action: str | None = None
+    api_path_templates: tuple[str, ...] = ()
+    required_roles: tuple[str, ...] = ()
+    state_gate: str
+    requires_confirmation: bool = False
+    compliance_relevant: bool = False
+    destructive: bool = False
+    external_side_effect: bool = False
+    metadata_only: bool = True
+    persistent_task_created: bool = False
+    content_included: bool = False
+
+
 class ProductCockpitWorkItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -126,6 +156,8 @@ class ProductCockpitWorkItem(BaseModel):
     reason: str
     blocking_reasons: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+    primary_action_hint: ProductCockpitWorkItemActionHint
+    secondary_action_hints: tuple[ProductCockpitWorkItemActionHint, ...] = ()
     persistent_task_created: bool = False
     content_included: bool = False
 
@@ -246,6 +278,9 @@ def build_product_cockpit_response(
             "work_item_count": len(preliminary_work_items),
             "high_priority_work_item_count": sum(
                 1 for item in preliminary_work_items if item.priority == ProductCockpitWorkItemPriority.HIGH
+            ),
+            "confirmation_required_work_item_count": sum(
+                1 for item in preliminary_work_items if item.primary_action_hint.requires_confirmation
             ),
         },
     )
@@ -592,6 +627,10 @@ def _source_object_work_item(flow: ProductCockpitSourceObjectFlowView) -> Produc
         reason=reason,
         blocking_reasons=readiness.blocking_reasons,
         evidence_refs=readiness.evidence_refs,
+        primary_action_hint=_source_object_primary_action_hint(flow),
+        secondary_action_hints=(
+            (_open_flow_action_hint(flow),) if readiness.next_action == "request_preview_decision" else ()
+        ),
     )
 
 
@@ -608,7 +647,93 @@ def _module_work_item(module: ProductCockpitModuleView) -> ProductCockpitWorkIte
         reason="Modul ist im Cockpit sichtbar, aber noch nicht im Normalbetrieb offen.",
         blocking_reasons=(module.next_action,),
         evidence_refs=(f"module:{module.module_id}", f"status:{module.status.value}"),
+        primary_action_hint=_module_action_hint(module),
     )
+
+
+def _source_object_primary_action_hint(
+    flow: ProductCockpitSourceObjectFlowView,
+) -> ProductCockpitWorkItemActionHint:
+    if flow.readiness.next_action == "request_preview_decision":
+        return ProductCockpitWorkItemActionHint(
+            ui_action=ProductCockpitWorkItemUiAction.GUIDED_PREVIEW_DECISION,
+            label="Evidence + Decision",
+            target_route=_flow_target_route(flow),
+            api_method="POST",
+            api_action="guided_preview_decision",
+            api_path_templates=(
+                "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-renderer-runs",
+                "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions",
+            ),
+            state_gate="source_object_read_access_and_preview_gate_available",
+            requires_confirmation=True,
+            compliance_relevant=True,
+        )
+    return _open_flow_action_hint(flow, label="Preview Decision pruefen")
+
+
+def _open_flow_action_hint(
+    flow: ProductCockpitSourceObjectFlowView, *, label: str = "Flow oeffnen"
+) -> ProductCockpitWorkItemActionHint:
+    return ProductCockpitWorkItemActionHint(
+        ui_action=ProductCockpitWorkItemUiAction.OPEN_FLOW,
+        label=label,
+        target_route=_flow_target_route(flow),
+        state_gate="source_object_read_access_checked",
+    )
+
+
+def _module_action_hint(module: ProductCockpitModuleView) -> ProductCockpitWorkItemActionHint:
+    if module.next_action == "provision_module":
+        return _module_api_action_hint(
+            module=module,
+            ui_action=ProductCockpitWorkItemUiAction.MODULE_PROVISION,
+            label="Provisionieren",
+            api_action="provision",
+            state_gate="module_status_available_and_admin_role",
+        )
+    if module.next_action in {"enable_module", "resolve_suspension"}:
+        return _module_api_action_hint(
+            module=module,
+            ui_action=ProductCockpitWorkItemUiAction.MODULE_ENABLE,
+            label="Aktivieren",
+            api_action="enable",
+            state_gate="module_status_enableable_and_admin_role",
+        )
+    return ProductCockpitWorkItemActionHint(
+        ui_action=ProductCockpitWorkItemUiAction.MODULE_REVIEW,
+        label=_module_work_item_title(module.next_action),
+        target_route="/workspace",
+        required_roles=("tenant-admin", "security-admin"),
+        state_gate=f"{module.next_action}_requires_admin_review",
+        compliance_relevant=True,
+    )
+
+
+def _module_api_action_hint(
+    *,
+    module: ProductCockpitModuleView,
+    ui_action: ProductCockpitWorkItemUiAction,
+    label: str,
+    api_action: str,
+    state_gate: str,
+) -> ProductCockpitWorkItemActionHint:
+    return ProductCockpitWorkItemActionHint(
+        ui_action=ui_action,
+        label=label,
+        target_route="/workspace",
+        api_method="POST",
+        api_action=api_action,
+        api_path_templates=(f"/v1/admin/tenant-modules/{module.module_id}/{api_action}",),
+        required_roles=("tenant-admin", "security-admin"),
+        state_gate=state_gate,
+        requires_confirmation=True,
+        compliance_relevant=True,
+    )
+
+
+def _flow_target_route(flow: ProductCockpitSourceObjectFlowView) -> str:
+    return f"/workspace#source-object={quote(flow.flow_id, safe='')}"
 
 
 def _module_work_item_priority(action: str) -> ProductCockpitWorkItemPriority:

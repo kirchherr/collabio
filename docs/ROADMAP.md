@@ -1328,7 +1328,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 147. [x] Produktzug-Re-Fokus nach Legacy-SQL-Metadata-Probe: Legacy-SQL bei metadata-only Live-Probe einfrieren und als naechsten MVP-Slice Workspace/Module-Cockpit, KB-/Dokument-/Mail-SourceObject-Flow, Preview-Entscheidung und Rechte-/Audit-Sichtbarkeit produktnah zusammenfuehren, ohne neue Import- oder Rohdatenpfade.
 148. [x] Workspace-Preview-Entscheidung produktiver fuehren: aus der Flow-Readiness heraus einen gefuehrten metadata-only Action-Flow fuer Renderer-Sandbox-Evidence und Preview-Decision-Anforderung bauen, weiter ohne Content-Rendering oder Rohdatenfreigabe.
 149. [x] Produktiver Arbeitskorb als naechster MVP-Slice: aus Modulstatus, SourceObject-Readiness und Preview-Entscheidungen eine einfache Aufgaben-/Naechste-Schritte-Sicht ableiten, ohne das spaetere Aufgabenmodul, Tickets oder Automationen vorwegzunehmen.
-150. [ ] Arbeitskorb-Aktionen rollen- und zustandsgefuehrt schaerfen: Work-Items mit sicheren Action-Hints, Modul-/Flow-Sprungzielen und UI-Gates verbinden, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+150. [x] Arbeitskorb-Aktionen rollen- und zustandsgefuehrt schaerfen: Work-Items mit sicheren Action-Hints, Modul-/Flow-Sprungzielen und UI-Gates verbinden, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+151. [ ] Arbeitskorb-Rollenmatrix absichern: Tenant-Admin, Security-Admin und Reader-Kontexte gegen dieselben Work-Items pruefen und UI-/Contract-Gates nachweisen, ohne eine neue RBAC-Engine oder persistente Aufgaben einzufuehren.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

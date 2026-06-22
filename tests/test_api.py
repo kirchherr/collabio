@@ -484,10 +484,17 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "metadata_only_no_source_content" in js_response.text
     assert "work_items" in js_response.text
     assert "renderWorkItems" in js_response.text
-    assert "data-work-preview-flow-id" in js_response.text
+    assert "data-work-item-id" in js_response.text
+    assert "data-work-ui-action" in js_response.text
+    assert "primary_action_hint" in js_response.text
+    assert "secondary_action_hints" in js_response.text
+    assert "required_roles" in js_response.text
+    assert "canUseAnyRole" in js_response.text
+    assert "Action-Hint verletzt metadata-only Arbeitskorb-Regeln" in js_response.text
     assert "persistent_task_created=" in js_response.text
     assert ".guided-preview-action" in css_response.text
     assert "guided-preview-decision" in js_response.text
+    assert "guided_preview_decision" in js_response.text
     assert "/preview-renderer-runs" in js_response.text
     assert "/preview-decisions" in js_response.text
     assert "renderer_sandbox_evidence_ref" in js_response.text
@@ -655,6 +662,42 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert {item["module_id"] for item in module_work_items} == {"crm_erp", "knowledge_base"}
     assert {item["priority"] for item in module_work_items} == {"medium"}
     assert {item["action"] for item in module_work_items} == {"provision_module"}
+    assert all(
+        item["primary_action_hint"]["schema_version"] == "product_cockpit_work_item_action_hint.v1"
+        for item in work_items
+    )
+    assert all(item["primary_action_hint"]["metadata_only"] is True for item in work_items)
+    assert all(item["primary_action_hint"]["content_included"] is False for item in work_items)
+    assert all(item["primary_action_hint"]["persistent_task_created"] is False for item in work_items)
+    assert all(item["primary_action_hint"]["destructive"] is False for item in work_items)
+    assert all(item["primary_action_hint"]["external_side_effect"] is False for item in work_items)
+    doc_work_item = next(item for item in source_work_items if item["source_object_id"] == "doc-1")
+    doc_hint = doc_work_item["primary_action_hint"]
+    assert doc_hint["ui_action"] == "guided_preview_decision"
+    assert doc_hint["label"] == "Evidence + Decision"
+    assert doc_hint["api_method"] == "POST"
+    assert doc_hint["api_action"] == "guided_preview_decision"
+    assert doc_hint["api_path_templates"] == [
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-renderer-runs",
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions",
+    ]
+    assert doc_hint["required_roles"] == []
+    assert doc_hint["state_gate"] == "source_object_read_access_and_preview_gate_available"
+    assert doc_hint["requires_confirmation"] is True
+    assert doc_hint["compliance_relevant"] is True
+    assert doc_work_item["secondary_action_hints"][0]["ui_action"] == "open_flow"
+    assert doc_work_item["secondary_action_hints"][0]["requires_confirmation"] is False
+    assert doc_work_item["secondary_action_hints"][0]["target_route"].startswith(
+        "/workspace#source-object=document%3Adoc-1%3Av1"
+    )
+    module_hint = module_work_items[0]["primary_action_hint"]
+    assert module_hint["ui_action"] == "module_provision"
+    assert module_hint["api_method"] == "POST"
+    assert module_hint["api_action"] == "provision"
+    assert module_hint["required_roles"] == ["tenant-admin", "security-admin"]
+    assert module_hint["state_gate"] == "module_status_available_and_admin_role"
+    assert module_hint["requires_confirmation"] is True
+    assert module_hint["compliance_relevant"] is True
 
     flows = {flow["source_object_id"]: flow for flow in body["source_object_flows"]}
     assert set(flows) == {"doc-1", "mail-1"}
@@ -723,6 +766,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["preview_decision_blocked_count"] == 0
     assert new_events[-1].metadata["work_item_count"] == 4
     assert new_events[-1].metadata["high_priority_work_item_count"] == 2
+    assert new_events[-1].metadata["confirmation_required_work_item_count"] == 4
 
 
 def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_content() -> None:
@@ -762,6 +806,9 @@ def test_platform_cockpit_surfaces_latest_preview_decision_readiness_without_con
     mail_item = next(item for item in body["work_items"] if item["source_object_id"] == "mail-1")
     assert doc_item["action"] == "review_latest_preview_decision"
     assert doc_item["priority"] == "high"
+    assert doc_item["primary_action_hint"]["ui_action"] == "open_flow"
+    assert doc_item["primary_action_hint"]["requires_confirmation"] is False
+    assert doc_item["secondary_action_hints"] == []
     assert mail_item["action"] == "request_preview_decision"
     assert mail_item["priority"] == "high"
     assert doc_readiness["status"] == "metadata_ready_preview_blocked"

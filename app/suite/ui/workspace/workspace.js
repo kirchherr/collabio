@@ -240,11 +240,12 @@ function renderWorkItems(items) {
         <div class="work-item-copy">
           <strong>${escapeHtml(item.title)}</strong>
           <span>${escapeHtml(item.target_label)}</span>
-          <code>${escapeHtml(item.action)} | ${escapeHtml(item.scope)}</code>
+          <code>${escapeHtml(item.action)} | ${escapeHtml(item.scope)} | ui=${escapeHtml(item.primary_action_hint?.ui_action || "none")}</code>
         </div>
       </div>
       <div class="work-item-meta">
         <code>${escapeHtml(item.reason)}</code>
+        <code>gate=${escapeHtml(item.primary_action_hint?.state_gate || "none")} | roles=${escapeHtml((item.primary_action_hint?.required_roles || []).join(",") || "context")}</code>
         <code>persistent_task_created=${item.persistent_task_created === true ? "true" : "false"} | content_included=${item.content_included === true ? "true" : "false"}</code>
       </div>
       ${workItemActions(item)}
@@ -254,26 +255,48 @@ function renderWorkItems(items) {
 }
 
 function workItemActions(item) {
-  if (item.scope !== "source_object_flow" || !item.flow_id) {
-    return '<div class="work-item-actions"><span class="action-note">Aktion im Modulbereich ausfuehren.</span></div>';
+  const hints = [item.primary_action_hint, ...(item.secondary_action_hints || [])].filter(Boolean);
+  if (!hints.length) {
+    return '<div class="work-item-actions"><span class="action-note">Keine sichere Aktion verfuegbar.</span></div>';
   }
-  const previewAction = item.action === "request_preview_decision" ? `
-    <button
-      class="action-button primary"
-      type="button"
-      data-work-preview-flow-id="${escapeHtml(item.flow_id)}"
-    >
-      Evidence + Decision
-    </button>
-  ` : "";
+  const buttons = hints.map((hint, index) => workItemActionButton(item, hint, index)).join("");
+  return `<div class="work-item-actions">${buttons}</div>`;
+}
+
+function workItemActionButton(item, hint, index) {
+  const disabledReason = workItemActionDisabledReason(item, hint);
+  const disabled = disabledReason ? " disabled" : "";
+  const intent = hint.requires_confirmation ? "primary" : "quiet";
+  const title = disabledReason ? ` title="${escapeHtml(disabledReason)}"` : "";
   return `
-    <div class="work-item-actions">
-      <button class="action-button quiet" type="button" data-work-flow-id="${escapeHtml(item.flow_id)}">Flow oeffnen</button>
-      ${previewAction}
-    </div>
+    <button
+      class="action-button ${intent}"
+      type="button"
+      data-work-item-id="${escapeHtml(item.work_item_id)}"
+      data-work-action-index="${index}"
+      data-work-ui-action="${escapeHtml(hint.ui_action)}"
+      ${disabled}${title}
+    >
+      ${escapeHtml(hint.label)}
+    </button>
   `;
 }
 
+function workItemActionDisabledReason(item, hint) {
+  if (hint.content_included === true || hint.metadata_only !== true || hint.persistent_task_created === true) {
+    return "Action-Hint verletzt metadata-only Arbeitskorb-Regeln.";
+  }
+  if (!canUseAnyRole(hint.required_roles || [])) {
+    return "Erforderliche Rolle fehlt im aktuellen Kontext.";
+  }
+  if (hint.ui_action === "guided_preview_decision" && (!item.flow_id || item.action !== "request_preview_decision")) {
+    return "Preview Decision ist fuer diesen Zustand nicht die naechste sichere Aktion.";
+  }
+  if (hint.ui_action?.startsWith("module_") && !item.module_id) {
+    return "Modulziel fehlt.";
+  }
+  return "";
+}
 function workPriorityClass(priority) {
   if (priority === "high") {
     return "priority-high";
@@ -593,8 +616,15 @@ function moduleActionFor(module) {
 }
 
 function canUseAdminActions() {
+  return canUseAnyRole(["tenant-admin", "security-admin"]);
+}
+
+function canUseAnyRole(requiredRoles) {
+  if (!requiredRoles.length) {
+    return true;
+  }
   const roles = new Set(readContext().roleIds.split(",").map((role) => role.trim()).filter(Boolean));
-  return roles.has("tenant-admin") || roles.has("security-admin");
+  return requiredRoles.some((role) => roles.has(role));
 }
 
 function approvalReferenceFor(module, action) {
@@ -742,6 +772,48 @@ moduleGrid.addEventListener("click", (event) => {
   const action = module ? moduleActionFor(module) : null;
   if (module && action && action.apiAction === button.dataset.moduleAction) {
     executeModuleAction(module, action);
+  }
+});
+function executeWorkItemAction(item, hint) {
+  const disabledReason = workItemActionDisabledReason(item, hint);
+  if (disabledReason) {
+    setStatus(disabledReason, true);
+    return;
+  }
+  if (hint.ui_action === "open_flow" && item.flow_id) {
+    selectFlow(item.flow_id);
+    return;
+  }
+  if (hint.ui_action === "guided_preview_decision" && item.flow_id) {
+    const flow = (currentCockpit.source_object_flows || []).find((candidate) => candidate.flow_id === item.flow_id);
+    if (flow) {
+      executeGuidedPreviewDecision(flow);
+      return;
+    }
+  }
+  if (hint.ui_action === "module_provision" || hint.ui_action === "module_enable") {
+    const module = (currentCockpit.modules || []).find((candidate) => candidate.module_id === item.module_id);
+    const action = module ? moduleActionFor(module) : null;
+    if (module && action && action.apiAction === hint.api_action) {
+      executeModuleAction(module, action);
+      return;
+    }
+    setStatus("Arbeitskorb-Aktion ist nicht mehr synchron mit dem Modulstatus.", true);
+    return;
+  }
+  setStatus("Diese Arbeitskorb-Aktion ist nur als Review-Hinweis verfuegbar.");
+}
+
+workItemList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-work-item-id]");
+  if (!button) {
+    return;
+  }
+  const item = (currentCockpit.work_items || []).find((candidate) => candidate.work_item_id === button.dataset.workItemId);
+  const actionIndex = Number(button.dataset.workActionIndex || 0);
+  const hint = item ? [item.primary_action_hint, ...(item.secondary_action_hints || [])].filter(Boolean)[actionIndex] : null;
+  if (item && hint) {
+    executeWorkItemAction(item, hint);
   }
 });
 flowTableBody.addEventListener("click", (event) => {
