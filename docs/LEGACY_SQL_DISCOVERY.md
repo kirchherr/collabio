@@ -279,11 +279,26 @@ Bereitschaft, fehlendes Rollback-Runbook, fehlendes Kill-Switch-Runbook sowie di
 Er oeffnet weiterhin keinen Socket, loest kein Secret-Material auf, erzeugt keinen Executor-Code und liest keine
 Rohdaten.
 
+`legacy_sql_connector_runtime_pr_code_review_snapshot.v1`,
+`legacy_sql_connector_runtime_pr_test_container_snapshot.v1`,
+`legacy_sql_connector_runtime_pr_secret_binding_snapshot.v1`,
+`legacy_sql_connector_runtime_pr_network_binding_snapshot.v1`,
+`legacy_sql_connector_runtime_pr_rollback_probe_snapshot.v1`,
+`legacy_sql_connector_runtime_pr_kill_switch_probe_snapshot.v1` und
+`legacy_sql_connector_runtime_pr_gate.v1` bilden das letzte nicht-ausfuehrende PR-Gate vor einem spaeteren Merge von
+Socket-/Secret-Runtime-Code. Das Gate bindet ADR-Gate, Runtime-Code-Review, gehaerteten Testcontainer,
+Secret-Manager-Binding, Netzwerkroute, Rollback-Probe und Kill-Switch-Probe.
+
+`docker compose run --rm legacy-sql-connector-runtime-pr-gate-smoke` beweist diesen PR-Stop. Der Smoke blockiert
+fehlendes ADR-Gate, fehlenden Code-Review, fehlende Testcontainer-Haertung, fehlendes Secret-Binding, fehlendes
+Netzwerk-Binding, fehlende Rollback-Probe, fehlende Kill-Switch-Probe und direkte Merge-/Runtime-Anfragen. Er oeffnet
+weiterhin keinen Socket, loest kein Secret-Material auf und liest keine Rohdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein weiterhin nicht-ausfuehrendes Runtime-PR-Gate hinter dem ADR-Gate. Echte
-Socket-Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte
-spaetere Gates und duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate oder ADR-Gate heraus direkt
-gestartet werden.
+Der naechste technische Schritt ist ein weiterhin nicht-ausfuehrendes Runtime-Merge-Gate hinter dem Runtime-PR-Gate.
+Echte Socket-Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte
+spaetere Gates und duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate, ADR-Gate oder Runtime-PR-Gate
+heraus direkt gestartet werden.
