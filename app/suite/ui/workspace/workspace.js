@@ -6,6 +6,7 @@ const fields = {
 };
 
 const statusLine = document.querySelector("#status-line");
+const mvpReadinessPanel = document.querySelector("#mvp-readiness-panel");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
 const workEvidencePanel = document.querySelector("#work-evidence-panel");
@@ -29,6 +30,7 @@ let currentCockpit = {
   flow_readiness_summary: {},
   work_items: [],
   work_item_operational_summary: null,
+  mvp_readiness_summary: null,
 };
 let selectedFlowId = "";
 let detailLoadToken = 0;
@@ -97,6 +99,7 @@ async function loadCockpit() {
       flow_readiness_summary: {},
       work_items: [],
       work_item_operational_summary: null,
+      mvp_readiness_summary: null,
     };
     renderCockpit(currentCockpit);
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
@@ -219,6 +222,7 @@ function renderCockpit(cockpit) {
   const readinessSummary = cockpit.flow_readiness_summary || {};
   const workItems = cockpit.work_items || [];
   const workSummary = cockpit.work_item_operational_summary || {};
+  const mvpSummary = cockpit.mvp_readiness_summary || {};
   moduleCount.textContent = String(modules.length);
   workItemCount.textContent = String(workItems.length);
   flowCount.textContent = String(flows.length);
@@ -234,10 +238,61 @@ function renderCockpit(cockpit) {
     selectedFlowId = flows[0]?.flow_id || "";
   }
   renderModules(modules);
+  renderMvpReadinessSummary(mvpSummary);
   renderWorkItemOperationalSummary(workSummary);
   renderWorkItems(workItems);
   renderFlows(flows);
   loadSourceObjectDetail();
+}
+
+function renderMvpReadinessSummary(summary) {
+  if (!summary || !summary.schema_version) {
+    mvpReadinessPanel.innerHTML = '<div class="empty-state compact">Keine MVP-Readiness-Evidence.</div>';
+    return;
+  }
+  const stateClass = summary.mvp_entry_ready === true ? "mvp-ready" : "mvp-gapped";
+  const stateLabel = summary.mvp_entry_ready === true ? "entry_ready" : "foundation_gaps";
+  mvpReadinessPanel.innerHTML = [
+    '<div class="mvp-readiness-header">',
+    '<div><p class="eyebrow">MVP Startpunkt</p><h2>Workspace Cockpit</h2></div>',
+    '<span class="status-pill ' + stateClass + '">' + stateLabel + '</span>',
+    '</div>',
+    '<div class="mvp-readiness-grid">',
+    mvpReadinessMetric("Surfaces", summary.ready_surface_count),
+    mvpReadinessMetric("Gaps", summary.foundation_gap_count),
+    mvpReadinessMetric("Deferred", summary.deferred_item_count),
+    mvpReadinessMetric("Work items", summary.work_item_count),
+    '</div>',
+    '<div class="mvp-readiness-next"><span>Naechste Foundation-Aktion</span><code>',
+    escapeHtml(summary.next_foundation_action || "continue_foundation_review"),
+    '</code></div>',
+    '<div class="mvp-readiness-tags">',
+    mvpReadinessTagList("Ready", summary.ready_surfaces || []),
+    mvpReadinessTagList("Foundation", summary.foundation_gaps || []),
+    mvpReadinessTagList("Deferred", summary.deferred_items || []),
+    '</div>',
+    '<div class="mvp-readiness-contract"><code>',
+    escapeHtml(summary.schema_version),
+    ' | content_included=' + (summary.content_included === true ? "true" : "false"),
+    ' | persistent_task_created=' + (summary.persistent_task_created === true ? "true" : "false"),
+    '</code></div>',
+  ].join("");
+}
+
+function mvpReadinessMetric(label, value) {
+  return [
+    '<div class="mvp-readiness-metric">',
+    '<span>' + escapeHtml(label) + '</span>',
+    '<strong>' + Number(value || 0) + '</strong>',
+    '</div>',
+  ].join("");
+}
+
+function mvpReadinessTagList(label, values) {
+  const tags = values.length
+    ? values.map((value) => '<code>' + escapeHtml(value) + '</code>').join("")
+    : "<code>none</code>";
+  return '<div class="mvp-readiness-tag-group"><span>' + escapeHtml(label) + '</span>' + tags + '</div>';
 }
 
 function renderWorkItemOperationalSummary(summary) {

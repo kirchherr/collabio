@@ -189,6 +189,27 @@ class ProductCockpitWorkItemOperationalSummary(BaseModel):
     content_included: bool = False
 
 
+class ProductCockpitMvpReadinessSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_readiness_summary.v1"
+    entrypoint_route: str = "/workspace"
+    mvp_entry_ready: bool
+    ready_surface_count: int = Field(ge=0)
+    ready_surfaces: tuple[str, ...]
+    foundation_gap_count: int = Field(ge=0)
+    foundation_gaps: tuple[str, ...]
+    deferred_item_count: int = Field(ge=0)
+    deferred_items: tuple[str, ...]
+    next_foundation_action: str
+    module_count: int = Field(ge=0)
+    work_item_count: int = Field(ge=0)
+    source_object_flow_count: int = Field(ge=0)
+    detail_surface_ready: bool
+    content_included: bool = False
+    persistent_task_created: bool = False
+
+
 class ProductCockpitModuleView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +266,7 @@ class ProductCockpitResponse(BaseModel):
     work_items: tuple[ProductCockpitWorkItem, ...]
     work_item_count: int = Field(ge=0)
     work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
+    mvp_readiness_summary: ProductCockpitMvpReadinessSummary
     audit_event_id: str
 
 
@@ -287,6 +309,12 @@ def build_product_cockpit_response(
     readiness_summary = _flow_readiness_summary(source_object_flows)
     preliminary_work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
     preliminary_work_item_summary = _work_item_operational_summary(preliminary_work_items)
+    mvp_readiness_summary = _mvp_readiness_summary(
+        modules=modules,
+        source_object_flows=source_object_flows,
+        readiness_summary=readiness_summary,
+        work_item_summary=preliminary_work_item_summary,
+    )
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -323,6 +351,14 @@ def build_product_cockpit_response(
             "work_item_external_side_effect_action_count": (
                 preliminary_work_item_summary.external_side_effect_action_count
             ),
+            "mvp_entry_ready": mvp_readiness_summary.mvp_entry_ready,
+            "mvp_ready_surfaces": mvp_readiness_summary.ready_surfaces,
+            "mvp_foundation_gap_count": mvp_readiness_summary.foundation_gap_count,
+            "mvp_foundation_gaps": mvp_readiness_summary.foundation_gaps,
+            "mvp_deferred_items": mvp_readiness_summary.deferred_items,
+            "mvp_next_foundation_action": mvp_readiness_summary.next_foundation_action,
+            "mvp_content_included": mvp_readiness_summary.content_included,
+            "mvp_persistent_task_created": mvp_readiness_summary.persistent_task_created,
         },
     )
     source_object_flows = _attach_cockpit_audit_event_id(source_object_flows, event.event_id)
@@ -337,6 +373,7 @@ def build_product_cockpit_response(
         work_items=work_items,
         work_item_count=len(work_items),
         work_item_operational_summary=work_item_operational_summary,
+        mvp_readiness_summary=mvp_readiness_summary,
         audit_event_id=event.event_id,
     )
 
@@ -681,6 +718,90 @@ def _work_item_operational_summary(
         content_included=any(item.content_included for item in work_items)
         or any(hint.content_included for hint in action_hints),
     )
+
+
+def _mvp_readiness_summary(
+    *,
+    modules: tuple[ProductCockpitModuleView, ...],
+    source_object_flows: tuple[ProductCockpitSourceObjectFlowView, ...],
+    readiness_summary: ProductCockpitReadinessSummary,
+    work_item_summary: ProductCockpitWorkItemOperationalSummary,
+) -> ProductCockpitMvpReadinessSummary:
+    detail_surface_ready = bool(source_object_flows) and all(
+        flow.access_checked and flow.readiness.source_detail_ready and not flow.content_included
+        for flow in source_object_flows
+    )
+    ready_surfaces: list[str] = []
+    if modules:
+        ready_surfaces.append("module_registry")
+    ready_surfaces.append("work_item_queue")
+    if source_object_flows:
+        ready_surfaces.append("source_object_flows")
+    if detail_surface_ready:
+        ready_surfaces.append("metadata_detail")
+
+    foundation_gaps: list[str] = []
+    if not modules:
+        foundation_gaps.append("module_registry_empty")
+    if not source_object_flows:
+        foundation_gaps.append("source_object_flow_empty")
+    if source_object_flows and not detail_surface_ready:
+        foundation_gaps.append("metadata_detail_not_ready")
+    if readiness_summary.preview_decision_pending_count:
+        foundation_gaps.append("preview_decisions_pending")
+    if readiness_summary.preview_decision_blocked_count:
+        foundation_gaps.append("preview_decisions_blocked")
+    if work_item_summary.module_work_item_count:
+        foundation_gaps.append("module_activation_work_items_open")
+    if work_item_summary.confirmation_required_action_count:
+        foundation_gaps.append("human_confirmation_required")
+    if source_object_flows and readiness_summary.content_release_allowed_count < len(source_object_flows):
+        foundation_gaps.append("content_release_gate_blocks_content")
+
+    deferred_items = (
+        "office_editor_suite",
+        "mail_client_runtime",
+        "persistent_tasks_and_ticketing",
+        "lms_time_tracking_activity_modules",
+        "full_content_preview_rendering",
+    )
+    required_surfaces = {"module_registry", "work_item_queue", "source_object_flows", "metadata_detail"}
+    mvp_entry_ready = (
+        required_surfaces.issubset(set(ready_surfaces))
+        and not work_item_summary.content_included
+        and work_item_summary.persistent_task_created_count == 0
+    )
+
+    return ProductCockpitMvpReadinessSummary(
+        mvp_entry_ready=mvp_entry_ready,
+        ready_surface_count=len(ready_surfaces),
+        ready_surfaces=tuple(ready_surfaces),
+        foundation_gap_count=len(foundation_gaps),
+        foundation_gaps=tuple(foundation_gaps),
+        deferred_item_count=len(deferred_items),
+        deferred_items=deferred_items,
+        next_foundation_action=_next_mvp_foundation_action(tuple(foundation_gaps)),
+        module_count=len(modules),
+        work_item_count=work_item_summary.work_item_count,
+        source_object_flow_count=len(source_object_flows),
+        detail_surface_ready=detail_surface_ready,
+        content_included=work_item_summary.content_included,
+        persistent_task_created=work_item_summary.persistent_task_created_count > 0,
+    )
+
+
+def _next_mvp_foundation_action(foundation_gaps: tuple[str, ...]) -> str:
+    if "preview_decisions_pending" in foundation_gaps:
+        return "resolve_preview_decision_work_items"
+    if "preview_decisions_blocked" in foundation_gaps:
+        return "complete_preview_release_evidence"
+    if "module_activation_work_items_open" in foundation_gaps:
+        return "complete_module_activation_work_items"
+    if "content_release_gate_blocks_content" in foundation_gaps:
+        return "keep_content_release_gate_until_renderer_ready"
+    if foundation_gaps:
+        return foundation_gaps[0]
+    return "continue_foundation_review"
 
 
 def _role_gate_label(required_roles: tuple[str, ...]) -> str:

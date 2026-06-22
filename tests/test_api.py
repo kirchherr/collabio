@@ -453,6 +453,7 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "Arbeitskorb" in response.text
     assert "work-item-list" in response.text
     assert "work-evidence-panel" in response.text
+    assert "mvp-readiness-panel" in response.text
     assert "metadata-ready-count" in response.text
     assert "metadata_only" in response.text
     assert "Board pack draft source content" not in response.text
@@ -470,6 +471,8 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".detail-panel.not-found" in css_response.text
     assert ".readiness-band" in css_response.text
     assert ".readiness-cell" in css_response.text
+    assert ".mvp-readiness-panel" in css_response.text
+    assert ".mvp-readiness-grid" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
     assert ".work-evidence-grid" in css_response.text
@@ -487,6 +490,11 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "metadata_only_no_source_content" in js_response.text
     assert "work_items" in js_response.text
     assert "work_item_operational_summary" in js_response.text
+    assert "mvp_readiness_summary" in js_response.text
+    assert "renderMvpReadinessSummary" in js_response.text
+    assert "mvpReadinessTagList" in js_response.text
+    assert "foundation_gaps" in js_response.text
+    assert "deferred_items" in js_response.text
     assert "renderWorkItemOperationalSummary" in js_response.text
     assert "workEvidenceMetric" in js_response.text
     assert "workEvidenceTagList" in js_response.text
@@ -706,6 +714,35 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "state_transition_signals": ["module:provision_module", "source_object_flow:request_preview_decision"],
         "content_included": False,
     }
+    assert body["mvp_readiness_summary"] == {
+        "schema_version": "product_cockpit_mvp_readiness_summary.v1",
+        "entrypoint_route": "/workspace",
+        "mvp_entry_ready": True,
+        "ready_surface_count": 4,
+        "ready_surfaces": ["module_registry", "work_item_queue", "source_object_flows", "metadata_detail"],
+        "foundation_gap_count": 4,
+        "foundation_gaps": [
+            "preview_decisions_pending",
+            "module_activation_work_items_open",
+            "human_confirmation_required",
+            "content_release_gate_blocks_content",
+        ],
+        "deferred_item_count": 5,
+        "deferred_items": [
+            "office_editor_suite",
+            "mail_client_runtime",
+            "persistent_tasks_and_ticketing",
+            "lms_time_tracking_activity_modules",
+            "full_content_preview_rendering",
+        ],
+        "next_foundation_action": "resolve_preview_decision_work_items",
+        "module_count": 2,
+        "work_item_count": 4,
+        "source_object_flow_count": 2,
+        "detail_surface_ready": True,
+        "content_included": False,
+        "persistent_task_created": False,
+    }
     assert all(
         item["primary_action_hint"]["schema_version"] == "product_cockpit_work_item_action_hint.v1"
         for item in work_items
@@ -834,6 +871,30 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["work_item_content_included_action_count"] == 0
     assert new_events[-1].metadata["work_item_destructive_action_count"] == 0
     assert new_events[-1].metadata["work_item_external_side_effect_action_count"] == 0
+    assert new_events[-1].metadata["mvp_entry_ready"] is True
+    assert new_events[-1].metadata["mvp_ready_surfaces"] == (
+        "module_registry",
+        "work_item_queue",
+        "source_object_flows",
+        "metadata_detail",
+    )
+    assert new_events[-1].metadata["mvp_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["mvp_foundation_gaps"] == (
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    )
+    assert new_events[-1].metadata["mvp_deferred_items"] == (
+        "office_editor_suite",
+        "mail_client_runtime",
+        "persistent_tasks_and_ticketing",
+        "lms_time_tracking_activity_modules",
+        "full_content_preview_rendering",
+    )
+    assert new_events[-1].metadata["mvp_next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["mvp_content_included"] is False
+    assert new_events[-1].metadata["mvp_persistent_task_created"] is False
 
 
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:

@@ -197,6 +197,7 @@ input:focus-visible {
 }
 
 .tenant-band,
+.mvp-readiness-panel,
 .readiness-band,
 .work-band,
 .module-band,
@@ -242,6 +243,98 @@ input {
 
 .status-line.error {
   color: var(--red);
+}
+
+.mvp-readiness-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.mvp-readiness-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.mvp-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.mvp-readiness-metric {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.mvp-readiness-metric span,
+.mvp-readiness-next span,
+.mvp-readiness-tag-group span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mvp-readiness-metric strong {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.mvp-readiness-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.mvp-readiness-tags {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mvp-readiness-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.mvp-readiness-next code,
+.mvp-readiness-tag-group code,
+.mvp-readiness-contract code {
+  overflow: hidden;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-quiet);
+  color: #455057;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  padding: 3px 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mvp-ready {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.mvp-gapped {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .readiness-band {
@@ -820,6 +913,8 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .mvp-readiness-grid,
+  .mvp-readiness-tags,
   .work-evidence-grid,
   .work-evidence-tags {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -877,9 +972,16 @@ input {
   }
 
   .readiness-band,
+  .mvp-readiness-grid,
+  .mvp-readiness-tags,
   .work-evidence-grid,
   .work-evidence-tags {
     grid-template-columns: 1fr;
+  }
+
+  .mvp-readiness-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .readiness-metric,
