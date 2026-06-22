@@ -357,11 +357,23 @@ Emergency-Disable und direkte Provider-/Secret-/Query-/Socket-/Rohdaten-Anfragen
 Treiber, liest kein Secret-Material, oeffnet keinen Socket, fuehrt keine Metadata-Query aus, liest keine Rohdaten und
 schreibt keine Importdaten.
 
+`legacy_sql_connector_metadata_connection_probe_skeleton_command.v1`,
+`legacy_sql_connector_metadata_connection_probe_execution_plan.v1` und
+`legacy_sql_connector_metadata_connection_probe_execution_evidence.v1` bilden den ersten Skeleton hinter diesem Gate.
+Der Default-Pfad bleibt aus: Runtime-Default-Off, Tenant-Kill-Switch, Raw-Data-Request und Gate-Tamper blockieren, bevor
+Secret-Broker oder Provider-Adapter beruehrt werden. Ein explizit aktivierter Offline-Fixture-Pfad beweist nur den
+metadata-only Ablauf mit Handle-Metadaten, Allowlist-Queries, Audit-Events und Result-Hashes; er oeffnet keinen externen
+Socket, materialisiert kein Secret, gibt keine Tabellen-/Spaltennamen aus und erlaubt keinen Import.
+
+`docker compose run --rm legacy-sql-connector-metadata-connection-probe-skeleton-smoke` prueft diesen Skeleton im
+Betriebsweg.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein eng begrenztes Metadata-Connection-Probe-Skeleton hinter dem Metadata-
-Connection-Probe-Gate. Echte Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin getrennte spaetere Gates und
-duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate, Runtime-Merge-Gate,
-Runtime-Activation-Gate, Live-Connection-Gate oder Metadata-Connection-Probe-Gate heraus direkt gestartet werden.
+Der naechste technische Schritt ist ein gehaerteter Live-Adapter hinter dem Skeleton. Echte Rohdaten, Import-Dry-Run und
+Import-Writes bleiben weiterhin getrennte spaetere Gates und duerfen nicht aus dem Store, Review-Gate,
+Materialization-Plan-Gate, ADR-Gate, Runtime-PR-Gate, Runtime-Merge-Gate, Runtime-Activation-Gate,
+Live-Connection-Gate, Metadata-Connection-Probe-Gate oder Metadata-Connection-Probe-Skeleton heraus direkt gestartet
+werden.
