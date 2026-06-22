@@ -508,6 +508,10 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "evidence_required_now" in js_response.text
     assert "policy_blocking_reasons" in js_response.text
     assert "executeFoundationGapAction" in js_response.text
+    assert "executeFoundationModuleActions" in js_response.text
+    assert "complete_module_activation_work_items" in js_response.text
+    assert "Module Actions" in js_response.text
+    assert "No domain data, persistent tasks, automations or content release requested." in js_response.text
     assert "data-foundation-gap-id" in js_response.text
     assert "data-foundation-gap-action" in js_response.text
     assert "Pending Decisions" in js_response.text
@@ -1345,6 +1349,105 @@ def test_platform_cockpit_work_items_recompute_after_preview_and_module_state_tr
         assert "Board pack draft source content" not in json.dumps(after_enable)
     finally:
         app.state.source_object_preview_decision_ledger = previous_ledger
+
+
+def test_module_activation_foundation_gap_is_removed_after_modules_enabled() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+
+    def cockpit_body() -> dict[str, Any]:
+        response = client.get("/v1/platform/cockpit", headers=DEMO_ADMIN_HEADERS)
+        assert response.status_code == 200
+        return cast(dict[str, Any], response.json())
+
+    def module_gap(body: dict[str, Any]) -> dict[str, Any]:
+        return next(
+            action
+            for action in body["foundation_gap_actions"]
+            if action["gap_id"] == "module_activation_work_items_open"
+        )
+
+    def post_module_action(module_id: str, action: str, approval_suffix: str) -> None:
+        response = client.post(
+            f"/v1/admin/tenant-modules/{module_id}/{action}",
+            headers=DEMO_ADMIN_HEADERS,
+            json={
+                "approval_reference": f"approval:foundation-module-gap-{approval_suffix}",
+                "reason": "foundation module activation gap reduction without domain data or automation",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert "content_included" not in body
+
+    try:
+        initial = cockpit_body()
+        initial_gap = module_gap(initial)
+        assert initial_gap["next_action"] == "complete_module_activation_work_items"
+        assert initial_gap["covered_by_work_item_ids"] == [
+            "module:crm_erp:provision_module",
+            "module:knowledge_base:provision_module",
+        ]
+        assert initial_gap["ui_actions"] == ["module_provision"]
+        assert initial_gap["required_roles"] == ["security-admin", "tenant-admin"]
+        assert initial_gap["requires_confirmation"] is True
+        assert initial_gap["content_included"] is False
+        assert initial_gap["persistent_task_created"] is False
+        assert initial_gap["automation_created"] is False
+
+        post_module_action("crm_erp", "provision", "crm-provision")
+        post_module_action("knowledge_base", "provision", "kb-provision")
+
+        after_provision = cockpit_body()
+        provisioned_modules = {module["module_id"]: module for module in after_provision["modules"]}
+        assert provisioned_modules["crm_erp"]["status"] == "disabled"
+        assert provisioned_modules["knowledge_base"]["status"] == "disabled"
+        provision_gap = module_gap(after_provision)
+        assert provision_gap["covered_by_work_item_ids"] == [
+            "module:crm_erp:enable_module",
+            "module:knowledge_base:enable_module",
+        ]
+        assert provision_gap["ui_actions"] == ["module_enable"]
+        assert provision_gap["next_action"] == "complete_module_activation_work_items"
+        assert provision_gap["content_included"] is False
+        assert provision_gap["persistent_task_created"] is False
+        assert provision_gap["automation_created"] is False
+
+        post_module_action("crm_erp", "enable", "crm-enable")
+        post_module_action("knowledge_base", "enable", "kb-enable")
+
+        after_enable = cockpit_body()
+        enabled_modules = {module["module_id"]: module for module in after_enable["modules"]}
+        assert enabled_modules["crm_erp"]["normal_use_enabled"] is True
+        assert enabled_modules["knowledge_base"]["normal_use_enabled"] is True
+        assert "module_activation_work_items_open" not in after_enable["mvp_readiness_summary"]["foundation_gaps"]
+        assert "module_activation_work_items_open" not in [
+            action["gap_id"] for action in after_enable["foundation_gap_actions"]
+        ]
+        assert after_enable["work_item_operational_summary"]["module_work_item_count"] == 0
+        assert after_enable["work_item_operational_summary"]["persistent_task_created_count"] == 0
+        assert after_enable["work_item_operational_summary"]["content_included"] is False
+        assert all(item["scope"] == "source_object_flow" for item in after_enable["work_items"])
+        assert all(action["content_included"] is False for action in after_enable["foundation_gap_actions"])
+        assert all(action["persistent_task_created"] is False for action in after_enable["foundation_gap_actions"])
+        assert all(action["automation_created"] is False for action in after_enable["foundation_gap_actions"])
+
+        snapshot_response = client.get("/v1/platform/cockpit/mvp-snapshot", headers=DEMO_ADMIN_HEADERS)
+        assert snapshot_response.status_code == 200
+        snapshot = snapshot_response.json()
+        assert "module_activation_work_items_open" not in snapshot["mvp_readiness_summary"]["foundation_gaps"]
+        assert "module_activation_work_items_open" not in [
+            action["gap_id"] for action in snapshot["foundation_gap_actions"]
+        ]
+        assert snapshot["content_included"] is False
+        assert snapshot["persistent_task_created"] is False
+        assert snapshot["automation_created"] is False
+        assert "Board pack draft source content" not in json.dumps(snapshot)
+        assert "Welcome message source" not in json.dumps(snapshot)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+        reset_module_registry()
 
 
 def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions() -> None:

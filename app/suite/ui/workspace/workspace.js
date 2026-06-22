@@ -141,20 +141,22 @@ async function downloadMvpSnapshot() {
     snapshotButton.disabled = false;
   }
 }
-async function executeModuleAction(module, action) {
+async function executeModuleAction(module, action, options = {}) {
   const context = readContext();
-  const confirmationText = `${action.label} für ${module.display_name} ausführen?\n\nZielstatus: ${action.targetStatus}\nTenant: ${context.tenantId}`;
-  if (!window.confirm(confirmationText)) {
-    setStatus("Aktion abgebrochen.");
-    return;
+  if (options.skipConfirmation !== true) {
+    const confirmationText = `${action.label} fuer ${module.display_name} ausfuehren?\n\nZielstatus: ${action.targetStatus}\nTenant: ${context.tenantId}`;
+    if (!window.confirm(confirmationText)) {
+      setStatus("Aktion abgebrochen.");
+      return null;
+    }
   }
 
   const endpoint = `/v1/admin/tenant-modules/${encodeURIComponent(module.module_id)}/${action.apiAction}`;
   const payload = {
     approval_reference: approvalReferenceFor(module, action),
-    reason: `Workspace cockpit controlled ${action.apiAction} for ${module.module_id}; explicit browser confirmation captured before API call.`,
+    reason: options.reason || `Workspace cockpit controlled ${action.apiAction} for ${module.module_id}; explicit browser confirmation captured before API call.`,
   };
-  setStatus(`${action.label} läuft ...`);
+  setStatus(`${action.label} laeuft ...`);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -169,9 +171,13 @@ async function executeModuleAction(module, action) {
       throw new Error(body.detail || `HTTP ${response.status}`);
     }
     setStatus(`${module.display_name}: ${body.status} | Audit ${body.audit_chain_ref}`);
-    await loadCockpit();
+    if (options.reloadAfter !== false) {
+      await loadCockpit();
+    }
+    return body;
   } catch (error) {
-    setStatus(error.message || "Modulaktion konnte nicht ausgeführt werden.", true);
+    setStatus(error.message || "Modulaktion konnte nicht ausgefuehrt werden.", true);
+    return null;
   }
 }
 
@@ -255,6 +261,10 @@ async function executeGuidedPreviewDecision(flow, options = {}) {
 }
 
 async function executeFoundationGapAction(action) {
+  if (action.next_action === "complete_module_activation_work_items") {
+    await executeFoundationModuleActions(action);
+    return;
+  }
   if (action.next_action !== "resolve_preview_decision_work_items") {
     setStatus("Foundation-Gap-Aktion ist aktuell nur als Review-Hinweis verfuegbar.");
     return;
@@ -285,6 +295,48 @@ async function executeFoundationGapAction(action) {
   }
   await loadCockpit();
   setStatus(`Preview-Decision-Gap aktualisiert: ${flows.length} Decision(s) metadata-only angefordert.`);
+}
+
+async function executeFoundationModuleActions(action) {
+  if (!canUseAnyRole(action.required_roles || [])) {
+    setStatus("Erforderliche Rolle fehlt im aktuellen Kontext.", true);
+    return;
+  }
+  const moduleItems = (currentCockpit.work_items || []).filter((item) =>
+    (action.covered_by_work_item_ids || []).includes(item.work_item_id)
+    && item.scope === "module"
+    && ["module_provision", "module_enable"].includes(item.primary_action_hint?.ui_action)
+  );
+  const jobs = moduleItems.map((item) => {
+    const module = (currentCockpit.modules || []).find((candidate) => candidate.module_id === item.module_id);
+    const moduleAction = module ? moduleActionFor(module) : null;
+    if (!module || !moduleAction || moduleAction.apiAction !== item.primary_action_hint?.api_action) {
+      return null;
+    }
+    return { module, action: moduleAction };
+  }).filter(Boolean);
+  if (!jobs.length) {
+    setStatus("Keine aktuellen Modulaktivierungs-Aktionen im Foundation-Gap.", true);
+    return;
+  }
+  const context = readContext();
+  const confirmationText = `${jobs.length} Modul-Foundation-Aktion(en) fuer Tenant ${context.tenantId} ausfuehren?\n\nNur aktuelle Provisioning-/Enablement-Gaps werden ausgefuehrt. Keine Fachmodul-Daten, keine Tickets, keine Automationen und kein Content-Release.`;
+  if (!window.confirm(confirmationText)) {
+    setStatus("Foundation-Gap-Aktion abgebrochen.");
+    return;
+  }
+  for (const job of jobs) {
+    const result = await executeModuleAction(job.module, job.action, {
+      skipConfirmation: true,
+      reloadAfter: false,
+      reason: `Workspace foundation gap controlled ${job.action.apiAction} for ${job.module.module_id}; explicit browser confirmation captured once for module activation gap. No domain data, persistent tasks, automations or content release requested.`,
+    });
+    if (!result) {
+      return;
+    }
+  }
+  await loadCockpit();
+  setStatus(`Modulaktivierungs-Gap aktualisiert: ${jobs.length} Modulaktion(en) ausgefuehrt.`);
 }
 
 function renderCockpit(cockpit) {
@@ -397,15 +449,27 @@ function foundationGapEvidenceBrief(brief) {
 }
 
 function foundationGapActionButton(action) {
-  if (action.status !== "ready" || action.next_action !== "resolve_preview_decision_work_items") {
+  if (action.status !== "ready") {
     return "";
   }
-  return [
-    '<div class="foundation-gap-controls">',
-    '<button class="action-button primary" type="button" data-foundation-gap-action="'
-      + escapeHtml(action.gap_id) + '">Pending Decisions</button>',
-    '</div>',
-  ].join("");
+  if (action.next_action === "resolve_preview_decision_work_items") {
+    return [
+      '<div class="foundation-gap-controls">',
+      '<button class="action-button primary" type="button" data-foundation-gap-action="'
+        + escapeHtml(action.gap_id) + '">Pending Decisions</button>',
+      '</div>',
+    ].join("");
+  }
+  if (action.next_action === "complete_module_activation_work_items") {
+    const disabled = canUseAnyRole(action.required_roles || []) ? "" : " disabled";
+    return [
+      '<div class="foundation-gap-controls">',
+      '<button class="action-button primary" type="button" data-foundation-gap-action="'
+        + escapeHtml(action.gap_id) + '"' + disabled + '>Module Actions</button>',
+      '</div>',
+    ].join("");
+  }
+  return "";
 }
 
 function foundationGapStatusClass(status) {
