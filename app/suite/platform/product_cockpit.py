@@ -162,6 +162,33 @@ class ProductCockpitWorkItem(BaseModel):
     content_included: bool = False
 
 
+class ProductCockpitWorkItemOperationalSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_work_item_operational_summary.v1"
+    work_item_count: int = Field(ge=0)
+    action_hint_count: int = Field(ge=0)
+    module_work_item_count: int = Field(ge=0)
+    source_object_flow_work_item_count: int = Field(ge=0)
+    high_priority_work_item_count: int = Field(ge=0)
+    medium_priority_work_item_count: int = Field(ge=0)
+    low_priority_work_item_count: int = Field(ge=0)
+    confirmation_required_action_count: int = Field(ge=0)
+    role_required_action_count: int = Field(ge=0)
+    admin_role_required_action_count: int = Field(ge=0)
+    metadata_only_action_count: int = Field(ge=0)
+    content_included_action_count: int = Field(ge=0)
+    persistent_task_created_count: int = Field(ge=0)
+    destructive_action_count: int = Field(ge=0)
+    external_side_effect_action_count: int = Field(ge=0)
+    state_transition_signal_count: int = Field(ge=0)
+    ui_actions: tuple[str, ...]
+    state_gates: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    state_transition_signals: tuple[str, ...]
+    content_included: bool = False
+
+
 class ProductCockpitModuleView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -217,6 +244,7 @@ class ProductCockpitResponse(BaseModel):
     flow_readiness_summary: ProductCockpitReadinessSummary
     work_items: tuple[ProductCockpitWorkItem, ...]
     work_item_count: int = Field(ge=0)
+    work_item_operational_summary: ProductCockpitWorkItemOperationalSummary
     audit_event_id: str
 
 
@@ -258,6 +286,7 @@ def build_product_cockpit_response(
     )
     readiness_summary = _flow_readiness_summary(source_object_flows)
     preliminary_work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
+    preliminary_work_item_summary = _work_item_operational_summary(preliminary_work_items)
     event = audit_logger.record(
         user_context=user_context,
         event_type="platform.module_cockpit.read",
@@ -275,17 +304,30 @@ def build_product_cockpit_response(
             "preview_evidence_complete_but_content_blocked_count": (
                 readiness_summary.preview_evidence_complete_but_content_blocked_count
             ),
-            "work_item_count": len(preliminary_work_items),
-            "high_priority_work_item_count": sum(
-                1 for item in preliminary_work_items if item.priority == ProductCockpitWorkItemPriority.HIGH
+            "work_item_count": preliminary_work_item_summary.work_item_count,
+            "work_item_action_hint_count": preliminary_work_item_summary.action_hint_count,
+            "high_priority_work_item_count": preliminary_work_item_summary.high_priority_work_item_count,
+            "confirmation_required_work_item_count": preliminary_work_item_summary.confirmation_required_action_count,
+            "role_required_work_item_action_count": preliminary_work_item_summary.role_required_action_count,
+            "admin_role_required_work_item_action_count": (
+                preliminary_work_item_summary.admin_role_required_action_count
             ),
-            "confirmation_required_work_item_count": sum(
-                1 for item in preliminary_work_items if item.primary_action_hint.requires_confirmation
+            "work_item_state_transition_signal_count": (preliminary_work_item_summary.state_transition_signal_count),
+            "work_item_ui_actions": preliminary_work_item_summary.ui_actions,
+            "work_item_state_gates": preliminary_work_item_summary.state_gates,
+            "work_item_role_gates": preliminary_work_item_summary.role_gates,
+            "work_item_state_transition_signals": preliminary_work_item_summary.state_transition_signals,
+            "work_item_persistent_task_created_count": preliminary_work_item_summary.persistent_task_created_count,
+            "work_item_content_included_action_count": preliminary_work_item_summary.content_included_action_count,
+            "work_item_destructive_action_count": preliminary_work_item_summary.destructive_action_count,
+            "work_item_external_side_effect_action_count": (
+                preliminary_work_item_summary.external_side_effect_action_count
             ),
         },
     )
     source_object_flows = _attach_cockpit_audit_event_id(source_object_flows, event.event_id)
     work_items = _product_work_items(modules=modules, source_object_flows=source_object_flows)
+    work_item_operational_summary = _work_item_operational_summary(work_items)
     return ProductCockpitResponse(
         tenant_id=user_context.tenant_id,
         modules=modules,
@@ -294,6 +336,7 @@ def build_product_cockpit_response(
         flow_readiness_summary=readiness_summary,
         work_items=work_items,
         work_item_count=len(work_items),
+        work_item_operational_summary=work_item_operational_summary,
         audit_event_id=event.event_id,
     )
 
@@ -594,6 +637,56 @@ def _product_work_items(
         *(_module_work_item(module) for module in modules if module.next_action != "open_module"),
     ]
     return tuple(sorted(items, key=_work_item_sort_key))
+
+
+def _work_item_operational_summary(
+    work_items: tuple[ProductCockpitWorkItem, ...],
+) -> ProductCockpitWorkItemOperationalSummary:
+    action_hints = tuple(
+        hint for item in work_items for hint in (item.primary_action_hint, *item.secondary_action_hints)
+    )
+    state_transition_signals = tuple(sorted({f"{item.scope.value}:{item.action}" for item in work_items}))
+    return ProductCockpitWorkItemOperationalSummary(
+        work_item_count=len(work_items),
+        action_hint_count=len(action_hints),
+        module_work_item_count=sum(1 for item in work_items if item.scope == ProductCockpitWorkItemScope.MODULE),
+        source_object_flow_work_item_count=sum(
+            1 for item in work_items if item.scope == ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW
+        ),
+        high_priority_work_item_count=sum(
+            1 for item in work_items if item.priority == ProductCockpitWorkItemPriority.HIGH
+        ),
+        medium_priority_work_item_count=sum(
+            1 for item in work_items if item.priority == ProductCockpitWorkItemPriority.MEDIUM
+        ),
+        low_priority_work_item_count=sum(
+            1 for item in work_items if item.priority == ProductCockpitWorkItemPriority.LOW
+        ),
+        confirmation_required_action_count=sum(1 for hint in action_hints if hint.requires_confirmation),
+        role_required_action_count=sum(1 for hint in action_hints if hint.required_roles),
+        admin_role_required_action_count=sum(
+            1 for hint in action_hints if {"tenant-admin", "security-admin"}.intersection(set(hint.required_roles))
+        ),
+        metadata_only_action_count=sum(1 for hint in action_hints if hint.metadata_only),
+        content_included_action_count=sum(1 for hint in action_hints if hint.content_included),
+        persistent_task_created_count=sum(1 for item in work_items if item.persistent_task_created)
+        + sum(1 for hint in action_hints if hint.persistent_task_created),
+        destructive_action_count=sum(1 for hint in action_hints if hint.destructive),
+        external_side_effect_action_count=sum(1 for hint in action_hints if hint.external_side_effect),
+        state_transition_signal_count=len(state_transition_signals),
+        ui_actions=tuple(sorted({hint.ui_action.value for hint in action_hints})),
+        state_gates=tuple(sorted({hint.state_gate for hint in action_hints})),
+        role_gates=tuple(sorted({_role_gate_label(hint.required_roles) for hint in action_hints})),
+        state_transition_signals=state_transition_signals,
+        content_included=any(item.content_included for item in work_items)
+        or any(hint.content_included for hint in action_hints),
+    )
+
+
+def _role_gate_label(required_roles: tuple[str, ...]) -> str:
+    if not required_roles:
+        return "context"
+    return ",".join(required_roles)
 
 
 def _source_object_work_item(flow: ProductCockpitSourceObjectFlowView) -> ProductCockpitWorkItem:

@@ -667,6 +667,34 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert {item["module_id"] for item in module_work_items} == {"crm_erp", "knowledge_base"}
     assert {item["priority"] for item in module_work_items} == {"medium"}
     assert {item["action"] for item in module_work_items} == {"provision_module"}
+    assert body["work_item_operational_summary"] == {
+        "schema_version": "product_cockpit_work_item_operational_summary.v1",
+        "work_item_count": 4,
+        "action_hint_count": 6,
+        "module_work_item_count": 2,
+        "source_object_flow_work_item_count": 2,
+        "high_priority_work_item_count": 2,
+        "medium_priority_work_item_count": 2,
+        "low_priority_work_item_count": 0,
+        "confirmation_required_action_count": 4,
+        "role_required_action_count": 2,
+        "admin_role_required_action_count": 2,
+        "metadata_only_action_count": 6,
+        "content_included_action_count": 0,
+        "persistent_task_created_count": 0,
+        "destructive_action_count": 0,
+        "external_side_effect_action_count": 0,
+        "state_transition_signal_count": 2,
+        "ui_actions": ["guided_preview_decision", "module_provision", "open_flow"],
+        "state_gates": [
+            "module_status_available_and_admin_role",
+            "source_object_read_access_and_preview_gate_available",
+            "source_object_read_access_checked",
+        ],
+        "role_gates": ["context", "tenant-admin,security-admin"],
+        "state_transition_signals": ["module:provision_module", "source_object_flow:request_preview_decision"],
+        "content_included": False,
+    }
     assert all(
         item["primary_action_hint"]["schema_version"] == "product_cockpit_work_item_action_hint.v1"
         for item in work_items
@@ -770,8 +798,31 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
     assert new_events[-1].metadata["preview_decision_pending_count"] == 2
     assert new_events[-1].metadata["preview_decision_blocked_count"] == 0
     assert new_events[-1].metadata["work_item_count"] == 4
+    assert new_events[-1].metadata["work_item_action_hint_count"] == 6
     assert new_events[-1].metadata["high_priority_work_item_count"] == 2
     assert new_events[-1].metadata["confirmation_required_work_item_count"] == 4
+    assert new_events[-1].metadata["role_required_work_item_action_count"] == 2
+    assert new_events[-1].metadata["admin_role_required_work_item_action_count"] == 2
+    assert new_events[-1].metadata["work_item_state_transition_signal_count"] == 2
+    assert new_events[-1].metadata["work_item_ui_actions"] == (
+        "guided_preview_decision",
+        "module_provision",
+        "open_flow",
+    )
+    assert new_events[-1].metadata["work_item_state_gates"] == (
+        "module_status_available_and_admin_role",
+        "source_object_read_access_and_preview_gate_available",
+        "source_object_read_access_checked",
+    )
+    assert new_events[-1].metadata["work_item_role_gates"] == ("context", "tenant-admin,security-admin")
+    assert new_events[-1].metadata["work_item_state_transition_signals"] == (
+        "module:provision_module",
+        "source_object_flow:request_preview_decision",
+    )
+    assert new_events[-1].metadata["work_item_persistent_task_created_count"] == 0
+    assert new_events[-1].metadata["work_item_content_included_action_count"] == 0
+    assert new_events[-1].metadata["work_item_destructive_action_count"] == 0
+    assert new_events[-1].metadata["work_item_external_side_effect_action_count"] == 0
 
 
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
@@ -948,6 +999,16 @@ def test_platform_cockpit_work_items_recompute_after_preview_and_module_state_tr
         assert {item["module_id"] for item in module_items_after_enable} == {"crm_erp"}
         assert all(item["module_id"] != "knowledge_base" for item in after_enable["work_items"])
         assert after_enable["work_item_count"] == 3
+        assert after_enable["work_item_operational_summary"]["work_item_count"] == 3
+        assert after_enable["work_item_operational_summary"]["module_work_item_count"] == 1
+        assert after_enable["work_item_operational_summary"]["source_object_flow_work_item_count"] == 2
+        assert after_enable["work_item_operational_summary"]["state_transition_signals"] == [
+            "module:provision_module",
+            "source_object_flow:request_preview_decision",
+            "source_object_flow:review_latest_preview_decision",
+        ]
+        assert after_enable["work_item_operational_summary"]["content_included"] is False
+        assert after_enable["work_item_operational_summary"]["persistent_task_created_count"] == 0
         assert work_item_by_source(after_enable, "doc-1")["action"] == "review_latest_preview_decision"
         assert work_item_by_source(after_enable, "mail-1")["action"] == "request_preview_decision"
         assert "Board pack draft source content" not in json.dumps(after_enable)
