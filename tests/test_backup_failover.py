@@ -91,6 +91,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legacy_sql_connector_runtime_pr_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_runtime_merge_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_connector_runtime_activation_gate_smoke_report_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_connector_live_connection_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_discovery_intake_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_readiness_smoke_report_hash_check" in postgres.integrity_checks
     assert "knowledge_base_runtime_reconciliation_run_report_hash_check" in postgres.integrity_checks
@@ -135,6 +136,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm legacy-sql-connector-runtime-pr-gate-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-connector-runtime-merge-gate-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-connector-runtime-activation-gate-smoke" in postgres.current_dev_commands
+    assert "docker compose run --rm legacy-sql-connector-live-connection-gate-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm kb-runtime-reconciler" in postgres.current_dev_commands
 
     crm_erp = policy.domain("crm_erp_business_records")
@@ -160,6 +162,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL connector runtime PR gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector runtime merge gate hashes" in crm_erp.state_artifacts
     assert "Legacy SQL connector runtime activation gate hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL connector live connection gate hashes" in crm_erp.state_artifacts
 
     object_storage = policy.target("object_storage_records")
     assert "retention_manifest_hash_check" in object_storage.integrity_checks
@@ -458,6 +461,14 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_connector_runtime_activation_kill_switch_arming_snapshot.v1" in runbook
     assert "legacy_sql_connector_runtime_activation_gate.v1" in runbook
     assert "legacy_sql_connector_runtime_activation_gate_smoke_report.v1" in runbook
+    assert "legacy_sql_connector_live_connection_secret_broker_binding_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_network_egress_policy_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_least_privilege_db_role_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_timeout_circuit_breaker_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_audit_sink_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_emergency_disable_snapshot.v1" in runbook
+    assert "legacy_sql_connector_live_connection_gate.v1" in runbook
+    assert "legacy_sql_connector_live_connection_gate_smoke_report.v1" in runbook
     assert "legacy_sql_readiness_smoke_report.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
@@ -496,6 +507,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL connector runtime PR gate smoke report hash" in runbook
     assert "Legacy SQL connector runtime merge gate smoke report hash" in runbook
     assert "Legacy SQL connector runtime activation gate smoke report hash" in runbook
+    assert "Legacy SQL connector live connection gate smoke report hash" in runbook
     assert "source-object storage manifests" in runbook
     assert "source-object write receipt hashes" in runbook
     assert "time entries" in runbook
@@ -543,6 +555,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "\n  legacy-sql-connector-runtime-pr-gate-smoke:\n" in compose
     assert "\n  legacy-sql-connector-runtime-merge-gate-smoke:\n" in compose
     assert "\n  legacy-sql-connector-runtime-activation-gate-smoke:\n" in compose
+    assert "\n  legacy-sql-connector-live-connection-gate-smoke:\n" in compose
     assert "pg_dump" in compose
     assert "sha256sum" in compose
     assert "pg_restore --list" in compose
@@ -566,6 +579,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_runtime_pr_gate --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_runtime_merge_gate --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_runtime_activation_gate --once" in compose
+    assert "python -m suite.platform.legacy_sql_connector_live_connection_gate --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
