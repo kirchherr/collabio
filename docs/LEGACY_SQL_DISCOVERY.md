@@ -308,11 +308,27 @@ fehlendes PR-Gate, fehlende Branch Protection, fehlenden Security Scan, fehlende
 Secret-Rotation-Plan, fehlenden Kill-Switch-Drill und direkte Aktivierungs-/Runtime-Anfragen. Er oeffnet weiterhin
 keinen Socket, loest kein Secret-Material auf und liest keine Rohdaten.
 
+`legacy_sql_connector_runtime_activation_tenant_approval_snapshot.v1`,
+`legacy_sql_connector_runtime_activation_feature_flag_snapshot.v1`,
+`legacy_sql_connector_runtime_activation_secret_rotation_confirmation_snapshot.v1`,
+`legacy_sql_connector_runtime_activation_network_authorization_snapshot.v1`,
+`legacy_sql_connector_runtime_activation_rollback_freeze_snapshot.v1`,
+`legacy_sql_connector_runtime_activation_kill_switch_arming_snapshot.v1` und
+`legacy_sql_connector_runtime_activation_gate.v1` bilden den naechsten nicht-ausfuehrenden Activation-Stop vor echten
+Connection-Probes. Das Gate bindet Runtime-Merge-Gate, tenant-spezifische Aktivierungsfreigabe, Runtime-Feature-Flag,
+Secret-Rotation-Bestaetigung, Netzwerkfreigabe, Rollback-Freeze und Kill-Switch-Arming.
+
+`docker compose run --rm legacy-sql-connector-runtime-activation-gate-smoke` beweist diesen Activation-Stop. Der Smoke
+blockiert fehlendes Merge-Gate, fehlende Tenant-Freigabe, fehlendes Feature-Flag-Profil, fehlende Secret-Rotation-
+Bestaetigung, fehlende Netzwerkfreigabe, fehlenden Rollback-Freeze, fehlendes Kill-Switch-Arming und direkte
+Connection-/Secret-/Rohdaten-Anfragen. Er aktiviert weiterhin keine Runtime, oeffnet keinen Socket, loest kein
+Secret-Material auf und liest keine Rohdaten.
+
 ## Zukunftssichere Erweiterung
 
 Die Discovery ist nicht auf SQL Server beschraenkt. Das Modell kennt Connector-Arten fuer SQL Server, PostgreSQL, MySQL, Oracle, SQLite und `unknown`. Neue Adapter muessen dieselbe metadata-only Grenze einhalten und duerfen Provider-spezifische Details nur als validierte Metadaten einbringen.
 
-Der naechste technische Schritt ist ein weiterhin nicht-ausfuehrendes Runtime-Activation-Gate hinter dem Runtime-Merge-
+Der naechste technische Schritt ist ein weiterhin kontrolliertes Live-Connection-Gate hinter dem Runtime-Activation-
 Gate. Echte Socket-Materialisierung, Secret-Aufloesung, Rohdaten, Import-Dry-Run und Import-Writes bleiben weiterhin
 getrennte spaetere Gates und duerfen nicht aus dem Store, Review-Gate, Materialization-Plan-Gate, ADR-Gate,
-Runtime-PR-Gate oder Runtime-Merge-Gate heraus direkt gestartet werden.
+Runtime-PR-Gate, Runtime-Merge-Gate oder Runtime-Activation-Gate heraus direkt gestartet werden.
