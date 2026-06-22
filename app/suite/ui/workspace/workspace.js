@@ -419,6 +419,7 @@ function renderFoundationGapActionPlan(actions) {
       + ' | roles=' + escapeHtml((action.required_roles || []).join(',') || 'context')
       + ' | confirm=' + (action.requires_confirmation === true ? 'true' : 'false') + '</code>',
     foundationGapEvidenceBrief(action.evidence_brief),
+    foundationGapConfirmationBrief(action.confirmation_brief),
     foundationGapActionButton(action),
     '</div>',
     '</div>',
@@ -444,6 +445,25 @@ function foundationGapEvidenceBrief(brief) {
     '<code>deferred=' + escapeHtml(deferred.length ? deferred.join(',') : 'none') + '</code>',
     '<code>ledger_refs=' + Number(ledgerCount) + ' | policy_blocks=' + Number(policyBlockCount)
       + ' | content_release=' + (brief.content_release_allowed === true ? 'allowed' : 'blocked') + '</code>',
+    '</div>',
+  ].join('');
+}
+
+function foundationGapConfirmationBrief(brief) {
+  if (!brief) {
+    return "";
+  }
+  const allCount = (brief.confirmation_work_item_ids || []).length;
+  const coveredCount = (brief.covered_by_specific_gap_work_item_ids || []).length;
+  const standaloneCount = (brief.standalone_work_item_ids || []).length;
+  const coveringGaps = brief.covering_gap_ids || [];
+  return [
+    '<div class="foundation-gap-confirmation-brief" data-confirmation-brief="true">',
+    '<code>confirmations=' + Number(allCount) + ' | covered=' + Number(coveredCount)
+      + ' | standalone=' + Number(standaloneCount) + '</code>',
+    '<code>covering_gaps=' + escapeHtml(coveringGaps.length ? coveringGaps.join(',') : 'none') + '</code>',
+    '<code>next_confirmation_action=' + escapeHtml(brief.next_confirmation_action || 'review')
+      + ' | separate=' + (brief.requires_separate_foundation_action === true ? 'true' : 'false') + '</code>',
     '</div>',
   ].join('');
 }

@@ -478,6 +478,7 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".foundation-gap-action" in css_response.text
     assert ".foundation-gap-controls" in css_response.text
     assert ".foundation-gap-evidence-brief" in css_response.text
+    assert ".foundation-gap-confirmation-brief" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -505,6 +506,9 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "renderMvpReadinessSummary" in js_response.text
     assert "renderFoundationGapActionPlan" in js_response.text
     assert "foundationGapEvidenceBrief" in js_response.text
+    assert "foundationGapConfirmationBrief" in js_response.text
+    assert "data-confirmation-brief" in js_response.text
+    assert "next_confirmation_action" in js_response.text
     assert "evidence_required_now" in js_response.text
     assert "policy_blocking_reasons" in js_response.text
     assert "executeFoundationGapAction" in js_response.text
@@ -790,6 +794,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "automation_created": False,
             "deferred_reason": None,
             "evidence_brief": None,
+            "confirmation_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -812,13 +817,14 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "automation_created": False,
             "deferred_reason": None,
             "evidence_brief": None,
+            "confirmation_brief": None,
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
             "priority": 3,
             "gap_id": "human_confirmation_required",
-            "status": "ready",
-            "next_action": "complete_explicit_human_confirmations",
+            "status": "deferred",
+            "next_action": "covered_by_specific_foundation_gap_actions",
             "covered_by_work_item_ids": [
                 "source-object-flow:document:doc-1:v1:request_preview_decision",
                 "source-object-flow:mail:mail-1:v1:request_preview_decision",
@@ -829,13 +835,35 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "module_ids": ["crm_erp", "knowledge_base"],
             "ui_actions": ["guided_preview_decision", "module_provision", "open_flow"],
             "required_roles": ["security-admin", "tenant-admin"],
-            "requires_confirmation": True,
+            "requires_confirmation": False,
             "metadata_only": True,
             "content_included": False,
             "persistent_task_created": False,
             "automation_created": False,
-            "deferred_reason": None,
+            "deferred_reason": "human_confirmations_are_covered_by_specific_foundation_gap_actions",
             "evidence_brief": None,
+            "confirmation_brief": {
+                "schema_version": "product_cockpit_foundation_gap_confirmation_brief.v1",
+                "confirmation_work_item_ids": [
+                    "source-object-flow:document:doc-1:v1:request_preview_decision",
+                    "source-object-flow:mail:mail-1:v1:request_preview_decision",
+                    "module:crm_erp:provision_module",
+                    "module:knowledge_base:provision_module",
+                ],
+                "covered_by_specific_gap_work_item_ids": [
+                    "source-object-flow:document:doc-1:v1:request_preview_decision",
+                    "source-object-flow:mail:mail-1:v1:request_preview_decision",
+                    "module:crm_erp:provision_module",
+                    "module:knowledge_base:provision_module",
+                ],
+                "standalone_work_item_ids": [],
+                "covering_gap_ids": ["preview_decisions_pending", "module_activation_work_items_open"],
+                "next_confirmation_action": "use_specific_foundation_gap_actions_first",
+                "requires_separate_foundation_action": False,
+                "content_included": False,
+                "persistent_task_created": False,
+                "automation_created": False,
+            },
         },
         {
             "schema_version": "product_cockpit_foundation_gap_action.v1",
@@ -855,6 +883,7 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
             "automation_created": False,
             "deferred_reason": "full_content_preview_rendering_is_deferred_from_mvp_path",
             "evidence_brief": None,
+            "confirmation_brief": None,
         },
     ]
     assert all(
@@ -1014,8 +1043,8 @@ def test_platform_cockpit_returns_modules_and_authorized_document_mail_source_fl
         "human_confirmation_required",
         "content_release_gate_blocks_content",
     )
-    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 3
-    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 1
+    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 2
+    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 2
     assert new_events[-1].metadata["foundation_gap_content_included"] is False
     assert new_events[-1].metadata["foundation_gap_persistent_task_created"] is False
     assert new_events[-1].metadata["foundation_gap_automation_created"] is False
@@ -1083,13 +1112,22 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert [action["status"] for action in body["foundation_gap_actions"]] == [
         "ready",
         "ready",
-        "ready",
+        "deferred",
         "deferred",
     ]
     assert all(action["content_included"] is False for action in body["foundation_gap_actions"])
     assert all(action["persistent_task_created"] is False for action in body["foundation_gap_actions"])
     assert all(action["automation_created"] is False for action in body["foundation_gap_actions"])
-    assert body["foundation_gap_actions"][2]["next_action"] == "complete_explicit_human_confirmations"
+    assert body["foundation_gap_actions"][2]["next_action"] == "covered_by_specific_foundation_gap_actions"
+    assert body["foundation_gap_actions"][2]["deferred_reason"] == (
+        "human_confirmations_are_covered_by_specific_foundation_gap_actions"
+    )
+    assert body["foundation_gap_actions"][2]["confirmation_brief"]["covering_gap_ids"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+    ]
+    assert body["foundation_gap_actions"][2]["confirmation_brief"]["standalone_work_item_ids"] == []
+    assert body["foundation_gap_actions"][2]["confirmation_brief"]["requires_separate_foundation_action"] is False
     assert body["foundation_gap_actions"][3]["deferred_reason"] == (
         "full_content_preview_rendering_is_deferred_from_mvp_path"
     )
@@ -1146,8 +1184,8 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
         "human_confirmation_required",
         "content_release_gate_blocks_content",
     )
-    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 3
-    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 1
+    assert new_events[-1].metadata["foundation_gap_ready_action_count"] == 2
+    assert new_events[-1].metadata["foundation_gap_deferred_action_count"] == 2
     assert new_events[-1].metadata["foundation_gap_content_included"] is False
     assert new_events[-1].metadata["foundation_gap_persistent_task_created"] is False
     assert new_events[-1].metadata["foundation_gap_automation_created"] is False
@@ -1429,6 +1467,19 @@ def test_module_activation_foundation_gap_is_removed_after_modules_enabled() -> 
         assert after_enable["work_item_operational_summary"]["persistent_task_created_count"] == 0
         assert after_enable["work_item_operational_summary"]["content_included"] is False
         assert all(item["scope"] == "source_object_flow" for item in after_enable["work_items"])
+        human_gap_after_modules = next(
+            action
+            for action in after_enable["foundation_gap_actions"]
+            if action["gap_id"] == "human_confirmation_required"
+        )
+        assert human_gap_after_modules["status"] == "deferred"
+        assert human_gap_after_modules["next_action"] == "covered_by_specific_foundation_gap_actions"
+        assert human_gap_after_modules["confirmation_brief"]["covering_gap_ids"] == ["preview_decisions_pending"]
+        assert human_gap_after_modules["confirmation_brief"]["standalone_work_item_ids"] == []
+        assert human_gap_after_modules["confirmation_brief"]["covered_by_specific_gap_work_item_ids"] == [
+            "source-object-flow:document:doc-1:v1:request_preview_decision",
+            "source-object-flow:mail:mail-1:v1:request_preview_decision",
+        ]
         assert all(action["content_included"] is False for action in after_enable["foundation_gap_actions"])
         assert all(action["persistent_task_created"] is False for action in after_enable["foundation_gap_actions"])
         assert all(action["automation_created"] is False for action in after_enable["foundation_gap_actions"])
@@ -1531,6 +1582,16 @@ def test_preview_decision_foundation_gap_is_removed_after_all_pending_decisions(
             "module_activation_work_items_open",
             "human_confirmation_required",
             "content_release_gate_blocks_content",
+        ]
+        human_action = after["foundation_gap_actions"][2]
+        assert human_action["gap_id"] == "human_confirmation_required"
+        assert human_action["status"] == "deferred"
+        assert human_action["next_action"] == "covered_by_specific_foundation_gap_actions"
+        assert human_action["confirmation_brief"]["covering_gap_ids"] == ["module_activation_work_items_open"]
+        assert human_action["confirmation_brief"]["standalone_work_item_ids"] == []
+        assert human_action["confirmation_brief"]["covered_by_specific_gap_work_item_ids"] == [
+            "module:crm_erp:provision_module",
+            "module:knowledge_base:provision_module",
         ]
         blocked_action = after["foundation_gap_actions"][0]
         assert blocked_action["status"] == "ready"

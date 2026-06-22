@@ -237,6 +237,21 @@ class ProductCockpitFoundationGapEvidenceBrief(BaseModel):
     content_included: bool = False
 
 
+class ProductCockpitFoundationGapConfirmationBrief(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_foundation_gap_confirmation_brief.v1"
+    confirmation_work_item_ids: tuple[str, ...] = ()
+    covered_by_specific_gap_work_item_ids: tuple[str, ...] = ()
+    standalone_work_item_ids: tuple[str, ...] = ()
+    covering_gap_ids: tuple[str, ...] = ()
+    next_confirmation_action: str = "use_specific_foundation_gap_actions_first"
+    requires_separate_foundation_action: bool = False
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+
+
 class ProductCockpitFoundationGapAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -257,6 +272,7 @@ class ProductCockpitFoundationGapAction(BaseModel):
     automation_created: bool = False
     deferred_reason: str | None = None
     evidence_brief: ProductCockpitFoundationGapEvidenceBrief | None = None
+    confirmation_brief: ProductCockpitFoundationGapConfirmationBrief | None = None
 
 
 class ProductCockpitModuleView(BaseModel):
@@ -1078,12 +1094,27 @@ def _foundation_gap_action(
         )
     if gap_id == "human_confirmation_required":
         confirmation_items = tuple(item for item in work_items if _work_item_requires_confirmation(item))
+        standalone_items = tuple(item for item in confirmation_items if _confirmation_covering_gap_id(item) is None)
+        if standalone_items:
+            return _foundation_gap_action_from_work_items(
+                priority=priority,
+                gap_id=gap_id,
+                status="ready",
+                next_action="complete_explicit_human_confirmations",
+                work_items=standalone_items,
+                confirmation_brief=_foundation_gap_confirmation_brief_for_work_items(confirmation_items),
+            )
         return _foundation_gap_action_from_work_items(
             priority=priority,
             gap_id=gap_id,
-            status="ready" if confirmation_items else "blocked",
-            next_action="complete_explicit_human_confirmations",
+            status="deferred" if confirmation_items else "blocked",
+            next_action="covered_by_specific_foundation_gap_actions",
             work_items=confirmation_items,
+            requires_confirmation=False,
+            deferred_reason="human_confirmations_are_covered_by_specific_foundation_gap_actions"
+            if confirmation_items
+            else None,
+            confirmation_brief=_foundation_gap_confirmation_brief_for_work_items(confirmation_items),
         )
     if gap_id == "content_release_gate_blocks_content":
         gated_flows = tuple(flow for flow in source_object_flows if not flow.readiness.content_release_allowed)
@@ -1117,6 +1148,9 @@ def _foundation_gap_action_from_work_items(
     work_items: tuple[ProductCockpitWorkItem, ...],
     source_object_ids: tuple[str, ...] | None = None,
     evidence_brief: ProductCockpitFoundationGapEvidenceBrief | None = None,
+    confirmation_brief: ProductCockpitFoundationGapConfirmationBrief | None = None,
+    requires_confirmation: bool | None = None,
+    deferred_reason: str | None = None,
 ) -> ProductCockpitFoundationGapAction:
     return ProductCockpitFoundationGapAction(
         priority=priority,
@@ -1130,12 +1164,16 @@ def _foundation_gap_action_from_work_items(
         module_ids=_module_ids_for_work_items(work_items),
         ui_actions=_ui_actions_for_work_items(work_items),
         required_roles=_required_roles_for_work_items(work_items),
-        requires_confirmation=any(_work_item_requires_confirmation(item) for item in work_items),
+        requires_confirmation=requires_confirmation
+        if requires_confirmation is not None
+        else any(_work_item_requires_confirmation(item) for item in work_items),
         metadata_only=True,
         content_included=any(item.content_included for item in work_items),
         persistent_task_created=any(item.persistent_task_created for item in work_items),
         automation_created=False,
+        deferred_reason=deferred_reason,
         evidence_brief=evidence_brief,
+        confirmation_brief=confirmation_brief,
     )
 
 
@@ -1176,6 +1214,40 @@ def _foundation_gap_evidence_brief_for_blocked_flows(
         content_release_allowed=any(readiness.content_release_allowed for readiness in readinesses),
         content_included=any(readiness.content_included for readiness in readinesses),
     )
+
+
+def _foundation_gap_confirmation_brief_for_work_items(
+    work_items: tuple[ProductCockpitWorkItem, ...],
+) -> ProductCockpitFoundationGapConfirmationBrief:
+    standalone_items = tuple(item for item in work_items if _confirmation_covering_gap_id(item) is None)
+    covered_items = tuple(item for item in work_items if _confirmation_covering_gap_id(item) is not None)
+    return ProductCockpitFoundationGapConfirmationBrief(
+        confirmation_work_item_ids=tuple(item.work_item_id for item in work_items),
+        covered_by_specific_gap_work_item_ids=tuple(item.work_item_id for item in covered_items),
+        standalone_work_item_ids=tuple(item.work_item_id for item in standalone_items),
+        covering_gap_ids=_dedupe_strings(
+            gap_id for item in covered_items if (gap_id := _confirmation_covering_gap_id(item)) is not None
+        ),
+        next_confirmation_action="complete_explicit_human_confirmations"
+        if standalone_items
+        else "use_specific_foundation_gap_actions_first",
+        requires_separate_foundation_action=bool(standalone_items),
+        content_included=any(item.content_included for item in work_items),
+        persistent_task_created=any(item.persistent_task_created for item in work_items),
+        automation_created=False,
+    )
+
+
+def _confirmation_covering_gap_id(item: ProductCockpitWorkItem) -> str | None:
+    if item.scope == ProductCockpitWorkItemScope.SOURCE_OBJECT_FLOW and item.action == "request_preview_decision":
+        return "preview_decisions_pending"
+    if item.scope == ProductCockpitWorkItemScope.MODULE and item.action in {
+        "provision_module",
+        "enable_module",
+        "resolve_suspension",
+    }:
+        return "module_activation_work_items_open"
+    return None
 
 
 def _verified_preview_evidence(readiness: ProductCockpitSourceObjectFlowReadiness) -> tuple[str, ...]:
@@ -1307,6 +1379,8 @@ def _next_mvp_foundation_action(foundation_gaps: tuple[str, ...]) -> str:
         return "complete_preview_release_evidence"
     if "module_activation_work_items_open" in foundation_gaps:
         return "complete_module_activation_work_items"
+    if "human_confirmation_required" in foundation_gaps:
+        return "complete_explicit_human_confirmations"
     if "content_release_gate_blocks_content" in foundation_gaps:
         return "keep_content_release_gate_until_renderer_ready"
     if foundation_gaps:

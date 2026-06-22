@@ -324,13 +324,18 @@ input {
   gap: 8px;
 }
 
-.foundation-gap-evidence-brief {
+.foundation-gap-evidence-brief,
+.foundation-gap-confirmation-brief {
   display: grid;
   gap: 3px;
   min-width: 0;
   margin-top: 2px;
   padding-left: 8px;
   border-left: 3px solid #6a7a86;
+}
+
+.foundation-gap-confirmation-brief {
+  border-left-color: #7b6d42;
 }
 
 .foundation-gap-copy code {
@@ -342,7 +347,8 @@ input {
   white-space: nowrap;
 }
 
-.foundation-gap-evidence-brief code {
+.foundation-gap-evidence-brief code,
+.foundation-gap-confirmation-brief code {
   overflow-wrap: anywhere;
   text-overflow: clip;
   white-space: normal;
