@@ -329,6 +329,15 @@ MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_DRY_RUN_SECTIONS
     "dry_run_outcome",
 )
 
+MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_BOUNDARY_SECTIONS = (
+    "activation_boundary",
+    "activation_preconditions",
+    "required_approvals",
+    "evidence_hashes",
+    "non_activation",
+    "boundary_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -2496,6 +2505,40 @@ class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryR
     decision_capture_payload_validation_request_execution_dry_run_executed: bool = False
     decision_capture_payload_validation_request_execution_dry_run_request_accepted: bool = False
     decision_capture_payload_validation_request_execution_dry_run_result_persisted: bool = False
+
+
+class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationBoundaryResponse(
+    ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryRunResponse
+):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = (
+        "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary.v1"
+    )
+    result_contract: str = (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary"
+    )
+    decision_capture_payload_validation_request_execution_activation_boundary_route: str = (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-activation-boundary"
+    )
+    decision_capture_payload_validation_request_execution_dry_run_audit_event_id: str
+    decision_capture_payload_validation_request_execution_dry_run_evidence_hash: str
+    decision_capture_payload_validation_request_execution_activation_boundary_status: str
+    decision_capture_payload_validation_request_execution_activation_boundary_decision: str
+    decision_capture_payload_validation_request_execution_activation_boundary_sections: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_id: str
+    decision_capture_payload_validation_request_execution_activation_boundary_contract_id: str
+    decision_capture_payload_validation_request_execution_activation_boundary_required_preconditions: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_required_approvals: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_guards: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_prohibited_actions: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_summary: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_checks: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_blockers: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_boundary_endpoint_enabled: bool = False
+    decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled: bool = False
+    decision_capture_payload_validation_request_execution_activation_boundary_approval_persisted: bool = False
+    decision_capture_payload_validation_request_execution_activation_boundary_activation_granted: bool = False
 
 
 class ProductCockpitMvpSnapshotResponse(BaseModel):
@@ -8994,6 +9037,393 @@ def _mvp_pilot_decision_capture_payload_validation_request_execution_dry_run_evi
         f"payload validation dry-run hash: {validation_dry_run_hash}",
         f"payload validation boundary hash: {validation_boundary_hash}",
         f"decision capture submit dry-run hash: {submit_dry_run_hash}",
+    )
+
+
+def build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    execution_dry_run_response: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryRunResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationBoundaryResponse:
+    required_hashes = (
+        execution_dry_run_response.evidence_hash,
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_evidence_hash,
+        execution_dry_run_response.decision_capture_payload_validation_request_dry_run_evidence_hash,
+        execution_dry_run_response.decision_capture_payload_validation_request_boundary_evidence_hash,
+        execution_dry_run_response.decision_capture_payload_validation_dry_run_evidence_hash,
+        execution_dry_run_response.decision_capture_payload_validation_boundary_evidence_hash,
+        execution_dry_run_response.decision_capture_submit_dry_run_evidence_hash,
+        execution_dry_run_response.decision_capture_submit_skeleton_evidence_hash,
+        execution_dry_run_response.decision_capture_preflight_evidence_hash,
+    )
+    dry_run_endpoint_enabled = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_endpoint_enabled
+    )
+    dry_run_executed = execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_executed
+    dry_run_request_accepted = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_request_accepted
+    )
+    dry_run_result_persisted = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_result_persisted
+    )
+    skeleton_handler_registered = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_handler_registered
+    )
+    skeleton_request_accepted = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_request_accepted
+    )
+    activation_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_boundary_ready"
+        if execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_dry_run_ready"
+        and execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_decision
+        == "payload_validation_request_execution_dry_run_ready_without_execution"
+        and execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_skeleton_ready"
+        and all(evidence_hash.startswith("sha256:") for evidence_hash in required_hashes)
+        and execution_dry_run_response.read_only_status == "read_only_no_state_change"
+        and execution_dry_run_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not dry_run_endpoint_enabled
+        and not dry_run_executed
+        and not dry_run_request_accepted
+        and not dry_run_result_persisted
+        and not skeleton_handler_registered
+        and not skeleton_request_accepted
+        and not execution_dry_run_response.decision_capture_payload_validation_request_received
+        and not execution_dry_run_response.decision_payload_accepted
+        and not execution_dry_run_response.go_no_go_decision_stored
+        and not execution_dry_run_response.go_no_go_decision_captured
+        and not execution_dry_run_response.approval_record_created
+        and not execution_dry_run_response.pilot_start_authorized
+        and not execution_dry_run_response.content_included
+        and not execution_dry_run_response.persistent_task_created
+        and not execution_dry_run_response.automation_created
+        else "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_boundary_blocked"
+    )
+    activation_decision = (
+        "payload_validation_request_execution_activation_boundary_ready_without_activation"
+        if activation_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_boundary_ready"
+        else "payload_validation_request_execution_activation_boundary_blocked"
+    )
+    required_preconditions = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_preconditions()
+    )
+    required_approvals = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_approvals()
+    )
+    activation_guards = _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_guards()
+    prohibited_actions = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_prohibited_actions()
+    )
+    draft_payload = execution_dry_run_response.model_dump()
+    draft_payload.update(
+        {
+            "schema_version": (
+                "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary.v1"
+            ),
+            "result_contract": (
+                "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary"
+            ),
+            "checked_by": user_context.user_id,
+            "decision_capture_payload_validation_request_execution_dry_run_audit_event_id": (
+                execution_dry_run_response.audit_event_id or ""
+            ),
+            "decision_capture_payload_validation_request_execution_dry_run_evidence_hash": (
+                execution_dry_run_response.evidence_hash
+            ),
+            "audit_event_id": None,
+            "audit_refs": execution_dry_run_response.audit_refs,
+            "decision_capture_payload_validation_request_execution_activation_boundary_status": activation_status,
+            "decision_capture_payload_validation_request_execution_activation_boundary_decision": activation_decision,
+            "decision_capture_payload_validation_request_execution_activation_boundary_sections": (
+                MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_BOUNDARY_SECTIONS
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_id": (
+                "mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_v1"
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_contract_id": (
+                "mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_contract_v1"
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_required_preconditions": (
+                required_preconditions
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_required_approvals": (
+                required_approvals
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_guards": activation_guards,
+            "decision_capture_payload_validation_request_execution_activation_boundary_prohibited_actions": (
+                prohibited_actions
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_summary": (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_summary(
+                    execution_dry_run_response=execution_dry_run_response,
+                    activation_decision=activation_decision,
+                )
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_checks": (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_checks(
+                    activation_status=activation_status,
+                )
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_blockers": (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_blockers(
+                    execution_dry_run_response,
+                )
+            ),
+            "evidence_chain_summary": (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_evidence_chain_summary(
+                    execution_dry_run_response,
+                )
+            ),
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            "decision_capture_payload_validation_request_execution_dry_run_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_dry_run_executed": False,
+            "decision_capture_payload_validation_request_execution_dry_run_request_accepted": False,
+            "decision_capture_payload_validation_request_execution_dry_run_result_persisted": False,
+            "decision_capture_payload_validation_request_execution_skeleton_handler_registered": False,
+            "decision_capture_payload_validation_request_execution_skeleton_request_accepted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_approval_persisted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_activation_granted": False,
+            "evidence_hash": "sha256:" + "0" * 64,
+        }
+    )
+    draft = (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationBoundaryResponse.model_validate(
+            draft_payload
+        )
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "decision_capture_payload_validation_request_execution_activation_boundary_status": activation_status,
+            "decision_capture_payload_validation_request_execution_activation_boundary_decision": activation_decision,
+            "decision_capture_payload_validation_request_execution_dry_run_status": (
+                execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_status
+            ),
+            "decision_capture_payload_validation_request_execution_dry_run_decision": (
+                execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_decision
+            ),
+            "decision_capture_payload_validation_request_execution_skeleton_status": (
+                execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_status
+            ),
+            "read_only_status": execution_dry_run_response.read_only_status,
+            "decision_capture_payload_validation_request_execution_dry_run_evidence_hash": (
+                execution_dry_run_response.evidence_hash
+            ),
+            "decision_capture_payload_validation_request_execution_skeleton_evidence_hash": (
+                execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_dry_run_evidence_hash": (
+                execution_dry_run_response.decision_capture_payload_validation_request_dry_run_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_boundary_evidence_hash": (
+                execution_dry_run_response.decision_capture_payload_validation_request_boundary_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_sections": (
+                MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_BOUNDARY_SECTIONS
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_id": (
+                "mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_v1"
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_contract_id": (
+                "mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_contract_v1"
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_required_preconditions": (
+                required_preconditions
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_required_approvals": (
+                required_approvals
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_guards": activation_guards,
+            "decision_capture_payload_validation_request_execution_activation_boundary_prohibited_actions": (
+                prohibited_actions
+            ),
+            "open_foundation_gap_ids": execution_dry_run_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": execution_dry_run_response.open_foundation_gap_count,
+            "next_foundation_action": execution_dry_run_response.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            "decision_capture_payload_validation_request_execution_dry_run_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_dry_run_executed": False,
+            "decision_capture_payload_validation_request_execution_dry_run_request_accepted": False,
+            "decision_capture_payload_validation_request_execution_dry_run_result_persisted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_approval_persisted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_activation_granted": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(
+        update={
+            "evidence_hash": (
+                build_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_hash(audited)
+            )
+        }
+    )
+
+
+def build_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_hash(
+    report: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationBoundaryResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_preconditions() -> tuple[
+    str, ...
+]:
+    return (
+        "current_execution_dry_run_evidence_hash_required",
+        "execution_skeleton_must_remain_disabled",
+        "tenant_and_role_context_must_be_available",
+        "idempotency_policy_must_be_defined",
+        "human_confirmation_policy_must_be_defined",
+        "backup_failover_no_state_change_required",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_approvals() -> tuple[str, ...]:
+    return (
+        "tenant_admin_human_confirmation_required",
+        "security_owner_review_required",
+        "compliance_owner_review_required",
+        "pilot_go_no_go_record_required",
+        "activation_window_required",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_guards() -> tuple[str, ...]:
+    return (
+        "do_not_register_handler_in_activation_boundary",
+        "do_not_accept_payload_in_activation_boundary",
+        "do_not_persist_activation_decision",
+        "do_not_persist_approval_record",
+        "do_not_authorize_pilot_start",
+        "audit_metadata_only",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_prohibited_actions() -> tuple[
+    str, ...
+]:
+    return (
+        "enable_post_handler",
+        "accept_real_request",
+        "persist_decision_record",
+        "persist_approval_record",
+        "authorize_pilot_start",
+        "write_content",
+        "create_persistent_task",
+        "create_automation",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_summary(
+    *,
+    execution_dry_run_response: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryRunResponse,
+    activation_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(execution_dry_run_response.open_foundation_gap_ids) or "none"
+    dry_run_decision = execution_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_decision
+    return (
+        f"payload validation request execution activation boundary decision: {activation_decision}",
+        f"payload validation request execution dry-run decision: {dry_run_decision}",
+        (
+            "activation boundary contract: "
+            "mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_contract_v1"
+        ),
+        "activation boundary is visible but no handler is enabled or approval persisted",
+        f"open foundation gaps: {open_gaps}",
+        "decision storage, approval persistence and pilot start remain outside this activation boundary",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_checks(
+    *, activation_status: str
+) -> tuple[str, ...]:
+    if (
+        activation_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_boundary_ready"
+    ):
+        return (
+            "publish activation boundary without enabling handler",
+            "require explicit approvals before any future activation",
+            "require current execution dry-run evidence hash before future activation",
+            "keep activation decision and approval persistence outside boundary",
+        )
+    return ("repair blocked payload validation request execution activation boundary before handler activation",)
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_blockers(
+    execution_dry_run_response: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryRunResponse,
+) -> tuple[str, ...]:
+    return (
+        "payload validation request execution activation boundary endpoint is not enabled",
+        "payload validation request execution handler is not enabled",
+        "activation approval is not persisted",
+        "activation is not granted",
+        "go/no-go decision has not been stored",
+        "pilot start authorization is not granted by this activation boundary",
+        f"open foundation gaps: {','.join(execution_dry_run_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_evidence_chain_summary(
+    execution_dry_run_response: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionDryRunResponse,
+) -> tuple[str, ...]:
+    execution_dry_run_hash = execution_dry_run_response.evidence_hash
+    execution_skeleton_hash = (
+        execution_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_evidence_hash
+    )
+    request_dry_run_hash = execution_dry_run_response.decision_capture_payload_validation_request_dry_run_evidence_hash
+    request_boundary_hash = (
+        execution_dry_run_response.decision_capture_payload_validation_request_boundary_evidence_hash
+    )
+    validation_dry_run_hash = execution_dry_run_response.decision_capture_payload_validation_dry_run_evidence_hash
+    validation_boundary_hash = execution_dry_run_response.decision_capture_payload_validation_boundary_evidence_hash
+    return (
+        f"payload validation request execution dry-run hash: {execution_dry_run_hash}",
+        f"payload validation request execution skeleton hash: {execution_skeleton_hash}",
+        f"payload validation request dry-run hash: {request_dry_run_hash}",
+        f"payload validation request boundary hash: {request_boundary_hash}",
+        f"payload validation dry-run hash: {validation_dry_run_hash}",
+        f"payload validation boundary hash: {validation_boundary_hash}",
     )
 
 
