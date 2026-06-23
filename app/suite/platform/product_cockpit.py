@@ -212,6 +212,15 @@ MVP_PILOT_APPROVAL_WORKFLOW_BOUNDARY_SECTIONS = (
     "non_execution",
 )
 
+MVP_PILOT_APPROVAL_READINESS_SECTIONS = (
+    "approval_boundary",
+    "decision_artifacts",
+    "human_confirmation",
+    "evidence_chain",
+    "foundation_gaps",
+    "readiness_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1528,6 +1537,132 @@ class ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse(BaseModel):
     boundary_summary: tuple[str, ...]
     workflow_steps: tuple[str, ...]
     workflow_blockers: tuple[str, ...]
+    evidence_chain_summary: tuple[str, ...]
+    open_foundation_gap_count: int = Field(ge=0)
+    ready_foundation_gap_count: int = Field(ge=0)
+    deferred_foundation_gap_count: int = Field(ge=0)
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    human_review_required: bool = True
+    human_confirmation_required: bool = True
+    human_confirmation_captured: bool = False
+    decision_record_created: bool = False
+    approval_record_created: bool = False
+    pilot_start_authorized: bool = False
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    evidence_hash: str
+
+
+class ProductCockpitMvpPilotApprovalReadinessResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_approval_readiness.v1"
+    result_contract: str = "metadata_only_mvp_pilot_approval_readiness"
+    tenant_id: str
+    checked_by: str
+    approval_readiness_route: str = "/v1/platform/cockpit/mvp-pilot-approval-readiness"
+    approval_workflow_boundary_route: str = "/v1/platform/cockpit/mvp-pilot-approval-workflow-boundary"
+    preflight_route: str = "/v1/platform/cockpit/mvp-pilot-decision-preflight"
+    decision_record_schema_route: str = "/v1/platform/cockpit/mvp-pilot-decision-record-schema"
+    template_route: str = "/v1/platform/cockpit/mvp-pilot-start-decision-template"
+    review_point_route: str = "/v1/platform/cockpit/mvp-pilot-review-point"
+    runbook_route: str = "/v1/platform/cockpit/mvp-pilot-runbook"
+    start_scope_route: str = "/v1/platform/cockpit/mvp-pilot-start-scope"
+    readiness_report_route: str = "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    pilot_status_route: str = "/v1/platform/cockpit/mvp-pilot-status"
+    pilot_gate_route: str = "/v1/platform/cockpit/mvp-pilot-gate"
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    release_review_audit_event_id: str
+    pilot_gate_audit_event_id: str
+    pilot_status_audit_event_id: str
+    readiness_report_audit_event_id: str
+    start_scope_audit_event_id: str
+    runbook_audit_event_id: str
+    review_point_audit_event_id: str
+    template_audit_event_id: str
+    decision_record_schema_audit_event_id: str
+    preflight_audit_event_id: str
+    boundary_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    approval_workflow_boundary_evidence_hash: str
+    preflight_evidence_hash: str
+    decision_record_schema_evidence_hash: str
+    template_evidence_hash: str
+    review_point_evidence_hash: str
+    runbook_evidence_hash: str
+    start_scope_evidence_hash: str
+    readiness_report_evidence_hash: str
+    pilot_status_evidence_hash: str
+    pilot_gate_evidence_hash: str
+    release_review_evidence_hash: str
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    readiness_status: str
+    readiness_decision: str
+    operational_status: str
+    read_only_status: str
+    pilot_gate_status: str
+    pilot_gate_decision: str
+    start_scope_status: str
+    start_scope_decision: str
+    runbook_status: str
+    runbook_decision: str
+    review_point_status: str
+    review_point_decision: str
+    template_status: str
+    template_decision: str
+    record_schema_status: str
+    record_schema_decision: str
+    preflight_status: str
+    preflight_decision: str
+    boundary_status: str
+    boundary_decision: str
+    approval_readiness_status: str
+    approval_readiness_decision: str
+    approval_readiness_sections: tuple[str, ...]
+    readiness_packet_id: str
+    readiness_inputs: tuple[str, ...]
+    readiness_required_controls: tuple[str, ...]
+    readiness_prohibited_actions: tuple[str, ...]
+    workflow_boundary_id: str
+    workflow_inputs: tuple[str, ...]
+    workflow_prohibited_outputs: tuple[str, ...]
+    workflow_required_controls: tuple[str, ...]
+    decision_record_schema_id: str
+    decision_record_required_fields: tuple[str, ...]
+    immutable_evidence_fields: tuple[str, ...]
+    audit_required_fields: tuple[str, ...]
+    confirmation_template_id: str
+    confirmation_fields: tuple[str, ...]
+    required_confirmation_roles: tuple[str, ...]
+    required_confirmation_statements: tuple[str, ...]
+    start_scope_contracts: tuple[str, ...]
+    excluded_scope_contracts: tuple[str, ...]
+    allowed_pilot_surfaces: tuple[str, ...]
+    deferred_pilot_surfaces: tuple[str, ...]
+    approval_readiness_summary: tuple[str, ...]
+    approval_readiness_checks: tuple[str, ...]
+    approval_readiness_blockers: tuple[str, ...]
     evidence_chain_summary: tuple[str, ...]
     open_foundation_gap_count: int = Field(ge=0)
     ready_foundation_gap_count: int = Field(ge=0)
@@ -3751,6 +3886,322 @@ def _mvp_pilot_approval_workflow_evidence_chain_summary(
         f"template hash: {preflight_response.template_evidence_hash}",
         f"review point hash: {preflight_response.review_point_evidence_hash}",
         f"pilot gate hash: {preflight_response.pilot_gate_evidence_hash}",
+    )
+
+
+def build_product_cockpit_mvp_pilot_approval_readiness_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    boundary_response: ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotApprovalReadinessResponse:
+    approval_readiness_status = (
+        "metadata_only_pilot_approval_readiness_ready"
+        if boundary_response.boundary_status == "metadata_only_pilot_approval_workflow_boundary_ready"
+        and boundary_response.boundary_decision == "approval_workflow_boundary_ready_without_approval_persistence"
+        and boundary_response.human_confirmation_required
+        and not boundary_response.human_confirmation_captured
+        and not boundary_response.decision_record_created
+        and not boundary_response.approval_record_created
+        and not boundary_response.pilot_start_authorized
+        and boundary_response.read_only_status == "read_only_no_state_change"
+        and boundary_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not boundary_response.content_included
+        and not boundary_response.persistent_task_created
+        and not boundary_response.automation_created
+        else "metadata_only_pilot_approval_readiness_blocked"
+    )
+    approval_readiness_decision = (
+        "approval_readiness_ready_for_human_go_no_go_without_persistence"
+        if approval_readiness_status == "metadata_only_pilot_approval_readiness_ready"
+        else "approval_readiness_blocked"
+    )
+    readiness_inputs = _mvp_pilot_approval_readiness_inputs()
+    readiness_required_controls = _mvp_pilot_approval_readiness_required_controls()
+    readiness_prohibited_actions = _mvp_pilot_approval_readiness_prohibited_actions()
+    draft = ProductCockpitMvpPilotApprovalReadinessResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=boundary_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=boundary_response.snapshot_audit_event_id,
+        smoke_audit_event_id=boundary_response.smoke_audit_event_id,
+        handover_audit_event_id=boundary_response.handover_audit_event_id,
+        release_review_audit_event_id=boundary_response.release_review_audit_event_id,
+        pilot_gate_audit_event_id=boundary_response.pilot_gate_audit_event_id,
+        pilot_status_audit_event_id=boundary_response.pilot_status_audit_event_id,
+        readiness_report_audit_event_id=boundary_response.readiness_report_audit_event_id,
+        start_scope_audit_event_id=boundary_response.start_scope_audit_event_id,
+        runbook_audit_event_id=boundary_response.runbook_audit_event_id,
+        review_point_audit_event_id=boundary_response.review_point_audit_event_id,
+        template_audit_event_id=boundary_response.template_audit_event_id,
+        decision_record_schema_audit_event_id=boundary_response.decision_record_schema_audit_event_id,
+        preflight_audit_event_id=boundary_response.preflight_audit_event_id,
+        boundary_audit_event_id=boundary_response.audit_event_id or "",
+        audit_refs=boundary_response.audit_refs,
+        approval_workflow_boundary_evidence_hash=boundary_response.evidence_hash,
+        preflight_evidence_hash=boundary_response.preflight_evidence_hash,
+        decision_record_schema_evidence_hash=boundary_response.decision_record_schema_evidence_hash,
+        template_evidence_hash=boundary_response.template_evidence_hash,
+        review_point_evidence_hash=boundary_response.review_point_evidence_hash,
+        runbook_evidence_hash=boundary_response.runbook_evidence_hash,
+        start_scope_evidence_hash=boundary_response.start_scope_evidence_hash,
+        readiness_report_evidence_hash=boundary_response.readiness_report_evidence_hash,
+        pilot_status_evidence_hash=boundary_response.pilot_status_evidence_hash,
+        pilot_gate_evidence_hash=boundary_response.pilot_gate_evidence_hash,
+        release_review_evidence_hash=boundary_response.release_review_evidence_hash,
+        handover_evidence_hash=boundary_response.handover_evidence_hash,
+        snapshot_hash=boundary_response.snapshot_hash,
+        release_candidate_smoke_hash=boundary_response.release_candidate_smoke_hash,
+        readiness_status=boundary_response.readiness_status,
+        readiness_decision=boundary_response.readiness_decision,
+        operational_status=boundary_response.operational_status,
+        read_only_status=boundary_response.read_only_status,
+        pilot_gate_status=boundary_response.pilot_gate_status,
+        pilot_gate_decision=boundary_response.pilot_gate_decision,
+        start_scope_status=boundary_response.start_scope_status,
+        start_scope_decision=boundary_response.start_scope_decision,
+        runbook_status=boundary_response.runbook_status,
+        runbook_decision=boundary_response.runbook_decision,
+        review_point_status=boundary_response.review_point_status,
+        review_point_decision=boundary_response.review_point_decision,
+        template_status=boundary_response.template_status,
+        template_decision=boundary_response.template_decision,
+        record_schema_status=boundary_response.record_schema_status,
+        record_schema_decision=boundary_response.record_schema_decision,
+        preflight_status=boundary_response.preflight_status,
+        preflight_decision=boundary_response.preflight_decision,
+        boundary_status=boundary_response.boundary_status,
+        boundary_decision=boundary_response.boundary_decision,
+        approval_readiness_status=approval_readiness_status,
+        approval_readiness_decision=approval_readiness_decision,
+        approval_readiness_sections=MVP_PILOT_APPROVAL_READINESS_SECTIONS,
+        readiness_packet_id="mvp_pilot_approval_readiness_v1",
+        readiness_inputs=readiness_inputs,
+        readiness_required_controls=readiness_required_controls,
+        readiness_prohibited_actions=readiness_prohibited_actions,
+        workflow_boundary_id=boundary_response.workflow_boundary_id,
+        workflow_inputs=boundary_response.workflow_inputs,
+        workflow_prohibited_outputs=boundary_response.workflow_prohibited_outputs,
+        workflow_required_controls=boundary_response.workflow_required_controls,
+        decision_record_schema_id=boundary_response.decision_record_schema_id,
+        decision_record_required_fields=boundary_response.decision_record_required_fields,
+        immutable_evidence_fields=boundary_response.immutable_evidence_fields,
+        audit_required_fields=boundary_response.audit_required_fields,
+        confirmation_template_id=boundary_response.confirmation_template_id,
+        confirmation_fields=boundary_response.confirmation_fields,
+        required_confirmation_roles=boundary_response.required_confirmation_roles,
+        required_confirmation_statements=boundary_response.required_confirmation_statements,
+        start_scope_contracts=boundary_response.start_scope_contracts,
+        excluded_scope_contracts=boundary_response.excluded_scope_contracts,
+        allowed_pilot_surfaces=boundary_response.allowed_pilot_surfaces,
+        deferred_pilot_surfaces=boundary_response.deferred_pilot_surfaces,
+        approval_readiness_summary=_mvp_pilot_approval_readiness_summary(
+            boundary_response=boundary_response,
+            approval_readiness_decision=approval_readiness_decision,
+        ),
+        approval_readiness_checks=_mvp_pilot_approval_readiness_checks(
+            approval_readiness_status=approval_readiness_status,
+        ),
+        approval_readiness_blockers=_mvp_pilot_approval_readiness_blockers(boundary_response),
+        evidence_chain_summary=_mvp_pilot_approval_readiness_evidence_chain_summary(boundary_response),
+        open_foundation_gap_count=boundary_response.open_foundation_gap_count,
+        ready_foundation_gap_count=boundary_response.ready_foundation_gap_count,
+        deferred_foundation_gap_count=boundary_response.deferred_foundation_gap_count,
+        open_foundation_gap_ids=boundary_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=boundary_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=boundary_response.deferred_foundation_gap_ids,
+        next_foundation_action=boundary_response.next_foundation_action,
+        required_roles=boundary_response.required_roles,
+        role_gates=boundary_response.role_gates,
+        module_gate_status=boundary_response.module_gate_status,
+        content_gate_status=boundary_response.content_gate_status,
+        backup_failover_gate_status=boundary_response.backup_failover_gate_status,
+        human_review_required=boundary_response.human_review_required,
+        human_confirmation_required=boundary_response.human_confirmation_required,
+        human_confirmation_captured=False,
+        decision_record_created=False,
+        approval_record_created=False,
+        pilot_start_authorized=False,
+        content_included=boundary_response.content_included,
+        persistent_task_created=boundary_response.persistent_task_created,
+        automation_created=boundary_response.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_approval_readiness.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "approval_readiness_status": approval_readiness_status,
+            "approval_readiness_decision": approval_readiness_decision,
+            "boundary_status": boundary_response.boundary_status,
+            "boundary_decision": boundary_response.boundary_decision,
+            "preflight_status": boundary_response.preflight_status,
+            "preflight_decision": boundary_response.preflight_decision,
+            "record_schema_status": boundary_response.record_schema_status,
+            "record_schema_decision": boundary_response.record_schema_decision,
+            "template_status": boundary_response.template_status,
+            "template_decision": boundary_response.template_decision,
+            "review_point_status": boundary_response.review_point_status,
+            "review_point_decision": boundary_response.review_point_decision,
+            "runbook_status": boundary_response.runbook_status,
+            "runbook_decision": boundary_response.runbook_decision,
+            "start_scope_status": boundary_response.start_scope_status,
+            "start_scope_decision": boundary_response.start_scope_decision,
+            "readiness_status": boundary_response.readiness_status,
+            "readiness_decision": boundary_response.readiness_decision,
+            "operational_status": boundary_response.operational_status,
+            "read_only_status": boundary_response.read_only_status,
+            "approval_workflow_boundary_evidence_hash": boundary_response.evidence_hash,
+            "preflight_evidence_hash": boundary_response.preflight_evidence_hash,
+            "decision_record_schema_evidence_hash": boundary_response.decision_record_schema_evidence_hash,
+            "template_evidence_hash": boundary_response.template_evidence_hash,
+            "review_point_evidence_hash": boundary_response.review_point_evidence_hash,
+            "runbook_evidence_hash": boundary_response.runbook_evidence_hash,
+            "start_scope_evidence_hash": boundary_response.start_scope_evidence_hash,
+            "readiness_report_evidence_hash": boundary_response.readiness_report_evidence_hash,
+            "pilot_status_evidence_hash": boundary_response.pilot_status_evidence_hash,
+            "pilot_gate_evidence_hash": boundary_response.pilot_gate_evidence_hash,
+            "release_review_evidence_hash": boundary_response.release_review_evidence_hash,
+            "handover_evidence_hash": boundary_response.handover_evidence_hash,
+            "snapshot_hash": boundary_response.snapshot_hash,
+            "release_candidate_smoke_hash": boundary_response.release_candidate_smoke_hash,
+            "approval_readiness_sections": MVP_PILOT_APPROVAL_READINESS_SECTIONS,
+            "readiness_packet_id": "mvp_pilot_approval_readiness_v1",
+            "readiness_inputs": readiness_inputs,
+            "readiness_required_controls": readiness_required_controls,
+            "readiness_prohibited_actions": readiness_prohibited_actions,
+            "workflow_boundary_id": boundary_response.workflow_boundary_id,
+            "workflow_inputs": boundary_response.workflow_inputs,
+            "workflow_prohibited_outputs": boundary_response.workflow_prohibited_outputs,
+            "workflow_required_controls": boundary_response.workflow_required_controls,
+            "decision_record_schema_id": boundary_response.decision_record_schema_id,
+            "decision_record_required_fields": boundary_response.decision_record_required_fields,
+            "immutable_evidence_fields": boundary_response.immutable_evidence_fields,
+            "audit_required_fields": boundary_response.audit_required_fields,
+            "confirmation_template_id": boundary_response.confirmation_template_id,
+            "confirmation_fields": boundary_response.confirmation_fields,
+            "start_scope_contracts": boundary_response.start_scope_contracts,
+            "excluded_scope_contracts": boundary_response.excluded_scope_contracts,
+            "allowed_pilot_surfaces": boundary_response.allowed_pilot_surfaces,
+            "deferred_pilot_surfaces": boundary_response.deferred_pilot_surfaces,
+            "open_foundation_gap_ids": boundary_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": boundary_response.open_foundation_gap_count,
+            "next_foundation_action": boundary_response.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_approval_readiness_hash(audited)})
+
+
+def build_mvp_pilot_approval_readiness_hash(
+    report: ProductCockpitMvpPilotApprovalReadinessResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_approval_readiness_inputs() -> tuple[str, ...]:
+    return (
+        "workflow_boundary_id",
+        "decision_record_schema_id",
+        "confirmation_template_id",
+        "approval_workflow_boundary_evidence_hash",
+        "preflight_evidence_hash",
+        "decision_record_schema_evidence_hash",
+        "template_evidence_hash",
+        "review_point_evidence_hash",
+        "runbook_evidence_hash",
+        "pilot_gate_evidence_hash",
+    )
+
+
+def _mvp_pilot_approval_readiness_required_controls() -> tuple[str, ...]:
+    return (
+        "explicit_human_confirmation",
+        "immutable_evidence_hashes",
+        "tenant_and_role_gates",
+        "audit_record_before_execution",
+        "separate_go_no_go_decision",
+        "separate_execution_boundary",
+    )
+
+
+def _mvp_pilot_approval_readiness_prohibited_actions() -> tuple[str, ...]:
+    return (
+        "approval_record_created",
+        "human_confirmation_captured",
+        "decision_record_created",
+        "pilot_start_authorized",
+        "content_preview_rendered",
+        "persistent_task_created",
+        "automation_created",
+    )
+
+
+def _mvp_pilot_approval_readiness_summary(
+    *,
+    boundary_response: ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse,
+    approval_readiness_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(boundary_response.open_foundation_gap_ids) or "none"
+    return (
+        f"approval readiness decision: {approval_readiness_decision}",
+        f"boundary decision: {boundary_response.boundary_decision}",
+        f"preflight decision: {boundary_response.preflight_decision}",
+        f"decision record schema: {boundary_response.decision_record_schema_id}",
+        f"open foundation gaps: {open_gaps}",
+        "approval readiness is read-only and requires a separate human go/no-go before approval or pilot execution",
+    )
+
+
+def _mvp_pilot_approval_readiness_checks(*, approval_readiness_status: str) -> tuple[str, ...]:
+    if approval_readiness_status == "metadata_only_pilot_approval_readiness_ready":
+        return (
+            "verify boundary evidence hash against preflight and decision artifacts",
+            "confirm human confirmation and decision record are still absent",
+            "require tenant-admin/security-admin human go-no-go outside this endpoint",
+            "keep approval persistence and pilot execution outside this readiness package",
+        )
+    return ("repair blocked approval readiness conditions before human go-no-go preparation",)
+
+
+def _mvp_pilot_approval_readiness_blockers(
+    boundary_response: ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse,
+) -> tuple[str, ...]:
+    return (
+        "approval record has not been created",
+        "human confirmation has not been captured",
+        "decision record has not been created",
+        "pilot start authorization is not granted by this readiness package",
+        f"open foundation gaps: {','.join(boundary_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_approval_readiness_evidence_chain_summary(
+    boundary_response: ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse,
+) -> tuple[str, ...]:
+    return (
+        f"approval boundary hash: {boundary_response.evidence_hash}",
+        f"preflight hash: {boundary_response.preflight_evidence_hash}",
+        f"decision schema hash: {boundary_response.decision_record_schema_evidence_hash}",
+        f"template hash: {boundary_response.template_evidence_hash}",
+        f"pilot gate hash: {boundary_response.pilot_gate_evidence_hash}",
     )
 
 

@@ -1355,7 +1355,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 174. [x] MVP-Pilot-Entscheidungsprotokoll vorbereiten: Human-Confirmation-Vorlage, Reviewpunkt und Evidence-Hashes in ein auditierbares Entscheidungsprotokoll-Schema ueberfuehren, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 175. [x] MVP-Pilot-Entscheidungs-Preflight sichtbar machen: Entscheidungsprotokoll-Schema, Human-Confirmation-Vorlage und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 176. [x] MVP-Pilot-Approval-Workflow abgrenzen: Preflight, Entscheidungsprotokoll-Schema und Human-Confirmation-Vorlage in eine klare Workflow-Grenze ueberfuehren, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
-177. [ ] MVP-Pilot-Approval-Readiness konsolidieren: Approval-Workflow-Grenze, Preflight und Entscheidungsartefakte als finale read-only Freigabevorbereitung zusammenziehen, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+177. [x] MVP-Pilot-Approval-Readiness konsolidieren: Approval-Workflow-Grenze, Preflight und Entscheidungsartefakte als finale read-only Freigabevorbereitung zusammenziehen, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+178. [ ] MVP-Pilot-Go-No-Go-Grenze vorbereiten: Approval-Readiness in eine explizite Human-Decision-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
