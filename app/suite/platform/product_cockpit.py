@@ -167,6 +167,15 @@ MVP_PILOT_RUNBOOK_SECTIONS = (
     "stop_conditions",
 )
 
+MVP_PILOT_REVIEW_POINT_SECTIONS = (
+    "review_scope",
+    "evidence_chain",
+    "operator_review",
+    "foundation_gaps",
+    "deferred_scope",
+    "review_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -999,6 +1008,88 @@ class ProductCockpitMvpPilotRunbookResponse(BaseModel):
     module_gate_status: str
     content_gate_status: str
     backup_failover_gate_status: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    evidence_hash: str
+
+
+class ProductCockpitMvpPilotReviewPointResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_review_point.v1"
+    result_contract: str = "metadata_only_mvp_pilot_review_point"
+    tenant_id: str
+    checked_by: str
+    review_point_route: str = "/v1/platform/cockpit/mvp-pilot-review-point"
+    runbook_route: str = "/v1/platform/cockpit/mvp-pilot-runbook"
+    start_scope_route: str = "/v1/platform/cockpit/mvp-pilot-start-scope"
+    readiness_report_route: str = "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    pilot_status_route: str = "/v1/platform/cockpit/mvp-pilot-status"
+    pilot_gate_route: str = "/v1/platform/cockpit/mvp-pilot-gate"
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    release_review_audit_event_id: str
+    pilot_gate_audit_event_id: str
+    pilot_status_audit_event_id: str
+    readiness_report_audit_event_id: str
+    start_scope_audit_event_id: str
+    runbook_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    runbook_evidence_hash: str
+    start_scope_evidence_hash: str
+    readiness_report_evidence_hash: str
+    pilot_status_evidence_hash: str
+    pilot_gate_evidence_hash: str
+    release_review_evidence_hash: str
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    readiness_status: str
+    readiness_decision: str
+    operational_status: str
+    read_only_status: str
+    pilot_gate_status: str
+    pilot_gate_decision: str
+    start_scope_status: str
+    start_scope_decision: str
+    runbook_status: str
+    runbook_decision: str
+    review_point_status: str
+    review_point_decision: str
+    review_point_sections: tuple[str, ...]
+    start_scope_contracts: tuple[str, ...]
+    excluded_scope_contracts: tuple[str, ...]
+    allowed_pilot_surfaces: tuple[str, ...]
+    deferred_pilot_surfaces: tuple[str, ...]
+    review_point_summary: tuple[str, ...]
+    reviewer_actions: tuple[str, ...]
+    review_blockers: tuple[str, ...]
+    evidence_chain_summary: tuple[str, ...]
+    open_foundation_gap_count: int = Field(ge=0)
+    ready_foundation_gap_count: int = Field(ge=0)
+    deferred_foundation_gap_count: int = Field(ge=0)
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    human_review_required: bool = True
+    pilot_start_authorized: bool = False
+    approval_record_created: bool = False
     content_included: bool = False
     persistent_task_created: bool = False
     automation_created: bool = False
@@ -2171,6 +2262,201 @@ def build_product_cockpit_mvp_pilot_runbook_response(
 
 def build_mvp_pilot_runbook_hash(report: ProductCockpitMvpPilotRunbookResponse) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_product_cockpit_mvp_pilot_review_point_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    runbook_response: ProductCockpitMvpPilotRunbookResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotReviewPointResponse:
+    review_point_status = (
+        "metadata_only_pilot_review_point_ready"
+        if runbook_response.runbook_status == "metadata_only_pilot_runbook_ready"
+        and runbook_response.start_scope_status == "metadata_only_pilot_start_scope_fixed"
+        and runbook_response.readiness_status == "ready_for_metadata_only_pilot_review"
+        and runbook_response.read_only_status == "read_only_no_state_change"
+        and runbook_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not runbook_response.content_included
+        and not runbook_response.persistent_task_created
+        and not runbook_response.automation_created
+        else "metadata_only_pilot_review_point_blocked"
+    )
+    review_point_decision = (
+        "pilot_start_review_required_with_tracked_gaps"
+        if review_point_status == "metadata_only_pilot_review_point_ready"
+        else "pilot_start_review_blocked"
+    )
+    draft = ProductCockpitMvpPilotReviewPointResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=runbook_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=runbook_response.snapshot_audit_event_id,
+        smoke_audit_event_id=runbook_response.smoke_audit_event_id,
+        handover_audit_event_id=runbook_response.handover_audit_event_id,
+        release_review_audit_event_id=runbook_response.release_review_audit_event_id,
+        pilot_gate_audit_event_id=runbook_response.pilot_gate_audit_event_id,
+        pilot_status_audit_event_id=runbook_response.pilot_status_audit_event_id,
+        readiness_report_audit_event_id=runbook_response.readiness_report_audit_event_id,
+        start_scope_audit_event_id=runbook_response.start_scope_audit_event_id,
+        runbook_audit_event_id=runbook_response.audit_event_id or "",
+        audit_refs=runbook_response.audit_refs,
+        runbook_evidence_hash=runbook_response.evidence_hash,
+        start_scope_evidence_hash=runbook_response.start_scope_evidence_hash,
+        readiness_report_evidence_hash=runbook_response.readiness_report_evidence_hash,
+        pilot_status_evidence_hash=runbook_response.pilot_status_evidence_hash,
+        pilot_gate_evidence_hash=runbook_response.pilot_gate_evidence_hash,
+        release_review_evidence_hash=runbook_response.release_review_evidence_hash,
+        handover_evidence_hash=runbook_response.handover_evidence_hash,
+        snapshot_hash=runbook_response.snapshot_hash,
+        release_candidate_smoke_hash=runbook_response.release_candidate_smoke_hash,
+        readiness_status=runbook_response.readiness_status,
+        readiness_decision=runbook_response.readiness_decision,
+        operational_status=runbook_response.operational_status,
+        read_only_status=runbook_response.read_only_status,
+        pilot_gate_status=runbook_response.pilot_gate_status,
+        pilot_gate_decision=runbook_response.pilot_gate_decision,
+        start_scope_status=runbook_response.start_scope_status,
+        start_scope_decision=runbook_response.start_scope_decision,
+        runbook_status=runbook_response.runbook_status,
+        runbook_decision=runbook_response.runbook_decision,
+        review_point_status=review_point_status,
+        review_point_decision=review_point_decision,
+        review_point_sections=MVP_PILOT_REVIEW_POINT_SECTIONS,
+        start_scope_contracts=runbook_response.start_scope_contracts,
+        excluded_scope_contracts=runbook_response.excluded_scope_contracts,
+        allowed_pilot_surfaces=runbook_response.allowed_pilot_surfaces,
+        deferred_pilot_surfaces=runbook_response.deferred_pilot_surfaces,
+        review_point_summary=_mvp_pilot_review_point_summary(
+            runbook_response=runbook_response,
+            review_point_decision=review_point_decision,
+        ),
+        reviewer_actions=_mvp_pilot_review_point_reviewer_actions(review_point_status=review_point_status),
+        review_blockers=_mvp_pilot_review_point_blockers(runbook_response),
+        evidence_chain_summary=_mvp_pilot_review_point_evidence_chain_summary(runbook_response),
+        open_foundation_gap_count=runbook_response.open_foundation_gap_count,
+        ready_foundation_gap_count=runbook_response.ready_foundation_gap_count,
+        deferred_foundation_gap_count=runbook_response.deferred_foundation_gap_count,
+        open_foundation_gap_ids=runbook_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=runbook_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=runbook_response.deferred_foundation_gap_ids,
+        next_foundation_action=runbook_response.next_foundation_action,
+        required_roles=runbook_response.required_roles,
+        role_gates=runbook_response.role_gates,
+        module_gate_status=runbook_response.module_gate_status,
+        content_gate_status=runbook_response.content_gate_status,
+        backup_failover_gate_status=runbook_response.backup_failover_gate_status,
+        human_review_required=True,
+        pilot_start_authorized=False,
+        approval_record_created=False,
+        content_included=runbook_response.content_included,
+        persistent_task_created=runbook_response.persistent_task_created,
+        automation_created=runbook_response.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_review_point.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "review_point_status": review_point_status,
+            "review_point_decision": review_point_decision,
+            "runbook_status": runbook_response.runbook_status,
+            "runbook_decision": runbook_response.runbook_decision,
+            "start_scope_status": runbook_response.start_scope_status,
+            "start_scope_decision": runbook_response.start_scope_decision,
+            "readiness_status": runbook_response.readiness_status,
+            "readiness_decision": runbook_response.readiness_decision,
+            "operational_status": runbook_response.operational_status,
+            "read_only_status": runbook_response.read_only_status,
+            "runbook_evidence_hash": runbook_response.evidence_hash,
+            "start_scope_evidence_hash": runbook_response.start_scope_evidence_hash,
+            "readiness_report_evidence_hash": runbook_response.readiness_report_evidence_hash,
+            "pilot_status_evidence_hash": runbook_response.pilot_status_evidence_hash,
+            "pilot_gate_evidence_hash": runbook_response.pilot_gate_evidence_hash,
+            "release_review_evidence_hash": runbook_response.release_review_evidence_hash,
+            "handover_evidence_hash": runbook_response.handover_evidence_hash,
+            "snapshot_hash": runbook_response.snapshot_hash,
+            "release_candidate_smoke_hash": runbook_response.release_candidate_smoke_hash,
+            "review_point_sections": MVP_PILOT_REVIEW_POINT_SECTIONS,
+            "start_scope_contracts": runbook_response.start_scope_contracts,
+            "excluded_scope_contracts": runbook_response.excluded_scope_contracts,
+            "allowed_pilot_surfaces": runbook_response.allowed_pilot_surfaces,
+            "deferred_pilot_surfaces": runbook_response.deferred_pilot_surfaces,
+            "open_foundation_gap_ids": runbook_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": runbook_response.open_foundation_gap_count,
+            "next_foundation_action": runbook_response.next_foundation_action,
+            "human_review_required": True,
+            "pilot_start_authorized": False,
+            "approval_record_created": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_review_point_hash(audited)})
+
+
+def build_mvp_pilot_review_point_hash(report: ProductCockpitMvpPilotReviewPointResponse) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_review_point_summary(
+    *,
+    runbook_response: ProductCockpitMvpPilotRunbookResponse,
+    review_point_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(runbook_response.open_foundation_gap_ids) or "none"
+    return (
+        f"review point decision: {review_point_decision}",
+        f"runbook status: {runbook_response.runbook_status}",
+        f"start scope decision: {runbook_response.start_scope_decision}",
+        f"open foundation gaps: {open_gaps}",
+        "review point is metadata-only and does not approve pilot start",
+    )
+
+
+def _mvp_pilot_review_point_reviewer_actions(*, review_point_status: str) -> tuple[str, ...]:
+    if review_point_status == "metadata_only_pilot_review_point_ready":
+        return (
+            "verify runbook evidence_hash against start_scope and readiness evidence",
+            "review open foundation gaps before pilot start confirmation",
+            "confirm deferred scope remains outside pilot operation",
+            "record explicit human approval outside this metadata-only endpoint before pilot start",
+        )
+    return ("repair blocked review point conditions before pilot start review",)
+
+
+def _mvp_pilot_review_point_blockers(
+    runbook_response: ProductCockpitMvpPilotRunbookResponse,
+) -> tuple[str, ...]:
+    return (
+        "pilot start authorization is not granted by this endpoint",
+        f"open foundation gaps: {','.join(runbook_response.open_foundation_gap_ids)}",
+        f"deferred pilot surfaces: {','.join(runbook_response.deferred_pilot_surfaces)}",
+        f"content gate: {runbook_response.content_gate_status}",
+        f"module gate: {runbook_response.module_gate_status}",
+    )
+
+
+def _mvp_pilot_review_point_evidence_chain_summary(
+    runbook_response: ProductCockpitMvpPilotRunbookResponse,
+) -> tuple[str, ...]:
+    return (
+        f"runbook hash: {runbook_response.evidence_hash}",
+        f"start scope hash: {runbook_response.start_scope_evidence_hash}",
+        f"readiness report hash: {runbook_response.readiness_report_evidence_hash}",
+        f"pilot gate hash: {runbook_response.pilot_gate_evidence_hash}",
+        f"snapshot hash: {runbook_response.snapshot_hash}",
+    )
 
 
 def _mvp_pilot_runbook_steps(
