@@ -1359,7 +1359,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 178. [x] MVP-Pilot-Go-No-Go-Grenze vorbereiten: Approval-Readiness in eine explizite Human-Decision-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 179. [x] MVP-Pilot-Go-No-Go-Entscheidungsprotokoll vorbereiten: Go/No-Go-Grenze, Approval-Readiness und Evidence-Hashes in ein auditierbares Human-Decision-Record-Schema ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 180. [x] MVP-Pilot-Decision-Capture-Grenze vorbereiten: Go/No-Go-Entscheidungsprotokoll-Schema in eine explizite Human-Decision-Capture-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
-181. [ ] MVP-Pilot-Decision-Capture-Preflight sichtbar machen: Decision-Capture-Grenze, Go/No-Go-Entscheidungsprotokoll-Schema und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+181. [x] MVP-Pilot-Decision-Capture-Preflight sichtbar machen: Decision-Capture-Grenze, Go/No-Go-Entscheidungsprotokoll-Schema und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+182. [ ] MVP-Pilot-Decision-Capture-Submit-Skeleton vorbereiten: Decision-Capture-Preflight in einen expliziten Human-Submit-Vertrag ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

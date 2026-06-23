@@ -5103,6 +5103,219 @@ def test_platform_cockpit_mvp_pilot_decision_capture_boundary_defines_capture_wi
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_pilot_decision_capture_preflight_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-decision-capture-preflight")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_decision_capture_preflight_summarizes_capture_boundary() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit/mvp-pilot-decision-capture-preflight",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_pilot_decision_capture_preflight.v1"
+    assert body["result_contract"] == "metadata_only_mvp_pilot_decision_capture_preflight"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["decision_capture_preflight_route"] == ("/v1/platform/cockpit/mvp-pilot-decision-capture-preflight")
+    assert body["decision_capture_boundary_route"] == "/v1/platform/cockpit/mvp-pilot-decision-capture-boundary"
+    assert body["go_no_go_decision_record_schema_route"] == (
+        "/v1/platform/cockpit/mvp-pilot-go-no-go-decision-record-schema"
+    )
+    assert body["decision_capture_boundary_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"][-2:] == [
+        f"audit:{body['decision_capture_boundary_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["decision_capture_boundary_evidence_hash"].startswith("sha256:")
+    assert body["go_no_go_decision_record_schema_evidence_hash"].startswith("sha256:")
+    assert body["go_no_go_boundary_evidence_hash"].startswith("sha256:")
+    assert body["approval_readiness_evidence_hash"].startswith("sha256:")
+    assert body["preflight_evidence_hash"].startswith("sha256:")
+    assert body["pilot_gate_evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["decision_capture_boundary_evidence_hash"]
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["decision_capture_boundary_status"] == "metadata_only_pilot_decision_capture_boundary_ready"
+    assert body["decision_capture_boundary_decision"] == "decision_capture_boundary_ready_without_decision_storage"
+    assert body["go_no_go_record_schema_status"] == "metadata_only_pilot_go_no_go_decision_record_schema_ready"
+    assert body["go_no_go_record_schema_decision"] == ("human_decision_record_schema_ready_without_decision_capture")
+    assert body["decision_capture_preflight_status"] == "metadata_only_pilot_decision_capture_preflight_ready"
+    assert body["decision_capture_preflight_decision"] == "decision_capture_preflight_ready_without_state_change"
+    assert body["decision_capture_preflight_sections"] == [
+        "capture_boundary",
+        "record_schema",
+        "evidence_chain",
+        "human_decision_precheck",
+        "non_persistence",
+        "preflight_outcome",
+    ]
+    assert body["decision_capture_preflight_id"] == "mvp_pilot_decision_capture_preflight_v1"
+    assert body["decision_capture_preflight_inputs"] == [
+        "decision_capture_boundary_id",
+        "go_no_go_decision_record_schema_id",
+        "go_no_go_boundary_id",
+        "decision_capture_boundary_evidence_hash",
+        "go_no_go_decision_record_schema_evidence_hash",
+        "go_no_go_boundary_evidence_hash",
+        "approval_readiness_evidence_hash",
+        "preflight_evidence_hash",
+        "open_foundation_gap_ids",
+        "decision_capture_prohibited_actions",
+    ]
+    assert body["decision_capture_preflight_required_checks"] == [
+        "decision_capture_boundary_ready",
+        "go_no_go_record_schema_ready",
+        "go_no_go_boundary_ready",
+        "evidence_hash_chain_present",
+        "no_decision_storage",
+        "no_approval_persistence",
+        "no_pilot_start_authorization",
+    ]
+    assert body["decision_capture_preflight_prohibited_actions"] == [
+        "decision_submission",
+        "decision_storage",
+        "approval_record_persistence",
+        "pilot_start_execution",
+        "content_preview_rendering",
+        "persistent_task_creation",
+        "automation_creation",
+    ]
+    assert body["decision_capture_boundary_id"] == "mvp_pilot_decision_capture_boundary_v1"
+    assert body["go_no_go_decision_record_schema_id"] == "mvp_pilot_go_no_go_decision_record_v1"
+    assert body["go_no_go_boundary_id"] == "mvp_pilot_go_no_go_boundary_v1"
+    assert body["decision_capture_preflight_summary"] == [
+        "decision capture preflight decision: decision_capture_preflight_ready_without_state_change",
+        "decision capture boundary decision: decision_capture_boundary_ready_without_decision_storage",
+        "go/no-go record schema decision: human_decision_record_schema_ready_without_decision_capture",
+        f"evidence chain boundary hash: {body['decision_capture_boundary_evidence_hash']}",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "decision capture preflight is read-only and performs no submit, storage, approval or pilot start",
+    ]
+    assert body["decision_capture_preflight_checks"] == [
+        "compare decision capture boundary hash before presenting submit controls",
+        "verify go/no-go record schema remains metadata-only",
+        "require explicit human confirmation in a separate persistence boundary",
+        "keep pilot start disabled until stored approval is validated",
+    ]
+    assert body["decision_capture_preflight_blockers"] == [
+        "decision capture submit has not been enabled",
+        "decision capture boundary is read-only",
+        "go/no-go decision has not been captured",
+        "approval record has not been created",
+        "pilot start authorization is not granted by this preflight",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"] == [
+        f"decision capture boundary hash: {body['decision_capture_boundary_evidence_hash']}",
+        f"go/no-go record schema hash: {body['go_no_go_decision_record_schema_evidence_hash']}",
+        f"go/no-go boundary hash: {body['go_no_go_boundary_evidence_hash']}",
+        f"approval readiness hash: {body['approval_readiness_evidence_hash']}",
+        f"preflight hash: {body['preflight_evidence_hash']}",
+        f"pilot gate hash: {body['pilot_gate_evidence_hash']}",
+    ]
+    assert body["open_foundation_gap_count"] == 4
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["human_review_required"] is True
+    assert body["human_confirmation_required"] is True
+    assert body["human_confirmation_captured"] is False
+    assert body["decision_capture_enabled"] is False
+    assert body["go_no_go_decision_stored"] is False
+    assert body["go_no_go_decision_captured"] is False
+    assert body["go_no_go_decision_record_created"] is False
+    assert body["decision_record_created"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-20:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+        "platform.mvp_pilot_status.read",
+        "platform.mvp_pilot_readiness_report.export",
+        "platform.mvp_pilot_start_scope.export",
+        "platform.mvp_pilot_runbook.export",
+        "platform.mvp_pilot_review_point.export",
+        "platform.mvp_pilot_start_decision_template.export",
+        "platform.mvp_pilot_decision_record_schema.export",
+        "platform.mvp_pilot_decision_preflight.export",
+        "platform.mvp_pilot_approval_workflow_boundary.export",
+        "platform.mvp_pilot_approval_readiness.export",
+        "platform.mvp_pilot_go_no_go_boundary.export",
+        "platform.mvp_pilot_go_no_go_decision_record_schema.export",
+        "platform.mvp_pilot_decision_capture_boundary.export",
+        "platform.mvp_pilot_decision_capture_preflight.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_pilot_decision_capture_preflight"
+    assert new_events[-1].metadata["decision_capture_preflight_status"] == body["decision_capture_preflight_status"]
+    assert new_events[-1].metadata["decision_capture_preflight_decision"] == body["decision_capture_preflight_decision"]
+    assert new_events[-1].metadata["decision_capture_boundary_status"] == body["decision_capture_boundary_status"]
+    assert new_events[-1].metadata["decision_capture_boundary_decision"] == body["decision_capture_boundary_decision"]
+    assert (
+        new_events[-1].metadata["decision_capture_boundary_evidence_hash"]
+        == (body["decision_capture_boundary_evidence_hash"])
+    )
+    assert (
+        new_events[-1].metadata["go_no_go_decision_record_schema_evidence_hash"]
+        == (body["go_no_go_decision_record_schema_evidence_hash"])
+    )
+    assert new_events[-1].metadata["decision_capture_preflight_sections"] == tuple(
+        body["decision_capture_preflight_sections"]
+    )
+    assert new_events[-1].metadata["decision_capture_preflight_id"] == "mvp_pilot_decision_capture_preflight_v1"
+    assert new_events[-1].metadata["decision_capture_preflight_inputs"] == tuple(
+        body["decision_capture_preflight_inputs"]
+    )
+    assert new_events[-1].metadata["decision_capture_preflight_required_checks"] == tuple(
+        body["decision_capture_preflight_required_checks"]
+    )
+    assert new_events[-1].metadata["decision_capture_preflight_prohibited_actions"] == tuple(
+        body["decision_capture_preflight_prohibited_actions"]
+    )
+    assert new_events[-1].metadata["open_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["human_confirmation_captured"] is False
+    assert new_events[-1].metadata["decision_capture_enabled"] is False
+    assert new_events[-1].metadata["go_no_go_decision_stored"] is False
+    assert new_events[-1].metadata["go_no_go_decision_captured"] is False
+    assert new_events[-1].metadata["go_no_go_decision_record_created"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger

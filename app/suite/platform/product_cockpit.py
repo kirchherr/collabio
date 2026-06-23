@@ -248,6 +248,15 @@ MVP_PILOT_DECISION_CAPTURE_BOUNDARY_SECTIONS = (
     "boundary_outcome",
 )
 
+MVP_PILOT_DECISION_CAPTURE_PREFLIGHT_SECTIONS = (
+    "capture_boundary",
+    "record_schema",
+    "evidence_chain",
+    "human_decision_precheck",
+    "non_persistence",
+    "preflight_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -2157,6 +2166,26 @@ class ProductCockpitMvpPilotDecisionCaptureBoundaryResponse(BaseModel):
     persistent_task_created: bool = False
     automation_created: bool = False
     evidence_hash: str
+
+
+class ProductCockpitMvpPilotDecisionCapturePreflightResponse(ProductCockpitMvpPilotDecisionCaptureBoundaryResponse):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_decision_capture_preflight.v1"
+    result_contract: str = "metadata_only_mvp_pilot_decision_capture_preflight"
+    decision_capture_preflight_route: str = "/v1/platform/cockpit/mvp-pilot-decision-capture-preflight"
+    decision_capture_boundary_audit_event_id: str
+    decision_capture_boundary_evidence_hash: str
+    decision_capture_preflight_status: str
+    decision_capture_preflight_decision: str
+    decision_capture_preflight_sections: tuple[str, ...]
+    decision_capture_preflight_id: str
+    decision_capture_preflight_inputs: tuple[str, ...]
+    decision_capture_preflight_required_checks: tuple[str, ...]
+    decision_capture_preflight_prohibited_actions: tuple[str, ...]
+    decision_capture_preflight_summary: tuple[str, ...]
+    decision_capture_preflight_checks: tuple[str, ...]
+    decision_capture_preflight_blockers: tuple[str, ...]
 
 
 class ProductCockpitMvpSnapshotResponse(BaseModel):
@@ -5746,6 +5775,261 @@ def _mvp_pilot_decision_capture_boundary_evidence_chain_summary(
         f"approval readiness hash: {go_no_go_record_schema_response.approval_readiness_evidence_hash}",
         f"preflight hash: {go_no_go_record_schema_response.preflight_evidence_hash}",
         f"pilot gate hash: {go_no_go_record_schema_response.pilot_gate_evidence_hash}",
+    )
+
+
+def build_product_cockpit_mvp_pilot_decision_capture_preflight_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    decision_capture_boundary_response: ProductCockpitMvpPilotDecisionCaptureBoundaryResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotDecisionCapturePreflightResponse:
+    required_hashes = (
+        decision_capture_boundary_response.evidence_hash,
+        decision_capture_boundary_response.go_no_go_decision_record_schema_evidence_hash,
+        decision_capture_boundary_response.go_no_go_boundary_evidence_hash,
+        decision_capture_boundary_response.approval_readiness_evidence_hash,
+        decision_capture_boundary_response.preflight_evidence_hash,
+        decision_capture_boundary_response.pilot_gate_evidence_hash,
+    )
+    decision_capture_preflight_status = (
+        "metadata_only_pilot_decision_capture_preflight_ready"
+        if decision_capture_boundary_response.decision_capture_boundary_status
+        == "metadata_only_pilot_decision_capture_boundary_ready"
+        and decision_capture_boundary_response.decision_capture_boundary_decision
+        == "decision_capture_boundary_ready_without_decision_storage"
+        and decision_capture_boundary_response.go_no_go_record_schema_status
+        == "metadata_only_pilot_go_no_go_decision_record_schema_ready"
+        and decision_capture_boundary_response.go_no_go_record_schema_decision
+        == "human_decision_record_schema_ready_without_decision_capture"
+        and all(evidence_hash.startswith("sha256:") for evidence_hash in required_hashes)
+        and decision_capture_boundary_response.read_only_status == "read_only_no_state_change"
+        and decision_capture_boundary_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not decision_capture_boundary_response.decision_capture_enabled
+        and not decision_capture_boundary_response.go_no_go_decision_stored
+        and not decision_capture_boundary_response.go_no_go_decision_captured
+        and not decision_capture_boundary_response.go_no_go_decision_record_created
+        and not decision_capture_boundary_response.human_confirmation_captured
+        and not decision_capture_boundary_response.approval_record_created
+        and not decision_capture_boundary_response.pilot_start_authorized
+        and not decision_capture_boundary_response.content_included
+        and not decision_capture_boundary_response.persistent_task_created
+        and not decision_capture_boundary_response.automation_created
+        else "metadata_only_pilot_decision_capture_preflight_blocked"
+    )
+    decision_capture_preflight_decision = (
+        "decision_capture_preflight_ready_without_state_change"
+        if decision_capture_preflight_status == "metadata_only_pilot_decision_capture_preflight_ready"
+        else "decision_capture_preflight_blocked"
+    )
+    preflight_inputs = _mvp_pilot_decision_capture_preflight_inputs()
+    preflight_required_checks = _mvp_pilot_decision_capture_preflight_required_checks()
+    preflight_prohibited_actions = _mvp_pilot_decision_capture_preflight_prohibited_actions()
+    draft_payload = decision_capture_boundary_response.model_dump()
+    draft_payload.update(
+        {
+            "schema_version": "product_cockpit_mvp_pilot_decision_capture_preflight.v1",
+            "result_contract": "metadata_only_mvp_pilot_decision_capture_preflight",
+            "checked_by": user_context.user_id,
+            "decision_capture_boundary_audit_event_id": decision_capture_boundary_response.audit_event_id or "",
+            "decision_capture_boundary_evidence_hash": decision_capture_boundary_response.evidence_hash,
+            "audit_event_id": None,
+            "audit_refs": decision_capture_boundary_response.audit_refs,
+            "decision_capture_preflight_status": decision_capture_preflight_status,
+            "decision_capture_preflight_decision": decision_capture_preflight_decision,
+            "decision_capture_preflight_sections": MVP_PILOT_DECISION_CAPTURE_PREFLIGHT_SECTIONS,
+            "decision_capture_preflight_id": "mvp_pilot_decision_capture_preflight_v1",
+            "decision_capture_preflight_inputs": preflight_inputs,
+            "decision_capture_preflight_required_checks": preflight_required_checks,
+            "decision_capture_preflight_prohibited_actions": preflight_prohibited_actions,
+            "decision_capture_preflight_summary": _mvp_pilot_decision_capture_preflight_summary(
+                decision_capture_boundary_response=decision_capture_boundary_response,
+                decision_capture_preflight_decision=decision_capture_preflight_decision,
+            ),
+            "decision_capture_preflight_checks": _mvp_pilot_decision_capture_preflight_checks(
+                decision_capture_preflight_status=decision_capture_preflight_status,
+            ),
+            "decision_capture_preflight_blockers": _mvp_pilot_decision_capture_preflight_blockers(
+                decision_capture_boundary_response,
+            ),
+            "evidence_chain_summary": _mvp_pilot_decision_capture_preflight_evidence_chain_summary(
+                decision_capture_boundary_response,
+            ),
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "evidence_hash": "sha256:" + "0" * 64,
+        }
+    )
+    draft = ProductCockpitMvpPilotDecisionCapturePreflightResponse.model_validate(draft_payload)
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_decision_capture_preflight.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "decision_capture_preflight_status": decision_capture_preflight_status,
+            "decision_capture_preflight_decision": decision_capture_preflight_decision,
+            "decision_capture_boundary_status": decision_capture_boundary_response.decision_capture_boundary_status,
+            "decision_capture_boundary_decision": decision_capture_boundary_response.decision_capture_boundary_decision,
+            "go_no_go_record_schema_status": decision_capture_boundary_response.go_no_go_record_schema_status,
+            "go_no_go_record_schema_decision": decision_capture_boundary_response.go_no_go_record_schema_decision,
+            "go_no_go_boundary_status": decision_capture_boundary_response.go_no_go_boundary_status,
+            "go_no_go_boundary_decision": decision_capture_boundary_response.go_no_go_boundary_decision,
+            "read_only_status": decision_capture_boundary_response.read_only_status,
+            "decision_capture_boundary_evidence_hash": decision_capture_boundary_response.evidence_hash,
+            "go_no_go_decision_record_schema_evidence_hash": (
+                decision_capture_boundary_response.go_no_go_decision_record_schema_evidence_hash
+            ),
+            "go_no_go_boundary_evidence_hash": decision_capture_boundary_response.go_no_go_boundary_evidence_hash,
+            "approval_readiness_evidence_hash": decision_capture_boundary_response.approval_readiness_evidence_hash,
+            "preflight_evidence_hash": decision_capture_boundary_response.preflight_evidence_hash,
+            "pilot_gate_evidence_hash": decision_capture_boundary_response.pilot_gate_evidence_hash,
+            "decision_capture_preflight_sections": MVP_PILOT_DECISION_CAPTURE_PREFLIGHT_SECTIONS,
+            "decision_capture_preflight_id": "mvp_pilot_decision_capture_preflight_v1",
+            "decision_capture_preflight_inputs": preflight_inputs,
+            "decision_capture_preflight_required_checks": preflight_required_checks,
+            "decision_capture_preflight_prohibited_actions": preflight_prohibited_actions,
+            "decision_capture_boundary_id": decision_capture_boundary_response.decision_capture_boundary_id,
+            "go_no_go_decision_record_schema_id": (
+                decision_capture_boundary_response.go_no_go_decision_record_schema_id
+            ),
+            "go_no_go_boundary_id": decision_capture_boundary_response.go_no_go_boundary_id,
+            "readiness_packet_id": decision_capture_boundary_response.readiness_packet_id,
+            "workflow_boundary_id": decision_capture_boundary_response.workflow_boundary_id,
+            "confirmation_template_id": decision_capture_boundary_response.confirmation_template_id,
+            "open_foundation_gap_ids": decision_capture_boundary_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": decision_capture_boundary_response.open_foundation_gap_count,
+            "next_foundation_action": decision_capture_boundary_response.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_decision_capture_preflight_hash(audited)})
+
+
+def build_mvp_pilot_decision_capture_preflight_hash(
+    report: ProductCockpitMvpPilotDecisionCapturePreflightResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_decision_capture_preflight_inputs() -> tuple[str, ...]:
+    return (
+        "decision_capture_boundary_id",
+        "go_no_go_decision_record_schema_id",
+        "go_no_go_boundary_id",
+        "decision_capture_boundary_evidence_hash",
+        "go_no_go_decision_record_schema_evidence_hash",
+        "go_no_go_boundary_evidence_hash",
+        "approval_readiness_evidence_hash",
+        "preflight_evidence_hash",
+        "open_foundation_gap_ids",
+        "decision_capture_prohibited_actions",
+    )
+
+
+def _mvp_pilot_decision_capture_preflight_required_checks() -> tuple[str, ...]:
+    return (
+        "decision_capture_boundary_ready",
+        "go_no_go_record_schema_ready",
+        "go_no_go_boundary_ready",
+        "evidence_hash_chain_present",
+        "no_decision_storage",
+        "no_approval_persistence",
+        "no_pilot_start_authorization",
+    )
+
+
+def _mvp_pilot_decision_capture_preflight_prohibited_actions() -> tuple[str, ...]:
+    return (
+        "decision_submission",
+        "decision_storage",
+        "approval_record_persistence",
+        "pilot_start_execution",
+        "content_preview_rendering",
+        "persistent_task_creation",
+        "automation_creation",
+    )
+
+
+def _mvp_pilot_decision_capture_preflight_summary(
+    *,
+    decision_capture_boundary_response: ProductCockpitMvpPilotDecisionCaptureBoundaryResponse,
+    decision_capture_preflight_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(decision_capture_boundary_response.open_foundation_gap_ids) or "none"
+    return (
+        f"decision capture preflight decision: {decision_capture_preflight_decision}",
+        f"decision capture boundary decision: {decision_capture_boundary_response.decision_capture_boundary_decision}",
+        f"go/no-go record schema decision: {decision_capture_boundary_response.go_no_go_record_schema_decision}",
+        f"evidence chain boundary hash: {decision_capture_boundary_response.evidence_hash}",
+        f"open foundation gaps: {open_gaps}",
+        "decision capture preflight is read-only and performs no submit, storage, approval or pilot start",
+    )
+
+
+def _mvp_pilot_decision_capture_preflight_checks(*, decision_capture_preflight_status: str) -> tuple[str, ...]:
+    if decision_capture_preflight_status == "metadata_only_pilot_decision_capture_preflight_ready":
+        return (
+            "compare decision capture boundary hash before presenting submit controls",
+            "verify go/no-go record schema remains metadata-only",
+            "require explicit human confirmation in a separate persistence boundary",
+            "keep pilot start disabled until stored approval is validated",
+        )
+    return ("repair blocked decision capture preflight conditions before decision capture wiring",)
+
+
+def _mvp_pilot_decision_capture_preflight_blockers(
+    decision_capture_boundary_response: ProductCockpitMvpPilotDecisionCaptureBoundaryResponse,
+) -> tuple[str, ...]:
+    return (
+        "decision capture submit has not been enabled",
+        "decision capture boundary is read-only",
+        "go/no-go decision has not been captured",
+        "approval record has not been created",
+        "pilot start authorization is not granted by this preflight",
+        f"open foundation gaps: {','.join(decision_capture_boundary_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_decision_capture_preflight_evidence_chain_summary(
+    decision_capture_boundary_response: ProductCockpitMvpPilotDecisionCaptureBoundaryResponse,
+) -> tuple[str, ...]:
+    record_schema_hash = decision_capture_boundary_response.go_no_go_decision_record_schema_evidence_hash
+    return (
+        f"decision capture boundary hash: {decision_capture_boundary_response.evidence_hash}",
+        f"go/no-go record schema hash: {record_schema_hash}",
+        f"go/no-go boundary hash: {decision_capture_boundary_response.go_no_go_boundary_evidence_hash}",
+        f"approval readiness hash: {decision_capture_boundary_response.approval_readiness_evidence_hash}",
+        f"preflight hash: {decision_capture_boundary_response.preflight_evidence_hash}",
+        f"pilot gate hash: {decision_capture_boundary_response.pilot_gate_evidence_hash}",
     )
 
 
