@@ -1344,7 +1344,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 163. [x] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
 164. [x] MVP-Produktivpfad als Release-Kandidat pruefen: Demo-Tenant, Rollenmatrix, Audit-Events, Snapshot-Export und Backup-/Failover-Schutzsignale als zusammenhaengenden Smoke-Run dokumentieren, ohne neue Module oder Content-Preview-Funktionalitaet vorzuziehen.
 165. [x] MVP-Release-Handover schaerfen: Release-Candidate-Smoke, Snapshot-Hash und offene Foundation-Gaps in eine knappe Betreiber-/Reviewer-Uebergabe zusammenfassen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
-166. [ ] MVP-Release-Review abschliessen: Handover-Evidence, offene Gaps und Betreiber-Checkliste gegen Security-/Compliance-Guardrails reviewbar machen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+166. [x] MVP-Release-Review abschliessen: Handover-Evidence, offene Gaps und Betreiber-Checkliste gegen Security-/Compliance-Guardrails reviewbar machen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+167. [ ] MVP-Pilot-Freigabe vorbereiten: Release-Review, Handover und Smoke-Evidence in ein minimales Pilot-Gate ueberfuehren, ohne neue Produktfunktionen, Content-Preview oder Automationen vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 

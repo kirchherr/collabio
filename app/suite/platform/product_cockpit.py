@@ -63,6 +63,39 @@ CONTENT_RELEASE_GATE_DEFERRED_DEPENDENCIES = (
     "full_content_preview_rendering",
 )
 
+MVP_RELEASE_REVIEW_GUARDRAIL_CHECKS = (
+    "tenant_context_required",
+    "metadata_only_contract",
+    "no_content_included",
+    "no_persistent_tasks_created",
+    "no_automation_created",
+    "audit_chain_present",
+    "role_gates_visible",
+    "backup_failover_guardrail_metadata_only",
+    "content_release_gate_deferred",
+    "open_foundation_gaps_visible",
+    "operator_handover_summary_present",
+    "reviewer_checklist_present",
+)
+
+MVP_RELEASE_REVIEW_SECURITY_GUARDRAILS = (
+    "tenant_context_required",
+    "metadata_only_contract",
+    "no_content_included",
+    "audit_chain_present",
+    "role_gates_visible",
+    "content_release_gate_deferred",
+)
+
+MVP_RELEASE_REVIEW_COMPLIANCE_GUARDRAILS = (
+    "no_persistent_tasks_created",
+    "no_automation_created",
+    "backup_failover_guardrail_metadata_only",
+    "open_foundation_gaps_visible",
+    "operator_handover_summary_present",
+    "reviewer_checklist_present",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -533,6 +566,56 @@ class ProductCockpitMvpReleaseHandoverResponse(BaseModel):
     evidence_hash: str
 
 
+class ProductCockpitMvpReleaseReviewResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_release_review.v1"
+    result_contract: str = "metadata_only_mvp_release_review"
+    tenant_id: str
+    checked_by: str
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    release_candidate_smoke_passed: bool
+    mvp_readiness_decision: str
+    metadata_only_productive_path: bool
+    handover_status: str
+    review_status: str
+    security_guardrail_status: str
+    compliance_guardrail_status: str
+    guardrail_checks: tuple[str, ...]
+    passed_guardrail_checks: tuple[str, ...]
+    blocked_guardrail_checks: tuple[str, ...]
+    operator_handover_summary: tuple[str, ...]
+    reviewer_checklist: tuple[str, ...]
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    reviewer_actions: tuple[str, ...]
+    evidence_hash: str
+
+
 class ProductCockpitMvpSnapshotResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -995,6 +1078,151 @@ def build_product_cockpit_mvp_release_handover_response(
 
 def build_mvp_release_handover_hash(report: ProductCockpitMvpReleaseHandoverResponse) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_product_cockpit_mvp_release_review_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    handover_response: ProductCockpitMvpReleaseHandoverResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpReleaseReviewResponse:
+    passed_guardrails = _mvp_release_review_passed_guardrails(handover_response)
+    blocked_guardrails = tuple(
+        guardrail for guardrail in MVP_RELEASE_REVIEW_GUARDRAIL_CHECKS if guardrail not in passed_guardrails
+    )
+    security_guardrail_status = (
+        "passed"
+        if all(guardrail in passed_guardrails for guardrail in MVP_RELEASE_REVIEW_SECURITY_GUARDRAILS)
+        else "blocked"
+    )
+    compliance_guardrail_status = (
+        "passed"
+        if all(guardrail in passed_guardrails for guardrail in MVP_RELEASE_REVIEW_COMPLIANCE_GUARDRAILS)
+        else "blocked"
+    )
+    review_status = (
+        "ready_for_release_review"
+        if handover_response.handover_status == "ready_for_operator_reviewer_handover"
+        and security_guardrail_status == "passed"
+        and compliance_guardrail_status == "passed"
+        and not blocked_guardrails
+        else "release_review_blocked"
+    )
+    reviewer_actions = _mvp_release_review_reviewer_actions(review_status=review_status)
+    draft = ProductCockpitMvpReleaseReviewResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=handover_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=handover_response.snapshot_audit_event_id,
+        smoke_audit_event_id=handover_response.smoke_audit_event_id,
+        handover_audit_event_id=handover_response.audit_event_id or "",
+        audit_refs=handover_response.audit_refs,
+        handover_evidence_hash=handover_response.evidence_hash,
+        snapshot_hash=handover_response.snapshot_hash,
+        release_candidate_smoke_hash=handover_response.release_candidate_smoke_hash,
+        release_candidate_smoke_passed=handover_response.release_candidate_smoke_passed,
+        mvp_readiness_decision=handover_response.mvp_readiness_decision,
+        metadata_only_productive_path=handover_response.metadata_only_productive_path,
+        handover_status=handover_response.handover_status,
+        review_status=review_status,
+        security_guardrail_status=security_guardrail_status,
+        compliance_guardrail_status=compliance_guardrail_status,
+        guardrail_checks=MVP_RELEASE_REVIEW_GUARDRAIL_CHECKS,
+        passed_guardrail_checks=passed_guardrails,
+        blocked_guardrail_checks=blocked_guardrails,
+        operator_handover_summary=handover_response.operator_handover_summary,
+        reviewer_checklist=handover_response.reviewer_checklist,
+        open_foundation_gap_ids=handover_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=handover_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=handover_response.deferred_foundation_gap_ids,
+        next_foundation_action=handover_response.next_foundation_action,
+        required_roles=handover_response.required_roles,
+        role_gates=handover_response.role_gates,
+        module_gate_status=handover_response.module_gate_status,
+        content_gate_status=handover_response.content_gate_status,
+        backup_failover_gate_status=handover_response.backup_failover_gate_status,
+        content_included=handover_response.content_included,
+        persistent_task_created=handover_response.persistent_task_created,
+        automation_created=handover_response.automation_created,
+        reviewer_actions=reviewer_actions,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_release_review.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "review_status": review_status,
+            "security_guardrail_status": security_guardrail_status,
+            "compliance_guardrail_status": compliance_guardrail_status,
+            "handover_evidence_hash": handover_response.evidence_hash,
+            "snapshot_hash": handover_response.snapshot_hash,
+            "release_candidate_smoke_hash": handover_response.release_candidate_smoke_hash,
+            "release_candidate_smoke_passed": handover_response.release_candidate_smoke_passed,
+            "passed_guardrail_checks": passed_guardrails,
+            "blocked_guardrail_checks": blocked_guardrails,
+            "open_foundation_gap_ids": handover_response.open_foundation_gap_ids,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_release_review_hash(audited)})
+
+
+def build_mvp_release_review_hash(report: ProductCockpitMvpReleaseReviewResponse) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_release_review_passed_guardrails(
+    handover_response: ProductCockpitMvpReleaseHandoverResponse,
+) -> tuple[str, ...]:
+    passed: list[str] = []
+    if handover_response.tenant_id and handover_response.checked_by:
+        passed.append("tenant_context_required")
+    if handover_response.result_contract == "metadata_only_mvp_release_handover" and (
+        handover_response.metadata_only_productive_path
+    ):
+        passed.append("metadata_only_contract")
+    if not handover_response.content_included:
+        passed.append("no_content_included")
+    if not handover_response.persistent_task_created:
+        passed.append("no_persistent_tasks_created")
+    if not handover_response.automation_created:
+        passed.append("no_automation_created")
+    if handover_response.audit_event_id and f"audit:{handover_response.audit_event_id}" in handover_response.audit_refs:
+        passed.append("audit_chain_present")
+    if handover_response.required_roles and handover_response.role_gates:
+        passed.append("role_gates_visible")
+    if handover_response.backup_failover_gate_status == "metadata_only_no_state_change":
+        passed.append("backup_failover_guardrail_metadata_only")
+    if handover_response.content_gate_status == "deferred_metadata_only_ready":
+        passed.append("content_release_gate_deferred")
+    if handover_response.open_foundation_gap_ids:
+        passed.append("open_foundation_gaps_visible")
+    if handover_response.operator_handover_summary:
+        passed.append("operator_handover_summary_present")
+    if handover_response.reviewer_checklist:
+        passed.append("reviewer_checklist_present")
+    return tuple(guardrail for guardrail in MVP_RELEASE_REVIEW_GUARDRAIL_CHECKS if guardrail in passed)
+
+
+def _mvp_release_review_reviewer_actions(*, review_status: str) -> tuple[str, ...]:
+    if review_status == "ready_for_release_review":
+        return (
+            "retain handover_evidence_hash, snapshot_hash and release_candidate_smoke_hash with release evidence",
+            "review open foundation gaps before pilot operation",
+            "keep content preview, Office/Mail clients, tickets and automations deferred outside MVP release",
+        )
+    return ("repair blocked release-review guardrails before productive pilot",)
 
 
 def _mvp_snapshot_module_ref(module: ProductCockpitModuleView) -> ProductCockpitMvpSnapshotModuleRef:
