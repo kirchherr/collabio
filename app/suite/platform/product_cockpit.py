@@ -194,6 +194,15 @@ MVP_PILOT_DECISION_RECORD_SCHEMA_SECTIONS = (
     "non_authorization",
 )
 
+MVP_PILOT_DECISION_PREFLIGHT_SECTIONS = (
+    "schema_readiness",
+    "evidence_chain",
+    "confirmation_readiness",
+    "foundation_gaps",
+    "deferred_scope",
+    "preflight_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1285,6 +1294,114 @@ class ProductCockpitMvpPilotDecisionRecordSchemaResponse(BaseModel):
     record_schema_summary: tuple[str, ...]
     reviewer_actions: tuple[str, ...]
     record_blockers: tuple[str, ...]
+    evidence_chain_summary: tuple[str, ...]
+    open_foundation_gap_count: int = Field(ge=0)
+    ready_foundation_gap_count: int = Field(ge=0)
+    deferred_foundation_gap_count: int = Field(ge=0)
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    human_review_required: bool = True
+    human_confirmation_required: bool = True
+    human_confirmation_captured: bool = False
+    decision_record_created: bool = False
+    pilot_start_authorized: bool = False
+    approval_record_created: bool = False
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    evidence_hash: str
+
+
+class ProductCockpitMvpPilotDecisionPreflightResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_decision_preflight.v1"
+    result_contract: str = "metadata_only_mvp_pilot_decision_preflight"
+    tenant_id: str
+    checked_by: str
+    preflight_route: str = "/v1/platform/cockpit/mvp-pilot-decision-preflight"
+    decision_record_schema_route: str = "/v1/platform/cockpit/mvp-pilot-decision-record-schema"
+    template_route: str = "/v1/platform/cockpit/mvp-pilot-start-decision-template"
+    review_point_route: str = "/v1/platform/cockpit/mvp-pilot-review-point"
+    runbook_route: str = "/v1/platform/cockpit/mvp-pilot-runbook"
+    start_scope_route: str = "/v1/platform/cockpit/mvp-pilot-start-scope"
+    readiness_report_route: str = "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    pilot_status_route: str = "/v1/platform/cockpit/mvp-pilot-status"
+    pilot_gate_route: str = "/v1/platform/cockpit/mvp-pilot-gate"
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    release_review_audit_event_id: str
+    pilot_gate_audit_event_id: str
+    pilot_status_audit_event_id: str
+    readiness_report_audit_event_id: str
+    start_scope_audit_event_id: str
+    runbook_audit_event_id: str
+    review_point_audit_event_id: str
+    template_audit_event_id: str
+    decision_record_schema_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    decision_record_schema_evidence_hash: str
+    template_evidence_hash: str
+    review_point_evidence_hash: str
+    runbook_evidence_hash: str
+    start_scope_evidence_hash: str
+    readiness_report_evidence_hash: str
+    pilot_status_evidence_hash: str
+    pilot_gate_evidence_hash: str
+    release_review_evidence_hash: str
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    readiness_status: str
+    readiness_decision: str
+    operational_status: str
+    read_only_status: str
+    pilot_gate_status: str
+    pilot_gate_decision: str
+    start_scope_status: str
+    start_scope_decision: str
+    runbook_status: str
+    runbook_decision: str
+    review_point_status: str
+    review_point_decision: str
+    template_status: str
+    template_decision: str
+    record_schema_status: str
+    record_schema_decision: str
+    preflight_status: str
+    preflight_decision: str
+    preflight_sections: tuple[str, ...]
+    decision_record_schema_id: str
+    decision_record_required_fields: tuple[str, ...]
+    immutable_evidence_fields: tuple[str, ...]
+    audit_required_fields: tuple[str, ...]
+    confirmation_template_id: str
+    confirmation_fields: tuple[str, ...]
+    required_confirmation_roles: tuple[str, ...]
+    required_confirmation_statements: tuple[str, ...]
+    start_scope_contracts: tuple[str, ...]
+    excluded_scope_contracts: tuple[str, ...]
+    allowed_pilot_surfaces: tuple[str, ...]
+    deferred_pilot_surfaces: tuple[str, ...]
+    preflight_summary: tuple[str, ...]
+    preflight_checks: tuple[str, ...]
+    preflight_blockers: tuple[str, ...]
     evidence_chain_summary: tuple[str, ...]
     open_foundation_gap_count: int = Field(ge=0)
     ready_foundation_gap_count: int = Field(ge=0)
@@ -2974,6 +3091,248 @@ def build_mvp_pilot_decision_record_schema_hash(
     report: ProductCockpitMvpPilotDecisionRecordSchemaResponse,
 ) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_product_cockpit_mvp_pilot_decision_preflight_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    decision_record_schema_response: ProductCockpitMvpPilotDecisionRecordSchemaResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotDecisionPreflightResponse:
+    preflight_status = (
+        "metadata_only_pilot_decision_preflight_ready"
+        if decision_record_schema_response.record_schema_status == "metadata_only_pilot_decision_record_schema_ready"
+        and decision_record_schema_response.human_confirmation_required
+        and not decision_record_schema_response.human_confirmation_captured
+        and not decision_record_schema_response.decision_record_created
+        and not decision_record_schema_response.pilot_start_authorized
+        and not decision_record_schema_response.approval_record_created
+        and decision_record_schema_response.read_only_status == "read_only_no_state_change"
+        and decision_record_schema_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not decision_record_schema_response.content_included
+        and not decision_record_schema_response.persistent_task_created
+        and not decision_record_schema_response.automation_created
+        else "metadata_only_pilot_decision_preflight_blocked"
+    )
+    preflight_decision = (
+        "pilot_decision_preflight_ready_without_confirmation_capture"
+        if preflight_status == "metadata_only_pilot_decision_preflight_ready"
+        else "pilot_decision_preflight_blocked"
+    )
+    draft = ProductCockpitMvpPilotDecisionPreflightResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=decision_record_schema_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=decision_record_schema_response.snapshot_audit_event_id,
+        smoke_audit_event_id=decision_record_schema_response.smoke_audit_event_id,
+        handover_audit_event_id=decision_record_schema_response.handover_audit_event_id,
+        release_review_audit_event_id=decision_record_schema_response.release_review_audit_event_id,
+        pilot_gate_audit_event_id=decision_record_schema_response.pilot_gate_audit_event_id,
+        pilot_status_audit_event_id=decision_record_schema_response.pilot_status_audit_event_id,
+        readiness_report_audit_event_id=decision_record_schema_response.readiness_report_audit_event_id,
+        start_scope_audit_event_id=decision_record_schema_response.start_scope_audit_event_id,
+        runbook_audit_event_id=decision_record_schema_response.runbook_audit_event_id,
+        review_point_audit_event_id=decision_record_schema_response.review_point_audit_event_id,
+        template_audit_event_id=decision_record_schema_response.template_audit_event_id,
+        decision_record_schema_audit_event_id=decision_record_schema_response.audit_event_id or "",
+        audit_refs=decision_record_schema_response.audit_refs,
+        decision_record_schema_evidence_hash=decision_record_schema_response.evidence_hash,
+        template_evidence_hash=decision_record_schema_response.template_evidence_hash,
+        review_point_evidence_hash=decision_record_schema_response.review_point_evidence_hash,
+        runbook_evidence_hash=decision_record_schema_response.runbook_evidence_hash,
+        start_scope_evidence_hash=decision_record_schema_response.start_scope_evidence_hash,
+        readiness_report_evidence_hash=decision_record_schema_response.readiness_report_evidence_hash,
+        pilot_status_evidence_hash=decision_record_schema_response.pilot_status_evidence_hash,
+        pilot_gate_evidence_hash=decision_record_schema_response.pilot_gate_evidence_hash,
+        release_review_evidence_hash=decision_record_schema_response.release_review_evidence_hash,
+        handover_evidence_hash=decision_record_schema_response.handover_evidence_hash,
+        snapshot_hash=decision_record_schema_response.snapshot_hash,
+        release_candidate_smoke_hash=decision_record_schema_response.release_candidate_smoke_hash,
+        readiness_status=decision_record_schema_response.readiness_status,
+        readiness_decision=decision_record_schema_response.readiness_decision,
+        operational_status=decision_record_schema_response.operational_status,
+        read_only_status=decision_record_schema_response.read_only_status,
+        pilot_gate_status=decision_record_schema_response.pilot_gate_status,
+        pilot_gate_decision=decision_record_schema_response.pilot_gate_decision,
+        start_scope_status=decision_record_schema_response.start_scope_status,
+        start_scope_decision=decision_record_schema_response.start_scope_decision,
+        runbook_status=decision_record_schema_response.runbook_status,
+        runbook_decision=decision_record_schema_response.runbook_decision,
+        review_point_status=decision_record_schema_response.review_point_status,
+        review_point_decision=decision_record_schema_response.review_point_decision,
+        template_status=decision_record_schema_response.template_status,
+        template_decision=decision_record_schema_response.template_decision,
+        record_schema_status=decision_record_schema_response.record_schema_status,
+        record_schema_decision=decision_record_schema_response.record_schema_decision,
+        preflight_status=preflight_status,
+        preflight_decision=preflight_decision,
+        preflight_sections=MVP_PILOT_DECISION_PREFLIGHT_SECTIONS,
+        decision_record_schema_id=decision_record_schema_response.decision_record_schema_id,
+        decision_record_required_fields=decision_record_schema_response.decision_record_required_fields,
+        immutable_evidence_fields=decision_record_schema_response.immutable_evidence_fields,
+        audit_required_fields=decision_record_schema_response.audit_required_fields,
+        confirmation_template_id=decision_record_schema_response.confirmation_template_id,
+        confirmation_fields=decision_record_schema_response.confirmation_fields,
+        required_confirmation_roles=decision_record_schema_response.required_confirmation_roles,
+        required_confirmation_statements=decision_record_schema_response.required_confirmation_statements,
+        start_scope_contracts=decision_record_schema_response.start_scope_contracts,
+        excluded_scope_contracts=decision_record_schema_response.excluded_scope_contracts,
+        allowed_pilot_surfaces=decision_record_schema_response.allowed_pilot_surfaces,
+        deferred_pilot_surfaces=decision_record_schema_response.deferred_pilot_surfaces,
+        preflight_summary=_mvp_pilot_decision_preflight_summary(
+            decision_record_schema_response=decision_record_schema_response,
+            preflight_decision=preflight_decision,
+        ),
+        preflight_checks=_mvp_pilot_decision_preflight_checks(preflight_status=preflight_status),
+        preflight_blockers=_mvp_pilot_decision_preflight_blockers(decision_record_schema_response),
+        evidence_chain_summary=_mvp_pilot_decision_preflight_evidence_chain_summary(
+            decision_record_schema_response,
+        ),
+        open_foundation_gap_count=decision_record_schema_response.open_foundation_gap_count,
+        ready_foundation_gap_count=decision_record_schema_response.ready_foundation_gap_count,
+        deferred_foundation_gap_count=decision_record_schema_response.deferred_foundation_gap_count,
+        open_foundation_gap_ids=decision_record_schema_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=decision_record_schema_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=decision_record_schema_response.deferred_foundation_gap_ids,
+        next_foundation_action=decision_record_schema_response.next_foundation_action,
+        required_roles=decision_record_schema_response.required_roles,
+        role_gates=decision_record_schema_response.role_gates,
+        module_gate_status=decision_record_schema_response.module_gate_status,
+        content_gate_status=decision_record_schema_response.content_gate_status,
+        backup_failover_gate_status=decision_record_schema_response.backup_failover_gate_status,
+        human_review_required=decision_record_schema_response.human_review_required,
+        human_confirmation_required=decision_record_schema_response.human_confirmation_required,
+        human_confirmation_captured=False,
+        decision_record_created=False,
+        pilot_start_authorized=False,
+        approval_record_created=False,
+        content_included=decision_record_schema_response.content_included,
+        persistent_task_created=decision_record_schema_response.persistent_task_created,
+        automation_created=decision_record_schema_response.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_decision_preflight.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "preflight_status": preflight_status,
+            "preflight_decision": preflight_decision,
+            "record_schema_status": decision_record_schema_response.record_schema_status,
+            "record_schema_decision": decision_record_schema_response.record_schema_decision,
+            "template_status": decision_record_schema_response.template_status,
+            "template_decision": decision_record_schema_response.template_decision,
+            "review_point_status": decision_record_schema_response.review_point_status,
+            "review_point_decision": decision_record_schema_response.review_point_decision,
+            "runbook_status": decision_record_schema_response.runbook_status,
+            "runbook_decision": decision_record_schema_response.runbook_decision,
+            "start_scope_status": decision_record_schema_response.start_scope_status,
+            "start_scope_decision": decision_record_schema_response.start_scope_decision,
+            "readiness_status": decision_record_schema_response.readiness_status,
+            "readiness_decision": decision_record_schema_response.readiness_decision,
+            "operational_status": decision_record_schema_response.operational_status,
+            "read_only_status": decision_record_schema_response.read_only_status,
+            "decision_record_schema_evidence_hash": decision_record_schema_response.evidence_hash,
+            "template_evidence_hash": decision_record_schema_response.template_evidence_hash,
+            "review_point_evidence_hash": decision_record_schema_response.review_point_evidence_hash,
+            "runbook_evidence_hash": decision_record_schema_response.runbook_evidence_hash,
+            "start_scope_evidence_hash": decision_record_schema_response.start_scope_evidence_hash,
+            "readiness_report_evidence_hash": decision_record_schema_response.readiness_report_evidence_hash,
+            "pilot_status_evidence_hash": decision_record_schema_response.pilot_status_evidence_hash,
+            "pilot_gate_evidence_hash": decision_record_schema_response.pilot_gate_evidence_hash,
+            "release_review_evidence_hash": decision_record_schema_response.release_review_evidence_hash,
+            "handover_evidence_hash": decision_record_schema_response.handover_evidence_hash,
+            "snapshot_hash": decision_record_schema_response.snapshot_hash,
+            "release_candidate_smoke_hash": decision_record_schema_response.release_candidate_smoke_hash,
+            "preflight_sections": MVP_PILOT_DECISION_PREFLIGHT_SECTIONS,
+            "decision_record_schema_id": decision_record_schema_response.decision_record_schema_id,
+            "decision_record_required_fields": decision_record_schema_response.decision_record_required_fields,
+            "immutable_evidence_fields": decision_record_schema_response.immutable_evidence_fields,
+            "audit_required_fields": decision_record_schema_response.audit_required_fields,
+            "confirmation_template_id": decision_record_schema_response.confirmation_template_id,
+            "start_scope_contracts": decision_record_schema_response.start_scope_contracts,
+            "excluded_scope_contracts": decision_record_schema_response.excluded_scope_contracts,
+            "allowed_pilot_surfaces": decision_record_schema_response.allowed_pilot_surfaces,
+            "deferred_pilot_surfaces": decision_record_schema_response.deferred_pilot_surfaces,
+            "open_foundation_gap_ids": decision_record_schema_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": decision_record_schema_response.open_foundation_gap_count,
+            "next_foundation_action": decision_record_schema_response.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_record_created": False,
+            "pilot_start_authorized": False,
+            "approval_record_created": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_decision_preflight_hash(audited)})
+
+
+def build_mvp_pilot_decision_preflight_hash(
+    report: ProductCockpitMvpPilotDecisionPreflightResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_decision_preflight_summary(
+    *,
+    decision_record_schema_response: ProductCockpitMvpPilotDecisionRecordSchemaResponse,
+    preflight_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(decision_record_schema_response.open_foundation_gap_ids) or "none"
+    return (
+        f"preflight decision: {preflight_decision}",
+        f"record schema decision: {decision_record_schema_response.record_schema_decision}",
+        f"template decision: {decision_record_schema_response.template_decision}",
+        f"open foundation gaps: {open_gaps}",
+        "preflight is read-only and creates no confirmation, decision record or pilot start",
+    )
+
+
+def _mvp_pilot_decision_preflight_checks(*, preflight_status: str) -> tuple[str, ...]:
+    if preflight_status == "metadata_only_pilot_decision_preflight_ready":
+        return (
+            "verify decision record schema fields before approval workflow wiring",
+            "compare decision_schema, template, review_point and pilot_gate evidence hashes",
+            "confirm human confirmation is still not captured",
+            "keep pilot start blocked until a separate authorized decision exists",
+        )
+    return ("repair blocked decision preflight conditions before approval workflow wiring",)
+
+
+def _mvp_pilot_decision_preflight_blockers(
+    decision_record_schema_response: ProductCockpitMvpPilotDecisionRecordSchemaResponse,
+) -> tuple[str, ...]:
+    return (
+        "human confirmation has not been captured",
+        "decision record has not been created",
+        "pilot start authorization is not granted by this preflight",
+        "approval record has not been created",
+        f"open foundation gaps: {','.join(decision_record_schema_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_decision_preflight_evidence_chain_summary(
+    decision_record_schema_response: ProductCockpitMvpPilotDecisionRecordSchemaResponse,
+) -> tuple[str, ...]:
+    return (
+        f"decision schema hash: {decision_record_schema_response.evidence_hash}",
+        f"template hash: {decision_record_schema_response.template_evidence_hash}",
+        f"review point hash: {decision_record_schema_response.review_point_evidence_hash}",
+        f"runbook hash: {decision_record_schema_response.runbook_evidence_hash}",
+        f"pilot gate hash: {decision_record_schema_response.pilot_gate_evidence_hash}",
+    )
 
 
 def _mvp_pilot_decision_record_required_fields() -> tuple[str, ...]:

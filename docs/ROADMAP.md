@@ -1353,7 +1353,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 172. [x] MVP-Pilot-Reviewpunkt festlegen: Betreiber-Runbook, Startumfang und offene Foundation-Gaps als formalen Reviewpunkt fuer Pilotstart sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
 173. [x] MVP-Pilot-Startentscheidung vorbereiten: Reviewpunkt, Runbook und Evidence-Hashes in eine explizite Human-Confirmation-Vorlage ueberfuehren, ohne Pilotstart, Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit auszufuehren.
 174. [x] MVP-Pilot-Entscheidungsprotokoll vorbereiten: Human-Confirmation-Vorlage, Reviewpunkt und Evidence-Hashes in ein auditierbares Entscheidungsprotokoll-Schema ueberfuehren, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
-175. [ ] MVP-Pilot-Entscheidungs-Preflight sichtbar machen: Entscheidungsprotokoll-Schema, Human-Confirmation-Vorlage und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+175. [x] MVP-Pilot-Entscheidungs-Preflight sichtbar machen: Entscheidungsprotokoll-Schema, Human-Confirmation-Vorlage und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+176. [ ] MVP-Pilot-Approval-Workflow abgrenzen: Preflight, Entscheidungsprotokoll-Schema und Human-Confirmation-Vorlage in eine klare Workflow-Grenze ueberfuehren, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
