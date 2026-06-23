@@ -5824,6 +5824,251 @@ def test_platform_cockpit_mvp_pilot_decision_capture_submit_dry_run_simulates_wi
     assert new_events[-1].metadata["pilot_start_authorized"] is False
 
 
+def test_platform_cockpit_mvp_pilot_decision_capture_payload_validation_boundary_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-boundary")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_decision_capture_payload_validation_boundary_defines_contract() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-boundary",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == ("product_cockpit_mvp_pilot_decision_capture_payload_validation_boundary.v1")
+    assert body["result_contract"] == "metadata_only_mvp_pilot_decision_capture_payload_validation_boundary"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["decision_capture_payload_validation_boundary_route"] == (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-boundary"
+    )
+    assert body["decision_capture_submit_dry_run_route"] == (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-submit-dry-run"
+    )
+    assert body["decision_capture_submit_skeleton_route"] == (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-submit-skeleton"
+    )
+    assert body["decision_capture_submit_dry_run_audit_event_id"]
+    assert body["decision_capture_submit_skeleton_audit_event_id"]
+    assert body["decision_capture_preflight_audit_event_id"]
+    assert body["decision_capture_boundary_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"][-5:] == [
+        f"audit:{body['decision_capture_boundary_audit_event_id']}",
+        f"audit:{body['decision_capture_preflight_audit_event_id']}",
+        f"audit:{body['decision_capture_submit_skeleton_audit_event_id']}",
+        f"audit:{body['decision_capture_submit_dry_run_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["decision_capture_submit_dry_run_evidence_hash"].startswith("sha256:")
+    assert body["decision_capture_submit_skeleton_evidence_hash"].startswith("sha256:")
+    assert body["decision_capture_preflight_evidence_hash"].startswith("sha256:")
+    assert body["decision_capture_boundary_evidence_hash"].startswith("sha256:")
+    assert body["go_no_go_decision_record_schema_evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["decision_capture_submit_dry_run_evidence_hash"]
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["decision_capture_submit_dry_run_status"] == (
+        "metadata_only_pilot_decision_capture_submit_dry_run_ready"
+    )
+    assert body["decision_capture_payload_validation_boundary_status"] == (
+        "metadata_only_pilot_decision_capture_payload_validation_boundary_ready"
+    )
+    assert body["decision_capture_payload_validation_boundary_decision"] == (
+        "payload_validation_boundary_ready_without_payload_acceptance"
+    )
+    assert body["decision_capture_payload_validation_boundary_sections"] == [
+        "validation_boundary",
+        "payload_schema",
+        "evidence_hashes",
+        "human_confirmation",
+        "non_persistence",
+        "boundary_outcome",
+    ]
+    assert body["decision_capture_payload_validation_boundary_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_boundary_v1"
+    )
+    assert body["decision_capture_payload_validation_contract_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_contract_v1"
+    )
+    assert body["decision_capture_payload_validation_input_contract"] == [
+        "payload_must_be_submitted_only_to_future_explicit_submit_route",
+        "payload_must_include_contract_id",
+        "payload_must_include_preflight_evidence_hash",
+        "payload_must_include_go_no_go_decision",
+        "payload_must_include_human_confirmation_statement",
+        "payload_must_include_idempotency_key",
+    ]
+    assert body["decision_capture_payload_validation_schema_fields"] == [
+        "tenant_id",
+        "decision_capture_payload_validation_contract_id",
+        "decision_capture_submit_contract_id",
+        "decision_capture_submit_dry_run_contract_id",
+        "decision_capture_submit_dry_run_evidence_hash",
+        "go_no_go_decision",
+        "human_confirmation_statement",
+        "confirmed_by",
+        "confirmed_at",
+        "confirmation_role_ids",
+        "idempotency_key",
+    ]
+    assert body["decision_capture_payload_validation_required_checks"] == [
+        "tenant_context_matches_payload_tenant",
+        "payload_contract_id_matches_current_contract",
+        "dry_run_evidence_hash_matches_current_boundary",
+        "go_no_go_decision_value_is_go_no_go_or_defer",
+        "human_confirmation_statement_matches_template",
+        "confirmation_roles_include_required_reviewer",
+        "idempotency_key_is_present",
+    ]
+    assert body["decision_capture_payload_validation_rejected_conditions"] == [
+        "missing_or_mismatched_tenant_id",
+        "missing_or_stale_evidence_hash",
+        "unknown_decision_value",
+        "missing_human_confirmation_statement",
+        "missing_required_confirmation_role",
+        "missing_idempotency_key",
+        "attempt_to_store_decision_in_validation_boundary",
+    ]
+    assert body["decision_capture_payload_validation_boundary_summary"] == [
+        "payload validation boundary decision: payload_validation_boundary_ready_without_payload_acceptance",
+        "decision capture submit dry-run decision: decision_capture_submit_dry_run_ready_without_payload_acceptance",
+        "payload validation contract: mvp_pilot_decision_capture_payload_validation_contract_v1",
+        "payload validation boundary is read-only and accepts no payload in this step",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "decision storage, approval persistence and pilot start stay outside this boundary",
+    ]
+    assert body["decision_capture_payload_validation_boundary_checks"] == [
+        "publish payload validation schema without enabling payload endpoint",
+        "require evidence hash match before future payload validation",
+        "reject stale or mismatched tenant and contract identifiers",
+        "keep decision storage and approval persistence outside validation boundary",
+    ]
+    assert body["decision_capture_payload_validation_boundary_blockers"] == [
+        "payload validation endpoint is not enabled",
+        "payload validation is not executed",
+        "decision payload is not accepted",
+        "go/no-go decision has not been stored",
+        "pilot start authorization is not granted by this validation boundary",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"] == [
+        f"decision capture submit dry-run hash: {body['decision_capture_submit_dry_run_evidence_hash']}",
+        f"decision capture submit skeleton hash: {body['decision_capture_submit_skeleton_evidence_hash']}",
+        f"decision capture preflight hash: {body['decision_capture_preflight_evidence_hash']}",
+        f"decision capture boundary hash: {body['decision_capture_boundary_evidence_hash']}",
+        f"go/no-go record schema hash: {body['go_no_go_decision_record_schema_evidence_hash']}",
+    ]
+    assert body["open_foundation_gap_count"] == 4
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["decision_payload_accepted"] is False
+    assert body["decision_capture_submit_storage_enabled"] is False
+    assert body["decision_capture_submit_dry_run_executed"] is False
+    assert body["decision_capture_submit_dry_run_payload_included"] is False
+    assert body["decision_capture_submit_dry_run_result_persisted"] is False
+    assert body["decision_capture_payload_validation_endpoint_enabled"] is False
+    assert body["decision_capture_payload_validation_executed"] is False
+    assert body["decision_capture_payload_validation_payload_accepted"] is False
+    assert body["decision_capture_payload_validation_result_persisted"] is False
+    assert body["go_no_go_decision_stored"] is False
+    assert body["go_no_go_decision_captured"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-23:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+        "platform.mvp_pilot_status.read",
+        "platform.mvp_pilot_readiness_report.export",
+        "platform.mvp_pilot_start_scope.export",
+        "platform.mvp_pilot_runbook.export",
+        "platform.mvp_pilot_review_point.export",
+        "platform.mvp_pilot_start_decision_template.export",
+        "platform.mvp_pilot_decision_record_schema.export",
+        "platform.mvp_pilot_decision_preflight.export",
+        "platform.mvp_pilot_approval_workflow_boundary.export",
+        "platform.mvp_pilot_approval_readiness.export",
+        "platform.mvp_pilot_go_no_go_boundary.export",
+        "platform.mvp_pilot_go_no_go_decision_record_schema.export",
+        "platform.mvp_pilot_decision_capture_boundary.export",
+        "platform.mvp_pilot_decision_capture_preflight.export",
+        "platform.mvp_pilot_decision_capture_submit_skeleton.export",
+        "platform.mvp_pilot_decision_capture_submit_dry_run.export",
+        "platform.mvp_pilot_decision_capture_payload_validation_boundary.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_boundary"
+    )
+    assert (
+        new_events[-1].metadata["decision_capture_payload_validation_boundary_status"]
+        == (body["decision_capture_payload_validation_boundary_status"])
+    )
+    assert (
+        new_events[-1].metadata["decision_capture_payload_validation_boundary_decision"]
+        == (body["decision_capture_payload_validation_boundary_decision"])
+    )
+    assert (
+        new_events[-1].metadata["decision_capture_submit_dry_run_evidence_hash"]
+        == (body["decision_capture_submit_dry_run_evidence_hash"])
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_boundary_sections"] == tuple(
+        body["decision_capture_payload_validation_boundary_sections"]
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_contract_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_contract_v1"
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_input_contract"] == tuple(
+        body["decision_capture_payload_validation_input_contract"]
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_schema_fields"] == tuple(
+        body["decision_capture_payload_validation_schema_fields"]
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_required_checks"] == tuple(
+        body["decision_capture_payload_validation_required_checks"]
+    )
+    assert new_events[-1].metadata["decision_capture_payload_validation_rejected_conditions"] == tuple(
+        body["decision_capture_payload_validation_rejected_conditions"]
+    )
+    assert new_events[-1].metadata["decision_payload_accepted"] is False
+    assert new_events[-1].metadata["decision_capture_payload_validation_endpoint_enabled"] is False
+    assert new_events[-1].metadata["decision_capture_payload_validation_executed"] is False
+    assert new_events[-1].metadata["decision_capture_payload_validation_payload_accepted"] is False
+    assert new_events[-1].metadata["decision_capture_payload_validation_result_persisted"] is False
+    assert new_events[-1].metadata["go_no_go_decision_stored"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
