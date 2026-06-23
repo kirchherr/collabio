@@ -493,6 +493,46 @@ class ProductCockpitMvpReleaseCandidateSmokeReport(BaseModel):
     evidence_hash: str
 
 
+class ProductCockpitMvpReleaseHandoverResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_release_handover.v1"
+    result_contract: str = "metadata_only_mvp_release_handover"
+    tenant_id: str
+    checked_by: str
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    release_candidate_smoke_passed: bool
+    mvp_readiness_decision: str
+    metadata_only_productive_path: bool
+    handover_status: str
+    operator_handover_summary: tuple[str, ...]
+    reviewer_checklist: tuple[str, ...]
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    evidence_hash: str
+
+
 class ProductCockpitMvpSnapshotResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -868,6 +908,93 @@ def _mvp_release_candidate_recommended_actions(*, smoke_passed: bool) -> tuple[s
             "keep content release gate deferred until policy and viewer runtime evidence are ready",
         )
     return ("repair metadata-only MVP release-candidate smoke before productive pilot",)
+
+
+def build_product_cockpit_mvp_release_handover_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    smoke_report: ProductCockpitMvpReleaseCandidateSmokeReport,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpReleaseHandoverResponse:
+    open_gap_ids = snapshot_response.mvp_readiness_decision.active_foundation_gap_ids
+    handover_status = (
+        "ready_for_operator_reviewer_handover"
+        if smoke_report.smoke_passed
+        and smoke_report.metadata_only_productive_path
+        and not smoke_report.content_included
+        and not smoke_report.persistent_task_created
+        and not smoke_report.automation_created
+        else "handover_blocked"
+    )
+    draft = ProductCockpitMvpReleaseHandoverResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=smoke_report.cockpit_audit_event_id,
+        snapshot_audit_event_id=smoke_report.snapshot_audit_event_id,
+        smoke_audit_event_id=smoke_report.audit_event_id or "",
+        audit_refs=smoke_report.audit_refs,
+        snapshot_hash=smoke_report.snapshot_hash,
+        release_candidate_smoke_hash=smoke_report.evidence_hash,
+        release_candidate_smoke_passed=smoke_report.smoke_passed,
+        mvp_readiness_decision=smoke_report.mvp_readiness_decision,
+        metadata_only_productive_path=smoke_report.metadata_only_productive_path,
+        handover_status=handover_status,
+        operator_handover_summary=(
+            f"metadata-only MVP decision: {smoke_report.mvp_readiness_decision}",
+            f"snapshot hash: {smoke_report.snapshot_hash}",
+            f"release-candidate smoke hash: {smoke_report.evidence_hash}",
+            f"open foundation gaps: {','.join(open_gap_ids) if open_gap_ids else 'none'}",
+            "content preview, Office/Mail clients, tickets and automations remain deferred",
+        ),
+        reviewer_checklist=(
+            "verify release-candidate smoke_passed is true",
+            "retain snapshot_hash and release_candidate_smoke_hash with release evidence",
+            "review ready foundation gaps before pilot operation",
+            "keep content release gate deferred until policy and viewer runtime evidence are ready",
+        ),
+        open_foundation_gap_ids=open_gap_ids,
+        ready_foundation_gap_ids=snapshot_response.mvp_readiness_decision.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=snapshot_response.mvp_readiness_decision.deferred_foundation_gap_ids,
+        next_foundation_action=snapshot_response.mvp_readiness_decision.next_foundation_action,
+        required_roles=smoke_report.required_roles,
+        role_gates=smoke_report.role_gates,
+        module_gate_status=smoke_report.module_gate_status,
+        content_gate_status=smoke_report.content_gate_status,
+        backup_failover_gate_status=smoke_report.backup_failover_gate_status,
+        content_included=smoke_report.content_included,
+        persistent_task_created=smoke_report.persistent_task_created,
+        automation_created=smoke_report.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_release_handover.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "handover_status": handover_status,
+            "snapshot_hash": smoke_report.snapshot_hash,
+            "release_candidate_smoke_hash": smoke_report.evidence_hash,
+            "release_candidate_smoke_passed": smoke_report.smoke_passed,
+            "open_foundation_gap_ids": open_gap_ids,
+            "next_foundation_action": draft.next_foundation_action,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_release_handover_hash(audited)})
+
+
+def build_mvp_release_handover_hash(report: ProductCockpitMvpReleaseHandoverResponse) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
 
 
 def _mvp_snapshot_module_ref(module: ProductCockpitModuleView) -> ProductCockpitMvpSnapshotModuleRef:
