@@ -1667,6 +1667,163 @@ def test_platform_cockpit_mvp_release_review_checks_handover_against_guardrails(
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_pilot_gate_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-gate")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_gate_limits_pilot_to_metadata_only_scope() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get("/v1/platform/cockpit/mvp-pilot-gate", headers=DEMO_ADMIN_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_pilot_gate.v1"
+    assert body["result_contract"] == "metadata_only_mvp_pilot_gate"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["pilot_gate_route"] == "/v1/platform/cockpit/mvp-pilot-gate"
+    assert body["review_route"] == "/v1/platform/cockpit/mvp-release-review"
+    assert body["handover_route"] == "/v1/platform/cockpit/mvp-release-handover"
+    assert body["entrypoint_route"] == "/workspace"
+    assert body["cockpit_route"] == "/v1/platform/cockpit"
+    assert body["snapshot_route"] == "/v1/platform/cockpit/mvp-snapshot"
+    assert body["smoke_route"] == "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    assert body["cockpit_audit_event_id"]
+    assert body["snapshot_audit_event_id"]
+    assert body["smoke_audit_event_id"]
+    assert body["handover_audit_event_id"]
+    assert body["release_review_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"] == [
+        f"audit:{body['cockpit_audit_event_id']}",
+        f"audit:{body['snapshot_audit_event_id']}",
+        f"audit:{body['smoke_audit_event_id']}",
+        f"audit:{body['handover_audit_event_id']}",
+        f"audit:{body['release_review_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["release_review_evidence_hash"].startswith("sha256:")
+    assert body["handover_evidence_hash"].startswith("sha256:")
+    assert body["snapshot_hash"].startswith("sha256:")
+    assert body["release_candidate_smoke_hash"].startswith("sha256:")
+    assert body["release_candidate_smoke_passed"] is True
+    assert body["release_review_status"] == "ready_for_release_review"
+    assert body["security_guardrail_status"] == "passed"
+    assert body["compliance_guardrail_status"] == "passed"
+    assert body["pilot_gate_status"] == "pilot_gate_open_with_deferred_scope"
+    assert body["pilot_gate_decision"] == "metadata_only_pilot_allowed_with_deferred_content_release"
+    expected_checks = [
+        "release_review_ready",
+        "security_guardrails_passed",
+        "compliance_guardrails_passed",
+        "release_candidate_smoke_passed",
+        "metadata_only_path",
+        "no_content_included",
+        "no_persistent_tasks_created",
+        "no_automation_created",
+        "audit_chain_present",
+        "open_foundation_gaps_tracked",
+        "deferred_scope_visible",
+    ]
+    assert body["gate_checks"] == expected_checks
+    assert body["passed_gate_checks"] == expected_checks
+    assert body["blocked_gate_checks"] == []
+    assert body["allowed_pilot_surfaces"] == [
+        "workspace_shell",
+        "platform_module_discovery",
+        "product_cockpit",
+        "mvp_snapshot",
+        "mvp_release_evidence",
+    ]
+    assert body["deferred_pilot_surfaces"] == [
+        "content_preview_rendering",
+        "office_mail_full_clients",
+        "tickets_and_automations",
+        "lms_time_tracking_activity_modules",
+    ]
+    assert body["pilot_constraints"] == [
+        "pilot scope is limited to metadata-only workspace, module discovery, cockpit and release evidence",
+        (
+            "open foundation gaps remain tracked: "
+            "preview_decisions_pending,module_activation_work_items_open,human_confirmation_required,"
+            "content_release_gate_blocks_content"
+        ),
+        "content release, preview rendering, Office/Mail clients, tickets and automations remain deferred",
+        "pilot gate creates no persistent tasks, automations or external side effects",
+    ]
+    assert body["pilot_operator_actions"] == [
+        "retain pilot_gate evidence_hash with release_review_evidence_hash and handover_evidence_hash",
+        "run pilot only through metadata-only workspace, cockpit and release evidence routes",
+        "track open foundation gaps before expanding pilot scope",
+        "keep content preview, Office/Mail clients, tickets and automations outside pilot scope",
+    ]
+    assert body["open_foundation_gap_ids"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["ready_foundation_gap_ids"] == ["preview_decisions_pending", "module_activation_work_items_open"]
+    assert body["deferred_foundation_gap_ids"] == [
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["required_roles"] == ["security-admin", "tenant-admin"]
+    assert body["role_gates"] == ["context", "tenant-admin,security-admin"]
+    assert body["module_gate_status"] == "module_activation_required"
+    assert body["content_gate_status"] == "deferred_metadata_only_ready"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["release_review_evidence_hash"]
+    assert body["release_review_evidence_hash"] != body["handover_evidence_hash"]
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-6:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_pilot_gate"
+    assert new_events[-1].metadata["pilot_gate_status"] == body["pilot_gate_status"]
+    assert new_events[-1].metadata["pilot_gate_decision"] == body["pilot_gate_decision"]
+    assert new_events[-1].metadata["release_review_status"] == body["release_review_status"]
+    assert new_events[-1].metadata["security_guardrail_status"] == "passed"
+    assert new_events[-1].metadata["compliance_guardrail_status"] == "passed"
+    assert new_events[-1].metadata["release_review_evidence_hash"] == body["release_review_evidence_hash"]
+    assert new_events[-1].metadata["handover_evidence_hash"] == body["handover_evidence_hash"]
+    assert new_events[-1].metadata["snapshot_hash"] == body["snapshot_hash"]
+    assert new_events[-1].metadata["release_candidate_smoke_hash"] == body["release_candidate_smoke_hash"]
+    assert new_events[-1].metadata["release_candidate_smoke_passed"] is True
+    assert new_events[-1].metadata["passed_gate_checks"] == tuple(expected_checks)
+    assert new_events[-1].metadata["blocked_gate_checks"] == ()
+    assert new_events[-1].metadata["allowed_pilot_surfaces"] == tuple(body["allowed_pilot_surfaces"])
+    assert new_events[-1].metadata["deferred_pilot_surfaces"] == tuple(body["deferred_pilot_surfaces"])
+    assert new_events[-1].metadata["open_foundation_gap_ids"] == tuple(body["open_foundation_gap_ids"])
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger

@@ -96,6 +96,35 @@ MVP_RELEASE_REVIEW_COMPLIANCE_GUARDRAILS = (
     "reviewer_checklist_present",
 )
 
+MVP_PILOT_GATE_CHECKS = (
+    "release_review_ready",
+    "security_guardrails_passed",
+    "compliance_guardrails_passed",
+    "release_candidate_smoke_passed",
+    "metadata_only_path",
+    "no_content_included",
+    "no_persistent_tasks_created",
+    "no_automation_created",
+    "audit_chain_present",
+    "open_foundation_gaps_tracked",
+    "deferred_scope_visible",
+)
+
+MVP_PILOT_ALLOWED_SURFACES = (
+    "workspace_shell",
+    "platform_module_discovery",
+    "product_cockpit",
+    "mvp_snapshot",
+    "mvp_release_evidence",
+)
+
+MVP_PILOT_DEFERRED_SURFACES = (
+    "content_preview_rendering",
+    "office_mail_full_clients",
+    "tickets_and_automations",
+    "lms_time_tracking_activity_modules",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -613,6 +642,59 @@ class ProductCockpitMvpReleaseReviewResponse(BaseModel):
     persistent_task_created: bool = False
     automation_created: bool = False
     reviewer_actions: tuple[str, ...]
+    evidence_hash: str
+
+
+class ProductCockpitMvpPilotGateResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_gate.v1"
+    result_contract: str = "metadata_only_mvp_pilot_gate"
+    tenant_id: str
+    checked_by: str
+    pilot_gate_route: str = "/v1/platform/cockpit/mvp-pilot-gate"
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    release_review_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    release_review_evidence_hash: str
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    release_candidate_smoke_passed: bool
+    release_review_status: str
+    security_guardrail_status: str
+    compliance_guardrail_status: str
+    pilot_gate_status: str
+    pilot_gate_decision: str
+    gate_checks: tuple[str, ...]
+    passed_gate_checks: tuple[str, ...]
+    blocked_gate_checks: tuple[str, ...]
+    allowed_pilot_surfaces: tuple[str, ...]
+    deferred_pilot_surfaces: tuple[str, ...]
+    pilot_constraints: tuple[str, ...]
+    pilot_operator_actions: tuple[str, ...]
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
     evidence_hash: str
 
 
@@ -1223,6 +1305,154 @@ def _mvp_release_review_reviewer_actions(*, review_status: str) -> tuple[str, ..
             "keep content preview, Office/Mail clients, tickets and automations deferred outside MVP release",
         )
     return ("repair blocked release-review guardrails before productive pilot",)
+
+
+def build_product_cockpit_mvp_pilot_gate_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    release_review_response: ProductCockpitMvpReleaseReviewResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotGateResponse:
+    passed_gate_checks = _mvp_pilot_gate_passed_checks(release_review_response)
+    blocked_gate_checks = tuple(check for check in MVP_PILOT_GATE_CHECKS if check not in passed_gate_checks)
+    pilot_gate_status = "pilot_gate_open_with_deferred_scope" if not blocked_gate_checks else "pilot_gate_blocked"
+    pilot_gate_decision = (
+        "metadata_only_pilot_allowed_with_deferred_content_release"
+        if pilot_gate_status == "pilot_gate_open_with_deferred_scope"
+        else "metadata_only_pilot_blocked"
+    )
+    draft = ProductCockpitMvpPilotGateResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=release_review_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=release_review_response.snapshot_audit_event_id,
+        smoke_audit_event_id=release_review_response.smoke_audit_event_id,
+        handover_audit_event_id=release_review_response.handover_audit_event_id,
+        release_review_audit_event_id=release_review_response.audit_event_id or "",
+        audit_refs=release_review_response.audit_refs,
+        release_review_evidence_hash=release_review_response.evidence_hash,
+        handover_evidence_hash=release_review_response.handover_evidence_hash,
+        snapshot_hash=release_review_response.snapshot_hash,
+        release_candidate_smoke_hash=release_review_response.release_candidate_smoke_hash,
+        release_candidate_smoke_passed=release_review_response.release_candidate_smoke_passed,
+        release_review_status=release_review_response.review_status,
+        security_guardrail_status=release_review_response.security_guardrail_status,
+        compliance_guardrail_status=release_review_response.compliance_guardrail_status,
+        pilot_gate_status=pilot_gate_status,
+        pilot_gate_decision=pilot_gate_decision,
+        gate_checks=MVP_PILOT_GATE_CHECKS,
+        passed_gate_checks=passed_gate_checks,
+        blocked_gate_checks=blocked_gate_checks,
+        allowed_pilot_surfaces=MVP_PILOT_ALLOWED_SURFACES,
+        deferred_pilot_surfaces=MVP_PILOT_DEFERRED_SURFACES,
+        pilot_constraints=_mvp_pilot_gate_constraints(release_review_response),
+        pilot_operator_actions=_mvp_pilot_gate_operator_actions(pilot_gate_status=pilot_gate_status),
+        open_foundation_gap_ids=release_review_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=release_review_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=release_review_response.deferred_foundation_gap_ids,
+        next_foundation_action=release_review_response.next_foundation_action,
+        required_roles=release_review_response.required_roles,
+        role_gates=release_review_response.role_gates,
+        module_gate_status=release_review_response.module_gate_status,
+        content_gate_status=release_review_response.content_gate_status,
+        backup_failover_gate_status=release_review_response.backup_failover_gate_status,
+        content_included=release_review_response.content_included,
+        persistent_task_created=release_review_response.persistent_task_created,
+        automation_created=release_review_response.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_gate.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "pilot_gate_status": pilot_gate_status,
+            "pilot_gate_decision": pilot_gate_decision,
+            "release_review_status": release_review_response.review_status,
+            "security_guardrail_status": release_review_response.security_guardrail_status,
+            "compliance_guardrail_status": release_review_response.compliance_guardrail_status,
+            "release_review_evidence_hash": release_review_response.evidence_hash,
+            "handover_evidence_hash": release_review_response.handover_evidence_hash,
+            "snapshot_hash": release_review_response.snapshot_hash,
+            "release_candidate_smoke_hash": release_review_response.release_candidate_smoke_hash,
+            "release_candidate_smoke_passed": release_review_response.release_candidate_smoke_passed,
+            "passed_gate_checks": passed_gate_checks,
+            "blocked_gate_checks": blocked_gate_checks,
+            "allowed_pilot_surfaces": MVP_PILOT_ALLOWED_SURFACES,
+            "deferred_pilot_surfaces": MVP_PILOT_DEFERRED_SURFACES,
+            "open_foundation_gap_ids": release_review_response.open_foundation_gap_ids,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_gate_hash(audited)})
+
+
+def build_mvp_pilot_gate_hash(report: ProductCockpitMvpPilotGateResponse) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_gate_passed_checks(
+    release_review_response: ProductCockpitMvpReleaseReviewResponse,
+) -> tuple[str, ...]:
+    passed: list[str] = []
+    if release_review_response.review_status == "ready_for_release_review":
+        passed.append("release_review_ready")
+    if release_review_response.security_guardrail_status == "passed":
+        passed.append("security_guardrails_passed")
+    if release_review_response.compliance_guardrail_status == "passed":
+        passed.append("compliance_guardrails_passed")
+    if release_review_response.release_candidate_smoke_passed:
+        passed.append("release_candidate_smoke_passed")
+    if release_review_response.metadata_only_productive_path:
+        passed.append("metadata_only_path")
+    if not release_review_response.content_included:
+        passed.append("no_content_included")
+    if not release_review_response.persistent_task_created:
+        passed.append("no_persistent_tasks_created")
+    if not release_review_response.automation_created:
+        passed.append("no_automation_created")
+    if release_review_response.audit_event_id and f"audit:{release_review_response.audit_event_id}" in (
+        release_review_response.audit_refs
+    ):
+        passed.append("audit_chain_present")
+    if release_review_response.open_foundation_gap_ids:
+        passed.append("open_foundation_gaps_tracked")
+    if release_review_response.content_gate_status == "deferred_metadata_only_ready":
+        passed.append("deferred_scope_visible")
+    return tuple(check for check in MVP_PILOT_GATE_CHECKS if check in passed)
+
+
+def _mvp_pilot_gate_constraints(
+    release_review_response: ProductCockpitMvpReleaseReviewResponse,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(release_review_response.open_foundation_gap_ids)
+    return (
+        "pilot scope is limited to metadata-only workspace, module discovery, cockpit and release evidence",
+        f"open foundation gaps remain tracked: {open_gaps if open_gaps else 'none'}",
+        "content release, preview rendering, Office/Mail clients, tickets and automations remain deferred",
+        "pilot gate creates no persistent tasks, automations or external side effects",
+    )
+
+
+def _mvp_pilot_gate_operator_actions(*, pilot_gate_status: str) -> tuple[str, ...]:
+    if pilot_gate_status == "pilot_gate_open_with_deferred_scope":
+        return (
+            "retain pilot_gate evidence_hash with release_review_evidence_hash and handover_evidence_hash",
+            "run pilot only through metadata-only workspace, cockpit and release evidence routes",
+            "track open foundation gaps before expanding pilot scope",
+            "keep content preview, Office/Mail clients, tickets and automations outside pilot scope",
+        )
+    return ("repair blocked pilot gate checks before admitting pilot users",)
 
 
 def _mvp_snapshot_module_ref(module: ProductCockpitModuleView) -> ProductCockpitMvpSnapshotModuleRef:
