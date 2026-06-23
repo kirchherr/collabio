@@ -5316,6 +5316,269 @@ def test_platform_cockpit_mvp_pilot_decision_capture_preflight_summarizes_captur
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_pilot_decision_capture_submit_skeleton_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-decision-capture-submit-skeleton")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_decision_capture_submit_skeleton_defines_contract_without_accepting_payload() -> (
+    None
+):
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit/mvp-pilot-decision-capture-submit-skeleton",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_pilot_decision_capture_submit_skeleton.v1"
+    assert body["result_contract"] == "metadata_only_mvp_pilot_decision_capture_submit_skeleton"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["decision_capture_submit_skeleton_route"] == (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-submit-skeleton"
+    )
+    assert body["decision_capture_submit_target_route"] == ("/v1/platform/cockpit/mvp-pilot-decision-capture-submit")
+    assert body["decision_capture_preflight_route"] == ("/v1/platform/cockpit/mvp-pilot-decision-capture-preflight")
+    assert body["decision_capture_boundary_route"] == "/v1/platform/cockpit/mvp-pilot-decision-capture-boundary"
+    assert body["decision_capture_boundary_audit_event_id"]
+    assert body["decision_capture_preflight_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"][-3:] == [
+        f"audit:{body['decision_capture_boundary_audit_event_id']}",
+        f"audit:{body['decision_capture_preflight_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["decision_capture_preflight_evidence_hash"].startswith("sha256:")
+    assert body["decision_capture_boundary_evidence_hash"].startswith("sha256:")
+    assert body["go_no_go_decision_record_schema_evidence_hash"].startswith("sha256:")
+    assert body["go_no_go_boundary_evidence_hash"].startswith("sha256:")
+    assert body["approval_readiness_evidence_hash"].startswith("sha256:")
+    assert body["preflight_evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["decision_capture_preflight_evidence_hash"]
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["decision_capture_preflight_status"] == "metadata_only_pilot_decision_capture_preflight_ready"
+    assert body["decision_capture_preflight_decision"] == "decision_capture_preflight_ready_without_state_change"
+    assert body["decision_capture_boundary_status"] == "metadata_only_pilot_decision_capture_boundary_ready"
+    assert body["go_no_go_record_schema_status"] == "metadata_only_pilot_go_no_go_decision_record_schema_ready"
+    assert body["decision_capture_submit_skeleton_status"] == (
+        "metadata_only_pilot_decision_capture_submit_skeleton_ready"
+    )
+    assert body["decision_capture_submit_skeleton_decision"] == (
+        "decision_capture_submit_skeleton_ready_without_payload_acceptance"
+    )
+    assert body["decision_capture_submit_skeleton_sections"] == [
+        "submit_contract",
+        "required_payload_shape",
+        "human_confirmation",
+        "evidence_hashes",
+        "non_persistence",
+        "skeleton_outcome",
+    ]
+    assert body["decision_capture_submit_skeleton_id"] == "mvp_pilot_decision_capture_submit_skeleton_v1"
+    assert body["decision_capture_submit_contract_id"] == "mvp_pilot_decision_capture_submit_contract_v1"
+    assert body["decision_capture_submit_allowed_methods"] == [
+        "POST /v1/platform/cockpit/mvp-pilot-decision-capture-submit"
+    ]
+    assert body["decision_capture_submit_required_fields"] == [
+        "tenant_id",
+        "decision_capture_submit_contract_id",
+        "decision_capture_preflight_id",
+        "decision_capture_preflight_evidence_hash",
+        "decision_capture_boundary_evidence_hash",
+        "go_no_go_decision_record_schema_id",
+        "go_no_go_decision",
+        "human_confirmation_statement",
+        "confirmed_by",
+        "confirmed_at",
+        "confirmation_role_ids",
+        "idempotency_key",
+    ]
+    assert body["decision_capture_submit_required_controls"] == [
+        "explicit_human_submit",
+        "tenant_context_required",
+        "security_or_tenant_admin_required",
+        "preflight_evidence_hash_match",
+        "decision_record_schema_validation",
+        "idempotency_key_required",
+        "separate_persistence_ledger_required",
+    ]
+    assert body["decision_capture_submit_validation_checks"] == [
+        "allowed_decision_value_go_no_go_or_defer",
+        "human_confirmation_statement_matches_template",
+        "confirmation_role_gate_passes",
+        "all_required_evidence_hashes_match",
+        "no_open_content_release_gate_bypass",
+        "audit_event_created_before_storage",
+    ]
+    assert body["decision_capture_submit_prohibited_actions"] == [
+        "accept_decision_payload",
+        "store_go_no_go_decision",
+        "create_decision_record",
+        "persist_approval_record",
+        "authorize_pilot_start",
+        "render_source_content",
+        "create_persistent_task",
+        "create_automation",
+    ]
+    assert body["decision_capture_submit_skeleton_summary"] == [
+        (
+            "decision capture submit skeleton decision: "
+            "decision_capture_submit_skeleton_ready_without_payload_acceptance"
+        ),
+        "decision capture preflight decision: decision_capture_preflight_ready_without_state_change",
+        "decision capture boundary decision: decision_capture_boundary_ready_without_decision_storage",
+        "submit contract: mvp_pilot_decision_capture_submit_contract_v1",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "submit skeleton is read-only and accepts no decision payload, approval record or pilot start",
+    ]
+    assert body["decision_capture_submit_skeleton_checks"] == [
+        "present submit contract without enabling submit endpoint",
+        "require preflight evidence hash match before accepting any future payload",
+        "validate human confirmation fields in a later persistence boundary",
+        "keep pilot start disabled until stored approval is separately validated",
+    ]
+    assert body["decision_capture_submit_skeleton_blockers"] == [
+        "decision capture submit endpoint is not enabled",
+        "decision payload is not accepted",
+        "go/no-go decision has not been stored",
+        "approval record has not been created",
+        "pilot start authorization is not granted by this skeleton",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"] == [
+        f"decision capture preflight hash: {body['decision_capture_preflight_evidence_hash']}",
+        f"decision capture boundary hash: {body['decision_capture_boundary_evidence_hash']}",
+        f"go/no-go record schema hash: {body['go_no_go_decision_record_schema_evidence_hash']}",
+        f"go/no-go boundary hash: {body['go_no_go_boundary_evidence_hash']}",
+        f"approval readiness hash: {body['approval_readiness_evidence_hash']}",
+        f"preflight hash: {body['preflight_evidence_hash']}",
+    ]
+    assert body["open_foundation_gap_count"] == 4
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["human_review_required"] is True
+    assert body["human_confirmation_required"] is True
+    assert body["human_confirmation_captured"] is False
+    assert body["decision_capture_enabled"] is False
+    assert body["go_no_go_decision_stored"] is False
+    assert body["go_no_go_decision_captured"] is False
+    assert body["go_no_go_decision_record_created"] is False
+    assert body["decision_record_created"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert body["decision_capture_submit_endpoint_enabled"] is False
+    assert body["decision_submission_accepted"] is False
+    assert body["decision_payload_accepted"] is False
+    assert body["decision_capture_submit_storage_enabled"] is False
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-21:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+        "platform.mvp_pilot_status.read",
+        "platform.mvp_pilot_readiness_report.export",
+        "platform.mvp_pilot_start_scope.export",
+        "platform.mvp_pilot_runbook.export",
+        "platform.mvp_pilot_review_point.export",
+        "platform.mvp_pilot_start_decision_template.export",
+        "platform.mvp_pilot_decision_record_schema.export",
+        "platform.mvp_pilot_decision_preflight.export",
+        "platform.mvp_pilot_approval_workflow_boundary.export",
+        "platform.mvp_pilot_approval_readiness.export",
+        "platform.mvp_pilot_go_no_go_boundary.export",
+        "platform.mvp_pilot_go_no_go_decision_record_schema.export",
+        "platform.mvp_pilot_decision_capture_boundary.export",
+        "platform.mvp_pilot_decision_capture_preflight.export",
+        "platform.mvp_pilot_decision_capture_submit_skeleton.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == ("metadata_only_mvp_pilot_decision_capture_submit_skeleton")
+    assert (
+        new_events[-1].metadata["decision_capture_submit_skeleton_status"]
+        == (body["decision_capture_submit_skeleton_status"])
+    )
+    assert (
+        new_events[-1].metadata["decision_capture_submit_skeleton_decision"]
+        == (body["decision_capture_submit_skeleton_decision"])
+    )
+    assert new_events[-1].metadata["decision_capture_preflight_status"] == body["decision_capture_preflight_status"]
+    assert new_events[-1].metadata["decision_capture_preflight_decision"] == body["decision_capture_preflight_decision"]
+    assert (
+        new_events[-1].metadata["decision_capture_preflight_evidence_hash"]
+        == (body["decision_capture_preflight_evidence_hash"])
+    )
+    assert (
+        new_events[-1].metadata["decision_capture_boundary_evidence_hash"]
+        == (body["decision_capture_boundary_evidence_hash"])
+    )
+    assert new_events[-1].metadata["decision_capture_submit_skeleton_sections"] == tuple(
+        body["decision_capture_submit_skeleton_sections"]
+    )
+    assert new_events[-1].metadata["decision_capture_submit_skeleton_id"] == (
+        "mvp_pilot_decision_capture_submit_skeleton_v1"
+    )
+    assert new_events[-1].metadata["decision_capture_submit_contract_id"] == (
+        "mvp_pilot_decision_capture_submit_contract_v1"
+    )
+    assert new_events[-1].metadata["decision_capture_submit_allowed_methods"] == tuple(
+        body["decision_capture_submit_allowed_methods"]
+    )
+    assert new_events[-1].metadata["decision_capture_submit_required_fields"] == tuple(
+        body["decision_capture_submit_required_fields"]
+    )
+    assert new_events[-1].metadata["decision_capture_submit_required_controls"] == tuple(
+        body["decision_capture_submit_required_controls"]
+    )
+    assert new_events[-1].metadata["decision_capture_submit_validation_checks"] == tuple(
+        body["decision_capture_submit_validation_checks"]
+    )
+    assert new_events[-1].metadata["decision_capture_submit_prohibited_actions"] == tuple(
+        body["decision_capture_submit_prohibited_actions"]
+    )
+    assert new_events[-1].metadata["open_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["human_confirmation_captured"] is False
+    assert new_events[-1].metadata["decision_capture_enabled"] is False
+    assert new_events[-1].metadata["go_no_go_decision_stored"] is False
+    assert new_events[-1].metadata["go_no_go_decision_captured"] is False
+    assert new_events[-1].metadata["go_no_go_decision_record_created"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+    assert new_events[-1].metadata["decision_capture_submit_endpoint_enabled"] is False
+    assert new_events[-1].metadata["decision_submission_accepted"] is False
+    assert new_events[-1].metadata["decision_payload_accepted"] is False
+    assert new_events[-1].metadata["decision_capture_submit_storage_enabled"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger

@@ -257,6 +257,15 @@ MVP_PILOT_DECISION_CAPTURE_PREFLIGHT_SECTIONS = (
     "preflight_outcome",
 )
 
+MVP_PILOT_DECISION_CAPTURE_SUBMIT_SKELETON_SECTIONS = (
+    "submit_contract",
+    "required_payload_shape",
+    "human_confirmation",
+    "evidence_hashes",
+    "non_persistence",
+    "skeleton_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -2186,6 +2195,36 @@ class ProductCockpitMvpPilotDecisionCapturePreflightResponse(ProductCockpitMvpPi
     decision_capture_preflight_summary: tuple[str, ...]
     decision_capture_preflight_checks: tuple[str, ...]
     decision_capture_preflight_blockers: tuple[str, ...]
+
+
+class ProductCockpitMvpPilotDecisionCaptureSubmitSkeletonResponse(
+    ProductCockpitMvpPilotDecisionCapturePreflightResponse
+):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_decision_capture_submit_skeleton.v1"
+    result_contract: str = "metadata_only_mvp_pilot_decision_capture_submit_skeleton"
+    decision_capture_submit_skeleton_route: str = "/v1/platform/cockpit/mvp-pilot-decision-capture-submit-skeleton"
+    decision_capture_submit_target_route: str = "/v1/platform/cockpit/mvp-pilot-decision-capture-submit"
+    decision_capture_preflight_audit_event_id: str
+    decision_capture_preflight_evidence_hash: str
+    decision_capture_submit_skeleton_status: str
+    decision_capture_submit_skeleton_decision: str
+    decision_capture_submit_skeleton_sections: tuple[str, ...]
+    decision_capture_submit_skeleton_id: str
+    decision_capture_submit_contract_id: str
+    decision_capture_submit_allowed_methods: tuple[str, ...]
+    decision_capture_submit_required_fields: tuple[str, ...]
+    decision_capture_submit_required_controls: tuple[str, ...]
+    decision_capture_submit_validation_checks: tuple[str, ...]
+    decision_capture_submit_prohibited_actions: tuple[str, ...]
+    decision_capture_submit_skeleton_summary: tuple[str, ...]
+    decision_capture_submit_skeleton_checks: tuple[str, ...]
+    decision_capture_submit_skeleton_blockers: tuple[str, ...]
+    decision_capture_submit_endpoint_enabled: bool = False
+    decision_submission_accepted: bool = False
+    decision_payload_accepted: bool = False
+    decision_capture_submit_storage_enabled: bool = False
 
 
 class ProductCockpitMvpSnapshotResponse(BaseModel):
@@ -6030,6 +6069,301 @@ def _mvp_pilot_decision_capture_preflight_evidence_chain_summary(
         f"approval readiness hash: {decision_capture_boundary_response.approval_readiness_evidence_hash}",
         f"preflight hash: {decision_capture_boundary_response.preflight_evidence_hash}",
         f"pilot gate hash: {decision_capture_boundary_response.pilot_gate_evidence_hash}",
+    )
+
+
+def build_product_cockpit_mvp_pilot_decision_capture_submit_skeleton_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    decision_capture_preflight_response: ProductCockpitMvpPilotDecisionCapturePreflightResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotDecisionCaptureSubmitSkeletonResponse:
+    required_hashes = (
+        decision_capture_preflight_response.evidence_hash,
+        decision_capture_preflight_response.decision_capture_boundary_evidence_hash,
+        decision_capture_preflight_response.go_no_go_decision_record_schema_evidence_hash,
+        decision_capture_preflight_response.go_no_go_boundary_evidence_hash,
+        decision_capture_preflight_response.approval_readiness_evidence_hash,
+        decision_capture_preflight_response.preflight_evidence_hash,
+    )
+    decision_capture_submit_skeleton_status = (
+        "metadata_only_pilot_decision_capture_submit_skeleton_ready"
+        if decision_capture_preflight_response.decision_capture_preflight_status
+        == "metadata_only_pilot_decision_capture_preflight_ready"
+        and decision_capture_preflight_response.decision_capture_preflight_decision
+        == "decision_capture_preflight_ready_without_state_change"
+        and decision_capture_preflight_response.decision_capture_boundary_status
+        == "metadata_only_pilot_decision_capture_boundary_ready"
+        and decision_capture_preflight_response.go_no_go_record_schema_status
+        == "metadata_only_pilot_go_no_go_decision_record_schema_ready"
+        and all(evidence_hash.startswith("sha256:") for evidence_hash in required_hashes)
+        and decision_capture_preflight_response.read_only_status == "read_only_no_state_change"
+        and decision_capture_preflight_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not decision_capture_preflight_response.decision_capture_enabled
+        and not decision_capture_preflight_response.go_no_go_decision_stored
+        and not decision_capture_preflight_response.go_no_go_decision_captured
+        and not decision_capture_preflight_response.go_no_go_decision_record_created
+        and not decision_capture_preflight_response.human_confirmation_captured
+        and not decision_capture_preflight_response.approval_record_created
+        and not decision_capture_preflight_response.pilot_start_authorized
+        and not decision_capture_preflight_response.content_included
+        and not decision_capture_preflight_response.persistent_task_created
+        and not decision_capture_preflight_response.automation_created
+        else "metadata_only_pilot_decision_capture_submit_skeleton_blocked"
+    )
+    decision_capture_submit_skeleton_decision = (
+        "decision_capture_submit_skeleton_ready_without_payload_acceptance"
+        if decision_capture_submit_skeleton_status == "metadata_only_pilot_decision_capture_submit_skeleton_ready"
+        else "decision_capture_submit_skeleton_blocked"
+    )
+    submit_allowed_methods = ("POST /v1/platform/cockpit/mvp-pilot-decision-capture-submit",)
+    submit_required_fields = _mvp_pilot_decision_capture_submit_required_fields()
+    submit_required_controls = _mvp_pilot_decision_capture_submit_required_controls()
+    submit_validation_checks = _mvp_pilot_decision_capture_submit_validation_checks()
+    submit_prohibited_actions = _mvp_pilot_decision_capture_submit_prohibited_actions()
+    draft_payload = decision_capture_preflight_response.model_dump()
+    draft_payload.update(
+        {
+            "schema_version": "product_cockpit_mvp_pilot_decision_capture_submit_skeleton.v1",
+            "result_contract": "metadata_only_mvp_pilot_decision_capture_submit_skeleton",
+            "checked_by": user_context.user_id,
+            "decision_capture_preflight_audit_event_id": decision_capture_preflight_response.audit_event_id or "",
+            "decision_capture_preflight_evidence_hash": decision_capture_preflight_response.evidence_hash,
+            "audit_event_id": None,
+            "audit_refs": decision_capture_preflight_response.audit_refs,
+            "decision_capture_submit_skeleton_status": decision_capture_submit_skeleton_status,
+            "decision_capture_submit_skeleton_decision": decision_capture_submit_skeleton_decision,
+            "decision_capture_submit_skeleton_sections": (MVP_PILOT_DECISION_CAPTURE_SUBMIT_SKELETON_SECTIONS),
+            "decision_capture_submit_skeleton_id": "mvp_pilot_decision_capture_submit_skeleton_v1",
+            "decision_capture_submit_contract_id": "mvp_pilot_decision_capture_submit_contract_v1",
+            "decision_capture_submit_allowed_methods": submit_allowed_methods,
+            "decision_capture_submit_required_fields": submit_required_fields,
+            "decision_capture_submit_required_controls": submit_required_controls,
+            "decision_capture_submit_validation_checks": submit_validation_checks,
+            "decision_capture_submit_prohibited_actions": submit_prohibited_actions,
+            "decision_capture_submit_skeleton_summary": _mvp_pilot_decision_capture_submit_skeleton_summary(
+                decision_capture_preflight_response=decision_capture_preflight_response,
+                decision_capture_submit_skeleton_decision=decision_capture_submit_skeleton_decision,
+            ),
+            "decision_capture_submit_skeleton_checks": _mvp_pilot_decision_capture_submit_skeleton_checks(
+                decision_capture_submit_skeleton_status=decision_capture_submit_skeleton_status,
+            ),
+            "decision_capture_submit_skeleton_blockers": _mvp_pilot_decision_capture_submit_skeleton_blockers(
+                decision_capture_preflight_response,
+            ),
+            "evidence_chain_summary": _mvp_pilot_decision_capture_submit_skeleton_evidence_chain_summary(
+                decision_capture_preflight_response,
+            ),
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_capture_submit_endpoint_enabled": False,
+            "decision_submission_accepted": False,
+            "decision_payload_accepted": False,
+            "decision_capture_submit_storage_enabled": False,
+            "evidence_hash": "sha256:" + "0" * 64,
+        }
+    )
+    draft = ProductCockpitMvpPilotDecisionCaptureSubmitSkeletonResponse.model_validate(draft_payload)
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_decision_capture_submit_skeleton.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "decision_capture_submit_skeleton_status": decision_capture_submit_skeleton_status,
+            "decision_capture_submit_skeleton_decision": decision_capture_submit_skeleton_decision,
+            "decision_capture_preflight_status": decision_capture_preflight_response.decision_capture_preflight_status,
+            "decision_capture_preflight_decision": (
+                decision_capture_preflight_response.decision_capture_preflight_decision
+            ),
+            "decision_capture_boundary_status": decision_capture_preflight_response.decision_capture_boundary_status,
+            "decision_capture_boundary_decision": (
+                decision_capture_preflight_response.decision_capture_boundary_decision
+            ),
+            "go_no_go_record_schema_status": decision_capture_preflight_response.go_no_go_record_schema_status,
+            "go_no_go_record_schema_decision": decision_capture_preflight_response.go_no_go_record_schema_decision,
+            "read_only_status": decision_capture_preflight_response.read_only_status,
+            "decision_capture_preflight_evidence_hash": decision_capture_preflight_response.evidence_hash,
+            "decision_capture_boundary_evidence_hash": (
+                decision_capture_preflight_response.decision_capture_boundary_evidence_hash
+            ),
+            "go_no_go_decision_record_schema_evidence_hash": (
+                decision_capture_preflight_response.go_no_go_decision_record_schema_evidence_hash
+            ),
+            "go_no_go_boundary_evidence_hash": decision_capture_preflight_response.go_no_go_boundary_evidence_hash,
+            "approval_readiness_evidence_hash": decision_capture_preflight_response.approval_readiness_evidence_hash,
+            "preflight_evidence_hash": decision_capture_preflight_response.preflight_evidence_hash,
+            "decision_capture_submit_skeleton_sections": (MVP_PILOT_DECISION_CAPTURE_SUBMIT_SKELETON_SECTIONS),
+            "decision_capture_submit_skeleton_id": "mvp_pilot_decision_capture_submit_skeleton_v1",
+            "decision_capture_submit_contract_id": "mvp_pilot_decision_capture_submit_contract_v1",
+            "decision_capture_submit_allowed_methods": submit_allowed_methods,
+            "decision_capture_submit_required_fields": submit_required_fields,
+            "decision_capture_submit_required_controls": submit_required_controls,
+            "decision_capture_submit_validation_checks": submit_validation_checks,
+            "decision_capture_submit_prohibited_actions": submit_prohibited_actions,
+            "decision_capture_preflight_id": decision_capture_preflight_response.decision_capture_preflight_id,
+            "decision_capture_boundary_id": decision_capture_preflight_response.decision_capture_boundary_id,
+            "go_no_go_decision_record_schema_id": (
+                decision_capture_preflight_response.go_no_go_decision_record_schema_id
+            ),
+            "go_no_go_boundary_id": decision_capture_preflight_response.go_no_go_boundary_id,
+            "confirmation_template_id": decision_capture_preflight_response.confirmation_template_id,
+            "open_foundation_gap_ids": decision_capture_preflight_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": decision_capture_preflight_response.open_foundation_gap_count,
+            "next_foundation_action": decision_capture_preflight_response.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_capture_submit_endpoint_enabled": False,
+            "decision_submission_accepted": False,
+            "decision_payload_accepted": False,
+            "decision_capture_submit_storage_enabled": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_decision_capture_submit_skeleton_hash(audited)})
+
+
+def build_mvp_pilot_decision_capture_submit_skeleton_hash(
+    report: ProductCockpitMvpPilotDecisionCaptureSubmitSkeletonResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_decision_capture_submit_required_fields() -> tuple[str, ...]:
+    return (
+        "tenant_id",
+        "decision_capture_submit_contract_id",
+        "decision_capture_preflight_id",
+        "decision_capture_preflight_evidence_hash",
+        "decision_capture_boundary_evidence_hash",
+        "go_no_go_decision_record_schema_id",
+        "go_no_go_decision",
+        "human_confirmation_statement",
+        "confirmed_by",
+        "confirmed_at",
+        "confirmation_role_ids",
+        "idempotency_key",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_required_controls() -> tuple[str, ...]:
+    return (
+        "explicit_human_submit",
+        "tenant_context_required",
+        "security_or_tenant_admin_required",
+        "preflight_evidence_hash_match",
+        "decision_record_schema_validation",
+        "idempotency_key_required",
+        "separate_persistence_ledger_required",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_validation_checks() -> tuple[str, ...]:
+    return (
+        "allowed_decision_value_go_no_go_or_defer",
+        "human_confirmation_statement_matches_template",
+        "confirmation_role_gate_passes",
+        "all_required_evidence_hashes_match",
+        "no_open_content_release_gate_bypass",
+        "audit_event_created_before_storage",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_prohibited_actions() -> tuple[str, ...]:
+    return (
+        "accept_decision_payload",
+        "store_go_no_go_decision",
+        "create_decision_record",
+        "persist_approval_record",
+        "authorize_pilot_start",
+        "render_source_content",
+        "create_persistent_task",
+        "create_automation",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_skeleton_summary(
+    *,
+    decision_capture_preflight_response: ProductCockpitMvpPilotDecisionCapturePreflightResponse,
+    decision_capture_submit_skeleton_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(decision_capture_preflight_response.open_foundation_gap_ids) or "none"
+    preflight_decision = decision_capture_preflight_response.decision_capture_preflight_decision
+    boundary_decision = decision_capture_preflight_response.decision_capture_boundary_decision
+    return (
+        f"decision capture submit skeleton decision: {decision_capture_submit_skeleton_decision}",
+        f"decision capture preflight decision: {preflight_decision}",
+        f"decision capture boundary decision: {boundary_decision}",
+        "submit contract: mvp_pilot_decision_capture_submit_contract_v1",
+        f"open foundation gaps: {open_gaps}",
+        "submit skeleton is read-only and accepts no decision payload, approval record or pilot start",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_skeleton_checks(
+    *, decision_capture_submit_skeleton_status: str
+) -> tuple[str, ...]:
+    if decision_capture_submit_skeleton_status == "metadata_only_pilot_decision_capture_submit_skeleton_ready":
+        return (
+            "present submit contract without enabling submit endpoint",
+            "require preflight evidence hash match before accepting any future payload",
+            "validate human confirmation fields in a later persistence boundary",
+            "keep pilot start disabled until stored approval is separately validated",
+        )
+    return ("repair blocked submit skeleton conditions before future submit endpoint wiring",)
+
+
+def _mvp_pilot_decision_capture_submit_skeleton_blockers(
+    decision_capture_preflight_response: ProductCockpitMvpPilotDecisionCapturePreflightResponse,
+) -> tuple[str, ...]:
+    return (
+        "decision capture submit endpoint is not enabled",
+        "decision payload is not accepted",
+        "go/no-go decision has not been stored",
+        "approval record has not been created",
+        "pilot start authorization is not granted by this skeleton",
+        f"open foundation gaps: {','.join(decision_capture_preflight_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_decision_capture_submit_skeleton_evidence_chain_summary(
+    decision_capture_preflight_response: ProductCockpitMvpPilotDecisionCapturePreflightResponse,
+) -> tuple[str, ...]:
+    record_schema_hash = decision_capture_preflight_response.go_no_go_decision_record_schema_evidence_hash
+    boundary_hash = decision_capture_preflight_response.decision_capture_boundary_evidence_hash
+    return (
+        f"decision capture preflight hash: {decision_capture_preflight_response.evidence_hash}",
+        f"decision capture boundary hash: {boundary_hash}",
+        f"go/no-go record schema hash: {record_schema_hash}",
+        f"go/no-go boundary hash: {decision_capture_preflight_response.go_no_go_boundary_evidence_hash}",
+        f"approval readiness hash: {decision_capture_preflight_response.approval_readiness_evidence_hash}",
+        f"preflight hash: {decision_capture_preflight_response.preflight_evidence_hash}",
     )
 
 
