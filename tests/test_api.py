@@ -1990,6 +1990,195 @@ def test_platform_cockpit_mvp_pilot_status_summarizes_read_only_operations() -> 
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_pilot_readiness_report_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-readiness-report")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_readiness_report_summarizes_review_scope() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get("/v1/platform/cockpit/mvp-pilot-readiness-report", headers=DEMO_ADMIN_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_pilot_readiness_report.v1"
+    assert body["result_contract"] == "metadata_only_mvp_pilot_readiness_report"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["readiness_report_route"] == "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    assert body["pilot_status_route"] == "/v1/platform/cockpit/mvp-pilot-status"
+    assert body["pilot_gate_route"] == "/v1/platform/cockpit/mvp-pilot-gate"
+    assert body["review_route"] == "/v1/platform/cockpit/mvp-release-review"
+    assert body["handover_route"] == "/v1/platform/cockpit/mvp-release-handover"
+    assert body["entrypoint_route"] == "/workspace"
+    assert body["cockpit_route"] == "/v1/platform/cockpit"
+    assert body["snapshot_route"] == "/v1/platform/cockpit/mvp-snapshot"
+    assert body["smoke_route"] == "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    assert body["cockpit_audit_event_id"]
+    assert body["snapshot_audit_event_id"]
+    assert body["smoke_audit_event_id"]
+    assert body["handover_audit_event_id"]
+    assert body["release_review_audit_event_id"]
+    assert body["pilot_gate_audit_event_id"]
+    assert body["pilot_status_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"] == [
+        f"audit:{body['cockpit_audit_event_id']}",
+        f"audit:{body['snapshot_audit_event_id']}",
+        f"audit:{body['smoke_audit_event_id']}",
+        f"audit:{body['handover_audit_event_id']}",
+        f"audit:{body['release_review_audit_event_id']}",
+        f"audit:{body['pilot_gate_audit_event_id']}",
+        f"audit:{body['pilot_status_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["pilot_status_evidence_hash"].startswith("sha256:")
+    assert body["pilot_gate_evidence_hash"].startswith("sha256:")
+    assert body["release_review_evidence_hash"].startswith("sha256:")
+    assert body["handover_evidence_hash"].startswith("sha256:")
+    assert body["snapshot_hash"].startswith("sha256:")
+    assert body["release_candidate_smoke_hash"].startswith("sha256:")
+    assert body["operational_status"] == "metadata_only_pilot_operational_ready"
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["pilot_gate_status"] == "pilot_gate_open_with_deferred_scope"
+    assert body["pilot_gate_decision"] == "metadata_only_pilot_allowed_with_deferred_content_release"
+    assert body["release_review_status"] == "ready_for_release_review"
+    assert body["readiness_status"] == "ready_for_metadata_only_pilot_review"
+    assert body["readiness_decision"] == "metadata_only_pilot_ready_with_tracked_foundation_gaps"
+    assert body["report_sections"] == [
+        "readiness_decision",
+        "evidence_chain",
+        "operator_summary",
+        "foundation_gap_summary",
+        "deferred_scope",
+        "reviewer_actions",
+    ]
+    assert body["executive_summary"] == [
+        "readiness decision: metadata_only_pilot_ready_with_tracked_foundation_gaps",
+        "operational status: metadata_only_pilot_operational_ready",
+        "pilot gate: pilot_gate_open_with_deferred_scope",
+        "release review: ready_for_release_review",
+        "pilot remains limited to metadata-only surfaces and release evidence",
+    ]
+    assert body["foundation_gap_summary"] == [
+        (
+            "open foundation gaps (4): preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "ready foundation gaps (2): preview_decisions_pending,module_activation_work_items_open",
+        "deferred foundation gaps (2): human_confirmation_required,content_release_gate_blocks_content",
+        "next foundation action: resolve_preview_decision_work_items",
+    ]
+    assert body["deferred_scope_summary"] == [
+        (
+            "allowed pilot surfaces: workspace_shell,platform_module_discovery,product_cockpit,"
+            "mvp_snapshot,mvp_release_evidence"
+        ),
+        (
+            "deferred pilot surfaces: content_preview_rendering,office_mail_full_clients,"
+            "tickets_and_automations,lms_time_tracking_activity_modules"
+        ),
+        "content preview, tickets, automations and new module workflows remain out of scope",
+        "report is metadata-only and creates no persistent work items",
+    ]
+    assert body["reviewer_actions"] == [
+        "retain readiness_report evidence_hash with pilot_status and pilot_gate evidence",
+        "review open foundation gaps before expanding pilot scope",
+        "confirm deferred surfaces remain outside pilot operation",
+        "use this report for operator review only; do not treat it as content release",
+    ]
+    assert body["operator_attention_items"] == [
+        "next foundation action: resolve_preview_decision_work_items",
+        "module gate: module_activation_required",
+        "content gate: deferred_metadata_only_ready",
+        "backup/failover gate: metadata_only_no_state_change",
+        "deferred scope must remain outside pilot operation until explicitly released",
+    ]
+    assert body["allowed_pilot_surfaces"] == [
+        "workspace_shell",
+        "platform_module_discovery",
+        "product_cockpit",
+        "mvp_snapshot",
+        "mvp_release_evidence",
+    ]
+    assert body["deferred_pilot_surfaces"] == [
+        "content_preview_rendering",
+        "office_mail_full_clients",
+        "tickets_and_automations",
+        "lms_time_tracking_activity_modules",
+    ]
+    assert body["open_foundation_gap_count"] == 4
+    assert body["ready_foundation_gap_count"] == 2
+    assert body["deferred_foundation_gap_count"] == 2
+    assert body["open_foundation_gap_ids"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["ready_foundation_gap_ids"] == ["preview_decisions_pending", "module_activation_work_items_open"]
+    assert body["deferred_foundation_gap_ids"] == [
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["required_roles"] == ["security-admin", "tenant-admin"]
+    assert body["role_gates"] == ["context", "tenant-admin,security-admin"]
+    assert body["module_gate_status"] == "module_activation_required"
+    assert body["content_gate_status"] == "deferred_metadata_only_ready"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["pilot_status_evidence_hash"]
+    assert body["pilot_status_evidence_hash"] != body["pilot_gate_evidence_hash"]
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-8:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+        "platform.mvp_pilot_status.read",
+        "platform.mvp_pilot_readiness_report.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_pilot_readiness_report"
+    assert new_events[-1].metadata["readiness_status"] == body["readiness_status"]
+    assert new_events[-1].metadata["readiness_decision"] == body["readiness_decision"]
+    assert new_events[-1].metadata["operational_status"] == body["operational_status"]
+    assert new_events[-1].metadata["read_only_status"] == "read_only_no_state_change"
+    assert new_events[-1].metadata["pilot_status_evidence_hash"] == body["pilot_status_evidence_hash"]
+    assert new_events[-1].metadata["pilot_gate_evidence_hash"] == body["pilot_gate_evidence_hash"]
+    assert new_events[-1].metadata["release_review_evidence_hash"] == body["release_review_evidence_hash"]
+    assert new_events[-1].metadata["handover_evidence_hash"] == body["handover_evidence_hash"]
+    assert new_events[-1].metadata["snapshot_hash"] == body["snapshot_hash"]
+    assert new_events[-1].metadata["release_candidate_smoke_hash"] == body["release_candidate_smoke_hash"]
+    assert new_events[-1].metadata["report_sections"] == tuple(body["report_sections"])
+    assert new_events[-1].metadata["allowed_pilot_surfaces"] == tuple(body["allowed_pilot_surfaces"])
+    assert new_events[-1].metadata["deferred_pilot_surfaces"] == tuple(body["deferred_pilot_surfaces"])
+    assert new_events[-1].metadata["open_foundation_gap_ids"] == tuple(body["open_foundation_gap_ids"])
+    assert new_events[-1].metadata["open_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
