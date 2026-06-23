@@ -1346,7 +1346,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 165. [x] MVP-Release-Handover schaerfen: Release-Candidate-Smoke, Snapshot-Hash und offene Foundation-Gaps in eine knappe Betreiber-/Reviewer-Uebergabe zusammenfassen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
 166. [x] MVP-Release-Review abschliessen: Handover-Evidence, offene Gaps und Betreiber-Checkliste gegen Security-/Compliance-Guardrails reviewbar machen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
 167. [x] MVP-Pilot-Freigabe vorbereiten: Release-Review, Handover und Smoke-Evidence in ein minimales Pilot-Gate ueberfuehren, ohne neue Produktfunktionen, Content-Preview oder Automationen vorzuziehen.
-168. [ ] MVP-Pilot-Betriebsstatus sichtbar machen: Pilot-Gate, Release-Review und offene Foundation-Gaps als read-only Betreiberstatus zusammenziehen, ohne neue Produktfunktionen, Content-Preview, Tickets oder Automationen vorzuziehen.
+168. [x] MVP-Pilot-Betriebsstatus sichtbar machen: Pilot-Gate, Release-Review und offene Foundation-Gaps als read-only Betreiberstatus zusammenziehen, ohne neue Produktfunktionen, Content-Preview, Tickets oder Automationen vorzuziehen.
+169. [ ] MVP-Pilot-Readiness-Bericht schaerfen: Pilot-Betriebsstatus, offene Foundation-Gaps und Deferred-Scope in eine knappe Review-/Betreiberansicht ueberfuehren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
