@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
 from suite.platform.knowledge_base import (
     KB_ARTICLE_OBJECT_TYPE,
@@ -448,6 +448,51 @@ class ProductCockpitMvpSnapshotWorkItemRef(BaseModel):
     persistent_task_created: bool = False
 
 
+class ProductCockpitMvpReleaseCandidateSmokeReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_release_candidate_smoke_report.v1"
+    result_contract: str = "metadata_only_mvp_release_candidate_smoke"
+    tenant_id: str
+    run_id: str
+    checked_by: str
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_event_types: tuple[str, ...]
+    audit_refs: tuple[str, ...]
+    snapshot_hash: str
+    snapshot_exported: bool
+    review_sections: tuple[str, ...]
+    demo_tenant_checked: bool
+    role_matrix_checked: bool
+    context_role_ids: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    required_roles: tuple[str, ...]
+    admin_role_required_action_count: int = Field(ge=0)
+    mvp_readiness_decision: str
+    metadata_only_productive_path: bool
+    module_gate_status: str
+    content_gate_status: str
+    foundation_gap_status: str
+    backup_failover_gate_status: str
+    backup_restore_verified_flow_count: int = Field(ge=0)
+    backup_restore_deferred_flow_count: int = Field(ge=0)
+    source_object_flow_count: int = Field(ge=0)
+    module_count: int = Field(ge=0)
+    work_item_count: int = Field(ge=0)
+    foundation_gap_action_count: int = Field(ge=0)
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    smoke_passed: bool
+    recommended_actions: tuple[str, ...]
+    evidence_hash: str
+
+
 class ProductCockpitMvpSnapshotResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -703,6 +748,126 @@ def build_product_cockpit_mvp_snapshot_response(
         next_foundation_action=cockpit_response.mvp_readiness_summary.next_foundation_action,
         audit_event_id=event.event_id,
     )
+
+
+def build_product_cockpit_mvp_release_candidate_smoke_report(
+    *,
+    user_context: UserContext,
+    cockpit_response: ProductCockpitResponse,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpReleaseCandidateSmokeReport:
+    snapshot_hash = stable_hash(canonical_json(snapshot_response.model_dump(mode="json")))
+    context_role_ids = tuple(sorted(user_context.role_ids))
+    role_gates = snapshot_response.work_item_operational_summary.role_gates
+    required_roles = snapshot_response.mvp_readiness_decision.required_roles
+    content_included = (
+        snapshot_response.content_included
+        or snapshot_response.mvp_readiness_decision.content_included
+        or snapshot_response.work_item_operational_summary.content_included
+    )
+    persistent_task_created = (
+        snapshot_response.persistent_task_created
+        or snapshot_response.mvp_readiness_decision.persistent_task_created
+        or snapshot_response.work_item_operational_summary.persistent_task_created_count > 0
+    )
+    automation_created = (
+        snapshot_response.automation_created or snapshot_response.mvp_readiness_decision.automation_created
+    )
+    role_matrix_checked = bool(role_gates) and "context" in role_gates
+    smoke_passed = (
+        snapshot_response.tenant_id == cockpit_response.tenant_id == user_context.tenant_id
+        and user_context.tenant_id == "tenant-demo"
+        and role_matrix_checked
+        and snapshot_response.generated_from_cockpit_audit_event_id == cockpit_response.audit_event_id
+        and snapshot_response.result_contract == "metadata_only_mvp_handover_snapshot"
+        and snapshot_response.mvp_readiness_decision.metadata_only_productive_path
+        and snapshot_response.mvp_readiness_decision.audit_gate_status == "audit_visible"
+        and snapshot_response.mvp_readiness_decision.backup_failover_gate_status == "metadata_only_no_state_change"
+        and snapshot_response.mvp_readiness_decision.content_gate_status == "deferred_metadata_only_ready"
+        and not content_included
+        and not persistent_task_created
+        and not automation_created
+    )
+    draft = ProductCockpitMvpReleaseCandidateSmokeReport(
+        tenant_id=user_context.tenant_id,
+        run_id=f"mvp-release-candidate-smoke:{snapshot_response.audit_event_id}",
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=cockpit_response.audit_event_id,
+        snapshot_audit_event_id=snapshot_response.audit_event_id,
+        audit_event_types=("platform.module_cockpit.read", "platform.mvp_snapshot.export"),
+        audit_refs=(f"audit:{cockpit_response.audit_event_id}", f"audit:{snapshot_response.audit_event_id}"),
+        snapshot_hash=snapshot_hash,
+        snapshot_exported=bool(snapshot_response.audit_event_id),
+        review_sections=snapshot_response.review_sections,
+        demo_tenant_checked=user_context.tenant_id == "tenant-demo",
+        role_matrix_checked=role_matrix_checked,
+        context_role_ids=context_role_ids,
+        role_gates=role_gates,
+        required_roles=required_roles,
+        admin_role_required_action_count=snapshot_response.work_item_operational_summary.admin_role_required_action_count,
+        mvp_readiness_decision=snapshot_response.mvp_readiness_decision.decision,
+        metadata_only_productive_path=snapshot_response.mvp_readiness_decision.metadata_only_productive_path,
+        module_gate_status=snapshot_response.mvp_readiness_decision.module_gate_status,
+        content_gate_status=snapshot_response.mvp_readiness_decision.content_gate_status,
+        foundation_gap_status=snapshot_response.mvp_readiness_decision.foundation_gap_status,
+        backup_failover_gate_status=snapshot_response.mvp_readiness_decision.backup_failover_gate_status,
+        backup_restore_verified_flow_count=snapshot_response.mvp_readiness_decision.backup_restore_verified_flow_count,
+        backup_restore_deferred_flow_count=snapshot_response.mvp_readiness_decision.backup_restore_deferred_flow_count,
+        source_object_flow_count=snapshot_response.mvp_readiness_summary.source_object_flow_count,
+        module_count=snapshot_response.mvp_readiness_summary.module_count,
+        work_item_count=snapshot_response.mvp_readiness_summary.work_item_count,
+        foundation_gap_action_count=snapshot_response.foundation_gap_action_count,
+        content_included=content_included,
+        persistent_task_created=persistent_task_created,
+        automation_created=automation_created,
+        smoke_passed=smoke_passed,
+        recommended_actions=_mvp_release_candidate_recommended_actions(smoke_passed=smoke_passed),
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    smoke_event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_release_candidate_smoke.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "snapshot_hash": snapshot_hash,
+            "snapshot_audit_event_id": snapshot_response.audit_event_id,
+            "cockpit_audit_event_id": cockpit_response.audit_event_id,
+            "mvp_readiness_decision": draft.mvp_readiness_decision,
+            "metadata_only_productive_path": draft.metadata_only_productive_path,
+            "smoke_passed": smoke_passed,
+            "role_matrix_checked": draft.role_matrix_checked,
+            "backup_failover_gate_status": draft.backup_failover_gate_status,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": smoke_event.event_id,
+            "audit_event_types": (*draft.audit_event_types, "platform.mvp_release_candidate_smoke.export"),
+            "audit_refs": (*draft.audit_refs, f"audit:{smoke_event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_release_candidate_smoke_report_hash(audited)})
+
+
+def build_mvp_release_candidate_smoke_report_hash(
+    report: ProductCockpitMvpReleaseCandidateSmokeReport,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_release_candidate_recommended_actions(*, smoke_passed: bool) -> tuple[str, ...]:
+    if smoke_passed:
+        return (
+            "retain MVP snapshot and release-candidate smoke hashes with release evidence",
+            "run this smoke before promoting viewer, Office, Mail, ticketing or automation paths",
+            "keep content release gate deferred until policy and viewer runtime evidence are ready",
+        )
+    return ("repair metadata-only MVP release-candidate smoke before productive pilot",)
 
 
 def _mvp_snapshot_module_ref(module: ProductCockpitModuleView) -> ProductCockpitMvpSnapshotModuleRef:

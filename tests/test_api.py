@@ -1315,6 +1315,111 @@ def test_platform_cockpit_mvp_snapshot_exports_metadata_only_review_artifact() -
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_release_candidate_smoke_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-release-candidate-smoke")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_release_candidate_smoke_documents_metadata_only_path() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get("/v1/platform/cockpit/mvp-release-candidate-smoke", headers=DEMO_ADMIN_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_release_candidate_smoke_report.v1"
+    assert body["result_contract"] == "metadata_only_mvp_release_candidate_smoke"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["run_id"].startswith("mvp-release-candidate-smoke:")
+    assert body["checked_by"] == "user-demo"
+    assert body["entrypoint_route"] == "/workspace"
+    assert body["cockpit_route"] == "/v1/platform/cockpit"
+    assert body["snapshot_route"] == "/v1/platform/cockpit/mvp-snapshot"
+    assert body["cockpit_audit_event_id"]
+    assert body["snapshot_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_event_types"] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+    ]
+    assert body["audit_refs"] == [
+        f"audit:{body['cockpit_audit_event_id']}",
+        f"audit:{body['snapshot_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["snapshot_hash"].startswith("sha256:")
+    assert body["snapshot_exported"] is True
+    assert body["review_sections"] == [
+        "mvp_readiness_summary",
+        "mvp_readiness_decision",
+        "flow_readiness_summary",
+        "work_item_operational_summary",
+        "module_refs",
+        "source_object_flow_refs",
+        "work_item_refs",
+        "foundation_gap_actions",
+    ]
+    assert body["demo_tenant_checked"] is True
+    assert body["role_matrix_checked"] is True
+    assert body["context_role_ids"] == ["tenant-admin"]
+    assert body["role_gates"] == ["context", "tenant-admin,security-admin"]
+    assert body["required_roles"] == ["security-admin", "tenant-admin"]
+    assert body["admin_role_required_action_count"] == 2
+    assert body["mvp_readiness_decision"] == "metadata_only_mvp_ready_with_deferred_content_release"
+    assert body["metadata_only_productive_path"] is True
+    assert body["module_gate_status"] == "module_activation_required"
+    assert body["content_gate_status"] == "deferred_metadata_only_ready"
+    assert body["foundation_gap_status"] == "work_items_open"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["backup_restore_verified_flow_count"] == 0
+    assert body["backup_restore_deferred_flow_count"] == 2
+    assert body["source_object_flow_count"] == 2
+    assert body["module_count"] == 2
+    assert body["work_item_count"] == 4
+    assert body["foundation_gap_action_count"] == 4
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert body["smoke_passed"] is True
+    assert body["recommended_actions"] == [
+        "retain MVP snapshot and release-candidate smoke hashes with release evidence",
+        "run this smoke before promoting viewer, Office, Mail, ticketing or automation paths",
+        "keep content release gate deferred until policy and viewer runtime evidence are ready",
+    ]
+    assert body["evidence_hash"].startswith("sha256:")
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-3:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_release_candidate_smoke"
+    assert new_events[-1].metadata["snapshot_hash"] == body["snapshot_hash"]
+    assert new_events[-1].metadata["snapshot_audit_event_id"] == body["snapshot_audit_event_id"]
+    assert new_events[-1].metadata["cockpit_audit_event_id"] == body["cockpit_audit_event_id"]
+    assert new_events[-1].metadata["mvp_readiness_decision"] == body["mvp_readiness_decision"]
+    assert new_events[-1].metadata["metadata_only_productive_path"] is True
+    assert new_events[-1].metadata["smoke_passed"] is True
+    assert new_events[-1].metadata["role_matrix_checked"] is True
+    assert new_events[-1].metadata["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
