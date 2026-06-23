@@ -347,6 +347,15 @@ MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_DRY_R
     "dry_run_outcome",
 )
 
+MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_APPROVAL_SKELETON_SECTIONS = (
+    "approval_skeleton",
+    "approval_input_contract",
+    "required_approvers",
+    "evidence_hashes",
+    "non_activation",
+    "skeleton_outcome",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -2582,6 +2591,51 @@ class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActi
     decision_capture_payload_validation_request_execution_activation_dry_run_executed: bool = False
     decision_capture_payload_validation_request_execution_activation_dry_run_activation_accepted: bool = False
     decision_capture_payload_validation_request_execution_activation_dry_run_result_persisted: bool = False
+
+
+class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalSkeletonResponse(
+    ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationDryRunResponse
+):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = (
+        "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_skeleton.v1"
+    )
+    result_contract: str = (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton"
+    )
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_route: str = (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-"
+        "execution-activation-approval-skeleton"
+    )
+    decision_capture_payload_validation_request_execution_activation_dry_run_audit_event_id: str
+    decision_capture_payload_validation_request_execution_activation_dry_run_evidence_hash: str
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_status: str
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_decision: str
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_sections: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_id: str
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_contract_id: str
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_input_fields: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_approver_roles: tuple[
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_evidence: tuple[
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_policy_guards: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_prohibited_actions: tuple[
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_summary: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_checks: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_blockers: tuple[str, ...]
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_endpoint_enabled: bool = False
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_handler_registered: bool = False
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_request_accepted: bool = False
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_approval_persisted: bool = False
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_activation_granted: bool = False
+    decision_capture_payload_validation_request_execution_activation_approval_skeleton_result_persisted: bool = False
 
 
 class ProductCockpitMvpSnapshotResponse(BaseModel):
@@ -9864,6 +9918,464 @@ def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_
     )
     validation_dry_run_hash = activation_boundary_response.decision_capture_payload_validation_dry_run_evidence_hash
     return (
+        f"payload validation request execution activation boundary hash: {activation_boundary_hash}",
+        f"payload validation request execution dry-run hash: {execution_dry_run_hash}",
+        f"payload validation request execution skeleton hash: {execution_skeleton_hash}",
+        f"payload validation request dry-run hash: {request_dry_run_hash}",
+        f"payload validation request boundary hash: {request_boundary_hash}",
+        f"payload validation dry-run hash: {validation_dry_run_hash}",
+    )
+
+
+def build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_response(  # noqa: E501
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    activation_dry_run_response: (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationDryRunResponse
+    ),
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalSkeletonResponse:
+    dry_run = activation_dry_run_response
+    ready_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_ready"
+    )
+    blocked_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_blocked"
+    )
+    ready_decision = (
+        "payload_validation_request_execution_activation_approval_skeleton_ready_without_approval_persistence"
+    )
+    blocked_decision = "payload_validation_request_execution_activation_approval_skeleton_blocked"
+    status_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_status"
+    decision_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_decision"
+    sections_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_sections"
+    skeleton_id_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_id"
+    contract_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_contract_id"
+    input_fields_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_input_fields"
+    approver_roles_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_approver_roles"
+    )
+    required_evidence_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_evidence"
+    )
+    policy_guards_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_policy_guards"
+    )
+    prohibited_actions_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_prohibited_actions"
+    )
+    summary_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_summary"
+    checks_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_checks"
+    blockers_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_blockers"
+    endpoint_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_endpoint_enabled"
+    handler_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_handler_registered"
+    )
+    request_key = "decision_capture_payload_validation_request_execution_activation_approval_skeleton_request_accepted"
+    approval_persisted_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_approval_persisted"
+    )
+    activation_granted_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_activation_granted"
+    )
+    result_persisted_key = (
+        "decision_capture_payload_validation_request_execution_activation_approval_skeleton_result_persisted"
+    )
+    skeleton_id = "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_v1"
+    skeleton_contract_id = (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_contract_v1"
+    )
+    sections = MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_APPROVAL_SKELETON_SECTIONS
+    required_hashes = (
+        dry_run.evidence_hash,
+        dry_run.decision_capture_payload_validation_request_execution_activation_boundary_evidence_hash,
+        dry_run.decision_capture_payload_validation_request_execution_dry_run_evidence_hash,
+        dry_run.decision_capture_payload_validation_request_execution_skeleton_evidence_hash,
+        dry_run.decision_capture_payload_validation_request_dry_run_evidence_hash,
+        dry_run.decision_capture_payload_validation_request_boundary_evidence_hash,
+        dry_run.decision_capture_payload_validation_dry_run_evidence_hash,
+        dry_run.decision_capture_payload_validation_boundary_evidence_hash,
+    )
+    skeleton_status = (
+        ready_status
+        if dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_dry_run_ready"
+        and dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_decision
+        == "payload_validation_request_execution_activation_dry_run_ready_without_activation"
+        and dry_run.decision_capture_payload_validation_request_execution_activation_boundary_status
+        == "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_boundary_ready"
+        and dry_run.decision_capture_payload_validation_request_execution_activation_boundary_decision
+        == "payload_validation_request_execution_activation_boundary_ready_without_activation"
+        and all(evidence_hash.startswith("sha256:") for evidence_hash in required_hashes)
+        and dry_run.read_only_status == "read_only_no_state_change"
+        and dry_run.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_endpoint_enabled
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_executed
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_activation_accepted
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_result_persisted
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_boundary_activation_granted
+        and not dry_run.decision_capture_payload_validation_request_execution_activation_boundary_approval_persisted
+        and not dry_run.decision_capture_payload_validation_request_execution_dry_run_executed
+        and not dry_run.decision_capture_payload_validation_request_execution_skeleton_handler_registered
+        and not dry_run.decision_capture_payload_validation_request_received
+        and not dry_run.decision_payload_accepted
+        and not dry_run.go_no_go_decision_stored
+        and not dry_run.go_no_go_decision_captured
+        and not dry_run.approval_record_created
+        and not dry_run.pilot_start_authorized
+        and not dry_run.content_included
+        and not dry_run.persistent_task_created
+        and not dry_run.automation_created
+        else blocked_status
+    )
+    skeleton_decision = ready_decision if skeleton_status == ready_status else blocked_decision
+    input_fields_fn = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_input_fields
+    )
+    approver_roles_fn = _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_approver_roles  # noqa: E501
+    required_evidence_fn = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_evidence
+    )
+    policy_guards_fn = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_policy_guards
+    )
+    prohibited_actions_fn = (
+        _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_prohibited_actions
+    )
+    input_fields = input_fields_fn()
+    approver_roles = approver_roles_fn()
+    required_evidence = required_evidence_fn()
+    policy_guards = policy_guards_fn()
+    prohibited_actions = prohibited_actions_fn()
+    state_flags = {
+        endpoint_key: False,
+        handler_key: False,
+        request_key: False,
+        approval_persisted_key: False,
+        activation_granted_key: False,
+        result_persisted_key: False,
+    }
+    draft_payload = dry_run.model_dump()
+    draft_payload.update(
+        {
+            "schema_version": (
+                "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+                "activation_approval_skeleton.v1"
+            ),
+            "result_contract": (
+                "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_"
+                "activation_approval_skeleton"
+            ),
+            "checked_by": user_context.user_id,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_audit_event_id": (
+                dry_run.audit_event_id or ""
+            ),
+            "decision_capture_payload_validation_request_execution_activation_dry_run_evidence_hash": (
+                dry_run.evidence_hash
+            ),
+            "audit_event_id": None,
+            "audit_refs": dry_run.audit_refs,
+            status_key: skeleton_status,
+            decision_key: skeleton_decision,
+            sections_key: sections,
+            skeleton_id_key: skeleton_id,
+            contract_key: skeleton_contract_id,
+            input_fields_key: input_fields,
+            approver_roles_key: approver_roles,
+            required_evidence_key: required_evidence,
+            policy_guards_key: policy_guards,
+            prohibited_actions_key: prohibited_actions,
+            summary_key: (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_summary(
+                    activation_dry_run_response=dry_run,
+                    skeleton_decision=skeleton_decision,
+                )
+            ),
+            checks_key: (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_checks(
+                    skeleton_status=skeleton_status,
+                )
+            ),
+            blockers_key: (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_blockers(
+                    dry_run,
+                )
+            ),
+            "evidence_chain_summary": (
+                _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_evidence_chain_summary(
+                    dry_run,
+                )
+            ),
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_approval_persisted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_activation_granted": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_executed": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_activation_accepted": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_result_persisted": False,
+            **state_flags,
+            "evidence_hash": "sha256:" + "0" * 64,
+        }
+    )
+    approval_skeleton_model = (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalSkeletonResponse
+    )
+    draft = approval_skeleton_model.model_validate(draft_payload)
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type=(
+            "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+            "activation_approval_skeleton.export"
+        ),
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            status_key: skeleton_status,
+            decision_key: skeleton_decision,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_status": (
+                dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_status
+            ),
+            "decision_capture_payload_validation_request_execution_activation_dry_run_decision": (
+                dry_run.decision_capture_payload_validation_request_execution_activation_dry_run_decision
+            ),
+            "decision_capture_payload_validation_request_execution_activation_dry_run_evidence_hash": (
+                dry_run.evidence_hash
+            ),
+            "decision_capture_payload_validation_request_execution_activation_boundary_evidence_hash": (
+                dry_run.decision_capture_payload_validation_request_execution_activation_boundary_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_execution_dry_run_evidence_hash": (
+                dry_run.decision_capture_payload_validation_request_execution_dry_run_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_execution_skeleton_evidence_hash": (
+                dry_run.decision_capture_payload_validation_request_execution_skeleton_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_dry_run_evidence_hash": (
+                dry_run.decision_capture_payload_validation_request_dry_run_evidence_hash
+            ),
+            "decision_capture_payload_validation_request_boundary_evidence_hash": (
+                dry_run.decision_capture_payload_validation_request_boundary_evidence_hash
+            ),
+            "decision_capture_payload_validation_dry_run_evidence_hash": (
+                dry_run.decision_capture_payload_validation_dry_run_evidence_hash
+            ),
+            "decision_capture_payload_validation_boundary_evidence_hash": (
+                dry_run.decision_capture_payload_validation_boundary_evidence_hash
+            ),
+            sections_key: sections,
+            skeleton_id_key: skeleton_id,
+            contract_key: skeleton_contract_id,
+            input_fields_key: input_fields,
+            approver_roles_key: approver_roles,
+            required_evidence_key: required_evidence,
+            policy_guards_key: policy_guards,
+            prohibited_actions_key: prohibited_actions,
+            "open_foundation_gap_ids": dry_run.open_foundation_gap_ids,
+            "open_foundation_gap_count": dry_run.open_foundation_gap_count,
+            "next_foundation_action": dry_run.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_handler_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_boundary_activation_granted": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_endpoint_enabled": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_executed": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_activation_accepted": False,
+            "decision_capture_payload_validation_request_execution_activation_dry_run_result_persisted": False,
+            **state_flags,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    hash_builder = (
+        build_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_hash
+    )
+    return audited.model_copy(update={"evidence_hash": hash_builder(audited)})
+
+
+def build_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_hash(
+    report: ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalSkeletonResponse,
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_input_fields() -> (
+    tuple[str, ...]
+):
+    return (
+        "activation_dry_run_evidence_hash",
+        "activation_boundary_evidence_hash",
+        "approval_request_id",
+        "approval_statement",
+        "requested_by",
+        "requested_at",
+        "required_approver_roles",
+        "security_review_reference",
+        "compliance_review_reference",
+        "activation_window_reference",
+        "idempotency_key",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_approver_roles() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return ("security-admin", "tenant-admin")
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_required_evidence() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "current_activation_dry_run_evidence_hash",
+        "current_activation_boundary_evidence_hash",
+        "tenant_admin_human_confirmation_reference",
+        "security_owner_review_reference",
+        "compliance_owner_review_reference",
+        "go_no_go_decision_record_reference",
+        "backup_failover_no_state_change_evidence",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_policy_guards() -> (
+    tuple[str, ...]
+):
+    return (
+        "do_not_register_approval_handler_in_skeleton",
+        "do_not_accept_approval_request_in_skeleton",
+        "do_not_persist_approval_record",
+        "do_not_grant_activation",
+        "do_not_authorize_pilot_start",
+        "audit_metadata_only",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_prohibited_actions() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "enable_approval_handler",
+        "accept_real_approval_request",
+        "persist_approval_record",
+        "persist_decision_record",
+        "grant_activation",
+        "authorize_pilot_start",
+        "write_content",
+        "create_persistent_task",
+        "create_automation",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_summary(
+    *,
+    activation_dry_run_response: (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationDryRunResponse
+    ),
+    skeleton_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = ",".join(activation_dry_run_response.open_foundation_gap_ids) or "none"
+    dry_run_decision = (
+        activation_dry_run_response.decision_capture_payload_validation_request_execution_activation_dry_run_decision
+    )
+    return (
+        f"payload validation request execution activation approval skeleton decision: {skeleton_decision}",
+        f"payload validation request execution activation dry-run decision: {dry_run_decision}",
+        (
+            "approval skeleton contract: "
+            "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_contract_v1"
+        ),
+        "approval skeleton is visible but no handler is registered or approval persisted",
+        f"open foundation gaps: {open_gaps}",
+        "approval persistence, activation grant and pilot start remain outside this approval skeleton",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_checks(
+    *, skeleton_status: str
+) -> tuple[str, ...]:
+    ready_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_ready"
+    )
+    if skeleton_status == ready_status:
+        return (
+            "publish approval skeleton without registering handler",
+            "require current activation dry-run evidence hash before future approval",
+            "require tenant-admin/security-admin explicit approval outside this endpoint",
+            "keep approval persistence, activation grant and pilot start outside skeleton",
+        )
+    return ("repair blocked payload validation request execution activation approval skeleton conditions",)
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_blockers(
+    activation_dry_run_response: (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationDryRunResponse
+    ),
+) -> tuple[str, ...]:
+    return (
+        "payload validation request execution activation approval skeleton endpoint is not enabled",
+        "payload validation request execution activation approval handler is not registered",
+        "activation approval request is not accepted",
+        "activation approval is not persisted",
+        "activation is not granted",
+        "go/no-go decision has not been stored",
+        "pilot start authorization is not granted by this approval skeleton",
+        f"open foundation gaps: {','.join(activation_dry_run_response.open_foundation_gap_ids)}",
+    )
+
+
+def _mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_skeleton_evidence_chain_summary(  # noqa: E501
+    activation_dry_run_response: (
+        ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationDryRunResponse
+    ),
+) -> tuple[str, ...]:
+    activation_dry_run_hash = activation_dry_run_response.evidence_hash
+    activation_boundary_hash_key = (
+        "decision_capture_payload_validation_request_execution_activation_boundary_evidence_hash"
+    )
+    activation_boundary_hash = activation_dry_run_response.model_dump()[activation_boundary_hash_key]
+    execution_dry_run_hash = (
+        activation_dry_run_response.decision_capture_payload_validation_request_execution_dry_run_evidence_hash
+    )
+    execution_skeleton_hash = (
+        activation_dry_run_response.decision_capture_payload_validation_request_execution_skeleton_evidence_hash
+    )
+    request_dry_run_hash = activation_dry_run_response.decision_capture_payload_validation_request_dry_run_evidence_hash
+    request_boundary_hash = (
+        activation_dry_run_response.decision_capture_payload_validation_request_boundary_evidence_hash
+    )
+    validation_dry_run_hash = activation_dry_run_response.decision_capture_payload_validation_dry_run_evidence_hash
+    return (
+        f"payload validation request execution activation dry-run hash: {activation_dry_run_hash}",
         f"payload validation request execution activation boundary hash: {activation_boundary_hash}",
         f"payload validation request execution dry-run hash: {execution_dry_run_hash}",
         f"payload validation request execution skeleton hash: {execution_skeleton_hash}",
