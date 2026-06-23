@@ -158,6 +158,15 @@ MVP_PILOT_START_SCOPE_EXCLUDED_CONTRACTS = (
     "new_module_workflows",
 )
 
+MVP_PILOT_RUNBOOK_SECTIONS = (
+    "scope",
+    "evidence_chain",
+    "operator_steps",
+    "foundation_gaps",
+    "deferred_scope",
+    "stop_conditions",
+)
+
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -903,6 +912,81 @@ class ProductCockpitMvpPilotStartScopeResponse(BaseModel):
     start_scope_summary: tuple[str, ...]
     operator_start_actions: tuple[str, ...]
     expansion_blockers: tuple[str, ...]
+    open_foundation_gap_count: int = Field(ge=0)
+    ready_foundation_gap_count: int = Field(ge=0)
+    deferred_foundation_gap_count: int = Field(ge=0)
+    open_foundation_gap_ids: tuple[str, ...]
+    ready_foundation_gap_ids: tuple[str, ...]
+    deferred_foundation_gap_ids: tuple[str, ...]
+    next_foundation_action: str
+    required_roles: tuple[str, ...]
+    role_gates: tuple[str, ...]
+    module_gate_status: str
+    content_gate_status: str
+    backup_failover_gate_status: str
+    content_included: bool = False
+    persistent_task_created: bool = False
+    automation_created: bool = False
+    evidence_hash: str
+
+
+class ProductCockpitMvpPilotRunbookResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "product_cockpit_mvp_pilot_runbook.v1"
+    result_contract: str = "metadata_only_mvp_pilot_runbook"
+    tenant_id: str
+    checked_by: str
+    runbook_route: str = "/v1/platform/cockpit/mvp-pilot-runbook"
+    start_scope_route: str = "/v1/platform/cockpit/mvp-pilot-start-scope"
+    readiness_report_route: str = "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    pilot_status_route: str = "/v1/platform/cockpit/mvp-pilot-status"
+    pilot_gate_route: str = "/v1/platform/cockpit/mvp-pilot-gate"
+    review_route: str = "/v1/platform/cockpit/mvp-release-review"
+    handover_route: str = "/v1/platform/cockpit/mvp-release-handover"
+    entrypoint_route: str = "/workspace"
+    cockpit_route: str = "/v1/platform/cockpit"
+    snapshot_route: str = "/v1/platform/cockpit/mvp-snapshot"
+    smoke_route: str = "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    cockpit_audit_event_id: str
+    snapshot_audit_event_id: str
+    smoke_audit_event_id: str
+    handover_audit_event_id: str
+    release_review_audit_event_id: str
+    pilot_gate_audit_event_id: str
+    pilot_status_audit_event_id: str
+    readiness_report_audit_event_id: str
+    start_scope_audit_event_id: str
+    audit_event_id: str | None = None
+    audit_refs: tuple[str, ...]
+    start_scope_evidence_hash: str
+    readiness_report_evidence_hash: str
+    pilot_status_evidence_hash: str
+    pilot_gate_evidence_hash: str
+    release_review_evidence_hash: str
+    handover_evidence_hash: str
+    snapshot_hash: str
+    release_candidate_smoke_hash: str
+    readiness_status: str
+    readiness_decision: str
+    operational_status: str
+    read_only_status: str
+    pilot_gate_status: str
+    pilot_gate_decision: str
+    start_scope_status: str
+    start_scope_decision: str
+    runbook_status: str
+    runbook_decision: str
+    runbook_sections: tuple[str, ...]
+    start_scope_contracts: tuple[str, ...]
+    excluded_scope_contracts: tuple[str, ...]
+    allowed_pilot_surfaces: tuple[str, ...]
+    deferred_pilot_surfaces: tuple[str, ...]
+    start_scope_summary: tuple[str, ...]
+    expansion_blockers: tuple[str, ...]
+    operator_runbook_steps: tuple[str, ...]
+    operator_stop_conditions: tuple[str, ...]
+    evidence_chain_summary: tuple[str, ...]
     open_foundation_gap_count: int = Field(ge=0)
     ready_foundation_gap_count: int = Field(ge=0)
     deferred_foundation_gap_count: int = Field(ge=0)
@@ -1958,6 +2042,173 @@ def build_product_cockpit_mvp_pilot_start_scope_response(
 
 def build_mvp_pilot_start_scope_hash(report: ProductCockpitMvpPilotStartScopeResponse) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_product_cockpit_mvp_pilot_runbook_response(
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    start_scope_response: ProductCockpitMvpPilotStartScopeResponse,
+    audit_logger: InMemoryAuditLogger,
+) -> ProductCockpitMvpPilotRunbookResponse:
+    runbook_status = (
+        "metadata_only_pilot_runbook_ready"
+        if start_scope_response.start_scope_status == "metadata_only_pilot_start_scope_fixed"
+        and start_scope_response.readiness_status == "ready_for_metadata_only_pilot_review"
+        and start_scope_response.read_only_status == "read_only_no_state_change"
+        and start_scope_response.backup_failover_gate_status == "metadata_only_no_state_change"
+        and not start_scope_response.content_included
+        and not start_scope_response.persistent_task_created
+        and not start_scope_response.automation_created
+        else "metadata_only_pilot_runbook_blocked"
+    )
+    runbook_decision = (
+        "pilot_operator_path_ready_with_tracked_gaps"
+        if runbook_status == "metadata_only_pilot_runbook_ready"
+        else "pilot_operator_path_blocked"
+    )
+    draft = ProductCockpitMvpPilotRunbookResponse(
+        tenant_id=user_context.tenant_id,
+        checked_by=user_context.user_id,
+        cockpit_audit_event_id=start_scope_response.cockpit_audit_event_id,
+        snapshot_audit_event_id=start_scope_response.snapshot_audit_event_id,
+        smoke_audit_event_id=start_scope_response.smoke_audit_event_id,
+        handover_audit_event_id=start_scope_response.handover_audit_event_id,
+        release_review_audit_event_id=start_scope_response.release_review_audit_event_id,
+        pilot_gate_audit_event_id=start_scope_response.pilot_gate_audit_event_id,
+        pilot_status_audit_event_id=start_scope_response.pilot_status_audit_event_id,
+        readiness_report_audit_event_id=start_scope_response.readiness_report_audit_event_id,
+        start_scope_audit_event_id=start_scope_response.audit_event_id or "",
+        audit_refs=start_scope_response.audit_refs,
+        start_scope_evidence_hash=start_scope_response.evidence_hash,
+        readiness_report_evidence_hash=start_scope_response.readiness_report_evidence_hash,
+        pilot_status_evidence_hash=start_scope_response.pilot_status_evidence_hash,
+        pilot_gate_evidence_hash=start_scope_response.pilot_gate_evidence_hash,
+        release_review_evidence_hash=start_scope_response.release_review_evidence_hash,
+        handover_evidence_hash=start_scope_response.handover_evidence_hash,
+        snapshot_hash=start_scope_response.snapshot_hash,
+        release_candidate_smoke_hash=start_scope_response.release_candidate_smoke_hash,
+        readiness_status=start_scope_response.readiness_status,
+        readiness_decision=start_scope_response.readiness_decision,
+        operational_status=start_scope_response.operational_status,
+        read_only_status=start_scope_response.read_only_status,
+        pilot_gate_status=start_scope_response.pilot_gate_status,
+        pilot_gate_decision=start_scope_response.pilot_gate_decision,
+        start_scope_status=start_scope_response.start_scope_status,
+        start_scope_decision=start_scope_response.start_scope_decision,
+        runbook_status=runbook_status,
+        runbook_decision=runbook_decision,
+        runbook_sections=MVP_PILOT_RUNBOOK_SECTIONS,
+        start_scope_contracts=start_scope_response.start_scope_contracts,
+        excluded_scope_contracts=start_scope_response.excluded_scope_contracts,
+        allowed_pilot_surfaces=start_scope_response.allowed_pilot_surfaces,
+        deferred_pilot_surfaces=start_scope_response.deferred_pilot_surfaces,
+        start_scope_summary=start_scope_response.start_scope_summary,
+        expansion_blockers=start_scope_response.expansion_blockers,
+        operator_runbook_steps=_mvp_pilot_runbook_steps(start_scope_response),
+        operator_stop_conditions=_mvp_pilot_runbook_stop_conditions(start_scope_response),
+        evidence_chain_summary=_mvp_pilot_runbook_evidence_chain_summary(start_scope_response),
+        open_foundation_gap_count=start_scope_response.open_foundation_gap_count,
+        ready_foundation_gap_count=start_scope_response.ready_foundation_gap_count,
+        deferred_foundation_gap_count=start_scope_response.deferred_foundation_gap_count,
+        open_foundation_gap_ids=start_scope_response.open_foundation_gap_ids,
+        ready_foundation_gap_ids=start_scope_response.ready_foundation_gap_ids,
+        deferred_foundation_gap_ids=start_scope_response.deferred_foundation_gap_ids,
+        next_foundation_action=start_scope_response.next_foundation_action,
+        required_roles=start_scope_response.required_roles,
+        role_gates=start_scope_response.role_gates,
+        module_gate_status=start_scope_response.module_gate_status,
+        content_gate_status=start_scope_response.content_gate_status,
+        backup_failover_gate_status=start_scope_response.backup_failover_gate_status,
+        content_included=start_scope_response.content_included,
+        persistent_task_created=start_scope_response.persistent_task_created,
+        automation_created=start_scope_response.automation_created,
+        evidence_hash="sha256:" + "0" * 64,
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type="platform.mvp_pilot_runbook.export",
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            "runbook_status": runbook_status,
+            "runbook_decision": runbook_decision,
+            "start_scope_status": start_scope_response.start_scope_status,
+            "start_scope_decision": start_scope_response.start_scope_decision,
+            "readiness_status": start_scope_response.readiness_status,
+            "readiness_decision": start_scope_response.readiness_decision,
+            "operational_status": start_scope_response.operational_status,
+            "read_only_status": start_scope_response.read_only_status,
+            "start_scope_evidence_hash": start_scope_response.evidence_hash,
+            "readiness_report_evidence_hash": start_scope_response.readiness_report_evidence_hash,
+            "pilot_status_evidence_hash": start_scope_response.pilot_status_evidence_hash,
+            "pilot_gate_evidence_hash": start_scope_response.pilot_gate_evidence_hash,
+            "release_review_evidence_hash": start_scope_response.release_review_evidence_hash,
+            "handover_evidence_hash": start_scope_response.handover_evidence_hash,
+            "snapshot_hash": start_scope_response.snapshot_hash,
+            "release_candidate_smoke_hash": start_scope_response.release_candidate_smoke_hash,
+            "runbook_sections": MVP_PILOT_RUNBOOK_SECTIONS,
+            "start_scope_contracts": start_scope_response.start_scope_contracts,
+            "excluded_scope_contracts": start_scope_response.excluded_scope_contracts,
+            "allowed_pilot_surfaces": start_scope_response.allowed_pilot_surfaces,
+            "deferred_pilot_surfaces": start_scope_response.deferred_pilot_surfaces,
+            "open_foundation_gap_ids": start_scope_response.open_foundation_gap_ids,
+            "open_foundation_gap_count": start_scope_response.open_foundation_gap_count,
+            "next_foundation_action": start_scope_response.next_foundation_action,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(update={"evidence_hash": build_mvp_pilot_runbook_hash(audited)})
+
+
+def build_mvp_pilot_runbook_hash(report: ProductCockpitMvpPilotRunbookResponse) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _mvp_pilot_runbook_steps(
+    start_scope_response: ProductCockpitMvpPilotStartScopeResponse,
+) -> tuple[str, ...]:
+    if start_scope_response.start_scope_status != "metadata_only_pilot_start_scope_fixed":
+        return ("repair blocked pilot start scope before admitting pilot users",)
+    return (
+        "verify tenant context and role gates before admitting pilot users",
+        "retain start_scope, readiness_report, pilot_status and pilot_gate evidence hashes",
+        f"operate only allowed pilot surfaces: {','.join(start_scope_response.allowed_pilot_surfaces)}",
+        "track open foundation gaps before expanding pilot scope",
+        "keep content preview, tickets, automations and new module workflows outside pilot operation",
+    )
+
+
+def _mvp_pilot_runbook_stop_conditions(
+    start_scope_response: ProductCockpitMvpPilotStartScopeResponse,
+) -> tuple[str, ...]:
+    return (
+        "tenant context or role gate is missing",
+        "start scope, readiness, pilot status or pilot gate leaves ready state",
+        "content preview, tickets, automations or new module workflows are requested",
+        "open foundation gaps are not tracked",
+        f"backup/failover gate is not {start_scope_response.backup_failover_gate_status}",
+    )
+
+
+def _mvp_pilot_runbook_evidence_chain_summary(
+    start_scope_response: ProductCockpitMvpPilotStartScopeResponse,
+) -> tuple[str, ...]:
+    return (
+        f"start scope hash: {start_scope_response.evidence_hash}",
+        f"readiness report hash: {start_scope_response.readiness_report_evidence_hash}",
+        f"pilot status hash: {start_scope_response.pilot_status_evidence_hash}",
+        f"pilot gate hash: {start_scope_response.pilot_gate_evidence_hash}",
+        f"snapshot hash: {start_scope_response.snapshot_hash}",
+    )
 
 
 def _mvp_pilot_start_scope_summary(

@@ -1349,7 +1349,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 168. [x] MVP-Pilot-Betriebsstatus sichtbar machen: Pilot-Gate, Release-Review und offene Foundation-Gaps als read-only Betreiberstatus zusammenziehen, ohne neue Produktfunktionen, Content-Preview, Tickets oder Automationen vorzuziehen.
 169. [x] MVP-Pilot-Readiness-Bericht schaerfen: Pilot-Betriebsstatus, offene Foundation-Gaps und Deferred-Scope in eine knappe Review-/Betreiberansicht ueberfuehren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
 170. [x] MVP-Pilot-Startumfang fixieren: Readiness-Bericht, Betreiberstatus und erlaubte Pilot-Flaechen als minimalen Startumfang dokumentieren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
-171. [ ] MVP-Pilot-Betreiberpfad absichern: fixierten Startumfang, Evidence-Kette und offene Foundation-Gaps als kurzes metadata-only Runbook sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+171. [x] MVP-Pilot-Betreiberpfad absichern: fixierten Startumfang, Evidence-Kette und offene Foundation-Gaps als kurzes metadata-only Runbook sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+172. [ ] MVP-Pilot-Reviewpunkt festlegen: Betreiber-Runbook, Startumfang und offene Foundation-Gaps als formalen Reviewpunkt fuer Pilotstart sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
