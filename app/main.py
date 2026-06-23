@@ -134,6 +134,7 @@ from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotDecisionRecordSchemaResponse,
     ProductCockpitMvpPilotGateResponse,
     ProductCockpitMvpPilotGoNoGoBoundaryResponse,
+    ProductCockpitMvpPilotGoNoGoDecisionRecordSchemaResponse,
     ProductCockpitMvpPilotReadinessReportResponse,
     ProductCockpitMvpPilotReviewPointResponse,
     ProductCockpitMvpPilotRunbookResponse,
@@ -151,6 +152,7 @@ from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_record_schema_response,
     build_product_cockpit_mvp_pilot_gate_response,
     build_product_cockpit_mvp_pilot_go_no_go_boundary_response,
+    build_product_cockpit_mvp_pilot_go_no_go_decision_record_schema_response,
     build_product_cockpit_mvp_pilot_readiness_report_response,
     build_product_cockpit_mvp_pilot_review_point_response,
     build_product_cockpit_mvp_pilot_runbook_response,
@@ -1657,6 +1659,129 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
             snapshot_response=snapshot_response,
             approval_readiness_response=approval_readiness_response,
+            audit_logger=audit_logger,
+        )
+
+    @app.get(
+        "/v1/platform/cockpit/mvp-pilot-go-no-go-decision-record-schema",
+        response_model=ProductCockpitMvpPilotGoNoGoDecisionRecordSchemaResponse,
+    )
+    def product_cockpit_mvp_pilot_go_no_go_decision_record_schema(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ProductCockpitMvpPilotGoNoGoDecisionRecordSchemaResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(WorkspaceSourceObjectCatalog, request.app.state.workspace_source_object_catalog)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        cockpit_response = build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
+            knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+        snapshot_response = build_product_cockpit_mvp_snapshot_response(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            audit_logger=audit_logger,
+        )
+        smoke_report = build_product_cockpit_mvp_release_candidate_smoke_report(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            snapshot_response=snapshot_response,
+            audit_logger=audit_logger,
+        )
+        handover_response = build_product_cockpit_mvp_release_handover_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            smoke_report=smoke_report,
+            audit_logger=audit_logger,
+        )
+        release_review_response = build_product_cockpit_mvp_release_review_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            handover_response=handover_response,
+            audit_logger=audit_logger,
+        )
+        pilot_gate_response = build_product_cockpit_mvp_pilot_gate_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            release_review_response=release_review_response,
+            audit_logger=audit_logger,
+        )
+        pilot_status_response = build_product_cockpit_mvp_pilot_status_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            pilot_gate_response=pilot_gate_response,
+            audit_logger=audit_logger,
+        )
+        readiness_report = build_product_cockpit_mvp_pilot_readiness_report_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            pilot_status_response=pilot_status_response,
+            audit_logger=audit_logger,
+        )
+        start_scope_response = build_product_cockpit_mvp_pilot_start_scope_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            readiness_report=readiness_report,
+            audit_logger=audit_logger,
+        )
+        runbook_response = build_product_cockpit_mvp_pilot_runbook_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            start_scope_response=start_scope_response,
+            audit_logger=audit_logger,
+        )
+        review_point_response = build_product_cockpit_mvp_pilot_review_point_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            runbook_response=runbook_response,
+            audit_logger=audit_logger,
+        )
+        template_response = build_product_cockpit_mvp_pilot_start_decision_template_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            review_point_response=review_point_response,
+            audit_logger=audit_logger,
+        )
+        decision_record_schema_response = build_product_cockpit_mvp_pilot_decision_record_schema_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            template_response=template_response,
+            audit_logger=audit_logger,
+        )
+        preflight_response = build_product_cockpit_mvp_pilot_decision_preflight_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            decision_record_schema_response=decision_record_schema_response,
+            audit_logger=audit_logger,
+        )
+        boundary_response = build_product_cockpit_mvp_pilot_approval_workflow_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            preflight_response=preflight_response,
+            audit_logger=audit_logger,
+        )
+        approval_readiness_response = build_product_cockpit_mvp_pilot_approval_readiness_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            boundary_response=boundary_response,
+            audit_logger=audit_logger,
+        )
+        go_no_go_boundary_response = build_product_cockpit_mvp_pilot_go_no_go_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            approval_readiness_response=approval_readiness_response,
+            audit_logger=audit_logger,
+        )
+        return build_product_cockpit_mvp_pilot_go_no_go_decision_record_schema_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            go_no_go_boundary_response=go_no_go_boundary_response,
             audit_logger=audit_logger,
         )
 
