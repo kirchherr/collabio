@@ -3737,6 +3737,269 @@ def test_platform_cockpit_mvp_pilot_decision_preflight_summarizes_read_only_read
     assert new_events[-1].metadata["automation_created"] is False
 
 
+def test_platform_cockpit_mvp_pilot_approval_workflow_boundary_requires_request_context() -> None:
+    response = client.get("/v1/platform/cockpit/mvp-pilot-approval-workflow-boundary")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_approval_workflow_boundary_defines_separate_non_executing_workflow() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    try:
+        response = client.get(
+            "/v1/platform/cockpit/mvp-pilot-approval-workflow-boundary",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "product_cockpit_mvp_pilot_approval_workflow_boundary.v1"
+    assert body["result_contract"] == "metadata_only_mvp_pilot_approval_workflow_boundary"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body["approval_workflow_boundary_route"] == "/v1/platform/cockpit/mvp-pilot-approval-workflow-boundary"
+    assert body["preflight_route"] == "/v1/platform/cockpit/mvp-pilot-decision-preflight"
+    assert body["decision_record_schema_route"] == "/v1/platform/cockpit/mvp-pilot-decision-record-schema"
+    assert body["template_route"] == "/v1/platform/cockpit/mvp-pilot-start-decision-template"
+    assert body["review_point_route"] == "/v1/platform/cockpit/mvp-pilot-review-point"
+    assert body["runbook_route"] == "/v1/platform/cockpit/mvp-pilot-runbook"
+    assert body["start_scope_route"] == "/v1/platform/cockpit/mvp-pilot-start-scope"
+    assert body["readiness_report_route"] == "/v1/platform/cockpit/mvp-pilot-readiness-report"
+    assert body["pilot_status_route"] == "/v1/platform/cockpit/mvp-pilot-status"
+    assert body["pilot_gate_route"] == "/v1/platform/cockpit/mvp-pilot-gate"
+    assert body["review_route"] == "/v1/platform/cockpit/mvp-release-review"
+    assert body["handover_route"] == "/v1/platform/cockpit/mvp-release-handover"
+    assert body["entrypoint_route"] == "/workspace"
+    assert body["cockpit_route"] == "/v1/platform/cockpit"
+    assert body["snapshot_route"] == "/v1/platform/cockpit/mvp-snapshot"
+    assert body["smoke_route"] == "/v1/platform/cockpit/mvp-release-candidate-smoke"
+    assert body["cockpit_audit_event_id"]
+    assert body["snapshot_audit_event_id"]
+    assert body["smoke_audit_event_id"]
+    assert body["handover_audit_event_id"]
+    assert body["release_review_audit_event_id"]
+    assert body["pilot_gate_audit_event_id"]
+    assert body["pilot_status_audit_event_id"]
+    assert body["readiness_report_audit_event_id"]
+    assert body["start_scope_audit_event_id"]
+    assert body["runbook_audit_event_id"]
+    assert body["review_point_audit_event_id"]
+    assert body["template_audit_event_id"]
+    assert body["decision_record_schema_audit_event_id"]
+    assert body["preflight_audit_event_id"]
+    assert body["audit_event_id"]
+    assert body["audit_refs"] == [
+        f"audit:{body['cockpit_audit_event_id']}",
+        f"audit:{body['snapshot_audit_event_id']}",
+        f"audit:{body['smoke_audit_event_id']}",
+        f"audit:{body['handover_audit_event_id']}",
+        f"audit:{body['release_review_audit_event_id']}",
+        f"audit:{body['pilot_gate_audit_event_id']}",
+        f"audit:{body['pilot_status_audit_event_id']}",
+        f"audit:{body['readiness_report_audit_event_id']}",
+        f"audit:{body['start_scope_audit_event_id']}",
+        f"audit:{body['runbook_audit_event_id']}",
+        f"audit:{body['review_point_audit_event_id']}",
+        f"audit:{body['template_audit_event_id']}",
+        f"audit:{body['decision_record_schema_audit_event_id']}",
+        f"audit:{body['preflight_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+    assert body["preflight_evidence_hash"].startswith("sha256:")
+    assert body["decision_record_schema_evidence_hash"].startswith("sha256:")
+    assert body["template_evidence_hash"].startswith("sha256:")
+    assert body["review_point_evidence_hash"].startswith("sha256:")
+    assert body["runbook_evidence_hash"].startswith("sha256:")
+    assert body["start_scope_evidence_hash"].startswith("sha256:")
+    assert body["readiness_report_evidence_hash"].startswith("sha256:")
+    assert body["pilot_status_evidence_hash"].startswith("sha256:")
+    assert body["pilot_gate_evidence_hash"].startswith("sha256:")
+    assert body["snapshot_hash"].startswith("sha256:")
+    assert body["release_candidate_smoke_hash"].startswith("sha256:")
+    assert body["readiness_status"] == "ready_for_metadata_only_pilot_review"
+    assert body["operational_status"] == "metadata_only_pilot_operational_ready"
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["preflight_status"] == "metadata_only_pilot_decision_preflight_ready"
+    assert body["preflight_decision"] == "pilot_decision_preflight_ready_without_confirmation_capture"
+    assert body["boundary_status"] == "metadata_only_pilot_approval_workflow_boundary_ready"
+    assert body["boundary_decision"] == "approval_workflow_boundary_ready_without_approval_persistence"
+    assert body["boundary_sections"] == [
+        "workflow_boundary",
+        "required_inputs",
+        "human_confirmation",
+        "decision_record",
+        "approval_controls",
+        "non_execution",
+    ]
+    assert body["workflow_boundary_id"] == "mvp_pilot_approval_workflow_boundary_v1"
+    assert body["workflow_inputs"] == [
+        "decision_record_schema_id",
+        "confirmation_template_id",
+        "preflight_evidence_hash",
+        "decision_record_schema_evidence_hash",
+        "template_evidence_hash",
+        "review_point_evidence_hash",
+        "runbook_evidence_hash",
+        "pilot_gate_evidence_hash",
+    ]
+    assert body["workflow_prohibited_outputs"] == [
+        "approval_record_created",
+        "pilot_start_authorized",
+        "decision_record_created",
+        "content_preview_rendered",
+        "persistent_task_created",
+        "automation_created",
+    ]
+    assert body["workflow_required_controls"] == [
+        "explicit_human_confirmation",
+        "immutable_evidence_hashes",
+        "tenant_and_role_gates",
+        "audit_record_before_execution",
+        "separate_execution_boundary",
+    ]
+    assert body["decision_record_schema_id"] == "mvp_pilot_start_decision_record_v1"
+    assert "confirmed_by" in body["decision_record_required_fields"]
+    assert "decision_record_hash" in body["audit_required_fields"]
+    assert body["confirmation_template_id"] == "mvp_pilot_start_decision_v1"
+    assert body["required_confirmation_roles"] == ["security-admin", "tenant-admin"]
+    assert body["allowed_pilot_surfaces"] == [
+        "workspace_shell",
+        "platform_module_discovery",
+        "product_cockpit",
+        "mvp_snapshot",
+        "mvp_release_evidence",
+    ]
+    assert body["deferred_pilot_surfaces"] == [
+        "content_preview_rendering",
+        "office_mail_full_clients",
+        "tickets_and_automations",
+        "lms_time_tracking_activity_modules",
+    ]
+    assert body["boundary_summary"] == [
+        "boundary decision: approval_workflow_boundary_ready_without_approval_persistence",
+        "preflight decision: pilot_decision_preflight_ready_without_confirmation_capture",
+        "record schema decision: audit_decision_record_schema_ready_without_confirmation_capture",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "approval workflow boundary is metadata-only and creates no approval, decision record or pilot start",
+    ]
+    assert body["workflow_steps"] == [
+        "collect human confirmation using confirmation_template_id",
+        "persist approval only in a separate approval workflow",
+        "write decision record only after explicit human approval",
+        "keep pilot execution outside this boundary until authorization exists",
+    ]
+    assert body["workflow_blockers"] == [
+        "approval record has not been created",
+        "human confirmation has not been captured",
+        "decision record has not been created",
+        "pilot start authorization is not granted by this boundary",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"] == [
+        f"preflight hash: {body['preflight_evidence_hash']}",
+        f"decision schema hash: {body['decision_record_schema_evidence_hash']}",
+        f"template hash: {body['template_evidence_hash']}",
+        f"review point hash: {body['review_point_evidence_hash']}",
+        f"pilot gate hash: {body['pilot_gate_evidence_hash']}",
+    ]
+    assert body["open_foundation_gap_count"] == 4
+    assert body["ready_foundation_gap_count"] == 2
+    assert body["deferred_foundation_gap_count"] == 2
+    assert body["open_foundation_gap_ids"] == [
+        "preview_decisions_pending",
+        "module_activation_work_items_open",
+        "human_confirmation_required",
+        "content_release_gate_blocks_content",
+    ]
+    assert body["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert body["required_roles"] == ["security-admin", "tenant-admin"]
+    assert body["role_gates"] == ["context", "tenant-admin,security-admin"]
+    assert body["module_gate_status"] == "module_activation_required"
+    assert body["content_gate_status"] == "deferred_metadata_only_ready"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body["human_review_required"] is True
+    assert body["human_confirmation_required"] is True
+    assert body["human_confirmation_captured"] is False
+    assert body["decision_record_created"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body["preflight_evidence_hash"]
+    assert body["preflight_evidence_hash"] != body["decision_record_schema_evidence_hash"]
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert [event.event_type for event in new_events[-15:]] == [
+        "platform.module_cockpit.read",
+        "platform.mvp_snapshot.export",
+        "platform.mvp_release_candidate_smoke.export",
+        "platform.mvp_release_handover.export",
+        "platform.mvp_release_review.export",
+        "platform.mvp_pilot_gate.export",
+        "platform.mvp_pilot_status.read",
+        "platform.mvp_pilot_readiness_report.export",
+        "platform.mvp_pilot_start_scope.export",
+        "platform.mvp_pilot_runbook.export",
+        "platform.mvp_pilot_review_point.export",
+        "platform.mvp_pilot_start_decision_template.export",
+        "platform.mvp_pilot_decision_record_schema.export",
+        "platform.mvp_pilot_decision_preflight.export",
+        "platform.mvp_pilot_approval_workflow_boundary.export",
+    ]
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == "metadata_only_mvp_pilot_approval_workflow_boundary"
+    assert new_events[-1].metadata["boundary_status"] == body["boundary_status"]
+    assert new_events[-1].metadata["boundary_decision"] == body["boundary_decision"]
+    assert new_events[-1].metadata["preflight_status"] == body["preflight_status"]
+    assert new_events[-1].metadata["preflight_decision"] == body["preflight_decision"]
+    assert new_events[-1].metadata["read_only_status"] == "read_only_no_state_change"
+    assert new_events[-1].metadata["preflight_evidence_hash"] == body["preflight_evidence_hash"]
+    assert (
+        new_events[-1].metadata["decision_record_schema_evidence_hash"] == body["decision_record_schema_evidence_hash"]
+    )
+    assert new_events[-1].metadata["template_evidence_hash"] == body["template_evidence_hash"]
+    assert new_events[-1].metadata["review_point_evidence_hash"] == body["review_point_evidence_hash"]
+    assert new_events[-1].metadata["runbook_evidence_hash"] == body["runbook_evidence_hash"]
+    assert new_events[-1].metadata["pilot_gate_evidence_hash"] == body["pilot_gate_evidence_hash"]
+    assert new_events[-1].metadata["boundary_sections"] == tuple(body["boundary_sections"])
+    assert new_events[-1].metadata["workflow_boundary_id"] == "mvp_pilot_approval_workflow_boundary_v1"
+    assert new_events[-1].metadata["workflow_inputs"] == tuple(body["workflow_inputs"])
+    assert new_events[-1].metadata["workflow_prohibited_outputs"] == tuple(body["workflow_prohibited_outputs"])
+    assert new_events[-1].metadata["workflow_required_controls"] == tuple(body["workflow_required_controls"])
+    assert new_events[-1].metadata["decision_record_schema_id"] == "mvp_pilot_start_decision_record_v1"
+    assert new_events[-1].metadata["confirmation_template_id"] == "mvp_pilot_start_decision_v1"
+    assert new_events[-1].metadata["confirmation_fields"] == tuple(body["confirmation_fields"])
+    assert new_events[-1].metadata["open_foundation_gap_ids"] == tuple(body["open_foundation_gap_ids"])
+    assert new_events[-1].metadata["open_foundation_gap_count"] == 4
+    assert new_events[-1].metadata["next_foundation_action"] == "resolve_preview_decision_work_items"
+    assert new_events[-1].metadata["human_review_required"] is True
+    assert new_events[-1].metadata["human_confirmation_required"] is True
+    assert new_events[-1].metadata["human_confirmation_captured"] is False
+    assert new_events[-1].metadata["decision_record_created"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+    assert new_events[-1].metadata["content_included"] is False
+    assert new_events[-1].metadata["persistent_task_created"] is False
+    assert new_events[-1].metadata["automation_created"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
