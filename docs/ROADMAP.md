@@ -1361,7 +1361,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 180. [x] MVP-Pilot-Decision-Capture-Grenze vorbereiten: Go/No-Go-Entscheidungsprotokoll-Schema in eine explizite Human-Decision-Capture-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 181. [x] MVP-Pilot-Decision-Capture-Preflight sichtbar machen: Decision-Capture-Grenze, Go/No-Go-Entscheidungsprotokoll-Schema und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 182. [x] MVP-Pilot-Decision-Capture-Submit-Skeleton vorbereiten: Decision-Capture-Preflight in einen expliziten Human-Submit-Vertrag ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
-183. [ ] MVP-Pilot-Decision-Capture-Submit-Dry-Run vorbereiten: Submit-Skeleton in eine reine Validierungs-Simulation fuer Human-Submit-Eingaben ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+183. [x] MVP-Pilot-Decision-Capture-Submit-Dry-Run vorbereiten: Submit-Skeleton in eine reine Validierungs-Simulation fuer Human-Submit-Eingaben ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+184. [ ] MVP-Pilot-Decision-Capture-Payload-Validation-Grenze vorbereiten: Dry-Run-Vertrag in eine explizite Payload-Validierungsgrenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
