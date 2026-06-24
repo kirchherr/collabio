@@ -10447,6 +10447,224 @@ def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_dry_ru
     assert new_events[-1].metadata["pilot_start_authorized"] is False
 
 
+def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_result_boundary_requires_context() -> None:
+    response = client.get(
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-activation-approval-request-execution-result-boundary"
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_result_boundary_defines_contract() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+    route = (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-"
+        "activation-approval-request-execution-result-boundary"
+    )
+    base_prefix = "decision_capture_payload_validation_request_execution_activation_approval_request_execution"
+    boundary_prefix = f"{base_prefix}_result_boundary"
+    dry_run_prefix = f"{base_prefix}_dry_run"
+
+    try:
+        response = client.get(route, headers=DEMO_ADMIN_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == (
+        "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary.v1"
+    )
+    assert body["result_contract"] == (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary"
+    )
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body[f"{boundary_prefix}_route"] == route
+    assert body[f"{dry_run_prefix}_audit_event_id"]
+    assert body[f"{dry_run_prefix}_evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body[f"{dry_run_prefix}_evidence_hash"]
+    assert body[f"{boundary_prefix}_status"] == (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary_ready"
+    )
+    assert body[f"{boundary_prefix}_decision"] == (
+        "payload_validation_request_execution_activation_approval_request_execution_result_boundary_ready_without_result_acceptance"
+    )
+    assert body[f"{boundary_prefix}_sections"] == [
+        "approval_request_execution_result_boundary",
+        "result_preconditions",
+        "required_evidence",
+        "evidence_hashes",
+        "non_persistence",
+        "boundary_outcome",
+    ]
+    assert body[f"{boundary_prefix}_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary_v1"
+    )
+    assert body[f"{boundary_prefix}_contract_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary_contract_v1"
+    )
+    assert body[f"{boundary_prefix}_required_preconditions"] == [
+        "current_execution_dry_run_evidence_hash_required",
+        "execution_skeleton_must_remain_disabled",
+        "tenant_role_acl_context_must_be_available",
+        "result_idempotency_policy_must_be_defined",
+        "human_confirmation_policy_must_remain_external",
+        "backup_failover_no_state_change_required",
+    ]
+    assert body[f"{boundary_prefix}_required_evidence"] == [
+        "current_execution_dry_run_evidence_hash",
+        "current_execution_skeleton_evidence_hash",
+        "tenant_admin_approval_reference",
+        "security_owner_review_reference",
+        "compliance_owner_review_reference",
+        "go_no_go_decision_record_reference",
+        "activation_window_reference",
+    ]
+    assert body[f"{boundary_prefix}_guards"] == [
+        "do_not_register_result_handler_in_boundary",
+        "do_not_accept_execution_result_in_boundary",
+        "do_not_persist_approval_record",
+        "do_not_grant_activation",
+        "do_not_authorize_pilot_start",
+        "audit_metadata_only",
+    ]
+    assert body[f"{boundary_prefix}_prohibited_actions"] == [
+        "enable_execution_result_handler",
+        "accept_real_execution_result",
+        "persist_approval_record",
+        "persist_decision_record",
+        "grant_activation",
+        "authorize_pilot_start",
+        "write_content",
+        "create_persistent_task",
+        "create_automation",
+    ]
+    assert body[f"{boundary_prefix}_summary"] == [
+        (
+            "payload validation request execution activation approval request execution result boundary decision: "
+            "payload_validation_request_execution_activation_approval_request_execution_result_boundary_ready_without_result_acceptance"
+        ),
+        (
+            "payload validation request execution activation approval request execution dry-run decision: "
+            "payload_validation_request_execution_activation_approval_request_execution_dry_run_ready_without_execution"
+        ),
+        (
+            "approval request execution result boundary contract: "
+            "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_boundary_contract_v1"
+        ),
+        "approval request execution result boundary is visible but no result handler is enabled",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "result acceptance, approval persistence, activation grant and pilot start remain outside this boundary",
+    ]
+    assert body[f"{boundary_prefix}_checks"] == [
+        "publish execution result boundary without enabling handler",
+        "require current execution dry-run evidence hash before future result acceptance",
+        "require explicit tenant-admin/security-admin/compliance approval outside this boundary",
+        "keep result acceptance, approval persistence, activation grant and pilot start outside result boundary",
+    ]
+    assert body[f"{boundary_prefix}_blockers"] == [
+        (
+            "payload validation request execution activation approval request execution result boundary endpoint "
+            "is not enabled"
+        ),
+        "payload validation request execution activation approval request execution result handler is not enabled",
+        "activation approval request execution result is not accepted",
+        "activation approval is not persisted",
+        "activation is not granted",
+        "go/no-go decision has not been stored",
+        "pilot start authorization is not granted by this result boundary",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"][0] == (
+        "payload validation request execution activation approval request execution dry-run hash: "
+        f"{body[f'{dry_run_prefix}_evidence_hash']}"
+    )
+    assert len(body["evidence_chain_summary"]) == 7
+    assert body["audit_refs"][-2:] == [
+        f"audit:{body[f'{dry_run_prefix}_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+
+    for key in (
+        f"{boundary_prefix}_endpoint_enabled",
+        f"{boundary_prefix}_handler_enabled",
+        f"{boundary_prefix}_result_accepted",
+        f"{boundary_prefix}_approval_persisted",
+        f"{boundary_prefix}_activation_granted",
+        f"{boundary_prefix}_result_persisted",
+        f"{dry_run_prefix}_endpoint_enabled",
+        f"{dry_run_prefix}_executed",
+        f"{dry_run_prefix}_request_accepted",
+        f"{dry_run_prefix}_approval_persisted",
+        f"{dry_run_prefix}_activation_granted",
+        f"{dry_run_prefix}_result_persisted",
+    ):
+        assert body[key] is False
+    assert body["decision_payload_accepted"] is False
+    assert body["go_no_go_decision_stored"] is False
+    assert body["go_no_go_decision_captured"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-2].event_type == (
+        "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_dry_run.export"
+    )
+    assert new_events[-1].event_type == (
+        "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_boundary.export"
+    )
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == body["result_contract"]
+    assert new_events[-1].metadata[f"{boundary_prefix}_status"] == body[f"{boundary_prefix}_status"]
+    assert new_events[-1].metadata[f"{boundary_prefix}_decision"] == body[f"{boundary_prefix}_decision"]
+    assert new_events[-1].metadata[f"{dry_run_prefix}_evidence_hash"] == body[f"{dry_run_prefix}_evidence_hash"]
+    assert new_events[-1].metadata[f"{boundary_prefix}_sections"] == tuple(body[f"{boundary_prefix}_sections"])
+    assert new_events[-1].metadata[f"{boundary_prefix}_required_preconditions"] == tuple(
+        body[f"{boundary_prefix}_required_preconditions"]
+    )
+    assert new_events[-1].metadata[f"{boundary_prefix}_required_evidence"] == tuple(
+        body[f"{boundary_prefix}_required_evidence"]
+    )
+    assert new_events[-1].metadata[f"{boundary_prefix}_guards"] == tuple(body[f"{boundary_prefix}_guards"])
+    assert new_events[-1].metadata[f"{boundary_prefix}_prohibited_actions"] == tuple(
+        body[f"{boundary_prefix}_prohibited_actions"]
+    )
+    assert new_events[-1].metadata[f"{boundary_prefix}_endpoint_enabled"] is False
+    assert new_events[-1].metadata[f"{boundary_prefix}_handler_enabled"] is False
+    assert new_events[-1].metadata[f"{boundary_prefix}_result_accepted"] is False
+    assert new_events[-1].metadata[f"{boundary_prefix}_approval_persisted"] is False
+    assert new_events[-1].metadata[f"{boundary_prefix}_activation_granted"] is False
+    assert new_events[-1].metadata[f"{boundary_prefix}_result_persisted"] is False
+    assert new_events[-1].metadata["decision_payload_accepted"] is False
+    assert new_events[-1].metadata["go_no_go_decision_stored"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
