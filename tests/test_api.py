@@ -10879,6 +10879,238 @@ def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_result
     assert new_events[-1].metadata["pilot_start_authorized"] is False
 
 
+def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_result_skeleton_requires_context() -> None:
+    response = client.get(
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-activation-approval-request-execution-result-execution-skeleton"
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_platform_cockpit_mvp_pilot_activation_approval_request_execution_result_skeleton_defines_contract() -> None:
+    reset_module_registry()
+    previous_ledger = app.state.source_object_preview_decision_ledger
+    app.state.source_object_preview_decision_ledger = InMemorySourceObjectPreviewDecisionLedger()
+    starting_event_count = len(app.state.audit_logger.events)
+    route = (
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-"
+        "activation-approval-request-execution-result-execution-skeleton"
+    )
+    base_prefix = "decision_capture_payload_validation_request_execution_activation_approval_request_execution"
+    skeleton_prefix = f"{base_prefix}_result_execution_skeleton"
+    dry_run_prefix = f"{base_prefix}_result_dry_run"
+    boundary_prefix = f"{base_prefix}_result_boundary"
+
+    try:
+        response = client.get(route, headers=DEMO_ADMIN_HEADERS)
+    finally:
+        app.state.source_object_preview_decision_ledger = previous_ledger
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == (
+        "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton.v1"
+    )
+    assert body["result_contract"] == (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton"
+    )
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["checked_by"] == "user-demo"
+    assert body[f"{skeleton_prefix}_route"] == route
+    assert body[f"{dry_run_prefix}_audit_event_id"]
+    assert body[f"{dry_run_prefix}_evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["evidence_hash"] != body[f"{dry_run_prefix}_evidence_hash"]
+    assert body["read_only_status"] == "read_only_no_state_change"
+    assert body["backup_failover_gate_status"] == "metadata_only_no_state_change"
+    assert body[f"{skeleton_prefix}_status"] == (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton_ready"
+    )
+    assert body[f"{skeleton_prefix}_decision"] == (
+        "payload_validation_request_execution_activation_approval_request_execution_result_"
+        "execution_skeleton_ready_without_handler_activation"
+    )
+    assert body[f"{skeleton_prefix}_sections"] == [
+        "approval_request_execution_result_execution_skeleton",
+        "result_execution_input_contract",
+        "required_guards",
+        "evidence_hashes",
+        "non_execution",
+        "skeleton_outcome",
+    ]
+    assert body[f"{skeleton_prefix}_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton_v1"
+    )
+    assert body[f"{skeleton_prefix}_contract_id"] == (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton_contract_v1"
+    )
+    assert body[f"{skeleton_prefix}_allowed_methods"] == [
+        "validate_current_result_dry_run_evidence_hash",
+        "prepare_execution_result_input_contract",
+        "profile_result_idempotency_and_authorization_guards",
+        "emit_metadata_only_audit_record",
+    ]
+    assert body[f"{skeleton_prefix}_required_guards"] == [
+        "result_dry_run_must_be_current",
+        "result_handler_must_remain_disabled",
+        "tenant_role_and_acl_context_required",
+        "human_confirmation_must_be_external",
+        "no_result_acceptance",
+        "no_approval_persistence",
+        "no_activation_grant",
+        "no_pilot_start_authorization",
+    ]
+    assert body[f"{skeleton_prefix}_steps"] == [
+        "load_result_dry_run_evidence",
+        "validate_result_boundary_hash_chain",
+        "prepare_result_execution_input_contract",
+        "verify_required_human_approval_references",
+        "return_metadata_only_result_execution_skeleton",
+    ]
+    assert body[f"{skeleton_prefix}_prohibited_actions"] == [
+        "register_result_execution_handler",
+        "accept_execution_result",
+        "persist_execution_result_record",
+        "persist_approval_record",
+        "persist_decision_record",
+        "grant_activation",
+        "authorize_pilot_start",
+        "write_content",
+        "create_persistent_task",
+        "create_automation",
+    ]
+    assert body[f"{skeleton_prefix}_summary"] == [
+        (
+            "payload validation request execution activation approval request execution result "
+            "execution skeleton decision: "
+            "payload_validation_request_execution_activation_approval_request_execution_result_execution_skeleton_ready_without_handler_activation"
+        ),
+        (
+            "payload validation request execution activation approval request execution result dry-run decision: "
+            "payload_validation_request_execution_activation_approval_request_execution_result_dry_run_ready_without_result_persistence"
+        ),
+        (
+            "approval request execution result execution skeleton contract: "
+            "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_execution_skeleton_contract_v1"
+        ),
+        "approval request execution result execution skeleton is visible but no result handler is registered",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+        "result acceptance, approval persistence, activation grant and pilot start remain outside this skeleton",
+    ]
+    assert body[f"{skeleton_prefix}_checks"] == [
+        "publish result execution skeleton without enabling handler",
+        "require current result dry-run evidence hash before future result handling",
+        "require explicit tenant-admin/security-admin/compliance approval outside this skeleton",
+        (
+            "keep result acceptance, approval persistence, activation grant and pilot start "
+            "outside result execution skeleton"
+        ),
+    ]
+    assert body[f"{skeleton_prefix}_blockers"] == [
+        (
+            "payload validation request execution activation approval request execution result "
+            "execution skeleton endpoint "
+            "is not enabled"
+        ),
+        "payload validation request execution activation approval request execution result handler is not registered",
+        "activation approval request execution result is not accepted",
+        "activation approval is not persisted",
+        "activation is not granted",
+        "go/no-go decision has not been stored",
+        "pilot start authorization is not granted by this result execution skeleton",
+        (
+            "open foundation gaps: preview_decisions_pending,module_activation_work_items_open,"
+            "human_confirmation_required,content_release_gate_blocks_content"
+        ),
+    ]
+    assert body["evidence_chain_summary"][0] == (
+        "payload validation request execution activation approval request execution result dry-run hash: "
+        f"{body[f'{dry_run_prefix}_evidence_hash']}"
+    )
+    assert len(body["evidence_chain_summary"]) == 6
+    assert body["audit_refs"][-2:] == [
+        f"audit:{body[f'{dry_run_prefix}_audit_event_id']}",
+        f"audit:{body['audit_event_id']}",
+    ]
+
+    for key in (
+        f"{skeleton_prefix}_endpoint_enabled",
+        f"{skeleton_prefix}_handler_registered",
+        f"{skeleton_prefix}_result_accepted",
+        f"{skeleton_prefix}_approval_persisted",
+        f"{skeleton_prefix}_activation_granted",
+        f"{skeleton_prefix}_result_persisted",
+        f"{dry_run_prefix}_endpoint_enabled",
+        f"{dry_run_prefix}_executed",
+        f"{dry_run_prefix}_result_accepted",
+        f"{dry_run_prefix}_approval_persisted",
+        f"{dry_run_prefix}_activation_granted",
+        f"{dry_run_prefix}_result_persisted",
+        f"{boundary_prefix}_endpoint_enabled",
+        f"{boundary_prefix}_handler_enabled",
+        f"{boundary_prefix}_result_accepted",
+        f"{boundary_prefix}_approval_persisted",
+        f"{boundary_prefix}_activation_granted",
+        f"{boundary_prefix}_result_persisted",
+    ):
+        assert body[key] is False
+    assert body["decision_payload_accepted"] is False
+    assert body["go_no_go_decision_stored"] is False
+    assert body["go_no_go_decision_captured"] is False
+    assert body["approval_record_created"] is False
+    assert body["pilot_start_authorized"] is False
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["automation_created"] is False
+    assert "Board pack draft source content" not in json.dumps(body)
+    assert "Welcome message source" not in json.dumps(body)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-2].event_type == (
+        "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_dry_run.export"
+    )
+    assert new_events[-1].event_type == (
+        "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_execution_skeleton.export"
+    )
+    assert new_events[-1].source_object_ids == ["doc-1", "mail-1"]
+    assert new_events[-1].metadata["result_contract"] == body["result_contract"]
+    assert new_events[-1].metadata[f"{skeleton_prefix}_status"] == body[f"{skeleton_prefix}_status"]
+    assert new_events[-1].metadata[f"{skeleton_prefix}_decision"] == body[f"{skeleton_prefix}_decision"]
+    assert new_events[-1].metadata[f"{dry_run_prefix}_evidence_hash"] == body[f"{dry_run_prefix}_evidence_hash"]
+    assert new_events[-1].metadata[f"{skeleton_prefix}_sections"] == tuple(body[f"{skeleton_prefix}_sections"])
+    assert new_events[-1].metadata[f"{skeleton_prefix}_allowed_methods"] == tuple(
+        body[f"{skeleton_prefix}_allowed_methods"]
+    )
+    assert new_events[-1].metadata[f"{skeleton_prefix}_required_guards"] == tuple(
+        body[f"{skeleton_prefix}_required_guards"]
+    )
+    assert new_events[-1].metadata[f"{skeleton_prefix}_steps"] == tuple(body[f"{skeleton_prefix}_steps"])
+    assert new_events[-1].metadata[f"{skeleton_prefix}_prohibited_actions"] == tuple(
+        body[f"{skeleton_prefix}_prohibited_actions"]
+    )
+    assert new_events[-1].metadata[f"{skeleton_prefix}_endpoint_enabled"] is False
+    assert new_events[-1].metadata[f"{skeleton_prefix}_handler_registered"] is False
+    assert new_events[-1].metadata[f"{skeleton_prefix}_result_accepted"] is False
+    assert new_events[-1].metadata[f"{skeleton_prefix}_approval_persisted"] is False
+    assert new_events[-1].metadata[f"{skeleton_prefix}_activation_granted"] is False
+    assert new_events[-1].metadata[f"{skeleton_prefix}_result_persisted"] is False
+    assert new_events[-1].metadata["decision_payload_accepted"] is False
+    assert new_events[-1].metadata["go_no_go_decision_stored"] is False
+    assert new_events[-1].metadata["approval_record_created"] is False
+    assert new_events[-1].metadata["pilot_start_authorized"] is False
+
+
 def test_platform_cockpit_work_item_role_matrix_is_stable_and_gated_without_persistent_tasks() -> None:
     reset_module_registry()
     previous_ledger = app.state.source_object_preview_decision_ledger
