@@ -215,6 +215,9 @@ from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerDryRunResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerDryRunResponse,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
+    ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionDryRunResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionDryRunResponse,  # noqa: E501
+)
+from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionSkeletonResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionSkeletonResponse,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
@@ -252,6 +255,9 @@ from suite.platform.product_cockpit import (
 )
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_dry_run_response as build_activation_approval_request_execution_result_handler_dry_run_response,  # noqa: E501
+)
+from suite.platform.product_cockpit import (
+    build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_dry_run_response as build_activation_approval_request_execution_result_handler_execution_dry_run_response,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_skeleton_response as build_activation_approval_request_execution_result_handler_execution_skeleton_response,  # noqa: E501
@@ -6969,6 +6975,306 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
             snapshot_response=snapshot_response,
             activation_approval_request_execution_result_handler_dry_run_response=handler_dry_run_response,
+            audit_logger=audit_logger,
+        )
+
+    @app.get(
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-activation-approval-request-execution-result-handler-execution-dry-run",
+        response_model=ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionDryRunResponse,
+    )
+    def product_cockpit_mvp_pilot_activation_approval_request_execution_result_handler_execution_dry_run(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionDryRunResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(WorkspaceSourceObjectCatalog, request.app.state.workspace_source_object_catalog)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        cockpit_response = build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
+            knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+        snapshot_response = build_product_cockpit_mvp_snapshot_response(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            audit_logger=audit_logger,
+        )
+        smoke_report = build_product_cockpit_mvp_release_candidate_smoke_report(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            snapshot_response=snapshot_response,
+            audit_logger=audit_logger,
+        )
+        handover_response = build_product_cockpit_mvp_release_handover_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            smoke_report=smoke_report,
+            audit_logger=audit_logger,
+        )
+        release_review_response = build_product_cockpit_mvp_release_review_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            handover_response=handover_response,
+            audit_logger=audit_logger,
+        )
+        pilot_gate_response = build_product_cockpit_mvp_pilot_gate_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            release_review_response=release_review_response,
+            audit_logger=audit_logger,
+        )
+        pilot_status_response = build_product_cockpit_mvp_pilot_status_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            pilot_gate_response=pilot_gate_response,
+            audit_logger=audit_logger,
+        )
+        readiness_report = build_product_cockpit_mvp_pilot_readiness_report_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            pilot_status_response=pilot_status_response,
+            audit_logger=audit_logger,
+        )
+        start_scope_response = build_product_cockpit_mvp_pilot_start_scope_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            readiness_report=readiness_report,
+            audit_logger=audit_logger,
+        )
+        runbook_response = build_product_cockpit_mvp_pilot_runbook_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            start_scope_response=start_scope_response,
+            audit_logger=audit_logger,
+        )
+        review_point_response = build_product_cockpit_mvp_pilot_review_point_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            runbook_response=runbook_response,
+            audit_logger=audit_logger,
+        )
+        template_response = build_product_cockpit_mvp_pilot_start_decision_template_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            review_point_response=review_point_response,
+            audit_logger=audit_logger,
+        )
+        decision_record_schema_response = build_product_cockpit_mvp_pilot_decision_record_schema_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            template_response=template_response,
+            audit_logger=audit_logger,
+        )
+        preflight_response = build_product_cockpit_mvp_pilot_decision_preflight_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            decision_record_schema_response=decision_record_schema_response,
+            audit_logger=audit_logger,
+        )
+        boundary_response = build_product_cockpit_mvp_pilot_approval_workflow_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            preflight_response=preflight_response,
+            audit_logger=audit_logger,
+        )
+        approval_readiness_response = build_product_cockpit_mvp_pilot_approval_readiness_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            boundary_response=boundary_response,
+            audit_logger=audit_logger,
+        )
+        go_no_go_boundary_response = build_product_cockpit_mvp_pilot_go_no_go_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            approval_readiness_response=approval_readiness_response,
+            audit_logger=audit_logger,
+        )
+        go_no_go_record_schema_response = build_product_cockpit_mvp_pilot_go_no_go_decision_record_schema_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            go_no_go_boundary_response=go_no_go_boundary_response,
+            audit_logger=audit_logger,
+        )
+        decision_capture_boundary_response = build_product_cockpit_mvp_pilot_decision_capture_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            go_no_go_record_schema_response=go_no_go_record_schema_response,
+            audit_logger=audit_logger,
+        )
+        decision_capture_preflight_response = build_product_cockpit_mvp_pilot_decision_capture_preflight_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            decision_capture_boundary_response=decision_capture_boundary_response,
+            audit_logger=audit_logger,
+        )
+        decision_capture_submit_skeleton_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_submit_skeleton_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                decision_capture_preflight_response=decision_capture_preflight_response,
+                audit_logger=audit_logger,
+            )
+        )
+        decision_capture_submit_dry_run_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_submit_dry_run_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                decision_capture_submit_skeleton_response=decision_capture_submit_skeleton_response,
+                audit_logger=audit_logger,
+            )
+        )
+        payload_validation_boundary_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_boundary_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                decision_capture_submit_dry_run_response=decision_capture_submit_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        payload_validation_dry_run_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_dry_run_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                payload_validation_boundary_response=payload_validation_boundary_response,
+                audit_logger=audit_logger,
+            )
+        )
+        request_boundary_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_boundary_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                payload_validation_dry_run_response=payload_validation_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        request_dry_run_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_dry_run_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                request_boundary_response=request_boundary_response,
+                audit_logger=audit_logger,
+            )
+        )
+        execution_skeleton_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_skeleton_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                request_dry_run_response=request_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        execution_dry_run_response = (
+            build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_dry_run_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                execution_skeleton_response=execution_skeleton_response,
+                audit_logger=audit_logger,
+            )
+        )
+        build_activation_boundary_response = build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_boundary_response  # noqa: E501
+        activation_boundary_response = build_activation_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            execution_dry_run_response=execution_dry_run_response,
+            audit_logger=audit_logger,
+        )
+        activation_dry_run_response = build_activation_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_boundary_response=activation_boundary_response,
+            audit_logger=audit_logger,
+        )
+        activation_approval_skeleton_response = build_activation_approval_skeleton_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_dry_run_response=activation_dry_run_response,
+            audit_logger=audit_logger,
+        )
+        activation_approval_dry_run_response = build_activation_approval_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_skeleton_response=activation_approval_skeleton_response,
+            audit_logger=audit_logger,
+        )
+        activation_approval_request_boundary_response = build_activation_approval_request_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_dry_run_response=activation_approval_dry_run_response,
+            audit_logger=audit_logger,
+        )
+        activation_approval_request_dry_run_response = build_activation_approval_request_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_boundary_response=activation_approval_request_boundary_response,
+            audit_logger=audit_logger,
+        )
+        activation_approval_request_execution_skeleton_response = (
+            build_activation_approval_request_execution_skeleton_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                activation_approval_request_dry_run_response=activation_approval_request_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        build_request_execution_dry_run_response = build_activation_approval_request_execution_dry_run_response
+        activation_approval_request_execution_dry_run_response = build_request_execution_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_skeleton_response=activation_approval_request_execution_skeleton_response,
+            audit_logger=audit_logger,
+        )
+        build_request_execution_result_boundary_response = (
+            build_activation_approval_request_execution_result_boundary_response
+        )
+        result_boundary_response = build_request_execution_result_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_dry_run_response=activation_approval_request_execution_dry_run_response,
+            audit_logger=audit_logger,
+        )
+        result_dry_run_response = build_activation_approval_request_execution_result_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_result_boundary_response=result_boundary_response,
+            audit_logger=audit_logger,
+        )
+        result_execution_skeleton_response = (
+            build_activation_approval_request_execution_result_execution_skeleton_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                activation_approval_request_execution_result_dry_run_response=result_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        handler_boundary_response = build_activation_approval_request_execution_result_handler_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_result_execution_skeleton_response=result_execution_skeleton_response,
+            audit_logger=audit_logger,
+        )
+        handler_dry_run_response = build_activation_approval_request_execution_result_handler_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_result_handler_boundary_response=handler_boundary_response,
+            audit_logger=audit_logger,
+        )
+        handler_execution_skeleton_response = (
+            build_activation_approval_request_execution_result_handler_execution_skeleton_response(
+                user_context=context.user_context,
+                snapshot_response=snapshot_response,
+                activation_approval_request_execution_result_handler_dry_run_response=handler_dry_run_response,
+                audit_logger=audit_logger,
+            )
+        )
+        return build_activation_approval_request_execution_result_handler_execution_dry_run_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_result_handler_execution_skeleton_response=handler_execution_skeleton_response,
             audit_logger=audit_logger,
         )
 
