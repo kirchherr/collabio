@@ -548,6 +548,14 @@ MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_APPRO
     "non_execution",
     "skeleton_outcome",
 )
+MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_APPROVAL_REQUEST_EXECUTION_RESULT_HANDLER_EXECUTION_RESULT_EXECUTION_RESULT_EXECUTION_RESULT_EXECUTION_DRY_RUN_SECTIONS = (  # noqa: E501
+    "approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run",
+    "synthetic_handler_execution_result_execution_result_execution_result_execution_profile",
+    "handler_execution_result_execution_result_execution_result_execution_guard_checks",
+    "evidence_hashes",
+    "non_execution",
+    "dry_run_outcome",
+)
 
 
 class ProductCockpitSourceObjectFlowReadiness(BaseModel):
@@ -4090,6 +4098,63 @@ class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActi
     decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_result_persisted: bool = False  # noqa: E501
 
 
+class ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse(  # noqa: E501
+    ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse
+):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = (
+        "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run.v1"
+    )
+    result_contract: str = (
+        "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run"
+    )
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_route: str = (  # noqa: E501
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-"
+        "execution-activation-approval-request-execution-result-handler-execution-result-execution-result-execution-result-execution-dry-run"
+    )
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_audit_event_id: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_evidence_hash: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_status: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_decision: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_sections: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_id: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_contract_id: str  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_profile: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_results: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_required_controls: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_rejected_reasons: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_summary: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_checks: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_blockers: tuple[  # noqa: E501
+        str, ...
+    ]
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_endpoint_enabled: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_executed: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_handler_registered: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_handler_executed: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_result_accepted: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_approval_persisted: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_activation_granted: bool = False  # noqa: E501
+    decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_result_persisted: bool = False  # noqa: E501
+
+
 _ActivationApprovalRequestBoundaryResponse = (
     ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestBoundaryResponse
 )
@@ -4137,6 +4202,8 @@ _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultEx
 _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultDryRunResponse = ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultDryRunResponse  # noqa: E501
 
 _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse = ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse  # noqa: E501
+
+_ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse = ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse  # noqa: E501
 
 
 class ProductCockpitMvpSnapshotResponse(BaseModel):
@@ -23090,6 +23157,594 @@ def _activation_approval_request_execution_result_handler_execution_result_execu
         (
             "payload validation request execution activation approval request execution dry-run hash",
             dry_run_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_dry_run_evidence_hash"
+            ],
+        ),
+    )
+    return tuple(f"{label}: {evidence_hash}" for label, evidence_hash in chain_items)
+
+
+def build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_response(  # noqa: E501
+    *,
+    user_context: UserContext,
+    snapshot_response: ProductCockpitMvpSnapshotResponse,
+    activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_response: (  # noqa: E501
+        _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse
+    ),
+    audit_logger: InMemoryAuditLogger,
+) -> (
+    _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse
+):
+    skeleton = activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_response  # noqa: E501
+    ready_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_ready"
+    )
+    blocked_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_blocked"
+    )
+    ready_decision = (
+        "payload_validation_request_execution_activation_approval_request_execution_result_"
+        "handler_execution_result_execution_result_execution_result_execution_dry_run_ready_without_result_execution"
+    )
+    blocked_decision = (
+        "payload_validation_request_execution_activation_approval_request_execution_result_"
+        "handler_execution_result_execution_result_execution_result_execution_dry_run_blocked"
+    )
+    base_prefix = "decision_capture_payload_validation_request_execution_activation_approval_request_execution"
+    result_handler_prefix = f"{base_prefix}_result_handler"
+    dry_run_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_result_execution_dry_run"
+    skeleton_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_result_execution_skeleton"
+    previous_dry_run_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_result_dry_run"
+    boundary_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_result_boundary"
+    execution_dry_run_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_dry_run"
+    execution_skeleton_prefix = f"{result_handler_prefix}_execution_result_execution_result_execution_skeleton"
+    prior_dry_run_prefix = f"{result_handler_prefix}_execution_result_execution_result_dry_run"
+    prior_boundary_prefix = f"{result_handler_prefix}_execution_result_execution_result_boundary"
+    result_execution_dry_run_prefix = f"{result_handler_prefix}_execution_result_execution_dry_run"
+    result_execution_skeleton_prefix = f"{result_handler_prefix}_execution_result_execution_skeleton"
+    handler_execution_result_dry_run_prefix = f"{result_handler_prefix}_execution_result_dry_run"
+    handler_execution_result_boundary_prefix = f"{result_handler_prefix}_execution_result_boundary"
+    handler_execution_dry_run_prefix = f"{result_handler_prefix}_execution_dry_run"
+    handler_execution_skeleton_prefix = f"{result_handler_prefix}_execution_skeleton"
+    handler_dry_run_prefix = f"{result_handler_prefix}_dry_run"
+    handler_boundary_prefix = f"{result_handler_prefix}_boundary"
+    activation_result_execution_skeleton_prefix = f"{base_prefix}_result_execution_skeleton"
+    activation_result_dry_run_prefix = f"{base_prefix}_result_dry_run"
+    activation_result_boundary_prefix = f"{base_prefix}_result_boundary"
+    request_execution_dry_run_prefix = f"{base_prefix}_dry_run"
+    status_key = f"{dry_run_prefix}_status"
+    decision_key = f"{dry_run_prefix}_decision"
+    sections_key = f"{dry_run_prefix}_sections"
+    dry_run_id_key = f"{dry_run_prefix}_id"
+    contract_key = f"{dry_run_prefix}_contract_id"
+    profile_key = f"{dry_run_prefix}_profile"
+    results_key = f"{dry_run_prefix}_results"
+    controls_key = f"{dry_run_prefix}_required_controls"
+    rejected_key = f"{dry_run_prefix}_rejected_reasons"
+    summary_key = f"{dry_run_prefix}_summary"
+    checks_key = f"{dry_run_prefix}_checks"
+    blockers_key = f"{dry_run_prefix}_blockers"
+    skeleton_status_key = f"{skeleton_prefix}_status"
+    skeleton_decision_key = f"{skeleton_prefix}_decision"
+    skeleton_hash_key = f"{skeleton_prefix}_evidence_hash"
+    skeleton_ready_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_ready"
+    )
+    skeleton_ready_decision = (
+        "payload_validation_request_execution_activation_approval_request_execution_result_"
+        "handler_execution_result_execution_result_execution_result_execution_skeleton_ready_without_result_acceptance"
+    )
+    dry_run_id = (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_v1"
+    )
+    contract_id = (
+        "mvp_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_contract_v1"
+    )
+    sections = MVP_PILOT_DECISION_CAPTURE_PAYLOAD_VALIDATION_REQUEST_EXECUTION_ACTIVATION_APPROVAL_REQUEST_EXECUTION_RESULT_HANDLER_EXECUTION_RESULT_EXECUTION_RESULT_EXECUTION_RESULT_EXECUTION_DRY_RUN_SECTIONS  # noqa: E501
+    skeleton_payload = skeleton.model_dump()
+    evidence_keys = (
+        f"{previous_dry_run_prefix}_evidence_hash",
+        f"{boundary_prefix}_evidence_hash",
+        f"{execution_dry_run_prefix}_evidence_hash",
+        f"{execution_skeleton_prefix}_evidence_hash",
+        f"{prior_dry_run_prefix}_evidence_hash",
+        f"{prior_boundary_prefix}_evidence_hash",
+        f"{result_execution_dry_run_prefix}_evidence_hash",
+        f"{result_execution_skeleton_prefix}_evidence_hash",
+        f"{handler_execution_result_dry_run_prefix}_evidence_hash",
+        f"{handler_execution_result_boundary_prefix}_evidence_hash",
+        f"{handler_execution_dry_run_prefix}_evidence_hash",
+        f"{handler_execution_skeleton_prefix}_evidence_hash",
+        f"{handler_dry_run_prefix}_evidence_hash",
+        f"{handler_boundary_prefix}_evidence_hash",
+        f"{activation_result_execution_skeleton_prefix}_evidence_hash",
+        f"{activation_result_dry_run_prefix}_evidence_hash",
+        f"{activation_result_boundary_prefix}_evidence_hash",
+        f"{request_execution_dry_run_prefix}_evidence_hash",
+    )
+    required_hashes = (skeleton.evidence_hash, *(skeleton_payload[key] for key in evidence_keys))
+
+    def _state_flags(prefix: str, *, includes_executed: bool) -> dict[str, bool]:
+        flags = {
+            f"{prefix}_endpoint_enabled": False,
+            f"{prefix}_handler_registered": False,
+            f"{prefix}_handler_executed": False,
+            f"{prefix}_result_accepted": False,
+            f"{prefix}_approval_persisted": False,
+            f"{prefix}_activation_granted": False,
+            f"{prefix}_result_persisted": False,
+        }
+        if includes_executed:
+            flags[f"{prefix}_executed"] = False
+        return flags
+
+    skeleton_state_flags = _state_flags(skeleton_prefix, includes_executed=False)
+    previous_dry_run_state_flags = _state_flags(previous_dry_run_prefix, includes_executed=True)
+    boundary_state_flags = _state_flags(boundary_prefix, includes_executed=False)
+    execution_dry_run_state_flags = _state_flags(execution_dry_run_prefix, includes_executed=True)
+    execution_skeleton_state_flags = _state_flags(execution_skeleton_prefix, includes_executed=False)
+    prior_dry_run_state_flags = _state_flags(prior_dry_run_prefix, includes_executed=True)
+    prior_boundary_state_flags = _state_flags(prior_boundary_prefix, includes_executed=False)
+    current_state_flags = _state_flags(dry_run_prefix, includes_executed=True)
+    prior_state_flags = {
+        **prior_boundary_state_flags,
+        **prior_dry_run_state_flags,
+        **execution_skeleton_state_flags,
+        **execution_dry_run_state_flags,
+        **boundary_state_flags,
+        **previous_dry_run_state_flags,
+        **skeleton_state_flags,
+    }
+    dry_run_status = (
+        ready_status
+        if skeleton_payload[skeleton_status_key] == skeleton_ready_status
+        and skeleton_payload[skeleton_decision_key] == skeleton_ready_decision
+        and all(
+            isinstance(evidence_hash, str) and evidence_hash.startswith("sha256:") for evidence_hash in required_hashes
+        )
+        and skeleton.read_only_status == "read_only_no_state_change"
+        and skeleton.backup_failover_gate_status == "metadata_only_no_state_change"
+        and all(skeleton_payload[key] is False for key in prior_state_flags)
+        and not skeleton.decision_payload_accepted
+        and not skeleton.go_no_go_decision_stored
+        and not skeleton.go_no_go_decision_captured
+        and not skeleton.approval_record_created
+        and not skeleton.pilot_start_authorized
+        and not skeleton.content_included
+        and not skeleton.persistent_task_created
+        and not skeleton.automation_created
+        else blocked_status
+    )
+    dry_run_decision = ready_decision if dry_run_status == ready_status else blocked_decision
+    profile = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_profile()  # noqa: E501
+    results = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_results()  # noqa: E501
+    controls = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_controls()  # noqa: E501
+    rejected = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_rejected()  # noqa: E501
+    summary = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_summary(  # noqa: E501
+        handler_execution_result_execution_result_execution_result_execution_skeleton_response=skeleton,
+        dry_run_decision=dry_run_decision,
+    )
+    checks = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_checks(  # noqa: E501
+        dry_run_status=dry_run_status
+    )
+    blockers = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_blockers(  # noqa: E501
+        skeleton
+    )
+    evidence_chain_summary = _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_evidence_chain_summary(  # noqa: E501
+        skeleton
+    )
+    draft_payload = skeleton.model_dump()
+    draft_payload.update(
+        {
+            "schema_version": (
+                "product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_"
+                "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run.v1"
+            ),
+            "result_contract": (
+                "metadata_only_mvp_pilot_decision_capture_payload_validation_request_execution_"
+                "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run"
+            ),
+            "checked_by": user_context.user_id,
+            f"{skeleton_prefix}_audit_event_id": skeleton.audit_event_id or "",
+            skeleton_hash_key: skeleton.evidence_hash,
+            "audit_event_id": None,
+            "audit_refs": skeleton.audit_refs,
+            status_key: dry_run_status,
+            decision_key: dry_run_decision,
+            sections_key: sections,
+            dry_run_id_key: dry_run_id,
+            contract_key: contract_id,
+            profile_key: profile,
+            results_key: results,
+            controls_key: controls,
+            rejected_key: rejected,
+            summary_key: summary,
+            checks_key: checks,
+            blockers_key: blockers,
+            "evidence_chain_summary": evidence_chain_summary,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            **prior_state_flags,
+            **current_state_flags,
+            "evidence_hash": "sha256:" + "0" * 64,
+        }
+    )
+    draft = _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse.model_validate(  # noqa: E501
+        draft_payload
+    )
+    event = audit_logger.record(
+        user_context=user_context,
+        event_type=(
+            "platform.mvp_pilot_decision_capture_payload_validation_request_execution_"
+            "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run.export"
+        ),
+        source_object_ids=[flow.source_object_id for flow in snapshot_response.source_object_flow_refs],
+        metadata={
+            "result_contract": draft.result_contract,
+            status_key: dry_run_status,
+            decision_key: dry_run_decision,
+            skeleton_status_key: skeleton_payload[skeleton_status_key],
+            skeleton_decision_key: skeleton_payload[skeleton_decision_key],
+            skeleton_hash_key: skeleton.evidence_hash,
+            f"{previous_dry_run_prefix}_evidence_hash": skeleton_payload[f"{previous_dry_run_prefix}_evidence_hash"],
+            sections_key: sections,
+            dry_run_id_key: dry_run_id,
+            contract_key: contract_id,
+            profile_key: profile,
+            results_key: results,
+            controls_key: controls,
+            rejected_key: rejected,
+            "open_foundation_gap_ids": skeleton.open_foundation_gap_ids,
+            "open_foundation_gap_count": skeleton.open_foundation_gap_count,
+            "next_foundation_action": skeleton.next_foundation_action,
+            "human_review_required": True,
+            "human_confirmation_required": True,
+            "human_confirmation_captured": False,
+            "decision_capture_enabled": False,
+            "go_no_go_decision_stored": False,
+            "go_no_go_decision_captured": False,
+            "go_no_go_decision_record_created": False,
+            "decision_record_created": False,
+            "approval_record_created": False,
+            "pilot_start_authorized": False,
+            "content_included": False,
+            "persistent_task_created": False,
+            "automation_created": False,
+            "decision_payload_accepted": False,
+            **prior_state_flags,
+            **current_state_flags,
+        },
+    )
+    audited = draft.model_copy(
+        update={
+            "audit_event_id": event.event_id,
+            "audit_refs": (*draft.audit_refs, f"audit:{event.event_id}"),
+        }
+    )
+    return audited.model_copy(
+        update={
+            "evidence_hash": build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_hash(  # noqa: E501
+                audited
+            )
+        }
+    )
+
+
+def build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_hash(  # noqa: E501
+    report: (
+        _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionDryRunResponse
+    ),
+) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_profile() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "synthetic_handler_execution_result_execution_result_execution_result_execution_profiled_not_executed",
+        "handler_execution_result_execution_result_execution_result_execution_skeleton_evidence_guard_profiled",
+        "tenant_role_acl_guards_profiled",
+        "result_takeover_execution_idempotency_guard_profiled",
+        "human_confirmation_reference_guard_profiled",
+        "non_execution_guard_profiled",
+        "activation_grant_guard_profiled",
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_results() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "handler_execution_result_execution_result_execution_result_execution_skeleton_evidence_guard_would_pass",
+        "tenant_role_acl_guards_would_require_future_result_execution_context",
+        "result_handler_would_remain_unregistered",
+        "result_handler_would_not_execute",
+        "handler_execution_result_execution_would_not_execute",
+        "handler_execution_result_execution_result_execution_would_not_execute",
+        "handler_execution_result_takeover_would_not_persist",
+        "execution_result_would_remain_unaccepted",
+        "approval_persistence_would_remain_blocked",
+        "activation_grant_would_remain_blocked",
+        "pilot_start_would_remain_blocked",
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_controls() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "current_handler_execution_result_execution_result_execution_result_execution_skeleton_evidence_hash_required",
+        "tenant_admin_security_compliance_confirmation_required",
+        "handler_execution_result_execution_plan_required_before_execution",
+        "handler_execution_result_execution_result_execution_idempotency_key_required_before_execution",
+        "result_acceptance_must_remain_disabled",
+        "approval_record_persistence_must_remain_disabled",
+        "activation_grant_must_remain_disabled",
+        "metadata_only_audit_required",
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_rejected() -> (  # noqa: E501
+    tuple[str, ...]
+):
+    return (
+        "handler_execution_result_execution_result_execution_result_execution_skeleton_not_enabled",
+        "result_handler_not_registered",
+        "result_handler_not_executed",
+        "handler_execution_result_execution_not_executed",
+        "handler_execution_result_execution_result_execution_not_executed",
+        "handler_execution_result_not_accepted",
+        "handler_execution_result_not_persisted",
+        "approval_record_not_persisted",
+        "activation_not_granted",
+        "go_no_go_decision_not_stored",
+        "pilot_start_not_authorized",
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_summary(  # noqa: E501
+    *,
+    handler_execution_result_execution_result_execution_result_execution_skeleton_response: (
+        _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse
+    ),
+    dry_run_decision: str,
+) -> tuple[str, ...]:
+    open_gaps = (
+        ",".join(
+            handler_execution_result_execution_result_execution_result_execution_skeleton_response.open_foundation_gap_ids
+        )
+        or "none"
+    )
+    skeleton_payload = (
+        handler_execution_result_execution_result_execution_result_execution_skeleton_response.model_dump()
+    )
+    skeleton_decision = skeleton_payload[
+        "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_skeleton_decision"
+    ]
+    return (
+        f"payload validation request execution activation approval request execution result handler execution result execution result execution result execution dry-run decision: {dry_run_decision}",  # noqa: E501
+        f"payload validation request execution activation approval request execution result handler execution result execution result execution result execution skeleton decision: {skeleton_decision}",  # noqa: E501
+        (
+            "approval request execution result handler execution result execution result execution result "
+            "execution dry-run contract: "
+            "mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_contract_v1"
+        ),
+        (
+            "approval request execution result handler execution result execution result execution result execution "
+            "dry-run profiles future handler result execution but executes and persists nothing"
+        ),
+        f"open foundation gaps: {open_gaps}",
+        (
+            "handler registration, handler execution, handler execution result execution, result acceptance, "
+            "approval persistence, activation grant and pilot start remain outside this dry-run"
+        ),
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_checks(  # noqa: E501
+    *, dry_run_status: str
+) -> tuple[str, ...]:
+    ready_status = (
+        "metadata_only_pilot_decision_capture_payload_validation_request_execution_"
+        "activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_ready"
+    )
+    if dry_run_status == ready_status:
+        return (
+            (
+                "profile handler execution result execution result execution result execution dry-run "
+                "without executing result"
+            ),
+            (
+                "require current handler execution result execution result execution result execution "
+                "skeleton evidence hash before future result execution"
+            ),
+            "require explicit tenant-admin/security-admin/compliance approval outside this dry-run",
+            "keep handler registration, handler execution, result acceptance, approval persistence, activation grant and pilot start outside handler execution result execution result execution result execution dry-run",  # noqa: E501
+        )
+    return (
+        (
+            "repair blocked payload validation request execution activation approval request execution result "
+            "handler execution result execution result execution result execution dry-run"
+        ),
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_blockers(  # noqa: E501
+    handler_execution_result_execution_result_execution_result_execution_skeleton_response: (
+        _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse
+    ),
+) -> tuple[str, ...]:
+    open_gaps = ",".join(
+        handler_execution_result_execution_result_execution_result_execution_skeleton_response.open_foundation_gap_ids
+    )
+    return (
+        (
+            "payload validation request execution activation approval request execution result handler "
+            "execution result execution result execution result execution dry-run endpoint is not enabled"
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler "
+            "execution result execution result execution result execution dry-run is not executed"
+        ),
+        "payload validation request execution activation approval request execution result handler is not registered",
+        "payload validation request execution activation approval request execution result handler is not executed",
+        "activation approval request execution result handler execution result execution is not executed",
+        "activation approval request execution result is not accepted",
+        "activation approval request execution result is not persisted",
+        "activation approval is not persisted",
+        "activation is not granted",
+        "go/no-go decision has not been stored",
+        (
+            "pilot start authorization is not granted by this handler execution result execution result "
+            "execution result execution dry-run"
+        ),
+        f"open foundation gaps: {open_gaps}",
+    )
+
+
+def _activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_dry_run_evidence_chain_summary(  # noqa: E501
+    handler_execution_result_execution_result_execution_result_execution_skeleton_response: (
+        _ActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionSkeletonResponse
+    ),
+) -> tuple[str, ...]:
+    skeleton_payload = (
+        handler_execution_result_execution_result_execution_result_execution_skeleton_response.model_dump()
+    )
+    chain_items = (
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result execution result execution skeleton hash",  # noqa: E501
+            handler_execution_result_execution_result_execution_result_execution_skeleton_response.evidence_hash,
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result execution result dry-run hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result execution result boundary hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_boundary_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result execution dry-run hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result execution skeleton hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_skeleton_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result dry-run hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution result boundary hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_boundary_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution dry-run hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result execution skeleton hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_skeleton_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler execution result dry-run hash",  # noqa: E501
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            (
+                "payload validation request execution activation approval request execution result handler "
+                "execution result boundary hash"
+            ),
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_boundary_evidence_hash"
+            ],
+        ),
+        (
+            (
+                "payload validation request execution activation approval request execution result handler "
+                "execution dry-run hash"
+            ),
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            (
+                "payload validation request execution activation approval request execution result handler "
+                "execution skeleton hash"
+            ),
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_skeleton_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler dry-run hash",
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result handler boundary hash",
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_boundary_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result execution skeleton hash",
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_execution_skeleton_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result dry-run hash",
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_dry_run_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution result boundary hash",
+            skeleton_payload[
+                "decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_boundary_evidence_hash"
+            ],
+        ),
+        (
+            "payload validation request execution activation approval request execution dry-run hash",
+            skeleton_payload[
                 "decision_capture_payload_validation_request_execution_activation_approval_request_execution_dry_run_evidence_hash"
             ],
         ),
