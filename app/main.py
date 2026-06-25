@@ -281,6 +281,9 @@ from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultDryRunResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultDryRunResponse,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
+    ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionBoundaryContinuationResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionBoundaryContinuationResponse,  # noqa: E501
+)
+from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotDecisionCapturePayloadValidationRequestExecutionActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionDryRunContinuationResponse as ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionDryRunContinuationResponse,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
@@ -411,6 +414,9 @@ from suite.platform.product_cockpit import (
 )
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_dry_run_response as build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_dry_run_response,  # noqa: E501
+)
+from suite.platform.product_cockpit import (
+    build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_boundary_continuation_response as build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_boundary_continuation_response,  # noqa: E501
 )
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_dry_run_continuation_response as build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_dry_run_continuation_response,  # noqa: E501
@@ -12074,6 +12080,45 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
             snapshot_response=snapshot_response,
             activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_skeleton_response=skeleton_response,
+            audit_logger=audit_logger,
+        )
+
+    @app.get(
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-payload-validation-request-execution-activation-approval-request-execution-result-handler-execution-result-execution-result-execution-result-execution-result-execution-result-execution-result-execution-result-execution-boundary-continuation",
+        response_model=ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionBoundaryContinuationResponse,
+    )
+    def product_cockpit_mvp_pilot_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_boundary_continuation(  # noqa: E501
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ProductCockpitActivationApprovalRequestExecutionResultHandlerExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionResultExecutionBoundaryContinuationResponse:  # noqa: E501
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(WorkspaceSourceObjectCatalog, request.app.state.workspace_source_object_catalog)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        cockpit_response = build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
+            knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+        snapshot_response = build_product_cockpit_mvp_snapshot_response(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            audit_logger=audit_logger,
+        )
+        build_continuation_response = product_cockpit_mvp_pilot_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_dry_run_continuation  # noqa: E501
+        continuation_response = build_continuation_response(
+            request=request,
+            context=context,
+        )
+        build_boundary_response = build_activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_boundary_continuation_response  # noqa: E501
+        return build_boundary_response(
+            user_context=context.user_context,
+            snapshot_response=snapshot_response,
+            activation_approval_request_execution_result_handler_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_result_execution_dry_run_continuation_response=continuation_response,
             audit_logger=audit_logger,
         )
 
