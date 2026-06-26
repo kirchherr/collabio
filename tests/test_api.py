@@ -22381,6 +22381,117 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert write_event.metadata["refreshed_restore_evidence_hash"] == write_body["refreshed_restore_evidence_hash"]
 
 
+def test_legacy_sql_migration_api_plan_is_admin_scoped_and_metadata_only() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare legacy SQL migration API plan"},
+    )
+    assert provision_response.status_code == 200
+
+    payload = {
+        "source_system_ref": "legacy-sql:sqlserver-demo",
+        "approval_record_store_ref": "store:crm-erp-legacy-import-write-approval-records",
+        "migration_run_registry_ref": "store:crm-erp-legacy-migration-runs",
+        "migration_report_store_ref": "store:crm-erp-legacy-migration-reports",
+        "approval_reference": "approval:legacy-sql-migration-api-plan-api",
+        "change_control_ref": "change:legacy-sql-migration-api-plan-api",
+        "restore_drill_ref": "restore:legacy-sql-migration-api-plan-api",
+        "reason": "plan migration API surfaces without enabling import writes",
+    }
+
+    non_admin_response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-api-plan",
+        headers=DEMO_HEADERS,
+        json=payload,
+    )
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+    response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-api-plan",
+        headers=DEMO_ADMIN_HEADERS,
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    body_text = json.dumps(body).lower()
+    assert body["schema_version"] == "legacy_sql_migration_api_plan.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["plan_status"] == "ready_for_run_registry_design"
+    assert body["migration_api_plan_accepted"] is True
+    assert body["run_creation_planned"] is True
+    assert body["run_listing_planned"] is True
+    assert body["report_retrieval_planned"] is True
+    assert body["approval_request_planned"] is True
+    assert body["approval_grant_planned"] is True
+    assert body["run_creation_enabled"] is False
+    assert body["report_retrieval_enabled"] is False
+    assert body["approval_grant_enabled"] is False
+    assert body["future_import_write_execution_gate_required"] is True
+    assert body["import_write_execution_allowed"] is False
+    assert body["raw_data_access_allowed"] is False
+    assert body["import_write_payload_allowed"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["evidence_hash"].startswith("sha256:")
+    assert len(body["planned_endpoints"]) == 6
+    assert {endpoint["endpoint_kind"] for endpoint in body["planned_endpoints"]} == {
+        "create_run",
+        "list_runs",
+        "get_run",
+        "get_report",
+        "request_approval",
+        "grant_approval",
+    }
+    assert all(endpoint["implemented_now"] is False for endpoint in body["planned_endpoints"])
+    assert all(endpoint["import_write_execution_allowed"] is False for endpoint in body["planned_endpoints"])
+    assert all(endpoint["raw_data_access_allowed"] is False for endpoint in body["planned_endpoints"])
+    assert "dbo.kunden" not in body_text
+    assert "kundenid" not in body_text
+    assert "email" not in body_text
+    assert "connection_secret_ref" not in body_text
+    assert "sqlserver://" not in body_text
+
+    unsafe_response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-api-plan",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            **payload,
+            "import_write_execution_requested": True,
+            "raw_data_access_requested": True,
+            "import_write_payload_requested": True,
+        },
+    )
+    assert unsafe_response.status_code == 200
+    unsafe_body = unsafe_response.json()
+    assert unsafe_body["plan_status"] == "blocked"
+    assert unsafe_body["migration_api_plan_accepted"] is False
+    assert "import_write_execution_requires_future_gate" in unsafe_body["blocking_reasons"]
+    assert "raw_data_access_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert "import_write_payload_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert unsafe_body["import_write_execution_allowed"] is False
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type == "legacy_sql.migration_api.plan"]
+    assert len(matching_events) == 2
+    ready_event = matching_events[0]
+    assert ready_event.tenant_id == "tenant-demo"
+    assert ready_event.input_hash is not None
+    assert ready_event.output_hash is None
+    assert ready_event.metadata["surface"] == "compliance_api"
+    assert ready_event.metadata["result_contract"] == "metadata_only_api_plan"
+    assert ready_event.metadata["migration_api_plan_accepted"] is True
+    assert ready_event.metadata["planned_endpoint_count"] == 6
+    assert ready_event.metadata["run_creation_enabled"] is False
+    assert ready_event.metadata["approval_grant_enabled"] is False
+    assert ready_event.metadata["import_write_execution_allowed"] is False
+    assert ready_event.metadata["raw_data_access_allowed"] is False
+
+
 def test_legacy_sql_import_write_approval_request_boundary_is_admin_scoped_and_metadata_only(
     tmp_path: Path,
 ) -> None:

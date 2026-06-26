@@ -108,6 +108,13 @@ tenant-scoped und append-only. Das Gate kann nur einen spaeteren Human-Approval-
 Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, externe Side Effects und destruktive Aktionen bleiben
 technisch blockiert und brauchen ein separates zukuenftiges Execution-Gate.
 
+`POST /v1/admin/crm-erp/legacy-sql/migration-api-plan` plant die spaeteren Migration-API-Oberflaechen fuer Run-Erstellung,
+Run-Liste, Run-Detail, Report-Abruf, Approval-Request und Approval-Grant. Der Plan ist ein metadata-only
+`legacy_sql_migration_api_plan.v1` Evidence-Objekt, laeuft nur hinter Tenant-Admin- und Modul-Compliance-Gate und
+setzt alle produktiven Aktivierungsflags auf false: keine Run-Erstellung, keine Report-Freigabe, keine Approval-Grant-
+Aktivierung, keine Import-Write-Ausfuehrung, keine Rohdaten, keine Import-Payloads, keine destruktiven Aktionen und
+keine externen Side Effects.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

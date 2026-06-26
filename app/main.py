@@ -118,6 +118,11 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     build_default_legacy_sql_import_write_approval_record_store,
     build_legacy_sql_import_write_approval_request_boundary,
 )
+from suite.platform.legacy_sql_migration_api_plan import (
+    LegacySqlMigrationApiPlanCommand,
+    LegacySqlMigrationApiPlanResponse,
+    build_legacy_sql_migration_api_plan,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -12957,6 +12962,51 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-api-plan",
+        response_model=LegacySqlMigrationApiPlanResponse,
+    )
+    def plan_legacy_sql_migration_apis(
+        command: LegacySqlMigrationApiPlanCommand,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlMigrationApiPlanResponse:
+        del gate
+        try:
+            plan = build_legacy_sql_migration_api_plan(
+                command=command,
+                tenant_id=context.user_context.tenant_id,
+                planned_by=context.user_context.user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_api.plan",
+            source_object_ids=[],
+            input_text=command.reason,
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_api_plan",
+                "approval_reference": command.approval_reference,
+                "migration_api_plan_accepted": plan.migration_api_plan_accepted,
+                "plan_status": plan.plan_status.value,
+                "planned_endpoint_count": len(plan.planned_endpoints),
+                "run_creation_enabled": plan.run_creation_enabled,
+                "report_retrieval_enabled": plan.report_retrieval_enabled,
+                "approval_grant_enabled": plan.approval_grant_enabled,
+                "import_write_execution_allowed": plan.import_write_execution_allowed,
+                "raw_data_access_allowed": plan.raw_data_access_allowed,
+                "destructive_actions_allowed": plan.destructive_actions_allowed,
+                "external_side_effect_allowed": plan.external_side_effect_allowed,
+            },
+        )
+        return plan
 
     @app.post(
         "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
