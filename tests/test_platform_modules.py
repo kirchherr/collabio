@@ -907,13 +907,14 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     response = registry.discover_tenant_modules("tenant-demo")
     module_ids = {module.module_id for module in response.modules}
 
-    assert crm_erp_catalog_entry.required_migration_versions[-6:] == (
+    assert crm_erp_catalog_entry.required_migration_versions[-7:] == (
         "0034",
         "0035",
         "0036",
         "0037",
         "0038",
         "0039",
+        "0040",
     )
     assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
     assert module_ids >= {"crm_erp", "knowledge_base"}

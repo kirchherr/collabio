@@ -27,6 +27,7 @@ from suite.platform.persistent_metadata import (
 CRM_ERP_MODULE_ID = "crm_erp"
 CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION = "crm_erp_legacy_staging_metadata_plan.v1"
 CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_SCHEMA_VERSION = "crm_erp_legacy_staging_metadata_profile.v1"
+CRM_ERP_LEGACY_IMPORT_DRY_RUN_PLAN_SCHEMA_VERSION = "crm_erp_legacy_import_dry_run_plan.v1"
 CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE = "legacy.sql_staging_metadata_profile"
 CRM_ERP_LEGACY_STAGING_SOURCE_SYSTEM = "legacy_sql"
 LEGACY_STAGING_ROW_HASH_TOKEN = "{source_row_hash}"
@@ -50,6 +51,19 @@ class CrmErpLegacyImportReadinessStatus(StrEnum):
     READY_FOR_DRY_RUN = "ready_for_dry_run"
     MANUAL_MAPPING_REQUIRED = "manual_mapping_required"
     BLOCKED = "blocked"
+
+
+class CrmErpLegacyImportDryRunStatus(StrEnum):
+    READY_FOR_METADATA_DRY_RUN = "ready_for_metadata_dry_run"
+    BLOCKED_BY_READINESS = "blocked_by_readiness"
+
+
+class CrmErpLegacyRowCountStrategy(StrEnum):
+    EXACT_READ_ONLY_COUNT_QUERY = "exact_read_only_count_query"
+
+
+class CrmErpLegacyChecksumStrategy(StrEnum):
+    SHA256_CANONICAL_ROW_HASH_MANIFEST = "sha256_canonical_row_hash_manifest"
 
 
 class CrmErpTargetObjectProfile(BaseModel):
@@ -598,6 +612,201 @@ class CrmErpLegacyStagingMetadataPlan(BaseModel):
         return self
 
 
+class CrmErpLegacyImportDryRunTablePlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    source_system_ref: str
+    source_table_ref: str
+    target_object_type: str
+    staging_profile_object_id: str
+    row_count_required: bool = True
+    row_count_strategy: CrmErpLegacyRowCountStrategy = CrmErpLegacyRowCountStrategy.EXACT_READ_ONLY_COUNT_QUERY
+    expected_row_count_estimate: int | None = None
+    checksum_required: bool = True
+    checksum_strategy: CrmErpLegacyChecksumStrategy = CrmErpLegacyChecksumStrategy.SHA256_CANONICAL_ROW_HASH_MANIFEST
+    row_object_id_template: str
+    manifest_hash_required: bool = True
+    audit_event_type: str = "legacy_sql.import_dry_run.table_validated"
+
+    @field_validator("tenant_id")
+    @classmethod
+    def require_tenant_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("tenant_id must not be empty")
+        return value
+
+    @field_validator("source_system_ref", "staging_profile_object_id")
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("dry-run table plan references must be namespaced")
+        return value
+
+    @field_validator("source_table_ref")
+    @classmethod
+    def validate_source_table_ref(cls, value: str) -> str:
+        validate_table_ref(value)
+        return value
+
+    @field_validator("target_object_type")
+    @classmethod
+    def validate_target_object_type(cls, value: str) -> str:
+        if not OBJECT_TYPE_PATTERN.fullmatch(value):
+            raise ValueError("dry-run table plan target object type must be namespaced")
+        return value
+
+    @field_validator("expected_row_count_estimate")
+    @classmethod
+    def validate_expected_row_count_estimate(cls, value: int | None) -> int | None:
+        if value is not None and value < 0:
+            raise ValueError("expected_row_count_estimate must not be negative")
+        return value
+
+    @field_validator("row_object_id_template")
+    @classmethod
+    def require_source_row_hash_token(cls, value: str) -> str:
+        if LEGACY_STAGING_ROW_HASH_TOKEN not in value:
+            raise ValueError("row_object_id_template must contain source row hash token")
+        return value
+
+    @field_validator("audit_event_type")
+    @classmethod
+    def require_table_audit_event(cls, value: str) -> str:
+        if value != "legacy_sql.import_dry_run.table_validated":
+            raise ValueError("dry-run table plan audit_event_type is fixed")
+        return value
+
+    @model_validator(mode="after")
+    def require_count_checksum_and_manifest(self) -> Self:
+        if not self.row_count_required:
+            raise ValueError("dry-run table plans require row counts")
+        if not self.checksum_required:
+            raise ValueError("dry-run table plans require checksum manifests")
+        if not self.manifest_hash_required:
+            raise ValueError("dry-run table plans require manifest hashes")
+        return self
+
+
+class CrmErpLegacyImportDryRunPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    discovery_manifest_hash: str
+    mapping_manifest_hash: str
+    readiness_evidence_hash: str
+    staging_metadata_plan_hash: str
+    table_count: int
+    planned_table_count: int
+    estimated_row_count_total: int | None = None
+    table_plans: tuple[CrmErpLegacyImportDryRunTablePlan, ...]
+    status: CrmErpLegacyImportDryRunStatus
+    dry_run_execution_allowed: bool
+    blocking_reasons: tuple[str, ...]
+    row_count_strategy: CrmErpLegacyRowCountStrategy = CrmErpLegacyRowCountStrategy.EXACT_READ_ONLY_COUNT_QUERY
+    checksum_strategy: CrmErpLegacyChecksumStrategy = CrmErpLegacyChecksumStrategy.SHA256_CANONICAL_ROW_HASH_MANIFEST
+    required_audit_event_types: tuple[str, ...] = (
+        "legacy_sql.import_dry_run.started",
+        "legacy_sql.import_dry_run.table_validated",
+        "legacy_sql.import_dry_run.completed",
+        "legacy_sql.import_dry_run.blocked",
+    )
+    dry_run_required: bool = True
+    import_write_allowed: bool = False
+    raw_data_import_allowed: bool = False
+    destructive_actions_allowed: bool = False
+    manifest_hash: str
+    schema_version: str = CRM_ERP_LEGACY_IMPORT_DRY_RUN_PLAN_SCHEMA_VERSION
+
+    @field_validator("tenant_id")
+    @classmethod
+    def require_tenant_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("tenant_id must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy import dry-run plan only applies to module crm_erp")
+        return value
+
+    @field_validator(
+        "source_system_ref",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "readiness_evidence_hash",
+        "staging_metadata_plan_hash",
+        "manifest_hash",
+    )
+    @classmethod
+    def validate_plan_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy import dry-run plan references must be namespaced")
+        return value
+
+    @field_validator("table_count", "planned_table_count")
+    @classmethod
+    def validate_positive_counts(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("legacy import dry-run plan counts must be positive")
+        return value
+
+    @field_validator("estimated_row_count_total")
+    @classmethod
+    def validate_estimated_row_count_total(cls, value: int | None) -> int | None:
+        if value is not None and value < 0:
+            raise ValueError("estimated_row_count_total must not be negative")
+        return value
+
+    @field_validator("blocking_reasons", "required_audit_event_types")
+    @classmethod
+    def validate_non_empty_unique_items(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("legacy import dry-run plan lists must be unique")
+        for item in value:
+            if not item.strip():
+                raise ValueError("legacy import dry-run plan lists must not contain empty entries")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_import_dry_run_plan(self) -> Self:
+        if self.import_write_allowed or self.raw_data_import_allowed or self.destructive_actions_allowed:
+            raise ValueError("legacy import dry-run plan must not allow writes or destructive actions")
+        if not self.dry_run_required:
+            raise ValueError("legacy import dry-run plan requires dry-run validation")
+        if not self.table_plans:
+            raise ValueError("legacy import dry-run plan requires table plans")
+        if self.planned_table_count != len(self.table_plans):
+            raise ValueError("planned_table_count must match table_plans")
+        table_refs = [plan.source_table_ref.lower() for plan in self.table_plans]
+        if len(set(table_refs)) != len(table_refs):
+            raise ValueError("legacy import dry-run table plans must be unique per source table")
+        for table_plan in self.table_plans:
+            if table_plan.tenant_id != self.tenant_id:
+                raise ValueError("legacy import dry-run table plan tenant mismatch")
+            if table_plan.source_system_ref != self.source_system_ref:
+                raise ValueError("legacy import dry-run table plan source-system mismatch")
+            if table_plan.row_count_strategy != self.row_count_strategy:
+                raise ValueError("legacy import dry-run table plan row-count strategy mismatch")
+            if table_plan.checksum_strategy != self.checksum_strategy:
+                raise ValueError("legacy import dry-run table plan checksum strategy mismatch")
+        if self.status == CrmErpLegacyImportDryRunStatus.READY_FOR_METADATA_DRY_RUN:
+            if not self.dry_run_execution_allowed:
+                raise ValueError("ready dry-run plans must allow metadata dry-run execution")
+            if self.blocking_reasons:
+                raise ValueError("ready dry-run plans must not have blocking reasons")
+        if self.status == CrmErpLegacyImportDryRunStatus.BLOCKED_BY_READINESS:
+            if self.dry_run_execution_allowed:
+                raise ValueError("blocked dry-run plans must not allow execution")
+            if not self.blocking_reasons:
+                raise ValueError("blocked dry-run plans require blocking reasons")
+        return self
+
+
 class CrmErpLegacyMappingEvidenceService:
     def __init__(
         self,
@@ -915,6 +1124,58 @@ def build_crm_erp_legacy_staging_metadata_plan(
     return draft.model_copy(update={"manifest_hash": _hash_staging_metadata_plan(draft)})
 
 
+def build_crm_erp_legacy_import_dry_run_plan(
+    *,
+    discovery_manifest: LegacySqlDiscoveryManifest,
+    mapping_manifest: CrmErpLegacyMappingManifest,
+    readiness_evidence: CrmErpLegacyImportReadinessEvidence,
+    staging_metadata_plan: CrmErpLegacyStagingMetadataPlan,
+) -> CrmErpLegacyImportDryRunPlan:
+    _validate_import_dry_run_inputs(
+        discovery_manifest=discovery_manifest,
+        mapping_manifest=mapping_manifest,
+        readiness_evidence=readiness_evidence,
+        staging_metadata_plan=staging_metadata_plan,
+    )
+    profiles_by_table = {profile.source_table_ref: profile for profile in staging_metadata_plan.profiles}
+    table_plans = tuple(
+        _build_import_dry_run_table_plan(
+            decision=decision,
+            profile=profiles_by_table[decision.source_table_ref],
+        )
+        for decision in mapping_manifest.decisions
+    )
+    dry_run_ready = readiness_evidence.status == CrmErpLegacyImportReadinessStatus.READY_FOR_DRY_RUN
+    blocking_reasons = (
+        ()
+        if dry_run_ready
+        else tuple(
+            sorted(set(readiness_evidence.blocking_reasons or (f"readiness_status:{readiness_evidence.status.value}",)))
+        )
+    )
+    draft = CrmErpLegacyImportDryRunPlan(
+        tenant_id=discovery_manifest.tenant_id,
+        source_system_ref=discovery_manifest.source_system_ref,
+        discovery_manifest_hash=discovery_manifest.manifest_hash,
+        mapping_manifest_hash=mapping_manifest.manifest_hash,
+        readiness_evidence_hash=readiness_evidence.evidence_hash,
+        staging_metadata_plan_hash=staging_metadata_plan.manifest_hash,
+        table_count=discovery_manifest.table_count,
+        planned_table_count=len(table_plans),
+        estimated_row_count_total=discovery_manifest.estimated_row_count,
+        table_plans=table_plans,
+        status=(
+            CrmErpLegacyImportDryRunStatus.READY_FOR_METADATA_DRY_RUN
+            if dry_run_ready
+            else CrmErpLegacyImportDryRunStatus.BLOCKED_BY_READINESS
+        ),
+        dry_run_execution_allowed=dry_run_ready,
+        blocking_reasons=blocking_reasons,
+        manifest_hash="sha256:pending",
+    )
+    return draft.model_copy(update={"manifest_hash": _hash_import_dry_run_plan(draft)})
+
+
 def _validate_staging_metadata_inputs(
     *,
     discovery_manifest: LegacySqlDiscoveryManifest,
@@ -934,6 +1195,68 @@ def _validate_staging_metadata_inputs(
         raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest hash invalid")
     if mapping_manifest.raw_data_import_allowed or mapping_manifest.destructive_actions_allowed:
         raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest must not allow unsafe actions")
+
+
+def _validate_import_dry_run_inputs(
+    *,
+    discovery_manifest: LegacySqlDiscoveryManifest,
+    mapping_manifest: CrmErpLegacyMappingManifest,
+    readiness_evidence: CrmErpLegacyImportReadinessEvidence,
+    staging_metadata_plan: CrmErpLegacyStagingMetadataPlan,
+) -> None:
+    _validate_staging_metadata_inputs(discovery_manifest=discovery_manifest, mapping_manifest=mapping_manifest)
+    if readiness_evidence.tenant_id != discovery_manifest.tenant_id:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence tenant mismatch")
+    if readiness_evidence.module_id != discovery_manifest.module_id:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence module mismatch")
+    if readiness_evidence.source_system_ref != discovery_manifest.source_system_ref:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence source-system mismatch")
+    if readiness_evidence.discovery_manifest_hash != discovery_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence discovery hash mismatch")
+    if readiness_evidence.mapping_manifest_hash != mapping_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence mapping hash mismatch")
+    if _hash_readiness_model(readiness_evidence) != readiness_evidence.evidence_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run readiness evidence hash invalid")
+    if staging_metadata_plan.tenant_id != discovery_manifest.tenant_id:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata tenant mismatch")
+    if staging_metadata_plan.module_id != discovery_manifest.module_id:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata module mismatch")
+    if staging_metadata_plan.source_system_ref != discovery_manifest.source_system_ref:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata source-system mismatch")
+    if staging_metadata_plan.discovery_manifest_hash != discovery_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata discovery hash mismatch")
+    if staging_metadata_plan.mapping_manifest_hash != mapping_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata mapping hash mismatch")
+    if _hash_staging_metadata_plan(staging_metadata_plan) != staging_metadata_plan.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata plan hash invalid")
+    expected_table_refs = {decision.source_table_ref for decision in mapping_manifest.decisions}
+    profile_table_refs = {profile.source_table_ref for profile in staging_metadata_plan.profiles}
+    if profile_table_refs != expected_table_refs:
+        raise CrmErpLegacyMappingEvidenceError("dry-run staging metadata profiles must cover mapping decisions")
+    if (
+        readiness_evidence.import_write_allowed
+        or readiness_evidence.raw_data_import_allowed
+        or readiness_evidence.destructive_actions_allowed
+        or staging_metadata_plan.import_write_allowed
+        or staging_metadata_plan.raw_data_import_allowed
+        or staging_metadata_plan.destructive_actions_allowed
+    ):
+        raise CrmErpLegacyMappingEvidenceError("dry-run inputs must not allow unsafe actions")
+
+
+def _build_import_dry_run_table_plan(
+    *,
+    decision: CrmErpLegacyTableMappingDecision,
+    profile: CrmErpLegacyStagingMetadataProfile,
+) -> CrmErpLegacyImportDryRunTablePlan:
+    return CrmErpLegacyImportDryRunTablePlan(
+        tenant_id=profile.tenant_id,
+        source_system_ref=profile.source_system_ref,
+        source_table_ref=decision.source_table_ref,
+        target_object_type=decision.target_object_type,
+        staging_profile_object_id=profile.object_id,
+        row_object_id_template=profile.row_object_id_template,
+    )
 
 
 def _build_staging_metadata_profile(
@@ -1013,6 +1336,11 @@ def _legacy_staging_metadata_field_sources() -> dict[str, str]:
 
 
 def _hash_staging_metadata_plan(model: CrmErpLegacyStagingMetadataPlan) -> str:
+    payload = model.model_dump(mode="json", exclude={"manifest_hash"})
+    return stable_hash(canonical_json(payload))
+
+
+def _hash_import_dry_run_plan(model: CrmErpLegacyImportDryRunPlan) -> str:
     payload = model.model_dump(mode="json", exclude={"manifest_hash"})
     return stable_hash(canonical_json(payload))
 

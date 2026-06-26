@@ -1036,8 +1036,9 @@ CRM/ERP `crm_erp`:
 - [x] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [x] Datenklassen harmonisieren: `personal_data`, `working_data`, `gobd_record`, `security_data` und `export_package` sind Alias-/Lifecycle-/Objektkonzepte auf kanonischen Runtime-Klassen.
 - [x] Pflichtmetadaten-Contract auf weitere Modul-Write-Slices und Migration-Staging ausweiten, bevor neue persistente Fachobjekte eingefuehrt werden.
-- [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
-- [ ] Legacy-SQL-Staging-Profile in den spaeteren Import-Dry-Run-Store einhaengen, sobald Row-Count- und Checksum-Strategie feststeht.
+- [x] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
+- [x] Legacy-SQL-Staging-Profile in den spaeteren Import-Dry-Run-Store einhaengen, sobald Row-Count- und Checksum-Strategie feststeht.
+- [ ] Legacy-SQL-Import-Dry-Run als metadata-only Worker ausfuehren und Ergebnis-Store anbinden, ohne produktive Import-Writes.
 - [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.

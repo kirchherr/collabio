@@ -88,6 +88,13 @@ erlaubt weiterhin keine Rohdaten, keine Sample Values, keine Import-Writes und k
 `0039_crm_erp_legacy_staging_metadata_profiles.sql` persistiert diese Profile tenant-scoped mit RLS und Append-only
 Policies in `crm_erp_legacy.staging_metadata_profiles`.
 
+`build_crm_erp_legacy_import_dry_run_plan` verbindet Discovery-Manifest, Mapping-Manifest, Readiness-Evidence und
+Staging-Metadata-Plan zu einem metadata-only Import-Dry-Run-Plan. Der Plan bindet jede Mapping-Entscheidung an ein
+Staging-Profil, verlangt Row Counts, kanonische Checksum-Manifest-Hashes und Audit-Events und bleibt blockiert, solange
+die Readiness-Evidence nicht `ready_for_dry_run` ist. Migration `0040_crm_erp_legacy_import_dry_run_plans.sql`
+persistiert diese Plaene tenant-scoped, append-only und ohne Rohdaten, Sample Values, Import-Writes oder destruktive
+Aktionen. Die echte Worker-Ausfuehrung bleibt ein eigenes spaeteres Gate.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-

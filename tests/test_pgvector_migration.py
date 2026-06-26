@@ -71,6 +71,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0037",
         "0038",
         "0039",
+        "0040",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -85,7 +86,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 18
+    assert len(core_migrations) == len(load_migrations()) - 19
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -98,6 +99,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0037",
         "0038",
         "0039",
+        "0040",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -1548,6 +1550,68 @@ def test_crm_erp_legacy_staging_metadata_profiles_migration_declares_contract_an
     assert "update collabio.module_catalog" in sql
     assert "where module_id = 'crm_erp'" in sql
     assert '"0039"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_dry_run_plans_migration_declares_gate_and_rls() -> None:
+    migration = get_migration("0040")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_dry_run_plans")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "readiness_evidence_hash",
+        "staging_metadata_plan_hash",
+        "table_count",
+        "planned_table_count",
+        "estimated_row_count_total",
+        "status",
+        "dry_run_execution_allowed",
+        "blocking_reasons",
+        "row_count_strategy",
+        "checksum_strategy",
+        "table_plans",
+        "required_audit_event_types",
+        "manifest_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "crm_erp_legacy_import_dry_run_plan.v1" in table
+    assert "ready_for_metadata_dry_run" in table
+    assert "blocked_by_readiness" in table
+    assert "exact_read_only_count_query" in table
+    assert "sha256_canonical_row_hash_manifest" in table
+    assert "jsonb_array_length(table_plans) = planned_table_count" in table
+    assert "legacy_sql.import_dry_run.started" in table
+    assert "legacy_sql.import_dry_run.table_validated" in table
+    assert "legacy_sql.import_dry_run.completed" in table
+    assert "legacy_sql.import_dry_run.blocked" in table
+    assert "dry_run_required boolean not null default true check (dry_run_required)" in table
+    assert "import_write_allowed boolean not null default false check (import_write_allowed = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "alter table crm_erp_legacy.import_dry_run_plans enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_dry_run_plans force row level security" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_no_update" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_plans to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_plans to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert "where module_id = 'crm_erp'" in sql
+    assert '"0040"' in sql
     assert "raw legacy rows" in sql
     assert "sample values" in sql
     assert "secret references" in sql

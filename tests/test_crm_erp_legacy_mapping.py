@@ -6,13 +6,18 @@ import pytest
 
 from suite.ai_control_plane.models import DataClass
 from suite.platform.crm_erp_legacy_mapping import (
+    CRM_ERP_LEGACY_IMPORT_DRY_RUN_PLAN_SCHEMA_VERSION,
     CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION,
     CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE,
+    CrmErpLegacyChecksumStrategy,
+    CrmErpLegacyImportDryRunStatus,
     CrmErpLegacyImportReadinessStatus,
     CrmErpLegacyMappingAction,
     CrmErpLegacyMappingEvidenceError,
     CrmErpLegacyMappingEvidenceService,
     CrmErpLegacyMappingOverride,
+    CrmErpLegacyRowCountStrategy,
+    build_crm_erp_legacy_import_dry_run_plan,
     build_crm_erp_legacy_import_readiness_evidence,
     build_crm_erp_legacy_staging_metadata_plan,
     default_crm_erp_target_profiles,
@@ -285,6 +290,132 @@ def test_crm_erp_import_readiness_allows_metadata_dry_run_after_approved_mapping
     assert readiness.quarantine_table_count == 0
     assert readiness.legacy_row_table_count == 0
     assert "run metadata-only legacy import dry-run validation" in readiness.next_actions
+
+
+def test_crm_erp_legacy_import_dry_run_plan_binds_ready_evidence_to_staging_profiles() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        overrides=(
+            CrmErpLegacyMappingOverride(
+                source_table_ref="dbo.FreieTabelle",
+                action=CrmErpLegacyMappingAction.MAP_TO_TARGET,
+                target_object_type="crm.contact",
+                mapping_reason="manual schema review identified contact table",
+                approval_reference="approval:legacy-mapping-freie-tabelle",
+            ),
+        ),
+    )
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+    staging_plan = build_crm_erp_legacy_staging_metadata_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        captured_at_utc=datetime(2026, 6, 20, 10, tzinfo=UTC),
+    )
+
+    dry_run_plan = build_crm_erp_legacy_import_dry_run_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        readiness_evidence=readiness,
+        staging_metadata_plan=staging_plan,
+    )
+
+    assert dry_run_plan.schema_version == CRM_ERP_LEGACY_IMPORT_DRY_RUN_PLAN_SCHEMA_VERSION
+    assert dry_run_plan.status == CrmErpLegacyImportDryRunStatus.READY_FOR_METADATA_DRY_RUN
+    assert dry_run_plan.dry_run_execution_allowed
+    assert dry_run_plan.discovery_manifest_hash == manifest.manifest_hash
+    assert dry_run_plan.mapping_manifest_hash == mapping.manifest_hash
+    assert dry_run_plan.readiness_evidence_hash == readiness.evidence_hash
+    assert dry_run_plan.staging_metadata_plan_hash == staging_plan.manifest_hash
+    assert dry_run_plan.table_count == 2
+    assert dry_run_plan.planned_table_count == 2
+    assert dry_run_plan.estimated_row_count_total == 15
+    assert dry_run_plan.row_count_strategy == CrmErpLegacyRowCountStrategy.EXACT_READ_ONLY_COUNT_QUERY
+    assert dry_run_plan.checksum_strategy == CrmErpLegacyChecksumStrategy.SHA256_CANONICAL_ROW_HASH_MANIFEST
+    assert dry_run_plan.required_audit_event_types == (
+        "legacy_sql.import_dry_run.started",
+        "legacy_sql.import_dry_run.table_validated",
+        "legacy_sql.import_dry_run.completed",
+        "legacy_sql.import_dry_run.blocked",
+    )
+    assert not dry_run_plan.blocking_reasons
+    assert not dry_run_plan.import_write_allowed
+    assert not dry_run_plan.raw_data_import_allowed
+    assert not dry_run_plan.destructive_actions_allowed
+
+    profiles_by_table = {profile.source_table_ref: profile for profile in staging_plan.profiles}
+    table_plans_by_table = {table_plan.source_table_ref: table_plan for table_plan in dry_run_plan.table_plans}
+    assert table_plans_by_table["dbo.Kunden"].staging_profile_object_id == profiles_by_table["dbo.Kunden"].object_id
+    assert table_plans_by_table["dbo.Kunden"].target_object_type == "crm.account"
+    assert table_plans_by_table["dbo.FreieTabelle"].target_object_type == "crm.contact"
+    assert all(table_plan.row_count_required for table_plan in dry_run_plan.table_plans)
+    assert all(table_plan.checksum_required for table_plan in dry_run_plan.table_plans)
+    assert all(table_plan.manifest_hash_required for table_plan in dry_run_plan.table_plans)
+
+    plan_json = dry_run_plan.model_dump_json()
+    assert "Email" not in plan_json
+    assert "KundenId" not in plan_json
+    assert "sample" not in plan_json.lower()
+
+
+def test_crm_erp_legacy_import_dry_run_plan_blocks_when_readiness_is_not_clean() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(discovery_manifest=manifest, import_evidence_plan=plan)
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+    staging_plan = build_crm_erp_legacy_staging_metadata_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        captured_at_utc=datetime(2026, 6, 20, 10, tzinfo=UTC),
+    )
+
+    dry_run_plan = build_crm_erp_legacy_import_dry_run_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        readiness_evidence=readiness,
+        staging_metadata_plan=staging_plan,
+    )
+
+    assert dry_run_plan.status == CrmErpLegacyImportDryRunStatus.BLOCKED_BY_READINESS
+    assert not dry_run_plan.dry_run_execution_allowed
+    assert "quarantine_tables_require_manual_mapping" in dry_run_plan.blocking_reasons
+    assert "legacy_row_fallbacks_require_mapping_review" in dry_run_plan.blocking_reasons
+    assert not dry_run_plan.import_write_allowed
+    assert not dry_run_plan.raw_data_import_allowed
+
+
+def test_crm_erp_legacy_import_dry_run_plan_rejects_broken_staging_chain() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(discovery_manifest=manifest, import_evidence_plan=plan)
+    readiness = build_crm_erp_legacy_import_readiness_evidence(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+        mapping_manifest=mapping,
+    )
+    staging_plan = build_crm_erp_legacy_staging_metadata_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        captured_at_utc=datetime(2026, 6, 20, 10, tzinfo=UTC),
+    ).model_copy(update={"manifest_hash": "sha256:" + "9" * 64})
+
+    with pytest.raises(CrmErpLegacyMappingEvidenceError, match="staging metadata plan hash invalid"):
+        build_crm_erp_legacy_import_dry_run_plan(
+            discovery_manifest=manifest,
+            mapping_manifest=mapping,
+            readiness_evidence=readiness,
+            staging_metadata_plan=staging_plan,
+        )
 
 
 def test_crm_erp_import_readiness_blocks_mismatched_mapping_manifest() -> None:

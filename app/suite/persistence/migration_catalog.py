@@ -355,6 +355,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:crm-erp-legacy-staging-metadata-profiles",
         ),
     ),
+    SqlMigration(
+        version="0040",
+        name="crm_erp_legacy_import_dry_run_plans",
+        resource_name="0040_crm_erp_legacy_import_dry_run_plans.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:crm-erp-legacy-import-dry-run-plan",
+        ),
+    ),
 )
 
 
