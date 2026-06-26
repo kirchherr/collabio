@@ -101,6 +101,13 @@ verlangt Row-Count-Beobachtungen und Checksum-Manifest-Hashes je Tabelle und gib
 Blockgruende aus. Migration `0041_crm_erp_legacy_import_dry_run_results.sql` persistiert Resultate tenant-scoped,
 append-only und weiterhin ohne Rohdaten, Secret-Refs, Import-Writes oder destruktive Aktionen.
 
+`suite.platform.legacy_sql_import_write_approval_gate` bewertet abgeschlossene Dry-Run-Resultate, Worker-Reports,
+Human Review, Change-Control und Restore-Drill als nicht-ausfuehrendes Gate fuer spaetere Import-Writes.
+Migration `0042_crm_erp_legacy_import_write_approval_gates.sql` persistiert `legacy_sql_import_write_approval_gate.v1`
+tenant-scoped und append-only. Das Gate kann nur einen spaeteren Human-Approval-Record vorbereiten;
+Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, externe Side Effects und destruktive Aktionen bleiben
+technisch blockiert und brauchen ein separates zukuenftiges Execution-Gate.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-
