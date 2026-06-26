@@ -115,6 +115,14 @@ setzt alle produktiven Aktivierungsflags auf false: keine Run-Erstellung, keine 
 Aktivierung, keine Import-Write-Ausfuehrung, keine Rohdaten, keine Import-Payloads, keine destruktiven Aktionen und
 keine externen Side Effects.
 
+Migration `0044_crm_erp_legacy_migration_run_registry.sql` bereitet die spaetere Run-Registry und den
+metadata-only Report-Store fuer Legacy-SQL-Migrationen vor. `crm_erp_legacy.migration_runs` speichert nur Run-
+Metadaten, Approval-Record-/Gate-/Dry-Run-Hashes, Idempotency-Key, Restore-Evidence und Audit-Referenzen.
+`crm_erp_legacy.migration_reports` speichert nur Report-Metadaten, Tabellenzaehler, Row-Count-/Checksum-Hashes,
+Restore-Evidence und Audit-Referenzen. Beide Tabellen sind tenant-scoped, RLS-geschuetzt, append-only und blockieren
+Run-Erstellung, Report-Freigabe, Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und
+externe Side Effects per DB-Check.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

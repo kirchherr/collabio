@@ -78,6 +78,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legacy_sql_import_write_approval_gate_hash_check" in postgres.integrity_checks
     assert "legacy_sql_import_write_approval_gate_smoke_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_import_write_approval_record_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_migration_run_registry_hash_check" in postgres.integrity_checks
+    assert "legacy_sql_migration_report_metadata_hash_check" in postgres.integrity_checks
     assert "legacy_sql_host_profile_release_gate_evidence_hash_check" in postgres.integrity_checks
     assert "legacy_sql_metadata_worker_queue_job_hash_check" in postgres.integrity_checks
     assert "legacy_sql_metadata_worker_queue_restore_hash_check" in postgres.integrity_checks
@@ -187,6 +189,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "Legacy SQL import write approval gate smoke report hashes" in crm_erp.state_artifacts
     assert "Legacy SQL import write approval records" in crm_erp.state_artifacts
     assert "Legacy SQL import write approval record hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL migration run registry entries" in crm_erp.state_artifacts
+    assert "Legacy SQL migration run registry hashes" in crm_erp.state_artifacts
+    assert "Legacy SQL migration metadata-only reports" in crm_erp.state_artifacts
+    assert "Legacy SQL migration metadata-only report hashes" in crm_erp.state_artifacts
     assert "Legacy SQL readiness smoke report hashes" in crm_erp.state_artifacts
     assert "Legacy SQL host profile release gate evidence" in crm_erp.state_artifacts
     assert "Legacy SQL metadata worker queue schedule evidence hashes" in crm_erp.state_artifacts
@@ -397,6 +403,8 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "Legacy SQL import write approval gate hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL import write approval gate smoke report hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL import write approval record hash when applicable" in policy.restore_drill_evidence
+    assert "Legacy SQL migration run registry hash when applicable" in policy.restore_drill_evidence
+    assert "Legacy SQL migration metadata-only report hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL host profile release gate evidence hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL metadata worker queue operations report hash when applicable" in policy.restore_drill_evidence
     assert (
@@ -568,6 +576,8 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_import_dry_run_result.v1" in runbook
     assert "legacy_sql_import_write_approval_gate.v1" in runbook
     assert "legacy_sql_import_write_approval_record.v1" in runbook
+    assert "legacy_sql_migration_run_registry_entry.v1" in runbook
+    assert "legacy_sql_migration_report_metadata.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
     assert "Continuity Domains" in runbook
@@ -597,6 +607,8 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Legacy SQL import write approval gate hash" in runbook
     assert "Legacy SQL import write approval gate smoke report hash" in runbook
     assert "Legacy SQL import write approval record hash" in runbook
+    assert "Legacy SQL migration run registry hash" in runbook
+    assert "Legacy SQL migration metadata-only report hash" in runbook
     assert "Legacy SQL host profile release gate evidence hash" in runbook
     assert "Legacy SQL metadata worker queue operations report hash" in runbook
     assert "Legacy SQL metadata worker lease consumer smoke report hash" in runbook

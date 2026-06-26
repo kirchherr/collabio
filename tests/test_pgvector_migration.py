@@ -75,6 +75,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0041",
         "0042",
         "0043",
+        "0044",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -89,7 +90,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 22
+    assert len(core_migrations) == len(load_migrations()) - 23
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -106,6 +107,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0041",
         "0042",
         "0043",
+        "0044",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -1815,6 +1817,106 @@ def test_crm_erp_legacy_import_write_approval_records_migration_declares_store_a
     assert "grant select, insert on table crm_erp_legacy.import_write_approval_records to collabio_worker" in sql
     assert "update collabio.module_catalog" in sql
     assert '"0043"' in sql
+    assert "import write execution remains forbidden" in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_migration_run_registry_migration_declares_metadata_only_state_and_rls() -> None:
+    migration = get_migration("0044")
+    sql = normalized(migration.sql())
+    run_table = table_body(migration.sql(), "crm_erp_legacy.migration_runs")
+    report_table = table_body(migration.sql(), "crm_erp_legacy.migration_reports")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "migration_run_ref",
+        "approval_record_hash",
+        "approval_gate_evidence_hash",
+        "dry_run_result_hash",
+        "idempotency_key_hash",
+        "run_creation_enabled",
+        "run_execution_allowed",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "metadata_only_report_required",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "migration_run",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in run_table
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "migration_run_hash",
+        "migration_report_ref",
+        "idempotency_key_hash",
+        "report_status",
+        "planned_table_count",
+        "table_result_count",
+        "row_count_manifest_hash",
+        "checksum_manifest_hash",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "metadata_only_ok",
+        "report_retrieval_enabled",
+        "run_execution_completed",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "migration_report",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in report_table
+    assert "legacy_sql_migration_run_registry_entry.v1" in run_table
+    assert "legacy_sql_migration_report_metadata.v1" in report_table
+    assert "migration_run ?& array" in run_table
+    assert "migration_report ?& array" in report_table
+    assert "unique (tenant_id, idempotency_key_hash)" in run_table
+    assert "unique (tenant_id, migration_run_ref)" in run_table
+    assert "unique (tenant_id, idempotency_key_hash)" in report_table
+    assert "unique (tenant_id, migration_report_ref)" in report_table
+    for table_name in ["migration_runs", "migration_reports"]:
+        assert f"alter table crm_erp_legacy.{table_name} enable row level security" in sql
+        assert f"alter table crm_erp_legacy.{table_name} force row level security" in sql
+        assert f"crm_erp_legacy_{table_name}_tenant_select" in sql
+        assert f"crm_erp_legacy_{table_name}_tenant_insert" in sql
+        assert f"crm_erp_legacy_{table_name}_no_update" in sql
+        assert f"crm_erp_legacy_{table_name}_no_hard_delete" in sql
+        assert f"grant select, insert on table crm_erp_legacy.{table_name} to collabio_app" in sql
+        assert f"grant select, insert on table crm_erp_legacy.{table_name} to collabio_worker" in sql
+    assert "run_creation_enabled boolean not null default false check" in run_table
+    assert "run_execution_allowed boolean not null default false check" in run_table
+    assert "report_retrieval_enabled boolean not null default false check" in report_table
+    assert "run_execution_completed boolean not null default false check" in report_table
+    assert "metadata_only_ok boolean not null default true check" in report_table
+    assert "import_write_execution_allowed boolean not null default false check" in run_table
+    assert "import_write_execution_allowed boolean not null default false check" in report_table
+    assert "not (migration_run ? 'connection_secret_ref')" in run_table
+    assert "not (migration_report ? 'connection_secret_ref')" in report_table
+    assert "not (migration_run ? 'raw_payload')" in run_table
+    assert "not (migration_report ? 'raw_payload')" in report_table
+    assert "update collabio.module_catalog" in sql
+    assert '"0044"' in sql
     assert "import write execution remains forbidden" in sql
     assert "raw legacy rows" in sql
     assert "sample values" in sql

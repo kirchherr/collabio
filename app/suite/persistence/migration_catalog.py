@@ -395,6 +395,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-import-write-approval-record-store",
         ),
     ),
+    SqlMigration(
+        version="0044",
+        name="crm_erp_legacy_migration_run_registry",
+        resource_name="0044_crm_erp_legacy_migration_run_registry.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-migration-run-registry-skeleton",
+        ),
+    ),
 )
 
 
