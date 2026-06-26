@@ -60,6 +60,20 @@ REQUIRED_IMPORT_WRITE_APPROVAL_REQUEST_EVIDENCE = (
     "human_confirmation_reference",
     "future_import_write_execution_gate",
 )
+LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_SCHEMA_VERSION = (
+    "legacy_sql_import_write_approval_record_persistence_plan.v1"
+)
+LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_COMMAND_REF = (
+    "planning:legacy-sql-import-write-approval-record-persistence"
+)
+REQUIRED_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_EVIDENCE = (
+    "approval_request_boundary",
+    "approval_gate_evidence",
+    "tenant_scoped_rls_store",
+    "append_only_record_store",
+    "idempotency_key",
+    "future_import_write_execution_gate",
+)
 FORBIDDEN_APPROVAL_GATE_FRAGMENTS = (
     '"connection_secret_ref":',
     "secret:",
@@ -90,6 +104,11 @@ class LegacySqlImportWriteApprovalGateStatus(StrEnum):
 
 class LegacySqlImportWriteApprovalRequestBoundaryStatus(StrEnum):
     READY_FOR_APPROVAL_RECORD_REQUEST = "ready_for_approval_record_request"
+    BLOCKED = "blocked"
+
+
+class LegacySqlImportWriteApprovalRecordPersistencePlanStatus(StrEnum):
+    READY_FOR_STORE_IMPLEMENTATION = "ready_for_store_implementation"
     BLOCKED = "blocked"
 
 
@@ -664,6 +683,225 @@ class LegacySqlImportWriteApprovalRequestBoundaryResponse(BaseModel):
         return self
 
 
+class LegacySqlImportWriteApprovalRecordPersistencePlanCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approval_request_boundary_evidence_hash: str
+    approval_record_store_ref: str
+    approval_record_schema_ref: str
+    approval_record_retention_policy_ref: str
+    approval_record_legal_hold_policy_ref: str
+    idempotency_key_ref: str
+    operator_mfa_ref: str
+    change_control_ref: str
+    reason: str
+    approval_record_persistence_planning_requested: bool = True
+    approval_record_persistence_requested: bool = False
+    import_write_requested: bool = False
+    raw_data_access_requested: bool = False
+    import_write_payload_requested: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("approval_request_boundary_evidence_hash")
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError(
+                "legacy SQL import write approval record persistence plan hashes must be sha256 references"
+            )
+        return value
+
+    @field_validator(
+        "approval_record_store_ref",
+        "approval_record_schema_ref",
+        "approval_record_retention_policy_ref",
+        "approval_record_legal_hold_policy_ref",
+        "idempotency_key_ref",
+        "operator_mfa_ref",
+        "change_control_ref",
+    )
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record persistence plan references must be namespaced")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def require_reason(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL import write approval record persistence plan reason must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_plan_command(self) -> Self:
+        _assert_approval_gate_safe(self)
+        return self
+
+
+class LegacySqlImportWriteApprovalRecordPersistencePlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    continuity_domain: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_CONTINUITY_DOMAIN
+    command_ref: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_COMMAND_REF
+    approval_request_boundary_evidence_hash: str
+    approval_gate_evidence_hash: str
+    approval_request_hash: str
+    persistence_plan_command_hash: str
+    approval_record_store_ref: str
+    approval_record_schema_ref: str
+    approval_record_retention_policy_ref: str
+    approval_record_legal_hold_policy_ref: str
+    idempotency_key_ref: str
+    operator_mfa_ref: str
+    change_control_ref: str
+    approval_request_boundary_hash_valid: bool
+    approval_request_boundary_bound: bool
+    approval_request_boundary_ready: bool
+    approval_gate_hash_valid: bool
+    approval_gate_ready_for_human_record: bool
+    human_approval_record_allowed_by_boundary: bool
+    approval_record_store_required: bool = True
+    tenant_scoped_rls_required: bool = True
+    append_only_store_required: bool = True
+    idempotency_required: bool = True
+    restore_evidence_required: bool = True
+    approval_record_persistence_planning_requested: bool
+    approval_record_persistence_plan_accepted: bool
+    approval_record_persistence_requested: bool
+    approval_record_persistence_allowed: bool = False
+    approval_record_persisted: bool = False
+    future_import_write_execution_gate_required: bool = True
+    import_write_requested: bool = False
+    import_write_execution_allowed: bool = False
+    raw_data_access_requested: bool = False
+    raw_data_access_allowed: bool = False
+    import_write_payload_requested: bool = False
+    import_write_payload_allowed: bool = False
+    destructive_actions_requested: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_requested: bool = False
+    external_side_effect_allowed: bool = False
+    required_evidence: tuple[str, ...] = REQUIRED_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_EVIDENCE
+    plan_status: LegacySqlImportWriteApprovalRecordPersistencePlanStatus
+    blocking_reasons: tuple[str, ...]
+    planned_by: str
+    planned_at_utc: datetime
+    evidence_hash: str
+
+    @field_validator("tenant_id", "planned_by")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL import write approval record persistence plan text fields must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy SQL import write approval record persistence plan only applies to module crm_erp")
+        return value
+
+    @field_validator(
+        "source_system_ref",
+        "approval_record_store_ref",
+        "approval_record_schema_ref",
+        "approval_record_retention_policy_ref",
+        "approval_record_legal_hold_policy_ref",
+        "idempotency_key_ref",
+        "operator_mfa_ref",
+        "change_control_ref",
+    )
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record persistence plan references must be namespaced")
+        return value
+
+    @field_validator(
+        "approval_request_boundary_evidence_hash",
+        "approval_gate_evidence_hash",
+        "approval_request_hash",
+        "persistence_plan_command_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError(
+                "legacy SQL import write approval record persistence plan hashes must be sha256 references"
+            )
+        return value
+
+    @field_validator("required_evidence", "blocking_reasons")
+    @classmethod
+    def validate_unique_non_empty_items(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("legacy SQL import write approval record persistence plan lists must be unique")
+        for item in value:
+            if not item.strip():
+                raise ValueError(
+                    "legacy SQL import write approval record persistence plan lists must not contain empty items"
+                )
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_plan(self) -> Self:
+        if (
+            self.approval_record_persistence_allowed
+            or self.approval_record_persisted
+            or self.import_write_execution_allowed
+            or self.raw_data_access_allowed
+            or self.import_write_payload_allowed
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("legacy SQL import write approval record persistence plan must remain non-executing")
+        if not self.future_import_write_execution_gate_required:
+            raise ValueError(
+                "legacy SQL import write approval record persistence plan must require a future execution gate"
+            )
+        if self.plan_status == LegacySqlImportWriteApprovalRecordPersistencePlanStatus.READY_FOR_STORE_IMPLEMENTATION:
+            required = (
+                self.approval_request_boundary_hash_valid,
+                self.approval_request_boundary_bound,
+                self.approval_request_boundary_ready,
+                self.approval_gate_hash_valid,
+                self.approval_gate_ready_for_human_record,
+                self.human_approval_record_allowed_by_boundary,
+                self.approval_record_store_required,
+                self.tenant_scoped_rls_required,
+                self.append_only_store_required,
+                self.idempotency_required,
+                self.restore_evidence_required,
+                self.approval_record_persistence_planning_requested,
+                self.approval_record_persistence_plan_accepted,
+                not self.approval_record_persistence_requested,
+                not self.raw_data_access_requested,
+                not self.import_write_requested,
+                not self.import_write_payload_requested,
+                not self.destructive_actions_requested,
+                not self.external_side_effect_requested,
+            )
+            if not all(required) or self.blocking_reasons:
+                raise ValueError(
+                    "ready legacy SQL import write approval record persistence plan requires complete evidence"
+                )
+        if self.plan_status == LegacySqlImportWriteApprovalRecordPersistencePlanStatus.BLOCKED:
+            if not self.blocking_reasons:
+                raise ValueError("blocked legacy SQL import write approval record persistence plan requires blockers")
+            if self.approval_record_persistence_plan_accepted:
+                raise ValueError("blocked legacy SQL import write approval record persistence plan cannot be accepted")
+        _assert_approval_gate_safe(self)
+        return self
+
+
 class LegacySqlImportWriteApprovalGateSmokeReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -1207,6 +1445,18 @@ def build_legacy_sql_import_write_approval_request_boundary_hash(
     return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
 
 
+def build_legacy_sql_import_write_approval_record_persistence_plan_command_hash(
+    command: LegacySqlImportWriteApprovalRecordPersistencePlanCommand,
+) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def build_legacy_sql_import_write_approval_record_persistence_plan_hash(
+    plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+) -> str:
+    return stable_hash(canonical_json(plan.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
 def build_legacy_sql_import_write_approval_request_boundary(
     *,
     command: LegacySqlImportWriteApprovalRequestCommand,
@@ -1274,6 +1524,101 @@ def build_legacy_sql_import_write_approval_request_boundary(
     )
     return draft.model_copy(
         update={"evidence_hash": build_legacy_sql_import_write_approval_request_boundary_hash(draft)}
+    )
+
+
+def build_legacy_sql_import_write_approval_record_persistence_plan(
+    *,
+    command: LegacySqlImportWriteApprovalRecordPersistencePlanCommand,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    tenant_id: str,
+    planned_by: str,
+    planned_at_utc: datetime | None = None,
+) -> LegacySqlImportWriteApprovalRecordPersistencePlan:
+    planned_at = planned_at_utc or datetime.now(UTC)
+    command_hash = build_legacy_sql_import_write_approval_record_persistence_plan_command_hash(command)
+    boundary_hash_valid = (
+        build_legacy_sql_import_write_approval_request_boundary_hash(request_boundary)
+        == request_boundary.evidence_hash
+        == command.approval_request_boundary_evidence_hash
+    )
+    gate_hash_valid = (
+        build_legacy_sql_import_write_approval_gate_hash(gate_evidence)
+        == gate_evidence.evidence_hash
+        == request_boundary.approval_gate_evidence_hash
+    )
+    boundary_bound = _approval_record_persistence_plan_boundary_bound(
+        request_boundary=request_boundary,
+        gate_evidence=gate_evidence,
+        tenant_id=tenant_id,
+    )
+    boundary_ready = (
+        request_boundary.boundary_status
+        == LegacySqlImportWriteApprovalRequestBoundaryStatus.READY_FOR_APPROVAL_RECORD_REQUEST
+        and request_boundary.approval_request_accepted
+        and request_boundary.human_approval_record_allowed_by_gate
+        and not request_boundary.approval_record_persistence_allowed
+        and not request_boundary.approval_record_persisted
+        and not request_boundary.import_write_execution_allowed
+    )
+    gate_ready = (
+        gate_evidence.gate_status == LegacySqlImportWriteApprovalGateStatus.READY_FOR_HUMAN_APPROVAL_RECORD
+        and gate_evidence.human_approval_record_allowed
+        and not gate_evidence.import_write_execution_allowed
+    )
+    blocking_reasons = _approval_record_persistence_plan_blocking_reasons(
+        command=command,
+        request_boundary=request_boundary,
+        gate_evidence=gate_evidence,
+        boundary_hash_valid=boundary_hash_valid,
+        boundary_bound=boundary_bound,
+        boundary_ready=boundary_ready,
+        gate_hash_valid=gate_hash_valid,
+        gate_ready=gate_ready,
+    )
+    ready = not blocking_reasons
+    draft = LegacySqlImportWriteApprovalRecordPersistencePlan(
+        tenant_id=tenant_id,
+        module_id=request_boundary.module_id,
+        source_system_ref=request_boundary.source_system_ref,
+        approval_request_boundary_evidence_hash=request_boundary.evidence_hash,
+        approval_gate_evidence_hash=request_boundary.approval_gate_evidence_hash,
+        approval_request_hash=request_boundary.approval_request_hash,
+        persistence_plan_command_hash=command_hash,
+        approval_record_store_ref=command.approval_record_store_ref,
+        approval_record_schema_ref=command.approval_record_schema_ref,
+        approval_record_retention_policy_ref=command.approval_record_retention_policy_ref,
+        approval_record_legal_hold_policy_ref=command.approval_record_legal_hold_policy_ref,
+        idempotency_key_ref=command.idempotency_key_ref,
+        operator_mfa_ref=command.operator_mfa_ref,
+        change_control_ref=command.change_control_ref,
+        approval_request_boundary_hash_valid=boundary_hash_valid,
+        approval_request_boundary_bound=boundary_bound,
+        approval_request_boundary_ready=boundary_ready,
+        approval_gate_hash_valid=gate_hash_valid,
+        approval_gate_ready_for_human_record=gate_ready,
+        human_approval_record_allowed_by_boundary=request_boundary.human_approval_record_allowed_by_gate,
+        approval_record_persistence_planning_requested=command.approval_record_persistence_planning_requested,
+        approval_record_persistence_plan_accepted=ready,
+        approval_record_persistence_requested=command.approval_record_persistence_requested,
+        import_write_requested=command.import_write_requested,
+        raw_data_access_requested=command.raw_data_access_requested,
+        import_write_payload_requested=command.import_write_payload_requested,
+        destructive_actions_requested=command.destructive_actions_requested,
+        external_side_effect_requested=command.external_side_effect_requested,
+        plan_status=(
+            LegacySqlImportWriteApprovalRecordPersistencePlanStatus.READY_FOR_STORE_IMPLEMENTATION
+            if ready
+            else LegacySqlImportWriteApprovalRecordPersistencePlanStatus.BLOCKED
+        ),
+        blocking_reasons=blocking_reasons,
+        planned_by=planned_by,
+        planned_at_utc=planned_at,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_legacy_sql_import_write_approval_record_persistence_plan_hash(draft)}
     )
 
 
@@ -1638,6 +1983,73 @@ def _approval_request_gate_bound(
         and gate_evidence.source_system_ref == command.source_system_ref
         and gate_evidence.dry_run_result_hash == command.dry_run_result_hash
         and gate_evidence.evidence_hash == command.approval_gate_evidence_hash
+    )
+
+
+def _approval_record_persistence_plan_blocking_reasons(
+    *,
+    command: LegacySqlImportWriteApprovalRecordPersistencePlanCommand,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    boundary_hash_valid: bool,
+    boundary_bound: bool,
+    boundary_ready: bool,
+    gate_hash_valid: bool,
+    gate_ready: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not command.approval_record_persistence_planning_requested:
+        reasons.append("approval_record_persistence_planning_not_requested")
+    if command.approval_record_persistence_requested:
+        reasons.append("approval_record_persistence_not_enabled")
+    if command.raw_data_access_requested:
+        reasons.append("raw_data_access_request_forbidden")
+    if command.import_write_requested:
+        reasons.append("import_write_request_requires_future_execution_gate")
+    if command.import_write_payload_requested:
+        reasons.append("import_write_payload_request_forbidden")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_action_request_forbidden")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_request_forbidden")
+    if not boundary_hash_valid:
+        reasons.append("approval_request_boundary_hash_invalid")
+    if not boundary_bound:
+        reasons.append("approval_request_boundary_not_bound_to_gate")
+    if not boundary_ready:
+        reasons.append("approval_request_boundary_not_ready_for_persistence_planning")
+    if not gate_hash_valid:
+        reasons.append("approval_gate_hash_invalid")
+    if not gate_ready:
+        reasons.append("approval_gate_not_ready_for_human_record")
+    if not request_boundary.human_approval_record_allowed_by_gate:
+        reasons.append("human_approval_record_not_allowed_by_boundary")
+    if (
+        not request_boundary.future_import_write_execution_gate_required
+        or not gate_evidence.future_import_write_execution_gate_required
+    ):
+        reasons.append("future_import_write_execution_gate_not_required")
+    if request_boundary.approval_record_persistence_allowed or request_boundary.approval_record_persisted:
+        reasons.append("approval_record_persistence_already_allowed_unexpectedly")
+    if request_boundary.import_write_execution_allowed or gate_evidence.import_write_execution_allowed:
+        reasons.append("import_write_execution_allowed_unexpectedly")
+    return tuple(dict.fromkeys(reasons))
+
+
+def _approval_record_persistence_plan_boundary_bound(
+    *,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    tenant_id: str,
+) -> bool:
+    return (
+        request_boundary.tenant_id == tenant_id == gate_evidence.tenant_id
+        and request_boundary.module_id == gate_evidence.module_id == CRM_ERP_MODULE_ID
+        and request_boundary.source_system_ref == gate_evidence.source_system_ref
+        and request_boundary.dry_run_result_hash == gate_evidence.dry_run_result_hash
+        and request_boundary.approval_gate_evidence_hash == gate_evidence.evidence_hash
+        and request_boundary.approval_gate_hash_valid
+        and request_boundary.approval_gate_bound
     )
 
 

@@ -20,6 +20,9 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     JsonlLegacySqlImportWriteApprovalGateStore,
     LegacySqlImportWriteApprovalGateEvidence,
     LegacySqlImportWriteApprovalGateStatus,
+    LegacySqlImportWriteApprovalRecordPersistencePlanCommand,
+    LegacySqlImportWriteApprovalRecordPersistencePlanStatus,
+    LegacySqlImportWriteApprovalRequestBoundaryResponse,
     LegacySqlImportWriteApprovalRequestBoundaryStatus,
     LegacySqlImportWriteApprovalRequestCommand,
     LegacySqlImportWriteApprovalReview,
@@ -30,6 +33,9 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     build_legacy_sql_import_write_approval_gate_command,
     build_legacy_sql_import_write_approval_gate_hash,
     build_legacy_sql_import_write_approval_gate_smoke_report_hash,
+    build_legacy_sql_import_write_approval_record_persistence_plan,
+    build_legacy_sql_import_write_approval_record_persistence_plan_command_hash,
+    build_legacy_sql_import_write_approval_record_persistence_plan_hash,
     build_legacy_sql_import_write_approval_request_boundary,
     build_legacy_sql_import_write_approval_request_boundary_hash,
     build_legacy_sql_import_write_approval_request_hash,
@@ -271,6 +277,81 @@ def test_legacy_sql_import_write_approval_request_boundary_blocks_unsafe_request
     assert not response.import_write_execution_allowed
 
 
+def test_legacy_sql_import_write_approval_record_persistence_plan_is_store_only(tmp_path: Path) -> None:
+    dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
+    gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
+    request_boundary = approval_request_boundary(gate)
+    command = approval_record_persistence_plan_command(request_boundary)
+
+    plan = build_legacy_sql_import_write_approval_record_persistence_plan(
+        command=command,
+        request_boundary=request_boundary,
+        gate_evidence=gate,
+        tenant_id=gate.tenant_id,
+        planned_by="approval-record-plan-test",
+        planned_at_utc=fixed_time(),
+    )
+
+    assert plan.schema_version == "legacy_sql_import_write_approval_record_persistence_plan.v1"
+    assert plan.plan_status == LegacySqlImportWriteApprovalRecordPersistencePlanStatus.READY_FOR_STORE_IMPLEMENTATION
+    assert plan.persistence_plan_command_hash == (
+        build_legacy_sql_import_write_approval_record_persistence_plan_command_hash(command)
+    )
+    assert plan.evidence_hash == build_legacy_sql_import_write_approval_record_persistence_plan_hash(plan)
+    assert plan.approval_request_boundary_hash_valid
+    assert plan.approval_request_boundary_bound
+    assert plan.approval_request_boundary_ready
+    assert plan.approval_gate_hash_valid
+    assert plan.approval_gate_ready_for_human_record
+    assert plan.human_approval_record_allowed_by_boundary
+    assert plan.approval_record_store_required
+    assert plan.tenant_scoped_rls_required
+    assert plan.append_only_store_required
+    assert plan.idempotency_required
+    assert plan.restore_evidence_required
+    assert plan.approval_record_persistence_plan_accepted
+    assert plan.future_import_write_execution_gate_required
+    assert not plan.approval_record_persistence_allowed
+    assert not plan.approval_record_persisted
+    assert not plan.import_write_execution_allowed
+    assert not plan.raw_data_access_allowed
+    assert not plan.import_write_payload_allowed
+    assert not plan.destructive_actions_allowed
+    assert not plan.external_side_effect_allowed
+
+
+def test_legacy_sql_import_write_approval_record_persistence_plan_blocks_direct_writes(tmp_path: Path) -> None:
+    dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
+    gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
+    request_boundary = approval_request_boundary(gate)
+    command = approval_record_persistence_plan_command(
+        request_boundary,
+        approval_record_persistence_requested=True,
+        import_write_requested=True,
+        raw_data_access_requested=True,
+        external_side_effect_requested=True,
+    )
+
+    plan = build_legacy_sql_import_write_approval_record_persistence_plan(
+        command=command,
+        request_boundary=request_boundary,
+        gate_evidence=gate,
+        tenant_id=gate.tenant_id,
+        planned_by="approval-record-plan-test",
+        planned_at_utc=fixed_time(),
+    )
+
+    assert plan.plan_status == LegacySqlImportWriteApprovalRecordPersistencePlanStatus.BLOCKED
+    assert "approval_record_persistence_not_enabled" in plan.blocking_reasons
+    assert "import_write_request_requires_future_execution_gate" in plan.blocking_reasons
+    assert "raw_data_access_request_forbidden" in plan.blocking_reasons
+    assert "external_side_effect_request_forbidden" in plan.blocking_reasons
+    assert not plan.approval_record_persistence_plan_accepted
+    assert not plan.approval_record_persistence_allowed
+    assert not plan.approval_record_persisted
+    assert not plan.import_write_execution_allowed
+
+
 def test_legacy_sql_import_write_approval_gate_store_replays_jsonl(tmp_path: Path) -> None:
     dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
     gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
@@ -453,6 +534,38 @@ def approval_request_command(
     }
     values.update(updates)
     return LegacySqlImportWriteApprovalRequestCommand.model_validate(values)
+
+
+def approval_request_boundary(
+    gate: LegacySqlImportWriteApprovalGateEvidence,
+) -> LegacySqlImportWriteApprovalRequestBoundaryResponse:
+    command = approval_request_command(gate)
+    return build_legacy_sql_import_write_approval_request_boundary(
+        command=command,
+        gate_evidence=gate,
+        tenant_id=gate.tenant_id,
+        checked_by="approval-request-test",
+        checked_at_utc=fixed_time(),
+    )
+
+
+def approval_record_persistence_plan_command(
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    **updates: object,
+) -> LegacySqlImportWriteApprovalRecordPersistencePlanCommand:
+    values: dict[str, object] = {
+        "approval_request_boundary_evidence_hash": request_boundary.evidence_hash,
+        "approval_record_store_ref": "store:crm-erp-legacy-import-write-approval-records",
+        "approval_record_schema_ref": "schema:legacy-sql-import-write-approval-record-v1",
+        "approval_record_retention_policy_ref": "retention:crm-erp-legacy-import-write-approval-record",
+        "approval_record_legal_hold_policy_ref": "legal-hold:crm-erp-business-records",
+        "idempotency_key_ref": "idempotency:legacy-sql-import-write-approval-record",
+        "operator_mfa_ref": "mfa:legacy-sql-import-write-approval-record",
+        "change_control_ref": "change:legacy-sql-import-write-approval-record-store-plan",
+        "reason": "plan a tenant-scoped append-only approval record store without executing import writes",
+    }
+    values.update(updates)
+    return LegacySqlImportWriteApprovalRecordPersistencePlanCommand.model_validate(values)
 
 
 def fixed_time() -> datetime:

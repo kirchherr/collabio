@@ -114,6 +114,11 @@ und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schr
 Persistence, Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und externe Side Effects
 bleiben in der Response und im Audit-Metadata-Vertrag false.
 
+`build_legacy_sql_import_write_approval_record_persistence_plan` plant den spaeteren Approval-Record-Store als
+hashbares Evidence-Objekt. Der Plan verlangt tenant-scoped RLS, Append-only-Verhalten, Idempotency-Key, Restore-Evidence
+und ein separates zukuenftiges Execution-Gate. Er akzeptiert keine direkte Approval-Record-Persistenz, keinen
+Rohdatenzugriff, keine Import-Payloads, keine Import-Writes und keine externen Side Effects.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-

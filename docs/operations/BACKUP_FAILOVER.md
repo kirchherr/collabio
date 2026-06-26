@@ -472,6 +472,10 @@ The Legacy SQL import write approval request boundary API is not a persistence d
 evidence, returns metadata-only request-boundary evidence, and is recoverable through the audit log plus the retained
 approval gate evidence hash until a future approval-record store is explicitly added.
 
+The Legacy SQL import write approval record persistence plan is also evidence-only. It defines the future store's RLS,
+append-only, idempotency, restore-evidence, and execution-gate requirements, but it does not create approval records or
+new backup state until a dedicated store migration exists.
+
 Run the preview renderer recovery drill after preview decision or renderer evidence changes and after restore drills:
 
 ```bash
