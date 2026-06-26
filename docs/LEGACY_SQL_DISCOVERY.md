@@ -128,6 +128,12 @@ und Report-Metadaten ueber Tenant, Evidence-Hash, Ref und Idempotency-Key lesen 
 ausfuehrend: keine Run-Erstellung im API-Sinn, keine Report-Freigabe, keine Import-Write-Ausfuehrung, kein Rohdaten-
 oder Secret-Pfad und keine externen Side Effects.
 
+`GET /v1/admin/crm-erp/legacy-sql/migration-runs`, `GET /v1/admin/crm-erp/legacy-sql/migration-runs/{evidence_hash}`,
+`GET /v1/admin/crm-erp/legacy-sql/migration-reports` und
+`GET /v1/admin/crm-erp/legacy-sql/migration-reports/{evidence_hash}` liefern diese Store-Inhalte tenant-admin- und
+Compliance-Gate-geschuetzt aus. Die Endpoints sind reine metadata-only Reads: keine Run-Erstellung, keine Report-
+Freigabe, keine Import-Write-Ausfuehrung, keine Rohdaten, keine Import-Payloads und keine externen Side Effects.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

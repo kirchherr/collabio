@@ -12,6 +12,7 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from main import app, require_module_api_gate
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, TenantPolicy
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.persistence.migrator import apply_migrations
@@ -26,6 +27,13 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     InMemoryLegacySqlImportWriteApprovalGateStore,
     JsonlLegacySqlImportWriteApprovalGateStore,
     run_legacy_sql_import_write_approval_gate_smoke_from_env,
+)
+from suite.platform.legacy_sql_migration_run_registry import (
+    InMemoryLegacySqlMigrationRunRegistryStore,
+    LegacySqlMigrationReportMetadataCommand,
+    LegacySqlMigrationRunRegistryEntryCommand,
+    build_legacy_sql_migration_report_metadata,
+    build_legacy_sql_migration_run_registry_entry,
 )
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -300,6 +308,10 @@ def base64url_bytes(payload: bytes) -> str:
 
 def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
+
+
+def api_fixture_hash(label: str) -> str:
+    return stable_hash(canonical_json({"api_fixture": label}))
 
 
 def test_workspace_source_object_refs_parse_explicit_backend_config() -> None:
@@ -22490,6 +22502,169 @@ def test_legacy_sql_migration_api_plan_is_admin_scoped_and_metadata_only() -> No
     assert ready_event.metadata["approval_grant_enabled"] is False
     assert ready_event.metadata["import_write_execution_allowed"] is False
     assert ready_event.metadata["raw_data_access_allowed"] is False
+
+
+def test_legacy_sql_migration_run_registry_read_endpoints_are_admin_scoped_and_metadata_only() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare migration read APIs"},
+    )
+    assert provision_response.status_code == 200
+
+    run_command = LegacySqlMigrationRunRegistryEntryCommand(
+        source_system_ref="legacy-sql:sqlserver-demo",
+        migration_run_ref="migration-run:legacy-sql-api-demo",
+        approval_record_hash=api_fixture_hash("approval-record"),
+        approval_gate_evidence_hash=api_fixture_hash("approval-gate"),
+        dry_run_result_hash=api_fixture_hash("dry-run-result"),
+        idempotency_key_ref="idempotency:legacy-sql-migration-run-api-demo",
+        restore_evidence_hash=api_fixture_hash("restore-evidence"),
+        audit_event_id="audit-event-legacy-sql-migration-run-api-demo",
+        audit_chain_ref="audit:legacy-sql-migration-run-api-demo",
+        requested_by="migration-api-read-test",
+    )
+    run_entry = build_legacy_sql_migration_run_registry_entry(command=run_command, tenant_id="tenant-demo")
+    report_command = LegacySqlMigrationReportMetadataCommand(
+        source_system_ref=run_entry.source_system_ref,
+        migration_run_hash=run_entry.evidence_hash,
+        migration_report_ref="migration-report:legacy-sql-api-demo",
+        idempotency_key_ref="idempotency:legacy-sql-migration-report-api-demo",
+        planned_table_count=2,
+        table_result_count=2,
+        row_count_manifest_hash=api_fixture_hash("row-count-manifest"),
+        checksum_manifest_hash=api_fixture_hash("checksum-manifest"),
+        restore_evidence_hash=api_fixture_hash("report-restore-evidence"),
+        audit_event_id="audit-event-legacy-sql-migration-report-api-demo",
+        audit_chain_ref="audit:legacy-sql-migration-report-api-demo",
+    )
+    report = build_legacy_sql_migration_report_metadata(command=report_command, tenant_id="tenant-demo")
+
+    previous_store = app.state.legacy_sql_migration_run_registry_store
+    app.state.legacy_sql_migration_run_registry_store = InMemoryLegacySqlMigrationRunRegistryStore(
+        runs=(run_entry,),
+        reports=(report,),
+    )
+    try:
+        non_admin_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_HEADERS,
+        )
+        assert non_admin_response.status_code == 403
+        assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+        run_list_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert run_list_response.status_code == 200
+        run_list = run_list_response.json()
+        assert len(run_list) == 1
+        assert run_list[0]["schema_version"] == "legacy_sql_migration_run_registry_entry.v1"
+        assert run_list[0]["tenant_id"] == "tenant-demo"
+        assert run_list[0]["migration_run_ref"] == run_entry.migration_run_ref
+        assert run_list[0]["evidence_hash"] == run_entry.evidence_hash
+        assert run_list[0]["run_creation_enabled"] is False
+        assert run_list[0]["run_execution_allowed"] is False
+        assert run_list[0]["import_write_execution_allowed"] is False
+        assert run_list[0]["raw_data_access_allowed"] is False
+        assert run_list[0]["destructive_actions_allowed"] is False
+        assert run_list[0]["external_side_effect_allowed"] is False
+
+        run_response = client.get(
+            f"/v1/admin/crm-erp/legacy-sql/migration-runs/{run_entry.evidence_hash}",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert run_response.status_code == 200
+        run_body = run_response.json()
+        run_body_text = json.dumps(run_body).lower()
+        assert run_body["evidence_hash"] == run_entry.evidence_hash
+        assert run_body["metadata_only_report_required"] is True
+        assert "dbo.kunden" not in run_body_text
+        assert "kundenid" not in run_body_text
+        assert "email" not in run_body_text
+        assert "connection_secret_ref" not in run_body_text
+        assert "sqlserver://" not in run_body_text
+        assert "raw_payload" not in run_body_text
+
+        missing_run_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs/sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert missing_run_response.status_code == 404
+        assert missing_run_response.json()["detail"] == "Legacy SQL migration run not found"
+
+        report_list_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert report_list_response.status_code == 200
+        report_list = report_list_response.json()
+        assert len(report_list) == 1
+        assert report_list[0]["schema_version"] == "legacy_sql_migration_report_metadata.v1"
+        assert report_list[0]["migration_run_hash"] == run_entry.evidence_hash
+        assert report_list[0]["metadata_only_ok"] is True
+        assert report_list[0]["report_retrieval_enabled"] is False
+        assert report_list[0]["run_execution_completed"] is False
+        assert report_list[0]["import_write_execution_allowed"] is False
+        assert report_list[0]["raw_data_access_allowed"] is False
+        assert report_list[0]["destructive_actions_allowed"] is False
+        assert report_list[0]["external_side_effect_allowed"] is False
+
+        filtered_report_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+            params={"migration_run_hash": run_entry.evidence_hash},
+        )
+        assert filtered_report_response.status_code == 200
+        assert filtered_report_response.json()[0]["evidence_hash"] == report.evidence_hash
+
+        report_response = client.get(
+            f"/v1/admin/crm-erp/legacy-sql/migration-reports/{report.evidence_hash}",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert report_response.status_code == 200
+        report_body = report_response.json()
+        report_body_text = json.dumps(report_body).lower()
+        assert report_body["evidence_hash"] == report.evidence_hash
+        assert report_body["migration_report_ref"] == report.migration_report_ref
+        assert report_body["metadata_only_ok"] is True
+        assert "dbo.kunden" not in report_body_text
+        assert "kundenid" not in report_body_text
+        assert "email" not in report_body_text
+        assert "connection_secret_ref" not in report_body_text
+        assert "sqlserver://" not in report_body_text
+        assert "raw_payload" not in report_body_text
+
+        missing_report_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports/sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert missing_report_response.status_code == 404
+        assert missing_report_response.json()["detail"] == "Legacy SQL migration report not found"
+    finally:
+        app.state.legacy_sql_migration_run_registry_store = previous_store
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type.startswith("legacy_sql.migration_")]
+    read_events = [event for event in matching_events if event.event_type != "legacy_sql.migration_api.plan"]
+    assert [event.event_type for event in read_events] == [
+        "legacy_sql.migration_runs.list",
+        "legacy_sql.migration_runs.get",
+        "legacy_sql.migration_reports.list",
+        "legacy_sql.migration_reports.list",
+        "legacy_sql.migration_reports.get",
+    ]
+    assert all(event.tenant_id == "tenant-demo" for event in read_events)
+    assert all(event.input_hash is None for event in read_events)
+    assert all(event.output_hash is None for event in read_events)
+    assert all(event.metadata["surface"] == "compliance_api" for event in read_events)
+    assert all(event.metadata["import_write_execution_allowed"] is False for event in read_events)
+    assert all(event.metadata["raw_data_access_allowed"] is False for event in read_events)
+    assert all(event.metadata["destructive_actions_allowed"] is False for event in read_events)
+    assert all(event.metadata["external_side_effect_allowed"] is False for event in read_events)
 
 
 def test_legacy_sql_import_write_approval_request_boundary_is_admin_scoped_and_metadata_only(

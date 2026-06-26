@@ -123,6 +123,12 @@ from suite.platform.legacy_sql_migration_api_plan import (
     LegacySqlMigrationApiPlanResponse,
     build_legacy_sql_migration_api_plan,
 )
+from suite.platform.legacy_sql_migration_run_registry import (
+    LegacySqlMigrationReportMetadata,
+    LegacySqlMigrationRunRegistryEntry,
+    LegacySqlMigrationRunRegistryStore,
+    build_default_legacy_sql_migration_run_registry_store,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -803,6 +809,7 @@ def build_app() -> FastAPI:
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
+    legacy_sql_migration_run_registry_store = build_default_legacy_sql_migration_run_registry_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -13008,6 +13015,190 @@ def build_app() -> FastAPI:
         )
         return plan
 
+    @app.get(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs",
+        response_model=tuple[LegacySqlMigrationRunRegistryEntry, ...],
+    )
+    def list_legacy_sql_migration_runs(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> tuple[LegacySqlMigrationRunRegistryEntry, ...]:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        runs = registry_store.list_runs(tenant_id=context.user_context.tenant_id)
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_runs.list",
+            source_object_ids=[f"legacy_sql_migration_run:{run.evidence_hash}" for run in runs],
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_run_registry_read",
+                "read_count": len(runs),
+                "run_creation_enabled": False,
+                "report_retrieval_enabled": False,
+                "approval_grant_enabled": False,
+                "import_write_execution_allowed": False,
+                "raw_data_access_allowed": False,
+                "import_write_payload_allowed": False,
+                "destructive_actions_allowed": False,
+                "external_side_effect_allowed": False,
+            },
+        )
+        return runs
+
+    @app.get(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs/{evidence_hash}",
+        response_model=LegacySqlMigrationRunRegistryEntry,
+    )
+    def get_legacy_sql_migration_run(
+        evidence_hash: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlMigrationRunRegistryEntry:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        try:
+            run = registry_store.get_run(
+                tenant_id=context.user_context.tenant_id,
+                evidence_hash=evidence_hash,
+            )
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Legacy SQL migration run not found",
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_runs.get",
+            source_object_ids=[f"legacy_sql_migration_run:{run.evidence_hash}"],
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_run_registry_read",
+                "migration_run_ref": run.migration_run_ref,
+                "run_status": run.run_status.value,
+                "run_creation_enabled": run.run_creation_enabled,
+                "run_execution_allowed": run.run_execution_allowed,
+                "import_write_execution_allowed": run.import_write_execution_allowed,
+                "raw_data_access_allowed": run.raw_data_access_allowed,
+                "import_write_payload_allowed": run.import_write_payload_allowed,
+                "destructive_actions_allowed": run.destructive_actions_allowed,
+                "external_side_effect_allowed": run.external_side_effect_allowed,
+            },
+        )
+        return run
+
+    @app.get(
+        "/v1/admin/crm-erp/legacy-sql/migration-reports",
+        response_model=tuple[LegacySqlMigrationReportMetadata, ...],
+    )
+    def list_legacy_sql_migration_reports(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+        migration_run_hash: str | None = None,
+    ) -> tuple[LegacySqlMigrationReportMetadata, ...]:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        if migration_run_hash is None:
+            reports = registry_store.list_reports(tenant_id=context.user_context.tenant_id)
+        else:
+            reports = registry_store.list_reports_for_run(
+                tenant_id=context.user_context.tenant_id,
+                migration_run_hash=migration_run_hash,
+            )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_reports.list",
+            source_object_ids=[f"legacy_sql_migration_report:{report.evidence_hash}" for report in reports],
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_report_read",
+                "read_count": len(reports),
+                "migration_run_hash": migration_run_hash,
+                "report_retrieval_enabled": False,
+                "run_execution_completed": False,
+                "import_write_execution_allowed": False,
+                "raw_data_access_allowed": False,
+                "import_write_payload_allowed": False,
+                "destructive_actions_allowed": False,
+                "external_side_effect_allowed": False,
+            },
+        )
+        return reports
+
+    @app.get(
+        "/v1/admin/crm-erp/legacy-sql/migration-reports/{evidence_hash}",
+        response_model=LegacySqlMigrationReportMetadata,
+    )
+    def get_legacy_sql_migration_report(
+        evidence_hash: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlMigrationReportMetadata:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        try:
+            report = registry_store.get_report(
+                tenant_id=context.user_context.tenant_id,
+                evidence_hash=evidence_hash,
+            )
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Legacy SQL migration report not found",
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_reports.get",
+            source_object_ids=[f"legacy_sql_migration_report:{report.evidence_hash}"],
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_report_read",
+                "migration_report_ref": report.migration_report_ref,
+                "report_status": report.report_status.value,
+                "metadata_only_ok": report.metadata_only_ok,
+                "report_retrieval_enabled": report.report_retrieval_enabled,
+                "run_execution_completed": report.run_execution_completed,
+                "import_write_execution_allowed": report.import_write_execution_allowed,
+                "raw_data_access_allowed": report.raw_data_access_allowed,
+                "import_write_payload_allowed": report.import_write_payload_allowed,
+                "destructive_actions_allowed": report.destructive_actions_allowed,
+                "external_side_effect_allowed": report.external_side_effect_allowed,
+            },
+        )
+        return report
+
     @app.post(
         "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
         response_model=LegacySqlImportWriteApprovalRequestBoundaryResponse,
@@ -13549,6 +13740,7 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
+    app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
