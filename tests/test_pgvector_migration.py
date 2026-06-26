@@ -74,6 +74,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0040",
         "0041",
         "0042",
+        "0043",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -88,7 +89,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 21
+    assert len(core_migrations) == len(load_migrations()) - 22
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -104,6 +105,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0040",
         "0041",
         "0042",
+        "0043",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -1741,6 +1743,79 @@ def test_crm_erp_legacy_import_write_approval_gates_migration_declares_gate_and_
     assert "update collabio.module_catalog" in sql
     assert '"0042"' in sql
     assert "import write execution" in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_write_approval_records_migration_declares_store_and_rls() -> None:
+    migration = get_migration("0043")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_write_approval_records")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "dry_run_result_hash",
+        "approval_request_boundary_evidence_hash",
+        "approval_gate_evidence_hash",
+        "approval_request_hash",
+        "persistence_plan_evidence_hash",
+        "approval_record_ref",
+        "approval_ticket_ref",
+        "human_confirmation_reference",
+        "idempotency_key_hash",
+        "approved_by",
+        "approved_at_utc",
+        "record_status",
+        "future_import_write_execution_gate_required",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "approval_record",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "legacy_sql_import_write_approval_record.v1" in table
+    assert "approval_record ?& array" in table
+    assert "approved_at_utc" in table
+    assert "approved_for_future_import_write_gate" in table
+    assert "unique (tenant_id, approval_request_boundary_evidence_hash)" in table
+    assert "unique (tenant_id, idempotency_key_hash)" in table
+    assert "unique (tenant_id, approval_record_ref)" in table
+    assert "future_import_write_execution_gate_required boolean not null default true" in table
+    assert "import_write_execution_allowed boolean not null default false check" in table
+    assert "raw_data_access_allowed boolean not null default false check" in table
+    assert "import_write_payload_allowed boolean not null default false check" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "external_side_effect_allowed boolean not null default false check" in table
+    assert "not (approval_record ? 'connection_secret_ref')" in table
+    assert "not (approval_record ? 'raw_payload')" in table
+    assert "not (approval_record ? 'sample_values')" in table
+    assert "not (approval_record ? 'import_write_payload')" in table
+    assert "alter table crm_erp_legacy.import_write_approval_records enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_write_approval_records force row level security" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_no_update" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_records to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_records to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0043"' in sql
+    assert "import write execution remains forbidden" in sql
     assert "raw legacy rows" in sql
     assert "sample values" in sql
     assert "secret references" in sql

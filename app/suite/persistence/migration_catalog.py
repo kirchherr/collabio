@@ -385,6 +385,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-import-write-approval-gate",
         ),
     ),
+    SqlMigration(
+        version="0043",
+        name="crm_erp_legacy_import_write_approval_records",
+        resource_name="0043_crm_erp_legacy_import_write_approval_records.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-import-write-approval-record-store",
+        ),
+    ),
 )
 
 

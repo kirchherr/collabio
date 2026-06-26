@@ -1564,6 +1564,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "0040",
                 "0041",
                 "0042",
+                "0043",
             ),
         ),
         ModuleCatalogEntry(

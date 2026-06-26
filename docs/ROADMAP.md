@@ -1042,7 +1042,8 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Import-Dry-Run-Result-Review und Human-Approval-Gate fuer spaetere Import-Writes planen.
 - [x] Legacy-SQL-Import-Write-Approval-Request-Boundary als nicht-ausfuehrendes Admin-/API-Gate vorbereiten, ohne Import-Writes freizuschalten.
 - [x] Legacy-SQL-Import-Write-Approval-Record-Persistenz planen, weiterhin ohne Import-Write-Execution.
-- [ ] Legacy-SQL-Import-Write-Approval-Record-Store-Migration mit RLS, Append-only und Idempotency vorbereiten, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Store-Migration mit RLS, Append-only und Idempotency vorbereiten, ohne Import-Write-Execution.
+- [ ] Legacy-SQL-Import-Write-Approval-Record-Store-Adapter anbinden, weiterhin ohne Import-Write-Execution.
 - [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.

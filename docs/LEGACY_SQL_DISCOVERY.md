@@ -119,6 +119,12 @@ hashbares Evidence-Objekt. Der Plan verlangt tenant-scoped RLS, Append-only-Verh
 und ein separates zukuenftiges Execution-Gate. Er akzeptiert keine direkte Approval-Record-Persistenz, keinen
 Rohdatenzugriff, keine Import-Payloads, keine Import-Writes und keine externen Side Effects.
 
+Migration `0043_crm_erp_legacy_import_write_approval_records.sql` bereitet den tenant-scoped
+`legacy_sql_import_write_approval_record.v1` Store vor. Die Tabelle erzwingt RLS, Append-only-Policies, eindeutige
+Idempotency-Keys, Boundary-/Gate-/Plan-Hash-Bindung und Restore-/Audit-Referenzen. Sie kann spaeter nur
+Human-Approval-Records speichern; Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und
+externe Side Effects bleiben per DB-Check verboten.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-
