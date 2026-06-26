@@ -1049,7 +1049,8 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Migration-Run-Registry-Adapter fuer metadata-only Run-/Report-Lookup anbinden, ohne Import-Write-Execution.
 - [x] Legacy-SQL-Migration-API-Read-Endpoints fuer metadata-only Run-/Report-Discovery anbinden, ohne Run-Erstellung, Freigabe oder Import-Write-Execution.
 - [x] Legacy-SQL-Migration-Run-Creation-Boundary als nicht-ausfuehrendes Admin-Gate vorbereiten, ohne Freigabe oder Import-Write-Execution.
-- [ ] Legacy-SQL-Migration-Run-Creation-Store-Persistenz an Boundary binden und idempotent metadata-only speichern, ohne Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Creation-Store-Persistenz an Boundary binden und idempotent metadata-only speichern, ohne Freigabe oder Import-Write-Execution.
+- [ ] Legacy-SQL-Migration-Report-Metadata-Persistenz an Run binden und idempotent metadata-only speichern, ohne Report-Freigabe oder Import-Write-Execution.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.

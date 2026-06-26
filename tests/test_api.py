@@ -22607,6 +22607,78 @@ def test_legacy_sql_migration_run_creation_boundary_is_admin_scoped_and_metadata
     assert unsafe_body["approval_grant_enabled"] is False
     assert unsafe_body["import_write_execution_allowed"] is False
 
+    previous_store = app.state.legacy_sql_migration_run_registry_store
+    app.state.legacy_sql_migration_run_registry_store = InMemoryLegacySqlMigrationRunRegistryStore()
+    try:
+        non_admin_store_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_HEADERS,
+            json={"run_creation_boundary": body},
+        )
+        assert non_admin_store_response.status_code == 403
+        assert non_admin_store_response.json()["detail"] == "Tenant admin role required"
+
+        store_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_ADMIN_HEADERS,
+            json={"run_creation_boundary": body},
+        )
+        assert store_response.status_code == 200
+        store_body = store_response.json()
+        assert store_body["schema_version"] == "legacy_sql_migration_run_creation_store.v1"
+        assert store_body["store_status"] == "persisted_metadata_only"
+        assert store_body["run_registry_persistence_requested"] is True
+        assert store_body["run_registry_persistence_allowed"] is True
+        assert store_body["run_registry_entry_persisted"] is True
+        assert store_body["idempotent_replay"] is False
+        assert store_body["migration_run_hash"].startswith("sha256:")
+        assert store_body["migration_run"]["schema_version"] == "legacy_sql_migration_run_registry_entry.v1"
+        assert store_body["migration_run"]["tenant_id"] == "tenant-demo"
+        assert store_body["migration_run"]["migration_run_ref"] == payload["migration_run_ref"]
+        assert store_body["migration_run"]["idempotency_key_hash"] == body["idempotency_key_hash"]
+        assert store_body["approval_grant_enabled"] is False
+        assert store_body["report_retrieval_enabled"] is False
+        assert store_body["run_creation_enabled"] is False
+        assert store_body["run_execution_allowed"] is False
+        assert store_body["import_write_execution_allowed"] is False
+        assert store_body["raw_data_access_allowed"] is False
+        assert store_body["import_write_payload_allowed"] is False
+        assert store_body["destructive_actions_allowed"] is False
+        assert store_body["external_side_effect_allowed"] is False
+
+        replay_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_ADMIN_HEADERS,
+            json={"run_creation_boundary": body},
+        )
+        assert replay_response.status_code == 200
+        replay_body = replay_response.json()
+        assert replay_body["store_status"] == "idempotent_replay"
+        assert replay_body["idempotent_replay"] is True
+        assert replay_body["migration_run_hash"] == store_body["migration_run_hash"]
+
+        blocked_store_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_ADMIN_HEADERS,
+            json={"run_creation_boundary": unsafe_body},
+        )
+        assert blocked_store_response.status_code == 200
+        blocked_store_body = blocked_store_response.json()
+        assert blocked_store_body["store_status"] == "blocked"
+        assert blocked_store_body["run_registry_persistence_allowed"] is False
+        assert blocked_store_body["run_registry_entry_persisted"] is False
+        assert blocked_store_body["migration_run"] is None
+        assert "run_creation_boundary_not_ready" in blocked_store_body["blocking_reasons"]
+
+        list_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-runs",
+            headers=DEMO_ADMIN_HEADERS,
+        )
+        assert list_response.status_code == 200
+        assert [run["evidence_hash"] for run in list_response.json()] == [store_body["migration_run_hash"]]
+    finally:
+        app.state.legacy_sql_migration_run_registry_store = previous_store
+
     new_events = app.state.audit_logger.events[starting_event_count:]
     matching_events = [
         event for event in new_events if event.event_type == "legacy_sql.migration_run_creation.boundary"
@@ -22628,6 +22700,24 @@ def test_legacy_sql_migration_run_creation_boundary_is_admin_scoped_and_metadata
     blocked_event = matching_events[1]
     assert blocked_event.metadata["boundary_status"] == "blocked"
     assert blocked_event.metadata["run_creation_boundary_accepted"] is False
+    store_events = [event for event in new_events if event.event_type == "legacy_sql.migration_run_creation.store"]
+    assert [event.metadata["store_status"] for event in store_events] == [
+        "persisted_metadata_only",
+        "idempotent_replay",
+        "blocked",
+    ]
+    assert all(event.tenant_id == "tenant-demo" for event in store_events)
+    assert all(event.input_hash is None for event in store_events)
+    assert all(event.output_hash is None for event in store_events)
+    assert store_events[0].metadata["run_registry_entry_persisted"] is True
+    assert store_events[0].metadata["idempotent_replay"] is False
+    assert store_events[1].metadata["run_registry_entry_persisted"] is True
+    assert store_events[1].metadata["idempotent_replay"] is True
+    assert store_events[2].metadata["run_registry_entry_persisted"] is False
+    assert all(event.metadata["import_write_execution_allowed"] is False for event in store_events)
+    assert all(event.metadata["raw_data_access_allowed"] is False for event in store_events)
+    assert all(event.metadata["destructive_actions_allowed"] is False for event in store_events)
+    assert all(event.metadata["external_side_effect_allowed"] is False for event in store_events)
 
 
 def test_legacy_sql_migration_run_registry_read_endpoints_are_admin_scoped_and_metadata_only() -> None:

@@ -140,6 +140,12 @@ Hash, Dry-Run-Result-Hash, Idempotency-Key, Restore-Evidence und Audit-Referenze
 die Registry. Persistenz, Approval-Grant, Report-Retrieval, Run-Ausfuehrung, Import-Writes, Rohdatenzugriff, Import-
 Payloads, destruktive Aktionen und externe Side Effects bleiben false.
 
+`POST /v1/admin/crm-erp/legacy-sql/migration-runs` persistiert eine ready Boundary als
+`legacy_sql_migration_run_registry_entry.v1` metadata-only in den Run-Registry-Store. Der Endpoint ist tenant-admin-
+und Compliance-Gate-geschuetzt, idempotent ueber den Boundary-Idempotency-Key und bleibt nicht-ausfuehrend: keine
+Approval-Freigabe, kein Report-Retrieval, keine Run-Ausfuehrung, keine Import-Writes, keine Rohdaten, keine Import-
+Payloads, keine destruktiven Aktionen und keine externen Side Effects.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

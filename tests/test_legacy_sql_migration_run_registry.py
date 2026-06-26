@@ -11,12 +11,15 @@ import pytest
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.persistence.migrator import apply_migrations
 from suite.platform.legacy_sql_migration_run_registry import (
+    InMemoryLegacySqlMigrationRunRegistryStore,
     JsonlLegacySqlMigrationRunRegistryStore,
     LegacySqlMigrationReportMetadata,
     LegacySqlMigrationReportMetadataCommand,
     LegacySqlMigrationReportStatus,
     LegacySqlMigrationRunCreationBoundaryCommand,
     LegacySqlMigrationRunCreationBoundaryStatus,
+    LegacySqlMigrationRunCreationStoreCommand,
+    LegacySqlMigrationRunCreationStoreStatus,
     LegacySqlMigrationRunRegistryEntry,
     LegacySqlMigrationRunRegistryEntryCommand,
     LegacySqlMigrationRunStatus,
@@ -28,9 +31,12 @@ from suite.platform.legacy_sql_migration_run_registry import (
     build_legacy_sql_migration_run_creation_boundary,
     build_legacy_sql_migration_run_creation_boundary_hash,
     build_legacy_sql_migration_run_creation_request_hash,
+    build_legacy_sql_migration_run_creation_store_response_hash,
     build_legacy_sql_migration_run_registry_entry,
+    build_legacy_sql_migration_run_registry_entry_from_boundary,
     build_legacy_sql_migration_run_registry_entry_hash,
     build_legacy_sql_migration_run_registry_idempotency_key_hash,
+    persist_legacy_sql_migration_run_creation,
 )
 
 
@@ -185,6 +191,101 @@ def test_legacy_sql_migration_run_creation_boundary_blocks_persistence_and_execu
     assert not boundary.run_registry_persistence_allowed
     assert not boundary.approval_grant_enabled
     assert not boundary.import_write_execution_allowed
+
+
+def test_legacy_sql_migration_run_creation_store_persists_boundary_idempotently_metadata_only() -> None:
+    boundary = build_legacy_sql_migration_run_creation_boundary(
+        command=migration_run_creation_boundary_command(),
+        tenant_id="tenant-demo",
+        checked_by="migration-boundary-test",
+        checked_at_utc=fixed_time(),
+    )
+    command = LegacySqlMigrationRunCreationStoreCommand(run_creation_boundary=boundary)
+    store = InMemoryLegacySqlMigrationRunRegistryStore()
+
+    response = persist_legacy_sql_migration_run_creation(
+        command=command,
+        store=store,
+        tenant_id="tenant-demo",
+        checked_by="migration-store-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert response.schema_version == "legacy_sql_migration_run_creation_store.v1"
+    assert response.store_status == LegacySqlMigrationRunCreationStoreStatus.PERSISTED_METADATA_ONLY
+    assert response.evidence_hash == build_legacy_sql_migration_run_creation_store_response_hash(response)
+    assert response.run_creation_boundary_evidence_hash == boundary.evidence_hash
+    assert response.run_creation_request_hash == boundary.run_creation_request_hash
+    assert response.idempotency_key_hash == boundary.idempotency_key_hash
+    assert response.run_registry_persistence_requested
+    assert response.run_registry_persistence_allowed
+    assert response.run_registry_entry_persisted
+    assert not response.idempotent_replay
+    assert response.migration_run is not None
+    assert response.migration_run_hash == response.migration_run.evidence_hash
+    assert response.migration_run == build_legacy_sql_migration_run_registry_entry_from_boundary(boundary)
+    assert response.migration_run.evidence_hash == build_legacy_sql_migration_run_registry_entry_hash(
+        response.migration_run
+    )
+    assert store.list_runs(tenant_id="tenant-demo") == (response.migration_run,)
+    assert not response.approval_grant_enabled
+    assert not response.report_retrieval_enabled
+    assert not response.run_creation_enabled
+    assert not response.run_execution_allowed
+    assert not response.import_write_execution_allowed
+    assert not response.raw_data_access_allowed
+    assert not response.import_write_payload_allowed
+    assert not response.destructive_actions_allowed
+    assert not response.external_side_effect_allowed
+
+    replay = persist_legacy_sql_migration_run_creation(
+        command=command,
+        store=store,
+        tenant_id="tenant-demo",
+        checked_by="migration-store-test",
+        checked_at_utc=fixed_time(),
+    )
+    assert replay.store_status == LegacySqlMigrationRunCreationStoreStatus.IDEMPOTENT_REPLAY
+    assert replay.idempotent_replay
+    assert replay.migration_run == response.migration_run
+    assert store.list_runs(tenant_id="tenant-demo") == (response.migration_run,)
+
+
+def test_legacy_sql_migration_run_creation_store_blocks_unready_or_unsafe_requests() -> None:
+    blocked_boundary = build_legacy_sql_migration_run_creation_boundary(
+        command=migration_run_creation_boundary_command(import_write_execution_requested=True),
+        tenant_id="tenant-demo",
+        checked_by="migration-boundary-test",
+        checked_at_utc=fixed_time(),
+    )
+    unsafe_command = LegacySqlMigrationRunCreationStoreCommand(
+        run_creation_boundary=blocked_boundary,
+        approval_grant_requested=True,
+        report_retrieval_requested=True,
+        raw_data_access_requested=True,
+        import_write_payload_requested=True,
+    )
+    store = InMemoryLegacySqlMigrationRunRegistryStore()
+
+    response = persist_legacy_sql_migration_run_creation(
+        command=unsafe_command,
+        store=store,
+        tenant_id="tenant-demo",
+        checked_by="migration-store-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert response.store_status == LegacySqlMigrationRunCreationStoreStatus.BLOCKED
+    assert not response.run_registry_persistence_allowed
+    assert not response.run_registry_entry_persisted
+    assert response.migration_run is None
+    assert response.migration_run_hash is None
+    assert "run_creation_boundary_not_ready" in response.blocking_reasons
+    assert "approval_grant_requires_future_gate" in response.blocking_reasons
+    assert "report_retrieval_not_enabled" in response.blocking_reasons
+    assert "raw_data_access_request_forbidden" in response.blocking_reasons
+    assert "import_write_payload_request_forbidden" in response.blocking_reasons
+    assert store.list_runs(tenant_id="tenant-demo") == ()
 
 
 def test_legacy_sql_migration_run_registry_blocks_execution_and_raw_data_requests() -> None:

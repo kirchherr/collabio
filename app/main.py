@@ -127,10 +127,13 @@ from suite.platform.legacy_sql_migration_run_registry import (
     LegacySqlMigrationReportMetadata,
     LegacySqlMigrationRunCreationBoundaryCommand,
     LegacySqlMigrationRunCreationBoundaryResponse,
+    LegacySqlMigrationRunCreationStoreCommand,
+    LegacySqlMigrationRunCreationStoreResponse,
     LegacySqlMigrationRunRegistryEntry,
     LegacySqlMigrationRunRegistryStore,
     build_default_legacy_sql_migration_run_registry_store,
     build_legacy_sql_migration_run_creation_boundary,
+    persist_legacy_sql_migration_run_creation,
 )
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -13065,6 +13068,65 @@ def build_app() -> FastAPI:
             },
         )
         return boundary
+
+    @app.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs",
+        response_model=LegacySqlMigrationRunCreationStoreResponse,
+    )
+    def persist_legacy_sql_migration_run_creation_store(
+        command: LegacySqlMigrationRunCreationStoreCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlMigrationRunCreationStoreResponse:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        try:
+            response = persist_legacy_sql_migration_run_creation(
+                command=command,
+                store=registry_store,
+                tenant_id=context.user_context.tenant_id,
+                checked_by=context.user_context.user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        source_object_ids = [
+            f"legacy_sql_migration_run_creation_boundary:{response.run_creation_boundary_evidence_hash}"
+        ]
+        if response.migration_run_hash:
+            source_object_ids.append(f"legacy_sql_migration_run:{response.migration_run_hash}")
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_run_creation.store",
+            source_object_ids=source_object_ids,
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_run_creation_store",
+                "migration_run_ref": response.migration_run_ref,
+                "store_status": response.store_status.value,
+                "migration_run_hash": response.migration_run_hash,
+                "run_registry_persistence_allowed": response.run_registry_persistence_allowed,
+                "run_registry_entry_persisted": response.run_registry_entry_persisted,
+                "idempotent_replay": response.idempotent_replay,
+                "approval_grant_enabled": response.approval_grant_enabled,
+                "report_retrieval_enabled": response.report_retrieval_enabled,
+                "run_creation_enabled": response.run_creation_enabled,
+                "run_execution_allowed": response.run_execution_allowed,
+                "import_write_execution_allowed": response.import_write_execution_allowed,
+                "raw_data_access_allowed": response.raw_data_access_allowed,
+                "import_write_payload_allowed": response.import_write_payload_allowed,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
 
     @app.get(
         "/v1/admin/crm-erp/legacy-sql/migration-runs",
