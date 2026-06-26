@@ -108,6 +108,12 @@ tenant-scoped und append-only. Das Gate kann nur einen spaeteren Human-Approval-
 Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, externe Side Effects und destruktive Aktionen bleiben
 technisch blockiert und brauchen ein separates zukuenftiges Execution-Gate.
 
+`POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
+Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
+und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.
+Persistence, Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und externe Side Effects
+bleiben in der Response und im Audit-Metadata-Vertrag false.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-

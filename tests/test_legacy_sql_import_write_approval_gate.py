@@ -20,6 +20,8 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     JsonlLegacySqlImportWriteApprovalGateStore,
     LegacySqlImportWriteApprovalGateEvidence,
     LegacySqlImportWriteApprovalGateStatus,
+    LegacySqlImportWriteApprovalRequestBoundaryStatus,
+    LegacySqlImportWriteApprovalRequestCommand,
     LegacySqlImportWriteApprovalReview,
     LegacySqlImportWriteChangeControl,
     LegacySqlImportWriteRestoreDrill,
@@ -28,6 +30,9 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     build_legacy_sql_import_write_approval_gate_command,
     build_legacy_sql_import_write_approval_gate_hash,
     build_legacy_sql_import_write_approval_gate_smoke_report_hash,
+    build_legacy_sql_import_write_approval_request_boundary,
+    build_legacy_sql_import_write_approval_request_boundary_hash,
+    build_legacy_sql_import_write_approval_request_hash,
     build_legacy_sql_import_write_approval_review,
     build_legacy_sql_import_write_change_control,
     build_legacy_sql_import_write_restore_drill,
@@ -208,6 +213,64 @@ def test_legacy_sql_import_write_approval_gate_blocks_tampered_result_hash(tmp_p
     assert not gate.human_approval_record_allowed
 
 
+def test_legacy_sql_import_write_approval_request_boundary_accepts_only_request(tmp_path: Path) -> None:
+    dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
+    gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
+    command = approval_request_command(gate)
+
+    response = build_legacy_sql_import_write_approval_request_boundary(
+        command=command,
+        gate_evidence=gate,
+        tenant_id=gate.tenant_id,
+        checked_by="approval-request-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert response.schema_version == "legacy_sql_import_write_approval_request_boundary.v1"
+    assert (
+        response.boundary_status == LegacySqlImportWriteApprovalRequestBoundaryStatus.READY_FOR_APPROVAL_RECORD_REQUEST
+    )
+    assert response.approval_request_hash == build_legacy_sql_import_write_approval_request_hash(command)
+    assert response.evidence_hash == build_legacy_sql_import_write_approval_request_boundary_hash(response)
+    assert response.approval_request_accepted
+    assert response.human_approval_record_allowed_by_gate
+    assert response.future_import_write_execution_gate_required
+    assert not response.approval_record_persistence_allowed
+    assert not response.approval_record_persisted
+    assert not response.import_write_execution_allowed
+    assert not response.raw_data_access_allowed
+    assert not response.import_write_payload_allowed
+    assert not response.destructive_actions_allowed
+    assert not response.external_side_effect_allowed
+
+
+def test_legacy_sql_import_write_approval_request_boundary_blocks_unsafe_request(tmp_path: Path) -> None:
+    dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
+    gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
+    command = approval_request_command(
+        gate,
+        import_write_requested=True,
+        approval_record_persistence_requested=True,
+        import_write_payload_requested=True,
+    )
+
+    response = build_legacy_sql_import_write_approval_request_boundary(
+        command=command,
+        gate_evidence=gate,
+        tenant_id=gate.tenant_id,
+        checked_by="approval-request-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert response.boundary_status == LegacySqlImportWriteApprovalRequestBoundaryStatus.BLOCKED
+    assert "import_write_request_requires_future_execution_gate" in response.blocking_reasons
+    assert "approval_record_persistence_not_enabled" in response.blocking_reasons
+    assert "import_write_payload_request_forbidden" in response.blocking_reasons
+    assert not response.approval_request_accepted
+    assert not response.approval_record_persistence_allowed
+    assert not response.import_write_execution_allowed
+
+
 def test_legacy_sql_import_write_approval_gate_store_replays_jsonl(tmp_path: Path) -> None:
     dry_run_result, dry_run_worker_report = dry_run_fixture_pair(tmp_path)
     gate = ready_gate(dry_run_result=dry_run_result, dry_run_worker_report=dry_run_worker_report)
@@ -373,6 +436,23 @@ def ready_gate(
 
 def fixture_hash(kind: str, seed: str) -> str:
     return stable_hash(canonical_json({"kind": kind, "seed": seed}))
+
+
+def approval_request_command(
+    gate: LegacySqlImportWriteApprovalGateEvidence,
+    **updates: object,
+) -> LegacySqlImportWriteApprovalRequestCommand:
+    values: dict[str, object] = {
+        "source_system_ref": gate.source_system_ref,
+        "dry_run_result_hash": gate.dry_run_result_hash,
+        "approval_gate_evidence_hash": gate.evidence_hash,
+        "approval_reference": "approval:legacy-sql-import-write-request",
+        "approval_ticket_ref": "ticket:legacy-sql-import-write-request",
+        "human_confirmation_reference": "human-confirmation:legacy-sql-import-write-request",
+        "reason": "request a non-executing legacy sql import write approval record boundary",
+    }
+    values.update(updates)
+    return LegacySqlImportWriteApprovalRequestCommand.model_validate(values)
 
 
 def fixed_time() -> datetime:

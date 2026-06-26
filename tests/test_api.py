@@ -22,6 +22,11 @@ from suite.platform.knowledge_base import (
     KnowledgeBaseWriteOperation,
     build_source_object_write_guard_ref,
 )
+from suite.platform.legacy_sql_import_write_approval_gate import (
+    InMemoryLegacySqlImportWriteApprovalGateStore,
+    JsonlLegacySqlImportWriteApprovalGateStore,
+    run_legacy_sql_import_write_approval_gate_smoke_from_env,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleGateDecision,
@@ -22374,6 +22379,139 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert write_event.metadata["production_write_deployment_gate_evidence_hash"] is None
     assert write_event.metadata["article_metadata_persisted"] is True
     assert write_event.metadata["refreshed_restore_evidence_hash"] == write_body["refreshed_restore_evidence_hash"]
+
+
+def test_legacy_sql_import_write_approval_request_boundary_is_admin_scoped_and_metadata_only(
+    tmp_path: Path,
+) -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare legacy SQL approval boundary"},
+    )
+    assert provision_response.status_code == 200
+
+    store_path = tmp_path / "approval-gates.jsonl"
+    smoke = run_legacy_sql_import_write_approval_gate_smoke_from_env(
+        {
+            "SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_GATE_STORE_WRITE": "true",
+            "SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_GATE_STORE_BACKEND": "jsonl",
+            "SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_GATE_STORE_PATH": str(store_path),
+        }
+    )
+    gate = JsonlLegacySqlImportWriteApprovalGateStore(path=store_path).get(
+        tenant_id=smoke.tenant_id,
+        evidence_hash=smoke.approval_gate_evidence_hash,
+    )
+    previous_gate_store = app.state.legacy_sql_import_write_approval_gate_store
+    app.state.legacy_sql_import_write_approval_gate_store = InMemoryLegacySqlImportWriteApprovalGateStore((gate,))
+
+    try:
+        payload = {
+            "source_system_ref": gate.source_system_ref,
+            "dry_run_result_hash": gate.dry_run_result_hash,
+            "approval_gate_evidence_hash": gate.evidence_hash,
+            "approval_reference": "approval:legacy-sql-import-write-request-api",
+            "approval_ticket_ref": "ticket:legacy-sql-import-write-request-api",
+            "human_confirmation_reference": "human-confirmation:legacy-sql-import-write-request-api",
+            "reason": "request non-executing legacy sql import write approval boundary",
+        }
+
+        non_admin_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
+            headers=DEMO_HEADERS,
+            json=payload,
+        )
+        assert non_admin_response.status_code == 403
+        assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+        response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
+            headers=DEMO_ADMIN_HEADERS,
+            json=payload,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        body_text = json.dumps(body).lower()
+        assert body["schema_version"] == "legacy_sql_import_write_approval_request_boundary.v1"
+        assert body["tenant_id"] == "tenant-demo"
+        assert body["module_id"] == "crm_erp"
+        assert body["source_system_ref"] == gate.source_system_ref
+        assert body["dry_run_result_hash"] == gate.dry_run_result_hash
+        assert body["approval_gate_evidence_hash"] == gate.evidence_hash
+        assert body["approval_request_hash"].startswith("sha256:")
+        assert body["evidence_hash"].startswith("sha256:")
+        assert body["approval_request_accepted"] is True
+        assert body["boundary_status"] == "ready_for_approval_record_request"
+        assert body["approval_record_persistence_requested"] is False
+        assert body["approval_record_persistence_allowed"] is False
+        assert body["approval_record_persisted"] is False
+        assert body["future_import_write_execution_gate_required"] is True
+        assert body["import_write_execution_allowed"] is False
+        assert body["raw_data_access_allowed"] is False
+        assert body["import_write_payload_allowed"] is False
+        assert body["destructive_actions_allowed"] is False
+        assert body["external_side_effect_allowed"] is False
+        assert "dbo.kunden" not in body_text
+        assert "kundenid" not in body_text
+        assert "email" not in body_text
+        assert "connection_secret_ref" not in body_text
+        assert "sqlserver://" not in body_text
+
+        unsafe_payload = {
+            **payload,
+            "import_write_requested": True,
+            "approval_record_persistence_requested": True,
+            "import_write_payload_requested": True,
+        }
+        unsafe_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
+            headers=DEMO_ADMIN_HEADERS,
+            json=unsafe_payload,
+        )
+        assert unsafe_response.status_code == 200
+        unsafe_body = unsafe_response.json()
+        assert unsafe_body["boundary_status"] == "blocked"
+        assert unsafe_body["approval_request_accepted"] is False
+        assert "import_write_request_requires_future_execution_gate" in unsafe_body["blocking_reasons"]
+        assert "approval_record_persistence_not_enabled" in unsafe_body["blocking_reasons"]
+        assert "import_write_payload_request_forbidden" in unsafe_body["blocking_reasons"]
+        assert unsafe_body["approval_record_persistence_allowed"] is False
+        assert unsafe_body["import_write_execution_allowed"] is False
+
+        missing_payload = {
+            **payload,
+            "approval_gate_evidence_hash": "sha256:" + ("0" * 64),
+        }
+        missing_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
+            headers=DEMO_ADMIN_HEADERS,
+            json=missing_payload,
+        )
+        assert missing_response.status_code == 404
+        assert missing_response.json()["detail"] == "Legacy SQL import write approval gate evidence not found"
+    finally:
+        app.state.legacy_sql_import_write_approval_gate_store = previous_gate_store
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "legacy_sql.import_write_approval_request.boundary"
+    ]
+    assert len(matching_events) == 2
+    ready_event = matching_events[0]
+    assert ready_event.tenant_id == "tenant-demo"
+    assert ready_event.input_hash is not None
+    assert ready_event.output_hash is None
+    assert ready_event.metadata["surface"] == "compliance_api"
+    assert ready_event.metadata["result_contract"] == "metadata_only"
+    assert ready_event.metadata["approval_request_accepted"] is True
+    assert ready_event.metadata["approval_record_persistence_allowed"] is False
+    assert ready_event.metadata["import_write_execution_allowed"] is False
+    assert ready_event.metadata["raw_data_access_allowed"] is False
+    assert ready_event.metadata["destructive_actions_allowed"] is False
+    assert ready_event.metadata["external_side_effect_allowed"] is False
 
 
 def test_tenant_module_admin_actions_require_admin_role_and_approval_reference() -> None:

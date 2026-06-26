@@ -110,6 +110,13 @@ from suite.platform.knowledge_base_runtime import (
     knowledge_base_runtime_activation_view,
     knowledge_base_runtime_reconciliation_view,
 )
+from suite.platform.legacy_sql_import_write_approval_gate import (
+    LegacySqlImportWriteApprovalGateStore,
+    LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    LegacySqlImportWriteApprovalRequestCommand,
+    build_default_legacy_sql_import_write_approval_gate_store,
+    build_legacy_sql_import_write_approval_request_boundary,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -788,6 +795,7 @@ def build_app() -> FastAPI:
     module_registry = build_default_module_registry()
     migration_manifest = load_migration_manifest()
     authz_admin_store = build_default_authz_admin_store()
+    legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -12948,6 +12956,67 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    @app.post(
+        "/v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary",
+        response_model=LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    )
+    def prepare_legacy_sql_import_write_approval_request_boundary(
+        command: LegacySqlImportWriteApprovalRequestCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlImportWriteApprovalRequestBoundaryResponse:
+        del gate
+        gate_store = cast(
+            LegacySqlImportWriteApprovalGateStore,
+            request.app.state.legacy_sql_import_write_approval_gate_store,
+        )
+        try:
+            approval_gate = gate_store.get(
+                tenant_id=context.user_context.tenant_id,
+                evidence_hash=command.approval_gate_evidence_hash,
+            )
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Legacy SQL import write approval gate evidence not found",
+            ) from exc
+        try:
+            boundary = build_legacy_sql_import_write_approval_request_boundary(
+                command=command,
+                gate_evidence=approval_gate,
+                tenant_id=context.user_context.tenant_id,
+                checked_by=context.user_context.user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.import_write_approval_request.boundary",
+            source_object_ids=[f"legacy_sql_import_write_approval_gate:{approval_gate.evidence_hash}"],
+            input_text=command.reason,
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only",
+                "approval_reference": command.approval_reference,
+                "approval_ticket_ref": command.approval_ticket_ref,
+                "approval_gate_evidence_hash": boundary.approval_gate_evidence_hash,
+                "approval_request_hash": boundary.approval_request_hash,
+                "approval_request_accepted": boundary.approval_request_accepted,
+                "approval_record_persistence_allowed": boundary.approval_record_persistence_allowed,
+                "import_write_execution_allowed": boundary.import_write_execution_allowed,
+                "raw_data_access_allowed": boundary.raw_data_access_allowed,
+                "destructive_actions_allowed": boundary.destructive_actions_allowed,
+                "external_side_effect_allowed": boundary.external_side_effect_allowed,
+                "boundary_status": boundary.boundary_status.value,
+            },
+        )
+        return boundary
+
     @app.get("/v1/admin/tenant-policy", response_model=TenantPolicy)
     def get_tenant_policy(
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
@@ -13426,6 +13495,7 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_activation_store = knowledge_base_runtime_activation_store
     app.state.knowledge_base_runtime_reconciliation_store = knowledge_base_runtime_reconciliation_store
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
+    app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

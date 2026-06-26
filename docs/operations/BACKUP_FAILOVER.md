@@ -468,6 +468,10 @@ change-control, rollback plan, and restore-drill hashes. It may allow only a fut
 execution, raw data access, import payloads, destructive actions, and external side effects stay false. Restore evidence
 must retain the Legacy SQL import write approval gate hash and smoke report hash when applicable.
 
+The Legacy SQL import write approval request boundary API is not a persistence domain yet. It reads stored approval gate
+evidence, returns metadata-only request-boundary evidence, and is recoverable through the audit log plus the retained
+approval gate evidence hash until a future approval-record store is explicitly added.
+
 Run the preview renderer recovery drill after preview decision or renderer evidence changes and after restore drills:
 
 ```bash
