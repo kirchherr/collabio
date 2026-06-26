@@ -123,6 +123,11 @@ Restore-Evidence und Audit-Referenzen. Beide Tabellen sind tenant-scoped, RLS-ge
 Run-Erstellung, Report-Freigabe, Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und
 externe Side Effects per DB-Check.
 
+`legacy_sql_migration_run_registry.py` bindet diese Tabellen als metadata-only Store-Adapter an. Der Adapter kann Run-
+und Report-Metadaten ueber Tenant, Evidence-Hash, Ref und Idempotency-Key lesen und schreiben, bleibt aber nicht-
+ausfuehrend: keine Run-Erstellung im API-Sinn, keine Report-Freigabe, keine Import-Write-Ausfuehrung, kein Rohdaten-
+oder Secret-Pfad und keine externen Side Effects.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.
