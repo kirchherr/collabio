@@ -11,6 +11,10 @@ from suite.platform.crm_accounts import (
     CrmAccountService,
     InMemoryCrmAccountRepository,
 )
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
+)
 
 
 def test_crm_account_records_require_compliance_metadata() -> None:
@@ -82,6 +86,8 @@ def test_crm_account_service_returns_only_current_tenant_and_audits_metadata_onl
         "object_type": CRM_ACCOUNT_OBJECT_TYPE,
         "candidate_count": 2,
         "result_contract": "metadata_only",
+        "persistent_metadata_contract": PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+        "persistent_metadata_required_fields": PERSISTENT_OBJECT_REQUIRED_FIELDS,
         "result_count": 2,
     }
 

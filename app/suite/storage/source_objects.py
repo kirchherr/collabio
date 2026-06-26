@@ -12,6 +12,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from suite.ai_control_plane.models import DataClass
 from suite.kms.adapter import KmsKeyReference, KmsKeyReferenceError
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
+    validate_persistent_object_metadata,
+)
 from suite.rag.models import SourceDocument
 from suite.rag.source_indexing import ResolvedSource
 from suite.storage.content_hash import ContentHashVerificationError, compute_content_hash, verify_content_hash
@@ -165,6 +169,7 @@ class SourceObjectMetadata(BaseModel):
 
     @model_validator(mode="after")
     def enforce_source_object_rules(self) -> Self:
+        validate_persistent_object_metadata(self)
         if self.object_type in {SourceObjectType.ATTACHMENT, SourceObjectType.COMMENT} and not self.parent_object_id:
             raise ValueError("attachments and comments require parent_object_id")
         if self.object_type == SourceObjectType.MAIL and self.mime_type != "message/rfc822":
@@ -666,24 +671,22 @@ class SourceObjectRepository(Protocol):
 
 
 class SourceObjectWriteGuard:
-    required_metadata_fields: tuple[str, ...] = (
-        "tenant_id",
-        "classification",
-        "retention_policy_id",
-        "kms_key_ref",
-        "manifest_hash",
-        "content_hash",
-    )
+    required_metadata_fields: tuple[str, ...] = (*PERSISTENT_OBJECT_REQUIRED_FIELDS, "manifest_hash", "content_hash")
+    source_object_required_metadata_fields: tuple[str, ...] = ("manifest_hash", "content_hash")
 
     def validate_before_write(self, record: SourceObjectRecord) -> None:
         metadata = record.metadata
+        try:
+            validate_persistent_object_metadata(metadata)
+        except ValueError as exc:
+            raise SourceObjectWriteDeniedError(str(exc)) from exc
         self._require_write_metadata(metadata)
         self._require_kms_reference(metadata)
         self._require_content_hash_match(record)
         self._require_manifest_hash_match(metadata)
 
     def _require_write_metadata(self, metadata: SourceObjectMetadata) -> None:
-        for field_name in self.required_metadata_fields:
+        for field_name in self.source_object_required_metadata_fields:
             value = getattr(metadata, field_name)
             if value is None:
                 raise SourceObjectWriteDeniedError(f"{field_name} is required for storage write")
