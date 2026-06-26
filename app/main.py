@@ -509,6 +509,7 @@ from suite.platform.product_cockpit import (
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_dry_run_response as build_activation_dry_run_response,  # noqa: E501
 )
+from suite.platform.roadmap_dashboard import RoadmapDashboardResponse, build_roadmap_dashboard_response
 from suite.platform.runtime import suite_auth_mode
 from suite.platform.source_object_details import (
     SourceObjectDetailAccessDenied,
@@ -711,10 +712,16 @@ def require_module_api_gate(
 def build_app() -> FastAPI:
     app = FastAPI(title="Compliance-First Enterprise Suite", version="0.1.0")
     workspace_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "workspace"
+    roadmap_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "roadmap"
     app.mount(
         "/workspace/assets",
         StaticFiles(directory=workspace_ui_dir),
         name="workspace-assets",
+    )
+    app.mount(
+        "/roadmap/assets",
+        StaticFiles(directory=roadmap_ui_dir),
+        name="roadmap-assets",
     )
 
     data_dir = suite_data_dir()
@@ -833,6 +840,10 @@ def build_app() -> FastAPI:
     def workspace_shell() -> FileResponse:
         return FileResponse(workspace_ui_dir / "index.html")
 
+    @app.get("/roadmap", response_class=FileResponse)
+    def roadmap_shell() -> FileResponse:
+        return FileResponse(roadmap_ui_dir / "index.html")
+
     @app.get("/v1/platform/modules", response_model=PlatformModulesResponse)
     def list_platform_modules(
         request: Request,
@@ -840,6 +851,30 @@ def build_app() -> FastAPI:
     ) -> PlatformModulesResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
         return module_registry.discover_tenant_modules(context.user_context.tenant_id)
+
+    @app.get("/v1/platform/roadmap", response_model=RoadmapDashboardResponse)
+    def roadmap_dashboard(
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> RoadmapDashboardResponse:
+        response = build_roadmap_dashboard_response(user_context=context.user_context)
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.roadmap.dashboard",
+            source_object_ids=[],
+            metadata={
+                "surface": "roadmap_ui",
+                "result_contract": "metadata_only_foundation_roadmap_dashboard",
+                "schema_version": response.schema_version,
+                "foundation_ready_count": response.summary.foundation_ready_count,
+                "planned_count": response.summary.planned_count,
+                "deferred_count": response.summary.deferred_count,
+                "content_included": response.content_included,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
 
     @app.get("/v1/platform/cockpit", response_model=ProductCockpitResponse)
     def product_cockpit(

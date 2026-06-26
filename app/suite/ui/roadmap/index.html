@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Collabio Roadmap</title>
+    <link rel="stylesheet" href="/roadmap/assets/roadmap.css?v=2" />
+  </head>
+  <body>
+    <div class="roadmap-shell">
+      <aside class="roadmap-sidebar" aria-label="Navigation">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">C</div>
+          <div>
+            <div class="brand-name">Collabio</div>
+            <div class="brand-meta">Foundation Roadmap</div>
+          </div>
+        </div>
+        <nav class="nav-stack" aria-label="Bereiche">
+          <a class="nav-item" href="/workspace">
+            <span class="nav-icon" aria-hidden="true">M</span>
+            Workspace
+          </a>
+          <a class="nav-item active" href="/roadmap">
+            <span class="nav-icon" aria-hidden="true">R</span>
+            Roadmap
+          </a>
+        </nav>
+      </aside>
+
+      <main class="roadmap-main">
+        <header class="roadmap-header">
+          <div>
+            <p class="eyebrow">Online Überblick</p>
+            <h1>Foundation Roadmap</h1>
+          </div>
+          <button class="icon-button" type="button" id="refresh-button" title="Aktualisieren" aria-label="Aktualisieren">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a8 8 0 1 1-2.34-5.66" />
+              <path d="M20 4v7h-7" />
+            </svg>
+          </button>
+        </header>
+
+        <section class="tenant-band" aria-label="Tenant Kontext">
+          <label>
+            Tenant
+            <input id="tenant-id" autocomplete="off" value="tenant-demo" />
+          </label>
+          <label>
+            User
+            <input id="user-id" autocomplete="off" value="user-demo" />
+          </label>
+          <label>
+            Rollen
+            <input id="role-ids" autocomplete="off" value="tenant-admin" />
+          </label>
+        </section>
+
+        <div class="status-line" id="status-line" role="status">Bereit</div>
+
+        <section class="summary-band" id="summary-band" aria-label="Foundation Zusammenfassung"></section>
+
+        <section class="filter-band" aria-label="Status Filter">
+          <button class="filter-button active" type="button" data-status-filter="all">Alle</button>
+          <button class="filter-button" type="button" data-status-filter="operational">Operational</button>
+          <button class="filter-button" type="button" data-status-filter="metadata_only">Metadata-only</button>
+          <button class="filter-button" type="button" data-status-filter="guarded">Guarded</button>
+          <button class="filter-button" type="button" data-status-filter="planned">Planned</button>
+          <button class="filter-button" type="button" data-status-filter="deferred">Deferred</button>
+        </section>
+
+        <section class="overview-layout" aria-label="Roadmap Inhalte">
+          <div class="group-stack" id="group-stack" aria-live="polite"></div>
+          <aside class="detail-panel" id="detail-panel" aria-label="Capability Detail">
+            <div class="empty-state">Keine Capability ausgewählt.</div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="/roadmap/assets/roadmap.js?v=2" defer></script>
+  </body>
+</html>

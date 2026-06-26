@@ -596,6 +596,98 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "Welcome message source" not in js_response.text
 
 
+def test_roadmap_shell_serves_static_foundation_overview_ui() -> None:
+    response = client.get("/roadmap")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Foundation Roadmap" in response.text
+    assert "summary-band" in response.text
+    assert "group-stack" in response.text
+    assert "detail-panel" in response.text
+    assert "/roadmap/assets/roadmap.css" in response.text
+    assert "/roadmap/assets/roadmap.js" in response.text
+    assert "Board pack draft source content" not in response.text
+    assert "Welcome message source" not in response.text
+
+
+def test_roadmap_shell_assets_call_metadata_only_roadmap_api() -> None:
+    css_response = client.get("/roadmap/assets/roadmap.css")
+    js_response = client.get("/roadmap/assets/roadmap.js")
+
+    assert css_response.status_code == 200
+    assert ".roadmap-shell" in css_response.text
+    assert ".summary-band" in css_response.text
+    assert ".overview-layout" in css_response.text
+    assert ".capability-row" in css_response.text
+    assert ".detail-panel" in css_response.text
+    assert "gradient" not in css_response.text.lower()
+    assert js_response.status_code == 200
+    assert "/v1/platform/roadmap" in js_response.text
+    assert "platform_roadmap_dashboard.v1" not in js_response.text
+    assert "content_included" not in js_response.text
+    assert "destructive" not in js_response.text
+    assert "external_side_effect" not in js_response.text
+    assert "X-Tenant-Id" in js_response.text
+    assert "X-User-Id" in js_response.text
+    assert "X-Role-Ids" in js_response.text
+    assert "data-status-filter" in js_response.text
+    assert "data-capability-id" in js_response.text
+    assert "Board pack draft source content" not in js_response.text
+    assert "Welcome message source" not in js_response.text
+
+
+def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without_content() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/roadmap", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "platform_roadmap_dashboard.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["current_focus"] == "crm_erp_vertical_slice_after_foundation"
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["summary"]["foundation_ready_count"] >= 10
+    assert body["summary"]["total_count"] == sum(len(group["capabilities"]) for group in body["groups"])
+    capabilities = [capability for group in body["groups"] for capability in group["capabilities"]]
+    capability_ids = {capability["capability_id"] for capability in capabilities}
+    assert {
+        "tenant_authz",
+        "module_registry",
+        "workspace_cockpit",
+        "knowledge_base",
+        "crm_erp_first_slices",
+        "legacy_migration_registry",
+        "office_mail_clients",
+    }.issubset(capability_ids)
+    legacy_registry = next(
+        capability for capability in capabilities if capability["capability_id"] == "legacy_migration_registry"
+    )
+    assert legacy_registry["status"] == "metadata_only"
+    assert "/v1/admin/crm-erp/legacy-sql/migration-runs" in legacy_registry["api_routes"]
+    assert "/v1/admin/crm-erp/legacy-sql/migration-reports" in legacy_registry["api_routes"]
+    assert "import_write_execution_false" in legacy_registry["guardrails"]
+    assert "full_office_suite_client" in body["deferred_scope"]
+    assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type == "platform.roadmap.dashboard"]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_foundation_roadmap_dashboard"
+    assert event.metadata["foundation_ready_count"] == body["summary"]["foundation_ready_count"]
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+
+
 def test_tenant_data_endpoints_require_request_context() -> None:
     response = client.post("/v1/ai/inference", json={"input_text": "Bitte zusammenfassen."})
     assert response.status_code == 401
