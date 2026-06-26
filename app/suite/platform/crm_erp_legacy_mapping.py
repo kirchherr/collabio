@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Self
 
@@ -17,8 +18,18 @@ from suite.platform.legacy_sql_discovery import (
     LegacySqlImportEvidencePlan,
     LegacySqlObjectCandidate,
 )
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
+    validate_persistent_object_metadata,
+)
 
 CRM_ERP_MODULE_ID = "crm_erp"
+CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION = "crm_erp_legacy_staging_metadata_plan.v1"
+CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_SCHEMA_VERSION = "crm_erp_legacy_staging_metadata_profile.v1"
+CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE = "legacy.sql_staging_metadata_profile"
+CRM_ERP_LEGACY_STAGING_SOURCE_SYSTEM = "legacy_sql"
+LEGACY_STAGING_ROW_HASH_TOKEN = "{source_row_hash}"
 OBJECT_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 FEATURE_ID_PATTERN = re.compile(r"^crm_erp\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 RETENTION_POLICY_PATTERN = re.compile(r"^rp-[a-z0-9][a-z0-9_-]*$")
@@ -362,6 +373,231 @@ class CrmErpLegacyImportReadinessEvidence(BaseModel):
         return self
 
 
+class CrmErpLegacyStagingMetadataProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    object_id: str
+    object_type: str = CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE
+    owner_principal_id: str
+    created_by: str
+    created_at_utc: str
+    updated_at_utc: str
+    classification: DataClass
+    retention_policy_id: str
+    legal_hold_state: str = "none"
+    lifecycle_state: str = "staged"
+    kms_key_ref: str
+    audit_chain_ref: str
+    source_system: str = CRM_ERP_LEGACY_STAGING_SOURCE_SYSTEM
+    source_system_ref: str
+    source_table_ref: str
+    target_object_type: str
+    target_schema_version: str
+    feature_id: str
+    row_object_id_template: str
+    metadata_contract: str = PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION
+    required_metadata_fields: tuple[str, ...] = PERSISTENT_OBJECT_REQUIRED_FIELDS
+    metadata_field_sources: dict[str, str]
+    quarantine_required: bool
+    dry_run_required: bool = True
+    import_write_allowed: bool = False
+    raw_data_import_allowed: bool = False
+    destructive_actions_allowed: bool = False
+    schema_version: str = CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_SCHEMA_VERSION
+
+    @field_validator("tenant_id", "object_id", "owner_principal_id", "created_by", "target_schema_version")
+    @classmethod
+    def require_non_empty_profile_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("staging metadata profile fields must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy staging metadata profiles only apply to module crm_erp")
+        return value
+
+    @field_validator("object_type")
+    @classmethod
+    def require_profile_object_type(cls, value: str) -> str:
+        if value != CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE:
+            raise ValueError("staging metadata profile object_type is fixed")
+        return value
+
+    @field_validator("source_system")
+    @classmethod
+    def require_legacy_sql_source_system(cls, value: str) -> str:
+        if value != CRM_ERP_LEGACY_STAGING_SOURCE_SYSTEM:
+            raise ValueError("staging metadata profile source_system must be legacy_sql")
+        return value
+
+    @field_validator("source_system_ref", "kms_key_ref", "audit_chain_ref")
+    @classmethod
+    def validate_profile_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("staging metadata profile references must be namespaced")
+        return value
+
+    @field_validator("source_table_ref")
+    @classmethod
+    def validate_profile_source_table_ref(cls, value: str) -> str:
+        validate_table_ref(value)
+        return value
+
+    @field_validator("target_object_type")
+    @classmethod
+    def validate_profile_target_object_type(cls, value: str) -> str:
+        if not OBJECT_TYPE_PATTERN.fullmatch(value):
+            raise ValueError("staging metadata profile target object type must be namespaced")
+        return value
+
+    @field_validator("feature_id")
+    @classmethod
+    def validate_profile_feature_id(cls, value: str) -> str:
+        if not FEATURE_ID_PATTERN.fullmatch(value):
+            raise ValueError("staging metadata profile feature ID must start with crm_erp")
+        return value
+
+    @field_validator("retention_policy_id")
+    @classmethod
+    def validate_profile_retention_policy_id(cls, value: str) -> str:
+        if not RETENTION_POLICY_PATTERN.fullmatch(value):
+            raise ValueError("retention_policy_id must be a known policy-style reference")
+        return value
+
+    @field_validator("row_object_id_template")
+    @classmethod
+    def require_row_hash_template(cls, value: str) -> str:
+        if LEGACY_STAGING_ROW_HASH_TOKEN not in value:
+            raise ValueError("row_object_id_template must contain source row hash token")
+        return value
+
+    @field_validator("metadata_contract")
+    @classmethod
+    def require_persistent_metadata_contract(cls, value: str) -> str:
+        if value != PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION:
+            raise ValueError("metadata_contract must reference persistent object metadata")
+        return value
+
+    @field_validator("required_metadata_fields")
+    @classmethod
+    def require_all_persistent_metadata_fields(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        missing = sorted(set(PERSISTENT_OBJECT_REQUIRED_FIELDS) - set(value))
+        if missing:
+            raise ValueError(f"staging profile missing persistent metadata fields: {', '.join(missing)}")
+        return value
+
+    @field_validator("metadata_field_sources")
+    @classmethod
+    def require_metadata_field_sources(cls, value: dict[str, str]) -> dict[str, str]:
+        missing = sorted(set(PERSISTENT_OBJECT_REQUIRED_FIELDS) - set(value))
+        if missing:
+            raise ValueError(f"staging profile missing metadata field sources: {', '.join(missing)}")
+        for field_name in PERSISTENT_OBJECT_REQUIRED_FIELDS:
+            if not str(value[field_name]).strip():
+                raise ValueError("staging profile metadata field sources must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_staging_metadata_profile(self) -> Self:
+        validate_persistent_object_metadata(
+            self,
+            expected_object_type=CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE,
+            expected_schema_version=CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_SCHEMA_VERSION,
+            expected_classification=self.classification,
+        )
+        if self.import_write_allowed or self.raw_data_import_allowed or self.destructive_actions_allowed:
+            raise ValueError("legacy staging metadata profiles must not allow import writes or destructive actions")
+        if not self.dry_run_required:
+            raise ValueError("legacy staging metadata profiles require dry-run validation")
+        return self
+
+
+class CrmErpLegacyStagingMetadataPlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    discovery_manifest_hash: str
+    mapping_manifest_hash: str
+    metadata_contract: str = PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION
+    required_metadata_fields: tuple[str, ...] = PERSISTENT_OBJECT_REQUIRED_FIELDS
+    profile_count: int
+    profiles: tuple[CrmErpLegacyStagingMetadataProfile, ...]
+    dry_run_required: bool = True
+    import_write_allowed: bool = False
+    raw_data_import_allowed: bool = False
+    destructive_actions_allowed: bool = False
+    manifest_hash: str
+    schema_version: str = CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION
+
+    @field_validator("tenant_id")
+    @classmethod
+    def require_tenant_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("tenant_id must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy staging metadata plan only applies to module crm_erp")
+        return value
+
+    @field_validator("source_system_ref", "discovery_manifest_hash", "mapping_manifest_hash", "manifest_hash")
+    @classmethod
+    def validate_plan_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy staging metadata plan references must be namespaced")
+        return value
+
+    @field_validator("metadata_contract")
+    @classmethod
+    def require_plan_metadata_contract(cls, value: str) -> str:
+        if value != PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION:
+            raise ValueError("metadata_contract must reference persistent object metadata")
+        return value
+
+    @field_validator("required_metadata_fields")
+    @classmethod
+    def require_plan_metadata_fields(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        missing = sorted(set(PERSISTENT_OBJECT_REQUIRED_FIELDS) - set(value))
+        if missing:
+            raise ValueError(f"legacy staging metadata plan missing fields: {', '.join(missing)}")
+        return value
+
+    @model_validator(mode="after")
+    def require_complete_staging_metadata_plan(self) -> Self:
+        if self.import_write_allowed or self.raw_data_import_allowed or self.destructive_actions_allowed:
+            raise ValueError("legacy staging metadata plan must not allow import writes or destructive actions")
+        if not self.dry_run_required:
+            raise ValueError("legacy staging metadata plan requires dry-run validation")
+        if not self.profiles:
+            raise ValueError("legacy staging metadata plan requires at least one profile")
+        if self.profile_count != len(self.profiles):
+            raise ValueError("legacy staging metadata profile_count must match profiles")
+        object_ids = [profile.object_id for profile in self.profiles]
+        if len(set(object_ids)) != len(object_ids):
+            raise ValueError("legacy staging metadata profile object_ids must be unique")
+        table_refs = [profile.source_table_ref.lower() for profile in self.profiles]
+        if len(set(table_refs)) != len(table_refs):
+            raise ValueError("legacy staging metadata profiles must be unique per source table")
+        for profile in self.profiles:
+            if profile.tenant_id != self.tenant_id:
+                raise ValueError("legacy staging metadata profile tenant mismatch")
+            if profile.module_id != self.module_id:
+                raise ValueError("legacy staging metadata profile module mismatch")
+            if profile.source_system_ref != self.source_system_ref:
+                raise ValueError("legacy staging metadata profile source-system mismatch")
+        return self
+
+
 class CrmErpLegacyMappingEvidenceService:
     def __init__(
         self,
@@ -648,6 +884,141 @@ def build_crm_erp_legacy_import_readiness_evidence(
         evidence_hash="sha256:pending",
     )
     return draft.model_copy(update={"evidence_hash": _hash_readiness_model(draft)})
+
+
+def build_crm_erp_legacy_staging_metadata_plan(
+    *,
+    discovery_manifest: LegacySqlDiscoveryManifest,
+    mapping_manifest: CrmErpLegacyMappingManifest,
+    captured_at_utc: datetime | None = None,
+) -> CrmErpLegacyStagingMetadataPlan:
+    _validate_staging_metadata_inputs(discovery_manifest=discovery_manifest, mapping_manifest=mapping_manifest)
+    captured_at = _utc_text(captured_at_utc or datetime.now(UTC))
+    profiles = tuple(
+        _build_staging_metadata_profile(
+            discovery_manifest=discovery_manifest,
+            mapping_manifest=mapping_manifest,
+            decision=decision,
+            captured_at_utc=captured_at,
+        )
+        for decision in mapping_manifest.decisions
+    )
+    draft = CrmErpLegacyStagingMetadataPlan(
+        tenant_id=discovery_manifest.tenant_id,
+        source_system_ref=discovery_manifest.source_system_ref,
+        discovery_manifest_hash=discovery_manifest.manifest_hash,
+        mapping_manifest_hash=mapping_manifest.manifest_hash,
+        profile_count=len(profiles),
+        profiles=profiles,
+        manifest_hash="sha256:pending",
+    )
+    return draft.model_copy(update={"manifest_hash": _hash_staging_metadata_plan(draft)})
+
+
+def _validate_staging_metadata_inputs(
+    *,
+    discovery_manifest: LegacySqlDiscoveryManifest,
+    mapping_manifest: CrmErpLegacyMappingManifest,
+) -> None:
+    if mapping_manifest.tenant_id != discovery_manifest.tenant_id:
+        raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest tenant mismatch")
+    if mapping_manifest.module_id != discovery_manifest.module_id:
+        raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest module mismatch")
+    if mapping_manifest.source_system_ref != discovery_manifest.source_system_ref:
+        raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest source-system mismatch")
+    if mapping_manifest.discovery_manifest_hash != discovery_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError(
+            "staging metadata mapping manifest does not reference discovery manifest"
+        )
+    if _hash_mapping_model(mapping_manifest, exclude_manifest_hash=True) != mapping_manifest.manifest_hash:
+        raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest hash invalid")
+    if mapping_manifest.raw_data_import_allowed or mapping_manifest.destructive_actions_allowed:
+        raise CrmErpLegacyMappingEvidenceError("staging metadata mapping manifest must not allow unsafe actions")
+
+
+def _build_staging_metadata_profile(
+    *,
+    discovery_manifest: LegacySqlDiscoveryManifest,
+    mapping_manifest: CrmErpLegacyMappingManifest,
+    decision: CrmErpLegacyTableMappingDecision,
+    captured_at_utc: str,
+) -> CrmErpLegacyStagingMetadataProfile:
+    return CrmErpLegacyStagingMetadataProfile(
+        tenant_id=discovery_manifest.tenant_id,
+        object_id=_staging_profile_object_id(
+            mapping_manifest_hash=mapping_manifest.manifest_hash,
+            source_table_ref=decision.source_table_ref,
+        ),
+        owner_principal_id=discovery_manifest.requested_by,
+        created_by=discovery_manifest.requested_by,
+        created_at_utc=captured_at_utc,
+        updated_at_utc=captured_at_utc,
+        classification=decision.classification,
+        retention_policy_id=decision.retention_policy_id,
+        legal_hold_state="none",
+        lifecycle_state="staged" if not decision.quarantine_required else "quarantined",
+        kms_key_ref=f"kms:{discovery_manifest.tenant_id}:{decision.classification.value}:legacy-sql-staging",
+        audit_chain_ref=discovery_manifest.audit_chain_ref,
+        source_system_ref=discovery_manifest.source_system_ref,
+        source_table_ref=decision.source_table_ref,
+        target_object_type=decision.target_object_type,
+        target_schema_version=_target_schema_version(decision.target_object_type),
+        feature_id=decision.feature_id,
+        row_object_id_template=_row_object_id_template(
+            source_system_ref=discovery_manifest.source_system_ref,
+            source_table_ref=decision.source_table_ref,
+        ),
+        metadata_field_sources=_legacy_staging_metadata_field_sources(),
+        quarantine_required=decision.quarantine_required,
+    )
+
+
+def _staging_profile_object_id(*, mapping_manifest_hash: str, source_table_ref: str) -> str:
+    return "legacy-staging-profile:" + stable_hash(
+        canonical_json(
+            {
+                "mapping_manifest_hash": mapping_manifest_hash,
+                "source_table_ref": source_table_ref,
+            }
+        )
+    )
+
+
+def _row_object_id_template(*, source_system_ref: str, source_table_ref: str) -> str:
+    return f"legacy-row:{source_system_ref}:{source_table_ref}:{LEGACY_STAGING_ROW_HASH_TOKEN}"
+
+
+def _target_schema_version(target_object_type: str) -> str:
+    return f"{target_object_type.replace('.', '_')}.legacy_import.v1"
+
+
+def _legacy_staging_metadata_field_sources() -> dict[str, str]:
+    return {
+        "tenant_id": "discovery_manifest.tenant_id",
+        "object_id": "legacy_row_id_template",
+        "object_type": "mapping_decision.target_object_type",
+        "owner_principal_id": "discovery_manifest.requested_by",
+        "created_by": "legacy_import_worker",
+        "created_at_utc": "legacy_import_capture_clock",
+        "updated_at_utc": "legacy_import_capture_clock",
+        "classification": "mapping_decision.classification",
+        "retention_policy_id": "mapping_decision.retention_policy_id",
+        "legal_hold_state": "tenant_policy_or_manual_override",
+        "lifecycle_state": "legacy_staging_lifecycle",
+        "kms_key_ref": "tenant_kms_policy",
+        "audit_chain_ref": "discovery_manifest.audit_chain_ref",
+        "source_system": "legacy_sql",
+        "schema_version": "target_schema_version",
+    }
+
+
+def _hash_staging_metadata_plan(model: CrmErpLegacyStagingMetadataPlan) -> str:
+    payload = model.model_dump(mode="json", exclude={"manifest_hash"})
+    return stable_hash(canonical_json(payload))
+
+
+def _utc_text(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def default_crm_erp_target_profiles() -> dict[str, CrmErpTargetObjectProfile]:

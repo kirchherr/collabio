@@ -70,6 +70,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0036",
         "0037",
         "0038",
+        "0039",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -84,7 +85,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 17
+    assert len(core_migrations) == len(load_migrations()) - 18
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -96,6 +97,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0036",
         "0037",
         "0038",
+        "0039",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -1488,6 +1490,71 @@ def test_source_object_preview_renderer_release_gate_migration_is_metadata_only_
     assert "output_text" not in sql
     assert "raw_payload" not in sql
     assert "content_bytes" not in sql
+
+
+def test_crm_erp_legacy_staging_metadata_profiles_migration_declares_contract_and_rls() -> None:
+    migration = get_migration("0039")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.staging_metadata_profiles")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "source_system_ref",
+        "source_table_ref",
+        "target_object_type",
+        "target_schema_version",
+        "row_object_id_template",
+        "metadata_contract",
+        "required_metadata_fields",
+        "metadata_field_sources",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "plan_manifest_hash",
+    ]:
+        assert column in table
+    assert "persistent_object_metadata.v1" in table
+    assert "legacy.sql_staging_metadata_profile" in table
+    assert "crm_erp_legacy_staging_metadata_profile.v1" in table
+    assert "source_system = 'legacy_sql'" in table
+    assert "row_object_id_template like '%{source_row_hash}%'" in table
+    assert "required_metadata_fields @> array" in table
+    assert "'classification'" in table
+    assert "metadata_field_sources ?& array" in table
+    assert "import_write_allowed boolean not null default false check (import_write_allowed = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "alter table crm_erp_legacy.staging_metadata_profiles enable row level security" in sql
+    assert "alter table crm_erp_legacy.staging_metadata_profiles force row level security" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_tenant_select" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_no_update" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.staging_metadata_profiles to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.staging_metadata_profiles to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert "where module_id = 'crm_erp'" in sql
+    assert '"0039"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

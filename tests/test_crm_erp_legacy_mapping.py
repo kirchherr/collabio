@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from suite.ai_control_plane.models import DataClass
 from suite.platform.crm_erp_legacy_mapping import (
+    CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION,
+    CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE,
     CrmErpLegacyImportReadinessStatus,
     CrmErpLegacyMappingAction,
     CrmErpLegacyMappingEvidenceError,
     CrmErpLegacyMappingEvidenceService,
     CrmErpLegacyMappingOverride,
     build_crm_erp_legacy_import_readiness_evidence,
+    build_crm_erp_legacy_staging_metadata_plan,
     default_crm_erp_target_profiles,
 )
 from suite.platform.legacy_sql_discovery import (
@@ -21,6 +26,10 @@ from suite.platform.legacy_sql_discovery import (
     LegacySqlImportEvidencePlan,
     LegacySqlSchemaSnapshot,
     LegacySqlTableMetadata,
+)
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
 )
 
 
@@ -178,6 +187,68 @@ def test_crm_erp_import_readiness_requires_manual_mapping_for_quarantined_legacy
     assert readiness.evidence_hash.startswith("sha256:")
     assert "KundenId" not in readiness.model_dump_json()
     assert "Email" not in readiness.model_dump_json()
+
+
+def test_crm_erp_legacy_staging_metadata_plan_derives_persistent_profiles() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(discovery_manifest=manifest, import_evidence_plan=plan)
+
+    staging_plan = build_crm_erp_legacy_staging_metadata_plan(
+        discovery_manifest=manifest,
+        mapping_manifest=mapping,
+        captured_at_utc=datetime(2026, 6, 20, 10, tzinfo=UTC),
+    )
+
+    assert staging_plan.schema_version == CRM_ERP_LEGACY_STAGING_METADATA_PLAN_SCHEMA_VERSION
+    assert staging_plan.metadata_contract == PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION
+    assert staging_plan.required_metadata_fields == PERSISTENT_OBJECT_REQUIRED_FIELDS
+    assert staging_plan.profile_count == 2
+    assert staging_plan.manifest_hash.startswith("sha256:")
+    assert staging_plan.dry_run_required
+    assert not staging_plan.import_write_allowed
+    assert not staging_plan.raw_data_import_allowed
+    assert not staging_plan.destructive_actions_allowed
+
+    profiles_by_table = {profile.source_table_ref: profile for profile in staging_plan.profiles}
+    kunden = profiles_by_table["dbo.Kunden"]
+    freie_tabelle = profiles_by_table["dbo.FreieTabelle"]
+
+    assert kunden.object_type == CRM_ERP_LEGACY_STAGING_METADATA_PROFILE_OBJECT_TYPE
+    assert kunden.target_object_type == "crm.account"
+    assert kunden.classification == DataClass.PERSONAL
+    assert kunden.retention_policy_id == "rp-standard"
+    assert kunden.lifecycle_state == "staged"
+    assert kunden.kms_key_ref == "kms:tenant-1:personal:legacy-sql-staging"
+    assert kunden.source_system == "legacy_sql"
+    assert kunden.schema_version == "crm_erp_legacy_staging_metadata_profile.v1"
+    assert "{source_row_hash}" in kunden.row_object_id_template
+    assert kunden.metadata_field_sources["object_id"] == "legacy_row_id_template"
+    assert set(PERSISTENT_OBJECT_REQUIRED_FIELDS).issubset(kunden.metadata_field_sources)
+
+    assert freie_tabelle.target_object_type == "legacy.row"
+    assert freie_tabelle.classification == DataClass.CONFIDENTIAL
+    assert freie_tabelle.retention_policy_id == "rp-restricted"
+    assert freie_tabelle.quarantine_required
+    assert freie_tabelle.lifecycle_state == "quarantined"
+    assert not freie_tabelle.import_write_allowed
+
+    plan_json = staging_plan.model_dump_json()
+    assert "Email" not in plan_json
+    assert "KundenId" not in plan_json
+    assert "sample" not in plan_json.lower()
+
+
+def test_crm_erp_legacy_staging_metadata_plan_rejects_broken_mapping_chain() -> None:
+    manifest, plan = discovery_manifest_and_plan()
+    service = CrmErpLegacyMappingEvidenceService()
+    mapping = service.build_mapping_manifest(
+        discovery_manifest=manifest,
+        import_evidence_plan=plan,
+    ).model_copy(update={"discovery_manifest_hash": "sha256:" + "9" * 64})
+
+    with pytest.raises(CrmErpLegacyMappingEvidenceError, match="does not reference discovery manifest"):
+        build_crm_erp_legacy_staging_metadata_plan(discovery_manifest=manifest, mapping_manifest=mapping)
 
 
 def test_crm_erp_import_readiness_allows_metadata_dry_run_after_approved_mapping_override() -> None:

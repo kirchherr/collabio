@@ -80,6 +80,14 @@ Das Manifest enthaelt Zielobjekt, Feature-Gate, Data Class, Retention Policy, Qu
 zu einem Dry-Run-Gate zusammen. Nur eine konsistente Evidence-Kette ohne Quarantaene- oder `legacy.row`-Blocker wird als
 `ready_for_dry_run` markiert; alle anderen Zustaende bleiben manuell reviewpflichtig oder hart blockiert.
 
+`build_crm_erp_legacy_staging_metadata_plan` erzeugt vor jedem echten Import einen metadata-only Staging-Contract.
+Jede Quell-Tabelle erhaelt ein persistentes `crm_erp_legacy_staging_metadata_profile.v1` mit
+`persistent_object_metadata.v1` Pflichtfeldern, Row-ID-Template, Zielobjekt, Klassifikation, Retention Policy,
+Legal-Hold-/Lifecycle-Default, KMS-Ref, Audit-Ref und Feldquellen fuer spaetere Row-Materialisierung. Das Profil
+erlaubt weiterhin keine Rohdaten, keine Sample Values, keine Import-Writes und keine destruktiven Aktionen. Migration
+`0039_crm_erp_legacy_staging_metadata_profiles.sql` persistiert diese Profile tenant-scoped mit RLS und Append-only
+Policies in `crm_erp_legacy.staging_metadata_profiles`.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-

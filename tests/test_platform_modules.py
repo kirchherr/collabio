@@ -902,10 +902,19 @@ def test_build_default_module_registry_selects_backend_from_env() -> None:
 def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_database: LiveDatabase) -> None:
     registry = PgModuleRegistry(database_dsn=live_database.app_dsn)
 
+    crm_erp_catalog_entry = registry.get_catalog_entry("crm_erp")
     knowledge_base_catalog = registry.get_catalog_entry("knowledge_base")
     response = registry.discover_tenant_modules("tenant-demo")
     module_ids = {module.module_id for module in response.modules}
 
+    assert crm_erp_catalog_entry.required_migration_versions[-6:] == (
+        "0034",
+        "0035",
+        "0036",
+        "0037",
+        "0038",
+        "0039",
+    )
     assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
     assert module_ids >= {"crm_erp", "knowledge_base"}
     assert all(module.status == ModuleStatus.AVAILABLE for module in response.modules)

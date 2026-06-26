@@ -345,6 +345,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-metadata-connection-probe-live-adapter",
         ),
     ),
+    SqlMigration(
+        version="0039",
+        name="crm_erp_legacy_staging_metadata_profiles",
+        resource_name="0039_crm_erp_legacy_staging_metadata_profiles.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:crm-erp-legacy-staging-metadata-profiles",
+        ),
+    ),
 )
 
 
