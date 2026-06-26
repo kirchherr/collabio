@@ -365,6 +365,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:crm-erp-legacy-import-dry-run-plan",
         ),
     ),
+    SqlMigration(
+        version="0041",
+        name="crm_erp_legacy_import_dry_run_results",
+        resource_name="0041_crm_erp_legacy_import_dry_run_results.sql",
+        module_id="crm_erp",
+        evidence_refs=(
+            "doc:legacy-sql-discovery",
+            "test:legacy-sql-import-dry-run-worker",
+        ),
+    ),
 )
 
 

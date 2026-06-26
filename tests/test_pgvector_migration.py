@@ -72,6 +72,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0038",
         "0039",
         "0040",
+        "0041",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -86,7 +87,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 19
+    assert len(core_migrations) == len(load_migrations()) - 20
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -100,6 +101,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0038",
         "0039",
         "0040",
+        "0041",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
@@ -1616,6 +1618,69 @@ def test_crm_erp_legacy_import_dry_run_plans_migration_declares_gate_and_rls() -
     assert "sample values" in sql
     assert "secret references" in sql
     assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_dry_run_results_migration_declares_store_and_rls() -> None:
+    migration = get_migration("0041")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_dry_run_results")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "dry_run_plan_hash",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "readiness_evidence_hash",
+        "staging_metadata_plan_hash",
+        "status",
+        "table_result_count",
+        "expected_table_count",
+        "table_results",
+        "blocking_reasons",
+        "row_count_strategy",
+        "checksum_strategy",
+        "audit_event_types",
+        "metadata_only_ok",
+        "dry_run_execution_attempted",
+        "dry_run_execution_completed",
+        "result_evidence",
+        "result_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "legacy_sql_import_dry_run_result.v1" in table
+    assert "completed_metadata_only" in table
+    assert "blocked_by_plan" in table
+    assert "exact_read_only_count_query" in table
+    assert "sha256_canonical_row_hash_manifest" in table
+    assert "jsonb_array_length(table_results) = table_result_count" in table
+    assert "metadata_only_ok boolean not null default true check (metadata_only_ok)" in table
+    assert "real_connection_used boolean not null default false check (real_connection_used = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "import_write_executed boolean not null default false check (import_write_executed = false)" in table
+    assert "destructive_actions_executed boolean not null default false check" in table
+    assert "not (result_evidence ? 'connection_secret_ref')" in table
+    assert "not (result_evidence ? 'raw_payload')" in table
+    assert "alter table crm_erp_legacy.import_dry_run_results enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_dry_run_results force row level security" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_no_update" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_results to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_results to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0041"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
     assert "content_bytes" not in sql
     assert "prompt_text" not in sql
     assert "output_text" not in sql

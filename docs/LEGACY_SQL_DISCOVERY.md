@@ -95,6 +95,12 @@ die Readiness-Evidence nicht `ready_for_dry_run` ist. Migration `0040_crm_erp_le
 persistiert diese Plaene tenant-scoped, append-only und ohne Rohdaten, Sample Values, Import-Writes oder destruktive
 Aktionen. Die echte Worker-Ausfuehrung bleibt ein eigenes spaeteres Gate.
 
+`suite.platform.legacy_sql_import_dry_run_worker` fuehrt dieses Gate nun als metadata-only Worker aus. Der Worker
+verarbeitet nur freigegebene Dry-Run-Plaene, schreibt `legacy_sql_import_dry_run_result.v1` in den Ergebnis-Store,
+verlangt Row-Count-Beobachtungen und Checksum-Manifest-Hashes je Tabelle und gibt fuer blockierte Plaene nur
+Blockgruende aus. Migration `0041_crm_erp_legacy_import_dry_run_results.sql` persistiert Resultate tenant-scoped,
+append-only und weiterhin ohne Rohdaten, Secret-Refs, Import-Writes oder destruktive Aktionen.
+
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
 bis zur Readiness-Evidence und beweist beide Gate-Zustaende: Quarantaene blockiert Dry-Run, eine genehmigte Mapping-

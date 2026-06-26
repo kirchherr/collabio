@@ -1038,7 +1038,8 @@ CRM/ERP `crm_erp`:
 - [x] Pflichtmetadaten-Contract auf weitere Modul-Write-Slices und Migration-Staging ausweiten, bevor neue persistente Fachobjekte eingefuehrt werden.
 - [x] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
 - [x] Legacy-SQL-Staging-Profile in den spaeteren Import-Dry-Run-Store einhaengen, sobald Row-Count- und Checksum-Strategie feststeht.
-- [ ] Legacy-SQL-Import-Dry-Run als metadata-only Worker ausfuehren und Ergebnis-Store anbinden, ohne produktive Import-Writes.
+- [x] Legacy-SQL-Import-Dry-Run als metadata-only Worker ausfuehren und Ergebnis-Store anbinden, ohne produktive Import-Writes.
+- [ ] Legacy-SQL-Import-Dry-Run-Result-Review und Human-Approval-Gate fuer spaetere Import-Writes planen.
 - [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
 - [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.

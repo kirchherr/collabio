@@ -157,6 +157,25 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  legacy-sql-import-dry-run-worker:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_import_dry_run_worker --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
   legacy-sql-discovery-intake:
     build:
       context: .
