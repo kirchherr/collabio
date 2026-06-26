@@ -125,6 +125,8 @@ from suite.platform.legacy_sql_migration_api_plan import (
 )
 from suite.platform.legacy_sql_migration_run_registry import (
     LegacySqlMigrationReportMetadata,
+    LegacySqlMigrationReportMetadataStoreCommand,
+    LegacySqlMigrationReportMetadataStoreResponse,
     LegacySqlMigrationRunCreationBoundaryCommand,
     LegacySqlMigrationRunCreationBoundaryResponse,
     LegacySqlMigrationRunCreationStoreCommand,
@@ -133,6 +135,7 @@ from suite.platform.legacy_sql_migration_run_registry import (
     LegacySqlMigrationRunRegistryStore,
     build_default_legacy_sql_migration_run_registry_store,
     build_legacy_sql_migration_run_creation_boundary,
+    persist_legacy_sql_migration_report_metadata,
     persist_legacy_sql_migration_run_creation,
 )
 from suite.platform.modules import (
@@ -13215,6 +13218,64 @@ def build_app() -> FastAPI:
             },
         )
         return run
+
+    @app.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-reports",
+        response_model=LegacySqlMigrationReportMetadataStoreResponse,
+    )
+    def persist_legacy_sql_migration_report_metadata_store(
+        command: LegacySqlMigrationReportMetadataStoreCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, compliance=True)),
+        ],
+    ) -> LegacySqlMigrationReportMetadataStoreResponse:
+        del gate
+        registry_store = cast(
+            LegacySqlMigrationRunRegistryStore,
+            request.app.state.legacy_sql_migration_run_registry_store,
+        )
+        try:
+            response = persist_legacy_sql_migration_report_metadata(
+                command=command,
+                store=registry_store,
+                tenant_id=context.user_context.tenant_id,
+                checked_by=context.user_context.user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        source_object_ids = [f"legacy_sql_migration_run:{response.migration_run_hash}"]
+        if response.migration_report_hash:
+            source_object_ids.append(f"legacy_sql_migration_report:{response.migration_report_hash}")
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="legacy_sql.migration_report_metadata.store",
+            source_object_ids=source_object_ids,
+            metadata={
+                "module_id": CRM_ERP_MODULE_ID,
+                "surface": "compliance_api",
+                "result_contract": "metadata_only_migration_report_metadata_store",
+                "migration_run_hash": response.migration_run_hash,
+                "migration_run_bound": response.migration_run_bound,
+                "migration_report_ref": response.migration_report_ref,
+                "store_status": response.store_status.value,
+                "migration_report_hash": response.migration_report_hash,
+                "report_metadata_persistence_allowed": response.report_metadata_persistence_allowed,
+                "report_metadata_persisted": response.report_metadata_persisted,
+                "idempotent_replay": response.idempotent_replay,
+                "report_release_enabled": response.report_release_enabled,
+                "report_retrieval_enabled": response.report_retrieval_enabled,
+                "run_execution_completed": response.run_execution_completed,
+                "import_write_execution_allowed": response.import_write_execution_allowed,
+                "raw_data_access_allowed": response.raw_data_access_allowed,
+                "import_write_payload_allowed": response.import_write_payload_allowed,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
 
     @app.get(
         "/v1/admin/crm-erp/legacy-sql/migration-reports",

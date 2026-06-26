@@ -22720,6 +22720,155 @@ def test_legacy_sql_migration_run_creation_boundary_is_admin_scoped_and_metadata
     assert all(event.metadata["external_side_effect_allowed"] is False for event in store_events)
 
 
+def test_legacy_sql_migration_report_metadata_store_is_admin_scoped_and_metadata_only() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare migration report store API"},
+    )
+    assert provision_response.status_code == 200
+
+    run_command = LegacySqlMigrationRunRegistryEntryCommand(
+        source_system_ref="legacy-sql:sqlserver-demo",
+        migration_run_ref="migration-run:legacy-sql-report-store-api-demo",
+        approval_record_hash=api_fixture_hash("approval-record"),
+        approval_gate_evidence_hash=api_fixture_hash("approval-gate"),
+        dry_run_result_hash=api_fixture_hash("dry-run-result"),
+        idempotency_key_ref="idempotency:legacy-sql-report-store-run-api-demo",
+        restore_evidence_hash=api_fixture_hash("restore-evidence"),
+        audit_event_id="audit-event-legacy-sql-report-store-run-api-demo",
+        audit_chain_ref="audit:legacy-sql-report-store-run-api-demo",
+        requested_by="migration-report-store-api-test",
+    )
+    run_entry = build_legacy_sql_migration_run_registry_entry(command=run_command, tenant_id="tenant-demo")
+    report_payload = LegacySqlMigrationReportMetadataCommand(
+        source_system_ref=run_entry.source_system_ref,
+        migration_run_hash=run_entry.evidence_hash,
+        migration_report_ref="migration-report:legacy-sql-report-store-api-demo",
+        idempotency_key_ref="idempotency:legacy-sql-migration-report-store-api-demo",
+        planned_table_count=2,
+        table_result_count=2,
+        row_count_manifest_hash=api_fixture_hash("row-count-manifest"),
+        checksum_manifest_hash=api_fixture_hash("checksum-manifest"),
+        restore_evidence_hash=api_fixture_hash("report-restore-evidence"),
+        audit_event_id="audit-event-legacy-sql-migration-report-store-api-demo",
+        audit_chain_ref="audit:legacy-sql-migration-report-store-api-demo",
+    ).model_dump(mode="json")
+
+    previous_store = app.state.legacy_sql_migration_run_registry_store
+    app.state.legacy_sql_migration_run_registry_store = InMemoryLegacySqlMigrationRunRegistryStore(runs=(run_entry,))
+    try:
+        non_admin_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_HEADERS,
+            json={"report_metadata": report_payload},
+        )
+        assert non_admin_response.status_code == 403
+        assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+        store_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+            json={"report_metadata": report_payload},
+        )
+        assert store_response.status_code == 200
+        store_body = store_response.json()
+        assert store_body["schema_version"] == "legacy_sql_migration_report_metadata_store.v1"
+        assert store_body["store_status"] == "persisted_metadata_only"
+        assert store_body["migration_run_hash"] == run_entry.evidence_hash
+        assert store_body["migration_run_bound"] is True
+        assert store_body["report_metadata_persistence_allowed"] is True
+        assert store_body["report_metadata_persisted"] is True
+        assert store_body["idempotent_replay"] is False
+        assert store_body["migration_report_hash"].startswith("sha256:")
+        assert store_body["migration_report"]["schema_version"] == "legacy_sql_migration_report_metadata.v1"
+        assert store_body["migration_report"]["migration_run_hash"] == run_entry.evidence_hash
+        assert store_body["migration_report"]["metadata_only_ok"] is True
+        assert store_body["report_release_enabled"] is False
+        assert store_body["report_retrieval_enabled"] is False
+        assert store_body["run_execution_completed"] is False
+        assert store_body["import_write_execution_allowed"] is False
+        assert store_body["raw_data_access_allowed"] is False
+        assert store_body["import_write_payload_allowed"] is False
+        assert store_body["destructive_actions_allowed"] is False
+        assert store_body["external_side_effect_allowed"] is False
+
+        replay_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+            json={"report_metadata": report_payload},
+        )
+        assert replay_response.status_code == 200
+        replay_body = replay_response.json()
+        assert replay_body["store_status"] == "idempotent_replay"
+        assert replay_body["idempotent_replay"] is True
+        assert replay_body["migration_report_hash"] == store_body["migration_report_hash"]
+
+        blocked_payload = {
+            **report_payload,
+            "migration_run_hash": api_fixture_hash("missing-migration-run"),
+            "migration_report_ref": "migration-report:legacy-sql-report-store-api-blocked",
+            "idempotency_key_ref": "idempotency:legacy-sql-migration-report-store-api-blocked",
+        }
+        blocked_response = client.post(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+            json={
+                "report_metadata": blocked_payload,
+                "report_release_requested": True,
+                "report_retrieval_requested": True,
+                "raw_data_access_requested": True,
+                "import_write_payload_requested": True,
+            },
+        )
+        assert blocked_response.status_code == 200
+        blocked_body = blocked_response.json()
+        assert blocked_body["store_status"] == "blocked"
+        assert blocked_body["migration_run_bound"] is False
+        assert blocked_body["report_metadata_persisted"] is False
+        assert blocked_body["migration_report"] is None
+        assert "migration_run_not_found" in blocked_body["blocking_reasons"]
+        assert "report_release_requires_future_gate" in blocked_body["blocking_reasons"]
+        assert "report_retrieval_not_enabled" in blocked_body["blocking_reasons"]
+        assert "raw_data_access_request_forbidden" in blocked_body["blocking_reasons"]
+        assert "import_write_payload_request_forbidden" in blocked_body["blocking_reasons"]
+
+        list_response = client.get(
+            "/v1/admin/crm-erp/legacy-sql/migration-reports",
+            headers=DEMO_ADMIN_HEADERS,
+            params={"migration_run_hash": run_entry.evidence_hash},
+        )
+        assert list_response.status_code == 200
+        assert [report["evidence_hash"] for report in list_response.json()] == [store_body["migration_report_hash"]]
+    finally:
+        app.state.legacy_sql_migration_run_registry_store = previous_store
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    store_events = [event for event in new_events if event.event_type == "legacy_sql.migration_report_metadata.store"]
+    assert [event.metadata["store_status"] for event in store_events] == [
+        "persisted_metadata_only",
+        "idempotent_replay",
+        "blocked",
+    ]
+    assert all(event.tenant_id == "tenant-demo" for event in store_events)
+    assert all(event.input_hash is None for event in store_events)
+    assert all(event.output_hash is None for event in store_events)
+    assert store_events[0].metadata["migration_run_bound"] is True
+    assert store_events[0].metadata["report_metadata_persisted"] is True
+    assert store_events[0].metadata["idempotent_replay"] is False
+    assert store_events[1].metadata["report_metadata_persisted"] is True
+    assert store_events[1].metadata["idempotent_replay"] is True
+    assert store_events[2].metadata["migration_run_bound"] is False
+    assert store_events[2].metadata["report_metadata_persisted"] is False
+    assert all(event.metadata["report_release_enabled"] is False for event in store_events)
+    assert all(event.metadata["report_retrieval_enabled"] is False for event in store_events)
+    assert all(event.metadata["import_write_execution_allowed"] is False for event in store_events)
+    assert all(event.metadata["raw_data_access_allowed"] is False for event in store_events)
+    assert all(event.metadata["external_side_effect_allowed"] is False for event in store_events)
+
+
 def test_legacy_sql_migration_run_registry_read_endpoints_are_admin_scoped_and_metadata_only() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)

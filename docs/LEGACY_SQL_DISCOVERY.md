@@ -146,6 +146,11 @@ und Compliance-Gate-geschuetzt, idempotent ueber den Boundary-Idempotency-Key un
 Approval-Freigabe, kein Report-Retrieval, keine Run-Ausfuehrung, keine Import-Writes, keine Rohdaten, keine Import-
 Payloads, keine destruktiven Aktionen und keine externen Side Effects.
 
+`POST /v1/admin/crm-erp/legacy-sql/migration-reports` persistiert Report-Metadata nur fuer einen vorhandenen,
+tenant-gebundenen Migration-Run. Der Endpoint schreibt `legacy_sql_migration_report_metadata.v1` idempotent in den
+Report-Store und bleibt metadata-only: keine Report-Freigabe, kein Report-Retrieval, keine Run-Completion, keine
+Import-Writes, keine Rohdaten, keine Import-Payloads, keine destruktiven Aktionen und keine externen Side Effects.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

@@ -32,6 +32,8 @@ LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_COMMAND_REF = (
 )
 LEGACY_SQL_MIGRATION_RUN_CREATION_STORE_SCHEMA_VERSION = "legacy_sql_migration_run_creation_store.v1"
 LEGACY_SQL_MIGRATION_RUN_CREATION_STORE_COMMAND_REF = "api:v1-admin-crm-erp-legacy-sql-migration-run-store"
+LEGACY_SQL_MIGRATION_REPORT_METADATA_STORE_SCHEMA_VERSION = "legacy_sql_migration_report_metadata_store.v1"
+LEGACY_SQL_MIGRATION_REPORT_METADATA_STORE_COMMAND_REF = "api:v1-admin-crm-erp-legacy-sql-migration-report-store"
 LEGACY_SQL_MIGRATION_RUN_CREATION_REQUEST_SCHEMA_VERSION = "legacy_sql_migration_run_creation_request.v1"
 LEGACY_SQL_MIGRATION_RUN_CREATION_IDEMPOTENCY_SCHEMA_VERSION = "legacy_sql_migration_run_creation_idempotency_key.v1"
 LEGACY_SQL_MIGRATION_RUN_REGISTRY_IDEMPOTENCY_SCHEMA_VERSION = "legacy_sql_migration_run_registry_idempotency_key.v1"
@@ -81,6 +83,12 @@ class LegacySqlMigrationRunCreationBoundaryStatus(StrEnum):
 
 
 class LegacySqlMigrationRunCreationStoreStatus(StrEnum):
+    PERSISTED_METADATA_ONLY = "persisted_metadata_only"
+    IDEMPOTENT_REPLAY = "idempotent_replay"
+    BLOCKED = "blocked"
+
+
+class LegacySqlMigrationReportMetadataStoreStatus(StrEnum):
     PERSISTED_METADATA_ONLY = "persisted_metadata_only"
     IDEMPOTENT_REPLAY = "idempotent_replay"
     BLOCKED = "blocked"
@@ -217,6 +225,26 @@ class LegacySqlMigrationReportMetadataCommand(BaseModel):
             or self.external_side_effect_requested
         ):
             raise ValueError("legacy SQL migration report command must not request execution or side effects")
+        _assert_migration_registry_safe(self)
+        return self
+
+
+class LegacySqlMigrationReportMetadataStoreCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    report_metadata: LegacySqlMigrationReportMetadataCommand
+    report_metadata_persistence_requested: bool = True
+    report_release_requested: bool = False
+    report_retrieval_requested: bool = False
+    run_execution_completed_requested: bool = False
+    import_write_execution_requested: bool = False
+    raw_data_access_requested: bool = False
+    import_write_payload_requested: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @model_validator(mode="after")
+    def require_safe_command(self) -> Self:
         _assert_migration_registry_safe(self)
         return self
 
@@ -712,6 +740,139 @@ class LegacySqlMigrationReportMetadata(BaseModel):
             or self.external_side_effect_allowed
         ):
             raise ValueError("legacy SQL migration report metadata must remain metadata-only and non-executing")
+        _assert_migration_registry_safe(self)
+        return self
+
+
+class LegacySqlMigrationReportMetadataStoreResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LEGACY_SQL_MIGRATION_REPORT_METADATA_STORE_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    continuity_domain: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_CONTINUITY_DOMAIN
+    command_ref: str = LEGACY_SQL_MIGRATION_REPORT_METADATA_STORE_COMMAND_REF
+    migration_run_hash: str
+    migration_run_ref: str | None = None
+    migration_run: LegacySqlMigrationRunRegistryEntry | None = None
+    migration_run_bound: bool = False
+    migration_report_ref: str
+    idempotency_key_hash: str
+    migration_report_hash: str | None = None
+    migration_report: LegacySqlMigrationReportMetadata | None = None
+    report_metadata_persistence_requested: bool
+    report_metadata_persistence_allowed: bool
+    report_metadata_persisted: bool
+    idempotent_replay: bool = False
+    report_release_requested: bool
+    report_release_enabled: bool = False
+    report_retrieval_requested: bool
+    report_retrieval_enabled: bool = False
+    future_import_write_execution_gate_required: bool = True
+    run_execution_completed_requested: bool
+    run_execution_completed: bool = False
+    import_write_execution_requested: bool
+    import_write_execution_allowed: bool = False
+    raw_data_access_requested: bool
+    raw_data_access_allowed: bool = False
+    import_write_payload_requested: bool
+    import_write_payload_allowed: bool = False
+    destructive_actions_requested: bool
+    destructive_actions_allowed: bool = False
+    external_side_effect_requested: bool
+    external_side_effect_allowed: bool = False
+    store_status: LegacySqlMigrationReportMetadataStoreStatus
+    blocking_reasons: tuple[str, ...]
+    checked_by: str
+    checked_at_utc: datetime
+    evidence_hash: str
+
+    @field_validator("tenant_id", "checked_by")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL migration report metadata store text fields must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy SQL migration report metadata store only applies to module crm_erp")
+        return value
+
+    @field_validator("source_system_ref", "migration_report_ref")
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration report metadata store references must be namespaced")
+        return value
+
+    @field_validator("migration_run_ref")
+    @classmethod
+    def validate_optional_namespaced_refs(cls, value: str | None) -> str | None:
+        if value is not None and not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration report metadata store references must be namespaced")
+        return value
+
+    @field_validator("migration_run_hash", "idempotency_key_hash", "migration_report_hash", "evidence_hash")
+    @classmethod
+    def validate_optional_sha256_refs(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration report metadata store hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def validate_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("legacy SQL migration report metadata store blocking reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("legacy SQL migration report metadata store blocking reasons must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_store_response(self) -> Self:
+        if self.schema_version != LEGACY_SQL_MIGRATION_REPORT_METADATA_STORE_SCHEMA_VERSION:
+            raise ValueError("legacy SQL migration report metadata store schema version is invalid")
+        if (
+            self.report_release_enabled
+            or self.report_retrieval_enabled
+            or not self.future_import_write_execution_gate_required
+            or self.run_execution_completed
+            or self.import_write_execution_allowed
+            or self.raw_data_access_allowed
+            or self.import_write_payload_allowed
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("legacy SQL migration report metadata store must remain metadata-only and non-executing")
+        if self.migration_run is not None and self.migration_run.evidence_hash != self.migration_run_hash:
+            raise ValueError("legacy SQL migration report metadata store run binding is inconsistent")
+        if self.migration_report is not None and self.migration_report.evidence_hash != self.migration_report_hash:
+            raise ValueError("legacy SQL migration report metadata store report hash is inconsistent")
+        if self.migration_report is not None and self.migration_report.migration_run_hash != self.migration_run_hash:
+            raise ValueError("legacy SQL migration report metadata store report is not bound to the run")
+        if self.store_status in {
+            LegacySqlMigrationReportMetadataStoreStatus.PERSISTED_METADATA_ONLY,
+            LegacySqlMigrationReportMetadataStoreStatus.IDEMPOTENT_REPLAY,
+        } and (
+            not self.migration_run_bound
+            or self.migration_run is None
+            or not self.report_metadata_persistence_allowed
+            or not self.report_metadata_persisted
+            or self.migration_report is None
+            or self.migration_report_hash is None
+            or self.blocking_reasons
+        ):
+            raise ValueError("persisted legacy SQL migration report metadata store requires a bound report")
+        if self.store_status == LegacySqlMigrationReportMetadataStoreStatus.BLOCKED:
+            if not self.blocking_reasons:
+                raise ValueError("blocked legacy SQL migration report metadata store requires blocking reasons")
+            if self.report_metadata_persistence_allowed or self.report_metadata_persisted or self.migration_report:
+                raise ValueError("blocked legacy SQL migration report metadata store cannot persist report metadata")
         _assert_migration_registry_safe(self)
         return self
 
@@ -1703,6 +1864,179 @@ def build_legacy_sql_migration_report_metadata(
         evidence_hash=ZERO_HASH,
     )
     return draft.model_copy(update={"evidence_hash": build_legacy_sql_migration_report_metadata_hash(draft)})
+
+
+def build_legacy_sql_migration_report_metadata_store_response_hash(
+    response: LegacySqlMigrationReportMetadataStoreResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def persist_legacy_sql_migration_report_metadata(
+    *,
+    command: LegacySqlMigrationReportMetadataStoreCommand,
+    store: LegacySqlMigrationRunRegistryStore,
+    tenant_id: str,
+    checked_by: str,
+    checked_at_utc: datetime | None = None,
+) -> LegacySqlMigrationReportMetadataStoreResponse:
+    checked_at = checked_at_utc or datetime.now(UTC)
+    migration_run, blocking_reasons = _report_metadata_store_blocking_reasons(
+        command=command,
+        store=store,
+        tenant_id=tenant_id,
+    )
+    if blocking_reasons:
+        return _build_legacy_sql_migration_report_metadata_store_response(
+            command=command,
+            tenant_id=tenant_id,
+            checked_by=checked_by,
+            checked_at_utc=checked_at,
+            store_status=LegacySqlMigrationReportMetadataStoreStatus.BLOCKED,
+            migration_run=migration_run,
+            blocking_reasons=blocking_reasons,
+        )
+
+    report = build_legacy_sql_migration_report_metadata(command=command.report_metadata, tenant_id=tenant_id)
+    try:
+        existing = store.get_report_by_idempotency_key_hash(
+            tenant_id=tenant_id,
+            idempotency_key_hash=report.idempotency_key_hash,
+        )
+    except KeyError:
+        existing = None
+    if existing is not None:
+        if existing != report:
+            raise ValueError("legacy SQL migration report metadata idempotency key already used")
+        stored_report = existing
+        store_status = LegacySqlMigrationReportMetadataStoreStatus.IDEMPOTENT_REPLAY
+        idempotent_replay = True
+    else:
+        stored_report = store.append_report(report)
+        store_status = LegacySqlMigrationReportMetadataStoreStatus.PERSISTED_METADATA_ONLY
+        idempotent_replay = False
+    return _build_legacy_sql_migration_report_metadata_store_response(
+        command=command,
+        tenant_id=tenant_id,
+        checked_by=checked_by,
+        checked_at_utc=checked_at,
+        store_status=store_status,
+        migration_run=migration_run,
+        migration_report=stored_report,
+        idempotent_replay=idempotent_replay,
+    )
+
+
+def _build_legacy_sql_migration_report_metadata_store_response(
+    *,
+    command: LegacySqlMigrationReportMetadataStoreCommand,
+    tenant_id: str,
+    checked_by: str,
+    checked_at_utc: datetime,
+    store_status: LegacySqlMigrationReportMetadataStoreStatus,
+    migration_run: LegacySqlMigrationRunRegistryEntry | None = None,
+    migration_report: LegacySqlMigrationReportMetadata | None = None,
+    idempotent_replay: bool = False,
+    blocking_reasons: tuple[str, ...] = (),
+) -> LegacySqlMigrationReportMetadataStoreResponse:
+    report_command = command.report_metadata
+    persisted = migration_report is not None
+    run_bound = migration_run is not None
+    idempotency_key_hash = build_legacy_sql_migration_report_metadata_idempotency_key_hash(
+        command=report_command,
+        tenant_id=tenant_id,
+    )
+    draft = LegacySqlMigrationReportMetadataStoreResponse(
+        tenant_id=tenant_id,
+        module_id=migration_run.module_id if migration_run else CRM_ERP_MODULE_ID,
+        source_system_ref=report_command.source_system_ref,
+        migration_run_hash=report_command.migration_run_hash,
+        migration_run_ref=migration_run.migration_run_ref if migration_run else None,
+        migration_run=migration_run,
+        migration_run_bound=run_bound,
+        migration_report_ref=report_command.migration_report_ref,
+        idempotency_key_hash=idempotency_key_hash,
+        migration_report_hash=migration_report.evidence_hash if migration_report else None,
+        migration_report=migration_report,
+        report_metadata_persistence_requested=command.report_metadata_persistence_requested,
+        report_metadata_persistence_allowed=persisted,
+        report_metadata_persisted=persisted,
+        idempotent_replay=idempotent_replay,
+        report_release_requested=command.report_release_requested,
+        report_retrieval_requested=command.report_retrieval_requested or report_command.report_retrieval_requested,
+        run_execution_completed_requested=(
+            command.run_execution_completed_requested or report_command.run_execution_completed_requested
+        ),
+        import_write_execution_requested=(
+            command.import_write_execution_requested or report_command.import_write_execution_requested
+        ),
+        raw_data_access_requested=command.raw_data_access_requested or report_command.raw_data_access_requested,
+        import_write_payload_requested=(
+            command.import_write_payload_requested or report_command.import_write_payload_requested
+        ),
+        destructive_actions_requested=(
+            command.destructive_actions_requested or report_command.destructive_actions_requested
+        ),
+        external_side_effect_requested=(
+            command.external_side_effect_requested or report_command.external_side_effect_requested
+        ),
+        store_status=store_status,
+        blocking_reasons=blocking_reasons,
+        checked_by=checked_by,
+        checked_at_utc=checked_at_utc,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_legacy_sql_migration_report_metadata_store_response_hash(draft)}
+    )
+
+
+def _report_metadata_store_blocking_reasons(
+    *,
+    command: LegacySqlMigrationReportMetadataStoreCommand,
+    store: LegacySqlMigrationRunRegistryStore,
+    tenant_id: str,
+) -> tuple[LegacySqlMigrationRunRegistryEntry | None, tuple[str, ...]]:
+    report_command = command.report_metadata
+    reasons: list[str] = []
+    try:
+        migration_run = store.get_run(tenant_id=tenant_id, evidence_hash=report_command.migration_run_hash)
+    except KeyError:
+        migration_run = None
+        reasons.append("migration_run_not_found")
+    if migration_run is not None:
+        if migration_run.source_system_ref != report_command.source_system_ref:
+            reasons.append("migration_run_source_system_mismatch")
+        if not migration_run.metadata_only_report_required:
+            reasons.append("migration_run_does_not_accept_metadata_only_report")
+        if (
+            migration_run.run_execution_allowed
+            or migration_run.import_write_execution_allowed
+            or migration_run.raw_data_access_allowed
+            or migration_run.import_write_payload_allowed
+            or migration_run.destructive_actions_allowed
+            or migration_run.external_side_effect_allowed
+        ):
+            reasons.append("migration_run_not_metadata_only")
+    if not command.report_metadata_persistence_requested:
+        reasons.append("report_metadata_persistence_not_requested")
+    if command.report_release_requested:
+        reasons.append("report_release_requires_future_gate")
+    if command.report_retrieval_requested or report_command.report_retrieval_requested:
+        reasons.append("report_retrieval_not_enabled")
+    if command.run_execution_completed_requested or report_command.run_execution_completed_requested:
+        reasons.append("run_execution_completion_requires_future_gate")
+    if command.import_write_execution_requested or report_command.import_write_execution_requested:
+        reasons.append("import_write_execution_requires_future_gate")
+    if command.raw_data_access_requested or report_command.raw_data_access_requested:
+        reasons.append("raw_data_access_request_forbidden")
+    if command.import_write_payload_requested or report_command.import_write_payload_requested:
+        reasons.append("import_write_payload_request_forbidden")
+    if command.destructive_actions_requested or report_command.destructive_actions_requested:
+        reasons.append("destructive_action_request_forbidden")
+    if command.external_side_effect_requested or report_command.external_side_effect_requested:
+        reasons.append("external_side_effect_request_forbidden")
+    return migration_run, tuple(reasons)
 
 
 def build_default_legacy_sql_migration_run_registry_store(
