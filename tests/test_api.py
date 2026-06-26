@@ -22504,6 +22504,132 @@ def test_legacy_sql_migration_api_plan_is_admin_scoped_and_metadata_only() -> No
     assert ready_event.metadata["raw_data_access_allowed"] is False
 
 
+def test_legacy_sql_migration_run_creation_boundary_is_admin_scoped_and_metadata_only() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare migration boundary API"},
+    )
+    assert provision_response.status_code == 200
+
+    payload = {
+        "source_system_ref": "legacy-sql:sqlserver-demo",
+        "migration_run_ref": "migration-run:legacy-sql-boundary-api-demo",
+        "approval_record_hash": api_fixture_hash("approval-record"),
+        "approval_gate_evidence_hash": api_fixture_hash("approval-gate"),
+        "dry_run_result_hash": api_fixture_hash("dry-run-result"),
+        "idempotency_key_ref": "idempotency:legacy-sql-migration-run-boundary-api-demo",
+        "restore_evidence_hash": api_fixture_hash("restore-evidence"),
+        "audit_event_id": "audit-event-legacy-sql-migration-run-boundary-api-demo",
+        "audit_chain_ref": "audit:legacy-sql-migration-run-boundary-api-demo",
+        "reason": "prepare a non-executing migration run creation boundary",
+    }
+
+    non_admin_response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs/boundary",
+        headers=DEMO_HEADERS,
+        json=payload,
+    )
+    assert non_admin_response.status_code == 403
+    assert non_admin_response.json()["detail"] == "Tenant admin role required"
+
+    response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs/boundary",
+        headers=DEMO_ADMIN_HEADERS,
+        json=payload,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    body_text = json.dumps(body).lower()
+    assert body["schema_version"] == "legacy_sql_migration_run_creation_boundary.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["migration_run_ref"] == payload["migration_run_ref"]
+    assert body["run_creation_requested"] is True
+    assert body["run_creation_boundary_accepted"] is True
+    assert body["boundary_status"] == "ready_for_run_registry_request"
+    assert body["blocking_reasons"] == []
+    assert body["run_creation_request_hash"].startswith("sha256:")
+    assert body["idempotency_key_hash"].startswith("sha256:")
+    assert body["evidence_hash"].startswith("sha256:")
+
+    assert body["future_import_write_execution_gate_required"] is True
+    assert body["run_registry_persistence_requested"] is False
+    assert body["run_registry_persistence_allowed"] is False
+    assert body["run_registry_entry_persisted"] is False
+    assert body["approval_grant_requested"] is False
+    assert body["approval_grant_enabled"] is False
+    assert body["report_retrieval_enabled"] is False
+    assert body["run_creation_enabled"] is False
+    assert body["run_execution_allowed"] is False
+    assert body["import_write_execution_allowed"] is False
+    assert body["raw_data_access_allowed"] is False
+    assert body["import_write_payload_allowed"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "dbo.kunden" not in body_text
+    assert "kundenid" not in body_text
+    assert "email" not in body_text
+    assert "connection_secret_ref" not in body_text
+    assert "sqlserver://" not in body_text
+    assert "raw_payload" not in body_text
+
+    unsafe_response = client.post(
+        "/v1/admin/crm-erp/legacy-sql/migration-runs/boundary",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            **payload,
+            "run_registry_persistence_requested": True,
+            "approval_grant_requested": True,
+            "report_retrieval_requested": True,
+            "import_write_execution_requested": True,
+            "raw_data_access_requested": True,
+            "import_write_payload_requested": True,
+            "destructive_actions_requested": True,
+            "external_side_effect_requested": True,
+        },
+    )
+    assert unsafe_response.status_code == 200
+    unsafe_body = unsafe_response.json()
+    assert unsafe_body["boundary_status"] == "blocked"
+    assert unsafe_body["run_creation_boundary_accepted"] is False
+    assert "run_registry_persistence_not_enabled" in unsafe_body["blocking_reasons"]
+    assert "approval_grant_requires_future_gate" in unsafe_body["blocking_reasons"]
+    assert "report_retrieval_not_enabled" in unsafe_body["blocking_reasons"]
+    assert "import_write_execution_requires_future_gate" in unsafe_body["blocking_reasons"]
+    assert "raw_data_access_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert "import_write_payload_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert "destructive_action_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert "external_side_effect_request_forbidden" in unsafe_body["blocking_reasons"]
+    assert unsafe_body["run_registry_persistence_allowed"] is False
+    assert unsafe_body["approval_grant_enabled"] is False
+    assert unsafe_body["import_write_execution_allowed"] is False
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "legacy_sql.migration_run_creation.boundary"
+    ]
+    assert len(matching_events) == 2
+    ready_event = matching_events[0]
+    assert ready_event.tenant_id == "tenant-demo"
+    assert ready_event.input_hash is not None
+    assert ready_event.output_hash is None
+    assert ready_event.metadata["surface"] == "compliance_api"
+    assert ready_event.metadata["result_contract"] == "metadata_only_migration_run_creation_boundary"
+    assert ready_event.metadata["run_creation_boundary_accepted"] is True
+    assert ready_event.metadata["run_registry_persistence_allowed"] is False
+    assert ready_event.metadata["run_registry_entry_persisted"] is False
+    assert ready_event.metadata["approval_grant_enabled"] is False
+    assert ready_event.metadata["run_creation_enabled"] is False
+    assert ready_event.metadata["import_write_execution_allowed"] is False
+    assert ready_event.metadata["raw_data_access_allowed"] is False
+    blocked_event = matching_events[1]
+    assert blocked_event.metadata["boundary_status"] == "blocked"
+    assert blocked_event.metadata["run_creation_boundary_accepted"] is False
+
+
 def test_legacy_sql_migration_run_registry_read_endpoints_are_admin_scoped_and_metadata_only() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)

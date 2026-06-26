@@ -134,6 +134,12 @@ oder Secret-Pfad und keine externen Side Effects.
 Compliance-Gate-geschuetzt aus. Die Endpoints sind reine metadata-only Reads: keine Run-Erstellung, keine Report-
 Freigabe, keine Import-Write-Ausfuehrung, keine Rohdaten, keine Import-Payloads und keine externen Side Effects.
 
+`POST /v1/admin/crm-erp/legacy-sql/migration-runs/boundary` bereitet eine nicht-ausfuehrende Run-Creation-Boundary
+als `legacy_sql_migration_run_creation_boundary.v1` vor. Die Boundary bindet Source-System, Approval-Record-/Gate-
+Hash, Dry-Run-Result-Hash, Idempotency-Key, Restore-Evidence und Audit-Referenzen, schreibt aber noch keinen Run in
+die Registry. Persistenz, Approval-Grant, Report-Retrieval, Run-Ausfuehrung, Import-Writes, Rohdatenzugriff, Import-
+Payloads, destruktive Aktionen und externe Side Effects bleiben false.
+
 `POST /v1/admin/crm-erp/legacy-sql/import-write-approval-requests/boundary` bindet einen expliziten
 Approval-Request an gespeicherte Gate-Evidence, Tenant, Source-System und Dry-Run-Result. Der Endpoint ist tenant-admin-
 und Compliance-Gate-geschuetzt, akzeptiert nur metadata-only Referenzen und schreibt keinen Approval-Record.

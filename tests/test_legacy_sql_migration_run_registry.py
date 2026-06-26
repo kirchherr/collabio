@@ -15,6 +15,8 @@ from suite.platform.legacy_sql_migration_run_registry import (
     LegacySqlMigrationReportMetadata,
     LegacySqlMigrationReportMetadataCommand,
     LegacySqlMigrationReportStatus,
+    LegacySqlMigrationRunCreationBoundaryCommand,
+    LegacySqlMigrationRunCreationBoundaryStatus,
     LegacySqlMigrationRunRegistryEntry,
     LegacySqlMigrationRunRegistryEntryCommand,
     LegacySqlMigrationRunStatus,
@@ -23,6 +25,9 @@ from suite.platform.legacy_sql_migration_run_registry import (
     build_legacy_sql_migration_report_metadata,
     build_legacy_sql_migration_report_metadata_hash,
     build_legacy_sql_migration_report_metadata_idempotency_key_hash,
+    build_legacy_sql_migration_run_creation_boundary,
+    build_legacy_sql_migration_run_creation_boundary_hash,
+    build_legacy_sql_migration_run_creation_request_hash,
     build_legacy_sql_migration_run_registry_entry,
     build_legacy_sql_migration_run_registry_entry_hash,
     build_legacy_sql_migration_run_registry_idempotency_key_hash,
@@ -103,6 +108,83 @@ def test_legacy_sql_migration_run_registry_entry_and_report_are_metadata_only_an
     assert "sqlserver://" not in payload
     assert "raw_payload" not in payload
     assert '"import_write_payload":' not in payload
+
+
+def test_legacy_sql_migration_run_creation_boundary_is_metadata_only_and_hashable() -> None:
+    command = migration_run_creation_boundary_command()
+
+    boundary = build_legacy_sql_migration_run_creation_boundary(
+        command=command,
+        tenant_id="tenant-demo",
+        checked_by="migration-boundary-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert boundary.schema_version == "legacy_sql_migration_run_creation_boundary.v1"
+    assert boundary.boundary_status == LegacySqlMigrationRunCreationBoundaryStatus.READY_FOR_RUN_REGISTRY_REQUEST
+    assert boundary.evidence_hash == build_legacy_sql_migration_run_creation_boundary_hash(boundary)
+    assert boundary.run_creation_request_hash == build_legacy_sql_migration_run_creation_request_hash(command)
+    assert boundary.run_creation_requested
+    assert boundary.run_creation_boundary_accepted
+    assert boundary.future_import_write_execution_gate_required
+    assert not boundary.run_registry_persistence_requested
+    assert not boundary.run_registry_persistence_allowed
+    assert not boundary.run_registry_entry_persisted
+    assert not boundary.approval_grant_requested
+    assert not boundary.approval_grant_enabled
+    assert not boundary.report_retrieval_requested
+    assert not boundary.report_retrieval_enabled
+    assert not boundary.run_creation_enabled
+    assert not boundary.run_execution_allowed
+    assert not boundary.import_write_execution_allowed
+    assert not boundary.raw_data_access_allowed
+    assert not boundary.import_write_payload_allowed
+    assert not boundary.destructive_actions_allowed
+    assert not boundary.external_side_effect_allowed
+    assert boundary.blocking_reasons == ()
+
+    payload = boundary.model_dump_json().lower()
+    assert "dbo.kunden" not in payload
+    assert "kundenid" not in payload
+    assert "email" not in payload
+    assert "connection_secret_ref" not in payload
+    assert "sqlserver://" not in payload
+    assert "raw_payload" not in payload
+    assert '"import_write_payload":' not in payload
+
+
+def test_legacy_sql_migration_run_creation_boundary_blocks_persistence_and_execution_requests() -> None:
+    command = migration_run_creation_boundary_command(
+        run_registry_persistence_requested=True,
+        approval_grant_requested=True,
+        report_retrieval_requested=True,
+        import_write_execution_requested=True,
+        raw_data_access_requested=True,
+        import_write_payload_requested=True,
+        destructive_actions_requested=True,
+        external_side_effect_requested=True,
+    )
+
+    boundary = build_legacy_sql_migration_run_creation_boundary(
+        command=command,
+        tenant_id="tenant-demo",
+        checked_by="migration-boundary-test",
+        checked_at_utc=fixed_time(),
+    )
+
+    assert boundary.boundary_status == LegacySqlMigrationRunCreationBoundaryStatus.BLOCKED
+    assert not boundary.run_creation_boundary_accepted
+    assert "run_registry_persistence_not_enabled" in boundary.blocking_reasons
+    assert "approval_grant_requires_future_gate" in boundary.blocking_reasons
+    assert "report_retrieval_not_enabled" in boundary.blocking_reasons
+    assert "import_write_execution_requires_future_gate" in boundary.blocking_reasons
+    assert "raw_data_access_request_forbidden" in boundary.blocking_reasons
+    assert "import_write_payload_request_forbidden" in boundary.blocking_reasons
+    assert "destructive_action_request_forbidden" in boundary.blocking_reasons
+    assert "external_side_effect_request_forbidden" in boundary.blocking_reasons
+    assert not boundary.run_registry_persistence_allowed
+    assert not boundary.approval_grant_enabled
+    assert not boundary.import_write_execution_allowed
 
 
 def test_legacy_sql_migration_run_registry_blocks_execution_and_raw_data_requests() -> None:
@@ -251,6 +333,23 @@ def migration_report(
         command=migration_report_command(migration_run_hash=run_entry.evidence_hash, **command_updates),
         tenant_id=run_entry.tenant_id,
     )
+
+
+def migration_run_creation_boundary_command(**updates: object) -> LegacySqlMigrationRunCreationBoundaryCommand:
+    values: dict[str, object] = {
+        "source_system_ref": "legacy-sql:sqlserver-demo",
+        "migration_run_ref": "migration-run:legacy-sql-boundary-demo",
+        "approval_record_hash": fixture_hash("approval-record"),
+        "approval_gate_evidence_hash": fixture_hash("approval-gate"),
+        "dry_run_result_hash": fixture_hash("dry-run-result"),
+        "idempotency_key_ref": "idempotency:legacy-sql-migration-run-boundary",
+        "restore_evidence_hash": fixture_hash("restore-evidence"),
+        "audit_event_id": "audit-event-legacy-sql-migration-run-boundary",
+        "audit_chain_ref": "audit:legacy-sql-migration-run-boundary",
+        "reason": "prepare a metadata-only migration run boundary without execution",
+    }
+    values.update(updates)
+    return LegacySqlMigrationRunCreationBoundaryCommand.model_validate(values)
 
 
 def migration_run_command(**updates: object) -> LegacySqlMigrationRunRegistryEntryCommand:

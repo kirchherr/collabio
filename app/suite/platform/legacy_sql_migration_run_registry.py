@@ -26,6 +26,12 @@ LEGACY_SQL_MIGRATION_RUN_REGISTRY_ENTRY_SCHEMA_VERSION = "legacy_sql_migration_r
 LEGACY_SQL_MIGRATION_REPORT_METADATA_SCHEMA_VERSION = "legacy_sql_migration_report_metadata.v1"
 LEGACY_SQL_MIGRATION_RUN_REGISTRY_COMMAND_REF = "store:legacy-sql-migration-run-registry"
 LEGACY_SQL_MIGRATION_REPORT_METADATA_COMMAND_REF = "store:legacy-sql-migration-report-metadata"
+LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_SCHEMA_VERSION = "legacy_sql_migration_run_creation_boundary.v1"
+LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_COMMAND_REF = (
+    "api:v1-admin-crm-erp-legacy-sql-migration-run-creation-boundary"
+)
+LEGACY_SQL_MIGRATION_RUN_CREATION_REQUEST_SCHEMA_VERSION = "legacy_sql_migration_run_creation_request.v1"
+LEGACY_SQL_MIGRATION_RUN_CREATION_IDEMPOTENCY_SCHEMA_VERSION = "legacy_sql_migration_run_creation_idempotency_key.v1"
 LEGACY_SQL_MIGRATION_RUN_REGISTRY_IDEMPOTENCY_SCHEMA_VERSION = "legacy_sql_migration_run_registry_idempotency_key.v1"
 LEGACY_SQL_MIGRATION_REPORT_METADATA_IDEMPOTENCY_SCHEMA_VERSION = (
     "legacy_sql_migration_report_metadata_idempotency_key.v1"
@@ -64,6 +70,11 @@ class LegacySqlMigrationRunStatus(StrEnum):
 class LegacySqlMigrationReportStatus(StrEnum):
     PLANNED_METADATA_ONLY = "planned_metadata_only"
     READY_FOR_REVIEW = "ready_for_review"
+    BLOCKED = "blocked"
+
+
+class LegacySqlMigrationRunCreationBoundaryStatus(StrEnum):
+    READY_FOR_RUN_REGISTRY_REQUEST = "ready_for_run_registry_request"
     BLOCKED = "blocked"
 
 
@@ -198,6 +209,187 @@ class LegacySqlMigrationReportMetadataCommand(BaseModel):
             or self.external_side_effect_requested
         ):
             raise ValueError("legacy SQL migration report command must not request execution or side effects")
+        _assert_migration_registry_safe(self)
+        return self
+
+
+class LegacySqlMigrationRunCreationBoundaryCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_system_ref: str
+    migration_run_ref: str
+    approval_record_hash: str
+    approval_gate_evidence_hash: str
+    dry_run_result_hash: str
+    idempotency_key_ref: str
+    restore_evidence_hash: str
+    audit_event_id: str
+    audit_chain_ref: str
+    reason: str
+    run_creation_requested: bool = True
+    run_registry_persistence_requested: bool = False
+    approval_grant_requested: bool = False
+    report_retrieval_requested: bool = False
+    import_write_execution_requested: bool = False
+    raw_data_access_requested: bool = False
+    import_write_payload_requested: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("audit_event_id", "reason")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL migration run creation boundary command text fields must not be empty")
+        return value
+
+    @field_validator("source_system_ref", "migration_run_ref", "idempotency_key_ref", "audit_chain_ref")
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration run creation boundary command references must be namespaced")
+        return value
+
+    @field_validator(
+        "approval_record_hash",
+        "approval_gate_evidence_hash",
+        "dry_run_result_hash",
+        "restore_evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration run creation boundary command hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_command(self) -> Self:
+        _assert_migration_registry_safe(self)
+        return self
+
+
+class LegacySqlMigrationRunCreationBoundaryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    continuity_domain: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_CONTINUITY_DOMAIN
+    command_ref: str = LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_COMMAND_REF
+    migration_run_ref: str
+    approval_record_hash: str
+    approval_gate_evidence_hash: str
+    dry_run_result_hash: str
+    run_creation_request_hash: str
+    idempotency_key_hash: str
+    restore_evidence_hash: str
+    audit_event_id: str
+    audit_chain_ref: str
+    run_creation_requested: bool
+    run_creation_boundary_accepted: bool
+    run_registry_persistence_requested: bool
+    run_registry_persistence_allowed: bool = False
+    run_registry_entry_persisted: bool = False
+    approval_grant_requested: bool
+    approval_grant_enabled: bool = False
+    report_retrieval_requested: bool
+    report_retrieval_enabled: bool = False
+    future_import_write_execution_gate_required: bool = True
+    run_creation_enabled: bool = False
+    run_execution_allowed: bool = False
+    import_write_execution_requested: bool
+    import_write_execution_allowed: bool = False
+    raw_data_access_requested: bool
+    raw_data_access_allowed: bool = False
+    import_write_payload_requested: bool
+    import_write_payload_allowed: bool = False
+    destructive_actions_requested: bool
+    destructive_actions_allowed: bool = False
+    external_side_effect_requested: bool
+    external_side_effect_allowed: bool = False
+    boundary_status: LegacySqlMigrationRunCreationBoundaryStatus
+    blocking_reasons: tuple[str, ...]
+    checked_by: str
+    checked_at_utc: datetime
+    evidence_hash: str
+
+    @field_validator("tenant_id", "checked_by", "audit_event_id")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL migration run creation boundary text fields must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy SQL migration run creation boundary only applies to module crm_erp")
+        return value
+
+    @field_validator("source_system_ref", "migration_run_ref", "audit_chain_ref")
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration run creation boundary references must be namespaced")
+        return value
+
+    @field_validator(
+        "approval_record_hash",
+        "approval_gate_evidence_hash",
+        "dry_run_result_hash",
+        "run_creation_request_hash",
+        "idempotency_key_hash",
+        "restore_evidence_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL migration run creation boundary hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def validate_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("legacy SQL migration run creation boundary blocking reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("legacy SQL migration run creation boundary blocking reasons must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_boundary(self) -> Self:
+        if self.schema_version != LEGACY_SQL_MIGRATION_RUN_CREATION_BOUNDARY_SCHEMA_VERSION:
+            raise ValueError("legacy SQL migration run creation boundary schema version is invalid")
+        if (
+            self.run_registry_persistence_allowed
+            or self.run_registry_entry_persisted
+            or self.approval_grant_enabled
+            or self.report_retrieval_enabled
+            or not self.future_import_write_execution_gate_required
+            or self.run_creation_enabled
+            or self.run_execution_allowed
+            or self.import_write_execution_allowed
+            or self.raw_data_access_allowed
+            or self.import_write_payload_allowed
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("legacy SQL migration run creation boundary must remain metadata-only and non-executing")
+        if self.boundary_status == LegacySqlMigrationRunCreationBoundaryStatus.READY_FOR_RUN_REGISTRY_REQUEST and (
+            not self.run_creation_boundary_accepted or self.blocking_reasons or not self.run_creation_requested
+        ):
+            raise ValueError("ready legacy SQL migration run creation boundary requires an accepted request")
+        if self.boundary_status == LegacySqlMigrationRunCreationBoundaryStatus.BLOCKED and not self.blocking_reasons:
+            raise ValueError("blocked legacy SQL migration run creation boundary requires blocking reasons")
+        if (
+            self.boundary_status == LegacySqlMigrationRunCreationBoundaryStatus.BLOCKED
+            and self.run_creation_boundary_accepted
+        ):
+            raise ValueError("blocked legacy SQL migration run creation boundary cannot be accepted")
         _assert_migration_registry_safe(self)
         return self
 
@@ -984,6 +1176,117 @@ class PgLegacySqlMigrationRunRegistryStore:
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
         connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+def build_legacy_sql_migration_run_creation_request_hash(
+    command: LegacySqlMigrationRunCreationBoundaryCommand,
+) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "schema_version": LEGACY_SQL_MIGRATION_RUN_CREATION_REQUEST_SCHEMA_VERSION,
+                **command.model_dump(mode="json"),
+            }
+        )
+    )
+
+
+def build_legacy_sql_migration_run_creation_idempotency_key_hash(
+    *,
+    command: LegacySqlMigrationRunCreationBoundaryCommand,
+    tenant_id: str,
+) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "schema_version": LEGACY_SQL_MIGRATION_RUN_CREATION_IDEMPOTENCY_SCHEMA_VERSION,
+                "tenant_id": tenant_id,
+                "source_system_ref": command.source_system_ref,
+                "approval_record_hash": command.approval_record_hash,
+                "dry_run_result_hash": command.dry_run_result_hash,
+                "idempotency_key_ref": command.idempotency_key_ref,
+            }
+        )
+    )
+
+
+def build_legacy_sql_migration_run_creation_boundary_hash(
+    boundary: LegacySqlMigrationRunCreationBoundaryResponse,
+) -> str:
+    return stable_hash(canonical_json(boundary.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_legacy_sql_migration_run_creation_boundary(
+    *,
+    command: LegacySqlMigrationRunCreationBoundaryCommand,
+    tenant_id: str,
+    checked_by: str,
+    checked_at_utc: datetime | None = None,
+) -> LegacySqlMigrationRunCreationBoundaryResponse:
+    checked_at = checked_at_utc or datetime.now(UTC)
+    blocking_reasons = _run_creation_boundary_blocking_reasons(command)
+    ready = not blocking_reasons
+    draft = LegacySqlMigrationRunCreationBoundaryResponse(
+        tenant_id=tenant_id,
+        source_system_ref=command.source_system_ref,
+        migration_run_ref=command.migration_run_ref,
+        approval_record_hash=command.approval_record_hash,
+        approval_gate_evidence_hash=command.approval_gate_evidence_hash,
+        dry_run_result_hash=command.dry_run_result_hash,
+        run_creation_request_hash=build_legacy_sql_migration_run_creation_request_hash(command),
+        idempotency_key_hash=build_legacy_sql_migration_run_creation_idempotency_key_hash(
+            command=command,
+            tenant_id=tenant_id,
+        ),
+        restore_evidence_hash=command.restore_evidence_hash,
+        audit_event_id=command.audit_event_id,
+        audit_chain_ref=command.audit_chain_ref,
+        run_creation_requested=command.run_creation_requested,
+        run_creation_boundary_accepted=ready,
+        run_registry_persistence_requested=command.run_registry_persistence_requested,
+        approval_grant_requested=command.approval_grant_requested,
+        report_retrieval_requested=command.report_retrieval_requested,
+        import_write_execution_requested=command.import_write_execution_requested,
+        raw_data_access_requested=command.raw_data_access_requested,
+        import_write_payload_requested=command.import_write_payload_requested,
+        destructive_actions_requested=command.destructive_actions_requested,
+        external_side_effect_requested=command.external_side_effect_requested,
+        boundary_status=(
+            LegacySqlMigrationRunCreationBoundaryStatus.READY_FOR_RUN_REGISTRY_REQUEST
+            if ready
+            else LegacySqlMigrationRunCreationBoundaryStatus.BLOCKED
+        ),
+        blocking_reasons=blocking_reasons,
+        checked_by=checked_by,
+        checked_at_utc=checked_at,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_legacy_sql_migration_run_creation_boundary_hash(draft)})
+
+
+def _run_creation_boundary_blocking_reasons(
+    command: LegacySqlMigrationRunCreationBoundaryCommand,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not command.run_creation_requested:
+        reasons.append("run_creation_not_requested")
+    if command.run_registry_persistence_requested:
+        reasons.append("run_registry_persistence_not_enabled")
+    if command.approval_grant_requested:
+        reasons.append("approval_grant_requires_future_gate")
+    if command.report_retrieval_requested:
+        reasons.append("report_retrieval_not_enabled")
+    if command.import_write_execution_requested:
+        reasons.append("import_write_execution_requires_future_gate")
+    if command.raw_data_access_requested:
+        reasons.append("raw_data_access_request_forbidden")
+    if command.import_write_payload_requested:
+        reasons.append("import_write_payload_request_forbidden")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_action_request_forbidden")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_request_forbidden")
+    return tuple(reasons)
 
 
 def build_legacy_sql_migration_run_registry_idempotency_key_hash(
