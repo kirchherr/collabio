@@ -66,6 +66,11 @@ LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_SCHEMA_VERSION = (
 LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_COMMAND_REF = (
     "planning:legacy-sql-import-write-approval-record-persistence"
 )
+LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_SCHEMA_VERSION = "legacy_sql_import_write_approval_record.v1"
+LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_COMMAND_REF = "store:legacy-sql-import-write-approval-record"
+LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_IDEMPOTENCY_SCHEMA_VERSION = (
+    "legacy_sql_import_write_approval_record_idempotency_key.v1"
+)
 REQUIRED_IMPORT_WRITE_APPROVAL_RECORD_PERSISTENCE_PLAN_EVIDENCE = (
     "approval_request_boundary",
     "approval_gate_evidence",
@@ -97,6 +102,11 @@ class LegacySqlImportWriteApprovalGateStoreBackend(StrEnum):
     POSTGRES = "postgres"
 
 
+class LegacySqlImportWriteApprovalRecordStoreBackend(StrEnum):
+    JSONL = "jsonl"
+    POSTGRES = "postgres"
+
+
 class LegacySqlImportWriteApprovalGateStatus(StrEnum):
     READY_FOR_HUMAN_APPROVAL_RECORD = "ready_for_human_approval_record"
     BLOCKED = "blocked"
@@ -110,6 +120,12 @@ class LegacySqlImportWriteApprovalRequestBoundaryStatus(StrEnum):
 class LegacySqlImportWriteApprovalRecordPersistencePlanStatus(StrEnum):
     READY_FOR_STORE_IMPLEMENTATION = "ready_for_store_implementation"
     BLOCKED = "blocked"
+
+
+class LegacySqlImportWriteApprovalRecordStatus(StrEnum):
+    APPROVED_FOR_FUTURE_IMPORT_WRITE_GATE = "approved_for_future_import_write_gate"
+    REJECTED = "rejected"
+    EXPIRED = "expired"
 
 
 class LegacySqlImportWriteApprovalReview(BaseModel):
@@ -902,6 +918,151 @@ class LegacySqlImportWriteApprovalRecordPersistencePlan(BaseModel):
         return self
 
 
+class LegacySqlImportWriteApprovalRecordCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approval_request_boundary_evidence_hash: str
+    persistence_plan_evidence_hash: str
+    approval_record_ref: str
+    idempotency_key_ref: str
+    restore_evidence_hash: str
+    audit_event_id: str
+    audit_chain_ref: str
+    approved_by: str
+    reason: str
+    approval_record_requested: bool = True
+    import_write_requested: bool = False
+    raw_data_access_requested: bool = False
+    import_write_payload_requested: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("approved_by", "audit_event_id", "reason")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL import write approval record command text fields must not be empty")
+        return value
+
+    @field_validator("approval_record_ref", "idempotency_key_ref", "audit_chain_ref")
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record command references must be namespaced")
+        return value
+
+    @field_validator(
+        "approval_request_boundary_evidence_hash",
+        "persistence_plan_evidence_hash",
+        "restore_evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record command hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_command(self) -> Self:
+        _assert_approval_gate_safe(self)
+        return self
+
+
+class LegacySqlImportWriteApprovalRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = CRM_ERP_MODULE_ID
+    source_system_ref: str
+    continuity_domain: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_CONTINUITY_DOMAIN
+    command_ref: str = LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_COMMAND_REF
+    dry_run_result_hash: str
+    approval_request_boundary_evidence_hash: str
+    approval_gate_evidence_hash: str
+    approval_request_hash: str
+    persistence_plan_evidence_hash: str
+    approval_record_ref: str
+    approval_ticket_ref: str
+    human_confirmation_reference: str
+    idempotency_key_hash: str
+    approved_by: str
+    approved_at_utc: datetime
+    record_status: LegacySqlImportWriteApprovalRecordStatus = (
+        LegacySqlImportWriteApprovalRecordStatus.APPROVED_FOR_FUTURE_IMPORT_WRITE_GATE
+    )
+    future_import_write_execution_gate_required: bool = True
+    import_write_execution_allowed: bool = False
+    raw_data_access_allowed: bool = False
+    import_write_payload_allowed: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    restore_evidence_hash: str
+    audit_event_id: str
+    audit_chain_ref: str
+    evidence_hash: str
+
+    @field_validator("tenant_id", "approved_by", "audit_event_id")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("legacy SQL import write approval record text fields must not be empty")
+        return value
+
+    @field_validator("module_id")
+    @classmethod
+    def require_crm_erp_module(cls, value: str) -> str:
+        if value != CRM_ERP_MODULE_ID:
+            raise ValueError("legacy SQL import write approval record only applies to module crm_erp")
+        return value
+
+    @field_validator(
+        "source_system_ref",
+        "approval_record_ref",
+        "approval_ticket_ref",
+        "human_confirmation_reference",
+        "audit_chain_ref",
+    )
+    @classmethod
+    def validate_namespaced_refs(cls, value: str) -> str:
+        if not NAMESPACED_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record references must be namespaced")
+        return value
+
+    @field_validator(
+        "dry_run_result_hash",
+        "approval_request_boundary_evidence_hash",
+        "approval_gate_evidence_hash",
+        "approval_request_hash",
+        "persistence_plan_evidence_hash",
+        "idempotency_key_hash",
+        "restore_evidence_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("legacy SQL import write approval record hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_safe_record(self) -> Self:
+        if self.schema_version != LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_SCHEMA_VERSION:
+            raise ValueError("legacy SQL import write approval record schema version is invalid")
+        if (
+            self.import_write_execution_allowed
+            or self.raw_data_access_allowed
+            or self.import_write_payload_allowed
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("legacy SQL import write approval record must not allow execution or side effects")
+        if not self.future_import_write_execution_gate_required:
+            raise ValueError("legacy SQL import write approval record must require a future execution gate")
+        _assert_approval_gate_safe(self)
+        return self
+
+
 class LegacySqlImportWriteApprovalGateSmokeReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -1138,6 +1299,296 @@ class PgLegacySqlImportWriteApprovalGateStore:
         evidence = LegacySqlImportWriteApprovalGateEvidence.model_validate(parsed)
         _require_valid_gate_hash(evidence)
         return evidence
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+class LegacySqlImportWriteApprovalRecordStore(Protocol):
+    def append(self, record: LegacySqlImportWriteApprovalRecord) -> LegacySqlImportWriteApprovalRecord:
+        raise NotImplementedError
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlImportWriteApprovalRecord:
+        raise NotImplementedError
+
+    def get_by_idempotency_key_hash(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key_hash: str,
+    ) -> LegacySqlImportWriteApprovalRecord:
+        raise NotImplementedError
+
+    def list_records(self, *, tenant_id: str) -> tuple[LegacySqlImportWriteApprovalRecord, ...]:
+        raise NotImplementedError
+
+
+class InMemoryLegacySqlImportWriteApprovalRecordStore:
+    def __init__(self, records: Sequence[LegacySqlImportWriteApprovalRecord] = ()) -> None:
+        self._records: dict[tuple[str, str], LegacySqlImportWriteApprovalRecord] = {}
+        self._idempotency_index: dict[tuple[str, str], LegacySqlImportWriteApprovalRecord] = {}
+        for record in records:
+            self.append(record)
+
+    def append(self, record: LegacySqlImportWriteApprovalRecord) -> LegacySqlImportWriteApprovalRecord:
+        return self._append_to_indexes(record)
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlImportWriteApprovalRecord:
+        try:
+            return self._records[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL import write approval record not found") from exc
+
+    def get_by_idempotency_key_hash(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key_hash: str,
+    ) -> LegacySqlImportWriteApprovalRecord:
+        try:
+            return self._idempotency_index[(tenant_id, idempotency_key_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL import write approval record not found") from exc
+
+    def list_records(self, *, tenant_id: str) -> tuple[LegacySqlImportWriteApprovalRecord, ...]:
+        return tuple(record for (stored_tenant_id, _), record in self._records.items() if stored_tenant_id == tenant_id)
+
+    def _append_to_indexes(self, record: LegacySqlImportWriteApprovalRecord) -> LegacySqlImportWriteApprovalRecord:
+        _require_valid_approval_record_hash(record)
+        key = (record.tenant_id, record.evidence_hash)
+        existing_by_hash = self._records.get(key)
+        if existing_by_hash is not None:
+            if existing_by_hash == record:
+                return existing_by_hash
+            raise ValueError("legacy SQL import write approval record evidence hash already exists")
+        idempotency_key = (record.tenant_id, record.idempotency_key_hash)
+        existing_by_idempotency = self._idempotency_index.get(idempotency_key)
+        if existing_by_idempotency is not None:
+            if existing_by_idempotency == record:
+                return existing_by_idempotency
+            raise ValueError("legacy SQL import write approval record idempotency key already used")
+        self._records[key] = record
+        self._idempotency_index[idempotency_key] = record
+        return record
+
+
+class JsonlLegacySqlImportWriteApprovalRecordStore:
+    def __init__(self, *, path: Path) -> None:
+        self.path = path
+        self._records: dict[tuple[str, str], LegacySqlImportWriteApprovalRecord] = {}
+        self._idempotency_index: dict[tuple[str, str], LegacySqlImportWriteApprovalRecord] = {}
+        if not path.exists():
+            return
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            record = LegacySqlImportWriteApprovalRecord.model_validate_json(line)
+            _require_valid_approval_record_hash(record)
+            key = (record.tenant_id, record.evidence_hash)
+            idempotency_key = (record.tenant_id, record.idempotency_key_hash)
+            if key in self._records:
+                raise ValueError("duplicate legacy SQL import write approval record in store")
+            if idempotency_key in self._idempotency_index:
+                raise ValueError("duplicate legacy SQL import write approval record idempotency key in store")
+            self._records[key] = record
+            self._idempotency_index[idempotency_key] = record
+
+    def append(self, record: LegacySqlImportWriteApprovalRecord) -> LegacySqlImportWriteApprovalRecord:
+        _require_valid_approval_record_hash(record)
+        key = (record.tenant_id, record.evidence_hash)
+        existing_by_hash = self._records.get(key)
+        if existing_by_hash is not None:
+            if existing_by_hash == record:
+                return existing_by_hash
+            raise ValueError("legacy SQL import write approval record evidence hash already exists")
+        idempotency_key = (record.tenant_id, record.idempotency_key_hash)
+        existing_by_idempotency = self._idempotency_index.get(idempotency_key)
+        if existing_by_idempotency is not None:
+            if existing_by_idempotency == record:
+                return existing_by_idempotency
+            raise ValueError("legacy SQL import write approval record idempotency key already used")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record.model_dump(mode="json"), sort_keys=True) + "\n")
+        self._records[key] = record
+        self._idempotency_index[idempotency_key] = record
+        return record
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlImportWriteApprovalRecord:
+        try:
+            return self._records[(tenant_id, evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL import write approval record not found") from exc
+
+    def get_by_idempotency_key_hash(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key_hash: str,
+    ) -> LegacySqlImportWriteApprovalRecord:
+        try:
+            return self._idempotency_index[(tenant_id, idempotency_key_hash)]
+        except KeyError as exc:
+            raise KeyError("legacy SQL import write approval record not found") from exc
+
+    def list_records(self, *, tenant_id: str) -> tuple[LegacySqlImportWriteApprovalRecord, ...]:
+        return tuple(record for (stored_tenant_id, _), record in self._records.items() if stored_tenant_id == tenant_id)
+
+
+class PgLegacySqlImportWriteApprovalRecordStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, record: LegacySqlImportWriteApprovalRecord) -> LegacySqlImportWriteApprovalRecord:
+        _require_valid_approval_record_hash(record)
+        try:
+            existing = self.get_by_idempotency_key_hash(
+                tenant_id=record.tenant_id,
+                idempotency_key_hash=record.idempotency_key_hash,
+            )
+        except KeyError:
+            existing = None
+        if existing is not None:
+            if existing == record:
+                return existing
+            raise ValueError("legacy SQL import write approval record idempotency key already used")
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                self._set_tenant(connection, record.tenant_id)
+                connection.execute(
+                    """
+                    INSERT INTO crm_erp_legacy.import_write_approval_records (
+                        tenant_id,
+                        module_id,
+                        source_system_ref,
+                        dry_run_result_hash,
+                        approval_request_boundary_evidence_hash,
+                        approval_gate_evidence_hash,
+                        approval_request_hash,
+                        persistence_plan_evidence_hash,
+                        approval_record_ref,
+                        approval_ticket_ref,
+                        human_confirmation_reference,
+                        idempotency_key_hash,
+                        approved_by,
+                        approved_at_utc,
+                        record_status,
+                        future_import_write_execution_gate_required,
+                        import_write_execution_allowed,
+                        raw_data_access_allowed,
+                        import_write_payload_allowed,
+                        destructive_actions_allowed,
+                        external_side_effect_allowed,
+                        restore_evidence_hash,
+                        audit_event_id,
+                        audit_chain_ref,
+                        approval_record,
+                        evidence_hash,
+                        schema_version
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    self._record_values(record),
+                )
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("legacy SQL import write approval record already exists") from exc
+        return record
+
+    def get(self, *, tenant_id: str, evidence_hash: str) -> LegacySqlImportWriteApprovalRecord:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT approval_record
+                FROM crm_erp_legacy.import_write_approval_records
+                WHERE tenant_id = %s
+                  AND evidence_hash = %s
+                """,
+                (tenant_id, evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("legacy SQL import write approval record not found")
+        return self._record_from_row(row)
+
+    def get_by_idempotency_key_hash(
+        self,
+        *,
+        tenant_id: str,
+        idempotency_key_hash: str,
+    ) -> LegacySqlImportWriteApprovalRecord:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT approval_record
+                FROM crm_erp_legacy.import_write_approval_records
+                WHERE tenant_id = %s
+                  AND idempotency_key_hash = %s
+                """,
+                (tenant_id, idempotency_key_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("legacy SQL import write approval record not found")
+        return self._record_from_row(row)
+
+    def list_records(self, *, tenant_id: str) -> tuple[LegacySqlImportWriteApprovalRecord, ...]:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT approval_record
+                FROM crm_erp_legacy.import_write_approval_records
+                WHERE tenant_id = %s
+                ORDER BY approved_at_utc, evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(self._record_from_row(row) for row in rows)
+
+    def _record_values(self, record: LegacySqlImportWriteApprovalRecord) -> tuple[object, ...]:
+        return (
+            record.tenant_id,
+            record.module_id,
+            record.source_system_ref,
+            record.dry_run_result_hash,
+            record.approval_request_boundary_evidence_hash,
+            record.approval_gate_evidence_hash,
+            record.approval_request_hash,
+            record.persistence_plan_evidence_hash,
+            record.approval_record_ref,
+            record.approval_ticket_ref,
+            record.human_confirmation_reference,
+            record.idempotency_key_hash,
+            record.approved_by,
+            record.approved_at_utc,
+            record.record_status.value,
+            record.future_import_write_execution_gate_required,
+            record.import_write_execution_allowed,
+            record.raw_data_access_allowed,
+            record.import_write_payload_allowed,
+            record.destructive_actions_allowed,
+            record.external_side_effect_allowed,
+            record.restore_evidence_hash,
+            record.audit_event_id,
+            record.audit_chain_ref,
+            Jsonb(record.model_dump(mode="json")),
+            record.evidence_hash,
+            record.schema_version,
+        )
+
+    def _record_from_row(self, row: tuple[Any, ...]) -> LegacySqlImportWriteApprovalRecord:
+        raw = row[0]
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+        record = LegacySqlImportWriteApprovalRecord.model_validate(parsed)
+        _require_valid_approval_record_hash(record)
+        return record
 
     def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
         connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
@@ -1457,6 +1908,78 @@ def build_legacy_sql_import_write_approval_record_persistence_plan_hash(
     return stable_hash(canonical_json(plan.model_dump(mode="json", exclude={"evidence_hash"})))
 
 
+def build_legacy_sql_import_write_approval_record_idempotency_key_hash(
+    *,
+    command: LegacySqlImportWriteApprovalRecordCommand,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    persistence_plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "schema_version": LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_IDEMPOTENCY_SCHEMA_VERSION,
+                "tenant_id": request_boundary.tenant_id,
+                "approval_request_boundary_evidence_hash": request_boundary.evidence_hash,
+                "approval_request_hash": request_boundary.approval_request_hash,
+                "persistence_plan_evidence_hash": persistence_plan.evidence_hash,
+                "idempotency_key_ref": command.idempotency_key_ref,
+            }
+        )
+    )
+
+
+def build_legacy_sql_import_write_approval_record_hash(
+    record: LegacySqlImportWriteApprovalRecord,
+) -> str:
+    return stable_hash(canonical_json(record.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_legacy_sql_import_write_approval_record(
+    *,
+    command: LegacySqlImportWriteApprovalRecordCommand,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    persistence_plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+    approved_at_utc: datetime | None = None,
+) -> LegacySqlImportWriteApprovalRecord:
+    approved_at = approved_at_utc or datetime.now(UTC)
+    blocking_reasons = _approval_record_blocking_reasons(
+        command=command,
+        request_boundary=request_boundary,
+        gate_evidence=gate_evidence,
+        persistence_plan=persistence_plan,
+    )
+    if blocking_reasons:
+        joined = ", ".join(blocking_reasons)
+        raise ValueError(f"legacy SQL import write approval record cannot be created: {joined}")
+    idempotency_key_hash = build_legacy_sql_import_write_approval_record_idempotency_key_hash(
+        command=command,
+        request_boundary=request_boundary,
+        persistence_plan=persistence_plan,
+    )
+    draft = LegacySqlImportWriteApprovalRecord(
+        tenant_id=request_boundary.tenant_id,
+        module_id=request_boundary.module_id,
+        source_system_ref=request_boundary.source_system_ref,
+        dry_run_result_hash=request_boundary.dry_run_result_hash,
+        approval_request_boundary_evidence_hash=request_boundary.evidence_hash,
+        approval_gate_evidence_hash=gate_evidence.evidence_hash,
+        approval_request_hash=request_boundary.approval_request_hash,
+        persistence_plan_evidence_hash=persistence_plan.evidence_hash,
+        approval_record_ref=command.approval_record_ref,
+        approval_ticket_ref=request_boundary.approval_ticket_ref,
+        human_confirmation_reference=request_boundary.human_confirmation_reference,
+        idempotency_key_hash=idempotency_key_hash,
+        approved_by=command.approved_by,
+        approved_at_utc=approved_at,
+        restore_evidence_hash=command.restore_evidence_hash,
+        audit_event_id=command.audit_event_id,
+        audit_chain_ref=command.audit_chain_ref,
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_legacy_sql_import_write_approval_record_hash(draft)})
+
+
 def build_legacy_sql_import_write_approval_request_boundary(
     *,
     command: LegacySqlImportWriteApprovalRequestCommand,
@@ -1620,6 +2143,30 @@ def build_legacy_sql_import_write_approval_record_persistence_plan(
     return draft.model_copy(
         update={"evidence_hash": build_legacy_sql_import_write_approval_record_persistence_plan_hash(draft)}
     )
+
+
+def build_default_legacy_sql_import_write_approval_record_store(
+    data_dir: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> LegacySqlImportWriteApprovalRecordStore:
+    env = os.environ if environ is None else environ
+    backend = _record_store_backend(env)
+    if backend == LegacySqlImportWriteApprovalRecordStoreBackend.JSONL:
+        path_value = env.get("SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_STORE_PATH")
+        path = (
+            Path(path_value)
+            if path_value
+            else (data_dir or suite_data_dir()) / "legacy_sql_import_write_approval_records.jsonl"
+        )
+        return JsonlLegacySqlImportWriteApprovalRecordStore(path=path)
+    if backend == LegacySqlImportWriteApprovalRecordStoreBackend.POSTGRES:
+        database_dsn = env.get("SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_STORE_DSN") or env.get(
+            "SUITE_DATABASE_DSN"
+        )
+        if database_dsn is None:
+            raise ValueError("Postgres legacy SQL import write approval record store requires a database DSN")
+        return PgLegacySqlImportWriteApprovalRecordStore(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported legacy SQL import write approval record store backend: {backend}")
 
 
 def build_default_legacy_sql_import_write_approval_gate_store(
@@ -2053,6 +2600,131 @@ def _approval_record_persistence_plan_boundary_bound(
     )
 
 
+def _approval_record_blocking_reasons(
+    *,
+    command: LegacySqlImportWriteApprovalRecordCommand,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    persistence_plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not command.approval_record_requested:
+        reasons.append("approval_record_not_requested")
+    if command.raw_data_access_requested:
+        reasons.append("raw_data_access_request_forbidden")
+    if command.import_write_requested:
+        reasons.append("import_write_request_requires_future_execution_gate")
+    if command.import_write_payload_requested:
+        reasons.append("import_write_payload_request_forbidden")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_action_request_forbidden")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_request_forbidden")
+    if build_legacy_sql_import_write_approval_request_boundary_hash(request_boundary) != request_boundary.evidence_hash:
+        reasons.append("approval_request_boundary_hash_invalid")
+    if command.approval_request_boundary_evidence_hash != request_boundary.evidence_hash:
+        reasons.append("approval_record_command_boundary_hash_mismatch")
+    if (
+        build_legacy_sql_import_write_approval_record_persistence_plan_hash(persistence_plan)
+        != persistence_plan.evidence_hash
+    ):
+        reasons.append("persistence_plan_hash_invalid")
+    if command.persistence_plan_evidence_hash != persistence_plan.evidence_hash:
+        reasons.append("approval_record_command_persistence_plan_hash_mismatch")
+    if not _approval_record_boundary_plan_bound(
+        request_boundary=request_boundary,
+        gate_evidence=gate_evidence,
+        persistence_plan=persistence_plan,
+    ):
+        reasons.append("approval_record_boundary_plan_not_bound")
+    if not _approval_record_gate_plan_bound(gate_evidence=gate_evidence, persistence_plan=persistence_plan):
+        reasons.append("approval_record_gate_plan_not_bound")
+    if (
+        request_boundary.boundary_status
+        != LegacySqlImportWriteApprovalRequestBoundaryStatus.READY_FOR_APPROVAL_RECORD_REQUEST
+        or not request_boundary.approval_request_accepted
+    ):
+        reasons.append("approval_request_boundary_not_ready_for_record_store")
+    if (
+        persistence_plan.plan_status
+        != LegacySqlImportWriteApprovalRecordPersistencePlanStatus.READY_FOR_STORE_IMPLEMENTATION
+        or not persistence_plan.approval_record_persistence_plan_accepted
+    ):
+        reasons.append("persistence_plan_not_ready_for_store_adapter")
+    if (
+        gate_evidence.gate_status != LegacySqlImportWriteApprovalGateStatus.READY_FOR_HUMAN_APPROVAL_RECORD
+        or not gate_evidence.human_approval_record_allowed
+    ):
+        reasons.append("approval_gate_not_ready_for_human_record")
+    if (
+        not request_boundary.future_import_write_execution_gate_required
+        or not persistence_plan.future_import_write_execution_gate_required
+        or not gate_evidence.future_import_write_execution_gate_required
+    ):
+        reasons.append("future_import_write_execution_gate_not_required")
+    if (
+        request_boundary.import_write_execution_allowed
+        or persistence_plan.import_write_execution_allowed
+        or gate_evidence.import_write_execution_allowed
+    ):
+        reasons.append("import_write_execution_allowed_unexpectedly")
+    if (
+        request_boundary.raw_data_access_allowed
+        or persistence_plan.raw_data_access_allowed
+        or gate_evidence.raw_data_access_allowed
+    ):
+        reasons.append("raw_data_access_allowed_unexpectedly")
+    if (
+        request_boundary.import_write_payload_allowed
+        or persistence_plan.import_write_payload_allowed
+        or gate_evidence.import_write_payload_allowed
+    ):
+        reasons.append("import_write_payload_allowed_unexpectedly")
+    if (
+        request_boundary.destructive_actions_allowed
+        or persistence_plan.destructive_actions_allowed
+        or gate_evidence.destructive_actions_allowed
+    ):
+        reasons.append("destructive_actions_allowed_unexpectedly")
+    if (
+        request_boundary.external_side_effect_allowed
+        or persistence_plan.external_side_effect_allowed
+        or gate_evidence.external_side_effect_allowed
+    ):
+        reasons.append("external_side_effect_allowed_unexpectedly")
+    return tuple(dict.fromkeys(reasons))
+
+
+def _approval_record_boundary_plan_bound(
+    *,
+    request_boundary: LegacySqlImportWriteApprovalRequestBoundaryResponse,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    persistence_plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+) -> bool:
+    return (
+        request_boundary.tenant_id == persistence_plan.tenant_id == gate_evidence.tenant_id
+        and request_boundary.module_id == persistence_plan.module_id == gate_evidence.module_id == CRM_ERP_MODULE_ID
+        and request_boundary.source_system_ref == persistence_plan.source_system_ref == gate_evidence.source_system_ref
+        and request_boundary.dry_run_result_hash == gate_evidence.dry_run_result_hash
+        and request_boundary.evidence_hash == persistence_plan.approval_request_boundary_evidence_hash
+        and request_boundary.approval_gate_evidence_hash == gate_evidence.evidence_hash
+        and request_boundary.approval_request_hash == persistence_plan.approval_request_hash
+    )
+
+
+def _approval_record_gate_plan_bound(
+    *,
+    gate_evidence: LegacySqlImportWriteApprovalGateEvidence,
+    persistence_plan: LegacySqlImportWriteApprovalRecordPersistencePlan,
+) -> bool:
+    return (
+        gate_evidence.tenant_id == persistence_plan.tenant_id
+        and gate_evidence.module_id == persistence_plan.module_id == CRM_ERP_MODULE_ID
+        and gate_evidence.source_system_ref == persistence_plan.source_system_ref
+        and gate_evidence.evidence_hash == persistence_plan.approval_gate_evidence_hash
+    )
+
+
 def _dry_run_worker_report_bound(
     *,
     command: LegacySqlImportWriteApprovalGateCommand,
@@ -2087,6 +2759,12 @@ def _require_valid_gate_hash(evidence: LegacySqlImportWriteApprovalGateEvidence)
     expected = build_legacy_sql_import_write_approval_gate_hash(evidence)
     if evidence.evidence_hash != expected:
         raise ValueError("legacy SQL import write approval gate evidence hash invalid")
+
+
+def _require_valid_approval_record_hash(record: LegacySqlImportWriteApprovalRecord) -> None:
+    expected = build_legacy_sql_import_write_approval_record_hash(record)
+    if record.evidence_hash != expected:
+        raise ValueError("legacy SQL import write approval record hash invalid")
 
 
 def _is_blocked_gate(
@@ -2196,6 +2874,15 @@ def _gate_store_backend(env: Mapping[str, str]) -> LegacySqlImportWriteApprovalG
     if backend in {"postgres", "pg"}:
         return LegacySqlImportWriteApprovalGateStoreBackend.POSTGRES
     raise ValueError(f"Unsupported legacy SQL import write approval gate store backend: {backend}")
+
+
+def _record_store_backend(env: Mapping[str, str]) -> LegacySqlImportWriteApprovalRecordStoreBackend:
+    backend = env.get("SUITE_LEGACY_SQL_IMPORT_WRITE_APPROVAL_RECORD_STORE_BACKEND", "jsonl").strip().lower()
+    if backend in {"jsonl", "json"}:
+        return LegacySqlImportWriteApprovalRecordStoreBackend.JSONL
+    if backend in {"postgres", "pg"}:
+        return LegacySqlImportWriteApprovalRecordStoreBackend.POSTGRES
+    raise ValueError(f"Unsupported legacy SQL import write approval record store backend: {backend}")
 
 
 def _env_bool(env: Mapping[str, str], name: str, *, default: bool) -> bool:

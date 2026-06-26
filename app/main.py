@@ -115,6 +115,7 @@ from suite.platform.legacy_sql_import_write_approval_gate import (
     LegacySqlImportWriteApprovalRequestBoundaryResponse,
     LegacySqlImportWriteApprovalRequestCommand,
     build_default_legacy_sql_import_write_approval_gate_store,
+    build_default_legacy_sql_import_write_approval_record_store,
     build_legacy_sql_import_write_approval_request_boundary,
 )
 from suite.platform.modules import (
@@ -796,6 +797,7 @@ def build_app() -> FastAPI:
     migration_manifest = load_migration_manifest()
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
+    legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -13496,6 +13498,7 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_reconciliation_store = knowledge_base_runtime_reconciliation_store
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
+    app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

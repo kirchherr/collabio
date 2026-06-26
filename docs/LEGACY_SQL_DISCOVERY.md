@@ -123,7 +123,10 @@ Migration `0043_crm_erp_legacy_import_write_approval_records.sql` bereitet den t
 `legacy_sql_import_write_approval_record.v1` Store vor. Die Tabelle erzwingt RLS, Append-only-Policies, eindeutige
 Idempotency-Keys, Boundary-/Gate-/Plan-Hash-Bindung und Restore-/Audit-Referenzen. Sie kann spaeter nur
 Human-Approval-Records speichern; Import-Write-Ausfuehrung, Rohdatenzugriff, Import-Payloads, destruktive Aktionen und
-externe Side Effects bleiben per DB-Check verboten.
+externe Side Effects bleiben per DB-Check verboten. Der Store-Adapter in
+`suite.platform.legacy_sql_import_write_approval_gate` bietet JSONL- und PostgreSQL-Backends mit idempotentem Append,
+Lookup nach Evidence- und Idempotency-Hash sowie Tenant-Isolation; er fuehrt keine Import-Writes aus und schaltet keine
+externen Side Effects frei.
 
 `docker compose run --rm legacy-sql-readiness-smoke` erzeugt einen metadata-only `legacy_sql_readiness_smoke_report.v1`
 aus einer internen SQL-Server-Metadaten-Fixture. Der Smoke nutzt den isolierten Metadata-Worker, prueft die Hash-Kette
