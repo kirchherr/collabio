@@ -73,6 +73,12 @@ from suite.platform.crm_contacts import (
     CrmContactsResponse,
     InMemoryCrmContactRepository,
 )
+from suite.platform.crm_erp_authorized_context_contract import (
+    CrmErpAuthorizedContextContractRequest,
+    CrmErpAuthorizedContextContractResponse,
+    CrmErpAuthorizedContextContractService,
+    build_crm_erp_authorized_context_contract_service,
+)
 from suite.platform.crm_erp_prompt_audit_contract import (
     CrmErpPromptAuditContractRequest,
     CrmErpPromptAuditContractResponse,
@@ -914,6 +920,10 @@ def build_app() -> FastAPI:
         prompt_audit_contract_service=crm_erp_prompt_audit_contract_service,
         audit_logger=audit_logger,
     )
+    crm_erp_authorized_context_contract_service = build_crm_erp_authorized_context_contract_service(
+        redaction_contract_service=crm_erp_redaction_contract_service,
+        audit_logger=audit_logger,
+    )
     default_knowledge_base_article_service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
@@ -1088,6 +1098,29 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
         )
 
+    @app.post(
+        "/v1/platform/search/crm-erp/authorized-context-contract",
+        response_model=CrmErpAuthorizedContextContractResponse,
+    )
+    def crm_erp_authorized_context_contract(
+        authorized_context_request: CrmErpAuthorizedContextContractRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ERP_SEARCH_FEATURE_ID)),
+        ],
+    ) -> CrmErpAuthorizedContextContractResponse:
+        del gate
+        authorized_context_service = cast(
+            CrmErpAuthorizedContextContractService,
+            request.app.state.crm_erp_authorized_context_contract_service,
+        )
+        return authorized_context_service.build_contract(
+            request=authorized_context_request,
+            user_context=context.user_context,
+        )
+
     @app.get("/v1/platform/search/crm-erp/rag-readiness", response_model=CrmErpRagReadinessResponse)
     def crm_erp_rag_readiness(
         request: Request,
@@ -1102,6 +1135,7 @@ def build_app() -> FastAPI:
             source_citation_contract_ready=True,
             prompt_audit_contract_ready=True,
             redaction_contract_ready=True,
+            authorized_context_contract_ready=True,
         )
         audit_logger.record(
             user_context=context.user_context,
@@ -14327,6 +14361,7 @@ def build_app() -> FastAPI:
     app.state.crm_account_service = crm_account_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
+    app.state.crm_erp_authorized_context_contract_service = crm_erp_authorized_context_contract_service
     app.state.crm_erp_search_service = crm_erp_search_service
     app.state.crm_erp_prompt_audit_contract_service = crm_erp_prompt_audit_contract_service
     app.state.crm_erp_redaction_contract_service = crm_erp_redaction_contract_service

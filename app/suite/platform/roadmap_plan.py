@@ -184,8 +184,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
             work_item_id="crm_erp_search_acl_first_then_rag",
             title="CRM/ERP Suche von Keyword zu RAG fuehren",
             summary=(
-                "ACL-first Keyword-Suche, Source-Resolver, Citation-, Prompt-Audit- und Redaction-Contract stehen; "
-                "RAG wartet auf autorisierten Kontextaufbau."
+                "ACL-first Keyword-Suche, Source-Resolver, Citation-, Prompt-Audit-, Redaction- und "
+                "Authorized-Context-Contract stehen; RAG-Antwortgenerierung wartet auf die Inference-Grenze."
             ),
             priority=RoadmapPlanPriority.NEXT,
             capability_ids=(
@@ -195,7 +195,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "source_objects",
             ),
             readiness_gate="search_readiness_and_authoritative_acl_validation_before_vector_results",
-            decision="next_because_redaction_is_safe_but_rag_must_wait_for_authorized_context",
+            decision="next_because_context_contract_is_safe_but_answer_generation_needs_inference_boundary",
             evidence_refs=(
                 "tests/test_crm_erp_search.py",
                 "app/suite/platform/crm_erp_search_readiness.py",

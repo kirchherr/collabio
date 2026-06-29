@@ -11,7 +11,8 @@ user query
           -> authorized chunk repository
             -> exact chunk fetch
             -> redaction
-              -> prompt build
+              -> authorized context contract
+                -> prompt build
                 -> local LLM
                   -> answer with source citations
                     -> audit
@@ -79,3 +80,14 @@ user query
 - Raw source text, redacted text, prompts, outputs, snippets, and embeddings are not included in the response.
 - The response is not RAG context and must keep `content_included=false`, `redacted_content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, and `rag_context_created=false`.
 - CRM/ERP RAG readiness may satisfy the redaction gate only after this endpoint and its audit coverage are present; authorized context assembly remains a separate required gate before RAG context creation.
+
+## CRM/ERP authorized context contract
+
+`POST /v1/platform/search/crm-erp/authorized-context-contract` is the metadata-only proof that future CRM/ERP RAG can bind exact authorized chunk refs to a redaction contract before any prompt, answer, or context body exists.
+
+- The request accepts object IDs, model and prompt-template IDs, and a redaction policy ID only.
+- The server reuses the redaction contract and does not trust client-supplied source metadata.
+- The contract returns authorized chunk refs, source object IDs, source versions, source chunk IDs, source classifications, the redaction contract hash, and upstream audit event IDs only.
+- Raw source text, redacted text, prompts, outputs, snippets, embeddings, and context bodies are not included in the response.
+- The response is not RAG context and must keep `content_included=false`, `redacted_content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, `rag_context_created=false`, and `context_body_created=false`.
+- CRM/ERP RAG readiness may satisfy the authorized-context gate only after this endpoint and its audit coverage are present; actual inference and answer generation remain separate gated work.
