@@ -79,6 +79,15 @@ from suite.platform.erp_products import (
     ErpProductsResponse,
     InMemoryErpProductRepository,
 )
+from suite.platform.erp_sales import (
+    ERP_INVOICES_FEATURE_ID,
+    ERP_ORDERS_FEATURE_ID,
+    ErpInvoicesResponse,
+    ErpOrdersResponse,
+    ErpSalesService,
+    InMemoryErpInvoiceRepository,
+    InMemoryErpOrderRepository,
+)
 from suite.platform.knowledge_base import (
     KB_ARTICLES_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
@@ -796,6 +805,11 @@ def build_app() -> FastAPI:
     )
     erp_product_service = ErpProductService(
         repository=InMemoryErpProductRepository.demo(),
+        audit_logger=audit_logger,
+    )
+    erp_sales_service = ErpSalesService(
+        order_repository=InMemoryErpOrderRepository.demo(),
+        invoice_repository=InMemoryErpInvoiceRepository.demo(),
         audit_logger=audit_logger,
     )
     default_knowledge_base_article_service = KnowledgeBaseArticleService(
@@ -13930,6 +13944,32 @@ def build_app() -> FastAPI:
         erp_products = cast(ErpProductService, request.app.state.erp_product_service)
         return erp_products.list_products(user_context=context.user_context)
 
+    @app.get("/v1/erp/orders", response_model=ErpOrdersResponse)
+    def list_erp_orders(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=ERP_ORDERS_FEATURE_ID)),
+        ],
+    ) -> ErpOrdersResponse:
+        del gate
+        erp_sales = cast(ErpSalesService, request.app.state.erp_sales_service)
+        return erp_sales.list_orders(user_context=context.user_context)
+
+    @app.get("/v1/erp/invoices", response_model=ErpInvoicesResponse)
+    def list_erp_invoices(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=ERP_INVOICES_FEATURE_ID)),
+        ],
+    ) -> ErpInvoicesResponse:
+        del gate
+        erp_sales = cast(ErpSalesService, request.app.state.erp_sales_service)
+        return erp_sales.list_invoices(user_context=context.user_context)
+
     @app.get("/v1/kb/articles", response_model=KnowledgeBaseArticlesResponse)
     def list_knowledge_base_articles(
         request: Request,
@@ -13968,6 +14008,7 @@ def build_app() -> FastAPI:
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.erp_product_service = erp_product_service
+    app.state.erp_sales_service = erp_sales_service
     app.state.knowledge_base_article_service = default_knowledge_base_article_service
     app.state.knowledge_base_article_service_resolver = knowledge_base_article_service_resolver
     app.state.knowledge_base_runtime_activation_store = knowledge_base_runtime_activation_store

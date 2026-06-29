@@ -173,7 +173,11 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
             capability_ids=("crm_erp_first_slices", "legacy_migration_registry"),
             readiness_gate="metadata_only_erp_product_slice_ready_and_legacy_writes_blocked",
             decision="must_now_because_it_completes_the_first_crm_erp_workflow_without_destructive_imports",
-            evidence_refs=("tests/test_erp_products.py", "tests/test_legacy_sql_migration_run_registry.py"),
+            evidence_refs=(
+                "tests/test_erp_products.py",
+                "tests/test_erp_sales.py",
+                "tests/test_legacy_sql_migration_run_registry.py",
+            ),
             can_start_now=True,
         ),
         RoadmapPlanItem(
