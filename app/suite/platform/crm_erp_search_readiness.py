@@ -269,6 +269,7 @@ class CrmErpRagReadinessResponse(BaseModel):
     prompt_audit_contract_ready: bool = False
     redaction_contract_ready: bool = False
     authorized_context_contract_ready: bool = False
+    inference_execution_boundary_ready: bool = False
     ready_for_rag_context: bool = False
     gates: tuple[CrmErpSearchReadinessGate, ...]
     blocking_reasons: tuple[str, ...]
@@ -335,6 +336,7 @@ def build_crm_erp_rag_readiness_response(
     prompt_audit_contract_ready: bool = False,
     redaction_contract_ready: bool = False,
     authorized_context_contract_ready: bool = False,
+    inference_execution_boundary_ready: bool = False,
 ) -> CrmErpRagReadinessResponse:
     state = module_registry.get_tenant_module_or_none(
         tenant_id=user_context.tenant_id,
@@ -388,6 +390,8 @@ def build_crm_erp_rag_readiness_response(
         blocking_reasons.append("redaction_contract_missing")
     if not authorized_context_contract_ready:
         blocking_reasons.append("authorized_context_contract_missing")
+    if not inference_execution_boundary_ready:
+        blocking_reasons.append("inference_execution_boundary_missing")
 
     ready_for_rag_context = (
         rag_feature_worker_enabled
@@ -398,6 +402,7 @@ def build_crm_erp_rag_readiness_response(
         and prompt_audit_contract_ready
         and redaction_contract_ready
         and authorized_context_contract_ready
+        and inference_execution_boundary_ready
     )
     status = CrmErpSearchReadinessStatus.READY if ready_for_rag_context else CrmErpSearchReadinessStatus.BLOCKED
 
@@ -416,6 +421,7 @@ def build_crm_erp_rag_readiness_response(
         prompt_audit_contract_ready=prompt_audit_contract_ready,
         redaction_contract_ready=redaction_contract_ready,
         authorized_context_contract_ready=authorized_context_contract_ready,
+        inference_execution_boundary_ready=inference_execution_boundary_ready,
         ready_for_rag_context=ready_for_rag_context,
         gates=_rag_readiness_gates(
             tenant_context_present=True,
@@ -429,6 +435,7 @@ def build_crm_erp_rag_readiness_response(
             prompt_audit_contract_ready=prompt_audit_contract_ready,
             redaction_contract_ready=redaction_contract_ready,
             authorized_context_contract_ready=authorized_context_contract_ready,
+            inference_execution_boundary_ready=inference_execution_boundary_ready,
         ),
         blocking_reasons=tuple(dict.fromkeys(blocking_reasons)),
         guardrails=(
@@ -440,6 +447,7 @@ def build_crm_erp_rag_readiness_response(
             "prompt_and_output_hash_audit_required",
             "redaction_contract_required",
             "authorized_context_contract_required",
+            "inference_execution_boundary_required",
             "metadata_only_no_context_created",
             "no_cloud_ai_without_tenant_policy",
         ),
@@ -449,6 +457,7 @@ def build_crm_erp_rag_readiness_response(
             "app/suite/platform/crm_erp_search_readiness.py",
             "tests/test_crm_erp_search.py",
             "tests/test_api.py::test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_context",
+            "tests/test_crm_erp_inference_execution_boundary.py",
         ),
     )
 
@@ -466,6 +475,7 @@ def _rag_readiness_gates(
     prompt_audit_contract_ready: bool,
     redaction_contract_ready: bool,
     authorized_context_contract_ready: bool,
+    inference_execution_boundary_ready: bool,
 ) -> tuple[CrmErpSearchReadinessGate, ...]:
     return (
         CrmErpSearchReadinessGate(
@@ -532,6 +542,15 @@ def _rag_readiness_gates(
             gate_id="authorized_context_contract",
             status=_satisfied_or_blocked(authorized_context_contract_ready),
             summary="RAG context builder must assemble exact authorized and redacted chunks before prompting.",
+            evidence_ref="docs/RAG_SECURITY_MODEL.md",
+        ),
+        CrmErpSearchReadinessGate(
+            gate_id="inference_execution_boundary",
+            status=_satisfied_or_blocked(inference_execution_boundary_ready),
+            summary=(
+                "Inference boundary must validate tenant, model, prompt, data-class, and audit hash "
+                "requirements before answer generation."
+            ),
             evidence_ref="docs/RAG_SECURITY_MODEL.md",
         ),
     )

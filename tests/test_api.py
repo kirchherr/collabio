@@ -1622,6 +1622,152 @@ def test_crm_erp_authorized_context_contract_returns_metadata_refs_after_feature
     assert authorized_context_event.metadata["context_body_created"] is False
 
 
+def test_crm_erp_inference_execution_boundary_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/search/crm-erp/inference-execution-boundary",
+        json={"object_ids": ["crm-account-acme-demo"]},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_crm_erp_inference_execution_boundary_requires_enabled_search_feature() -> None:
+    reset_module_registry()
+
+    response = client.post(
+        "/v1/platform/search/crm-erp/inference-execution-boundary",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={"object_ids": ["crm-account-acme-demo"]},
+    )
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_crm_erp_inference_execution_boundary_returns_policy_boundary_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_erp_search_for_demo()
+
+    response = client.post(
+        "/v1/platform/search/crm-erp/inference-execution-boundary",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={
+            "object_ids": [
+                "crm-account-acme-demo",
+                "erp-product-standard-widget-demo",
+                "crm-account-acme-demo",
+            ],
+            "model_id": "mock-summarizer",
+            "prompt_template_id": "rag_answer_v1",
+            "redaction_policy_id": "redaction-policy:crm-erp-rag-v1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    expected_refs = [
+        f"{citation['source_object_id']}:{citation['source_version_id']}:{citation['source_chunk_id']}"
+        for citation in body["citations"]
+    ]
+    assert body["schema_version"] == "crm_erp_inference_execution_boundary.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.rag_indexing"
+    assert body["endpoint"] == "/v1/platform/search/crm-erp/inference-execution-boundary"
+    assert body["requested_object_ids"] == ["crm-account-acme-demo", "erp-product-standard-widget-demo"]
+    assert [citation["source_object_id"] for citation in body["citations"]] == [
+        "crm-account-acme-demo",
+        "erp-product-standard-widget-demo",
+    ]
+    assert body["authorized_chunk_refs"] == expected_refs
+    assert body["model_id"] == "mock-summarizer"
+    assert body["model_provider"] == "mock"
+    assert body["model_approved_for_rag"] is True
+    assert body["prompt_template_id"] == "rag_answer_v1"
+    assert body["prompt_template_approval_status"] == "approved"
+    assert body["tenant_ai_enabled"] is True
+    assert body["tenant_rag_enabled"] is True
+    assert body["external_ai_enabled"] is False
+    assert body["risk_level"] == "medium"
+    assert body["purpose"] == "rag"
+    assert body["inference_data_classes"] == ["ai_prompt", "internal", "personal"]
+    assert body["required_event_type"] == "ai.inference"
+    assert "input_hash_required" in body["required_inference_steps"]
+    assert "output_hash_required" in body["required_inference_steps"]
+    assert body["authorized_context_contract_ready"] is True
+    assert body["policy_authorized"] is True
+    assert body["human_confirmation_required"] is False
+    assert body["inference_execution_boundary_ready"] is True
+    assert body["contract_blocking_reasons"] == []
+    assert body["authorized_context_contract_hash"].startswith("sha256:")
+    assert body["inference_execution_boundary_hash"].startswith("sha256:")
+    assert body["result_contract"] == "metadata_only_inference_execution_boundary_no_prompt"
+    assert body["local_llm_gateway_required"] is True
+    assert body["tool_calls_allowed"] is False
+    assert body["provider_call_executed"] is False
+    assert body["answer_generation_executed"] is False
+    assert body["content_included"] is False
+    assert body["redacted_content_included"] is False
+    assert body["context_body_created"] is False
+    assert body["prompt_body_included"] is False
+    assert body["output_body_included"] is False
+    assert body["ai_used"] is False
+    assert body["rag_context_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "index_text" not in response.text
+    assert "snippet" not in response.text
+    assert "Question:" not in response.text
+    assert "Authorized source blocks:" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    trace_event = new_events[-6]
+    citation_event = new_events[-5]
+    prompt_audit_event = new_events[-4]
+    redaction_event = new_events[-3]
+    authorized_context_event = new_events[-2]
+    boundary_event = new_events[-1]
+    assert trace_event.event_type == "crm_erp.source_resolver_acl_trace"
+    assert trace_event.event_id == body["source_resolver_audit_event_id"]
+    assert citation_event.event_type == "crm_erp.source_citation_contract"
+    assert citation_event.event_id == body["source_citation_contract_audit_event_id"]
+    assert prompt_audit_event.event_type == "crm_erp.prompt_audit_contract"
+    assert prompt_audit_event.event_id == body["prompt_audit_contract_audit_event_id"]
+    assert redaction_event.event_type == "crm_erp.redaction_contract"
+    assert redaction_event.event_id == body["redaction_contract_audit_event_id"]
+    assert authorized_context_event.event_type == "crm_erp.authorized_context_contract"
+    assert authorized_context_event.event_id == body["authorized_context_contract_audit_event_id"]
+    assert boundary_event.event_type == "crm_erp.inference_execution_boundary"
+    assert boundary_event.event_id == body["audit_event_id"]
+    assert boundary_event.model_id == "mock-summarizer"
+    assert boundary_event.prompt_template_id == "rag_answer_v1"
+    assert boundary_event.source_object_ids == ["crm-account-acme-demo", "erp-product-standard-widget-demo"]
+    assert boundary_event.input_hash is None
+    assert boundary_event.output_hash is None
+    assert boundary_event.metadata["result_contract"] == "metadata_only_inference_execution_boundary_no_prompt"
+    assert boundary_event.metadata["required_event_type"] == "ai.inference"
+    assert boundary_event.metadata["authorized_context_contract_hash"] == body["authorized_context_contract_hash"]
+    assert boundary_event.metadata["inference_execution_boundary_hash"] == body["inference_execution_boundary_hash"]
+    assert boundary_event.metadata["source_resolver_audit_event_id"] == trace_event.event_id
+    assert boundary_event.metadata["source_citation_contract_audit_event_id"] == citation_event.event_id
+    assert boundary_event.metadata["prompt_audit_contract_audit_event_id"] == prompt_audit_event.event_id
+    assert boundary_event.metadata["redaction_contract_audit_event_id"] == redaction_event.event_id
+    assert boundary_event.metadata["authorized_context_contract_audit_event_id"] == authorized_context_event.event_id
+    assert boundary_event.metadata["authorized_chunk_count"] == 2
+    assert boundary_event.metadata["policy_authorized"] is True
+    assert boundary_event.metadata["human_confirmation_required"] is False
+    assert boundary_event.metadata["contract_blocking_reasons"] == ()
+    assert boundary_event.metadata["provider_call_executed"] is False
+    assert boundary_event.metadata["answer_generation_executed"] is False
+    assert boundary_event.metadata["context_body_created"] is False
+    assert boundary_event.metadata["prompt_body_included"] is False
+    assert boundary_event.metadata["output_body_included"] is False
+    assert boundary_event.metadata["ai_used"] is False
+    assert boundary_event.metadata["rag_context_created"] is False
+
+
 def test_crm_erp_rag_readiness_requires_request_context() -> None:
     response = client.get("/v1/platform/search/crm-erp/rag-readiness")
 
@@ -1657,6 +1803,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert blocked_body["prompt_audit_contract_ready"] is True
     assert blocked_body["redaction_contract_ready"] is True
     assert blocked_body["authorized_context_contract_ready"] is True
+    assert blocked_body["inference_execution_boundary_ready"] is True
     assert blocked_body["ready_for_rag_context"] is False
     assert blocked_body["result_contract"] == "metadata_only_rag_readiness_no_context"
     assert blocked_body["content_included"] is False
@@ -1670,12 +1817,14 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert "prompt_audit_contract_missing" not in blocked_body["blocking_reasons"]
     assert "redaction_contract_missing" not in blocked_body["blocking_reasons"]
     assert "authorized_context_contract_missing" not in blocked_body["blocking_reasons"]
+    assert "inference_execution_boundary_missing" not in blocked_body["blocking_reasons"]
     assert blocked_gates["rag_feature_flag"]["status"] == "blocked"
     assert blocked_gates["source_resolver_acl_trace"]["status"] == "satisfied"
     assert blocked_gates["source_citation_contract"]["status"] == "satisfied"
     assert blocked_gates["prompt_audit_contract"]["status"] == "satisfied"
     assert blocked_gates["redaction_contract"]["status"] == "satisfied"
     assert blocked_gates["authorized_context_contract"]["status"] == "satisfied"
+    assert blocked_gates["inference_execution_boundary"]["status"] == "satisfied"
     assert "query" not in blocked_response.text
     assert "source text" not in blocked_response.text.lower()
 
@@ -1690,6 +1839,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert flagged_body["module_enabled_for_normal_use"] is True
     assert flagged_body["rag_feature_configured_enabled"] is True
     assert flagged_body["rag_feature_worker_enabled"] is True
+    assert flagged_body["inference_execution_boundary_ready"] is True
     assert flagged_body["ready_for_rag_context"] is True
     assert "rag_indexing_feature_flag_not_enabled" not in flagged_body["blocking_reasons"]
     assert "source_resolver_acl_trace_missing" not in flagged_body["blocking_reasons"]
@@ -1697,6 +1847,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert "prompt_audit_contract_missing" not in flagged_body["blocking_reasons"]
     assert "redaction_contract_missing" not in flagged_body["blocking_reasons"]
     assert "authorized_context_contract_missing" not in flagged_body["blocking_reasons"]
+    assert "inference_execution_boundary_missing" not in flagged_body["blocking_reasons"]
     assert flagged_gates["rag_feature_flag"]["status"] == "satisfied"
     assert flagged_gates["feature_worker_gate"]["status"] == "satisfied"
     assert flagged_gates["source_resolver_acl_trace"]["status"] == "satisfied"
@@ -1704,6 +1855,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert flagged_gates["prompt_audit_contract"]["status"] == "satisfied"
     assert flagged_gates["redaction_contract"]["status"] == "satisfied"
     assert flagged_gates["authorized_context_contract"]["status"] == "satisfied"
+    assert flagged_gates["inference_execution_boundary"]["status"] == "satisfied"
 
     new_events = app.state.audit_logger.events[starting_event_count:]
     readiness_events = [event for event in new_events if event.event_type == "platform.crm_erp_rag.readiness"]
@@ -1719,6 +1871,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert readiness_events[0].metadata["rag_context_created"] is False
     assert readiness_events[-1].metadata["rag_feature_configured_enabled"] is True
     assert readiness_events[-1].metadata["rag_feature_worker_enabled"] is True
+    assert readiness_events[-1].metadata["inference_execution_boundary_ready"] is True
     assert readiness_events[-1].metadata["ready_for_rag_context"] is True
 
 

@@ -34,7 +34,7 @@ crm_erp.ai_assist
 ## Implementierung
 
 - Code: `app/suite/platform/crm_erp_subfeatures.py`
-- Search Readiness: `app/suite/platform/crm_erp_search_readiness.py`, `GET /v1/platform/search/crm-erp/readiness` und `GET /v1/platform/search/crm-erp/rag-readiness`, `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract`, `POST /v1/platform/search/crm-erp/prompt-audit-contract`, `POST /v1/platform/search/crm-erp/redaction-contract`, `POST /v1/platform/search/crm-erp/authorized-context-contract`
+- Search Readiness: `app/suite/platform/crm_erp_search_readiness.py`, `GET /v1/platform/search/crm-erp/readiness` und `GET /v1/platform/search/crm-erp/rag-readiness`, `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract`, `POST /v1/platform/search/crm-erp/prompt-audit-contract`, `POST /v1/platform/search/crm-erp/redaction-contract`, `POST /v1/platform/search/crm-erp/authorized-context-contract`, `POST /v1/platform/search/crm-erp/inference-execution-boundary`
 - Tests: `tests/test_crm_erp_subfeatures.py`, `tests/test_crm_erp_search.py`
 - Mapping-Anbindung: `CrmErpSubfeatureRegistryManifest.validate_mapping_manifest(...)`
 - Modul-Defaults: `default_module_registry()` nutzt `default_crm_erp_subfeature_enabled_features()`

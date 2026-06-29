@@ -54,7 +54,7 @@ Runtime feature IDs are fully qualified with the module prefix. Short names in p
 | `crm_erp.gobd_export` | off | yes | GoBD/audit export packages |
 | `crm_erp.legal_hold` | on | yes | Compliance feature, not user convenience |
 | `crm_erp.search.keyword` | on | no | Metadata-only keyword search with authoritative ACL validation across CRM/ERP master, header, and line metadata |
-| `crm_erp.rag_indexing` | off | yes | Only after source resolver, ACL trace, citations, prompt audit, redaction contract, authorized context contract, and later inference boundary exist |
+| `crm_erp.rag_indexing` | off | yes | Only after source resolver, ACL trace, citations, prompt audit, redaction contract, authorized context contract, inference execution boundary, and later answer execution endpoint exist |
 | `crm_erp.ai_assist` | off | yes | Requires tenant AI policy and Local LLM Gateway |
 
 The canonical registry lives in `app/suite/platform/crm_erp_subfeatures.py` and is documented in `docs/modules/CRM_ERP_SUBFEATURE_REGISTRY.md`.
@@ -218,7 +218,8 @@ query
   -> source/object refs
   -> redaction contract
   -> authorized context contract
-  -> gated context builder or classic response
+  -> inference execution boundary
+  -> gated answer execution or classic response
 ```
 
 AI assist is default-off. It may only run through the Local LLM Gateway, with tenant policy, prompt/output audit hashes, output validation, and human confirmation for destructive, external, or compliance-relevant actions.

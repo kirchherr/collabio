@@ -12,7 +12,8 @@ user query
             -> exact chunk fetch
             -> redaction
               -> authorized context contract
-                -> prompt build
+                -> inference execution boundary
+                  -> prompt build
                 -> local LLM
                   -> answer with source citations
                     -> audit
@@ -91,3 +92,16 @@ user query
 - Raw source text, redacted text, prompts, outputs, snippets, embeddings, and context bodies are not included in the response.
 - The response is not RAG context and must keep `content_included=false`, `redacted_content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, `rag_context_created=false`, and `context_body_created=false`.
 - CRM/ERP RAG readiness may satisfy the authorized-context gate only after this endpoint and its audit coverage are present; actual inference and answer generation remain separate gated work.
+
+## CRM/ERP inference execution boundary
+
+`POST /v1/platform/search/crm-erp/inference-execution-boundary` is the metadata-only proof that a future CRM/ERP RAG answer can pass tenant, model, prompt, source, data-class, human-confirmation, and audit-hash gates before any provider call is made.
+
+- The request accepts object IDs, model and prompt-template IDs, a redaction policy ID, risk level, and optional human-confirmation reference only.
+- The server reuses the authorized-context contract and derives inference data classes from authorized source classifications plus `ai_prompt`.
+- The boundary checks tenant AI/RAG policy, allowed model IDs, model purpose approval, prompt-template approval, source readability, and data-class compatibility through the same policy engine used by the Local LLM Gateway.
+- High-risk boundaries require an explicit human-confirmation reference before readiness can be true.
+- The response and audit event contain hashes, policy decisions, upstream audit event IDs, counts, and required inference step names only.
+- Raw source text, redacted text, context bodies, prompt bodies, outputs, snippets, embeddings, and generated answers are not included.
+- The boundary must keep `provider_call_executed=false`, `answer_generation_executed=false`, `ai_used=false`, `rag_context_created=false`, and all side-effect flags false.
+- Actual prompt construction, provider execution, and answer return remain separate work and must continue to cite source object IDs and versions.
