@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Workspace</title>
-    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=163" />
+    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=164" />
   </head>
   <body>
     <div class="workspace-shell">
@@ -68,7 +68,7 @@
             <input
               id="readable-object-ids"
               autocomplete="off"
-              value="doc-1,mail-1,kb-article-backup-runbook-demo,kb-article-version-backup-runbook-v1-demo,kb-article-security-baseline-demo,kb-article-version-security-baseline-v1-demo"
+              value="doc-1,mail-1,kb-article-backup-runbook-demo,kb-article-version-backup-runbook-v1-demo,kb-article-security-baseline-demo,kb-article-version-security-baseline-v1-demo,crm-account-acme-demo,crm-contact-ada-demo,crm-activity-followup-demo,crm-note-acme-demo,erp-product-standard-widget-demo,erp-order-acme-widget-demo,erp-invoice-acme-widget-demo"
             />
           </label>
         </section>
@@ -93,6 +93,31 @@
           <div class="readiness-metric">
             <span>Evidence complete</span>
             <strong id="preview-evidence-complete-count">0</strong>
+          </div>
+        </section>
+
+        <section class="crm-search-band" aria-label="CRM ERP Suche">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CRM/ERP</p>
+              <h2>ACL-first Suche</h2>
+            </div>
+            <span class="count-pill" id="crm-search-count">0</span>
+          </div>
+          <form class="crm-search-controls" id="crm-search-form">
+            <label class="crm-search-query">
+              Query
+              <input id="crm-search-query" autocomplete="off" value="acme widget" />
+            </label>
+            <label>
+              Limit
+              <input id="crm-search-top-k" autocomplete="off" inputmode="numeric" value="10" />
+            </label>
+            <button class="action-button primary" type="submit" id="crm-search-button">Suchen</button>
+          </form>
+          <div class="crm-search-meta" id="crm-search-meta">metadata_only | content_included=false | ai_used=false</div>
+          <div class="crm-search-results" id="crm-search-results" aria-live="polite">
+            <div class="empty-state compact">Noch keine Suche ausgefuehrt.</div>
           </div>
         </section>
 
@@ -159,6 +184,6 @@
       </main>
     </div>
 
-    <script src="/workspace/assets/workspace.js?v=163" defer></script>
+    <script src="/workspace/assets/workspace.js?v=164" defer></script>
   </body>
 </html>

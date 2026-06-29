@@ -17,6 +17,13 @@ const moduleCount = document.querySelector("#module-count");
 const workItemCount = document.querySelector("#work-item-count");
 const flowCount = document.querySelector("#flow-count");
 const sourceDetailPanel = document.querySelector("#source-detail-panel");
+const crmSearchForm = document.querySelector("#crm-search-form");
+const crmSearchQuery = document.querySelector("#crm-search-query");
+const crmSearchTopK = document.querySelector("#crm-search-top-k");
+const crmSearchButton = document.querySelector("#crm-search-button");
+const crmSearchCount = document.querySelector("#crm-search-count");
+const crmSearchMeta = document.querySelector("#crm-search-meta");
+const crmSearchResults = document.querySelector("#crm-search-results");
 const readinessCounts = {
   metadataReady: document.querySelector("#metadata-ready-count"),
   previewPending: document.querySelector("#preview-pending-count"),
@@ -25,6 +32,17 @@ const readinessCounts = {
 };
 
 const storageKey = "collabio.workspace.context";
+const defaultReadableObjectIds = [
+  "doc-1",
+  "mail-1",
+  "crm-account-acme-demo",
+  "crm-contact-ada-demo",
+  "crm-activity-followup-demo",
+  "crm-note-acme-demo",
+  "erp-product-standard-widget-demo",
+  "erp-order-acme-widget-demo",
+  "erp-invoice-acme-widget-demo",
+].join(",");
 let currentCockpit = {
   modules: [],
   source_object_flows: [],
@@ -50,7 +68,7 @@ function writeContext(context) {
   fields.tenantId.value = context.tenantId || "tenant-demo";
   fields.userId.value = context.userId || "user-demo";
   fields.roleIds.value = context.roleIds || "tenant-admin";
-  fields.readableObjectIds.value = context.readableObjectIds || "doc-1,mail-1";
+  fields.readableObjectIds.value = context.readableObjectIds || defaultReadableObjectIds;
 }
 
 function restoreContext() {
@@ -109,6 +127,91 @@ async function loadCockpit() {
   } finally {
     refreshButton.disabled = false;
   }
+}
+
+async function runCrmErpSearch(event) {
+  if (event) {
+    event.preventDefault();
+  }
+  const context = readContext();
+  persistContext();
+  const query = crmSearchQuery.value.trim();
+  const topK = Math.max(1, Math.min(50, Number.parseInt(crmSearchTopK.value, 10) || 10));
+  crmSearchTopK.value = String(topK);
+  if (!query) {
+    renderCrmErpSearchError("Query darf nicht leer sein.");
+    return;
+  }
+  crmSearchButton.disabled = true;
+  crmSearchMeta.textContent = "Suche laeuft | metadata_only | content_included=false | ai_used=false";
+  crmSearchResults.innerHTML = '<div class="empty-state compact">Suche laeuft ...</div>';
+  try {
+    const response = await fetch("/v1/crm-erp/search", {
+      method: "POST",
+      headers: {
+        ...headersForContext(context),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, top_k: topK }),
+    });
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new DetailLoadError(response.status, body.detail || `HTTP ${response.status}`);
+    }
+    renderCrmErpSearchResults(body);
+    setStatus(`CRM/ERP Suche: ${Number((body.candidates || []).length)} Kandidat(en) | Audit ${body.audit_event_id}`);
+  } catch (error) {
+    const prefix = error.status === 403 ? "Feature-Gate" : "Suchfehler";
+    renderCrmErpSearchError(`${prefix}: ${error.message || "CRM/ERP Suche konnte nicht ausgefuehrt werden."}`);
+    setStatus(error.message || "CRM/ERP Suche konnte nicht ausgefuehrt werden.", true);
+  } finally {
+    crmSearchButton.disabled = false;
+  }
+}
+
+function renderCrmErpSearchResults(response) {
+  const candidates = response.candidates || [];
+  crmSearchCount.textContent = String(candidates.length);
+  crmSearchMeta.textContent = [
+    `audit=${response.audit_event_id || "n/a"}`,
+    `policy=${response.search_policy_id || "keyword_candidate_acl_v1"}`,
+    `contract=${response.result_contract || "candidate_only_metadata_only_acl_checked"}`,
+    `content_included=${response.content_included === true ? "true" : "false"}`,
+    `ai_used=${response.ai_used === true ? "true" : "false"}`,
+    `rag_context_created=${response.rag_context_created === true ? "true" : "false"}`,
+  ].join(" | ");
+  if (!candidates.length) {
+    crmSearchResults.innerHTML = '<div class="empty-state compact">Keine autorisierten Kandidaten.</div>';
+    return;
+  }
+  crmSearchResults.innerHTML = candidates.map(crmSearchCandidateRow).join("");
+}
+
+function renderCrmErpSearchError(message) {
+  crmSearchCount.textContent = "0";
+  crmSearchMeta.textContent = "metadata_only | content_included=false | ai_used=false | rag_context_created=false";
+  crmSearchResults.innerHTML = `<div class="empty-state compact error-copy">${escapeHtml(message)}</div>`;
+}
+
+function crmSearchCandidateRow(candidate) {
+  return `
+    <article class="crm-search-result" data-search-object-id="${escapeHtml(candidate.object_id)}">
+      <div class="crm-search-result-title">
+        <strong>${escapeHtml(candidate.title)}</strong>
+        <span class="status-pill status-enabled">${escapeHtml(candidate.object_type)}</span>
+      </div>
+      <div class="crm-search-result-grid">
+        ${detailItem("Object", candidate.object_id)}
+        ${detailItem("Version", candidate.version_id)}
+        ${detailItem("Class", candidate.classification)}
+        ${detailItem("Retention", candidate.retention_policy_id)}
+        ${detailItem("Legal Hold", candidate.legal_hold_state)}
+        ${detailItem("ACL", `v${candidate.acl_version} checked=${candidate.access_checked === true ? "true" : "false"}`)}
+        ${detailItem("Score", String(candidate.score))}
+        ${detailItem("Content Hash", candidate.content_hash)}
+      </div>
+    </article>
+  `;
 }
 
 async function downloadMvpSnapshot() {
@@ -1149,6 +1252,7 @@ function escapeHtml(value) {
 
 restoreContext();
 snapshotButton.addEventListener("click", downloadMvpSnapshot);
+crmSearchForm.addEventListener("submit", runCrmErpSearch);
 refreshButton.addEventListener("click", loadCockpit);
 mvpReadinessPanel.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-foundation-gap-action]");

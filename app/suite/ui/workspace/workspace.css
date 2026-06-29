@@ -206,6 +206,7 @@ input:focus-visible {
 .mvp-readiness-panel,
 .readiness-band,
 .work-band,
+.crm-search-band,
 .module-band,
 .flow-band,
 .detail-band {
@@ -267,6 +268,7 @@ input {
 
 .mvp-readiness-grid {
   display: grid;
+  min-width: 0;
   grid-template-columns: repeat(4, minmax(100px, 1fr));
   gap: 8px;
 }
@@ -362,6 +364,7 @@ input {
 
 .mvp-readiness-next {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
@@ -387,6 +390,7 @@ input {
 
 .mvp-readiness-tags {
   display: grid;
+  min-width: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
@@ -479,6 +483,70 @@ input {
 .count-pill {
   background: var(--surface-quiet);
   color: var(--muted);
+}
+
+.crm-search-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(90px, 120px) auto;
+  gap: 12px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 18px;
+}
+
+.crm-search-query {
+  min-width: 0;
+}
+
+.crm-search-meta {
+  min-height: 34px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  padding: 10px 18px;
+  overflow-wrap: anywhere;
+}
+
+.crm-search-results {
+  display: grid;
+}
+
+.crm-search-result {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 18px;
+}
+
+.crm-search-result:last-child {
+  border-bottom: 0;
+}
+
+.crm-search-result-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.crm-search-result-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-search-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 14px;
+  min-width: 0;
+}
+
+.error-copy {
+  color: var(--red);
 }
 
 .work-evidence-panel {
@@ -1003,6 +1071,7 @@ input {
 
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .crm-search-result-grid,
   .work-evidence-grid,
   .work-evidence-tags {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1055,13 +1124,15 @@ input {
     grid-auto-flow: row;
   }
 
-  .tenant-band {
+  .tenant-band,
+  .crm-search-controls {
     grid-template-columns: 1fr;
   }
 
   .readiness-band,
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .crm-search-result-grid,
   .work-evidence-grid,
   .work-evidence-tags {
     grid-template-columns: 1fr;
@@ -1069,11 +1140,22 @@ input {
 
   .mvp-readiness-header {
     align-items: flex-start;
+    min-width: 0;
     flex-direction: column;
   }
 
   .foundation-gap-action {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mvp-readiness-next code,
+  .mvp-readiness-tag-group code,
+  .mvp-readiness-contract code,
+  .work-evidence-tag-group code,
+  .work-evidence-contract code {
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .readiness-metric,
