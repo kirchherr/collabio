@@ -1052,7 +1052,7 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Migration-Run-Creation-Store-Persistenz an Boundary binden und idempotent metadata-only speichern, ohne Freigabe oder Import-Write-Execution.
 - [x] Legacy-SQL-Migration-Report-Metadata-Persistenz an Run binden und idempotent metadata-only speichern, ohne Report-Freigabe oder Import-Write-Execution.
 - [x] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
-- [ ] ERP Vertical Slice: Products, Orders, Order Items, Invoices und Invoice Items sind als metadata-only API-Slices vorhanden; Suppliers bleiben als naechster Fachslice offen.
+- [x] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices und Invoice Items sind als metadata-only API-Slices vorhanden.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
 - [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG bleibt offen bis Source Resolver, Redaction, Quellenzitation und Audit Trace.

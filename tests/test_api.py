@@ -108,6 +108,10 @@ DEMO_ERP_PRODUCT_HEADERS = {
     **DEMO_HEADERS,
     "X-Readable-Object-Ids": "doc-1,mail-1,erp-product-standard-widget-demo,erp-product-service-plan-demo",
 }
+DEMO_ERP_SUPPLIER_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": "doc-1,mail-1,erp-supplier-contoso-demo,erp-supplier-fabrikam-demo",
+}
 DEMO_ERP_SALES_HEADERS = {
     **DEMO_HEADERS,
     "X-Readable-Object-Ids": (
@@ -421,6 +425,26 @@ def provision_and_enable_erp_products_for_demo() -> None:
             "approval_reference": "approval:module-enable",
             "reason": "activate ERP products",
             "enabled_features": {"crm_erp.erp.products": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
+def provision_and_enable_erp_suppliers_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare ERP suppliers"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate ERP suppliers",
+            "enabled_features": {"crm_erp.erp.suppliers": True},
         },
     )
     assert enable_response.status_code == 200
@@ -22173,6 +22197,48 @@ def test_erp_products_endpoint_returns_internal_products_after_feature_enable() 
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 
+def test_erp_suppliers_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    response = client.get("/v1/erp/suppliers", headers=DEMO_ERP_SUPPLIER_HEADERS)
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_erp_suppliers_endpoint_returns_personal_suppliers_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_erp_suppliers_for_demo()
+
+    response = client.get("/v1/erp/suppliers", headers=DEMO_ERP_SUPPLIER_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.erp.suppliers"
+    assert body["audit_event_id"]
+    assert [supplier["display_name"] for supplier in body["suppliers"]] == [
+        "Contoso Components",
+        "Fabrikam Services",
+    ]
+    assert {supplier["object_type"] for supplier in body["suppliers"]} == {"erp.supplier"}
+    assert {supplier["data_classification"] for supplier in body["suppliers"]} == {"personal"}
+    assert {supplier["retention_policy_id"] for supplier in body["suppliers"]} == {"rp-standard"}
+    assert all(supplier["access_checked"] for supplier in body["suppliers"])
+    assert "erp-supplier-other-tenant" not in {supplier["object_id"] for supplier in body["suppliers"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "erp.supplier.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
 def test_erp_orders_endpoint_requires_enabled_module_feature() -> None:
     reset_module_registry()
 
@@ -22415,6 +22481,42 @@ def test_crm_erp_search_endpoint_returns_acl_checked_metadata_candidates_after_f
     assert search_event.metadata["rag_context_created"] is False
     assert "query" not in search_event.metadata
     assert "acme widget" not in search_event.model_dump_json()
+
+
+def test_crm_erp_search_endpoint_returns_acl_checked_supplier_candidate_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_erp_search_for_demo()
+
+    response = client.post(
+        "/v1/crm-erp/search",
+        headers=DEMO_ERP_SUPPLIER_HEADERS,
+        json={"query": "contoso procurement", "top_k": 10},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.search.keyword"
+    assert body["result_contract"] == "candidate_only_metadata_only_acl_checked"
+    assert body["content_included"] is False
+    assert body["ai_used"] is False
+    assert body["rag_context_created"] is False
+    assert [candidate["object_id"] for candidate in body["candidates"]] == ["erp-supplier-contoso-demo"]
+    assert {candidate["object_type"] for candidate in body["candidates"]} == {"erp.supplier"}
+    assert {candidate["classification"] for candidate in body["candidates"]} == {"personal"}
+    assert "snippet" not in response.text
+    assert "index_text" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    search_event = new_events[-1]
+    assert search_event.event_type == "crm_erp.search.keyword.query"
+    assert search_event.source_object_ids == ["erp-supplier-contoso-demo"]
+    assert search_event.metadata["authorized_candidate_count"] == 1
+    assert search_event.metadata["content_included"] is False
+    assert search_event.metadata["ai_used"] is False
+    assert search_event.metadata["rag_context_created"] is False
 
 
 def test_knowledge_base_articles_endpoint_requires_enabled_module_feature() -> None:

@@ -19,6 +19,7 @@ from suite.platform.erp_sales import (
     InMemoryErpOrderItemRepository,
     InMemoryErpOrderRepository,
 )
+from suite.platform.erp_suppliers import InMemoryErpSupplierRepository
 from suite.platform.modules import default_module_registry
 from suite.search.models import KeywordSearchQuery
 
@@ -40,6 +41,7 @@ def build_service() -> tuple[CrmErpSearchService, InMemoryAuditLogger]:
         activity_repository=InMemoryCrmActivityRepository.demo(),
         note_repository=InMemoryCrmNoteRepository.demo(),
         product_repository=InMemoryErpProductRepository.demo(),
+        supplier_repository=InMemoryErpSupplierRepository.demo(),
         order_repository=InMemoryErpOrderRepository.demo(),
         invoice_repository=InMemoryErpInvoiceRepository.demo(),
         order_item_repository=InMemoryErpOrderItemRepository.demo(),
@@ -93,6 +95,29 @@ def test_crm_erp_search_returns_authorized_metadata_candidates_without_content()
     assert audit_event.metadata["feature_id"] == "crm_erp.search.keyword"
     assert audit_event.metadata["result_contract"] == CRM_ERP_SEARCH_RESULT_CONTRACT
     assert audit_event.metadata["authorized_candidate_count"] == 4
+    assert audit_event.metadata["content_included"] is False
+    assert audit_event.metadata["ai_used"] is False
+    assert audit_event.metadata["rag_context_created"] is False
+
+
+def test_crm_erp_search_covers_authorized_suppliers_without_content() -> None:
+    service, audit_logger = build_service()
+
+    response = service.search(
+        query=KeywordSearchQuery(query="contoso procurement", top_k=10),
+        user_context=user_context(readable_object_ids={"erp-supplier-contoso-demo"}),
+    )
+
+    serialized_response = response.model_dump_json()
+    audit_event = audit_logger.events[-1]
+    assert [candidate.object_id for candidate in response.candidates] == ["erp-supplier-contoso-demo"]
+    assert {candidate.object_type for candidate in response.candidates} == {"erp.supplier"}
+    assert {candidate.classification.value for candidate in response.candidates} == {"personal"}
+    assert all(candidate.access_checked for candidate in response.candidates)
+    assert all(candidate.retention_policy_id == "rp-standard" for candidate in response.candidates)
+    assert "index_text" not in serialized_response
+    assert "snippet" not in serialized_response
+    assert audit_event.metadata["authorized_candidate_count"] == 1
     assert audit_event.metadata["content_included"] is False
     assert audit_event.metadata["ai_used"] is False
     assert audit_event.metadata["rag_context_created"] is False

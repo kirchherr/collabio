@@ -102,6 +102,12 @@ from suite.platform.erp_sales import (
     InMemoryErpOrderItemRepository,
     InMemoryErpOrderRepository,
 )
+from suite.platform.erp_suppliers import (
+    ERP_SUPPLIERS_FEATURE_ID,
+    ErpSupplierService,
+    ErpSuppliersResponse,
+    InMemoryErpSupplierRepository,
+)
 from suite.platform.knowledge_base import (
     KB_ARTICLES_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
@@ -809,6 +815,7 @@ def build_app() -> FastAPI:
     crm_activity_repository = InMemoryCrmActivityRepository.demo()
     crm_note_repository = InMemoryCrmNoteRepository.demo()
     erp_product_repository = InMemoryErpProductRepository.demo()
+    erp_supplier_repository = InMemoryErpSupplierRepository.demo()
     erp_order_repository = InMemoryErpOrderRepository.demo()
     erp_invoice_repository = InMemoryErpInvoiceRepository.demo()
     erp_order_item_repository = InMemoryErpOrderItemRepository.demo()
@@ -830,6 +837,10 @@ def build_app() -> FastAPI:
         repository=erp_product_repository,
         audit_logger=audit_logger,
     )
+    erp_supplier_service = ErpSupplierService(
+        repository=erp_supplier_repository,
+        audit_logger=audit_logger,
+    )
     erp_sales_service = ErpSalesService(
         order_repository=erp_order_repository,
         invoice_repository=erp_invoice_repository,
@@ -843,6 +854,7 @@ def build_app() -> FastAPI:
         activity_repository=crm_activity_repository,
         note_repository=crm_note_repository,
         product_repository=erp_product_repository,
+        supplier_repository=erp_supplier_repository,
         order_repository=erp_order_repository,
         invoice_repository=erp_invoice_repository,
         order_item_repository=erp_order_item_repository,
@@ -14028,6 +14040,19 @@ def build_app() -> FastAPI:
         erp_products = cast(ErpProductService, request.app.state.erp_product_service)
         return erp_products.list_products(user_context=context.user_context)
 
+    @app.get("/v1/erp/suppliers", response_model=ErpSuppliersResponse)
+    def list_erp_suppliers(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=ERP_SUPPLIERS_FEATURE_ID)),
+        ],
+    ) -> ErpSuppliersResponse:
+        del gate
+        erp_suppliers = cast(ErpSupplierService, request.app.state.erp_supplier_service)
+        return erp_suppliers.list_suppliers(user_context=context.user_context)
+
     @app.get("/v1/erp/orders", response_model=ErpOrdersResponse)
     def list_erp_orders(
         request: Request,
@@ -14119,6 +14144,7 @@ def build_app() -> FastAPI:
     app.state.crm_contact_service = crm_contact_service
     app.state.crm_erp_search_service = crm_erp_search_service
     app.state.erp_product_service = erp_product_service
+    app.state.erp_supplier_service = erp_supplier_service
     app.state.erp_sales_service = erp_sales_service
     app.state.knowledge_base_article_service = default_knowledge_base_article_service
     app.state.knowledge_base_article_service_resolver = knowledge_base_article_service_resolver

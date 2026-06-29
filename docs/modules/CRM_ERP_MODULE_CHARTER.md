@@ -53,7 +53,7 @@ Runtime feature IDs are fully qualified with the module prefix. Short names in p
 | `crm_erp.legacy_import.sqlserver` | off | yes | SQL Server import and cutover tooling |
 | `crm_erp.gobd_export` | off | yes | GoBD/audit export packages |
 | `crm_erp.legal_hold` | on | yes | Compliance feature, not user convenience |
-| `crm_erp.search.keyword` | on | no | Metadata-only keyword search with authoritative ACL validation across CRM/ERP header and line metadata |
+| `crm_erp.search.keyword` | on | no | Metadata-only keyword search with authoritative ACL validation across CRM/ERP master, header, and line metadata |
 | `crm_erp.rag_indexing` | off | yes | Only after source resolver and ACL checks exist |
 | `crm_erp.ai_assist` | off | yes | Requires tenant AI policy and Local LLM Gateway |
 

@@ -139,12 +139,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="crm_erp_vertical_slice_after_foundation",
-        current_foundation_state="metadata_only_foundation_operational_with_guarded_product_edges",
+        current_foundation_state="metadata_only_foundation_operational_with_crm_erp_slice_complete",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
             "crm_accounts_contacts_activities_operational_hardening",
-            "erp_products_to_orders_invoices_slice",
+            "crm_erp_slice_complete_next_governed_rag_readiness",
             "crm_erp_search_acl_first_then_rag",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
@@ -390,8 +390,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="crm_erp_first_slices",
                     title="CRM/ERP erste Vertical Slices",
                     summary=(
-                        "CRM Accounts, Activities sowie ERP Products, Orders, Order Items, Invoices und Invoice Items "
-                        "sind tenant-sicher."
+                        "CRM Accounts, Activities sowie ERP Products, Suppliers, Orders, Order Items, Invoices "
+                        "und Invoice Items sind tenant-sicher."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="business_module_slice",
@@ -407,6 +407,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/crm/contacts",
                         "/v1/crm/activities",
                         "/v1/erp/products",
+                        "/v1/erp/suppliers",
                         "/v1/erp/orders",
                         "/v1/erp/order-items",
                         "/v1/erp/invoices",

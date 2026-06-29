@@ -25,7 +25,7 @@ crm_erp.ai_assist
 ## Regeln
 
 - Normale CRM/ERP Features koennen default-enabled sein, laufen aber trotzdem nur, wenn der Tenant-Modulstatus normale Nutzung erlaubt.
-- SQL-Server-Legacy-Import, GoBD-Export, RAG-Indexing und AI Assist bleiben default-off; klassische Keyword-Suche ist nur metadata-only und ACL-first und deckt auch Order-/Invoice-Items als eigene autorisierte Objekte ab.
+- SQL-Server-Legacy-Import, GoBD-Export, RAG-Indexing und AI Assist bleiben default-off; klassische Keyword-Suche ist nur metadata-only und ACL-first und deckt Suppliers sowie Order-/Invoice-Items als eigene autorisierte Objekte ab.
 - Legal Hold ist als Compliance-Faehigkeit sichtbar, aber konkrete Hold-Aktionen brauchen Approval und Audit Evidence.
 - Jedes Subfeature deklariert Objektklassen, Data Classes, Retention Policies und Worker/API-Surfaces.
 - Mapping-Manifeste duerfen nur Feature IDs, Objektklassen, Data Classes und Retention Policies referenzieren, die von der Registry gedeckt sind.

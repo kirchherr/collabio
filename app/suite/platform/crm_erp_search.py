@@ -26,6 +26,7 @@ from suite.platform.erp_sales import (
     ErpOrderRecord,
     ErpOrderRepository,
 )
+from suite.platform.erp_suppliers import ErpSupplierRecord, ErpSupplierRepository
 from suite.rag.repositories import ReadableObjectAclAuthorizer
 from suite.search.keyword import InMemoryKeywordIndex, KeywordIndexedChunk, KeywordSearchService, keyword_metadata
 from suite.search.models import SEARCH_POLICY_ID, KeywordSearchCandidate, KeywordSearchQuery
@@ -81,6 +82,7 @@ def build_crm_erp_search_service(
     activity_repository: CrmActivityRepository,
     note_repository: CrmNoteRepository,
     product_repository: ErpProductRepository,
+    supplier_repository: ErpSupplierRepository,
     order_repository: ErpOrderRepository,
     invoice_repository: ErpInvoiceRepository,
     order_item_repository: ErpOrderItemRepository,
@@ -95,6 +97,7 @@ def build_crm_erp_search_service(
             activity_repository=activity_repository,
             note_repository=note_repository,
             product_repository=product_repository,
+            supplier_repository=supplier_repository,
             order_repository=order_repository,
             invoice_repository=invoice_repository,
             order_item_repository=order_item_repository,
@@ -127,6 +130,7 @@ def build_crm_erp_search_records(
     activity_repository: CrmActivityRepository,
     note_repository: CrmNoteRepository,
     product_repository: ErpProductRepository,
+    supplier_repository: ErpSupplierRepository,
     order_repository: ErpOrderRepository,
     invoice_repository: ErpInvoiceRepository,
     order_item_repository: ErpOrderItemRepository,
@@ -140,6 +144,7 @@ def build_crm_erp_search_records(
         records.extend(_activity_chunk(record) for record in activity_repository.list_activities(tenant_id=tenant_id))
         records.extend(_note_chunk(record) for record in note_repository.list_notes(tenant_id=tenant_id))
         records.extend(_product_chunk(record) for record in product_repository.list_products(tenant_id=tenant_id))
+        records.extend(_supplier_chunk(record) for record in supplier_repository.list_suppliers(tenant_id=tenant_id))
         records.extend(_order_chunk(record) for record in order_repository.list_orders(tenant_id=tenant_id))
         records.extend(_invoice_chunk(record) for record in invoice_repository.list_invoices(tenant_id=tenant_id))
         records.extend(
@@ -215,6 +220,21 @@ def _product_chunk(record: ErpProductRecord) -> KeywordIndexedChunk:
             record.product_number,
             record.product_kind.value,
             record.unit_code,
+            record.status.value,
+        ),
+    )
+
+
+def _supplier_chunk(record: ErpSupplierRecord) -> KeywordIndexedChunk:
+    return _metadata_chunk(
+        record,
+        title=record.display_name,
+        index_parts=(
+            record.display_name,
+            record.supplier_number,
+            record.supplier_kind.value,
+            record.primary_contact_label,
+            record.country_code,
             record.status.value,
         ),
     )
