@@ -143,7 +143,11 @@ Decommissioning requires:
 
 Missing or blocked evidence leaves the module in `decommission_blocked`.
 
-## 10. Explicit Non-Goals For The First Slice
+## 10. Catalog Readiness Boundary
+
+`GET /v1/platform/modules/families/lms/catalog-readiness` exposes a tenant-scoped, metadata-only readiness contract for catalog registration. It returns manifest hashes, object-rule counts, continuity-domain evidence and required catalog evidence only. It does not install the module, create tables, register LMS business APIs, create content, run workers, trigger migrations, or activate tenant runtime.
+
+## 11. Explicit Non-Goals For The First Slice
 
 - course authoring
 - tests and grading
@@ -156,8 +160,9 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 - external LMS synchronization
 - payroll or HR writes
 
-## 11. Verification
+## 12. Verification
 
 - `tests/test_lms_module_foundation.py`
+- `tests/test_lms_catalog_readiness.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_module_implementation_contract.py`

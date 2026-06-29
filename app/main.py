@@ -205,6 +205,10 @@ from suite.platform.legacy_sql_migration_run_registry import (
     persist_legacy_sql_migration_report_metadata,
     persist_legacy_sql_migration_run_creation,
 )
+from suite.platform.lms_catalog_readiness import (
+    LmsCatalogReadinessResponse,
+    build_lms_catalog_readiness_response,
+)
 from suite.platform.module_family_backlog import (
     ModuleFamilyBacklogResponse,
     build_module_family_backlog_response,
@@ -1021,6 +1025,47 @@ def build_app() -> FastAPI:
                 "pre_catalog_foundation_ready_count": response.summary.pre_catalog_foundation_ready_count,
                 "first_slice_foundation_ready_count": response.summary.first_slice_foundation_ready_count,
                 "runtime_activation_allowed_count": response.summary.runtime_activation_allowed_count,
+                "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/catalog-readiness",
+        response_model=LmsCatalogReadinessResponse,
+    )
+    def lms_catalog_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsCatalogReadinessResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_catalog_readiness_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.catalog_readiness",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "module_catalog_entry_present": response.module_catalog_entry_present,
+                "tenant_module_state_present": response.tenant_module_state_present,
+                "catalog_registration_ready": response.catalog_registration_ready,
+                "feature_manifest_hash": response.feature_manifest_hash,
+                "object_rule_manifest_hash": response.object_rule_manifest_hash,
+                "feature_count": response.summary.feature_count,
+                "object_type_count": response.summary.object_type_count,
+                "required_catalog_evidence_count": response.summary.required_catalog_evidence_count,
                 "content_included": response.content_included,
                 "module_activation_executed": response.module_activation_executed,
                 "persistent_task_created": response.persistent_task_created,
