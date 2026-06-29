@@ -1151,6 +1151,118 @@ def test_crm_erp_source_resolver_acl_trace_returns_authorized_metadata_after_fea
     assert trace_event.metadata["rag_context_created"] is False
 
 
+def test_crm_erp_source_citation_contract_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/search/crm-erp/source-citation-contract",
+        json={"object_ids": ["crm-account-acme-demo"]},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_crm_erp_source_citation_contract_requires_enabled_search_feature() -> None:
+    reset_module_registry()
+
+    response = client.post(
+        "/v1/platform/search/crm-erp/source-citation-contract",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={"object_ids": ["crm-account-acme-demo"]},
+    )
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_crm_erp_source_citation_contract_returns_authorized_citations_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_erp_search_for_demo()
+
+    response = client.post(
+        "/v1/platform/search/crm-erp/source-citation-contract",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={
+            "object_ids": [
+                "crm-account-acme-demo",
+                "erp-product-standard-widget-demo",
+                "erp-supplier-contoso-demo",
+                "crm-account-other-tenant",
+                "crm-account-acme-demo",
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "crm_erp_source_citation_contract.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.search.keyword"
+    assert body["endpoint"] == "/v1/platform/search/crm-erp/source-citation-contract"
+    assert body["requested_object_ids"] == [
+        "crm-account-acme-demo",
+        "erp-product-standard-widget-demo",
+        "erp-supplier-contoso-demo",
+        "crm-account-other-tenant",
+    ]
+    assert [citation["source_object_id"] for citation in body["citations"]] == [
+        "crm-account-acme-demo",
+        "erp-product-standard-widget-demo",
+    ]
+    assert {
+        (
+            citation["source_object_type"],
+            citation["source_version_id"],
+            citation["source_chunk_id"],
+        )
+        for citation in body["citations"]
+    } == {
+        ("crm.account", "crm_account.v1", "crm-account-acme-demo-metadata"),
+        ("erp.product", "erp_product.v1", "erp-product-standard-widget-demo-metadata"),
+    }
+    assert all(citation["citation_id"] for citation in body["citations"])
+    assert all(citation["access_checked"] for citation in body["citations"])
+    assert all(citation["authorized"] for citation in body["citations"])
+    assert body["blocked_source_object_ids"] == ["erp-supplier-contoso-demo"]
+    assert body["unresolved_source_object_ids"] == ["crm-account-other-tenant"]
+    assert body["candidate_count"] == 4
+    assert body["citation_count"] == 2
+    assert body["blocked_count"] == 1
+    assert body["unresolved_count"] == 1
+    assert body["source_resolver_acl_trace_ready"] is False
+    assert body["source_citation_contract_ready"] is False
+    assert body["result_contract"] == "metadata_only_source_citation_contract_no_context"
+    assert body["content_included"] is False
+    assert body["ai_used"] is False
+    assert body["rag_context_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "index_text" not in response.text
+    assert "snippet" not in response.text
+    assert "Contoso procurement desk" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    trace_event = new_events[-2]
+    citation_event = new_events[-1]
+    assert trace_event.event_type == "crm_erp.source_resolver_acl_trace"
+    assert trace_event.event_id == body["source_resolver_audit_event_id"]
+    assert citation_event.event_type == "crm_erp.source_citation_contract"
+    assert citation_event.event_id == body["audit_event_id"]
+    assert citation_event.source_object_ids == ["crm-account-acme-demo", "erp-product-standard-widget-demo"]
+    assert citation_event.input_hash is None
+    assert citation_event.output_hash is None
+    assert citation_event.metadata["result_contract"] == "metadata_only_source_citation_contract_no_context"
+    assert citation_event.metadata["source_resolver_audit_event_id"] == trace_event.event_id
+    assert citation_event.metadata["candidate_count"] == 4
+    assert citation_event.metadata["citation_count"] == 2
+    assert citation_event.metadata["blocked_count"] == 1
+    assert citation_event.metadata["unresolved_count"] == 1
+    assert citation_event.metadata["content_included"] is False
+    assert citation_event.metadata["ai_used"] is False
+    assert citation_event.metadata["rag_context_created"] is False
+
+
 def test_crm_erp_rag_readiness_requires_request_context() -> None:
     response = client.get("/v1/platform/search/crm-erp/rag-readiness")
 
@@ -1182,7 +1294,7 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert blocked_body["rag_feature_configured_enabled"] is False
     assert blocked_body["rag_feature_worker_enabled"] is False
     assert blocked_body["source_resolver_acl_trace_ready"] is True
-    assert blocked_body["source_citation_contract_ready"] is False
+    assert blocked_body["source_citation_contract_ready"] is True
     assert blocked_body["prompt_audit_contract_ready"] is False
     assert blocked_body["ready_for_rag_context"] is False
     assert blocked_body["result_contract"] == "metadata_only_rag_readiness_no_context"
@@ -1193,11 +1305,11 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert blocked_body["external_side_effect_allowed"] is False
     assert "rag_indexing_feature_flag_not_enabled" in blocked_body["blocking_reasons"]
     assert "source_resolver_acl_trace_missing" not in blocked_body["blocking_reasons"]
-    assert "source_citation_contract_missing" in blocked_body["blocking_reasons"]
+    assert "source_citation_contract_missing" not in blocked_body["blocking_reasons"]
     assert "prompt_audit_contract_missing" in blocked_body["blocking_reasons"]
     assert blocked_gates["rag_feature_flag"]["status"] == "blocked"
     assert blocked_gates["source_resolver_acl_trace"]["status"] == "satisfied"
-    assert blocked_gates["source_citation_contract"]["status"] == "blocked"
+    assert blocked_gates["source_citation_contract"]["status"] == "satisfied"
     assert blocked_gates["prompt_audit_contract"]["status"] == "blocked"
     assert "query" not in blocked_response.text
     assert "source text" not in blocked_response.text.lower()
@@ -1216,12 +1328,12 @@ def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_cont
     assert flagged_body["ready_for_rag_context"] is False
     assert "rag_indexing_feature_flag_not_enabled" not in flagged_body["blocking_reasons"]
     assert "source_resolver_acl_trace_missing" not in flagged_body["blocking_reasons"]
-    assert "source_citation_contract_missing" in flagged_body["blocking_reasons"]
+    assert "source_citation_contract_missing" not in flagged_body["blocking_reasons"]
     assert "prompt_audit_contract_missing" in flagged_body["blocking_reasons"]
     assert flagged_gates["rag_feature_flag"]["status"] == "satisfied"
     assert flagged_gates["feature_worker_gate"]["status"] == "satisfied"
     assert flagged_gates["source_resolver_acl_trace"]["status"] == "satisfied"
-    assert flagged_gates["source_citation_contract"]["status"] == "blocked"
+    assert flagged_gates["source_citation_contract"]["status"] == "satisfied"
     assert flagged_gates["prompt_audit_contract"]["status"] == "blocked"
 
     new_events = app.state.audit_logger.events[starting_event_count:]

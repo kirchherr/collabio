@@ -235,7 +235,7 @@ def _readiness_gates(
         CrmErpSearchReadinessGate(
             gate_id="rag_context",
             status=CrmErpSearchReadinessGateStatus.DEFERRED_BY_POLICY,
-            summary="RAG remains disabled until source citation and ACL revalidation gates are implemented.",
+            summary="RAG remains disabled until prompt audit, redaction, and authorized context gates are implemented.",
             evidence_ref="docs/RAG_SECURITY_MODEL.md",
         ),
     )

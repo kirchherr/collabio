@@ -85,6 +85,12 @@ from suite.platform.crm_erp_search_readiness import (
     build_crm_erp_rag_readiness_response,
     build_crm_erp_search_readiness_response,
 )
+from suite.platform.crm_erp_source_citations import (
+    CrmErpSourceCitationContractRequest,
+    CrmErpSourceCitationContractResponse,
+    CrmErpSourceCitationContractService,
+    build_crm_erp_source_citation_contract_service,
+)
 from suite.platform.crm_erp_source_resolver import (
     CrmErpSourceResolverAclTraceRequest,
     CrmErpSourceResolverAclTraceResponse,
@@ -882,6 +888,10 @@ def build_app() -> FastAPI:
         invoice_item_repository=erp_invoice_item_repository,
         audit_logger=audit_logger,
     )
+    crm_erp_source_citation_contract_service = build_crm_erp_source_citation_contract_service(
+        source_resolver_acl_trace_service=crm_erp_source_resolver_acl_trace_service,
+        audit_logger=audit_logger,
+    )
     default_knowledge_base_article_service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
@@ -990,6 +1000,26 @@ def build_app() -> FastAPI:
         )
         return trace_service.build_trace(request=trace_request, user_context=context.user_context)
 
+    @app.post(
+        "/v1/platform/search/crm-erp/source-citation-contract",
+        response_model=CrmErpSourceCitationContractResponse,
+    )
+    def crm_erp_source_citation_contract(
+        citation_request: CrmErpSourceCitationContractRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ERP_SEARCH_FEATURE_ID)),
+        ],
+    ) -> CrmErpSourceCitationContractResponse:
+        del gate
+        citation_service = cast(
+            CrmErpSourceCitationContractService,
+            request.app.state.crm_erp_source_citation_contract_service,
+        )
+        return citation_service.build_contract(request=citation_request, user_context=context.user_context)
+
     @app.get("/v1/platform/search/crm-erp/rag-readiness", response_model=CrmErpRagReadinessResponse)
     def crm_erp_rag_readiness(
         request: Request,
@@ -1001,6 +1031,7 @@ def build_app() -> FastAPI:
             module_registry=module_registry,
             tenant_policy=context.tenant_policy,
             source_resolver_acl_trace_ready=True,
+            source_citation_contract_ready=True,
         )
         audit_logger.record(
             user_context=context.user_context,
@@ -14225,6 +14256,7 @@ def build_app() -> FastAPI:
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.crm_erp_search_service = crm_erp_search_service
+    app.state.crm_erp_source_citation_contract_service = crm_erp_source_citation_contract_service
     app.state.crm_erp_source_resolver_acl_trace_service = crm_erp_source_resolver_acl_trace_service
     app.state.erp_product_service = erp_product_service
     app.state.erp_supplier_service = erp_supplier_service

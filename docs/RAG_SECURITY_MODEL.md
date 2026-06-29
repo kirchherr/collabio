@@ -46,3 +46,14 @@ user query
 - Blocked or unresolved refs are reported by object ID only and do not include classification, hashes, titles, snippets, or source text.
 - The response is not RAG context and must keep `content_included=false`, `ai_used=false`, and `rag_context_created=false`.
 - CRM/ERP RAG readiness may satisfy the source-resolver ACL-trace gate only after this endpoint and its audit coverage are present.
+
+## CRM/ERP source citation contract
+
+`POST /v1/platform/search/crm-erp/source-citation-contract` is the metadata-only proof that authorized CRM/ERP refs can be cited before any prompt or retrieval context exists.
+
+- The request accepts object IDs only and reuses the server-side source resolver ACL trace.
+- Client-supplied source metadata is not trusted; citation refs are created only from authoritative resolved source refs.
+- Each citation carries tenant ID, source object ID, source object type, source version ID, source chunk ID, classification, retention policy ID, legal hold state, ACL version, ACL hash, and content hash.
+- Blocked or unresolved refs are reported by object ID only and do not include citation metadata.
+- The response is not RAG context and must keep `content_included=false`, `ai_used=false`, and `rag_context_created=false`.
+- CRM/ERP RAG readiness may satisfy the source-citation gate only after this endpoint and its audit coverage are present.
