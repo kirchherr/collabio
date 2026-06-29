@@ -33,6 +33,7 @@ MODULE_FAMILY_MODULE_IDS = {
 PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_storage_or_api"
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
+CATALOG_REGISTERED_NEXT_ACTION = "add_module_migration_evidence_before_package_installation"
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
         "module_charter_ready": True,
@@ -152,6 +153,8 @@ class ModuleFamilyBacklogEntry(BaseModel):
     backlog_status: ModuleFamilyBacklogStatus
     catalog_status: str | None
     tenant_module_status: str | None
+    catalog_entry_present: bool
+    module_package_installed: bool
     installed_in_catalog: bool
     tenant_state_known: bool
     module_charter_ready: bool
@@ -174,8 +177,8 @@ class ModuleFamilyBacklogEntry(BaseModel):
     def require_non_executing_entry(self) -> ModuleFamilyBacklogEntry:
         if self.runtime_activation_allowed:
             raise ValueError("module family backlog entries must not allow runtime activation")
-        if self.first_slice_foundation_ready and not self.installed_in_catalog:
-            raise ValueError("first slice cannot be foundation-ready without catalog registration")
+        if self.first_slice_foundation_ready and not self.module_package_installed:
+            raise ValueError("first slice cannot be foundation-ready without an installed module package")
         if self.pre_catalog_foundation_ready and not (
             self.module_charter_ready and self.feature_registry_ready and self.object_rules_ready
         ):
@@ -317,10 +320,11 @@ def _module_family_backlog_entry(
         catalog_known=catalog_status is not None,
     )
     artifact_readiness = MODULE_FAMILY_FOUNDATION_ARTIFACTS.get(definition.module_family, {})
-    installed_in_catalog = catalog_status is not None
-    first_slice_foundation_ready = definition.module_family == "knowledge_base" and installed_in_catalog
+    catalog_entry_present = catalog_status is not None
+    module_package_installed = catalog_status in {"available", "installed"}
+    first_slice_foundation_ready = definition.module_family == "knowledge_base" and module_package_installed
     pre_catalog_foundation_ready = (
-        not installed_in_catalog
+        not catalog_entry_present
         and bool(artifact_readiness.get("module_charter_ready", False))
         and bool(artifact_readiness.get("feature_registry_ready", False))
         and bool(artifact_readiness.get("object_rules_ready", False))
@@ -334,12 +338,14 @@ def _module_family_backlog_entry(
         default_feature_gate=definition.default_feature_gate,
         continuity_domain=definition.continuity_domain,
         backlog_status=_backlog_status(
-            installed_in_catalog=installed_in_catalog,
+            catalog_entry_present=catalog_entry_present,
             first_slice_foundation_ready=first_slice_foundation_ready,
         ),
         catalog_status=catalog_status,
         tenant_module_status=tenant_module_status,
-        installed_in_catalog=installed_in_catalog,
+        catalog_entry_present=catalog_entry_present,
+        module_package_installed=module_package_installed,
+        installed_in_catalog=module_package_installed,
         tenant_state_known=tenant_module_status is not None,
         module_charter_ready=bool(artifact_readiness.get("module_charter_ready", False)),
         feature_registry_ready=bool(artifact_readiness.get("feature_registry_ready", False)),
@@ -350,6 +356,8 @@ def _module_family_backlog_entry(
         next_action=_next_action(
             first_slice_foundation_ready=first_slice_foundation_ready,
             pre_catalog_foundation_ready=pre_catalog_foundation_ready,
+            catalog_entry_present=catalog_entry_present,
+            module_package_installed=module_package_installed,
         ),
     )
 
@@ -380,12 +388,12 @@ def _tenant_module_status(
 
 def _backlog_status(
     *,
-    installed_in_catalog: bool,
+    catalog_entry_present: bool,
     first_slice_foundation_ready: bool,
 ) -> ModuleFamilyBacklogStatus:
     if first_slice_foundation_ready:
         return ModuleFamilyBacklogStatus.ACTIVE_FOUNDATION
-    if installed_in_catalog:
+    if catalog_entry_present:
         return ModuleFamilyBacklogStatus.CATALOG_REGISTERED
     return ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED
 
@@ -408,9 +416,13 @@ def _next_action(
     *,
     first_slice_foundation_ready: bool,
     pre_catalog_foundation_ready: bool,
+    catalog_entry_present: bool,
+    module_package_installed: bool,
 ) -> str:
     if first_slice_foundation_ready:
         return ACTIVE_FOUNDATION_NEXT_ACTION
+    if catalog_entry_present and not module_package_installed:
+        return CATALOG_REGISTERED_NEXT_ACTION
     if pre_catalog_foundation_ready:
         return CATALOG_PREPARED_NEXT_ACTION
     return PLANNED_MODULE_NEXT_ACTION
@@ -421,7 +433,7 @@ def _module_family_backlog_summary(
 ) -> ModuleFamilyBacklogSummary:
     return ModuleFamilyBacklogSummary(
         total_family_count=len(module_families),
-        catalog_registered_count=sum(1 for family in module_families if family.installed_in_catalog),
+        catalog_registered_count=sum(1 for family in module_families if family.catalog_entry_present),
         planned_not_installed_count=sum(
             1 for family in module_families if family.backlog_status == ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED
         ),

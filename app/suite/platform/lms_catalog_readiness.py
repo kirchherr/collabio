@@ -14,7 +14,9 @@ from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 LMS_CATALOG_READINESS_SCHEMA_VERSION = "lms_catalog_readiness.v1"
 LMS_CATALOG_READINESS_RESULT_CONTRACT = "metadata_only_lms_catalog_readiness_no_activation"
 LMS_CATALOG_READINESS_ENDPOINT = "/v1/platform/modules/families/lms/catalog-readiness"
-LMS_CATALOG_READINESS_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
+LMS_CATALOG_REGISTRATION_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
+LMS_PACKAGE_INSTALLATION_NEXT_ACTION = "add_lms_migration_evidence_before_package_installation"
+LMS_TENANT_STATE_REVIEW_NEXT_ACTION = "review_lms_tenant_state_before_runtime_activation"
 
 
 class LmsCatalogReadinessSummary(BaseModel):
@@ -58,7 +60,7 @@ class LmsCatalogReadinessResponse(BaseModel):
     summary: LmsCatalogReadinessSummary
     required_catalog_evidence: tuple[str, ...]
     evidence_refs: tuple[str, ...]
-    next_action: str = LMS_CATALOG_READINESS_NEXT_ACTION
+    next_action: str
 
     @field_validator(
         "tenant_id",
@@ -172,6 +174,7 @@ def build_lms_catalog_readiness_response(
             required_catalog_evidence_count=len(required_catalog_evidence),
         ),
         required_catalog_evidence=required_catalog_evidence,
+        next_action=_next_action(catalog_status=catalog_status, tenant_module_status=tenant_module_status),
         evidence_refs=(
             "docs/modules/LMS_MODULE_CHARTER.md",
             "app/suite/platform/lms_module.py",
@@ -199,3 +202,11 @@ def _tenant_module_status(
         return None
     state = module_registry.get_tenant_module_or_none(tenant_id=tenant_id, module_id=LMS_MODULE_ID)
     return state.status.value if state is not None else None
+
+
+def _next_action(*, catalog_status: str | None, tenant_module_status: str | None) -> str:
+    if catalog_status is None:
+        return LMS_CATALOG_REGISTRATION_NEXT_ACTION
+    if tenant_module_status is not None:
+        return LMS_TENANT_STATE_REVIEW_NEXT_ACTION
+    return LMS_PACKAGE_INSTALLATION_NEXT_ACTION

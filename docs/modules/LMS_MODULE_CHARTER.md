@@ -145,7 +145,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Catalog Readiness Boundary
 
-`GET /v1/platform/modules/families/lms/catalog-readiness` exposes a tenant-scoped, metadata-only readiness contract for catalog registration. It returns manifest hashes, object-rule counts, continuity-domain evidence and required catalog evidence only. It does not install the module, create tables, register LMS business APIs, create content, run workers, trigger migrations, or activate tenant runtime.
+The LMS module is registered in the global module catalog as `not_installed`. `GET /v1/platform/modules/families/lms/catalog-readiness` exposes a tenant-scoped, metadata-only readiness contract for the next package-installation and migration gate. It returns manifest hashes, object-rule counts, continuity-domain evidence and required catalog evidence only. It does not install the module package, create tables, register LMS business APIs, create content, run workers, trigger LMS business migrations, create tenant module state, or activate tenant runtime.
 
 ## 11. Explicit Non-Goals For The First Slice
 

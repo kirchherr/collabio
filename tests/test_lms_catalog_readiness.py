@@ -8,7 +8,7 @@ from suite.platform.lms_catalog_readiness import (
 from suite.platform.modules import default_module_registry
 
 
-def test_lms_catalog_readiness_declares_metadata_only_registration_boundary() -> None:
+def test_lms_catalog_readiness_declares_metadata_only_installed_boundary() -> None:
     response = build_lms_catalog_readiness_response(
         user_context=UserContext(tenant_id="tenant-demo", user_id="u-1", role_ids={"admin"}),
         module_registry=default_module_registry(),
@@ -20,11 +20,11 @@ def test_lms_catalog_readiness_declares_metadata_only_registration_boundary() ->
     assert response.tenant_id == "tenant-demo"
     assert response.module_id == "lms"
     assert response.continuity_domain == "lms_training_records"
-    assert response.catalog_status is None
+    assert response.catalog_status == "not_installed"
     assert response.tenant_module_status is None
-    assert response.module_catalog_entry_present is False
+    assert response.module_catalog_entry_present is True
     assert response.tenant_module_state_present is False
-    assert response.catalog_registration_ready is True
+    assert response.catalog_registration_ready is False
     assert response.module_package_installed is False
     assert response.migration_executed is False
     assert response.api_routes_registered is False
@@ -46,7 +46,7 @@ def test_lms_catalog_readiness_declares_metadata_only_registration_boundary() ->
     assert "migration_plan_or_no_table_decision_recorded" in response.required_catalog_evidence
     assert "no_runtime_activation_confirmed" in response.required_catalog_evidence
     assert "app/suite/platform/lms_catalog_readiness.py" in response.evidence_refs
-    assert response.next_action == "review_lms_catalog_readiness_before_catalog_registration"
+    assert response.next_action == "add_lms_migration_evidence_before_package_installation"
 
 
 def test_lms_catalog_readiness_is_tenant_scoped_without_catalog_side_effects() -> None:
@@ -65,5 +65,7 @@ def test_lms_catalog_readiness_is_tenant_scoped_without_catalog_side_effects() -
     assert second.tenant_id == "tenant-b"
     assert first.feature_manifest_hash == second.feature_manifest_hash
     assert first.object_rule_manifest_hash == second.object_rule_manifest_hash
-    assert first.catalog_registration_ready is True
-    assert second.catalog_registration_ready is True
+    assert first.catalog_registration_ready is False
+    assert second.catalog_registration_ready is False
+    assert first.module_catalog_entry_present is True
+    assert second.module_catalog_entry_present is True

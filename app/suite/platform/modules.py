@@ -1593,6 +1593,20 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "0029",
             ),
         ),
+        ModuleCatalogEntry(
+            module_id="lms",
+            display_name="Learning Management",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.NOT_INSTALLED,
+            description=(
+                "Optional governed learning management module. Catalog-registered only; package installation, "
+                "migrations, tenant provisioning, API routes, content runtime, RAG, and AI assist remain "
+                "separate gates."
+            ),
+            manifest_hash="sha256:lms-module-manifest",
+            required_migration_versions=(),
+        ),
     )
 
 

@@ -76,6 +76,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0042",
         "0043",
         "0044",
+        "0045",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -88,9 +89,10 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     core_migrations = load_module_migrations("core")
     crm_erp_migrations = load_module_migrations("crm_erp")
     knowledge_base_migrations = load_module_migrations("knowledge_base")
+    lms_migrations = load_module_migrations("lms")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 23
+    assert len(core_migrations) == len(load_migrations()) - 24
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -118,14 +120,32 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0028",
         "0029",
     ]
+    assert [migration.version for migration in lms_migrations] == ["0045"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "crm_erp"
+    assert manifest[-1].module_id == "lms"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
 
     with pytest.raises(ValueError, match="module_id"):
         load_module_migrations("Not-A-Module")
+
+
+def test_lms_catalog_registration_migration_is_metadata_only_not_installed_seed() -> None:
+    migration = get_migration("0045")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_catalog_registration"
+    assert "insert into collabio.module_catalog" in sql
+    assert "'lms'" in sql
+    assert "'learning management'" in sql
+    assert "'not_installed'" in sql
+    assert "'[]'::jsonb" in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "create schema" not in sql
+    assert "create table" not in sql
 
 
 def test_pgvector_embedding_schema_declares_required_compliance_metadata() -> None:

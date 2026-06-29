@@ -18,7 +18,7 @@ from suite.platform.lms_module import (
     lms_object_rule_registry_summary,
     lms_subfeature_registry_summary,
 )
-from suite.platform.modules import default_module_registry
+from suite.platform.modules import ModuleLifecycleError, ModuleStatus, default_module_registry
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -101,11 +101,24 @@ def test_lms_object_rules_enforce_module_contract_before_tables_or_api() -> None
     assert manifest.rule("lms.completion_evidence").classification == DataClass.PERSONAL
 
 
-def test_lms_foundation_does_not_install_or_activate_module_yet() -> None:
+def test_lms_foundation_registers_catalog_entry_without_install_or_tenant_activation() -> None:
     module_registry = default_module_registry()
 
-    with pytest.raises(LookupError, match="Unknown module catalog entry: lms"):
-        module_registry.get_catalog_entry("lms")
+    catalog_entry = module_registry.get_catalog_entry("lms")
+
+    assert catalog_entry.status == ModuleStatus.NOT_INSTALLED
+    assert catalog_entry.required_migration_versions == ()
+    assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="lms") is None
+
+    with pytest.raises(ModuleLifecycleError, match="Module is not installed: lms"):
+        module_registry.provision_tenant_module(
+            tenant_id="tenant-demo",
+            module_id="lms",
+            policy_snapshot_hash="sha256:lms-demo-policy",
+            changed_by="tenant-admin",
+            audit_chain_ref="audit:lms-provision-blocked",
+            enabled_features=default_lms_enabled_features(),
+        )
 
 
 def test_lms_module_charter_documents_contract_gates_and_deferred_scope() -> None:

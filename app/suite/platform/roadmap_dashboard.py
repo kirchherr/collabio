@@ -548,7 +548,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
                         "Modulfamilien sind tenant-sicher sichtbar; LMS-Charter, Feature-Registry "
-                        "und Object-Rules stehen vor Katalog/API."
+                        "Object-Rules und Katalogeintrag stehen vor Installation/API."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -572,9 +572,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tenant_admin_lifecycle",
                         "no_runtime_activation_from_backlog",
                         "lms_readiness_metadata_only",
+                        "lms_catalog_registered_not_installed",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="review_lms_catalog_readiness_before_catalog_registration",
+                    next_action="add_module_migration_evidence_before_package_installation",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

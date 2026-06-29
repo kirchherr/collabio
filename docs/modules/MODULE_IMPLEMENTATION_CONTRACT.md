@@ -194,7 +194,7 @@ The next module families should start as small read or metadata slices, not as f
 | Tickets and incidents | `ticket.ticket`, `ticket.event` | ticket summary read slice with SLA state | `tickets.items.read` | `ticket_incident_records` |
 | Time tracking | `time.entry`, `time.approval` | own time-entry read slice with approval state | `time_tracking.entries.read` | `time_tracking_records` |
 
-LMS now has a pre-catalog foundation in `docs/modules/LMS_MODULE_CHARTER.md`, `app/suite/platform/lms_module.py`, and the metadata-only readiness endpoint `GET /v1/platform/modules/families/lms/catalog-readiness`. It is not installed in the module catalog yet; catalog registration, migration evidence, API routes, workers, content runtime, automations, RAG, and AI assist remain separate gates.
+LMS now has a catalog-registered, not-installed foundation in `docs/modules/LMS_MODULE_CHARTER.md`, `app/suite/platform/lms_module.py`, `app/suite/persistence/migrations/0045_lms_catalog_registration.sql`, and the metadata-only readiness endpoint `GET /v1/platform/modules/families/lms/catalog-readiness`. Package installation, migration evidence, tenant provisioning, API routes, workers, content runtime, automations, RAG, and AI assist remain separate gates.
 
 These starts are intentionally narrow. The goal is to prove the same module contract outside CRM/ERP before adding broad business behavior.
 

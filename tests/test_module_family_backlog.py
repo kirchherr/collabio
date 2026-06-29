@@ -50,9 +50,9 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
-    assert response.summary.catalog_registered_count == 1
-    assert response.summary.planned_not_installed_count == 4
-    assert response.summary.pre_catalog_foundation_ready_count == 1
+    assert response.summary.catalog_registered_count == 2
+    assert response.summary.planned_not_installed_count == 3
+    assert response.summary.pre_catalog_foundation_ready_count == 0
     assert response.summary.first_slice_foundation_ready_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
 
@@ -62,6 +62,8 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert knowledge_base.backlog_status == "active_foundation"
     assert knowledge_base.catalog_status == "installed"
     assert knowledge_base.tenant_module_status == "available"
+    assert knowledge_base.catalog_entry_present is True
+    assert knowledge_base.module_package_installed is True
     assert knowledge_base.installed_in_catalog is True
     assert knowledge_base.module_charter_ready is True
     assert knowledge_base.feature_registry_ready is True
@@ -73,17 +75,19 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert "continuity_domain:knowledge_base_content" in knowledge_base.required_foundation_gates
 
     lms = families["lms"]
-    assert lms.backlog_status == "planned_not_installed"
-    assert lms.catalog_status is None
+    assert lms.backlog_status == "catalog_registered"
+    assert lms.catalog_status == "not_installed"
     assert lms.tenant_module_status is None
+    assert lms.catalog_entry_present is True
+    assert lms.module_package_installed is False
     assert lms.installed_in_catalog is False
     assert lms.module_charter_ready is True
     assert lms.feature_registry_ready is True
     assert lms.object_rules_ready is True
-    assert lms.pre_catalog_foundation_ready is True
+    assert lms.pre_catalog_foundation_ready is False
     assert lms.first_slice_foundation_ready is False
     assert lms.runtime_activation_allowed is False
-    assert lms.next_action == "review_lms_catalog_readiness_before_catalog_registration"
+    assert lms.next_action == "add_module_migration_evidence_before_package_installation"
     assert "module_catalog_entry_required" in lms.required_foundation_gates
     assert "backup_restore_evidence_required" in lms.required_foundation_gates
 
@@ -92,6 +96,8 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
         assert planned_family.backlog_status == "planned_not_installed"
         assert planned_family.catalog_status is None
         assert planned_family.tenant_module_status is None
+        assert planned_family.catalog_entry_present is False
+        assert planned_family.module_package_installed is False
         assert planned_family.installed_in_catalog is False
         assert planned_family.module_charter_ready is False
         assert planned_family.feature_registry_ready is False

@@ -807,6 +807,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
+    assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -966,6 +967,7 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
     assert body["tenant_id"] == "tenant-demo"
     assert len(body["modules"]) == 2
     modules = {module["module_id"]: module for module in body["modules"]}
+    assert "lms" not in modules
     crm_module = modules["crm_erp"]
     assert crm_module["display_name"] == "CRM/ERP"
     assert crm_module["status"] == "available"
@@ -1014,9 +1016,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "total_family_count": 5,
-        "catalog_registered_count": 1,
-        "planned_not_installed_count": 4,
-        "pre_catalog_foundation_ready_count": 1,
+        "catalog_registered_count": 2,
+        "planned_not_installed_count": 3,
+        "pre_catalog_foundation_ready_count": 0,
         "first_slice_foundation_ready_count": 1,
         "runtime_activation_allowed_count": 0,
     }
@@ -1034,13 +1036,15 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["knowledge_base"]["feature_registry_ready"] is True
     assert families["knowledge_base"]["object_rules_ready"] is True
     assert families["knowledge_base"]["runtime_activation_allowed"] is False
-    assert families["lms"]["backlog_status"] == "planned_not_installed"
-    assert families["lms"]["catalog_status"] is None
+    assert families["lms"]["backlog_status"] == "catalog_registered"
+    assert families["lms"]["catalog_status"] == "not_installed"
+    assert families["lms"]["catalog_entry_present"] is True
+    assert families["lms"]["module_package_installed"] is False
     assert families["lms"]["module_charter_ready"] is True
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
-    assert families["lms"]["pre_catalog_foundation_ready"] is True
-    assert families["lms"]["next_action"] == "review_lms_catalog_readiness_before_catalog_registration"
+    assert families["lms"]["pre_catalog_foundation_ready"] is False
+    assert families["lms"]["next_action"] == "add_module_migration_evidence_before_package_installation"
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1057,8 +1061,8 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
-    assert event.metadata["planned_not_installed_count"] == 4
-    assert event.metadata["pre_catalog_foundation_ready_count"] == 1
+    assert event.metadata["planned_not_installed_count"] == 3
+    assert event.metadata["pre_catalog_foundation_ready_count"] == 0
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
@@ -1089,11 +1093,11 @@ def test_lms_catalog_readiness_returns_metadata_only_catalog_boundary() -> None:
     assert body["result_contract"] == "metadata_only_lms_catalog_readiness_no_activation"
     assert body["continuity_domain"] == "lms_training_records"
     assert body["module_family_backlog_endpoint"] == "/v1/platform/modules/families/backlog"
-    assert body["catalog_status"] is None
+    assert body["catalog_status"] == "not_installed"
     assert body["tenant_module_status"] is None
-    assert body["module_catalog_entry_present"] is False
+    assert body["module_catalog_entry_present"] is True
     assert body["tenant_module_state_present"] is False
-    assert body["catalog_registration_ready"] is True
+    assert body["catalog_registration_ready"] is False
     assert body["module_package_installed"] is False
     assert body["migration_executed"] is False
     assert body["api_routes_registered"] is False
@@ -1118,7 +1122,7 @@ def test_lms_catalog_readiness_returns_metadata_only_catalog_boundary() -> None:
     assert "migration_plan_or_no_table_decision_recorded" in body["required_catalog_evidence"]
     assert "no_runtime_activation_confirmed" in body["required_catalog_evidence"]
     assert "app/suite/platform/lms_catalog_readiness.py" in body["evidence_refs"]
-    assert body["next_action"] == "review_lms_catalog_readiness_before_catalog_registration"
+    assert body["next_action"] == "add_lms_migration_evidence_before_package_installation"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1132,9 +1136,9 @@ def test_lms_catalog_readiness_returns_metadata_only_catalog_boundary() -> None:
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_lms_catalog_readiness_no_activation"
     assert event.metadata["module_id"] == "lms"
-    assert event.metadata["catalog_status"] is None
+    assert event.metadata["catalog_status"] == "not_installed"
     assert event.metadata["tenant_module_status"] is None
-    assert event.metadata["catalog_registration_ready"] is True
+    assert event.metadata["catalog_registration_ready"] is False
     assert event.metadata["feature_count"] == 5
     assert event.metadata["object_type_count"] == 3
     assert event.metadata["required_catalog_evidence_count"] == 6

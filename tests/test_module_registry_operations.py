@@ -35,7 +35,11 @@ def test_module_registry_operations_report_covers_seed_worker_audit_and_backup_e
     assert exit_code_for_report(report) == 0
 
     modules_by_id = {module.module_id: module for module in report.modules}
-    assert set(modules_by_id) >= {"crm_erp", "knowledge_base"}
+    assert set(modules_by_id) >= {"crm_erp", "knowledge_base", "lms"}
+    assert modules_by_id["lms"].catalog_status is not None
+    assert modules_by_id["lms"].catalog_status.value == "not_installed"
+    assert modules_by_id["lms"].expected_seed_tenants == ()
+    assert modules_by_id["lms"].worker_visible_tenants == ()
     assert modules_by_id["knowledge_base"].expected_seed_tenants == ("tenant-demo",)
     assert modules_by_id["knowledge_base"].worker_visible_tenants == ("tenant-demo",)
     assert modules_by_id["knowledge_base"].worker_status_counts == {"available": 1}

@@ -405,6 +405,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:legacy-sql-migration-run-registry-skeleton",
         ),
     ),
+    SqlMigration(
+        version="0045",
+        name="lms_catalog_registration",
+        resource_name="0045_lms_catalog_registration.sql",
+        module_id="lms",
+        evidence_refs=(
+            "doc:lms-module-charter",
+            "test:lms-catalog-registration",
+        ),
+    ),
 )
 
 
