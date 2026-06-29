@@ -924,6 +924,81 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
         assert "changed_by" not in module
 
 
+def test_crm_erp_search_readiness_requires_request_context() -> None:
+    response = client.get("/v1/platform/search/crm-erp/readiness")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_crm_erp_search_readiness_api_reports_gate_state_without_content() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    blocked_response = client.get("/v1/platform/search/crm-erp/readiness", headers=DEMO_HEADERS)
+
+    assert blocked_response.status_code == 200
+    blocked_body = blocked_response.json()
+    blocked_gates = {gate["gate_id"]: gate for gate in blocked_body["gates"]}
+    assert blocked_body["schema_version"] == "crm_erp_search_readiness.v1"
+    assert blocked_body["tenant_id"] == "tenant-demo"
+    assert blocked_body["module_id"] == "crm_erp"
+    assert blocked_body["feature_id"] == "crm_erp.search.keyword"
+    assert blocked_body["endpoint"] == "/v1/crm-erp/search"
+    assert blocked_body["status"] == "blocked"
+    assert blocked_body["module_status"] == "available"
+    assert blocked_body["module_enabled_for_normal_use"] is False
+    assert blocked_body["feature_configured_enabled"] is True
+    assert blocked_body["feature_enabled_for_normal_use"] is False
+    assert blocked_body["ready_for_keyword_search"] is False
+    assert blocked_body["ready_for_rag_context"] is False
+    assert blocked_body["result_contract"] == "metadata_only_search_readiness_no_content"
+    assert blocked_body["search_result_contract"] == "candidate_only_metadata_only_acl_checked"
+    assert blocked_body["content_included"] is False
+    assert blocked_body["ai_used"] is False
+    assert blocked_body["rag_context_created"] is False
+    assert blocked_body["destructive_actions_allowed"] is False
+    assert blocked_body["external_side_effect_allowed"] is False
+    assert "module_normal_use_not_enabled" in blocked_body["blocking_reasons"]
+    assert blocked_gates["normal_api_feature_gate"]["status"] == "blocked"
+    assert blocked_gates["authoritative_acl_validation"]["status"] == "satisfied"
+    assert blocked_gates["rag_context"]["status"] == "deferred_by_policy"
+    assert "query" not in blocked_response.text
+    assert "acme widget" not in blocked_response.text
+
+    provision_and_enable_crm_erp_search_for_demo()
+    ready_response = client.get("/v1/platform/search/crm-erp/readiness", headers=DEMO_HEADERS)
+
+    assert ready_response.status_code == 200
+    ready_body = ready_response.json()
+    ready_gates = {gate["gate_id"]: gate for gate in ready_body["gates"]}
+    assert ready_body["status"] == "ready"
+    assert ready_body["module_status"] == "enabled"
+    assert ready_body["module_enabled_for_normal_use"] is True
+    assert ready_body["feature_enabled_for_normal_use"] is True
+    assert ready_body["ready_for_keyword_search"] is True
+    assert ready_body["ready_for_rag_context"] is False
+    assert ready_body["blocking_reasons"] == []
+    assert ready_gates["normal_api_feature_gate"]["status"] == "satisfied"
+    assert ready_gates["rag_context"]["status"] == "deferred_by_policy"
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    readiness_events = [event for event in new_events if event.event_type == "platform.crm_erp_search.readiness"]
+    assert len(readiness_events) == 2
+    assert readiness_events[0].tenant_id == "tenant-demo"
+    assert readiness_events[0].input_hash is None
+    assert readiness_events[0].output_hash is None
+    assert readiness_events[0].metadata["result_contract"] == "metadata_only_search_readiness_no_content"
+    assert readiness_events[0].metadata["ready_for_keyword_search"] is False
+    assert readiness_events[0].metadata["ready_for_rag_context"] is False
+    assert readiness_events[0].metadata["blocking_reason_count"] >= 1
+    assert readiness_events[0].metadata["content_included"] is False
+    assert readiness_events[0].metadata["ai_used"] is False
+    assert readiness_events[0].metadata["rag_context_created"] is False
+    assert readiness_events[-1].metadata["ready_for_keyword_search"] is True
+    assert readiness_events[-1].metadata["blocking_reason_count"] == 0
+
+
 def test_platform_cockpit_requires_request_context() -> None:
     response = client.get("/v1/platform/cockpit")
 

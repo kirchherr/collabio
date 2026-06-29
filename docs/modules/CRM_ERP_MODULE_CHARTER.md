@@ -205,7 +205,7 @@ Migration evidence must include:
 
 ## 9. Search, RAG, AI, And Voice
 
-Initial search is classic filtered search. RAG indexing is not default.
+Initial search is classic filtered search. RAG indexing is not default. Runtime readiness is visible through `GET /v1/platform/search/crm-erp/readiness`, which stays metadata-only and does not activate search, create RAG context, or expose source content.
 
 Allowed flow:
 

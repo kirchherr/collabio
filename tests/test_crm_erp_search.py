@@ -8,8 +8,13 @@ from suite.platform.crm_erp_search import (
     CrmErpSearchService,
     build_crm_erp_search_service,
 )
+from suite.platform.crm_erp_search_readiness import (
+    CRM_ERP_SEARCH_READINESS_RESULT_CONTRACT,
+    build_crm_erp_search_readiness_response,
+)
 from suite.platform.erp_products import InMemoryErpProductRepository
 from suite.platform.erp_sales import InMemoryErpInvoiceRepository, InMemoryErpOrderRepository
+from suite.platform.modules import default_module_registry
 from suite.search.models import KeywordSearchQuery
 
 
@@ -117,3 +122,33 @@ def test_crm_erp_search_response_marks_non_ai_candidate_only_contract() -> None:
     assert response.rag_context_created is False
     assert response.content_included is False
     assert [candidate.object_id for candidate in response.candidates] == ["crm-account-acme-demo"]
+
+
+def test_crm_erp_search_readiness_reports_blocked_module_gate_without_content() -> None:
+    response = build_crm_erp_search_readiness_response(
+        user_context=user_context(),
+        module_registry=default_module_registry(),
+    )
+
+    gate_statuses = {gate.gate_id: gate.status for gate in response.gates}
+    assert response.tenant_id == "tenant-demo"
+    assert response.module_id == "crm_erp"
+    assert response.feature_id == "crm_erp.search.keyword"
+    assert response.endpoint == "/v1/crm-erp/search"
+    assert response.status == "blocked"
+    assert response.module_status == "available"
+    assert response.feature_configured_enabled is True
+    assert response.feature_enabled_for_normal_use is False
+    assert response.ready_for_keyword_search is False
+    assert response.ready_for_rag_context is False
+    assert response.result_contract == CRM_ERP_SEARCH_READINESS_RESULT_CONTRACT
+    assert response.search_result_contract == CRM_ERP_SEARCH_RESULT_CONTRACT
+    assert response.content_included is False
+    assert response.ai_used is False
+    assert response.rag_context_created is False
+    assert response.destructive_actions_allowed is False
+    assert response.external_side_effect_allowed is False
+    assert "module_normal_use_not_enabled" in response.blocking_reasons
+    assert gate_statuses["tenant_context"] == "satisfied"
+    assert gate_statuses["module_normal_use"] == "blocked"
+    assert gate_statuses["rag_context"] == "deferred_by_policy"

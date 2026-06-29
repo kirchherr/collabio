@@ -79,6 +79,10 @@ from suite.platform.crm_erp_search import (
     CrmErpSearchService,
     build_crm_erp_search_service,
 )
+from suite.platform.crm_erp_search_readiness import (
+    CrmErpSearchReadinessResponse,
+    build_crm_erp_search_readiness_response,
+)
 from suite.platform.erp_products import (
     ERP_PRODUCTS_FEATURE_ID,
     ErpProductService,
@@ -889,6 +893,39 @@ def build_app() -> FastAPI:
     ) -> PlatformModulesResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
         return module_registry.discover_tenant_modules(context.user_context.tenant_id)
+
+    @app.get("/v1/platform/search/crm-erp/readiness", response_model=CrmErpSearchReadinessResponse)
+    def crm_erp_search_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> CrmErpSearchReadinessResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_crm_erp_search_readiness_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.crm_erp_search.readiness",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "feature_id": response.feature_id,
+                "status": response.status.value,
+                "ready_for_keyword_search": response.ready_for_keyword_search,
+                "ready_for_rag_context": response.ready_for_rag_context,
+                "blocking_reason_count": len(response.blocking_reasons),
+                "content_included": response.content_included,
+                "ai_used": response.ai_used,
+                "rag_context_created": response.rag_context_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
 
     @app.get("/v1/platform/roadmap", response_model=RoadmapDashboardResponse)
     def roadmap_dashboard(
