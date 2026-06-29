@@ -16,7 +16,16 @@ from suite.platform.crm_activities import (
 )
 from suite.platform.crm_contacts import CrmContactRecord, CrmContactRepository
 from suite.platform.erp_products import ErpProductRecord, ErpProductRepository
-from suite.platform.erp_sales import ErpInvoiceRecord, ErpInvoiceRepository, ErpOrderRecord, ErpOrderRepository
+from suite.platform.erp_sales import (
+    ErpInvoiceItemRecord,
+    ErpInvoiceItemRepository,
+    ErpInvoiceRecord,
+    ErpInvoiceRepository,
+    ErpOrderItemRecord,
+    ErpOrderItemRepository,
+    ErpOrderRecord,
+    ErpOrderRepository,
+)
 from suite.rag.repositories import ReadableObjectAclAuthorizer
 from suite.search.keyword import InMemoryKeywordIndex, KeywordIndexedChunk, KeywordSearchService, keyword_metadata
 from suite.search.models import SEARCH_POLICY_ID, KeywordSearchCandidate, KeywordSearchQuery
@@ -74,6 +83,8 @@ def build_crm_erp_search_service(
     product_repository: ErpProductRepository,
     order_repository: ErpOrderRepository,
     invoice_repository: ErpInvoiceRepository,
+    order_item_repository: ErpOrderItemRepository,
+    invoice_item_repository: ErpInvoiceItemRepository,
     audit_logger: InMemoryAuditLogger,
     tenant_ids: Sequence[str] = DEFAULT_CRM_ERP_SEARCH_TENANT_IDS,
 ) -> CrmErpSearchService:
@@ -86,6 +97,8 @@ def build_crm_erp_search_service(
             product_repository=product_repository,
             order_repository=order_repository,
             invoice_repository=invoice_repository,
+            order_item_repository=order_item_repository,
+            invoice_item_repository=invoice_item_repository,
             tenant_ids=tenant_ids,
         )
     )
@@ -116,6 +129,8 @@ def build_crm_erp_search_records(
     product_repository: ErpProductRepository,
     order_repository: ErpOrderRepository,
     invoice_repository: ErpInvoiceRepository,
+    order_item_repository: ErpOrderItemRepository,
+    invoice_item_repository: ErpInvoiceItemRepository,
     tenant_ids: Sequence[str] = DEFAULT_CRM_ERP_SEARCH_TENANT_IDS,
 ) -> list[KeywordIndexedChunk]:
     records: list[KeywordIndexedChunk] = []
@@ -127,6 +142,12 @@ def build_crm_erp_search_records(
         records.extend(_product_chunk(record) for record in product_repository.list_products(tenant_id=tenant_id))
         records.extend(_order_chunk(record) for record in order_repository.list_orders(tenant_id=tenant_id))
         records.extend(_invoice_chunk(record) for record in invoice_repository.list_invoices(tenant_id=tenant_id))
+        records.extend(
+            _order_item_chunk(record) for record in order_item_repository.list_order_items(tenant_id=tenant_id)
+        )
+        records.extend(
+            _invoice_item_chunk(record) for record in invoice_item_repository.list_invoice_items(tenant_id=tenant_id)
+        )
     return records
 
 
@@ -225,6 +246,39 @@ def _invoice_chunk(record: ErpInvoiceRecord) -> KeywordIndexedChunk:
             *record.product_object_ids,
             record.invoice_date,
             record.due_date,
+            record.currency_code,
+            record.status.value,
+        ),
+    )
+
+
+def _order_item_chunk(record: ErpOrderItemRecord) -> KeywordIndexedChunk:
+    return _metadata_chunk(
+        record,
+        title=f"{record.order_object_id} line {record.line_number}",
+        index_parts=(
+            record.order_object_id,
+            record.product_object_id,
+            record.line_number,
+            record.description,
+            record.unit_code,
+            record.currency_code,
+            record.status.value,
+        ),
+    )
+
+
+def _invoice_item_chunk(record: ErpInvoiceItemRecord) -> KeywordIndexedChunk:
+    return _metadata_chunk(
+        record,
+        title=f"{record.invoice_object_id} line {record.line_number}",
+        index_parts=(
+            record.invoice_object_id,
+            record.order_item_object_id,
+            record.product_object_id,
+            record.line_number,
+            record.description,
+            record.unit_code,
             record.currency_code,
             record.status.value,
         ),

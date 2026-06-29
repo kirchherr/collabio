@@ -115,7 +115,9 @@ DEMO_ERP_SALES_HEADERS = {
         "crm-account-acme-demo,crm-account-northwind-demo,"
         "erp-product-standard-widget-demo,erp-product-service-plan-demo,"
         "erp-order-acme-widget-demo,erp-order-northwind-service-demo,"
-        "erp-invoice-acme-widget-demo,erp-invoice-northwind-service-demo"
+        "erp-order-item-acme-widget-demo,erp-order-item-northwind-service-demo,"
+        "erp-invoice-acme-widget-demo,erp-invoice-northwind-service-demo,"
+        "erp-invoice-item-acme-widget-demo,erp-invoice-item-northwind-service-demo"
     ),
 }
 DEMO_CRM_ERP_SEARCH_HEADERS = {
@@ -22180,6 +22182,18 @@ def test_erp_orders_endpoint_requires_enabled_module_feature() -> None:
     assert "not enabled" in response.json()["detail"]
 
 
+def test_erp_order_and_invoice_items_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    order_items_response = client.get("/v1/erp/order-items", headers=DEMO_ERP_SALES_HEADERS)
+    invoice_items_response = client.get("/v1/erp/invoice-items", headers=DEMO_ERP_SALES_HEADERS)
+
+    assert order_items_response.status_code == 403
+    assert invoice_items_response.status_code == 403
+    assert "not enabled" in order_items_response.json()["detail"]
+    assert "not enabled" in invoice_items_response.json()["detail"]
+
+
 def test_erp_orders_endpoint_returns_gobd_orders_after_feature_enable() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -22244,6 +22258,81 @@ def test_erp_invoices_endpoint_returns_gobd_invoices_after_feature_enable() -> N
     assert new_events[-1].output_hash is None
     assert new_events[-1].metadata["candidate_count"] == 2
     assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
+def test_erp_order_items_endpoint_returns_gobd_order_items_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_erp_sales_for_demo()
+
+    response = client.get("/v1/erp/order-items", headers=DEMO_ERP_SALES_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.erp.orders"
+    assert body["audit_event_id"]
+    assert [item["object_id"] for item in body["order_items"]] == [
+        "erp-order-item-acme-widget-demo",
+        "erp-order-item-northwind-service-demo",
+    ]
+    assert {item["object_type"] for item in body["order_items"]} == {"erp.order_item"}
+    assert {item["data_classification"] for item in body["order_items"]} == {"gobd"}
+    assert {item["retention_policy_id"] for item in body["order_items"]} == {"rp-gobd-10y"}
+    assert all(item["access_checked"] for item in body["order_items"])
+    assert all(item["linked_refs_access_checked"] for item in body["order_items"])
+    assert body["order_items"][0]["order_object_id"] == "erp-order-acme-widget-demo"
+    assert body["order_items"][0]["product_object_id"] == "erp-product-standard-widget-demo"
+    assert "erp-order-item-other-tenant" not in {item["object_id"] for item in body["order_items"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "erp.order_item.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["redacted_link_count"] == 0
+    assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
+def test_erp_invoice_items_endpoint_returns_gobd_invoice_items_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_erp_sales_for_demo()
+
+    response = client.get("/v1/erp/invoice-items", headers=DEMO_ERP_SALES_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.erp.invoices"
+    assert body["audit_event_id"]
+    assert [item["object_id"] for item in body["invoice_items"]] == [
+        "erp-invoice-item-acme-widget-demo",
+        "erp-invoice-item-northwind-service-demo",
+    ]
+    assert {item["object_type"] for item in body["invoice_items"]} == {"erp.invoice_item"}
+    assert {item["data_classification"] for item in body["invoice_items"]} == {"gobd"}
+    assert {item["retention_policy_id"] for item in body["invoice_items"]} == {"rp-gobd-10y"}
+    assert all(item["access_checked"] for item in body["invoice_items"])
+    assert all(item["linked_refs_access_checked"] for item in body["invoice_items"])
+    assert body["invoice_items"][0]["invoice_object_id"] == "erp-invoice-acme-widget-demo"
+    assert body["invoice_items"][0]["order_item_object_id"] == "erp-order-item-acme-widget-demo"
+    assert body["invoice_items"][0]["product_object_id"] == "erp-product-standard-widget-demo"
+    assert "erp-invoice-item-other-tenant" not in {item["object_id"] for item in body["invoice_items"]}
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    assert new_events[-1].event_type == "erp.invoice_item.list"
+    assert new_events[-1].tenant_id == "tenant-demo"
+    assert new_events[-1].input_hash is None
+    assert new_events[-1].output_hash is None
+    assert new_events[-1].metadata["candidate_count"] == 2
+    assert new_events[-1].metadata["result_count"] == 2
+    assert new_events[-1].metadata["redacted_link_count"] == 0
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
 
 

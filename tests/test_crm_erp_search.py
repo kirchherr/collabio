@@ -13,7 +13,12 @@ from suite.platform.crm_erp_search_readiness import (
     build_crm_erp_search_readiness_response,
 )
 from suite.platform.erp_products import InMemoryErpProductRepository
-from suite.platform.erp_sales import InMemoryErpInvoiceRepository, InMemoryErpOrderRepository
+from suite.platform.erp_sales import (
+    InMemoryErpInvoiceItemRepository,
+    InMemoryErpInvoiceRepository,
+    InMemoryErpOrderItemRepository,
+    InMemoryErpOrderRepository,
+)
 from suite.platform.modules import default_module_registry
 from suite.search.models import KeywordSearchQuery
 
@@ -37,6 +42,8 @@ def build_service() -> tuple[CrmErpSearchService, InMemoryAuditLogger]:
         product_repository=InMemoryErpProductRepository.demo(),
         order_repository=InMemoryErpOrderRepository.demo(),
         invoice_repository=InMemoryErpInvoiceRepository.demo(),
+        order_item_repository=InMemoryErpOrderItemRepository.demo(),
+        invoice_item_repository=InMemoryErpInvoiceItemRepository.demo(),
         audit_logger=audit_logger,
     )
     return service, audit_logger
@@ -86,6 +93,42 @@ def test_crm_erp_search_returns_authorized_metadata_candidates_without_content()
     assert audit_event.metadata["feature_id"] == "crm_erp.search.keyword"
     assert audit_event.metadata["result_contract"] == CRM_ERP_SEARCH_RESULT_CONTRACT
     assert audit_event.metadata["authorized_candidate_count"] == 4
+    assert audit_event.metadata["content_included"] is False
+    assert audit_event.metadata["ai_used"] is False
+    assert audit_event.metadata["rag_context_created"] is False
+
+
+def test_crm_erp_search_covers_authorized_order_and_invoice_items_without_content() -> None:
+    service, audit_logger = build_service()
+
+    response = service.search(
+        query=KeywordSearchQuery(query="standard widget", top_k=10),
+        user_context=user_context(
+            readable_object_ids={
+                "erp-order-item-acme-widget-demo",
+                "erp-invoice-item-acme-widget-demo",
+            }
+        ),
+    )
+
+    object_ids = {candidate.object_id for candidate in response.candidates}
+    serialized_response = response.model_dump_json()
+    audit_event = audit_logger.events[-1]
+    assert object_ids == {
+        "erp-order-item-acme-widget-demo",
+        "erp-invoice-item-acme-widget-demo",
+    }
+    assert {candidate.object_type for candidate in response.candidates} == {
+        "erp.order_item",
+        "erp.invoice_item",
+    }
+    assert all(candidate.access_checked for candidate in response.candidates)
+    assert all(candidate.retention_policy_id == "rp-gobd-10y" for candidate in response.candidates)
+    assert all(candidate.legal_hold_state == "none" for candidate in response.candidates)
+    assert "index_text" not in serialized_response
+    assert "snippet" not in serialized_response
+    assert "erp-product-standard-widget-demo" not in object_ids
+    assert audit_event.metadata["authorized_candidate_count"] == 2
     assert audit_event.metadata["content_included"] is False
     assert audit_event.metadata["ai_used"] is False
     assert audit_event.metadata["rag_context_created"] is False

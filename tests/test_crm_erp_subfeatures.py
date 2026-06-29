@@ -179,6 +179,8 @@ def test_crm_erp_high_risk_subfeatures_keep_approval_and_evidence_requirements()
 
     assert keyword_search.area == CrmErpSubfeatureArea.SEARCH
     assert not keyword_search.requires_approval
+    assert "erp.order_item" in keyword_search.object_types
+    assert "erp.invoice_item" in keyword_search.object_types
     assert "authoritative_acl_validation" in keyword_search.evidence_required
 
     assert rag_indexing.area == CrmErpSubfeatureArea.SEARCH_AI

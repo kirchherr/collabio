@@ -17,6 +17,9 @@ from suite.search.models import (
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
 ACTIVE_LIFECYCLE_STATE = "active"
+ACL_PREFILTER_MULTIPLIER = 10
+ACL_PREFILTER_MINIMUM = 50
+ACL_PREFILTER_MAXIMUM = 500
 
 
 @dataclass(frozen=True)
@@ -132,10 +135,14 @@ class KeywordSearchService:
         self.result_contract = result_contract
 
     def search(self, *, query: KeywordSearchQuery, user_context: UserContext) -> KeywordSearchResponse:
+        prefilter_top_k = min(
+            ACL_PREFILTER_MAXIMUM,
+            max(query.top_k, query.top_k * ACL_PREFILTER_MULTIPLIER, ACL_PREFILTER_MINIMUM),
+        )
         candidates = self.index.search(
             tenant_id=user_context.tenant_id,
             query=query.query,
-            top_k=query.top_k,
+            top_k=prefilter_top_k,
         )
         authorized_candidates: list[KeywordSearchCandidate] = []
         for candidate in candidates:
@@ -149,6 +156,8 @@ class KeywordSearchService:
             ):
                 continue
             authorized_candidates.append(candidate_view(candidate))
+            if len(authorized_candidates) >= query.top_k:
+                break
 
         audit_event = self.audit_logger.record(
             user_context=user_context,

@@ -389,7 +389,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",
                     title="CRM/ERP erste Vertical Slices",
-                    summary="CRM Accounts, Activities sowie ERP Products, Orders und Invoices sind tenant-sicher.",
+                    summary=(
+                        "CRM Accounts, Activities sowie ERP Products, Orders, Order Items, Invoices und Invoice Items "
+                        "sind tenant-sicher."
+                    ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="business_module_slice",
                     evidence_refs=(
@@ -405,7 +408,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/crm/activities",
                         "/v1/erp/products",
                         "/v1/erp/orders",
+                        "/v1/erp/order-items",
                         "/v1/erp/invoices",
+                        "/v1/erp/invoice-items",
                     ),
                     guardrails=("module_gate_required", "tenant_context_required", "no_ai_bypass"),
                     next_action="crm_erp_search_acl_first_search_ui_and_rag_guardrails",
