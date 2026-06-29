@@ -31,10 +31,11 @@
 - `crm_erp.source_resolver_acl_trace`
 - `crm_erp.source_citation_contract`
 - `crm_erp.prompt_audit_contract`
+- `crm_erp.redaction_contract`
 
 ## CRM/ERP prompt audit contract
 
-CRM/ERP prompt-audit contract events may store model IDs, prompt-template IDs, source object IDs, source-citation audit event IDs, contract hashes, required audit field names, citation counts, approval states, and blocking reasons. They must not store prompt bodies, retrieved source text, generated outputs, tool-call bodies, transcripts, raw audio, embeddings, or source snippets.
+CRM/ERP prompt-audit contract events may store model IDs, prompt-template IDs, source object IDs, source-citation audit event IDs, contract hashes, required audit field names, citation counts, approval states, and blocking reasons. CRM/ERP redaction contract events may additionally store redaction policy IDs, redaction contract hashes, covered source data classes, required redaction step names, upstream prompt-audit event IDs, and blocking reasons. They must not store prompt bodies, retrieved source text, redacted source text, generated outputs, tool-call bodies, transcripts, raw audio, embeddings, or source snippets.
 
 ## Logging rule
 

@@ -68,3 +68,14 @@ user query
 - Prompt bodies, retrieved source text, generated outputs, and tool-call bodies are not included in the response and remain forbidden in normal application logs.
 - The response is not RAG context and must keep `content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, and `rag_context_created=false`.
 - CRM/ERP RAG readiness may satisfy the prompt-audit gate only after this endpoint and its audit coverage are present; redaction remains a separate required gate before RAG context creation.
+
+## CRM/ERP redaction contract
+
+`POST /v1/platform/search/crm-erp/redaction-contract` is the metadata-only proof that authorized CRM/ERP source refs have a redaction policy boundary before any prompt or retrieval context exists.
+
+- The request accepts object IDs, model and prompt-template IDs, and a redaction policy ID only.
+- The server reuses the prompt-audit contract and does not trust client-supplied source metadata.
+- The contract requires classification-aware redaction, personal-data minimization, secret and credential masking, legal-hold marker preservation, untrusted source block wrapping, redacted context hash evidence, and a redaction audit event.
+- Raw source text, redacted text, prompts, outputs, snippets, and embeddings are not included in the response.
+- The response is not RAG context and must keep `content_included=false`, `redacted_content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, and `rag_context_created=false`.
+- CRM/ERP RAG readiness may satisfy the redaction gate only after this endpoint and its audit coverage are present; authorized context assembly remains a separate required gate before RAG context creation.

@@ -218,6 +218,7 @@ def test_crm_erp_rag_readiness_stays_blocked_without_context_creation() -> None:
     assert response.source_citation_contract_ready is False
     assert response.prompt_audit_contract_ready is False
     assert response.redaction_contract_ready is False
+    assert response.authorized_context_contract_ready is False
     assert response.ready_for_rag_context is False
     assert response.result_contract == CRM_ERP_RAG_READINESS_RESULT_CONTRACT
     assert response.content_included is False
@@ -230,6 +231,7 @@ def test_crm_erp_rag_readiness_stays_blocked_without_context_creation() -> None:
     assert "source_citation_contract_missing" in response.blocking_reasons
     assert "prompt_audit_contract_missing" in response.blocking_reasons
     assert "redaction_contract_missing" in response.blocking_reasons
+    assert "authorized_context_contract_missing" in response.blocking_reasons
     assert gate_statuses["tenant_ai_policy"] == "satisfied"
     assert gate_statuses["tenant_rag_policy"] == "satisfied"
     assert gate_statuses["rag_feature_flag"] == "blocked"
@@ -237,6 +239,7 @@ def test_crm_erp_rag_readiness_stays_blocked_without_context_creation() -> None:
     assert gate_statuses["source_citation_contract"] == "blocked"
     assert gate_statuses["prompt_audit_contract"] == "blocked"
     assert gate_statuses["redaction_contract"] == "blocked"
+    assert gate_statuses["authorized_context_contract"] == "blocked"
 
 
 def test_crm_erp_search_readiness_reports_blocked_module_gate_without_content() -> None:
