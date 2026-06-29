@@ -35,3 +35,14 @@ user query
 - Inference data classes must include `ai_prompt` plus the classifications of all authorized source objects used in context.
 - RAG must be blocked when the tenant policy, model policy, or prompt policy does not allow any source classification in the final context.
 - Deleted or cryptographically destroyed sources must disappear from retrieval context.
+
+## CRM/ERP source resolver ACL trace
+
+`POST /v1/platform/search/crm-erp/source-resolver-acl-trace` is the metadata-only bridge between ACL-first CRM/ERP search candidates and any future RAG context builder.
+
+- The request accepts object IDs only, not query text, snippets, prompts, or source bodies.
+- The server resolves candidate metadata from canonical CRM/ERP repositories, not from client-supplied metadata.
+- Each resolved source ref is revalidated against the current tenant context and readable object IDs.
+- Blocked or unresolved refs are reported by object ID only and do not include classification, hashes, titles, snippets, or source text.
+- The response is not RAG context and must keep `content_included=false`, `ai_used=false`, and `rag_context_created=false`.
+- CRM/ERP RAG readiness may satisfy the source-resolver ACL-trace gate only after this endpoint and its audit coverage are present.
