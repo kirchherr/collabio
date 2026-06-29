@@ -1055,7 +1055,7 @@ CRM/ERP `crm_erp`:
 - [x] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices und Invoice Items sind als metadata-only API-Slices vorhanden.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
-- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG-Readiness ist ueber `GET /v1/platform/search/crm-erp/rag-readiness` explizit blockiert; Source-Resolver-ACL-Trace und Source-Citation-Contract sind ueber `POST /v1/platform/search/crm-erp/source-resolver-acl-trace` und `POST /v1/platform/search/crm-erp/source-citation-contract` metadata-only vorhanden, Redaction und Prompt-Audit bleiben offen.
+- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG-Readiness ist ueber `GET /v1/platform/search/crm-erp/rag-readiness` explizit blockiert; Source-Resolver-ACL-Trace, Source-Citation-Contract und Prompt-Audit-Contract sind ueber `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract` und `POST /v1/platform/search/crm-erp/prompt-audit-contract` metadata-only vorhanden, Redaction bleibt offen.
 - [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
 
 Vorbereitete Modul-Familien:

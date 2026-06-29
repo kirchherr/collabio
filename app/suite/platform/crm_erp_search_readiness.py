@@ -267,6 +267,7 @@ class CrmErpRagReadinessResponse(BaseModel):
     source_resolver_acl_trace_ready: bool = False
     source_citation_contract_ready: bool = False
     prompt_audit_contract_ready: bool = False
+    redaction_contract_ready: bool = False
     ready_for_rag_context: bool = False
     gates: tuple[CrmErpSearchReadinessGate, ...]
     blocking_reasons: tuple[str, ...]
@@ -331,6 +332,7 @@ def build_crm_erp_rag_readiness_response(
     source_resolver_acl_trace_ready: bool = False,
     source_citation_contract_ready: bool = False,
     prompt_audit_contract_ready: bool = False,
+    redaction_contract_ready: bool = False,
 ) -> CrmErpRagReadinessResponse:
     state = module_registry.get_tenant_module_or_none(
         tenant_id=user_context.tenant_id,
@@ -380,6 +382,8 @@ def build_crm_erp_rag_readiness_response(
         blocking_reasons.append("source_citation_contract_missing")
     if not prompt_audit_contract_ready:
         blocking_reasons.append("prompt_audit_contract_missing")
+    if not redaction_contract_ready:
+        blocking_reasons.append("redaction_contract_missing")
 
     ready_for_rag_context = (
         rag_feature_worker_enabled
@@ -388,6 +392,7 @@ def build_crm_erp_rag_readiness_response(
         and source_resolver_acl_trace_ready
         and source_citation_contract_ready
         and prompt_audit_contract_ready
+        and redaction_contract_ready
     )
     status = CrmErpSearchReadinessStatus.READY if ready_for_rag_context else CrmErpSearchReadinessStatus.BLOCKED
 
@@ -404,6 +409,7 @@ def build_crm_erp_rag_readiness_response(
         source_resolver_acl_trace_ready=source_resolver_acl_trace_ready,
         source_citation_contract_ready=source_citation_contract_ready,
         prompt_audit_contract_ready=prompt_audit_contract_ready,
+        redaction_contract_ready=redaction_contract_ready,
         ready_for_rag_context=ready_for_rag_context,
         gates=_rag_readiness_gates(
             tenant_context_present=True,
@@ -415,6 +421,7 @@ def build_crm_erp_rag_readiness_response(
             source_resolver_acl_trace_ready=source_resolver_acl_trace_ready,
             source_citation_contract_ready=source_citation_contract_ready,
             prompt_audit_contract_ready=prompt_audit_contract_ready,
+            redaction_contract_ready=redaction_contract_ready,
         ),
         blocking_reasons=tuple(dict.fromkeys(blocking_reasons)),
         guardrails=(
@@ -424,6 +431,7 @@ def build_crm_erp_rag_readiness_response(
             "source_resolver_acl_trace_required",
             "source_object_id_and_version_citations_required",
             "prompt_and_output_hash_audit_required",
+            "redaction_contract_required",
             "metadata_only_no_context_created",
             "no_cloud_ai_without_tenant_policy",
         ),
@@ -448,6 +456,7 @@ def _rag_readiness_gates(
     source_resolver_acl_trace_ready: bool,
     source_citation_contract_ready: bool,
     prompt_audit_contract_ready: bool,
+    redaction_contract_ready: bool,
 ) -> tuple[CrmErpSearchReadinessGate, ...]:
     return (
         CrmErpSearchReadinessGate(
@@ -503,5 +512,11 @@ def _rag_readiness_gates(
             status=_satisfied_or_blocked(prompt_audit_contract_ready),
             summary="Prompt, context, model ID, output hash, and tool calls must be audit logged before RAG runs.",
             evidence_ref="docs/AI_AUDIT_SCHEMA.md",
+        ),
+        CrmErpSearchReadinessGate(
+            gate_id="redaction_contract",
+            status=_satisfied_or_blocked(redaction_contract_ready),
+            summary="Authorized source blocks must pass redaction before prompt construction.",
+            evidence_ref="docs/RAG_SECURITY_MODEL.md",
         ),
     )

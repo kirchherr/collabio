@@ -57,3 +57,14 @@ user query
 - Blocked or unresolved refs are reported by object ID only and do not include citation metadata.
 - The response is not RAG context and must keep `content_included=false`, `ai_used=false`, and `rag_context_created=false`.
 - CRM/ERP RAG readiness may satisfy the source-citation gate only after this endpoint and its audit coverage are present.
+
+## CRM/ERP prompt audit contract
+
+`POST /v1/platform/search/crm-erp/prompt-audit-contract` is the metadata-only proof that future CRM/ERP RAG inference can be bound to audit hash requirements before any prompt or retrieval context exists.
+
+- The request accepts object IDs plus model and prompt-template IDs only.
+- The server reuses the source-citation contract and does not trust client-supplied source metadata.
+- The contract requires `model_id`, `prompt_template_id`, source object IDs, `input_hash`, `output_hash`, context hash, retrieval audit event ID, source-citation audit event ID, authorized chunk refs, source classifications, tool-call hashes, and redaction policy metadata for future inference events.
+- Prompt bodies, retrieved source text, generated outputs, and tool-call bodies are not included in the response and remain forbidden in normal application logs.
+- The response is not RAG context and must keep `content_included=false`, `prompt_body_included=false`, `output_body_included=false`, `ai_used=false`, and `rag_context_created=false`.
+- CRM/ERP RAG readiness may satisfy the prompt-audit gate only after this endpoint and its audit coverage are present; redaction remains a separate required gate before RAG context creation.

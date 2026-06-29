@@ -73,6 +73,12 @@ from suite.platform.crm_contacts import (
     CrmContactsResponse,
     InMemoryCrmContactRepository,
 )
+from suite.platform.crm_erp_prompt_audit_contract import (
+    CrmErpPromptAuditContractRequest,
+    CrmErpPromptAuditContractResponse,
+    CrmErpPromptAuditContractService,
+    build_crm_erp_prompt_audit_contract_service,
+)
 from suite.platform.crm_erp_search import (
     CRM_ERP_SEARCH_FEATURE_ID,
     CrmErpSearchResponse,
@@ -892,6 +898,12 @@ def build_app() -> FastAPI:
         source_resolver_acl_trace_service=crm_erp_source_resolver_acl_trace_service,
         audit_logger=audit_logger,
     )
+    crm_erp_prompt_audit_contract_service = build_crm_erp_prompt_audit_contract_service(
+        source_citation_contract_service=crm_erp_source_citation_contract_service,
+        model_registry=model_registry,
+        prompt_registry=prompt_registry,
+        audit_logger=audit_logger,
+    )
     default_knowledge_base_article_service = KnowledgeBaseArticleService(
         repository=InMemoryKnowledgeBaseArticleRepository.demo(),
         source_repository=demo_knowledge_base_source_object_repository(),
@@ -1020,6 +1032,29 @@ def build_app() -> FastAPI:
         )
         return citation_service.build_contract(request=citation_request, user_context=context.user_context)
 
+    @app.post(
+        "/v1/platform/search/crm-erp/prompt-audit-contract",
+        response_model=CrmErpPromptAuditContractResponse,
+    )
+    def crm_erp_prompt_audit_contract(
+        prompt_audit_request: CrmErpPromptAuditContractRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ERP_SEARCH_FEATURE_ID)),
+        ],
+    ) -> CrmErpPromptAuditContractResponse:
+        del gate
+        prompt_audit_service = cast(
+            CrmErpPromptAuditContractService,
+            request.app.state.crm_erp_prompt_audit_contract_service,
+        )
+        return prompt_audit_service.build_contract(
+            request=prompt_audit_request,
+            user_context=context.user_context,
+        )
+
     @app.get("/v1/platform/search/crm-erp/rag-readiness", response_model=CrmErpRagReadinessResponse)
     def crm_erp_rag_readiness(
         request: Request,
@@ -1032,6 +1067,7 @@ def build_app() -> FastAPI:
             tenant_policy=context.tenant_policy,
             source_resolver_acl_trace_ready=True,
             source_citation_contract_ready=True,
+            prompt_audit_contract_ready=True,
         )
         audit_logger.record(
             user_context=context.user_context,
@@ -1051,6 +1087,7 @@ def build_app() -> FastAPI:
                 "source_resolver_acl_trace_ready": response.source_resolver_acl_trace_ready,
                 "source_citation_contract_ready": response.source_citation_contract_ready,
                 "prompt_audit_contract_ready": response.prompt_audit_contract_ready,
+                "redaction_contract_ready": response.redaction_contract_ready,
                 "ready_for_rag_context": response.ready_for_rag_context,
                 "blocking_reason_count": len(response.blocking_reasons),
                 "content_included": response.content_included,
@@ -14256,6 +14293,7 @@ def build_app() -> FastAPI:
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.crm_erp_search_service = crm_erp_search_service
+    app.state.crm_erp_prompt_audit_contract_service = crm_erp_prompt_audit_contract_service
     app.state.crm_erp_source_citation_contract_service = crm_erp_source_citation_contract_service
     app.state.crm_erp_source_resolver_acl_trace_service = crm_erp_source_resolver_acl_trace_service
     app.state.erp_product_service = erp_product_service

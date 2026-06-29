@@ -28,6 +28,13 @@
 - `embedding_model_version.registered`
 - `embedding_model_version.approved`
 - `embedding_model_version.retired`
+- `crm_erp.source_resolver_acl_trace`
+- `crm_erp.source_citation_contract`
+- `crm_erp.prompt_audit_contract`
+
+## CRM/ERP prompt audit contract
+
+CRM/ERP prompt-audit contract events may store model IDs, prompt-template IDs, source object IDs, source-citation audit event IDs, contract hashes, required audit field names, citation counts, approval states, and blocking reasons. They must not store prompt bodies, retrieved source text, generated outputs, tool-call bodies, transcripts, raw audio, embeddings, or source snippets.
 
 ## Logging rule
 
