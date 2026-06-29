@@ -207,6 +207,7 @@ input:focus-visible {
 
 .tenant-band,
 .summary-band,
+.plan-band,
 .filter-band,
 .group-stack,
 .detail-panel {
@@ -215,6 +216,7 @@ input:focus-visible {
 
 .tenant-band,
 .summary-band,
+.plan-band,
 .filter-band,
 .group-panel,
 .detail-panel {
@@ -506,6 +508,96 @@ input {
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.plan-band {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.plan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.plan-rule {
+  color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.plan-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-column-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plan-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.plan-card-title {
+  font-weight: 760;
+  line-height: 1.3;
+}
+
+.plan-card p {
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.plan-card code {
+  max-width: 100%;
+  color: #455057;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.priority-now {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.priority-next {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.priority-later {
+  background: var(--red-soft);
+  color: var(--red);
+}
 
 .code-list {
   display: grid;
@@ -573,6 +665,7 @@ input {
   .nav-stack,
   .tenant-band,
   .metric-grid,
+  .plan-grid,
   .detail-grid {
     width: 100%;
     grid-template-columns: 1fr;

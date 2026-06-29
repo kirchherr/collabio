@@ -510,6 +510,7 @@ from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_dry_run_response as build_activation_dry_run_response,  # noqa: E501
 )
 from suite.platform.roadmap_dashboard import RoadmapDashboardResponse, build_roadmap_dashboard_response
+from suite.platform.roadmap_plan import RoadmapPlanSnapshotResponse, build_roadmap_plan_snapshot_response
 from suite.platform.runtime import suite_auth_mode
 from suite.platform.source_object_details import (
     SourceObjectDetailAccessDenied,
@@ -868,6 +869,31 @@ def build_app() -> FastAPI:
                 "foundation_ready_count": response.summary.foundation_ready_count,
                 "planned_count": response.summary.planned_count,
                 "deferred_count": response.summary.deferred_count,
+                "content_included": response.content_included,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get("/v1/platform/roadmap/plan-snapshot", response_model=RoadmapPlanSnapshotResponse)
+    def roadmap_plan_snapshot(
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> RoadmapPlanSnapshotResponse:
+        response = build_roadmap_plan_snapshot_response(user_context=context.user_context)
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.roadmap.plan_snapshot",
+            source_object_ids=[],
+            metadata={
+                "surface": "roadmap_ui",
+                "result_contract": "metadata_only_roadmap_plan_snapshot",
+                "schema_version": response.schema_version,
+                "dashboard_schema_version": response.dashboard_schema_version,
+                "now_count": response.summary.now_count,
+                "next_count": response.summary.next_count,
+                "later_count": response.summary.later_count,
                 "content_included": response.content_included,
                 "persistent_task_created": response.persistent_task_created,
                 "destructive_actions_allowed": response.destructive_actions_allowed,

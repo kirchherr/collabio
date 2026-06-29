@@ -603,6 +603,7 @@ def test_roadmap_shell_serves_static_foundation_overview_ui() -> None:
     assert "text/html" in response.headers["content-type"]
     assert "Foundation Roadmap" in response.text
     assert "summary-band" in response.text
+    assert "plan-band" in response.text
     assert "group-stack" in response.text
     assert "detail-panel" in response.text
     assert "/roadmap/assets/roadmap.css" in response.text
@@ -618,12 +619,15 @@ def test_roadmap_shell_assets_call_metadata_only_roadmap_api() -> None:
     assert css_response.status_code == 200
     assert ".roadmap-shell" in css_response.text
     assert ".summary-band" in css_response.text
+    assert ".plan-band" in css_response.text
+    assert ".plan-card" in css_response.text
     assert ".overview-layout" in css_response.text
     assert ".capability-row" in css_response.text
     assert ".detail-panel" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/roadmap" in js_response.text
+    assert "/v1/platform/roadmap/plan-snapshot" in js_response.text
     assert "platform_roadmap_dashboard.v1" not in js_response.text
     assert "content_included" not in js_response.text
     assert "destructive" not in js_response.text
@@ -683,6 +687,67 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_foundation_roadmap_dashboard"
     assert event.metadata["foundation_ready_count"] == body["summary"]["foundation_ready_count"]
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+
+
+def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() -> None:
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/roadmap/plan-snapshot", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
+    assert body["current_focus"] == "crm_erp_vertical_slice_after_foundation"
+    assert body["decision_rule"] == "foundation_first_only_pull_forward_items_that_unlock_current_crm_erp_slice"
+    assert body["content_included"] is False
+    assert body["persistent_task_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["summary"] == {
+        "now_count": 2,
+        "next_count": 2,
+        "later_count": 4,
+        "total_count": 8,
+        "foundation_ready_count": 16,
+    }
+    items = {item["work_item_id"]: item for item in body["items"]}
+    assert set(items) == {
+        "crm_accounts_contacts_activities_operational_hardening",
+        "erp_products_to_orders_invoices_slice",
+        "crm_erp_search_acl_first_then_rag",
+        "module_family_backlog_kb_lms_tickets_time_tracking",
+        "full_office_suite_client",
+        "mail_client_runtime",
+        "productive_legacy_sql_import_writes",
+        "automation_execution_for_tasks_tickets_lms_time_tracking",
+    }
+    assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "now"
+    assert items["erp_products_to_orders_invoices_slice"]["can_start_now"] is True
+    assert "legacy_migration_registry" in items["erp_products_to_orders_invoices_slice"]["capability_ids"]
+    assert items["crm_erp_search_acl_first_then_rag"]["priority"] == "next"
+    assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
+    assert items["full_office_suite_client"]["priority"] == "later"
+    assert items["full_office_suite_client"]["deferred"] is True
+    assert items["productive_legacy_sql_import_writes"]["can_start_now"] is False
+    assert all(item["deferred"] is True for item in body["items"] if item["priority"] == "later")
+    assert all(item["can_start_now"] is False for item in body["items"] if item["deferred"] is True)
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type == "platform.roadmap.plan_snapshot"]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_roadmap_plan_snapshot"
+    assert event.metadata["now_count"] == 2
+    assert event.metadata["next_count"] == 2
+    assert event.metadata["later_count"] == 4
     assert event.metadata["content_included"] is False
     assert event.metadata["destructive_actions_allowed"] is False
     assert event.metadata["external_side_effect_allowed"] is False

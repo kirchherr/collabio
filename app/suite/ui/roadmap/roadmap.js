@@ -7,6 +7,7 @@ const fields = {
 const statusLine = document.querySelector("#status-line");
 const refreshButton = document.querySelector("#refresh-button");
 const summaryBand = document.querySelector("#summary-band");
+const planBand = document.querySelector("#plan-band");
 const groupStack = document.querySelector("#group-stack");
 const detailPanel = document.querySelector("#detail-panel");
 const filterButtons = Array.from(document.querySelectorAll("[data-status-filter]"));
@@ -56,20 +57,25 @@ function headersForContext(context) {
 
 async function loadRoadmap() {
   const context = readContext();
+  const headers = headersForContext(context);
   persistContext();
   setStatus("Lade Roadmap ...");
   refreshButton.disabled = true;
   try {
-    const response = await fetch("/v1/platform/roadmap", {
-      headers: headersForContext(context),
-    });
+    const response = await fetch("/v1/platform/roadmap", { headers });
     const body = await readJson(response);
     if (!response.ok) {
       throw new Error(body.detail || `HTTP ${response.status}`);
     }
+    const planResponse = await fetch("/v1/platform/roadmap/plan-snapshot", { headers });
+    const planBody = await readJson(planResponse);
+    if (!planResponse.ok) {
+      throw new Error(planBody.detail || `HTTP ${planResponse.status}`);
+    }
     currentRoadmap = body;
     selectedCapabilityId = selectedCapabilityId || firstCapability(body)?.capability_id || "";
     renderRoadmap(body);
+    renderPlan(planBody);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | ${body.schema_version}`);
   } catch (error) {
     currentRoadmap = null;
@@ -112,6 +118,64 @@ function renderSummary(roadmap) {
 function metric(label, value) {
   return '<div class="metric"><span>' + escapeHtml(label) + "</span><strong>" + Number(value || 0) + "</strong></div>";
 }
+function renderPlan(snapshot) {
+  if (!snapshot) {
+    planBand.innerHTML = '<div class="empty-state">Keine Plan-Daten.</div>';
+    return;
+  }
+  const items = snapshot.items || [];
+  const summary = snapshot.summary || {};
+  planBand.innerHTML = [
+    '<div class="plan-header">',
+    '<div class="summary-copy">',
+    '<p class="eyebrow">Fahrplan</p>',
+    '<h2>Jetzt, danach, spaeter</h2>',
+    '<div class="plan-rule">' + escapeHtml(snapshot.decision_rule || "foundation_first") + "</div>",
+    "</div>",
+    '<span class="status-pill priority-next">' + Number(summary.total_count || items.length) + " Plan Items</span>",
+    "</div>",
+    '<div class="plan-grid">',
+    planColumn("Jetzt", "now", items),
+    planColumn("Danach", "next", items),
+    planColumn("Spaeter", "later", items),
+    "</div>",
+  ].join("");
+}
+
+function planColumn(label, priority, items) {
+  const filtered = items.filter((item) => item.priority === priority);
+  return [
+    '<section class="plan-column">',
+    '<div class="plan-column-heading">',
+    "<h3>" + escapeHtml(label) + "</h3>",
+    '<span class="count-pill">' + Number(filtered.length) + "</span>",
+    "</div>",
+    '<div class="plan-list">',
+    filtered.map(planCard).join("") || '<div class="plan-card empty-state">Keine Eintraege.</div>',
+    "</div>",
+    "</section>",
+  ].join("");
+}
+
+function planCard(item) {
+  return [
+    '<article class="plan-card">',
+    '<div class="plan-card-title">' + escapeHtml(item.title) + "</div>",
+    "<p>" + escapeHtml(item.summary) + "</p>",
+    '<span class="status-pill ' + priorityClass(item.priority) + '">' + escapeHtml(item.priority) + "</span>",
+    "<code>" + escapeHtml(item.readiness_gate || "gate_pending") + "</code>",
+    "</article>",
+  ].join("");
+}
+
+function priorityClass(priority) {
+  const normalized = String(priority || "next").replace(/[^a-z0-9_]/g, "_");
+  if (["now", "next", "later"].includes(normalized)) {
+    return "priority-" + normalized;
+  }
+  return "priority-next";
+}
+
 
 function renderGroups(groups) {
   groupStack.innerHTML = "";
@@ -227,6 +291,7 @@ function setFilter(filter) {
 
 function renderEmpty() {
   summaryBand.innerHTML = '<div class="empty-state">Keine Roadmap-Daten.</div>';
+  planBand.innerHTML = '<div class="empty-state">Keine Plan-Daten.</div>';
   groupStack.innerHTML = "";
   renderDetail(null);
 }
