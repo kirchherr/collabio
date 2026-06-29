@@ -1014,6 +1014,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
         "total_family_count": 5,
         "catalog_registered_count": 1,
         "planned_not_installed_count": 4,
+        "pre_catalog_foundation_ready_count": 1,
         "first_slice_foundation_ready_count": 1,
         "runtime_activation_allowed_count": 0,
     }
@@ -1027,9 +1028,17 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["knowledge_base"]["backlog_status"] == "active_foundation"
     assert families["knowledge_base"]["catalog_status"] == "installed"
     assert families["knowledge_base"]["tenant_module_status"] == "available"
+    assert families["knowledge_base"]["module_charter_ready"] is True
+    assert families["knowledge_base"]["feature_registry_ready"] is True
+    assert families["knowledge_base"]["object_rules_ready"] is True
     assert families["knowledge_base"]["runtime_activation_allowed"] is False
     assert families["lms"]["backlog_status"] == "planned_not_installed"
     assert families["lms"]["catalog_status"] is None
+    assert families["lms"]["module_charter_ready"] is True
+    assert families["lms"]["feature_registry_ready"] is True
+    assert families["lms"]["object_rules_ready"] is True
+    assert families["lms"]["pre_catalog_foundation_ready"] is True
+    assert families["lms"]["next_action"] == "add_module_catalog_entry_and_migration_evidence_before_api"
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1047,6 +1056,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
     assert event.metadata["planned_not_installed_count"] == 4
+    assert event.metadata["pre_catalog_foundation_ready_count"] == 1
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False

@@ -1018,6 +1018,7 @@ def build_app() -> FastAPI:
                 "total_family_count": response.summary.total_family_count,
                 "catalog_registered_count": response.summary.catalog_registered_count,
                 "planned_not_installed_count": response.summary.planned_not_installed_count,
+                "pre_catalog_foundation_ready_count": response.summary.pre_catalog_foundation_ready_count,
                 "first_slice_foundation_ready_count": response.summary.first_slice_foundation_ready_count,
                 "runtime_activation_allowed_count": response.summary.runtime_activation_allowed_count,
                 "content_included": response.content_included,

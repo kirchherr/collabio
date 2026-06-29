@@ -32,6 +32,19 @@ MODULE_FAMILY_MODULE_IDS = {
 }
 PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_storage_or_api"
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
+CATALOG_PREPARED_NEXT_ACTION = "add_module_catalog_entry_and_migration_evidence_before_api"
+MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
+    "knowledge_base": {
+        "module_charter_ready": True,
+        "feature_registry_ready": True,
+        "object_rules_ready": True,
+    },
+    "lms": {
+        "module_charter_ready": True,
+        "feature_registry_ready": True,
+        "object_rules_ready": True,
+    },
+}
 
 
 class ModuleFamilyBacklogStatus(StrEnum):
@@ -141,6 +154,10 @@ class ModuleFamilyBacklogEntry(BaseModel):
     tenant_module_status: str | None
     installed_in_catalog: bool
     tenant_state_known: bool
+    module_charter_ready: bool
+    feature_registry_ready: bool
+    object_rules_ready: bool
+    pre_catalog_foundation_ready: bool
     first_slice_foundation_ready: bool
     runtime_activation_allowed: bool = False
     required_foundation_gates: tuple[str, ...]
@@ -159,6 +176,10 @@ class ModuleFamilyBacklogEntry(BaseModel):
             raise ValueError("module family backlog entries must not allow runtime activation")
         if self.first_slice_foundation_ready and not self.installed_in_catalog:
             raise ValueError("first slice cannot be foundation-ready without catalog registration")
+        if self.pre_catalog_foundation_ready and not (
+            self.module_charter_ready and self.feature_registry_ready and self.object_rules_ready
+        ):
+            raise ValueError("pre-catalog foundation requires charter, feature registry, and object rules")
         return self
 
 
@@ -168,6 +189,7 @@ class ModuleFamilyBacklogSummary(BaseModel):
     total_family_count: int
     catalog_registered_count: int
     planned_not_installed_count: int
+    pre_catalog_foundation_ready_count: int
     first_slice_foundation_ready_count: int
     runtime_activation_allowed_count: int = 0
 
@@ -269,8 +291,11 @@ def build_module_family_backlog_response(
         evidence_refs=(
             "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
             "docs/modules/module_implementation_contract.json",
+            "docs/modules/LMS_MODULE_CHARTER.md",
+            "app/suite/platform/lms_module.py",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
+            "tests/test_lms_module_foundation.py",
         ),
     )
 
@@ -289,8 +314,15 @@ def _module_family_backlog_entry(
         module_id=module_id,
         catalog_known=catalog_status is not None,
     )
+    artifact_readiness = MODULE_FAMILY_FOUNDATION_ARTIFACTS.get(definition.module_family, {})
     installed_in_catalog = catalog_status is not None
     first_slice_foundation_ready = definition.module_family == "knowledge_base" and installed_in_catalog
+    pre_catalog_foundation_ready = (
+        not installed_in_catalog
+        and bool(artifact_readiness.get("module_charter_ready", False))
+        and bool(artifact_readiness.get("feature_registry_ready", False))
+        and bool(artifact_readiness.get("object_rules_ready", False))
+    )
     return ModuleFamilyBacklogEntry(
         module_family=definition.module_family,
         module_id=module_id,
@@ -307,9 +339,16 @@ def _module_family_backlog_entry(
         tenant_module_status=tenant_module_status,
         installed_in_catalog=installed_in_catalog,
         tenant_state_known=tenant_module_status is not None,
+        module_charter_ready=bool(artifact_readiness.get("module_charter_ready", False)),
+        feature_registry_ready=bool(artifact_readiness.get("feature_registry_ready", False)),
+        object_rules_ready=bool(artifact_readiness.get("object_rules_ready", False)),
+        pre_catalog_foundation_ready=pre_catalog_foundation_ready,
         first_slice_foundation_ready=first_slice_foundation_ready,
         required_foundation_gates=_required_foundation_gates(definition),
-        next_action=ACTIVE_FOUNDATION_NEXT_ACTION if first_slice_foundation_ready else PLANNED_MODULE_NEXT_ACTION,
+        next_action=_next_action(
+            first_slice_foundation_ready=first_slice_foundation_ready,
+            pre_catalog_foundation_ready=pre_catalog_foundation_ready,
+        ),
     )
 
 
@@ -363,6 +402,18 @@ def _required_foundation_gates(definition: ModuleFamilyDefinition) -> tuple[str,
     )
 
 
+def _next_action(
+    *,
+    first_slice_foundation_ready: bool,
+    pre_catalog_foundation_ready: bool,
+) -> str:
+    if first_slice_foundation_ready:
+        return ACTIVE_FOUNDATION_NEXT_ACTION
+    if pre_catalog_foundation_ready:
+        return CATALOG_PREPARED_NEXT_ACTION
+    return PLANNED_MODULE_NEXT_ACTION
+
+
 def _module_family_backlog_summary(
     module_families: tuple[ModuleFamilyBacklogEntry, ...],
 ) -> ModuleFamilyBacklogSummary:
@@ -372,5 +423,6 @@ def _module_family_backlog_summary(
         planned_not_installed_count=sum(
             1 for family in module_families if family.backlog_status == ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED
         ),
+        pre_catalog_foundation_ready_count=sum(1 for family in module_families if family.pre_catalog_foundation_ready),
         first_slice_foundation_ready_count=sum(1 for family in module_families if family.first_slice_foundation_ready),
     )

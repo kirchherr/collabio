@@ -1061,7 +1061,7 @@ CRM/ERP `crm_erp`:
 Vorbereitete Modul-Familien:
 
 - Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`; Source-Version- und Restore-Evidence fuer Manifest Hash, Content Hash, ACL-Version, Disabled-State-Restore und Legal-Hold-Restore ist vorbereitet.
-- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
+- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence. Charter, Feature-Registry und Object-Rules fuer den ersten Kurs-/Einschreibestatus-Slice sind vorbereitet; Modul-Katalogeintrag, Migrationen, API und Runtime bleiben bewusst naechste Gates.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
 - Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.

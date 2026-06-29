@@ -52,6 +52,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.summary.total_family_count == 5
     assert response.summary.catalog_registered_count == 1
     assert response.summary.planned_not_installed_count == 4
+    assert response.summary.pre_catalog_foundation_ready_count == 1
     assert response.summary.first_slice_foundation_ready_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
 
@@ -62,17 +63,40 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert knowledge_base.catalog_status == "installed"
     assert knowledge_base.tenant_module_status == "available"
     assert knowledge_base.installed_in_catalog is True
+    assert knowledge_base.module_charter_ready is True
+    assert knowledge_base.feature_registry_ready is True
+    assert knowledge_base.object_rules_ready is True
+    assert knowledge_base.pre_catalog_foundation_ready is False
     assert knowledge_base.first_slice_foundation_ready is True
     assert knowledge_base.runtime_activation_allowed is False
     assert "default_feature_gate:knowledge_base.articles.read" in knowledge_base.required_foundation_gates
     assert "continuity_domain:knowledge_base_content" in knowledge_base.required_foundation_gates
 
-    for planned_family_id in {"lms", "tasks_activities", "tickets_incidents", "time_tracking"}:
+    lms = families["lms"]
+    assert lms.backlog_status == "planned_not_installed"
+    assert lms.catalog_status is None
+    assert lms.tenant_module_status is None
+    assert lms.installed_in_catalog is False
+    assert lms.module_charter_ready is True
+    assert lms.feature_registry_ready is True
+    assert lms.object_rules_ready is True
+    assert lms.pre_catalog_foundation_ready is True
+    assert lms.first_slice_foundation_ready is False
+    assert lms.runtime_activation_allowed is False
+    assert lms.next_action == "add_module_catalog_entry_and_migration_evidence_before_api"
+    assert "module_catalog_entry_required" in lms.required_foundation_gates
+    assert "backup_restore_evidence_required" in lms.required_foundation_gates
+
+    for planned_family_id in {"tasks_activities", "tickets_incidents", "time_tracking"}:
         planned_family = families[planned_family_id]
         assert planned_family.backlog_status == "planned_not_installed"
         assert planned_family.catalog_status is None
         assert planned_family.tenant_module_status is None
         assert planned_family.installed_in_catalog is False
+        assert planned_family.module_charter_ready is False
+        assert planned_family.feature_registry_ready is False
+        assert planned_family.object_rules_ready is False
+        assert planned_family.pre_catalog_foundation_ready is False
         assert planned_family.first_slice_foundation_ready is False
         assert planned_family.runtime_activation_allowed is False
         assert "module_catalog_entry_required" in planned_family.required_foundation_gates
