@@ -546,12 +546,22 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 RoadmapCapability(
                     capability_id="future_modules",
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
-                    summary="Modulfamilien folgen nach stabilen Modul-, Rechte- und Datenvertraegen.",
-                    status=RoadmapCapabilityStatus.PLANNED,
+                    summary="Modulfamilien sind als tenant-sicherer metadata-only Backlog-Kontrakt sichtbar.",
+                    status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
-                    evidence_refs=("docs/ROADMAP.md",),
-                    guardrails=("module_contract_first", "backup_failover_update_required", "tenant_admin_lifecycle"),
-                    next_action="prioritize_after_crm_erp_vertical_slice",
+                    evidence_refs=(
+                        "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
+                        "app/suite/platform/module_family_backlog.py",
+                        "tests/test_module_family_backlog.py",
+                    ),
+                    api_routes=("/v1/platform/modules/families/backlog",),
+                    guardrails=(
+                        "module_contract_first",
+                        "backup_failover_update_required",
+                        "tenant_admin_lifecycle",
+                        "no_runtime_activation_from_backlog",
+                    ),
+                    next_action="prioritize_first_non_erp_slice_from_backlog_after_current_foundation_review",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

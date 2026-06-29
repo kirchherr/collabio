@@ -1,6 +1,8 @@
 {
   "schema_version": "module_implementation_contract.v1",
   "contract_id": "module_vertical_slice_contract",
+  "backlog_endpoint": "/v1/platform/modules/families/backlog",
+  "result_contract": "metadata_only_future_module_backlog_no_activation",
   "required_metadata_fields": [
     "tenant_id",
     "object_id",

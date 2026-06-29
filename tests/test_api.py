@@ -801,6 +801,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/admin/crm-erp/legacy-sql/migration-runs" in legacy_registry["api_routes"]
     assert "/v1/admin/crm-erp/legacy-sql/migration-reports" in legacy_registry["api_routes"]
     assert "import_write_execution_false" in legacy_registry["guardrails"]
+    future_modules = next(capability for capability in capabilities if capability["capability_id"] == "future_modules")
+    assert future_modules["status"] == "metadata_only"
+    assert "/v1/platform/modules/families/backlog" in future_modules["api_routes"]
+    assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -839,7 +843,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 2,
         "later_count": 4,
         "total_count": 8,
-        "foundation_ready_count": 17,
+        "foundation_ready_count": 18,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
@@ -978,6 +982,77 @@ def test_platform_modules_discovery_returns_tenant_scoped_module_metadata() -> N
         assert "audit_chain_ref" not in module
         assert "policy_snapshot_hash" not in module
         assert "changed_by" not in module
+
+
+def test_module_family_backlog_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules/families/backlog")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_module_family_backlog_returns_metadata_only_future_module_contract() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/modules/families/backlog", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "platform_module_family_backlog.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["contract_schema_version"] == "module_implementation_contract.v1"
+    assert body["contract_id"] == "module_vertical_slice_contract"
+    assert body["result_contract"] == "metadata_only_future_module_backlog_no_activation"
+    assert body["endpoint"] == "/v1/platform/modules/families/backlog"
+    assert body["content_included"] is False
+    assert body["module_activation_executed"] is False
+    assert body["persistent_task_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["summary"] == {
+        "total_family_count": 5,
+        "catalog_registered_count": 1,
+        "planned_not_installed_count": 4,
+        "first_slice_foundation_ready_count": 1,
+        "runtime_activation_allowed_count": 0,
+    }
+    assert "tenant_context" in body["required_controls"]
+    assert "backup_restore_domain" in body["required_controls"]
+    assert "tenant_id" in body["required_metadata_fields"]
+    assert "legal_hold_state" in body["required_metadata_fields"]
+
+    families = {family["module_family"]: family for family in body["module_families"]}
+    assert set(families) == {"knowledge_base", "lms", "tasks_activities", "tickets_incidents", "time_tracking"}
+    assert families["knowledge_base"]["backlog_status"] == "active_foundation"
+    assert families["knowledge_base"]["catalog_status"] == "installed"
+    assert families["knowledge_base"]["tenant_module_status"] == "available"
+    assert families["knowledge_base"]["runtime_activation_allowed"] is False
+    assert families["lms"]["backlog_status"] == "planned_not_installed"
+    assert families["lms"]["catalog_status"] is None
+    assert families["lms"]["runtime_activation_allowed"] is False
+    assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
+    assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
+    assert "audit:module-seed" not in response.text
+    assert "policy_snapshot_hash" not in response.text
+    assert "changed_by" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type == "platform.module_family_backlog"]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
+    assert event.metadata["total_family_count"] == 5
+    assert event.metadata["planned_not_installed_count"] == 4
+    assert event.metadata["runtime_activation_allowed_count"] == 0
+    assert event.metadata["content_included"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
 
 
 def test_crm_erp_search_readiness_requires_request_context() -> None:

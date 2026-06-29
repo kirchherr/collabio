@@ -1068,6 +1068,8 @@ Vorbereitete Modul-Familien:
 
 Alle vorbereiteten Modul-Familien starten ueber `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`. CRM/ERP bleibt damit der Architekturbeweis fuer Modul-Slices, nicht der Produktfokus.
 
+Der tenant-sichere Backlog-Kontrakt GET /v1/platform/modules/families/backlog macht diese Modul-Familien metadata-only sichtbar. Er aktiviert keine Module, legt keine Aufgaben an und erlaubt keine Runtime-Ausfuehrung; er zeigt nur die notwendigen Charter-, Feature-, Registry-, Rechte-, Audit-, Retention- und Backup-/Failover-Gates je Familie.
+
 Exit-Kriterien:
 
 - [ ] Kein Modul kann Daten ohne Tenant Context, Modulstatus und Feature-Permission lesen oder schreiben.

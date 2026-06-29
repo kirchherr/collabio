@@ -26,6 +26,8 @@ It is the implementation companion to:
 
 The module charter decides why and what. This contract defines how the first safe vertical slice is built.
 
+The API endpoint `GET /v1/platform/modules/families/backlog` exposes this contract as a tenant-scoped, metadata-only backlog view. It does not activate modules, create persistent tasks, run workers, persist domain data, release content, or allow destructive/external actions. Its purpose is to keep knowledge base, LMS, tasks, tickets, time tracking, and later module families aligned with this contract before implementation starts.
+
 ## 2. Required Slice Sequence
 
 Every module slice must move through these steps in order:

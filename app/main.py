@@ -205,6 +205,10 @@ from suite.platform.legacy_sql_migration_run_registry import (
     persist_legacy_sql_migration_report_metadata,
     persist_legacy_sql_migration_run_creation,
 )
+from suite.platform.module_family_backlog import (
+    ModuleFamilyBacklogResponse,
+    build_module_family_backlog_response,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -991,6 +995,39 @@ def build_app() -> FastAPI:
     ) -> PlatformModulesResponse:
         module_registry: InMemoryModuleRegistry = request.app.state.module_registry
         return module_registry.discover_tenant_modules(context.user_context.tenant_id)
+
+    @app.get("/v1/platform/modules/families/backlog", response_model=ModuleFamilyBacklogResponse)
+    def module_family_backlog(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ModuleFamilyBacklogResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_module_family_backlog_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.module_family_backlog",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "contract_id": response.contract_id,
+                "total_family_count": response.summary.total_family_count,
+                "catalog_registered_count": response.summary.catalog_registered_count,
+                "planned_not_installed_count": response.summary.planned_not_installed_count,
+                "first_slice_foundation_ready_count": response.summary.first_slice_foundation_ready_count,
+                "runtime_activation_allowed_count": response.summary.runtime_activation_allowed_count,
+                "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
 
     @app.get("/v1/platform/search/crm-erp/readiness", response_model=CrmErpSearchReadinessResponse)
     def crm_erp_search_readiness(

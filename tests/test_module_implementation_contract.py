@@ -11,6 +11,13 @@ def load_contract() -> dict[str, Any]:
     return cast("dict[str, Any]", json.loads(CONTRACT_JSON.read_text(encoding="utf-8")))
 
 
+def test_module_implementation_contract_exposes_metadata_only_backlog_endpoint() -> None:
+    contract = load_contract()
+
+    assert contract["backlog_endpoint"] == "/v1/platform/modules/families/backlog"
+    assert contract["result_contract"] == "metadata_only_future_module_backlog_no_activation"
+
+
 def test_module_implementation_contract_defines_required_metadata() -> None:
     contract = load_contract()
     fields = set(contract["required_metadata_fields"])
