@@ -24,6 +24,7 @@ const crmSearchButton = document.querySelector("#crm-search-button");
 const crmSearchCount = document.querySelector("#crm-search-count");
 const crmSearchMeta = document.querySelector("#crm-search-meta");
 const crmSearchResults = document.querySelector("#crm-search-results");
+const crmSearchReadiness = document.querySelector("#crm-search-readiness");
 const readinessCounts = {
   metadataReady: document.querySelector("#metadata-ready-count"),
   previewPending: document.querySelector("#preview-pending-count"),
@@ -54,6 +55,7 @@ let currentCockpit = {
 };
 let selectedFlowId = "";
 let detailLoadToken = 0;
+let crmSearchReadinessState = null;
 
 function readContext() {
   return {
@@ -111,6 +113,7 @@ async function loadCockpit() {
     }
     currentCockpit = body;
     renderCockpit(body);
+    loadCrmErpSearchReadiness();
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
     currentCockpit = {
@@ -123,12 +126,112 @@ async function loadCockpit() {
       foundation_gap_actions: [],
     };
     renderCockpit(currentCockpit);
+    renderCrmErpSearchReadinessError(error.message || "Cockpit konnte nicht geladen werden.");
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
     refreshButton.disabled = false;
   }
 }
 
+async function loadCrmErpSearchReadiness() {
+  const context = readContext();
+  renderCrmErpSearchReadinessLoading();
+  try {
+    const response = await fetch("/v1/platform/search/crm-erp/readiness", {
+      headers: headersForContext(context),
+    });
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new DetailLoadError(response.status, body.detail || `HTTP ${response.status}`);
+    }
+    crmSearchReadinessState = body;
+    renderCrmErpSearchReadiness(body);
+  } catch (error) {
+    renderCrmErpSearchReadinessError(error.message || "CRM/ERP Search-Readiness konnte nicht geladen werden.");
+  }
+}
+
+function renderCrmErpSearchReadinessLoading() {
+  crmSearchButton.disabled = true;
+  crmSearchReadiness.innerHTML = '<div class="empty-state compact">Search-Readiness wird geladen ...</div>';
+}
+
+function renderCrmErpSearchReadiness(readiness) {
+  const gates = readiness.gates || [];
+  const blockingReasons = readiness.blocking_reasons || [];
+  crmSearchButton.disabled = readiness.ready_for_keyword_search !== true;
+  crmSearchMeta.textContent = [
+    `readiness=${readiness.status || "blocked"}`,
+    `contract=${readiness.result_contract || "metadata_only_search_readiness_no_content"}`,
+    `search_contract=${readiness.search_result_contract || "candidate_only_metadata_only_acl_checked"}`,
+    `content_included=${readiness.content_included === true ? "true" : "false"}`,
+    `ai_used=${readiness.ai_used === true ? "true" : "false"}`,
+    `rag_context_created=${readiness.rag_context_created === true ? "true" : "false"}`,
+  ].join(" | ");
+  crmSearchReadiness.innerHTML = `
+    <div class="crm-search-readiness-summary">
+      <span class="status-pill ${searchReadinessStatusClass(readiness.status)}">${escapeHtml(readiness.status || "blocked")}</span>
+      <div class="crm-search-readiness-copy">
+        <strong>${escapeHtml(readiness.feature_id)}</strong>
+        <code>module=${escapeHtml(readiness.module_status)} | normal_use=${readiness.module_enabled_for_normal_use === true ? "true" : "false"} | feature=${readiness.feature_configured_enabled === true ? "true" : "false"}</code>
+        <code>keyword_ready=${readiness.ready_for_keyword_search === true ? "true" : "false"} | ready_for_rag_context=${readiness.ready_for_rag_context === true ? "true" : "false"}</code>
+      </div>
+    </div>
+    <div class="crm-search-readiness-grid">
+      ${gates.map(crmSearchReadinessGate).join("")}
+    </div>
+    ${crmSearchBlockingReasons(blockingReasons)}
+  `;
+}
+
+function renderCrmErpSearchReadinessError(message) {
+  crmSearchReadinessState = null;
+  crmSearchButton.disabled = true;
+  crmSearchMeta.textContent = "readiness=error | metadata_only | content_included=false | ai_used=false | rag_context_created=false";
+  crmSearchReadiness.innerHTML = `<div class="empty-state compact error-copy">${escapeHtml(message)}</div>`;
+}
+
+function crmSearchReadinessGate(gate) {
+  return `
+    <div class="crm-search-readiness-gate">
+      <span class="status-pill ${searchGateStatusClass(gate.status)}">${escapeHtml(gate.status)}</span>
+      <strong>${escapeHtml(gate.gate_id)}</strong>
+      <span>${escapeHtml(gate.summary)}</span>
+      <code>${escapeHtml(gate.evidence_ref)}</code>
+    </div>
+  `;
+}
+
+function crmSearchBlockingReasons(reasons) {
+  if (!reasons.length) {
+    return '<div class="crm-search-readiness-blockers"><code>blocking_reasons=none</code></div>';
+  }
+  return `
+    <div class="crm-search-readiness-blockers">
+      ${reasons.map((reason) => `<code>${escapeHtml(reason)}</code>`).join("")}
+    </div>
+  `;
+}
+
+function searchReadinessStatusClass(status) {
+  if (status === "ready") {
+    return "status-enabled";
+  }
+  return "status-available";
+}
+
+function searchGateStatusClass(status) {
+  if (status === "satisfied") {
+    return "status-enabled";
+  }
+  if (status === "blocked") {
+    return "readiness-blocked";
+  }
+  if (status === "deferred_by_policy") {
+    return "readiness-complete-blocked";
+  }
+  return "status-other";
+}
 async function runCrmErpSearch(event) {
   if (event) {
     event.preventDefault();
@@ -140,6 +243,11 @@ async function runCrmErpSearch(event) {
   crmSearchTopK.value = String(topK);
   if (!query) {
     renderCrmErpSearchError("Query darf nicht leer sein.");
+    return;
+  }
+  if (crmSearchReadinessState?.ready_for_keyword_search === false) {
+    const blockers = crmSearchReadinessState.blocking_reasons || ["search_readiness_blocked"];
+    renderCrmErpSearchError(`Search-Readiness blockiert: ${blockers.join(", ")}`);
     return;
   }
   crmSearchButton.disabled = true;
@@ -165,7 +273,7 @@ async function runCrmErpSearch(event) {
     renderCrmErpSearchError(`${prefix}: ${error.message || "CRM/ERP Suche konnte nicht ausgefuehrt werden."}`);
     setStatus(error.message || "CRM/ERP Suche konnte nicht ausgefuehrt werden.", true);
   } finally {
-    crmSearchButton.disabled = false;
+    crmSearchButton.disabled = crmSearchReadinessState ? crmSearchReadinessState.ready_for_keyword_search !== true : false;
   }
 }
 

@@ -1055,7 +1055,7 @@ CRM/ERP `crm_erp`:
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
-- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`; RAG bleibt offen bis Source Resolver, Redaction, Quellenzitation und Audit Trace.
+- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG bleibt offen bis Source Resolver, Redaction, Quellenzitation und Audit Trace.
 - [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
 
 Vorbereitete Modul-Familien:

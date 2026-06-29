@@ -498,6 +498,90 @@ input {
   min-width: 0;
 }
 
+.crm-search-readiness {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 18px;
+}
+
+.crm-search-readiness-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.crm-search-readiness-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-search-readiness-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-search-readiness-copy code,
+.crm-search-readiness-gate code,
+.crm-search-readiness-blockers code {
+  overflow: hidden;
+  max-width: 100%;
+  color: #455057;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-search-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.crm-search-readiness-gate {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.crm-search-readiness-gate strong,
+.crm-search-readiness-gate span:not(.status-pill) {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-search-readiness-gate span:not(.status-pill) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crm-search-readiness-blockers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-search-readiness-blockers code {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-quiet);
+  padding: 3px 6px;
+}
+
 .crm-search-meta {
   min-height: 34px;
   border-bottom: 1px solid var(--line);
@@ -1037,6 +1121,11 @@ input {
   color: var(--muted);
 }
 
+.empty-state.compact {
+  min-height: 0;
+  padding: 10px 0;
+}
+
 @media (max-width: 980px) {
   .workspace-shell {
     grid-template-columns: minmax(0, 1fr);
@@ -1071,6 +1160,7 @@ input {
 
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .crm-search-readiness-grid,
   .crm-search-result-grid,
   .work-evidence-grid,
   .work-evidence-tags {
@@ -1132,6 +1222,7 @@ input {
   .readiness-band,
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .crm-search-readiness-grid,
   .crm-search-result-grid,
   .work-evidence-grid,
   .work-evidence-tags {
@@ -1144,13 +1235,17 @@ input {
     flex-direction: column;
   }
 
-  .foundation-gap-action {
+  .foundation-gap-action,
+  .crm-search-readiness-summary {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .mvp-readiness-next code,
   .mvp-readiness-tag-group code,
   .mvp-readiness-contract code,
+  .crm-search-readiness-copy code,
+  .crm-search-readiness-gate code,
+  .crm-search-readiness-blockers code,
   .work-evidence-tag-group code,
   .work-evidence-contract code {
     overflow-wrap: anywhere;

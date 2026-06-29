@@ -532,6 +532,8 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "mvp-readiness-panel" in response.text
     assert "snapshot-button" in response.text
     assert "crm-search-form" in response.text
+    assert "crm-search-readiness" in response.text
+    assert "Search-Readiness wird geladen" in response.text
     assert "crm-search-results" in response.text
     assert "erp-order-acme-widget-demo" in response.text
     assert "metadata-ready-count" in response.text
@@ -565,14 +567,22 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".work-evidence-panel" in css_response.text
     assert ".work-evidence-grid" in css_response.text
     assert ".crm-search-band" in css_response.text
+    assert ".crm-search-readiness" in css_response.text
+    assert ".crm-search-readiness-grid" in css_response.text
     assert ".crm-search-result-grid" in css_response.text
     assert "gradient" not in css_response.text.lower()
     assert js_response.status_code == 200
     assert "/v1/platform/cockpit" in js_response.text
     assert "/v1/platform/cockpit/mvp-snapshot" in js_response.text
+    assert "/v1/platform/search/crm-erp/readiness" in js_response.text
     assert "/v1/crm-erp/search" in js_response.text
+    assert "loadCrmErpSearchReadiness" in js_response.text
+    assert "renderCrmErpSearchReadiness" in js_response.text
     assert "runCrmErpSearch" in js_response.text
     assert "candidate_only_metadata_only_acl_checked" in js_response.text
+    assert "metadata_only_search_readiness_no_content" in js_response.text
+    assert "ready_for_rag_context" in js_response.text
+    assert "Search-Readiness blockiert" in js_response.text
     assert "defaultReadableObjectIds" in js_response.text
     assert "downloadMvpSnapshot" in js_response.text
     assert "collabio-mvp-snapshot-" in js_response.text
