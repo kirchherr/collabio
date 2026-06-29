@@ -1,5 +1,5 @@
 from suite.ai_control_plane.audit import InMemoryAuditLogger
-from suite.ai_control_plane.models import UserContext
+from suite.ai_control_plane.models import TenantPolicy, UserContext
 from suite.platform.crm_accounts import InMemoryCrmAccountRepository
 from suite.platform.crm_activities import InMemoryCrmActivityRepository, InMemoryCrmNoteRepository
 from suite.platform.crm_contacts import InMemoryCrmContactRepository
@@ -9,7 +9,9 @@ from suite.platform.crm_erp_search import (
     build_crm_erp_search_service,
 )
 from suite.platform.crm_erp_search_readiness import (
+    CRM_ERP_RAG_READINESS_RESULT_CONTRACT,
     CRM_ERP_SEARCH_READINESS_RESULT_CONTRACT,
+    build_crm_erp_rag_readiness_response,
     build_crm_erp_search_readiness_response,
 )
 from suite.platform.erp_products import InMemoryErpProductRepository
@@ -190,6 +192,48 @@ def test_crm_erp_search_response_marks_non_ai_candidate_only_contract() -> None:
     assert response.rag_context_created is False
     assert response.content_included is False
     assert [candidate.object_id for candidate in response.candidates] == ["crm-account-acme-demo"]
+
+
+def test_crm_erp_rag_readiness_stays_blocked_without_context_creation() -> None:
+    response = build_crm_erp_rag_readiness_response(
+        user_context=user_context(),
+        module_registry=default_module_registry(),
+        tenant_policy=TenantPolicy(tenant_id="tenant-demo", ai_enabled=True, rag_enabled=True),
+    )
+
+    gate_statuses = {gate.gate_id: gate.status for gate in response.gates}
+    assert response.tenant_id == "tenant-demo"
+    assert response.module_id == "crm_erp"
+    assert response.feature_id == "crm_erp.rag_indexing"
+    assert response.readiness_endpoint == "/v1/platform/search/crm-erp/rag-readiness"
+    assert response.protected_surface == "feature_worker"
+    assert response.status == "blocked"
+    assert response.module_status == "available"
+    assert response.module_enabled_for_normal_use is False
+    assert response.tenant_ai_enabled is True
+    assert response.tenant_rag_enabled is True
+    assert response.rag_feature_configured_enabled is False
+    assert response.rag_feature_worker_enabled is False
+    assert response.source_resolver_acl_trace_ready is False
+    assert response.source_citation_contract_ready is False
+    assert response.prompt_audit_contract_ready is False
+    assert response.ready_for_rag_context is False
+    assert response.result_contract == CRM_ERP_RAG_READINESS_RESULT_CONTRACT
+    assert response.content_included is False
+    assert response.ai_used is False
+    assert response.rag_context_created is False
+    assert response.destructive_actions_allowed is False
+    assert response.external_side_effect_allowed is False
+    assert "rag_indexing_feature_flag_not_enabled" in response.blocking_reasons
+    assert "source_resolver_acl_trace_missing" in response.blocking_reasons
+    assert "source_citation_contract_missing" in response.blocking_reasons
+    assert "prompt_audit_contract_missing" in response.blocking_reasons
+    assert gate_statuses["tenant_ai_policy"] == "satisfied"
+    assert gate_statuses["tenant_rag_policy"] == "satisfied"
+    assert gate_statuses["rag_feature_flag"] == "blocked"
+    assert gate_statuses["source_resolver_acl_trace"] == "blocked"
+    assert gate_statuses["source_citation_contract"] == "blocked"
+    assert gate_statuses["prompt_audit_contract"] == "blocked"
 
 
 def test_crm_erp_search_readiness_reports_blocked_module_gate_without_content() -> None:

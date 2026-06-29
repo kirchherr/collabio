@@ -490,6 +490,26 @@ def provision_and_enable_crm_erp_search_for_demo() -> None:
     assert enable_response.status_code == 200
 
 
+def provision_and_enable_crm_erp_rag_indexing_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare CRM ERP RAG readiness"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate CRM ERP RAG indexing readiness flag",
+            "enabled_features": {"crm_erp.rag_indexing": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
 def provision_and_enable_knowledge_base_articles_for_demo() -> None:
     provision_response = client.post(
         "/v1/admin/tenant-modules/knowledge_base/provision",
@@ -1033,6 +1053,96 @@ def test_crm_erp_search_readiness_api_reports_gate_state_without_content() -> No
     assert readiness_events[0].metadata["rag_context_created"] is False
     assert readiness_events[-1].metadata["ready_for_keyword_search"] is True
     assert readiness_events[-1].metadata["blocking_reason_count"] == 0
+
+
+def test_crm_erp_rag_readiness_requires_request_context() -> None:
+    response = client.get("/v1/platform/search/crm-erp/rag-readiness")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_crm_erp_rag_readiness_api_reports_blocked_governance_state_without_context() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    blocked_response = client.get("/v1/platform/search/crm-erp/rag-readiness", headers=DEMO_HEADERS)
+
+    assert blocked_response.status_code == 200
+    blocked_body = blocked_response.json()
+    blocked_gates = {gate["gate_id"]: gate for gate in blocked_body["gates"]}
+    assert blocked_body["schema_version"] == "crm_erp_rag_readiness.v1"
+    assert blocked_body["tenant_id"] == "tenant-demo"
+    assert blocked_body["module_id"] == "crm_erp"
+    assert blocked_body["feature_id"] == "crm_erp.rag_indexing"
+    assert blocked_body["readiness_endpoint"] == "/v1/platform/search/crm-erp/rag-readiness"
+    assert blocked_body["protected_surface"] == "feature_worker"
+    assert blocked_body["status"] == "blocked"
+    assert blocked_body["module_status"] == "available"
+    assert blocked_body["module_enabled_for_normal_use"] is False
+    assert blocked_body["tenant_ai_enabled"] is True
+    assert blocked_body["tenant_rag_enabled"] is True
+    assert blocked_body["external_ai_enabled"] is False
+    assert blocked_body["rag_feature_configured_enabled"] is False
+    assert blocked_body["rag_feature_worker_enabled"] is False
+    assert blocked_body["source_resolver_acl_trace_ready"] is False
+    assert blocked_body["source_citation_contract_ready"] is False
+    assert blocked_body["prompt_audit_contract_ready"] is False
+    assert blocked_body["ready_for_rag_context"] is False
+    assert blocked_body["result_contract"] == "metadata_only_rag_readiness_no_context"
+    assert blocked_body["content_included"] is False
+    assert blocked_body["ai_used"] is False
+    assert blocked_body["rag_context_created"] is False
+    assert blocked_body["destructive_actions_allowed"] is False
+    assert blocked_body["external_side_effect_allowed"] is False
+    assert "rag_indexing_feature_flag_not_enabled" in blocked_body["blocking_reasons"]
+    assert "source_resolver_acl_trace_missing" in blocked_body["blocking_reasons"]
+    assert "source_citation_contract_missing" in blocked_body["blocking_reasons"]
+    assert "prompt_audit_contract_missing" in blocked_body["blocking_reasons"]
+    assert blocked_gates["rag_feature_flag"]["status"] == "blocked"
+    assert blocked_gates["source_resolver_acl_trace"]["status"] == "blocked"
+    assert blocked_gates["source_citation_contract"]["status"] == "blocked"
+    assert blocked_gates["prompt_audit_contract"]["status"] == "blocked"
+    assert "query" not in blocked_response.text
+    assert "source text" not in blocked_response.text.lower()
+
+    provision_and_enable_crm_erp_rag_indexing_for_demo()
+    flagged_response = client.get("/v1/platform/search/crm-erp/rag-readiness", headers=DEMO_HEADERS)
+
+    assert flagged_response.status_code == 200
+    flagged_body = flagged_response.json()
+    flagged_gates = {gate["gate_id"]: gate for gate in flagged_body["gates"]}
+    assert flagged_body["status"] == "blocked"
+    assert flagged_body["module_status"] == "enabled"
+    assert flagged_body["module_enabled_for_normal_use"] is True
+    assert flagged_body["rag_feature_configured_enabled"] is True
+    assert flagged_body["rag_feature_worker_enabled"] is True
+    assert flagged_body["ready_for_rag_context"] is False
+    assert "rag_indexing_feature_flag_not_enabled" not in flagged_body["blocking_reasons"]
+    assert "source_resolver_acl_trace_missing" in flagged_body["blocking_reasons"]
+    assert "source_citation_contract_missing" in flagged_body["blocking_reasons"]
+    assert "prompt_audit_contract_missing" in flagged_body["blocking_reasons"]
+    assert flagged_gates["rag_feature_flag"]["status"] == "satisfied"
+    assert flagged_gates["feature_worker_gate"]["status"] == "satisfied"
+    assert flagged_gates["source_resolver_acl_trace"]["status"] == "blocked"
+    assert flagged_gates["source_citation_contract"]["status"] == "blocked"
+    assert flagged_gates["prompt_audit_contract"]["status"] == "blocked"
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    readiness_events = [event for event in new_events if event.event_type == "platform.crm_erp_rag.readiness"]
+    assert len(readiness_events) == 2
+    assert readiness_events[0].tenant_id == "tenant-demo"
+    assert readiness_events[0].input_hash is None
+    assert readiness_events[0].output_hash is None
+    assert readiness_events[0].metadata["result_contract"] == "metadata_only_rag_readiness_no_context"
+    assert readiness_events[0].metadata["ready_for_rag_context"] is False
+    assert readiness_events[0].metadata["blocking_reason_count"] >= 1
+    assert readiness_events[0].metadata["content_included"] is False
+    assert readiness_events[0].metadata["ai_used"] is False
+    assert readiness_events[0].metadata["rag_context_created"] is False
+    assert readiness_events[-1].metadata["rag_feature_configured_enabled"] is True
+    assert readiness_events[-1].metadata["rag_feature_worker_enabled"] is True
+    assert readiness_events[-1].metadata["ready_for_rag_context"] is False
 
 
 def test_platform_cockpit_requires_request_context() -> None:

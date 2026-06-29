@@ -34,7 +34,7 @@ crm_erp.ai_assist
 ## Implementierung
 
 - Code: `app/suite/platform/crm_erp_subfeatures.py`
-- Search Readiness: `app/suite/platform/crm_erp_search_readiness.py` und `GET /v1/platform/search/crm-erp/readiness`
+- Search Readiness: `app/suite/platform/crm_erp_search_readiness.py`, `GET /v1/platform/search/crm-erp/readiness` und `GET /v1/platform/search/crm-erp/rag-readiness`
 - Tests: `tests/test_crm_erp_subfeatures.py`, `tests/test_crm_erp_search.py`
 - Mapping-Anbindung: `CrmErpSubfeatureRegistryManifest.validate_mapping_manifest(...)`
 - Modul-Defaults: `default_module_registry()` nutzt `default_crm_erp_subfeature_enabled_features()`

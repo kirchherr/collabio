@@ -80,7 +80,9 @@ from suite.platform.crm_erp_search import (
     build_crm_erp_search_service,
 )
 from suite.platform.crm_erp_search_readiness import (
+    CrmErpRagReadinessResponse,
     CrmErpSearchReadinessResponse,
+    build_crm_erp_rag_readiness_response,
     build_crm_erp_search_readiness_response,
 )
 from suite.platform.erp_products import (
@@ -938,6 +940,46 @@ def build_app() -> FastAPI:
                 "feature_id": response.feature_id,
                 "status": response.status.value,
                 "ready_for_keyword_search": response.ready_for_keyword_search,
+                "ready_for_rag_context": response.ready_for_rag_context,
+                "blocking_reason_count": len(response.blocking_reasons),
+                "content_included": response.content_included,
+                "ai_used": response.ai_used,
+                "rag_context_created": response.rag_context_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get("/v1/platform/search/crm-erp/rag-readiness", response_model=CrmErpRagReadinessResponse)
+    def crm_erp_rag_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> CrmErpRagReadinessResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_crm_erp_rag_readiness_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            tenant_policy=context.tenant_policy,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.crm_erp_rag.readiness",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "feature_id": response.feature_id,
+                "status": response.status.value,
+                "tenant_ai_enabled": response.tenant_ai_enabled,
+                "tenant_rag_enabled": response.tenant_rag_enabled,
+                "rag_feature_configured_enabled": response.rag_feature_configured_enabled,
+                "rag_feature_worker_enabled": response.rag_feature_worker_enabled,
+                "source_resolver_acl_trace_ready": response.source_resolver_acl_trace_ready,
+                "source_citation_contract_ready": response.source_citation_contract_ready,
+                "prompt_audit_contract_ready": response.prompt_audit_contract_ready,
                 "ready_for_rag_context": response.ready_for_rag_context,
                 "blocking_reason_count": len(response.blocking_reasons),
                 "content_included": response.content_included,
