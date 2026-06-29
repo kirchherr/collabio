@@ -329,7 +329,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
         RoadmapCapabilityGroup(
             group_id="workspace_modules",
             title="Workspace, Module und erste Fachslices",
-            summary="Modul-Discovery, Workspace Cockpit, KB, CRM und ERP-Produkte sind tenant-sicher angebunden.",
+            summary=(
+                "Modul-Discovery, Workspace Cockpit, KB, CRM, ERP und ACL-first Suche sind tenant-sicher angebunden."
+            ),
             capabilities=(
                 RoadmapCapability(
                     capability_id="module_registry",
@@ -406,7 +408,27 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/erp/invoices",
                     ),
                     guardrails=("module_gate_required", "tenant_context_required", "no_ai_bypass"),
-                    next_action="crm_erp_search_acl_first_after_orders_invoices",
+                    next_action="crm_erp_search_acl_first_search_ui_and_rag_guardrails",
+                ),
+                RoadmapCapability(
+                    capability_id="crm_erp_acl_first_search",
+                    title="CRM/ERP ACL-first Suche",
+                    summary="Keyword-Suche ueber CRM/ERP-Metadaten ist tenant- und ACL-geprueft, ohne AI/RAG-Kontext.",
+                    status=RoadmapCapabilityStatus.METADATA_ONLY,
+                    capability_type="business_search_slice",
+                    evidence_refs=(
+                        "tests/test_crm_erp_search.py",
+                        "tests/test_api.py::test_crm_erp_search_endpoint_returns_acl_checked_metadata_candidates_after_feature_enable",
+                        "app/suite/platform/crm_erp_search.py",
+                    ),
+                    api_routes=("/v1/crm-erp/search",),
+                    guardrails=(
+                        "module_gate_required",
+                        "authoritative_acl_validation",
+                        "candidate_only_metadata_only",
+                        "no_ai_or_rag_context",
+                    ),
+                    next_action="rag_only_after_source_citation_and_acl_revalidation_gate",
                 ),
             ),
         ),

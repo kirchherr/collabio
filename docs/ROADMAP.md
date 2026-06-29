@@ -1025,7 +1025,7 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
+- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.search.keyword`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
 - [x] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [x] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [x] Persistente CRM/ERP Schema-Scaffold-Migration mit `crm_erp.schema_plans`, `crm_erp.object_type_rules`, RLS und startup-blocking Evidence implementieren.
@@ -1055,7 +1055,7 @@ CRM/ERP `crm_erp`:
 - [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
-- [ ] CRM/ERP Search zuerst klassisch/ACL-gefiltert, RAG erst nach Source Resolver, Redaction und Audit Trace.
+- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search`; RAG bleibt offen bis Source Resolver, Redaction und Audit Trace.
 - [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
 
 Vorbereitete Modul-Familien:
@@ -1248,7 +1248,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
 54. [x] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
 55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, RAG und AI Assist implementieren.
+56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, Keyword-Suche, RAG und AI Assist implementieren.
 57. [x] Review-Kritik aufnehmen und P0-Soforthaertungen fuer dev-only Header Auth, RAG DataClass Propagation und lokale Dev-Krypto umsetzen.
 58. [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung implementieren.
 59. [x] Statischen OIDC/JWKS Verifier mit RS256-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting implementieren.

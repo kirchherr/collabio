@@ -8,7 +8,24 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from suite.ai_control_plane.models import DataClass
 
 NAMESPACED_REF_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*:.+")
-SOURCE_OBJECT_TYPES = frozenset({"document", "mail", "attachment", "comment", "wiki", "procedure_doc"})
+CONTENT_SOURCE_OBJECT_TYPES = frozenset({"document", "mail", "attachment", "comment", "wiki", "procedure_doc"})
+BUSINESS_SOURCE_OBJECT_TYPES = frozenset(
+    {
+        "crm.account",
+        "crm.activity",
+        "crm.contact",
+        "crm.note",
+        "erp.contract",
+        "erp.delivery_note",
+        "erp.invoice",
+        "erp.invoice_item",
+        "erp.order",
+        "erp.order_item",
+        "erp.product",
+        "erp.supplier",
+    }
+)
+SOURCE_OBJECT_TYPES = CONTENT_SOURCE_OBJECT_TYPES | BUSINESS_SOURCE_OBJECT_TYPES
 LEGAL_HOLD_STATES = frozenset({"none", "active"})
 
 

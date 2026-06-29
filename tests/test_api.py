@@ -118,6 +118,15 @@ DEMO_ERP_SALES_HEADERS = {
         "erp-invoice-acme-widget-demo,erp-invoice-northwind-service-demo"
     ),
 }
+DEMO_CRM_ERP_SEARCH_HEADERS = {
+    **DEMO_HEADERS,
+    "X-Readable-Object-Ids": (
+        "doc-1,mail-1,"
+        "crm-account-acme-demo,crm-contact-ada-demo,"
+        "crm-activity-followup-demo,crm-note-acme-demo,"
+        "erp-product-standard-widget-demo,erp-order-acme-widget-demo,erp-invoice-acme-widget-demo"
+    ),
+}
 DEMO_KB_ARTICLE_HEADERS = {
     **DEMO_HEADERS,
     "X-Readable-Object-Ids": (
@@ -435,6 +444,26 @@ def provision_and_enable_erp_sales_for_demo() -> None:
     assert enable_response.status_code == 200
 
 
+def provision_and_enable_crm_erp_search_for_demo() -> None:
+    provision_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/provision",
+        headers=DEMO_ADMIN_HEADERS,
+        json={"approval_reference": "approval:module-provision", "reason": "prepare CRM ERP search"},
+    )
+    assert provision_response.status_code == 200
+
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/crm_erp/enable",
+        headers=DEMO_ADMIN_HEADERS,
+        json={
+            "approval_reference": "approval:module-enable",
+            "reason": "activate ACL-first CRM ERP metadata search",
+            "enabled_features": {"crm_erp.search.keyword": True},
+        },
+    )
+    assert enable_response.status_code == 200
+
+
 def provision_and_enable_knowledge_base_articles_for_demo() -> None:
     provision_response = client.post(
         "/v1/admin/tenant-modules/knowledge_base/provision",
@@ -695,6 +724,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "workspace_cockpit",
         "knowledge_base",
         "crm_erp_first_slices",
+        "crm_erp_acl_first_search",
         "legacy_migration_registry",
         "office_mail_clients",
     }.issubset(capability_ids)
@@ -743,7 +773,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 2,
         "later_count": 4,
         "total_count": 8,
-        "foundation_ready_count": 16,
+        "foundation_ready_count": 17,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
@@ -22120,6 +22150,87 @@ def test_erp_invoices_endpoint_returns_gobd_invoices_after_feature_enable() -> N
     assert new_events[-1].metadata["candidate_count"] == 2
     assert new_events[-1].metadata["result_count"] == 2
     assert new_events[-1].metadata["result_contract"] == "metadata_only"
+
+
+def test_crm_erp_search_endpoint_requires_enabled_module_feature() -> None:
+    reset_module_registry()
+
+    response = client.post(
+        "/v1/crm-erp/search",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={"query": "acme widget", "top_k": 10},
+    )
+
+    assert response.status_code == 403
+    assert "not enabled" in response.json()["detail"]
+
+
+def test_crm_erp_search_endpoint_returns_acl_checked_metadata_candidates_after_feature_enable() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    provision_and_enable_crm_erp_search_for_demo()
+
+    response = client.post(
+        "/v1/crm-erp/search",
+        headers=DEMO_CRM_ERP_SEARCH_HEADERS,
+        json={"query": "acme widget", "top_k": 10},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    candidate_ids = {candidate["object_id"] for candidate in body["candidates"]}
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "crm_erp"
+    assert body["feature_id"] == "crm_erp.search.keyword"
+    assert body["search_policy_id"] == "keyword_candidate_acl_v1"
+    assert body["result_contract"] == "candidate_only_metadata_only_acl_checked"
+    assert body["ai_used"] is False
+    assert body["rag_context_created"] is False
+    assert body["content_included"] is False
+    assert body["audit_event_id"]
+    assert candidate_ids == {
+        "crm-account-acme-demo",
+        "crm-contact-ada-demo",
+        "crm-activity-followup-demo",
+        "crm-note-acme-demo",
+        "erp-product-standard-widget-demo",
+        "erp-order-acme-widget-demo",
+        "erp-invoice-acme-widget-demo",
+    }
+    assert {candidate["object_type"] for candidate in body["candidates"]} == {
+        "crm.account",
+        "crm.contact",
+        "crm.activity",
+        "crm.note",
+        "erp.product",
+        "erp.order",
+        "erp.invoice",
+    }
+    assert all(candidate["access_checked"] for candidate in body["candidates"])
+    assert all(candidate["retention_policy_id"] for candidate in body["candidates"])
+    assert "snippet" not in response.text
+    assert "index_text" not in response.text
+    assert "ada.demo@example.invalid" not in response.text
+    assert "northwind" not in response.text.lower()
+    assert "erp-order-other-tenant" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    search_event = new_events[-1]
+    assert search_event.event_type == "crm_erp.search.keyword.query"
+    assert search_event.event_id == body["audit_event_id"]
+    assert search_event.tenant_id == "tenant-demo"
+    assert search_event.input_hash is not None
+    assert search_event.output_hash is None
+    assert set(search_event.source_object_ids) == candidate_ids
+    assert search_event.metadata["module_id"] == "crm_erp"
+    assert search_event.metadata["feature_id"] == "crm_erp.search.keyword"
+    assert search_event.metadata["authorized_candidate_count"] == 7
+    assert search_event.metadata["result_contract"] == "candidate_only_metadata_only_acl_checked"
+    assert search_event.metadata["content_included"] is False
+    assert search_event.metadata["ai_used"] is False
+    assert search_event.metadata["rag_context_created"] is False
+    assert "query" not in search_event.metadata
+    assert "acme widget" not in search_event.model_dump_json()
 
 
 def test_knowledge_base_articles_endpoint_requires_enabled_module_feature() -> None:

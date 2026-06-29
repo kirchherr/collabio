@@ -182,13 +182,18 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
         ),
         RoadmapPlanItem(
             work_item_id="crm_erp_search_acl_first_then_rag",
-            title="CRM/ERP Suche ACL-first vorbereiten",
-            summary="Suche darf erst RAG nutzen, wenn ACL-Revalidierung und Quellenzitation hart bleiben.",
+            title="CRM/ERP Suche von Keyword zu RAG fuehren",
+            summary="ACL-first Keyword-Suche steht; RAG folgt erst nach Quellenzitation und harter Revalidierung.",
             priority=RoadmapPlanPriority.NEXT,
-            capability_ids=("crm_erp_first_slices", "rag_vector_security", "source_objects"),
+            capability_ids=(
+                "crm_erp_first_slices",
+                "crm_erp_acl_first_search",
+                "rag_vector_security",
+                "source_objects",
+            ),
             readiness_gate="authoritative_acl_validation_before_vector_results",
-            decision="next_because_search_is_foundational_but_not_needed_before_basic_crm_erp_flow",
-            evidence_refs=("tests/test_rag_security.py", "docs/RAG_SECURITY_MODEL.md"),
+            decision="next_because_keyword_search_is_safe_but_rag_must_wait_for_the_source_citation_gate",
+            evidence_refs=("tests/test_crm_erp_search.py", "tests/test_rag_security.py", "docs/RAG_SECURITY_MODEL.md"),
             can_start_now=True,
         ),
         RoadmapPlanItem(

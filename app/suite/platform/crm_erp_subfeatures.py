@@ -29,6 +29,7 @@ class CrmErpSubfeatureArea(StrEnum):
     ERP = "erp"
     LEGACY_IMPORT = "legacy_import"
     COMPLIANCE = "compliance"
+    SEARCH = "search"
     SEARCH_AI = "search_ai"
 
 
@@ -130,7 +131,7 @@ class CrmErpSubfeatureDefinition(BaseModel):
     def require_approval_for_high_risk_features(self) -> Self:
         high_risk_area = self.area in {CrmErpSubfeatureArea.LEGACY_IMPORT, CrmErpSubfeatureArea.SEARCH_AI}
         if high_risk_area and not self.requires_approval:
-            raise ValueError("legacy import and AI/search subfeatures require approval")
+            raise ValueError("legacy import and AI subfeatures require approval")
         if self.compliance_relevant and "compliance_worker" not in self.worker_surfaces:
             raise ValueError("compliance-relevant subfeatures must declare compliance_worker surface")
         if self.feature_id in self.dependency_feature_ids:
@@ -348,6 +349,38 @@ def build_default_crm_erp_subfeature_registry() -> CrmErpSubfeatureRegistryManif
                 retention_policy_ids=("rp-legal-hold", "rp-gobd-10y", "rp-restricted", "rp-standard"),
                 worker_surfaces=("compliance_api", "compliance_worker"),
                 evidence_required=("legal_hold_check", "audit_evidence"),
+            ),
+            CrmErpSubfeatureDefinition(
+                feature_id="crm_erp.search.keyword",
+                display_name="CRM/ERP keyword search",
+                area=CrmErpSubfeatureArea.SEARCH,
+                default_enabled=True,
+                requires_approval=False,
+                object_types=(
+                    "crm.account",
+                    "crm.contact",
+                    "crm.activity",
+                    "crm.note",
+                    "erp.product",
+                    "erp.order",
+                    "erp.invoice",
+                ),
+                data_classes=(DataClass.PERSONAL, DataClass.INTERNAL, DataClass.GOBD),
+                retention_policy_ids=("rp-standard", "rp-restricted", "rp-gobd-10y", "rp-legal-hold"),
+                worker_surfaces=("normal_api", "feature_worker"),
+                dependency_feature_ids=(
+                    "crm_erp.crm.accounts",
+                    "crm_erp.crm.contacts",
+                    "crm_erp.crm.activities",
+                    "crm_erp.erp.products",
+                    "crm_erp.erp.orders",
+                    "crm_erp.erp.invoices",
+                ),
+                evidence_required=(
+                    "authoritative_acl_validation",
+                    "search_audit_event",
+                    "metadata_only_result_contract",
+                ),
             ),
             CrmErpSubfeatureDefinition(
                 feature_id="crm_erp.rag_indexing",

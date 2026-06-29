@@ -99,14 +99,15 @@ def test_default_crm_erp_subfeature_registry_declares_initial_feature_set() -> N
         "crm_erp.legacy_import.sqlserver",
         "crm_erp.gobd_export",
         "crm_erp.legal_hold",
+        "crm_erp.search.keyword",
         "crm_erp.rag_indexing",
         "crm_erp.ai_assist",
     )
     assert summary == {
         "module_id": "crm_erp",
         "registry_version": "crm_erp_subfeatures.v1",
-        "feature_count": 12,
-        "default_enabled_count": 8,
+        "feature_count": 13,
+        "default_enabled_count": 9,
         "approval_required_count": 5,
         "compliance_relevant_count": 3,
         "manifest_hash": registry.manifest_hash,
@@ -126,6 +127,7 @@ def test_default_module_registry_uses_canonical_crm_erp_subfeature_defaults() ->
     assert tenant_state.enabled_features["crm_erp.crm.accounts"]
     assert tenant_state.enabled_features["crm_erp.erp.invoices"]
     assert tenant_state.enabled_features["crm_erp.legal_hold"]
+    assert tenant_state.enabled_features["crm_erp.search.keyword"]
     assert not tenant_state.enabled_features["crm_erp.legacy_import.sqlserver"]
     assert not tenant_state.enabled_features["crm_erp.rag_indexing"]
     assert not tenant_state.enabled_features["crm_erp.ai_assist"]
@@ -161,6 +163,7 @@ def test_crm_erp_high_risk_subfeatures_keep_approval_and_evidence_requirements()
 
     legacy_import = registry.feature("crm_erp.legacy_import.sqlserver")
     gobd_export = registry.feature("crm_erp.gobd_export")
+    keyword_search = registry.feature("crm_erp.search.keyword")
     rag_indexing = registry.feature("crm_erp.rag_indexing")
     ai_assist = registry.feature("crm_erp.ai_assist")
 
@@ -173,6 +176,10 @@ def test_crm_erp_high_risk_subfeatures_keep_approval_and_evidence_requirements()
     assert gobd_export.requires_approval
     assert DataClass.GOBD in gobd_export.data_classes
     assert "rp-export-10y" in gobd_export.retention_policy_ids
+
+    assert keyword_search.area == CrmErpSubfeatureArea.SEARCH
+    assert not keyword_search.requires_approval
+    assert "authoritative_acl_validation" in keyword_search.evidence_required
 
     assert rag_indexing.area == CrmErpSubfeatureArea.SEARCH_AI
     assert rag_indexing.requires_approval

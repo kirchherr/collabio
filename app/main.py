@@ -73,6 +73,12 @@ from suite.platform.crm_contacts import (
     CrmContactsResponse,
     InMemoryCrmContactRepository,
 )
+from suite.platform.crm_erp_search import (
+    CRM_ERP_SEARCH_FEATURE_ID,
+    CrmErpSearchResponse,
+    CrmErpSearchService,
+    build_crm_erp_search_service,
+)
 from suite.platform.erp_products import (
     ERP_PRODUCTS_FEATURE_ID,
     ErpProductService,
@@ -790,26 +796,43 @@ def build_app() -> FastAPI:
     source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
         data_dir
     )
+    crm_account_repository = InMemoryCrmAccountRepository.demo()
+    crm_contact_repository = InMemoryCrmContactRepository.demo()
+    crm_activity_repository = InMemoryCrmActivityRepository.demo()
+    crm_note_repository = InMemoryCrmNoteRepository.demo()
+    erp_product_repository = InMemoryErpProductRepository.demo()
+    erp_order_repository = InMemoryErpOrderRepository.demo()
+    erp_invoice_repository = InMemoryErpInvoiceRepository.demo()
     crm_account_service = CrmAccountService(
-        repository=InMemoryCrmAccountRepository.demo(),
+        repository=crm_account_repository,
         audit_logger=audit_logger,
     )
     crm_contact_service = CrmContactService(
-        repository=InMemoryCrmContactRepository.demo(),
+        repository=crm_contact_repository,
         audit_logger=audit_logger,
     )
     crm_activity_service = CrmActivityService(
-        activity_repository=InMemoryCrmActivityRepository.demo(),
-        note_repository=InMemoryCrmNoteRepository.demo(),
+        activity_repository=crm_activity_repository,
+        note_repository=crm_note_repository,
         audit_logger=audit_logger,
     )
     erp_product_service = ErpProductService(
-        repository=InMemoryErpProductRepository.demo(),
+        repository=erp_product_repository,
         audit_logger=audit_logger,
     )
     erp_sales_service = ErpSalesService(
-        order_repository=InMemoryErpOrderRepository.demo(),
-        invoice_repository=InMemoryErpInvoiceRepository.demo(),
+        order_repository=erp_order_repository,
+        invoice_repository=erp_invoice_repository,
+        audit_logger=audit_logger,
+    )
+    crm_erp_search_service = build_crm_erp_search_service(
+        account_repository=crm_account_repository,
+        contact_repository=crm_contact_repository,
+        activity_repository=crm_activity_repository,
+        note_repository=crm_note_repository,
+        product_repository=erp_product_repository,
+        order_repository=erp_order_repository,
+        invoice_repository=erp_invoice_repository,
         audit_logger=audit_logger,
     )
     default_knowledge_base_article_service = KnowledgeBaseArticleService(
@@ -13879,6 +13902,20 @@ def build_app() -> FastAPI:
         keyword_service = cast(KeywordSearchService, request.app.state.keyword_search_service)
         return keyword_service.search(query=query, user_context=context.user_context)
 
+    @app.post("/v1/crm-erp/search", response_model=CrmErpSearchResponse)
+    def crm_erp_keyword_search(
+        query: KeywordSearchQuery,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ERP_SEARCH_FEATURE_ID)),
+        ],
+    ) -> CrmErpSearchResponse:
+        del gate
+        search_service = cast(CrmErpSearchService, request.app.state.crm_erp_search_service)
+        return search_service.search(query=query, user_context=context.user_context)
+
     @app.get("/v1/crm/accounts", response_model=CrmAccountsResponse)
     def list_crm_accounts(
         request: Request,
@@ -14007,6 +14044,7 @@ def build_app() -> FastAPI:
     app.state.crm_account_service = crm_account_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
+    app.state.crm_erp_search_service = crm_erp_search_service
     app.state.erp_product_service = erp_product_service
     app.state.erp_sales_service = erp_sales_service
     app.state.knowledge_base_article_service = default_knowledge_base_article_service
