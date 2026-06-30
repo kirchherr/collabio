@@ -9,7 +9,7 @@ from suite.platform.lms_package_installation_readiness import (
 from suite.platform.modules import default_module_registry
 
 
-def test_lms_package_installation_readiness_blocks_install_until_restore_and_approval_exist() -> None:
+def test_lms_package_installation_readiness_blocks_install_until_approval_exists() -> None:
     response = build_lms_package_installation_readiness_response(
         user_context=UserContext(tenant_id="tenant-demo", user_id="u-1", role_ids={"admin"}),
         module_registry=default_module_registry(),
@@ -29,7 +29,7 @@ def test_lms_package_installation_readiness_blocks_install_until_restore_and_app
     assert response.tenant_module_state_present is False
     assert response.package_installation_ready is False
     assert response.migration_plan_ready is True
-    assert response.restore_evidence_ready is False
+    assert response.restore_evidence_ready is True
     assert response.human_approval_ready is False
     assert response.tenant_provisioning_allowed is False
     assert response.migration_execution_allowed is False
@@ -43,15 +43,19 @@ def test_lms_package_installation_readiness_blocks_install_until_restore_and_app
     assert response.existing_lms_migration_versions == ("0045", "0046")
     assert response.existing_lms_business_migration_versions == ("0046",)
     assert response.planned_first_object_types == ("lms.course", "lms.enrollment")
+    assert response.lms_restore_drill_evidence_endpoint == "/v1/platform/modules/families/lms/restore-drill-evidence"
+    assert response.lms_restore_drill_evidence_hash is not None
+    assert response.lms_restore_drill_evidence_hash.startswith("sha256:")
     assert "lms_metadata_schema_migration_sql" in response.required_installation_evidence
+    assert "lms_restore_drill_evidence_hash" in response.required_installation_evidence
     assert "lms_business_metadata_migration_missing" not in response.blocking_reasons
-    assert "lms_backup_restore_drill_evidence_missing" in response.blocking_reasons
+    assert "lms_backup_restore_drill_evidence_missing" not in response.blocking_reasons
     assert "tenant_admin_package_install_approval_missing" in response.blocking_reasons
     assert response.summary.lms_manifest_migration_count == 2
     assert response.summary.lms_business_migration_count == 1
     assert response.summary.blocking_reason_count == len(response.blocking_reasons)
     assert "app/suite/platform/lms_package_installation_readiness.py" in response.evidence_refs
-    assert response.next_action == "capture_lms_restore_drill_evidence_before_package_installation"
+    assert response.next_action == "capture_tenant_admin_package_install_approval"
 
 
 def test_lms_package_installation_readiness_is_tenant_scoped_without_state_side_effects() -> None:

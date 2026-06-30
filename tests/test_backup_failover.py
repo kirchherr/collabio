@@ -377,6 +377,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         in policy.domain("background_jobs_queues").state_artifacts
     )
     assert "course completions" in policy.domain("learning_management_records").state_artifacts
+    assert "LMS restore drill evidence hash" in policy.domain("learning_management_records").state_artifacts
     assert "workflow transitions" in policy.domain("task_activity_records").state_artifacts
     assert "ticket SLA state" in policy.domain("service_ticket_records").state_artifacts
     assert "time entries" in policy.domain("time_tracking_records").state_artifacts
@@ -393,6 +394,7 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "office store" in rules
     assert "continuity domain" in rules
     assert "Knowledge Base runtime reconciliation run report hash when applicable" in policy.restore_drill_evidence
+    assert "LMS restore drill evidence hash when applicable" in policy.restore_drill_evidence
     assert "module registry operations report hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL evidence ledger hash when applicable" in policy.restore_drill_evidence
     assert "Legacy SQL evidence ledger operations report hash when applicable" in policy.restore_drill_evidence

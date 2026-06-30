@@ -106,6 +106,8 @@ docker compose run --rm module-registry-drill
 
 The drill emits metadata-only `module_registry_operations_report.v1` evidence for seed/backfill/repair readiness, required migration versions, worker discovery, lifecycle audit event expectations, and module-registry backup artifacts.
 
+Before LMS package installation approval, call `GET /v1/platform/modules/families/lms/restore-drill-evidence`. The endpoint emits metadata-only `lms_restore_drill_evidence.v1` with an evidence hash for `lms_training_records`, verifies the `0045`/`0046` migration boundary, RLS/tenant isolation, retention, Legal Hold, KMS/audit references, and confirms that no LMS package installation, tenant module state, runtime, worker, or content payload is created.
+
 Run the Legacy SQL discovery intake drill before any real SQL metadata worker command is scheduled:
 
 ```bash

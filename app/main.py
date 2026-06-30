@@ -213,6 +213,10 @@ from suite.platform.lms_package_installation_readiness import (
     LmsPackageInstallationReadinessResponse,
     build_lms_package_installation_readiness_response,
 )
+from suite.platform.lms_restore_drill_evidence import (
+    LmsRestoreDrillEvidenceResponse,
+    build_lms_restore_drill_evidence_response,
+)
 from suite.platform.module_family_backlog import (
     ModuleFamilyBacklogResponse,
     build_module_family_backlog_response,
@@ -1080,6 +1084,48 @@ def build_app() -> FastAPI:
         return response
 
     @app.get(
+        "/v1/platform/modules/families/lms/restore-drill-evidence",
+        response_model=LmsRestoreDrillEvidenceResponse,
+    )
+    def lms_restore_drill_evidence(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsRestoreDrillEvidenceResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_restore_drill_evidence_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.restore_drill_evidence",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "restore_evidence_ready": response.restore_evidence_ready,
+                "evidence_hash": response.evidence_hash,
+                "table_restore_verified": response.table_restore_verified,
+                "rls_restore_verified": response.rls_restore_verified,
+                "tenant_isolation_restore_verified": response.tenant_isolation_restore_verified,
+                "no_content_payload_restore_verified": response.no_content_payload_restore_verified,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "package_installation_executed": response.package_installation_executed,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get(
         "/v1/platform/modules/families/lms/package-installation-readiness",
         response_model=LmsPackageInstallationReadinessResponse,
     )
@@ -1108,6 +1154,8 @@ def build_app() -> FastAPI:
                 "tenant_module_state_present": response.tenant_module_state_present,
                 "package_installation_ready": response.package_installation_ready,
                 "migration_plan_ready": response.migration_plan_ready,
+                "restore_evidence_ready": response.restore_evidence_ready,
+                "lms_restore_drill_evidence_hash": response.lms_restore_drill_evidence_hash,
                 "lms_manifest_migration_count": response.summary.lms_manifest_migration_count,
                 "lms_business_migration_count": response.summary.lms_business_migration_count,
                 "blocking_reason_count": response.summary.blocking_reason_count,

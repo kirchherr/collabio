@@ -12,6 +12,10 @@ from suite.platform.lms_module import (
     build_default_lms_object_rule_manifest,
     build_default_lms_subfeature_registry,
 )
+from suite.platform.lms_restore_drill_evidence import (
+    LMS_RESTORE_DRILL_EVIDENCE_ENDPOINT,
+    build_lms_restore_drill_evidence_response,
+)
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 
 LMS_PACKAGE_INSTALLATION_READINESS_SCHEMA_VERSION = "lms_package_installation_readiness.v1"
@@ -63,6 +67,8 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
     external_side_effect_allowed: bool = False
     existing_lms_migration_versions: tuple[str, ...]
     existing_lms_business_migration_versions: tuple[str, ...]
+    lms_restore_drill_evidence_endpoint: str = LMS_RESTORE_DRILL_EVIDENCE_ENDPOINT
+    lms_restore_drill_evidence_hash: str | None
     planned_first_object_types: tuple[str, ...]
     required_installation_evidence: tuple[str, ...]
     blocking_reasons: tuple[str, ...]
@@ -76,12 +82,20 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
         "endpoint",
         "result_contract",
         "continuity_domain",
+        "lms_restore_drill_evidence_endpoint",
         "next_action",
     )
     @classmethod
     def require_non_empty_text(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("LMS package installation readiness text fields must not be empty")
+        return value
+
+    @field_validator("lms_restore_drill_evidence_hash")
+    @classmethod
+    def validate_optional_restore_evidence_hash(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith("sha256:"):
+            raise ValueError("LMS restore drill evidence hash must be a sha256 reference")
         return value
 
     @field_validator(
@@ -117,6 +131,8 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
             raise ValueError("LMS package installed flag must match catalog status")
         if self.migration_plan_ready != bool(self.existing_lms_business_migration_versions):
             raise ValueError("LMS migration plan readiness must match business migration evidence")
+        if self.restore_evidence_ready and self.lms_restore_drill_evidence_hash is None:
+            raise ValueError("ready LMS restore evidence requires a restore evidence hash")
         expected_ready = (
             self.catalog_status == "not_installed"
             and self.migration_plan_ready
@@ -174,10 +190,15 @@ def build_lms_package_installation_readiness_response(
     business_migration_versions = tuple(
         version for version in lms_migration_versions if version != LMS_CATALOG_REGISTRATION_MIGRATION_VERSION
     )
+    restore_drill_evidence = build_lms_restore_drill_evidence_response(
+        user_context=user_context,
+        module_registry=module_registry,
+        migration_manifest_entries=migration_manifest_entries,
+    )
     required_installation_evidence = (
         "lms_metadata_schema_migration_sql",
         "lms_object_table_rls_policy_tests",
-        "lms_backup_restore_drill_evidence",
+        "lms_restore_drill_evidence_hash",
         "lms_module_catalog_status_update_plan",
         "tenant_admin_package_install_approval",
         "no_lms_business_runtime_confirmation",
@@ -186,6 +207,7 @@ def build_lms_package_installation_readiness_response(
         catalog_status=catalog_status,
         tenant_module_status=tenant_module_status,
         business_migration_versions=business_migration_versions,
+        restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
     )
     planned_first_object_types = ("lms.course", "lms.enrollment")
     return LmsPackageInstallationReadinessResponse(
@@ -197,6 +219,8 @@ def build_lms_package_installation_readiness_response(
         tenant_module_state_present=tenant_module_status is not None,
         package_installation_ready=False,
         migration_plan_ready=bool(business_migration_versions),
+        restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
+        lms_restore_drill_evidence_hash=restore_drill_evidence.evidence_hash,
         existing_lms_migration_versions=lms_migration_versions,
         existing_lms_business_migration_versions=business_migration_versions,
         planned_first_object_types=planned_first_object_types,
@@ -211,17 +235,19 @@ def build_lms_package_installation_readiness_response(
         ),
         next_action=_next_action(
             migration_plan_ready=bool(business_migration_versions),
-            restore_evidence_ready=False,
+            restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
             human_approval_ready=False,
         ),
         evidence_refs=(
             "docs/modules/LMS_MODULE_CHARTER.md",
             "app/suite/platform/lms_module.py",
             "app/suite/platform/lms_package_installation_readiness.py",
+            "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_lms_package_installation_readiness.py",
+            "tests/test_lms_restore_drill_evidence.py",
             "tests/test_pgvector_migration.py",
         ),
     )
@@ -257,6 +283,7 @@ def _blocking_reasons(
     catalog_status: str | None,
     tenant_module_status: str | None,
     business_migration_versions: tuple[str, ...],
+    restore_evidence_ready: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if catalog_status is None:
@@ -267,7 +294,8 @@ def _blocking_reasons(
         reasons.append("tenant_module_state_already_exists")
     if not business_migration_versions:
         reasons.append("lms_business_metadata_migration_missing")
-    reasons.append("lms_backup_restore_drill_evidence_missing")
+    if not restore_evidence_ready:
+        reasons.append("lms_backup_restore_drill_evidence_missing")
     reasons.append("tenant_admin_package_install_approval_missing")
     return tuple(reasons)
 

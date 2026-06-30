@@ -805,12 +805,14 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert future_modules["status"] == "metadata_only"
     assert "/v1/platform/modules/families/backlog" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
+    assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/package-installation-readiness" in future_modules["api_routes"]
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
     assert "lms_metadata_schema_migration_ready" in future_modules["guardrails"]
+    assert "lms_restore_drill_evidence_hash_ready" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1047,7 +1049,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == "add_module_migration_evidence_before_package_installation"
+    assert families["lms"]["next_action"] == "capture_tenant_admin_package_install_approval"
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1152,6 +1154,96 @@ def test_lms_catalog_readiness_returns_metadata_only_catalog_boundary() -> None:
     assert event.metadata["external_side_effect_allowed"] is False
 
 
+def test_lms_restore_drill_evidence_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules/families/lms/restore-drill-evidence")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_restore_drill_evidence_returns_metadata_only_restore_hash_without_execution() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/modules/families/lms/restore-drill-evidence", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "lms_restore_drill_evidence.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "lms"
+    assert body["endpoint"] == "/v1/platform/modules/families/lms/restore-drill-evidence"
+    assert body["result_contract"] == "metadata_only_lms_restore_drill_evidence_no_install"
+    assert body["continuity_domain"] == "lms_training_records"
+    assert body["catalog_status"] == "not_installed"
+    assert body["tenant_module_status"] is None
+    assert body["module_catalog_entry_present"] is True
+    assert body["module_package_installed"] is False
+    assert body["tenant_module_state_present"] is False
+    assert body["migration_plan_ready"] is True
+    assert body["catalog_registration_migration_present"] is True
+    assert body["metadata_schema_migration_present"] is True
+    assert body["table_restore_verified"] is True
+    assert body["rls_restore_verified"] is True
+    assert body["tenant_isolation_restore_verified"] is True
+    assert body["retention_restore_verified"] is True
+    assert body["legal_hold_restore_verified"] is True
+    assert body["kms_reference_restore_verified"] is True
+    assert body["audit_reference_restore_verified"] is True
+    assert body["no_content_payload_restore_verified"] is True
+    assert body["restore_evidence_ready"] is True
+    assert body["package_installation_executed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["persistent_task_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["existing_lms_migration_versions"] == ["0045", "0046"]
+    assert body["restored_tables"] == ["lms.courses", "lms.enrollments"]
+    assert body["restored_object_types"] == ["lms.course", "lms.enrollment"]
+    assert "lms_metadata_schema_migration_0046" in body["required_restore_evidence"]
+    assert "no_lms_package_or_tenant_activation_confirmed" in body["required_restore_evidence"]
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["summary"] == {
+        "lms_manifest_migration_count": 2,
+        "restored_table_count": 2,
+        "restored_object_type_count": 2,
+        "required_restore_evidence_count": 8,
+        "blocking_reason_count": 0,
+    }
+    assert "app/suite/platform/lms_restore_drill_evidence.py" in body["evidence_refs"]
+    assert body["next_action"] == "capture_tenant_admin_package_install_approval"
+    assert "audit:module-seed" not in response.text
+    assert "policy_snapshot_hash" not in response.text
+    assert "changed_by" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [event for event in new_events if event.event_type == "platform.lms.restore_drill_evidence"]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_lms_restore_drill_evidence_no_install"
+    assert event.metadata["module_id"] == "lms"
+    assert event.metadata["catalog_status"] == "not_installed"
+    assert event.metadata["tenant_module_status"] is None
+    assert event.metadata["restore_evidence_ready"] is True
+    assert event.metadata["evidence_hash"] == body["evidence_hash"]
+    assert event.metadata["table_restore_verified"] is True
+    assert event.metadata["rls_restore_verified"] is True
+    assert event.metadata["tenant_isolation_restore_verified"] is True
+    assert event.metadata["no_content_payload_restore_verified"] is True
+    assert event.metadata["blocking_reason_count"] == 0
+    assert event.metadata["package_installation_executed"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+
+
 def test_lms_package_installation_readiness_requires_request_context() -> None:
     response = client.get("/v1/platform/modules/families/lms/package-installation-readiness")
 
@@ -1180,7 +1272,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["tenant_module_state_present"] is False
     assert body["package_installation_ready"] is False
     assert body["migration_plan_ready"] is True
-    assert body["restore_evidence_ready"] is False
+    assert body["restore_evidence_ready"] is True
     assert body["human_approval_ready"] is False
     assert body["tenant_provisioning_allowed"] is False
     assert body["migration_execution_allowed"] is False
@@ -1193,20 +1285,23 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["external_side_effect_allowed"] is False
     assert body["existing_lms_migration_versions"] == ["0045", "0046"]
     assert body["existing_lms_business_migration_versions"] == ["0046"]
+    assert body["lms_restore_drill_evidence_endpoint"] == "/v1/platform/modules/families/lms/restore-drill-evidence"
+    assert body["lms_restore_drill_evidence_hash"].startswith("sha256:")
     assert body["planned_first_object_types"] == ["lms.course", "lms.enrollment"]
     assert "lms_metadata_schema_migration_sql" in body["required_installation_evidence"]
+    assert "lms_restore_drill_evidence_hash" in body["required_installation_evidence"]
     assert "lms_business_metadata_migration_missing" not in body["blocking_reasons"]
-    assert "lms_backup_restore_drill_evidence_missing" in body["blocking_reasons"]
+    assert "lms_backup_restore_drill_evidence_missing" not in body["blocking_reasons"]
     assert "tenant_admin_package_install_approval_missing" in body["blocking_reasons"]
     assert body["summary"] == {
         "lms_manifest_migration_count": 2,
         "lms_business_migration_count": 1,
         "planned_first_object_type_count": 2,
         "required_installation_evidence_count": 6,
-        "blocking_reason_count": 2,
+        "blocking_reason_count": 1,
     }
     assert "app/suite/platform/lms_package_installation_readiness.py" in body["evidence_refs"]
-    assert body["next_action"] == "capture_lms_restore_drill_evidence_before_package_installation"
+    assert body["next_action"] == "capture_tenant_admin_package_install_approval"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1228,9 +1323,11 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert event.metadata["tenant_module_state_present"] is False
     assert event.metadata["package_installation_ready"] is False
     assert event.metadata["migration_plan_ready"] is True
+    assert event.metadata["restore_evidence_ready"] is True
+    assert event.metadata["lms_restore_drill_evidence_hash"] == body["lms_restore_drill_evidence_hash"]
     assert event.metadata["lms_manifest_migration_count"] == 2
     assert event.metadata["lms_business_migration_count"] == 1
-    assert event.metadata["blocking_reason_count"] == 2
+    assert event.metadata["blocking_reason_count"] == 1
     assert event.metadata["tenant_provisioning_allowed"] is False
     assert event.metadata["migration_execution_allowed"] is False
     assert event.metadata["lms_business_api_allowed"] is False
