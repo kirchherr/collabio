@@ -226,7 +226,7 @@ def build_lms_tenant_admin_package_approval_gate_response(
     )
     approval_scope = (
         "install_lms_package_for_tenant",
-        "bind_lms_migrations_0045_0046",
+        "bind_lms_migrations_0045_0046_0047",
         "bind_lms_restore_drill_evidence_hash",
         "keep_lms_business_api_disabled_until_tenant_provisioning",
         "no_content_payload_or_worker_activation",

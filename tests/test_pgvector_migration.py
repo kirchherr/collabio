@@ -78,6 +78,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0044",
         "0045",
         "0046",
+        "0047",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -93,7 +94,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     lms_migrations = load_module_migrations("lms")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 25
+    assert len(core_migrations) == len(load_migrations()) - 26
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -121,7 +122,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0028",
         "0029",
     ]
-    assert [migration.version for migration in lms_migrations] == ["0045", "0046"]
+    assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "lms"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -231,6 +232,42 @@ def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_c
     assert '"0046"' in sql
     assert "where module_id = 'lms'" in sql
     assert "status = 'not_installed'" in sql
+
+
+def test_lms_package_install_approval_record_migration_is_append_only_metadata_store() -> None:
+    migration = get_migration("0047")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "lms.package_install_approval_records")
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_package_install_approval_records"
+    assert "tenant_id" in table
+    assert "approval_gate_evidence_hash" in table
+    assert "lms_restore_drill_evidence_hash" in table
+    assert "human_confirmation_statement_hash" in table
+    assert "approval_record jsonb not null" in table
+    assert "lms_tenant_admin_package_approval_record.v1" in table
+    assert "future_package_installation_execution_gate_required" in table
+    assert "package_installation_execution_allowed boolean not null default false" in table
+    assert "tenant_provisioning_allowed boolean not null default false" in table
+    assert "lms_business_api_allowed boolean not null default false" in table
+    assert "package_installation_executed boolean not null default false" in table
+    assert "tenant_module_state_created boolean not null default false" in table
+    assert "content_included boolean not null default false" in table
+    assert "destructive_actions_allowed boolean not null default false" in table
+    assert "external_side_effect_allowed boolean not null default false" in table
+    assert "human_confirmation_statement" in sql
+    assert "not (approval_record ? 'human_confirmation_statement')" in sql
+    assert "alter table lms.package_install_approval_records enable row level security" in sql
+    assert "alter table lms.package_install_approval_records force row level security" in sql
+    assert "create policy lms_package_install_approval_records_tenant_select" in sql
+    assert "create policy lms_package_install_approval_records_tenant_insert" in sql
+    assert "create policy lms_package_install_approval_records_no_update" in sql
+    assert "create policy lms_package_install_approval_records_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0045", "0046", "0047"]' in sql
 
 
 def test_pgvector_embedding_schema_declares_required_compliance_metadata() -> None:

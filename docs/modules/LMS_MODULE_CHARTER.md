@@ -117,12 +117,13 @@ Required evidence:
 - disabled-state restore check
 - Legal Hold restore check
 - restore evidence hash for `lms_training_records`
+- approval-record store restore check for `lms.package_install_approval_records`
 
 New course content stores, assessments, certificate files, search indexes, RAG chunks, embeddings, approvals, exports, or integrations must update this continuity domain in the same change.
 
 ## 8. Migrations And Imports
 
-The first LMS migrations now register the module as `not_installed` and create only the metadata needed for `lms.course` and `lms.enrollment`. `0046_lms_metadata_schema.sql` stays metadata-only with RLS, no hard delete, required metadata, KMS references, audit-chain references, and no training content body columns.
+The first LMS migrations now register the module as `not_installed`, create only the metadata needed for `lms.course` and `lms.enrollment`, and prepare an append-only package-install approval-record store. `0046_lms_metadata_schema.sql` stays metadata-only with RLS, no hard delete, required metadata, KMS references, audit-chain references, and no training content body columns. `0047_lms_package_install_approval_records.sql` stores only tenant-scoped refs, hashes, approver metadata, restore evidence and audit-chain references; it forbids package-install execution, tenant module state creation, LMS runtime activation, content payloads, destructive actions and external side effects.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 
@@ -143,7 +144,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Catalog Readiness Boundary
 
-The LMS module is registered in the global module catalog as `not_installed`. `GET /v1/platform/modules/families/lms/catalog-readiness` exposes the catalog boundary, `GET /v1/platform/modules/families/lms/restore-drill-evidence` exposes the metadata-only restore evidence hash, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate` exposes the metadata-only human approval boundary, and `GET /v1/platform/modules/families/lms/package-installation-readiness` exposes the next package-installation gate. These endpoints are tenant-scoped and metadata-only. They return manifest hashes, migration-version evidence, object-rule counts, continuity-domain evidence and required gate evidence only. They do not install the module package, register LMS business APIs, create content, run workers, create tenant module state, or activate tenant runtime. The first metadata schema migration `0046_lms_metadata_schema.sql` creates only `lms.courses` and `lms.enrollments` metadata with RLS, Legal Hold, retention, KMS and audit references; package installation remains blocked until a separate explicit tenant-admin approval record exists.
+The LMS module is registered in the global module catalog as `not_installed`. `GET /v1/platform/modules/families/lms/catalog-readiness` exposes the catalog boundary, `GET /v1/platform/modules/families/lms/restore-drill-evidence` exposes the metadata-only restore evidence hash, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate` exposes the metadata-only human approval boundary, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records` records an explicit tenant-admin approval as refs and hashes only, and `GET /v1/platform/modules/families/lms/package-installation-readiness` exposes the next package-installation gate. These endpoints are tenant-scoped and metadata-only. They return manifest hashes, migration-version evidence, object-rule counts, continuity-domain evidence and required gate evidence only. They do not install the module package, register LMS business APIs, create content, run workers, create tenant module state, or activate tenant runtime. The first metadata schema migration `0046_lms_metadata_schema.sql` creates only `lms.courses` and `lms.enrollments` metadata with RLS, Legal Hold, retention, KMS and audit references; package installation remains blocked until the separate package-installation execution boundary is reviewed after an explicit tenant-admin approval record exists.
 
 ## 11. Explicit Non-Goals For The First Slice
 
@@ -165,6 +166,7 @@ The LMS module is registered in the global module catalog as `not_installed`. `G
 - `tests/test_lms_package_installation_readiness.py`
 - `tests/test_lms_restore_drill_evidence.py`
 - `tests/test_lms_tenant_admin_package_approval_gate.py`
+- `tests/test_lms_tenant_admin_package_approval_record.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_module_implementation_contract.py`

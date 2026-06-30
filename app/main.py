@@ -221,6 +221,12 @@ from suite.platform.lms_tenant_admin_package_approval_gate import (
     LmsTenantAdminPackageApprovalGateResponse,
     build_lms_tenant_admin_package_approval_gate_response,
 )
+from suite.platform.lms_tenant_admin_package_approval_record import (
+    LmsTenantAdminPackageApprovalRecordCommand,
+    LmsTenantAdminPackageApprovalRecordResponse,
+    build_default_lms_tenant_admin_package_approval_record_store,
+    build_lms_tenant_admin_package_approval_record_response,
+)
 from suite.platform.module_family_backlog import (
     ModuleFamilyBacklogResponse,
     build_module_family_backlog_response,
@@ -986,6 +992,7 @@ def build_app() -> FastAPI:
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
     legacy_sql_migration_run_registry_store = build_default_legacy_sql_migration_run_registry_store()
+    lms_tenant_admin_package_approval_record_store = build_default_lms_tenant_admin_package_approval_record_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -1114,7 +1121,9 @@ def build_app() -> FastAPI:
                 "tenant_module_status": response.tenant_module_status,
                 "restore_evidence_ready": response.restore_evidence_ready,
                 "evidence_hash": response.evidence_hash,
+                "approval_record_store_migration_present": response.approval_record_store_migration_present,
                 "table_restore_verified": response.table_restore_verified,
+                "approval_record_store_restore_verified": response.approval_record_store_restore_verified,
                 "rls_restore_verified": response.rls_restore_verified,
                 "tenant_isolation_restore_verified": response.tenant_isolation_restore_verified,
                 "no_content_payload_restore_verified": response.no_content_payload_restore_verified,
@@ -1177,6 +1186,63 @@ def build_app() -> FastAPI:
         )
         return response
 
+    @app.post(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-records",
+        response_model=LmsTenantAdminPackageApprovalRecordResponse,
+    )
+    def lms_tenant_admin_package_approval_record(
+        command: LmsTenantAdminPackageApprovalRecordCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsTenantAdminPackageApprovalRecordResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_tenant_admin_package_approval_record_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        if response.approval_record_created:
+            response = request.app.state.lms_tenant_admin_package_approval_record_store.append(response)
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.tenant_admin_package_approval_record",
+            source_object_ids=[f"lms_tenant_admin_approval_gate:{response.approval_gate_evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "approval_gate_ready": response.approval_gate_ready,
+                "approval_gate_evidence_hash": response.approval_gate_evidence_hash,
+                "lms_restore_drill_evidence_hash": response.lms_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "approver_role_allowed": response.approver_role_allowed,
+                "record_status": response.record_status,
+                "approval_record_created": response.approval_record_created,
+                "human_confirmation_captured": response.human_confirmation_captured,
+                "human_confirmation_statement_matched": response.human_confirmation_statement_matched,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "future_package_installation_execution_gate_required": (
+                    response.future_package_installation_execution_gate_required
+                ),
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "package_installation_executed": response.package_installation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "lms_business_api_allowed": response.lms_business_api_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
     @app.get(
         "/v1/platform/modules/families/lms/package-installation-readiness",
         response_model=LmsPackageInstallationReadinessResponse,
@@ -1190,6 +1256,7 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
             module_registry=module_registry,
             migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.lms_tenant_admin_package_approval_record_store,
         )
         audit_logger.record(
             user_context=context.user_context,
@@ -1211,6 +1278,7 @@ def build_app() -> FastAPI:
                 "tenant_admin_approval_gate_ready": response.tenant_admin_approval_gate_ready,
                 "tenant_admin_approval_gate_hash": response.tenant_admin_approval_gate_hash,
                 "tenant_admin_approval_record_allowed": response.tenant_admin_approval_record_allowed,
+                "tenant_admin_approval_record_hash": response.tenant_admin_approval_record_hash,
                 "human_approval_ready": response.human_approval_ready,
                 "lms_manifest_migration_count": response.summary.lms_manifest_migration_count,
                 "lms_business_migration_count": response.summary.lms_business_migration_count,
@@ -14654,6 +14722,7 @@ def build_app() -> FastAPI:
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store
+    app.state.lms_tenant_admin_package_approval_record_store = lms_tenant_admin_package_approval_record_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry

@@ -33,7 +33,9 @@ def test_lms_restore_drill_evidence_verifies_metadata_schema_without_installing_
     assert response.migration_plan_ready is True
     assert response.catalog_registration_migration_present is True
     assert response.metadata_schema_migration_present is True
+    assert response.approval_record_store_migration_present is True
     assert response.table_restore_verified is True
+    assert response.approval_record_store_restore_verified is True
     assert response.rls_restore_verified is True
     assert response.tenant_isolation_restore_verified is True
     assert response.retention_restore_verified is True
@@ -48,16 +50,18 @@ def test_lms_restore_drill_evidence_verifies_metadata_schema_without_installing_
     assert response.content_included is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_lms_migration_versions == ("0045", "0046")
-    assert response.restored_tables == ("lms.courses", "lms.enrollments")
+    assert response.existing_lms_migration_versions == ("0045", "0046", "0047")
+    assert response.restored_tables == ("lms.courses", "lms.enrollments", "lms.package_install_approval_records")
     assert response.restored_object_types == ("lms.course", "lms.enrollment")
     assert "lms_metadata_schema_migration_0046" in response.required_restore_evidence
+    assert "lms_package_install_approval_record_store_migration_0047" in response.required_restore_evidence
+    assert "lms_approval_record_store_restore_check" in response.required_restore_evidence
     assert "no_lms_package_or_tenant_activation_confirmed" in response.required_restore_evidence
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
     assert response.evidence_hash == build_lms_restore_drill_evidence_hash(response)
-    assert response.summary.lms_manifest_migration_count == 2
-    assert response.summary.restored_table_count == 2
+    assert response.summary.lms_manifest_migration_count == 3
+    assert response.summary.restored_table_count == 3
     assert response.summary.restored_object_type_count == 2
     assert response.summary.required_restore_evidence_count == len(response.required_restore_evidence)
     assert response.summary.blocking_reason_count == 0

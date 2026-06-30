@@ -299,12 +299,15 @@ def build_module_family_backlog_response(
             "app/suite/platform/lms_catalog_readiness.py",
             "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
+            "app/suite/platform/lms_tenant_admin_package_approval_record.py",
+            "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
             "tests/test_lms_module_foundation.py",
             "tests/test_lms_catalog_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_lms_tenant_admin_package_approval_gate.py",
+            "tests/test_lms_tenant_admin_package_approval_record.py",
         ),
     )
 

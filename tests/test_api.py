@@ -35,6 +35,10 @@ from suite.platform.legacy_sql_migration_run_registry import (
     build_legacy_sql_migration_report_metadata,
     build_legacy_sql_migration_run_registry_entry,
 )
+from suite.platform.lms_tenant_admin_package_approval_record import (
+    LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+    build_default_lms_tenant_admin_package_approval_record_store,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleGateDecision,
@@ -333,6 +337,9 @@ def base64url_bytes(payload: bytes) -> str:
 
 def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
+    app.state.lms_tenant_admin_package_approval_record_store = (
+        build_default_lms_tenant_admin_package_approval_record_store()
+    )
 
 
 def api_fixture_hash(label: str) -> str:
@@ -807,6 +814,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate" in future_modules["api_routes"]
+    assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-records" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/package-installation-readiness" in future_modules["api_routes"]
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
@@ -815,6 +823,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_metadata_schema_migration_ready" in future_modules["guardrails"]
     assert "lms_restore_drill_evidence_hash_ready" in future_modules["guardrails"]
     assert "lms_tenant_admin_approval_gate_ready" in future_modules["guardrails"]
+    assert "lms_tenant_admin_approval_record_store_ready" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1188,7 +1197,9 @@ def test_lms_restore_drill_evidence_returns_metadata_only_restore_hash_without_e
     assert body["migration_plan_ready"] is True
     assert body["catalog_registration_migration_present"] is True
     assert body["metadata_schema_migration_present"] is True
+    assert body["approval_record_store_migration_present"] is True
     assert body["table_restore_verified"] is True
+    assert body["approval_record_store_restore_verified"] is True
     assert body["rls_restore_verified"] is True
     assert body["tenant_isolation_restore_verified"] is True
     assert body["retention_restore_verified"] is True
@@ -1203,18 +1214,20 @@ def test_lms_restore_drill_evidence_returns_metadata_only_restore_hash_without_e
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046"]
-    assert body["restored_tables"] == ["lms.courses", "lms.enrollments"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
+    assert body["restored_tables"] == ["lms.courses", "lms.enrollments", "lms.package_install_approval_records"]
     assert body["restored_object_types"] == ["lms.course", "lms.enrollment"]
     assert "lms_metadata_schema_migration_0046" in body["required_restore_evidence"]
+    assert "lms_package_install_approval_record_store_migration_0047" in body["required_restore_evidence"]
+    assert "lms_approval_record_store_restore_check" in body["required_restore_evidence"]
     assert "no_lms_package_or_tenant_activation_confirmed" in body["required_restore_evidence"]
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "lms_manifest_migration_count": 2,
-        "restored_table_count": 2,
+        "lms_manifest_migration_count": 3,
+        "restored_table_count": 3,
         "restored_object_type_count": 2,
-        "required_restore_evidence_count": 8,
+        "required_restore_evidence_count": 10,
         "blocking_reason_count": 0,
     }
     assert "app/suite/platform/lms_restore_drill_evidence.py" in body["evidence_refs"]
@@ -1237,6 +1250,7 @@ def test_lms_restore_drill_evidence_returns_metadata_only_restore_hash_without_e
     assert event.metadata["restore_evidence_ready"] is True
     assert event.metadata["evidence_hash"] == body["evidence_hash"]
     assert event.metadata["table_restore_verified"] is True
+    assert event.metadata["approval_record_store_restore_verified"] is True
     assert event.metadata["rls_restore_verified"] is True
     assert event.metadata["tenant_isolation_restore_verified"] is True
     assert event.metadata["no_content_payload_restore_verified"] is True
@@ -1296,7 +1310,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_exec
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
     assert "install_lms_package_for_tenant" in body["approval_scope"]
     assert "bind_lms_restore_drill_evidence_hash" in body["approval_scope"]
     assert "tenant_admin_identity" in body["required_approval_evidence"]
@@ -1304,7 +1318,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_exec
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "lms_manifest_migration_count": 2,
+        "lms_manifest_migration_count": 3,
         "required_approval_evidence_count": 8,
         "approval_scope_count": 5,
         "blocking_reason_count": 0,
@@ -1351,6 +1365,132 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_exec
     assert event.metadata["external_side_effect_allowed"] is False
 
 
+def test_lms_tenant_admin_package_approval_record_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-records",
+        json={
+            "approval_gate_evidence_hash": "sha256:" + "0" * 64,
+            "approval_record_ref": "lms-approval:record-missing-context",
+            "approval_ticket_ref": "ticket:lms-package-install-missing-context",
+            "human_confirmation_reference": "confirmation:lms-package-install-missing-context",
+            "human_confirmation_statement": LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+            "change_request_ref": "change:lms-package-install-missing-context",
+            "idempotency_key_ref": "idempotency:lms-package-install-missing-context",
+            "approved_at_utc": "2026-06-30T08:00:00Z",
+            "audit_chain_ref": "audit:lms-package-install-missing-context",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_tenant_admin_package_approval_record_enables_readiness_without_execution() -> None:
+    reset_module_registry()
+    headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "tenant-admin-api",
+    }
+    starting_event_count = len(app.state.audit_logger.events)
+
+    gate_response = client.get(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
+        headers=headers,
+    )
+    assert gate_response.status_code == 200
+    gate = gate_response.json()
+
+    response = client.post(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-records",
+        headers=headers,
+        json={
+            "approval_gate_evidence_hash": gate["evidence_hash"],
+            "approval_record_ref": "lms-approval:record-api-demo",
+            "approval_ticket_ref": "ticket:lms-package-install-api-demo",
+            "human_confirmation_reference": "confirmation:lms-package-install-api-demo",
+            "human_confirmation_statement": LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+            "change_request_ref": "change:lms-package-install-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-api-demo",
+            "approved_at_utc": "2026-06-30T08:00:00Z",
+            "audit_chain_ref": "audit:lms-package-install-api-demo",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "lms_tenant_admin_package_approval_record.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "lms"
+    assert body["endpoint"] == "/v1/platform/modules/families/lms/tenant-admin-package-approval-records"
+    assert body["result_contract"] == "metadata_only_lms_tenant_admin_package_approval_record_no_install"
+    assert body["approval_gate_ready"] is True
+    assert body["approval_gate_evidence_hash"] == gate["evidence_hash"]
+    assert body["lms_restore_drill_evidence_hash"] == gate["lms_restore_drill_evidence_hash"]
+    assert body["command_hash"].startswith("sha256:")
+    assert body["idempotency_key_hash"].startswith("sha256:")
+    assert body["human_confirmation_statement_hash"].startswith("sha256:")
+    assert body["approver_role_allowed"] is True
+    assert body["record_status"] == "approved_for_package_installation_execution_gate"
+    assert body["approval_record_created"] is True
+    assert body["human_confirmation_captured"] is True
+    assert body["human_confirmation_statement_matched"] is True
+    assert body["future_package_installation_execution_gate_required"] is True
+    assert body["package_installation_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["migration_execution_allowed"] is False
+    assert body["lms_business_api_allowed"] is False
+    assert body["package_installation_executed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["next_action"] == "review_lms_package_installation_execution_boundary"
+    assert "human_confirmation_statement" not in body
+    assert LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT not in response.text
+
+    readiness_response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-readiness",
+        headers=headers,
+    )
+    assert readiness_response.status_code == 200
+    readiness = readiness_response.json()
+    assert readiness["human_approval_ready"] is True
+    assert readiness["tenant_admin_approval_record_hash"] == body["evidence_hash"]
+    assert readiness["package_installation_ready"] is True
+    assert readiness["blocking_reasons"] == []
+    assert readiness["next_action"] == "review_lms_package_installation_execution_boundary"
+    assert readiness["package_installation_executed"] is False
+    assert readiness["module_activation_executed"] is False
+    assert readiness["tenant_provisioning_allowed"] is False
+    assert readiness["lms_business_api_allowed"] is False
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.lms.tenant_admin_package_approval_record"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_lms_tenant_admin_package_approval_record_no_install"
+    assert event.metadata["approval_gate_evidence_hash"] == gate["evidence_hash"]
+    assert event.metadata["approval_record_created"] is True
+    assert event.metadata["human_confirmation_captured"] is True
+    assert event.metadata["human_confirmation_statement_hash"] == body["human_confirmation_statement_hash"]
+    assert event.metadata["package_installation_execution_allowed"] is False
+    assert event.metadata["package_installation_executed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert "human_confirmation_statement" not in event.metadata
+
+
 def test_lms_package_installation_readiness_requires_request_context() -> None:
     response = client.get("/v1/platform/modules/families/lms/package-installation-readiness")
 
@@ -1390,7 +1530,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
     assert body["existing_lms_business_migration_versions"] == ["0046"]
     assert body["lms_restore_drill_evidence_endpoint"] == "/v1/platform/modules/families/lms/restore-drill-evidence"
     assert body["lms_restore_drill_evidence_hash"].startswith("sha256:")
@@ -1401,16 +1541,22 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["tenant_admin_approval_gate_hash"].startswith("sha256:")
     assert body["tenant_admin_approval_gate_ready"] is True
     assert body["tenant_admin_approval_record_allowed"] is True
+    assert (
+        body["tenant_admin_approval_record_endpoint"]
+        == "/v1/platform/modules/families/lms/tenant-admin-package-approval-records"
+    )
+    assert body["tenant_admin_approval_record_hash"] is None
     assert body["planned_first_object_types"] == ["lms.course", "lms.enrollment"]
     assert "lms_metadata_schema_migration_sql" in body["required_installation_evidence"]
     assert "lms_restore_drill_evidence_hash" in body["required_installation_evidence"]
     assert "tenant_admin_package_install_approval_gate_hash" in body["required_installation_evidence"]
+    assert "tenant_admin_package_install_approval_record_hash" in body["required_installation_evidence"]
     assert "lms_business_metadata_migration_missing" not in body["blocking_reasons"]
     assert "lms_backup_restore_drill_evidence_missing" not in body["blocking_reasons"]
     assert "tenant_admin_package_install_approval_gate_missing" not in body["blocking_reasons"]
     assert "tenant_admin_package_install_approval_missing" in body["blocking_reasons"]
     assert body["summary"] == {
-        "lms_manifest_migration_count": 2,
+        "lms_manifest_migration_count": 3,
         "lms_business_migration_count": 1,
         "planned_first_object_type_count": 2,
         "required_installation_evidence_count": 7,
@@ -1444,8 +1590,9 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert event.metadata["tenant_admin_approval_gate_ready"] is True
     assert event.metadata["tenant_admin_approval_gate_hash"] == body["tenant_admin_approval_gate_hash"]
     assert event.metadata["tenant_admin_approval_record_allowed"] is True
+    assert event.metadata["tenant_admin_approval_record_hash"] is None
     assert event.metadata["human_approval_ready"] is False
-    assert event.metadata["lms_manifest_migration_count"] == 2
+    assert event.metadata["lms_manifest_migration_count"] == 3
     assert event.metadata["lms_business_migration_count"] == 1
     assert event.metadata["blocking_reason_count"] == 1
     assert event.metadata["tenant_provisioning_allowed"] is False

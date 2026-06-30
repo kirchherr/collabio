@@ -560,7 +560,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/lms_package_installation_readiness.py",
                         "app/suite/platform/lms_restore_drill_evidence.py",
                         "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
+                        "app/suite/platform/lms_tenant_admin_package_approval_record.py",
                         "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
+                        "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
                         "docs/modules/LMS_MODULE_CHARTER.md",
                         "tests/test_module_family_backlog.py",
                         "tests/test_lms_module_foundation.py",
@@ -568,6 +570,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_lms_package_installation_readiness.py",
                         "tests/test_lms_restore_drill_evidence.py",
                         "tests/test_lms_tenant_admin_package_approval_gate.py",
+                        "tests/test_lms_tenant_admin_package_approval_record.py",
                         "tests/test_pgvector_migration.py",
                     ),
                     api_routes=(
@@ -575,6 +578,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
+                        "/v1/platform/modules/families/lms/tenant-admin-package-approval-records",
                         "/v1/platform/modules/families/lms/package-installation-readiness",
                     ),
                     guardrails=(
@@ -588,6 +592,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_metadata_schema_migration_ready",
                         "lms_restore_drill_evidence_hash_ready",
                         "lms_tenant_admin_approval_gate_ready",
+                        "lms_tenant_admin_approval_record_store_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
                     next_action="record_tenant_admin_package_install_approval_with_explicit_human_confirmation",

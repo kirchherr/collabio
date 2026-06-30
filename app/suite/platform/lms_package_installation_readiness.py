@@ -20,12 +20,17 @@ from suite.platform.lms_tenant_admin_package_approval_gate import (
     LMS_TENANT_ADMIN_PACKAGE_APPROVAL_GATE_ENDPOINT,
     build_lms_tenant_admin_package_approval_gate_response,
 )
+from suite.platform.lms_tenant_admin_package_approval_record import (
+    LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_ENDPOINT,
+    LmsTenantAdminPackageApprovalRecordStore,
+)
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 
 LMS_PACKAGE_INSTALLATION_READINESS_SCHEMA_VERSION = "lms_package_installation_readiness.v1"
 LMS_PACKAGE_INSTALLATION_READINESS_RESULT_CONTRACT = "metadata_only_lms_package_installation_readiness_no_install"
 LMS_PACKAGE_INSTALLATION_READINESS_ENDPOINT = "/v1/platform/modules/families/lms/package-installation-readiness"
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
+LMS_PACKAGE_APPROVAL_RECORD_MIGRATION_VERSION = "0047"
 LMS_METADATA_MIGRATION_NEXT_ACTION = "write_lms_metadata_schema_migration_before_package_installation"
 LMS_RESTORE_EVIDENCE_NEXT_ACTION = "capture_lms_restore_drill_evidence_before_package_installation"
 LMS_APPROVAL_GATE_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
@@ -78,6 +83,8 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
     tenant_admin_approval_gate_hash: str | None
     tenant_admin_approval_gate_ready: bool
     tenant_admin_approval_record_allowed: bool
+    tenant_admin_approval_record_endpoint: str = LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_ENDPOINT
+    tenant_admin_approval_record_hash: str | None = None
     planned_first_object_types: tuple[str, ...]
     required_installation_evidence: tuple[str, ...]
     blocking_reasons: tuple[str, ...]
@@ -93,6 +100,7 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
         "continuity_domain",
         "lms_restore_drill_evidence_endpoint",
         "tenant_admin_approval_gate_endpoint",
+        "tenant_admin_approval_record_endpoint",
         "next_action",
     )
     @classmethod
@@ -113,6 +121,13 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
     def validate_optional_approval_gate_hash(cls, value: str | None) -> str | None:
         if value is not None and not value.startswith("sha256:"):
             raise ValueError("LMS tenant-admin approval gate hash must be a sha256 reference")
+        return value
+
+    @field_validator("tenant_admin_approval_record_hash")
+    @classmethod
+    def validate_optional_approval_record_hash(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith("sha256:"):
+            raise ValueError("LMS tenant-admin approval record hash must be a sha256 reference")
         return value
 
     @field_validator(
@@ -154,6 +169,8 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
             raise ValueError("ready LMS tenant-admin approval gate requires a gate hash")
         if self.tenant_admin_approval_record_allowed != self.tenant_admin_approval_gate_ready:
             raise ValueError("LMS tenant-admin approval record allowance must match gate readiness")
+        if self.human_approval_ready and self.tenant_admin_approval_record_hash is None:
+            raise ValueError("ready LMS human approval requires an approval record hash")
         expected_ready = (
             self.catalog_status == "not_installed"
             and self.migration_plan_ready
@@ -196,6 +213,7 @@ def build_lms_package_installation_readiness_response(
     user_context: UserContext,
     module_registry: InMemoryModuleRegistry | PgModuleRegistry,
     migration_manifest_entries: Iterable[MigrationManifestEntry],
+    approval_record_store: LmsTenantAdminPackageApprovalRecordStore | None = None,
 ) -> LmsPackageInstallationReadinessResponse:
     feature_registry = build_default_lms_subfeature_registry()
     object_rule_manifest = build_default_lms_object_rule_manifest()
@@ -209,7 +227,9 @@ def build_lms_package_installation_readiness_response(
     )
     lms_migration_versions = _lms_migration_versions(migration_manifest_entries)
     business_migration_versions = tuple(
-        version for version in lms_migration_versions if version != LMS_CATALOG_REGISTRATION_MIGRATION_VERSION
+        version
+        for version in lms_migration_versions
+        if version not in {LMS_CATALOG_REGISTRATION_MIGRATION_VERSION, LMS_PACKAGE_APPROVAL_RECORD_MIGRATION_VERSION}
     )
     restore_drill_evidence = build_lms_restore_drill_evidence_response(
         user_context=user_context,
@@ -221,13 +241,22 @@ def build_lms_package_installation_readiness_response(
         module_registry=module_registry,
         migration_manifest_entries=migration_manifest_entries,
     )
+    approval_record = (
+        approval_record_store.latest_for_gate(
+            tenant_id=user_context.tenant_id,
+            approval_gate_evidence_hash=approval_gate.evidence_hash,
+        )
+        if approval_record_store is not None and approval_gate.approval_gate_ready
+        else None
+    )
+    human_approval_ready = approval_record is not None and approval_record.approval_record_created
     required_installation_evidence = (
         "lms_metadata_schema_migration_sql",
         "lms_object_table_rls_policy_tests",
         "lms_restore_drill_evidence_hash",
         "tenant_admin_package_install_approval_gate_hash",
+        "tenant_admin_package_install_approval_record_hash",
         "lms_module_catalog_status_update_plan",
-        "tenant_admin_package_install_approval",
         "no_lms_business_runtime_confirmation",
     )
     blocking_reasons = _blocking_reasons(
@@ -236,6 +265,7 @@ def build_lms_package_installation_readiness_response(
         business_migration_versions=business_migration_versions,
         restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
         approval_gate_ready=approval_gate.approval_gate_ready,
+        human_approval_ready=human_approval_ready,
     )
     planned_first_object_types = ("lms.course", "lms.enrollment")
     return LmsPackageInstallationReadinessResponse(
@@ -245,13 +275,15 @@ def build_lms_package_installation_readiness_response(
         module_catalog_entry_present=catalog_status is not None,
         module_package_installed=catalog_status in {"available", "installed"},
         tenant_module_state_present=tenant_module_status is not None,
-        package_installation_ready=False,
+        package_installation_ready=human_approval_ready and not blocking_reasons,
         migration_plan_ready=bool(business_migration_versions),
         restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
+        human_approval_ready=human_approval_ready,
         lms_restore_drill_evidence_hash=restore_drill_evidence.evidence_hash,
         tenant_admin_approval_gate_hash=approval_gate.evidence_hash,
         tenant_admin_approval_gate_ready=approval_gate.approval_gate_ready,
         tenant_admin_approval_record_allowed=approval_gate.human_approval_record_allowed,
+        tenant_admin_approval_record_hash=approval_record.evidence_hash if approval_record is not None else None,
         existing_lms_migration_versions=lms_migration_versions,
         existing_lms_business_migration_versions=business_migration_versions,
         planned_first_object_types=planned_first_object_types,
@@ -268,7 +300,7 @@ def build_lms_package_installation_readiness_response(
             migration_plan_ready=bool(business_migration_versions),
             restore_evidence_ready=restore_drill_evidence.restore_evidence_ready,
             approval_gate_ready=approval_gate.approval_gate_ready,
-            human_approval_ready=False,
+            human_approval_ready=human_approval_ready,
         ),
         evidence_refs=(
             "docs/modules/LMS_MODULE_CHARTER.md",
@@ -276,12 +308,15 @@ def build_lms_package_installation_readiness_response(
             "app/suite/platform/lms_package_installation_readiness.py",
             "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
+            "app/suite/platform/lms_tenant_admin_package_approval_record.py",
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
+            "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_lms_package_installation_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_lms_tenant_admin_package_approval_gate.py",
+            "tests/test_lms_tenant_admin_package_approval_record.py",
             "tests/test_pgvector_migration.py",
         ),
     )
@@ -319,6 +354,7 @@ def _blocking_reasons(
     business_migration_versions: tuple[str, ...],
     restore_evidence_ready: bool,
     approval_gate_ready: bool,
+    human_approval_ready: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if catalog_status is None:
@@ -333,7 +369,8 @@ def _blocking_reasons(
         reasons.append("lms_backup_restore_drill_evidence_missing")
     if restore_evidence_ready and not approval_gate_ready:
         reasons.append("tenant_admin_package_install_approval_gate_missing")
-    reasons.append("tenant_admin_package_install_approval_missing")
+    if approval_gate_ready and not human_approval_ready:
+        reasons.append("tenant_admin_package_install_approval_missing")
     return tuple(reasons)
 
 

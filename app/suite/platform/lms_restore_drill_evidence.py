@@ -21,6 +21,7 @@ LMS_RESTORE_DRILL_EVIDENCE_RESULT_CONTRACT = "metadata_only_lms_restore_drill_ev
 LMS_RESTORE_DRILL_EVIDENCE_ENDPOINT = "/v1/platform/modules/families/lms/restore-drill-evidence"
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
 LMS_METADATA_SCHEMA_MIGRATION_VERSION = "0046"
+LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION = "0047"
 LMS_RESTORE_DRILL_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
 
 
@@ -51,7 +52,9 @@ class LmsRestoreDrillEvidenceResponse(BaseModel):
     migration_plan_ready: bool
     catalog_registration_migration_present: bool
     metadata_schema_migration_present: bool
+    approval_record_store_migration_present: bool
     table_restore_verified: bool
+    approval_record_store_restore_verified: bool
     rls_restore_verified: bool
     tenant_isolation_restore_verified: bool
     retention_restore_verified: bool
@@ -146,7 +149,9 @@ class LmsRestoreDrillEvidenceResponse(BaseModel):
             and self.migration_plan_ready
             and self.catalog_registration_migration_present
             and self.metadata_schema_migration_present
+            and self.approval_record_store_migration_present
             and self.table_restore_verified
+            and self.approval_record_store_restore_verified
             and self.rls_restore_verified
             and self.tenant_isolation_restore_verified
             and self.retention_restore_verified
@@ -199,20 +204,27 @@ def build_lms_restore_drill_evidence_response(
     lms_migration_versions = _lms_migration_versions(migration_manifest_entries)
     catalog_migration_present = LMS_CATALOG_REGISTRATION_MIGRATION_VERSION in lms_migration_versions
     metadata_migration_present = LMS_METADATA_SCHEMA_MIGRATION_VERSION in lms_migration_versions
+    approval_record_store_migration_present = LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION in lms_migration_versions
     sql_checks = _metadata_schema_sql_checks()
-    migration_plan_ready = catalog_migration_present and metadata_migration_present
+    approval_record_store_restore_verified = _approval_record_store_restore_verified()
+    migration_plan_ready = (
+        catalog_migration_present and metadata_migration_present and approval_record_store_migration_present
+    )
     blocking_reasons = _blocking_reasons(
         catalog_status=catalog_status,
         tenant_module_status=tenant_module_status,
         migration_plan_ready=migration_plan_ready,
         sql_checks=sql_checks,
+        approval_record_store_restore_verified=approval_record_store_restore_verified,
     )
-    restored_tables = ("lms.courses", "lms.enrollments")
+    restored_tables = ("lms.courses", "lms.enrollments", "lms.package_install_approval_records")
     restored_object_types = ("lms.course", "lms.enrollment")
     required_restore_evidence = (
         "lms_catalog_registration_migration_0045",
         "lms_metadata_schema_migration_0046",
+        "lms_package_install_approval_record_store_migration_0047",
         "lms_course_enrollment_table_restore_check",
+        "lms_approval_record_store_restore_check",
         "lms_rls_tenant_policy_restore_check",
         "lms_retention_legal_hold_restore_check",
         "lms_kms_audit_reference_restore_check",
@@ -229,7 +241,9 @@ def build_lms_restore_drill_evidence_response(
         migration_plan_ready=migration_plan_ready,
         catalog_registration_migration_present=catalog_migration_present,
         metadata_schema_migration_present=metadata_migration_present,
+        approval_record_store_migration_present=approval_record_store_migration_present,
         table_restore_verified=sql_checks.table_restore_verified,
+        approval_record_store_restore_verified=approval_record_store_restore_verified,
         rls_restore_verified=sql_checks.rls_restore_verified,
         tenant_isolation_restore_verified=sql_checks.tenant_isolation_restore_verified,
         retention_restore_verified=sql_checks.retention_restore_verified,
@@ -258,6 +272,7 @@ def build_lms_restore_drill_evidence_response(
             "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
+            "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_pgvector_migration.py",
         ),
@@ -321,6 +336,35 @@ def _metadata_schema_sql_checks() -> _MetadataSchemaSqlChecks:
     )
 
 
+def _approval_record_store_restore_verified() -> bool:
+    sql = " ".join(get_migration(LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION).sql().lower().split())
+    return all(
+        required in sql
+        for required in (
+            "create table if not exists lms.package_install_approval_records",
+            "alter table lms.package_install_approval_records enable row level security",
+            "alter table lms.package_install_approval_records force row level security",
+            "create policy lms_package_install_approval_records_tenant_select",
+            "create policy lms_package_install_approval_records_tenant_insert",
+            "create policy lms_package_install_approval_records_no_update",
+            "create policy lms_package_install_approval_records_no_hard_delete",
+            "future_package_installation_execution_gate_required boolean not null default true",
+            "package_installation_execution_allowed boolean not null default false",
+            "lms_business_api_allowed boolean not null default false",
+            "tenant_module_state_created boolean not null default false",
+            "not (approval_record ? 'human_confirmation_statement')",
+        )
+    ) and all(
+        forbidden not in sql
+        for forbidden in (
+            "human_confirmation_statement text",
+            "course_content text",
+            "training_content text",
+            "raw_payload text",
+        )
+    )
+
+
 def _catalog_status(*, module_registry: InMemoryModuleRegistry | PgModuleRegistry) -> str | None:
     try:
         return module_registry.get_catalog_entry(LMS_MODULE_ID).status.value
@@ -352,6 +396,7 @@ def _blocking_reasons(
     tenant_module_status: str | None,
     migration_plan_ready: bool,
     sql_checks: _MetadataSchemaSqlChecks,
+    approval_record_store_restore_verified: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if catalog_status is None:
@@ -364,6 +409,8 @@ def _blocking_reasons(
         reasons.append("lms_migration_plan_missing")
     if not sql_checks.table_restore_verified:
         reasons.append("lms_course_enrollment_table_restore_unverified")
+    if not approval_record_store_restore_verified:
+        reasons.append("lms_approval_record_store_restore_unverified")
     if not sql_checks.rls_restore_verified or not sql_checks.tenant_isolation_restore_verified:
         reasons.append("lms_tenant_rls_restore_unverified")
     if not sql_checks.retention_restore_verified or not sql_checks.legal_hold_restore_verified:
