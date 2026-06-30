@@ -302,6 +302,7 @@ def build_module_family_backlog_response(
             "app/suite/platform/lms_tenant_admin_package_approval_record.py",
             "app/suite/platform/lms_package_installation_execution_boundary.py",
             "app/suite/platform/lms_package_installation_executor_skeleton.py",
+            "app/suite/platform/lms_package_installation_dry_run_plan.py",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
@@ -312,6 +313,7 @@ def build_module_family_backlog_response(
             "tests/test_lms_tenant_admin_package_approval_record.py",
             "tests/test_lms_package_installation_execution_boundary.py",
             "tests/test_lms_package_installation_executor_skeleton.py",
+            "tests/test_lms_package_installation_dry_run_plan.py",
         ),
     )
 
