@@ -62,7 +62,7 @@ def test_lms_restore_drill_evidence_verifies_metadata_schema_without_installing_
     assert response.summary.required_restore_evidence_count == len(response.required_restore_evidence)
     assert response.summary.blocking_reason_count == 0
     assert "app/suite/platform/lms_restore_drill_evidence.py" in response.evidence_refs
-    assert response.next_action == "capture_tenant_admin_package_install_approval"
+    assert response.next_action == "capture_tenant_admin_package_install_approval_gate"
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="lms") is None
 
 

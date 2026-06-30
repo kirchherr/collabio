@@ -46,16 +46,26 @@ def test_lms_package_installation_readiness_blocks_install_until_approval_exists
     assert response.lms_restore_drill_evidence_endpoint == "/v1/platform/modules/families/lms/restore-drill-evidence"
     assert response.lms_restore_drill_evidence_hash is not None
     assert response.lms_restore_drill_evidence_hash.startswith("sha256:")
+    assert (
+        response.tenant_admin_approval_gate_endpoint
+        == "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate"
+    )
+    assert response.tenant_admin_approval_gate_hash is not None
+    assert response.tenant_admin_approval_gate_hash.startswith("sha256:")
+    assert response.tenant_admin_approval_gate_ready is True
+    assert response.tenant_admin_approval_record_allowed is True
     assert "lms_metadata_schema_migration_sql" in response.required_installation_evidence
     assert "lms_restore_drill_evidence_hash" in response.required_installation_evidence
+    assert "tenant_admin_package_install_approval_gate_hash" in response.required_installation_evidence
     assert "lms_business_metadata_migration_missing" not in response.blocking_reasons
     assert "lms_backup_restore_drill_evidence_missing" not in response.blocking_reasons
+    assert "tenant_admin_package_install_approval_gate_missing" not in response.blocking_reasons
     assert "tenant_admin_package_install_approval_missing" in response.blocking_reasons
     assert response.summary.lms_manifest_migration_count == 2
     assert response.summary.lms_business_migration_count == 1
     assert response.summary.blocking_reason_count == len(response.blocking_reasons)
     assert "app/suite/platform/lms_package_installation_readiness.py" in response.evidence_refs
-    assert response.next_action == "capture_tenant_admin_package_install_approval"
+    assert response.next_action == "record_tenant_admin_package_install_approval_with_explicit_human_confirmation"
 
 
 def test_lms_package_installation_readiness_is_tenant_scoped_without_state_side_effects() -> None:

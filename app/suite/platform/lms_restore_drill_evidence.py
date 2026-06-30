@@ -21,7 +21,7 @@ LMS_RESTORE_DRILL_EVIDENCE_RESULT_CONTRACT = "metadata_only_lms_restore_drill_ev
 LMS_RESTORE_DRILL_EVIDENCE_ENDPOINT = "/v1/platform/modules/families/lms/restore-drill-evidence"
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
 LMS_METADATA_SCHEMA_MIGRATION_VERSION = "0046"
-LMS_RESTORE_DRILL_NEXT_ACTION = "capture_tenant_admin_package_install_approval"
+LMS_RESTORE_DRILL_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
 
 
 class LmsRestoreDrillEvidenceSummary(BaseModel):

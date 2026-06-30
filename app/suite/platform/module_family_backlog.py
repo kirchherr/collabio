@@ -33,7 +33,7 @@ MODULE_FAMILY_MODULE_IDS = {
 PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_storage_or_api"
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
-CATALOG_REGISTERED_NEXT_ACTION = "capture_tenant_admin_package_install_approval"
+CATALOG_REGISTERED_NEXT_ACTION = "record_tenant_admin_package_install_approval_with_explicit_human_confirmation"
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
         "module_charter_ready": True,
@@ -298,11 +298,13 @@ def build_module_family_backlog_response(
             "app/suite/platform/lms_module.py",
             "app/suite/platform/lms_catalog_readiness.py",
             "app/suite/platform/lms_restore_drill_evidence.py",
+            "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
             "tests/test_lms_module_foundation.py",
             "tests/test_lms_catalog_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",
+            "tests/test_lms_tenant_admin_package_approval_gate.py",
         ),
     )
 
