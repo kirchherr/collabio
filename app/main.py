@@ -209,6 +209,11 @@ from suite.platform.lms_catalog_readiness import (
     LmsCatalogReadinessResponse,
     build_lms_catalog_readiness_response,
 )
+from suite.platform.lms_package_installation_execution_boundary import (
+    LmsPackageInstallationExecutionBoundaryCommand,
+    LmsPackageInstallationExecutionBoundaryResponse,
+    build_lms_package_installation_execution_boundary_response,
+)
 from suite.platform.lms_package_installation_readiness import (
     LmsPackageInstallationReadinessResponse,
     build_lms_package_installation_readiness_response,
@@ -1228,6 +1233,69 @@ def build_app() -> FastAPI:
                 "blocking_reason_count": response.summary.blocking_reason_count,
                 "future_package_installation_execution_gate_required": (
                     response.future_package_installation_execution_gate_required
+                ),
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "package_installation_executed": response.package_installation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "lms_business_api_allowed": response.lms_business_api_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-execution-boundary",
+        response_model=LmsPackageInstallationExecutionBoundaryResponse,
+    )
+    def lms_package_installation_execution_boundary(
+        command: LmsPackageInstallationExecutionBoundaryCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationExecutionBoundaryResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_package_installation_execution_boundary_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.lms_tenant_admin_package_approval_record_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_execution_boundary",
+            source_object_ids=[
+                f"lms_tenant_admin_approval_gate:{response.tenant_admin_approval_gate_hash}",
+                f"lms_tenant_admin_approval_record:{response.tenant_admin_approval_record_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "package_installation_ready": response.package_installation_ready,
+                "migration_plan_ready": response.migration_plan_ready,
+                "restore_evidence_ready": response.restore_evidence_ready,
+                "human_approval_ready": response.human_approval_ready,
+                "tenant_admin_approval_gate_hash": response.tenant_admin_approval_gate_hash,
+                "tenant_admin_approval_record_hash": response.tenant_admin_approval_record_hash,
+                "lms_restore_drill_evidence_hash": response.lms_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "execution_boundary_review_statement_hash": response.execution_boundary_review_statement_hash,
+                "approver_role_allowed": response.approver_role_allowed,
+                "execution_boundary_review_ready": response.execution_boundary_review_ready,
+                "package_installation_execution_boundary_ready": (
+                    response.package_installation_execution_boundary_ready
+                ),
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "future_package_installation_executor_required": (
+                    response.future_package_installation_executor_required
                 ),
                 "package_installation_execution_allowed": response.package_installation_execution_allowed,
                 "package_installation_executed": response.package_installation_executed,

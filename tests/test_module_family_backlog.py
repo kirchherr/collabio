@@ -87,7 +87,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert lms.pre_catalog_foundation_ready is False
     assert lms.first_slice_foundation_ready is False
     assert lms.runtime_activation_allowed is False
-    assert lms.next_action == "record_tenant_admin_package_install_approval_with_explicit_human_confirmation"
+    assert lms.next_action == "review_lms_package_installation_execution_boundary_after_tenant_admin_approval"
     assert "module_catalog_entry_required" in lms.required_foundation_gates
     assert "backup_restore_evidence_required" in lms.required_foundation_gates
 
