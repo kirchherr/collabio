@@ -209,6 +209,10 @@ from suite.platform.lms_catalog_readiness import (
     LmsCatalogReadinessResponse,
     build_lms_catalog_readiness_response,
 )
+from suite.platform.lms_package_installation_readiness import (
+    LmsPackageInstallationReadinessResponse,
+    build_lms_package_installation_readiness_response,
+)
 from suite.platform.module_family_backlog import (
     ModuleFamilyBacklogResponse,
     build_module_family_backlog_response,
@@ -1067,6 +1071,51 @@ def build_app() -> FastAPI:
                 "object_type_count": response.summary.object_type_count,
                 "required_catalog_evidence_count": response.summary.required_catalog_evidence_count,
                 "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/package-installation-readiness",
+        response_model=LmsPackageInstallationReadinessResponse,
+    )
+    def lms_package_installation_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationReadinessResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_package_installation_readiness_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_readiness",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "module_package_installed": response.module_package_installed,
+                "tenant_module_state_present": response.tenant_module_state_present,
+                "package_installation_ready": response.package_installation_ready,
+                "migration_plan_ready": response.migration_plan_ready,
+                "lms_manifest_migration_count": response.summary.lms_manifest_migration_count,
+                "lms_business_migration_count": response.summary.lms_business_migration_count,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "lms_business_api_allowed": response.lms_business_api_allowed,
+                "content_included": response.content_included,
+                "package_installation_executed": response.package_installation_executed,
                 "module_activation_executed": response.module_activation_executed,
                 "persistent_task_created": response.persistent_task_created,
                 "destructive_actions_allowed": response.destructive_actions_allowed,

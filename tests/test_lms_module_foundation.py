@@ -137,6 +137,7 @@ def test_lms_module_charter_documents_contract_gates_and_deferred_scope() -> Non
         "Local LLM Gateway",
         "No LMS API route is enabled by this charter",
         "lms_training_records",
+        "package-installation-readiness",
         "SCORM/xAPI runtime",
     ):
         assert expected in charter
