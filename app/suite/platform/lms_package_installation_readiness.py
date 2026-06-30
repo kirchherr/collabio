@@ -18,7 +18,10 @@ LMS_PACKAGE_INSTALLATION_READINESS_SCHEMA_VERSION = "lms_package_installation_re
 LMS_PACKAGE_INSTALLATION_READINESS_RESULT_CONTRACT = "metadata_only_lms_package_installation_readiness_no_install"
 LMS_PACKAGE_INSTALLATION_READINESS_ENDPOINT = "/v1/platform/modules/families/lms/package-installation-readiness"
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
-LMS_PACKAGE_INSTALLATION_NEXT_ACTION = "write_lms_metadata_schema_migration_before_package_installation"
+LMS_METADATA_MIGRATION_NEXT_ACTION = "write_lms_metadata_schema_migration_before_package_installation"
+LMS_RESTORE_EVIDENCE_NEXT_ACTION = "capture_lms_restore_drill_evidence_before_package_installation"
+LMS_APPROVAL_NEXT_ACTION = "capture_tenant_admin_package_install_approval"
+LMS_INSTALL_REVIEW_NEXT_ACTION = "review_lms_package_installation_execution_boundary"
 
 
 class LmsPackageInstallationSummary(BaseModel):
@@ -65,7 +68,7 @@ class LmsPackageInstallationReadinessResponse(BaseModel):
     blocking_reasons: tuple[str, ...]
     summary: LmsPackageInstallationSummary
     evidence_refs: tuple[str, ...]
-    next_action: str = LMS_PACKAGE_INSTALLATION_NEXT_ACTION
+    next_action: str
 
     @field_validator(
         "tenant_id",
@@ -206,13 +209,20 @@ def build_lms_package_installation_readiness_response(
             required_installation_evidence_count=len(required_installation_evidence),
             blocking_reason_count=len(blocking_reasons),
         ),
+        next_action=_next_action(
+            migration_plan_ready=bool(business_migration_versions),
+            restore_evidence_ready=False,
+            human_approval_ready=False,
+        ),
         evidence_refs=(
             "docs/modules/LMS_MODULE_CHARTER.md",
             "app/suite/platform/lms_module.py",
             "app/suite/platform/lms_package_installation_readiness.py",
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
+            "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_lms_package_installation_readiness.py",
+            "tests/test_pgvector_migration.py",
         ),
     )
 
@@ -260,3 +270,18 @@ def _blocking_reasons(
     reasons.append("lms_backup_restore_drill_evidence_missing")
     reasons.append("tenant_admin_package_install_approval_missing")
     return tuple(reasons)
+
+
+def _next_action(
+    *,
+    migration_plan_ready: bool,
+    restore_evidence_ready: bool,
+    human_approval_ready: bool,
+) -> str:
+    if not migration_plan_ready:
+        return LMS_METADATA_MIGRATION_NEXT_ACTION
+    if not restore_evidence_ready:
+        return LMS_RESTORE_EVIDENCE_NEXT_ACTION
+    if not human_approval_ready:
+        return LMS_APPROVAL_NEXT_ACTION
+    return LMS_INSTALL_REVIEW_NEXT_ACTION

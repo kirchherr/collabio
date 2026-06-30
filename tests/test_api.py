@@ -810,6 +810,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
+    assert "lms_metadata_schema_migration_ready" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1178,7 +1179,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["module_package_installed"] is False
     assert body["tenant_module_state_present"] is False
     assert body["package_installation_ready"] is False
-    assert body["migration_plan_ready"] is False
+    assert body["migration_plan_ready"] is True
     assert body["restore_evidence_ready"] is False
     assert body["human_approval_ready"] is False
     assert body["tenant_provisioning_allowed"] is False
@@ -1190,22 +1191,22 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045"]
-    assert body["existing_lms_business_migration_versions"] == []
+    assert body["existing_lms_migration_versions"] == ["0045", "0046"]
+    assert body["existing_lms_business_migration_versions"] == ["0046"]
     assert body["planned_first_object_types"] == ["lms.course", "lms.enrollment"]
     assert "lms_metadata_schema_migration_sql" in body["required_installation_evidence"]
-    assert "lms_business_metadata_migration_missing" in body["blocking_reasons"]
+    assert "lms_business_metadata_migration_missing" not in body["blocking_reasons"]
     assert "lms_backup_restore_drill_evidence_missing" in body["blocking_reasons"]
     assert "tenant_admin_package_install_approval_missing" in body["blocking_reasons"]
     assert body["summary"] == {
-        "lms_manifest_migration_count": 1,
-        "lms_business_migration_count": 0,
+        "lms_manifest_migration_count": 2,
+        "lms_business_migration_count": 1,
         "planned_first_object_type_count": 2,
         "required_installation_evidence_count": 6,
-        "blocking_reason_count": 3,
+        "blocking_reason_count": 2,
     }
     assert "app/suite/platform/lms_package_installation_readiness.py" in body["evidence_refs"]
-    assert body["next_action"] == "write_lms_metadata_schema_migration_before_package_installation"
+    assert body["next_action"] == "capture_lms_restore_drill_evidence_before_package_installation"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1226,10 +1227,10 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert event.metadata["module_package_installed"] is False
     assert event.metadata["tenant_module_state_present"] is False
     assert event.metadata["package_installation_ready"] is False
-    assert event.metadata["migration_plan_ready"] is False
-    assert event.metadata["lms_manifest_migration_count"] == 1
-    assert event.metadata["lms_business_migration_count"] == 0
-    assert event.metadata["blocking_reason_count"] == 3
+    assert event.metadata["migration_plan_ready"] is True
+    assert event.metadata["lms_manifest_migration_count"] == 2
+    assert event.metadata["lms_business_migration_count"] == 1
+    assert event.metadata["blocking_reason_count"] == 2
     assert event.metadata["tenant_provisioning_allowed"] is False
     assert event.metadata["migration_execution_allowed"] is False
     assert event.metadata["lms_business_api_allowed"] is False

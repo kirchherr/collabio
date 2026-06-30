@@ -145,7 +145,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Catalog Readiness Boundary
 
-The LMS module is registered in the global module catalog as `not_installed`. `GET /v1/platform/modules/families/lms/catalog-readiness` exposes the catalog boundary, and `GET /v1/platform/modules/families/lms/package-installation-readiness` exposes the next package-installation and migration gate. Both endpoints are tenant-scoped and metadata-only. They return manifest hashes, migration-version evidence, object-rule counts, continuity-domain evidence and required gate evidence only. They do not install the module package, create tables, register LMS business APIs, create content, run workers, trigger LMS business migrations, create tenant module state, or activate tenant runtime.
+The LMS module is registered in the global module catalog as `not_installed`. `GET /v1/platform/modules/families/lms/catalog-readiness` exposes the catalog boundary, and `GET /v1/platform/modules/families/lms/package-installation-readiness` exposes the next package-installation and migration gate. Both endpoints are tenant-scoped and metadata-only. They return manifest hashes, migration-version evidence, object-rule counts, continuity-domain evidence and required gate evidence only. They do not install the module package, register LMS business APIs, create content, run workers, create tenant module state, or activate tenant runtime. The first metadata schema migration `0046_lms_metadata_schema.sql` creates only `lms.courses` and `lms.enrollments` metadata with RLS, Legal Hold, retention, KMS and audit references; package installation remains blocked until restore drill evidence and explicit tenant-admin approval exist.
 
 ## 11. Explicit Non-Goals For The First Slice
 
@@ -165,5 +165,6 @@ The LMS module is registered in the global module catalog as `not_installed`. `G
 - `tests/test_lms_module_foundation.py`
 - `tests/test_lms_catalog_readiness.py`
 - `tests/test_lms_package_installation_readiness.py`
+- `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_module_implementation_contract.py`

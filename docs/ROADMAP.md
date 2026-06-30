@@ -1061,14 +1061,14 @@ CRM/ERP `crm_erp`:
 Vorbereitete Modul-Familien:
 
 - Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`; Source-Version- und Restore-Evidence fuer Manifest Hash, Content Hash, ACL-Version, Disabled-State-Restore und Legal-Hold-Restore ist vorbereitet.
-- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence. Charter, Feature-Registry, Object-Rules, globaler `not_installed`-Katalogeintrag, `GET /v1/platform/modules/families/lms/catalog-readiness` und `GET /v1/platform/modules/families/lms/package-installation-readiness` fuer den ersten Kurs-/Einschreibestatus-Slice sind vorbereitet; Package-Installation, Migrationen, Tenant-Provisioning, Business-API und Runtime bleiben bewusst naechste Gates.
+- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence. Charter, Feature-Registry, Object-Rules, globaler `not_installed`-Katalogeintrag, `0046_lms_metadata_schema.sql`, `GET /v1/platform/modules/families/lms/catalog-readiness` und `GET /v1/platform/modules/families/lms/package-installation-readiness` fuer den ersten Kurs-/Einschreibestatus-Slice sind vorbereitet; Restore-Drill-Evidence, Package-Installation, Tenant-Provisioning, Business-API und Runtime bleiben bewusst naechste Gates.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
 - Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.
 
 Alle vorbereiteten Modul-Familien starten ueber `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`. CRM/ERP bleibt damit der Architekturbeweis fuer Modul-Slices, nicht der Produktfokus.
 
-Der tenant-sichere Backlog-Kontrakt GET /v1/platform/modules/families/backlog macht diese Modul-Familien metadata-only sichtbar. Er aktiviert keine Module, legt keine Aufgaben an und erlaubt keine Runtime-Ausfuehrung; er zeigt nur die notwendigen Charter-, Feature-, Registry-, Rechte-, Audit-, Retention- und Backup-/Failover-Gates je Familie. LMS hat zusaetzlich `GET /v1/platform/modules/families/lms/catalog-readiness` und `GET /v1/platform/modules/families/lms/package-installation-readiness` als reine Readiness-Nachweise nach dem globalen `not_installed`-Katalogeintrag und vor Package-Installation, Migration, Tenant-Provisioning und Business-API.
+Der tenant-sichere Backlog-Kontrakt GET /v1/platform/modules/families/backlog macht diese Modul-Familien metadata-only sichtbar. Er aktiviert keine Module, legt keine Aufgaben an und erlaubt keine Runtime-Ausfuehrung; er zeigt nur die notwendigen Charter-, Feature-, Registry-, Rechte-, Audit-, Retention- und Backup-/Failover-Gates je Familie. LMS hat zusaetzlich `GET /v1/platform/modules/families/lms/catalog-readiness` und `GET /v1/platform/modules/families/lms/package-installation-readiness` als reine Readiness-Nachweise nach dem globalen `not_installed`-Katalogeintrag und vor Restore-Drill-Evidence, Package-Installation, Tenant-Provisioning und Business-API.
 
 Exit-Kriterien:
 

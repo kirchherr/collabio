@@ -796,6 +796,8 @@ class InMemoryModuleRegistry:
         changed_at_utc: datetime | None = None,
     ) -> TenantModuleState:
         catalog_entry = self.get_catalog_entry(module_id)
+        if catalog_entry.status == ModuleStatus.NOT_INSTALLED:
+            raise ModuleLifecycleError(f"Module is not installed: {module_id}")
         now = changed_at_utc or utc_now()
         existing = self.get_tenant_module_or_none(tenant_id=tenant_id, module_id=module_id)
         if existing is not None and existing.status in {
@@ -1605,7 +1607,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "separate gates."
             ),
             manifest_hash="sha256:lms-module-manifest",
-            required_migration_versions=(),
+            required_migration_versions=("0007", "0008", "0009", "0010", "0011", "0046"),
         ),
     )
 

@@ -77,6 +77,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0043",
         "0044",
         "0045",
+        "0046",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -92,7 +93,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     lms_migrations = load_module_migrations("lms")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 24
+    assert len(core_migrations) == len(load_migrations()) - 25
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -120,7 +121,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0028",
         "0029",
     ]
-    assert [migration.version for migration in lms_migrations] == ["0045"]
+    assert [migration.version for migration in lms_migrations] == ["0045", "0046"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "lms"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -146,6 +147,90 @@ def test_lms_catalog_registration_migration_is_metadata_only_not_installed_seed(
     assert "insert into collabio.tenant_modules" not in sql
     assert "create schema" not in sql
     assert "create table" not in sql
+
+
+def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_content_storage() -> None:
+    sql = normalized(get_migration("0046").sql())
+    courses_body = table_body(get_migration("0046").sql(), "lms.courses")
+    enrollments_body = table_body(get_migration("0046").sql(), "lms.enrollments")
+
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in ((courses_body, "lms.courses"), (enrollments_body, "lms.enrollments")):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "retention_policy_id text not null default 'rp-standard'" in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in ["course_key", "title", "course_version_label", "catalog_state", "source_object_ref"]:
+        assert re.search(rf"\b{column}\b", courses_body), f"{column} missing from lms.courses"
+
+    for column in [
+        "course_object_id",
+        "learner_principal_id",
+        "enrollment_state",
+        "assigned_at_utc",
+        "due_at_utc",
+        "completed_at_utc",
+        "completion_evidence_object_id",
+    ]:
+        assert re.search(rf"\b{column}\b", enrollments_body), f"{column} missing from lms.enrollments"
+
+    assert "object_type text not null default 'lms.course' check (object_type = 'lms.course')" in courses_body
+    assert (
+        "data_classification text not null default 'internal' check (data_classification = 'internal')" in courses_body
+    )
+    assert "object_type text not null default 'lms.enrollment'" in enrollments_body
+    assert (
+        "data_classification text not null default 'personal' check (data_classification = 'personal')"
+        in enrollments_body
+    )
+    assert "foreign key (tenant_id, course_object_id)" in enrollments_body
+    assert "references lms.courses (tenant_id, object_id)" in enrollments_body
+    assert "alter table lms.courses enable row level security" in sql
+    assert "alter table lms.courses force row level security" in sql
+    assert "alter table lms.enrollments enable row level security" in sql
+    assert "alter table lms.enrollments force row level security" in sql
+    assert "create policy lms_courses_tenant_select" in sql
+    assert "create policy lms_courses_tenant_insert" in sql
+    assert "create policy lms_courses_tenant_update" in sql
+    assert "create policy lms_courses_no_hard_delete" in sql
+    assert "create policy lms_enrollments_tenant_select" in sql
+    assert "create policy lms_enrollments_tenant_insert" in sql
+    assert "create policy lms_enrollments_tenant_update" in sql
+    assert "create policy lms_enrollments_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger lms_courses_touch_updated_at_utc" in sql
+    assert "create trigger lms_enrollments_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table lms.courses to collabio_app" in sql
+    assert "grant select, insert, update on table lms.enrollments to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "course_content" not in sql
+    assert "source_text" not in sql
+    assert "raw_audio" not in sql
+    assert "prompt" not in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0046"' in sql
+    assert "where module_id = 'lms'" in sql
+    assert "status = 'not_installed'" in sql
 
 
 def test_pgvector_embedding_schema_declares_required_compliance_metadata() -> None:

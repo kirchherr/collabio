@@ -415,6 +415,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:lms-catalog-registration",
         ),
     ),
+    SqlMigration(
+        version="0046",
+        name="lms_metadata_schema",
+        resource_name="0046_lms_metadata_schema.sql",
+        module_id="lms",
+        evidence_refs=(
+            "doc:lms-module-charter",
+            "test:lms-metadata-schema",
+        ),
+    ),
 )
 
 
