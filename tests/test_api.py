@@ -38,6 +38,9 @@ from suite.platform.legacy_sql_migration_run_registry import (
 from suite.platform.lms_package_installation_execution_boundary import (
     LMS_PACKAGE_INSTALLATION_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
 )
+from suite.platform.lms_package_installation_executor_skeleton import (
+    LMS_PACKAGE_INSTALLATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT,
+)
 from suite.platform.lms_tenant_admin_package_approval_record import (
     LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
     build_default_lms_tenant_admin_package_approval_record_store,
@@ -820,6 +823,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-records" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/package-installation-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/package-installation-execution-boundary" in future_modules["api_routes"]
+    assert "/v1/platform/modules/families/lms/package-installation-executor-skeleton" in future_modules["api_routes"]
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
@@ -829,6 +833,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_tenant_admin_approval_gate_ready" in future_modules["guardrails"]
     assert "lms_tenant_admin_approval_record_store_ready" in future_modules["guardrails"]
     assert "lms_package_installation_execution_boundary_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_executor_skeleton_ready" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1627,6 +1632,166 @@ def test_lms_package_installation_execution_boundary_reviews_ready_path_without_
     assert event.metadata["destructive_actions_allowed"] is False
     assert event.metadata["external_side_effect_allowed"] is False
     assert "execution_boundary_review_statement" not in event.metadata
+
+
+def test_lms_package_installation_executor_skeleton_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-executor-skeleton",
+        json={
+            "execution_boundary_evidence_hash": "sha256:" + "0" * 64,
+            "tenant_admin_approval_gate_hash": "sha256:" + "1" * 64,
+            "tenant_admin_approval_record_hash": "sha256:" + "2" * 64,
+            "executor_skeleton_ref": "lms-executor-skeleton:missing-context",
+            "change_request_ref": "change:lms-package-install-skeleton-missing-context",
+            "idempotency_key_ref": "idempotency:lms-package-install-skeleton-missing-context",
+            "prepared_at_utc": "2026-06-30T08:10:00Z",
+            "audit_chain_ref": "audit:lms-package-install-skeleton-missing-context",
+            "executor_skeleton_preparation_statement": (
+                LMS_PACKAGE_INSTALLATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_package_installation_executor_skeleton_reviews_plan_without_installation() -> None:
+    reset_module_registry()
+    headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "tenant-admin-api",
+    }
+    starting_event_count = len(app.state.audit_logger.events)
+
+    gate_response = client.get(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
+        headers=headers,
+    )
+    assert gate_response.status_code == 200
+    gate = gate_response.json()
+
+    approval_response = client.post(
+        "/v1/platform/modules/families/lms/tenant-admin-package-approval-records",
+        headers=headers,
+        json={
+            "approval_gate_evidence_hash": gate["evidence_hash"],
+            "approval_record_ref": "lms-approval:record-api-skeleton-demo",
+            "approval_ticket_ref": "ticket:lms-package-install-skeleton-api-demo",
+            "human_confirmation_reference": "confirmation:lms-package-install-skeleton-api-demo",
+            "human_confirmation_statement": LMS_TENANT_ADMIN_PACKAGE_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+            "change_request_ref": "change:lms-package-install-skeleton-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-skeleton-api-demo",
+            "approved_at_utc": "2026-06-30T08:00:00Z",
+            "audit_chain_ref": "audit:lms-package-install-skeleton-api-demo",
+        },
+    )
+    assert approval_response.status_code == 200
+    approval = approval_response.json()
+
+    boundary_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-execution-boundary",
+        headers=headers,
+        json={
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "execution_boundary_ref": "lms-execution-boundary:skeleton-api-demo",
+            "change_request_ref": "change:lms-package-install-skeleton-boundary-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-skeleton-boundary-api-demo",
+            "reviewed_at_utc": "2026-06-30T08:05:00Z",
+            "audit_chain_ref": "audit:lms-package-install-skeleton-boundary-api-demo",
+            "execution_boundary_review_statement": LMS_PACKAGE_INSTALLATION_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
+        },
+    )
+    assert boundary_response.status_code == 200
+    boundary = boundary_response.json()
+
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-executor-skeleton",
+        headers=headers,
+        json={
+            "execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "executor_skeleton_ref": "lms-executor-skeleton:api-demo",
+            "change_request_ref": "change:lms-package-install-skeleton-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-skeleton-api-demo",
+            "prepared_at_utc": "2026-06-30T08:10:00Z",
+            "audit_chain_ref": "audit:lms-package-install-skeleton-api-demo",
+            "executor_skeleton_preparation_statement": (
+                LMS_PACKAGE_INSTALLATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "lms_package_installation_executor_skeleton.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "lms"
+    assert body["endpoint"] == "/v1/platform/modules/families/lms/package-installation-executor-skeleton"
+    assert body["result_contract"] == "metadata_only_lms_package_installation_executor_skeleton_no_execution"
+    assert body["continuity_domain"] == "lms_training_records"
+    assert body["package_installation_ready"] is True
+    assert body["migration_plan_ready"] is True
+    assert body["restore_evidence_ready"] is True
+    assert body["human_approval_ready"] is True
+    assert body["execution_boundary_evidence_hash"] == boundary["evidence_hash"]
+    assert body["tenant_admin_approval_gate_hash"] == gate["evidence_hash"]
+    assert body["tenant_admin_approval_record_hash"] == approval["evidence_hash"]
+    assert body["lms_restore_drill_evidence_hash"] == approval["lms_restore_drill_evidence_hash"]
+    assert body["command_hash"].startswith("sha256:")
+    assert body["idempotency_key_hash"].startswith("sha256:")
+    assert body["executor_skeleton_preparation_statement_hash"].startswith("sha256:")
+    assert body["preparer_role_allowed"] is True
+    assert body["executor_skeleton_prepared"] is True
+    assert body["package_installation_executor_implementation_required"] is True
+    assert body["package_installation_dry_run_required"] is True
+    assert body["package_installation_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["migration_execution_allowed"] is False
+    assert body["lms_business_api_allowed"] is False
+    assert body["package_installation_executed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "bind_package_installation_execution_boundary_hash" in body["skeleton_steps"]
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["next_action"] == "prepare_lms_package_installation_dry_run_without_tenant_activation"
+    assert "executor_skeleton_preparation_statement" not in body
+    assert LMS_PACKAGE_INSTALLATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT not in response.text
+    assert app.state.module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="lms") is None
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.lms.package_installation_executor_skeleton"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_lms_package_installation_executor_skeleton_no_execution"
+    assert event.metadata["execution_boundary_evidence_hash"] == boundary["evidence_hash"]
+    assert event.metadata["tenant_admin_approval_gate_hash"] == gate["evidence_hash"]
+    assert event.metadata["tenant_admin_approval_record_hash"] == approval["evidence_hash"]
+    assert (
+        event.metadata["executor_skeleton_preparation_statement_hash"]
+        == body["executor_skeleton_preparation_statement_hash"]
+    )
+    assert event.metadata["executor_skeleton_prepared"] is True
+    assert event.metadata["package_installation_dry_run_required"] is True
+    assert event.metadata["package_installation_execution_allowed"] is False
+    assert event.metadata["package_installation_executed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert "executor_skeleton_preparation_statement" not in event.metadata
 
 
 def test_lms_package_installation_readiness_requires_request_context() -> None:
