@@ -229,6 +229,11 @@ from suite.platform.lms_package_installation_dry_run_plan import (
     LmsPackageInstallationDryRunPlanResponse,
     build_lms_package_installation_dry_run_plan_response,
 )
+from suite.platform.lms_package_installation_dry_run_result_contract import (
+    LmsPackageInstallationDryRunResultContractCommand,
+    LmsPackageInstallationDryRunResultContractResponse,
+    build_lms_package_installation_dry_run_result_contract_response,
+)
 from suite.platform.lms_package_installation_execution_boundary import (
     LmsPackageInstallationExecutionBoundaryCommand,
     LmsPackageInstallationExecutionBoundaryResponse,
@@ -1682,6 +1687,85 @@ def build_app() -> FastAPI:
                     response.package_installation_dry_run_executor_implementation_required
                 ),
                 "dry_run_result_contract_required": response.dry_run_result_contract_required,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "package_installation_dry_run_executed": response.package_installation_dry_run_executed,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "package_installation_executed": response.package_installation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "lms_business_api_allowed": response.lms_business_api_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "content_included": response.content_included,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-result-contract",
+        response_model=LmsPackageInstallationDryRunResultContractResponse,
+    )
+    def lms_package_installation_dry_run_result_contract(
+        command: LmsPackageInstallationDryRunResultContractCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunResultContractResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_package_installation_dry_run_result_contract_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.lms_tenant_admin_package_approval_record_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_result_contract",
+            source_object_ids=[
+                f"lms_package_installation_dry_run_plan:{response.dry_run_plan_evidence_hash}",
+                f"lms_package_installation_dry_run_execution_boundary:{response.dry_run_execution_boundary_evidence_hash}",
+                f"lms_package_installation_dry_run_execution_skeleton:{response.dry_run_execution_skeleton_evidence_hash}",
+                f"lms_package_installation_dry_run_executor_implementation_review:{response.dry_run_executor_implementation_review_evidence_hash}",
+                f"lms_package_installation_execution_boundary:{response.execution_boundary_evidence_hash}",
+                f"lms_package_installation_executor_skeleton:{response.executor_skeleton_evidence_hash}",
+                f"lms_tenant_admin_approval_gate:{response.tenant_admin_approval_gate_hash}",
+                f"lms_tenant_admin_approval_record:{response.tenant_admin_approval_record_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "package_installation_ready": response.package_installation_ready,
+                "migration_plan_ready": response.migration_plan_ready,
+                "restore_evidence_ready": response.restore_evidence_ready,
+                "human_approval_ready": response.human_approval_ready,
+                "dry_run_plan_evidence_hash": response.dry_run_plan_evidence_hash,
+                "dry_run_execution_boundary_evidence_hash": response.dry_run_execution_boundary_evidence_hash,
+                "dry_run_execution_skeleton_evidence_hash": response.dry_run_execution_skeleton_evidence_hash,
+                "dry_run_executor_implementation_review_evidence_hash": (
+                    response.dry_run_executor_implementation_review_evidence_hash
+                ),
+                "execution_boundary_evidence_hash": response.execution_boundary_evidence_hash,
+                "executor_skeleton_evidence_hash": response.executor_skeleton_evidence_hash,
+                "tenant_admin_approval_gate_hash": response.tenant_admin_approval_gate_hash,
+                "tenant_admin_approval_record_hash": response.tenant_admin_approval_record_hash,
+                "lms_restore_drill_evidence_hash": response.lms_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "dry_run_result_contract_statement_hash": response.dry_run_result_contract_statement_hash,
+                "preparer_role_allowed": response.preparer_role_allowed,
+                "dry_run_result_contract_ready": response.dry_run_result_contract_ready,
+                "evidence_hash": response.evidence_hash,
+                "dry_run_result_contract_step_count": response.summary.dry_run_result_contract_step_count,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "future_dry_run_execution_gate_required": response.future_dry_run_execution_gate_required,
                 "package_installation_dry_run_execution_allowed": (
                     response.package_installation_dry_run_execution_allowed
                 ),
