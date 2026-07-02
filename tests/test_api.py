@@ -38,6 +38,9 @@ from suite.platform.legacy_sql_migration_run_registry import (
 from suite.platform.lms_package_installation_dry_run_execution_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_gate import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
+)
 from suite.platform.lms_package_installation_dry_run_execution_skeleton import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_SKELETON_PREPARATION_STATEMENT,
 )
@@ -870,6 +873,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_skeleton_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_executor_implementation_review_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_result_contract_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_dry_run_execution_gate_ready" in future_modules["guardrails"]
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1107,7 +1111,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
     assert families["lms"]["next_action"] == (
-        "prepare_lms_package_installation_dry_run_execution_gate_without_execution"
+        "prepare_lms_package_installation_dry_run_execution_request_boundary_without_execution"
     )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
@@ -2533,6 +2537,32 @@ def test_lms_package_installation_dry_run_result_contract_requires_request_conte
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_gate_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-gate",
+        json={
+            "dry_run_plan_evidence_hash": "sha256:" + "0" * 64,
+            "dry_run_execution_boundary_evidence_hash": "sha256:" + "1" * 64,
+            "dry_run_execution_skeleton_evidence_hash": "sha256:" + "2" * 64,
+            "dry_run_executor_implementation_review_evidence_hash": "sha256:" + "3" * 64,
+            "dry_run_result_contract_evidence_hash": "sha256:" + "4" * 64,
+            "execution_boundary_evidence_hash": "sha256:" + "5" * 64,
+            "executor_skeleton_evidence_hash": "sha256:" + "6" * 64,
+            "tenant_admin_approval_gate_hash": "sha256:" + "7" * 64,
+            "tenant_admin_approval_record_hash": "sha256:" + "8" * 64,
+            "dry_run_execution_gate_ref": "lms-dry-run-execution-gate:missing-context",
+            "change_request_ref": "change:lms-package-install-dry-run-execution-gate-missing-context",
+            "idempotency_key_ref": "idempotency:lms-package-install-dry-run-execution-gate-missing-context",
+            "prepared_at_utc": "2026-06-30T08:40:00Z",
+            "audit_chain_ref": "audit:lms-package-install-dry-run-execution-gate-missing-context",
+            "dry_run_execution_gate_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_package_installation_dry_run_executor_implementation_review_reviews_without_execution() -> None:
     reset_module_registry()
     headers = {
@@ -2856,6 +2886,71 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert result_event.metadata["dry_run_result_persistence_allowed"] is False
     assert result_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_result_contract_statement" not in result_event.metadata
+
+    gate_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-gate",
+        headers=headers,
+        json={
+            "dry_run_plan_evidence_hash": dry_run_plan["evidence_hash"],
+            "dry_run_execution_boundary_evidence_hash": dry_run_boundary["evidence_hash"],
+            "dry_run_execution_skeleton_evidence_hash": dry_run_skeleton["evidence_hash"],
+            "dry_run_executor_implementation_review_evidence_hash": body["evidence_hash"],
+            "dry_run_result_contract_evidence_hash": result_body["evidence_hash"],
+            "execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "executor_skeleton_evidence_hash": skeleton["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "dry_run_execution_gate_ref": "lms-dry-run-execution-gate:api-demo",
+            "change_request_ref": "change:lms-package-install-dry-run-execution-gate-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-dry-run-execution-gate-api-demo",
+            "prepared_at_utc": "2026-06-30T08:40:00Z",
+            "audit_chain_ref": "audit:lms-package-install-dry-run-execution-gate-api-demo",
+            "dry_run_execution_gate_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
+        },
+    )
+
+    assert gate_response.status_code == 200
+    gate_body = gate_response.json()
+    assert gate_body["schema_version"] == "lms_package_installation_dry_run_execution_gate.v1"
+    assert gate_body["endpoint"] == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-gate"
+    assert gate_body["result_contract"] == "metadata_only_lms_package_installation_dry_run_execution_gate_no_execution"
+    assert gate_body["dry_run_result_contract_evidence_hash"] == result_body["evidence_hash"]
+    assert gate_body["dry_run_execution_gate_statement_hash"].startswith("sha256:")
+    assert gate_body["dry_run_execution_gate_ready"] is True
+    assert gate_body["future_dry_run_execution_request_boundary_required"] is True
+    assert gate_body["package_installation_dry_run_execution_allowed"] is False
+    assert gate_body["package_installation_dry_run_executed"] is False
+    assert gate_body["dry_run_result_persistence_allowed"] is False
+    assert gate_body["tenant_module_state_created"] is False
+    assert gate_body["blocking_reasons"] == []
+    assert (
+        gate_body["next_action"]
+        == "prepare_lms_package_installation_dry_run_execution_request_boundary_without_execution"
+    )
+    assert "dry_run_execution_gate_statement" not in gate_body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT not in gate_response.text
+
+    gate_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_gate"
+    ]
+    assert len(gate_events) == 1
+    gate_event = gate_events[0]
+    assert gate_event.tenant_id == "tenant-demo"
+    assert gate_event.input_hash is None
+    assert gate_event.output_hash is None
+    assert gate_event.metadata["dry_run_result_contract_evidence_hash"] == result_body["evidence_hash"]
+    assert (
+        gate_event.metadata["dry_run_execution_gate_statement_hash"]
+        == gate_body["dry_run_execution_gate_statement_hash"]
+    )
+    assert gate_event.metadata["dry_run_execution_gate_ready"] is True
+    assert gate_event.metadata["future_dry_run_execution_request_boundary_required"] is True
+    assert gate_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert gate_event.metadata["dry_run_result_persistence_allowed"] is False
+    assert gate_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_gate_statement" not in gate_event.metadata
 
 
 def test_lms_package_installation_readiness_requires_request_context() -> None:
