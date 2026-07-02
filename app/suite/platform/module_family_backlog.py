@@ -34,7 +34,7 @@ PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_st
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
 CATALOG_REGISTERED_NEXT_ACTION = (
-    "prepare_lms_package_installation_dry_run_result_persistence_boundary_without_execution"
+    "prepare_lms_package_installation_dry_run_execution_activation_boundary_without_execution"
 )
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
@@ -314,6 +314,7 @@ def build_module_family_backlog_response(
             "app/suite/platform/lms_package_installation_dry_run_executor_runtime_boundary.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_preflight.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_receipt_boundary.py",
+            "app/suite/platform/lms_package_installation_dry_run_result_persistence_boundary.py",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
@@ -334,6 +335,7 @@ def build_module_family_backlog_response(
             "tests/test_lms_package_installation_dry_run_executor_runtime_boundary.py",
             "tests/test_lms_package_installation_dry_run_execution_preflight.py",
             "tests/test_lms_package_installation_dry_run_execution_receipt_boundary.py",
+            "tests/test_lms_package_installation_dry_run_result_persistence_boundary.py",
         ),
     )
 
