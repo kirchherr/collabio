@@ -102,6 +102,8 @@ from suite.platform.lms_tenant_admin_package_approval_record import (
 )
 from suite.platform.modules import default_module_registry
 
+ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
 
 def _approval_command(approval_gate_evidence_hash: str) -> LmsTenantAdminPackageApprovalRecordCommand:
     return LmsTenantAdminPackageApprovalRecordCommand(
@@ -499,6 +501,13 @@ def _dry_run_execution_worker_boundary_command(
     executor_skeleton_hash: str,
     approval_gate_hash: str,
     approval_record_hash: str,
+    dry_run_execution_scheduler_boundary_hash: str = ZERO_SHA256,
+    dry_run_execution_worker_image_boundary_hash: str = ZERO_SHA256,
+    scheduler_activation_requested: bool = False,
+    scheduler_job_creation_requested: bool = False,
+    worker_image_resolution_requested: bool = False,
+    worker_image_pull_requested: bool = False,
+    worker_image_digest_lookup_requested: bool = False,
     worker_dispatch_requested: bool = False,
     worker_queue_enqueue_requested: bool = False,
     worker_execution_requested: bool = False,
@@ -520,6 +529,8 @@ def _dry_run_execution_worker_boundary_command(
         dry_run_execution_activation_boundary_evidence_hash=dry_run_execution_activation_boundary_hash,
         dry_run_execution_start_boundary_evidence_hash=dry_run_execution_start_boundary_hash,
         dry_run_execution_dispatch_boundary_evidence_hash=dry_run_execution_dispatch_boundary_hash,
+        dry_run_execution_scheduler_boundary_evidence_hash=dry_run_execution_scheduler_boundary_hash,
+        dry_run_execution_worker_image_boundary_evidence_hash=dry_run_execution_worker_image_boundary_hash,
         execution_boundary_evidence_hash=execution_boundary_hash,
         executor_skeleton_evidence_hash=executor_skeleton_hash,
         tenant_admin_approval_gate_hash=approval_gate_hash,
@@ -532,6 +543,11 @@ def _dry_run_execution_worker_boundary_command(
         dry_run_execution_worker_boundary_statement=(
             LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_WORKER_BOUNDARY_STATEMENT
         ),
+        scheduler_activation_requested=scheduler_activation_requested,
+        scheduler_job_creation_requested=scheduler_job_creation_requested,
+        worker_image_resolution_requested=worker_image_resolution_requested,
+        worker_image_pull_requested=worker_image_pull_requested,
+        worker_image_digest_lookup_requested=worker_image_digest_lookup_requested,
         worker_dispatch_requested=worker_dispatch_requested,
         worker_queue_enqueue_requested=worker_queue_enqueue_requested,
         worker_execution_requested=worker_execution_requested,
@@ -867,6 +883,12 @@ def test_lms_package_installation_dry_run_execution_worker_boundary_is_metadata_
             dry_run_result_persistence_boundary_evidence_hash=dry_run_result_persistence_boundary.evidence_hash,
             dry_run_execution_activation_boundary_evidence_hash=dry_run_execution_activation_boundary.evidence_hash,
             dry_run_execution_start_boundary_evidence_hash=dry_run_execution_start_boundary.evidence_hash,
+            dry_run_execution_scheduler_boundary_evidence_hash=(
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            ),
+            dry_run_execution_worker_image_boundary_evidence_hash=(
+                "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            ),
             execution_boundary_evidence_hash=execution_boundary.evidence_hash,
             executor_skeleton_evidence_hash=executor_skeleton.evidence_hash,
             tenant_admin_approval_gate_hash=approval_gate.evidence_hash,
@@ -902,6 +924,12 @@ def test_lms_package_installation_dry_run_execution_worker_boundary_is_metadata_
             dry_run_execution_activation_boundary_hash=dry_run_execution_activation_boundary.evidence_hash,
             dry_run_execution_start_boundary_hash=dry_run_execution_start_boundary.evidence_hash,
             dry_run_execution_dispatch_boundary_hash=dry_run_execution_dispatch_boundary.evidence_hash,
+            dry_run_execution_scheduler_boundary_hash=(
+                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            ),
+            dry_run_execution_worker_image_boundary_hash=(
+                "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            ),
             execution_boundary_hash=execution_boundary.evidence_hash,
             executor_skeleton_hash=executor_skeleton.evidence_hash,
             approval_gate_hash=approval_gate.evidence_hash,
@@ -947,6 +975,15 @@ def test_lms_package_installation_dry_run_execution_worker_boundary_is_metadata_
     assert (
         response.dry_run_execution_dispatch_boundary_evidence_hash == dry_run_execution_dispatch_boundary.evidence_hash
     )
+    assert (
+        response.dry_run_execution_scheduler_boundary_evidence_hash
+        == "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    )
+    assert (
+        response.dry_run_execution_worker_image_boundary_evidence_hash
+        == "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    )
+    assert response.worker_image_boundary_evidence_bound is True
     assert response.execution_boundary_evidence_hash == execution_boundary.evidence_hash
     assert response.executor_skeleton_evidence_hash == executor_skeleton.evidence_hash
     assert response.tenant_admin_approval_gate_hash == approval_gate.evidence_hash
@@ -957,7 +994,17 @@ def test_lms_package_installation_dry_run_execution_worker_boundary_is_metadata_
     assert response.dry_run_execution_worker_boundary_statement_hash.startswith("sha256:")
     assert response.preparer_role_allowed is True
     assert response.dry_run_execution_worker_boundary_ready is True
+    assert response.worker_image_boundary_evidence_bound is True
     assert response.future_dry_run_execution_final_readiness_gate_required is True
+    assert response.scheduler_activation_allowed is False
+    assert response.scheduler_job_creation_allowed is False
+    assert response.scheduler_job_created is False
+    assert response.worker_image_resolution_allowed is False
+    assert response.worker_image_resolved is False
+    assert response.worker_image_pull_allowed is False
+    assert response.worker_image_pulled is False
+    assert response.worker_image_digest_lookup_allowed is False
+    assert response.worker_image_digest_looked_up is False
     assert response.worker_dispatch_allowed is False
     assert response.worker_queue_enqueued is False
     assert response.worker_execution_allowed is False
@@ -981,6 +1028,15 @@ def test_lms_package_installation_dry_run_execution_worker_boundary_is_metadata_
         in response.dry_run_execution_worker_boundary_steps
     )
     assert "define_worker_no_enqueue_no_dispatch_no_execution_flags" in response.dry_run_execution_worker_boundary_steps
+    assert (
+        "confirm_worker_image_boundary_chain_preserved_after_dispatch_when_present"
+        in response.dry_run_execution_worker_boundary_steps
+    )
+    assert (
+        "worker_image_boundary_chain_hashes_when_present"
+        in response.required_dry_run_execution_worker_boundary_evidence
+    )
+    assert "worker_image_resolution_disabled" in response.required_dry_run_execution_worker_boundary_evidence
     assert (
         "future_dry_run_execution_final_readiness_gate_required"
         in response.required_dry_run_execution_worker_boundary_evidence
@@ -1032,10 +1088,18 @@ def test_lms_dry_run_execution_worker_boundary_blocks_execution_request_without_
             dry_run_execution_dispatch_boundary_hash=(
                 "sha256:0000000000000000000000000000000000000000000000000000000000000000"
             ),
+            dry_run_execution_worker_image_boundary_hash=(
+                "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            ),
             execution_boundary_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
             executor_skeleton_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000",
             approval_gate_hash="sha256:1111111111111111111111111111111111111111111111111111111111111111",
             approval_record_hash="sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            scheduler_activation_requested=True,
+            scheduler_job_creation_requested=True,
+            worker_image_resolution_requested=True,
+            worker_image_pull_requested=True,
+            worker_image_digest_lookup_requested=True,
             worker_dispatch_requested=True,
             worker_queue_enqueue_requested=True,
             worker_execution_requested=True,
@@ -1064,15 +1128,26 @@ def test_lms_dry_run_execution_worker_boundary_blocks_execution_request_without_
     assert "package_installation_dry_run_execution_activation_boundary_hash_missing" in response.blocking_reasons
     assert "package_installation_dry_run_execution_start_boundary_hash_missing" in response.blocking_reasons
     assert "package_installation_dry_run_execution_dispatch_boundary_hash_missing" in response.blocking_reasons
+    assert "package_installation_dry_run_execution_scheduler_boundary_hash_missing" in response.blocking_reasons
     assert "package_installation_execution_boundary_hash_missing" in response.blocking_reasons
     assert "package_installation_executor_skeleton_hash_missing" in response.blocking_reasons
     assert "tenant_admin_package_install_approval_record_missing" in response.blocking_reasons
     assert "tenant_admin_role_required" in response.blocking_reasons
+    assert "scheduler_activation_request_forbidden" in response.blocking_reasons
+    assert "scheduler_job_creation_request_forbidden" in response.blocking_reasons
+    assert "worker_image_resolution_request_forbidden" in response.blocking_reasons
+    assert "worker_image_pull_request_forbidden" in response.blocking_reasons
+    assert "worker_image_digest_lookup_request_forbidden" in response.blocking_reasons
     assert "worker_dispatch_request_forbidden" in response.blocking_reasons
     assert "worker_queue_enqueue_request_forbidden" in response.blocking_reasons
     assert "worker_execution_request_forbidden" in response.blocking_reasons
     assert "package_installation_dry_run_execution_request_forbidden" in response.blocking_reasons
     assert "dry_run_result_persistence_request_forbidden" in response.blocking_reasons
+    assert response.worker_image_boundary_evidence_bound is True
+    assert response.scheduler_activation_allowed is False
+    assert response.worker_image_resolution_allowed is False
+    assert response.worker_image_pull_allowed is False
+    assert response.worker_image_digest_lookup_allowed is False
     assert response.package_installation_dry_run_execution_allowed is False
     assert response.package_installation_dry_run_executed is False
     assert response.package_installation_executed is False
