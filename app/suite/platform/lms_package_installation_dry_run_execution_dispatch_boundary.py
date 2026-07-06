@@ -10,6 +10,9 @@ from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migration_catalog import MigrationManifestEntry
 from suite.platform.lms_module import LMS_CONTINUITY_DOMAIN, LMS_MODULE_ID
+from suite.platform.lms_package_installation_dry_run_execution_worker_image_boundary import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_WORKER_IMAGE_BOUNDARY_ENDPOINT,
+)
 from suite.platform.lms_package_installation_readiness import build_lms_package_installation_readiness_response
 from suite.platform.lms_tenant_admin_package_approval_record import LmsTenantAdminPackageApprovalRecordStore
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
@@ -52,6 +55,8 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryCommand(BaseModel):
     dry_run_result_persistence_boundary_evidence_hash: str
     dry_run_execution_activation_boundary_evidence_hash: str
     dry_run_execution_start_boundary_evidence_hash: str
+    dry_run_execution_scheduler_boundary_evidence_hash: str = ZERO_SHA256
+    dry_run_execution_worker_image_boundary_evidence_hash: str = ZERO_SHA256
     execution_boundary_evidence_hash: str
     executor_skeleton_evidence_hash: str
     tenant_admin_approval_gate_hash: str
@@ -63,6 +68,11 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryCommand(BaseModel):
     audit_chain_ref: str
     dry_run_execution_dispatch_boundary_statement: str
     dry_run_execution_dispatch_boundary_requested: bool = True
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_dispatch_requested: bool = False
+    worker_queue_enqueue_requested: bool = False
+    worker_execution_requested: bool = False
     package_installation_dry_run_execution_requested: bool = False
     dry_run_result_persistence_requested: bool = False
     package_installation_execution_requested: bool = False
@@ -88,6 +98,8 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryCommand(BaseModel):
         "dry_run_result_persistence_boundary_evidence_hash",
         "dry_run_execution_activation_boundary_evidence_hash",
         "dry_run_execution_start_boundary_evidence_hash",
+        "dry_run_execution_scheduler_boundary_evidence_hash",
+        "dry_run_execution_worker_image_boundary_evidence_hash",
         "execution_boundary_evidence_hash",
         "executor_skeleton_evidence_hash",
         "tenant_admin_approval_gate_hash",
@@ -158,6 +170,11 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
     dry_run_result_persistence_boundary_evidence_hash: str
     dry_run_execution_activation_boundary_evidence_hash: str
     dry_run_execution_start_boundary_evidence_hash: str
+    dry_run_execution_worker_image_boundary_endpoint: str = (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_WORKER_IMAGE_BOUNDARY_ENDPOINT
+    )
+    dry_run_execution_scheduler_boundary_evidence_hash: str = ZERO_SHA256
+    dry_run_execution_worker_image_boundary_evidence_hash: str = ZERO_SHA256
     execution_boundary_evidence_hash: str
     executor_skeleton_evidence_hash: str
     tenant_admin_approval_gate_hash: str
@@ -174,7 +191,15 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
     preparer_role_allowed: bool
     dry_run_execution_dispatch_boundary_requested: bool
     dry_run_execution_dispatch_boundary_ready: bool
+    worker_image_boundary_evidence_bound: bool = False
     future_dry_run_execution_worker_boundary_required: bool = True
+    scheduler_activation_allowed: bool = False
+    scheduler_job_creation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    worker_executed: bool = False
     package_installation_dry_run_execution_allowed: bool = False
     package_installation_dry_run_executed: bool = False
     package_installation_execution_allowed: bool = False
@@ -204,6 +229,7 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
         "endpoint",
         "result_contract",
         "continuity_domain",
+        "dry_run_execution_worker_image_boundary_endpoint",
         "dry_run_execution_dispatch_boundary_ref",
         "change_request_ref",
         "audit_chain_ref",
@@ -230,6 +256,8 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
         "dry_run_result_persistence_boundary_evidence_hash",
         "dry_run_execution_activation_boundary_evidence_hash",
         "dry_run_execution_start_boundary_evidence_hash",
+        "dry_run_execution_scheduler_boundary_evidence_hash",
+        "dry_run_execution_worker_image_boundary_evidence_hash",
         "execution_boundary_evidence_hash",
         "executor_skeleton_evidence_hash",
         "tenant_admin_approval_gate_hash",
@@ -271,6 +299,10 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
             raise ValueError("LMS dry-run execution dispatch boundary endpoint is invalid")
         if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_RESULT_CONTRACT:
             raise ValueError("LMS dry-run execution dispatch boundary execution dispatch boundary is invalid")
+        if self.dry_run_execution_worker_image_boundary_endpoint != (
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_WORKER_IMAGE_BOUNDARY_ENDPOINT
+        ):
+            raise ValueError("LMS dry-run execution dispatch boundary worker image endpoint is invalid")
         if self.module_id != LMS_MODULE_ID:
             raise ValueError("LMS dry-run execution dispatch boundary only applies to lms")
         if self.continuity_domain != LMS_CONTINUITY_DOMAIN:
@@ -287,8 +319,21 @@ class LmsPackageInstallationDryRunExecutionDispatchBoundaryResponse(BaseModel):
             raise ValueError(
                 "LMS dry-run execution dispatch boundary must require a future dry-run execution worker boundary"
             )
+        expected_worker_image_bound = (
+            self.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+            or self.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+        )
+        if self.worker_image_boundary_evidence_bound != expected_worker_image_bound:
+            raise ValueError("LMS dry-run execution dispatch boundary worker-image binding flag is invalid")
         if (
-            self.package_installation_dry_run_execution_allowed
+            self.scheduler_activation_allowed
+            or self.scheduler_job_creation_allowed
+            or self.scheduler_job_created
+            or self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.worker_executed
+            or self.package_installation_dry_run_execution_allowed
             or self.package_installation_dry_run_executed
             or self.package_installation_execution_allowed
             or self.tenant_provisioning_allowed
@@ -365,6 +410,12 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
                 "dry_run_execution_start_boundary_evidence_hash": (
                     command.dry_run_execution_start_boundary_evidence_hash
                 ),
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    command.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    command.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
                 "execution_boundary_evidence_hash": command.execution_boundary_evidence_hash,
                 "executor_skeleton_evidence_hash": command.executor_skeleton_evidence_hash,
                 "tenant_admin_approval_gate_hash": command.tenant_admin_approval_gate_hash,
@@ -383,6 +434,10 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         preparer_role_allowed=preparer_role_allowed,
     )
     implementation_ready = not blocking_reasons
+    worker_image_boundary_evidence_bound = (
+        command.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+        or command.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+    )
     contract_fields = (
         "verify_lms_catalog_status_not_installed",
         "bind_lms_package_installation_dry_run_plan_hash",
@@ -398,6 +453,8 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         "bind_lms_package_installation_dry_run_result_persistence_boundary_hash",
         "bind_lms_package_installation_dry_run_execution_activation_boundary_hash",
         "bind_lms_package_installation_dry_run_execution_start_boundary_hash",
+        "bind_lms_package_installation_dry_run_execution_scheduler_boundary_hash_when_present",
+        "bind_lms_package_installation_dry_run_execution_worker_image_boundary_hash_when_present",
         "bind_lms_package_installation_execution_boundary_hash",
         "bind_lms_package_installation_executor_skeleton_hash",
         "bind_tenant_admin_package_install_approval_record_hash",
@@ -411,6 +468,7 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         "define_execution_dispatch_boundary_idempotency_and_readiness_checks",
         "define_execution_dispatch_boundary_no_write_no_worker_flags",
         "define_no_worker_or_scheduler_activation_flags",
+        "confirm_worker_image_boundary_precedes_dispatch_without_dispatch_when_bound",
         "define_execution_worker_boundary_required_before_any_worker_dispatch",
         "defer_dry_run_result_persistence",
         "confirm_no_tenant_module_state_creation",
@@ -433,6 +491,8 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         "package_installation_dry_run_result_persistence_boundary_hash",
         "package_installation_dry_run_execution_activation_boundary_hash",
         "package_installation_dry_run_execution_start_boundary_hash",
+        "optional_package_installation_dry_run_execution_scheduler_boundary_hash",
+        "optional_package_installation_dry_run_execution_worker_image_boundary_hash",
         "package_installation_execution_boundary_hash",
         "package_installation_executor_skeleton_hash",
         "tenant_admin_package_install_approval_gate_hash",
@@ -451,6 +511,9 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         "dry_run_execution_start_boundary_schema_version",
         "execution_dispatch_boundary_idempotency_and_readiness_fields",
         "execution_dispatch_boundary_no_write_no_worker_flags",
+        "worker_dispatch_disabled",
+        "worker_queue_enqueue_disabled",
+        "worker_execution_disabled",
         "future_dry_run_execution_worker_boundary_required",
         "no_lms_dry_run_execution_confirmation",
         "no_dry_run_result_persistence_confirmation",
@@ -478,6 +541,10 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
             command.dry_run_execution_activation_boundary_evidence_hash
         ),
         dry_run_execution_start_boundary_evidence_hash=command.dry_run_execution_start_boundary_evidence_hash,
+        dry_run_execution_scheduler_boundary_evidence_hash=(command.dry_run_execution_scheduler_boundary_evidence_hash),
+        dry_run_execution_worker_image_boundary_evidence_hash=(
+            command.dry_run_execution_worker_image_boundary_evidence_hash
+        ),
         execution_boundary_evidence_hash=command.execution_boundary_evidence_hash,
         executor_skeleton_evidence_hash=command.executor_skeleton_evidence_hash,
         tenant_admin_approval_gate_hash=command.tenant_admin_approval_gate_hash,
@@ -494,6 +561,7 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
         preparer_role_allowed=preparer_role_allowed,
         dry_run_execution_dispatch_boundary_requested=command.dry_run_execution_dispatch_boundary_requested,
         dry_run_execution_dispatch_boundary_ready=implementation_ready,
+        worker_image_boundary_evidence_bound=worker_image_boundary_evidence_bound,
         dry_run_execution_dispatch_boundary_steps=contract_fields,
         required_dry_run_execution_dispatch_boundary_evidence=required_evidence,
         blocking_reasons=blocking_reasons,
@@ -521,6 +589,7 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
             "app/suite/platform/lms_package_installation_dry_run_execution_activation_boundary.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_start_boundary.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_dispatch_boundary.py",
+            "app/suite/platform/lms_package_installation_dry_run_execution_worker_image_boundary.py",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "tests/test_lms_package_installation_dry_run_executor_runtime_boundary.py",
@@ -529,6 +598,7 @@ def build_lms_package_installation_dry_run_execution_dispatch_boundary_response(
             "tests/test_lms_package_installation_dry_run_execution_activation_boundary.py",
             "tests/test_lms_package_installation_dry_run_execution_start_boundary.py",
             "tests/test_lms_package_installation_dry_run_execution_dispatch_boundary.py",
+            "tests/test_lms_package_installation_dry_run_execution_worker_image_boundary.py",
         ),
         evidence_hash=ZERO_SHA256,
         next_action=(
@@ -595,6 +665,17 @@ def _dry_run_execution_dispatch_boundary_blocking_reasons(
         reasons.append("package_installation_dry_run_execution_activation_boundary_hash_missing")
     if command.dry_run_execution_start_boundary_evidence_hash == ZERO_SHA256:
         reasons.append("package_installation_dry_run_execution_start_boundary_hash_missing")
+    new_worker_image_chain_requested = (
+        command.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+        or command.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+    )
+    if new_worker_image_chain_requested and command.dry_run_execution_scheduler_boundary_evidence_hash == ZERO_SHA256:
+        reasons.append("package_installation_dry_run_execution_scheduler_boundary_hash_missing")
+    if (
+        new_worker_image_chain_requested
+        and command.dry_run_execution_worker_image_boundary_evidence_hash == ZERO_SHA256
+    ):
+        reasons.append("package_installation_dry_run_execution_worker_image_boundary_hash_missing")
     if command.execution_boundary_evidence_hash == ZERO_SHA256:
         reasons.append("package_installation_execution_boundary_hash_missing")
     if command.executor_skeleton_evidence_hash == ZERO_SHA256:
@@ -609,6 +690,16 @@ def _dry_run_execution_dispatch_boundary_blocking_reasons(
         reasons.append("tenant_admin_role_required")
     if not command.dry_run_execution_dispatch_boundary_requested:
         reasons.append("dry_run_execution_dispatch_boundary_not_requested")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_request_forbidden")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_request_forbidden")
+    if command.worker_dispatch_requested:
+        reasons.append("worker_dispatch_request_forbidden")
+    if command.worker_queue_enqueue_requested:
+        reasons.append("worker_queue_enqueue_request_forbidden")
+    if command.worker_execution_requested:
+        reasons.append("worker_execution_request_forbidden")
     if command.package_installation_dry_run_execution_requested:
         reasons.append("package_installation_dry_run_execution_request_forbidden")
     if command.dry_run_result_persistence_requested:

@@ -1013,7 +1013,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary"
         in future_modules["api_routes"]
     )
-    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_dispatch_boundary_without_dispatch"
+    assert (
+        future_modules["next_action"]
+        == "prepare_lms_package_installation_dry_run_execution_worker_boundary_without_execution"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1250,7 +1253,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_dispatch_boundary_without_dispatch")
+    assert families["lms"]["next_action"] == (
+        "prepare_lms_package_installation_dry_run_execution_worker_boundary_without_execution"
+    )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -3752,8 +3757,16 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
         == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary"
     )
     assert dispatch_body["dry_run_execution_start_boundary_evidence_hash"] == start_body["evidence_hash"]
+    assert dispatch_body["worker_image_boundary_evidence_bound"] is False
     assert dispatch_body["dry_run_execution_dispatch_boundary_ready"] is True
     assert dispatch_body["future_dry_run_execution_worker_boundary_required"] is True
+    assert dispatch_body["scheduler_activation_allowed"] is False
+    assert dispatch_body["scheduler_job_creation_allowed"] is False
+    assert dispatch_body["scheduler_job_created"] is False
+    assert dispatch_body["worker_dispatch_allowed"] is False
+    assert dispatch_body["worker_queue_enqueued"] is False
+    assert dispatch_body["worker_execution_allowed"] is False
+    assert dispatch_body["worker_executed"] is False
     assert dispatch_body["package_installation_dry_run_execution_allowed"] is False
     assert dispatch_body["package_installation_dry_run_executed"] is False
     assert dispatch_body["dry_run_result_persistence_allowed"] is False
@@ -3776,8 +3789,12 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     dispatch_event = dispatch_events[0]
     assert dispatch_event.metadata["dry_run_execution_start_boundary_evidence_hash"] == start_body["evidence_hash"]
     assert dispatch_event.metadata["dry_run_execution_dispatch_boundary_ready"] is True
+    assert dispatch_event.metadata["worker_image_boundary_evidence_bound"] is False
     assert dispatch_event.metadata["future_dry_run_execution_worker_boundary_required"] is True
     assert dispatch_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert dispatch_event.metadata["worker_dispatch_allowed"] is False
+    assert dispatch_event.metadata["worker_queue_enqueued"] is False
+    assert dispatch_event.metadata["worker_execution_allowed"] is False
     assert dispatch_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_dispatch_boundary_statement" not in dispatch_event.metadata
 
@@ -4730,6 +4747,100 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert worker_image_boundary_event.metadata["failover_execution_allowed"] is False
     assert worker_image_boundary_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_worker_image_boundary_statement" not in worker_image_boundary_event.metadata
+
+    worker_image_dispatch_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary",
+        headers=headers,
+        json={
+            "dry_run_plan_evidence_hash": dry_run_plan["evidence_hash"],
+            "dry_run_execution_boundary_evidence_hash": dry_run_boundary["evidence_hash"],
+            "dry_run_execution_skeleton_evidence_hash": dry_run_skeleton["evidence_hash"],
+            "dry_run_executor_implementation_review_evidence_hash": body["evidence_hash"],
+            "dry_run_result_contract_evidence_hash": result_body["evidence_hash"],
+            "dry_run_execution_gate_evidence_hash": gate_body["evidence_hash"],
+            "dry_run_execution_request_boundary_evidence_hash": request_boundary_body["evidence_hash"],
+            "dry_run_executor_runtime_boundary_evidence_hash": runtime_boundary_body["evidence_hash"],
+            "dry_run_execution_preflight_evidence_hash": preflight_body["evidence_hash"],
+            "dry_run_execution_receipt_boundary_evidence_hash": receipt_body["evidence_hash"],
+            "dry_run_result_persistence_boundary_evidence_hash": persistence_body["evidence_hash"],
+            "dry_run_execution_activation_boundary_evidence_hash": activation_body["evidence_hash"],
+            "dry_run_execution_start_boundary_evidence_hash": start_body["evidence_hash"],
+            "dry_run_execution_scheduler_boundary_evidence_hash": scheduler_boundary_body["evidence_hash"],
+            "dry_run_execution_worker_image_boundary_evidence_hash": worker_image_boundary_body["evidence_hash"],
+            "execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "executor_skeleton_evidence_hash": skeleton["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "dry_run_execution_dispatch_boundary_ref": "lms-dry-run-execution-dispatch-boundary:worker-image-api-demo",
+            "change_request_ref": "change:lms-dry-run-execution-dispatch-worker-image-api-demo",
+            "idempotency_key_ref": "idempotency:lms-dry-run-execution-dispatch-worker-image-api-demo",
+            "prepared_at_utc": "2026-06-30T10:50:00Z",
+            "audit_chain_ref": "audit:lms-dry-run-execution-dispatch-worker-image-api-demo",
+            "dry_run_execution_dispatch_boundary_statement": (
+                LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_STATEMENT
+            ),
+        },
+    )
+
+    assert worker_image_dispatch_response.status_code == 200
+    worker_image_dispatch_body = worker_image_dispatch_response.json()
+    assert (
+        worker_image_dispatch_body["schema_version"]
+        == "lms_package_installation_dry_run_execution_dispatch_boundary.v1"
+    )
+    assert (
+        worker_image_dispatch_body["dry_run_execution_scheduler_boundary_evidence_hash"]
+        == scheduler_boundary_body["evidence_hash"]
+    )
+    assert (
+        worker_image_dispatch_body["dry_run_execution_worker_image_boundary_evidence_hash"]
+        == worker_image_boundary_body["evidence_hash"]
+    )
+    assert worker_image_dispatch_body["worker_image_boundary_evidence_bound"] is True
+    assert worker_image_dispatch_body["dry_run_execution_dispatch_boundary_ready"] is True
+    assert worker_image_dispatch_body["future_dry_run_execution_worker_boundary_required"] is True
+    assert worker_image_dispatch_body["scheduler_activation_allowed"] is False
+    assert worker_image_dispatch_body["scheduler_job_creation_allowed"] is False
+    assert worker_image_dispatch_body["scheduler_job_created"] is False
+    assert worker_image_dispatch_body["worker_dispatch_allowed"] is False
+    assert worker_image_dispatch_body["worker_queue_enqueued"] is False
+    assert worker_image_dispatch_body["worker_execution_allowed"] is False
+    assert worker_image_dispatch_body["worker_executed"] is False
+    assert worker_image_dispatch_body["package_installation_dry_run_execution_allowed"] is False
+    assert worker_image_dispatch_body["package_installation_dry_run_executed"] is False
+    assert worker_image_dispatch_body["dry_run_result_persistence_allowed"] is False
+    assert worker_image_dispatch_body["tenant_module_state_created"] is False
+    assert worker_image_dispatch_body["blocking_reasons"] == []
+    assert (
+        worker_image_dispatch_body["next_action"]
+        == "prepare_lms_package_installation_dry_run_execution_worker_boundary_without_execution"
+    )
+    assert "dry_run_execution_dispatch_boundary_statement" not in worker_image_dispatch_body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_STATEMENT
+        not in worker_image_dispatch_response.text
+    )
+
+    worker_image_dispatch_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_dispatch_boundary"
+        and event.metadata["dry_run_execution_worker_image_boundary_evidence_hash"]
+        == worker_image_boundary_body["evidence_hash"]
+    ]
+    assert len(worker_image_dispatch_events) == 1
+    worker_image_dispatch_event = worker_image_dispatch_events[0]
+    assert (
+        worker_image_dispatch_event.metadata["dry_run_execution_scheduler_boundary_evidence_hash"]
+        == scheduler_boundary_body["evidence_hash"]
+    )
+    assert worker_image_dispatch_event.metadata["worker_image_boundary_evidence_bound"] is True
+    assert worker_image_dispatch_event.metadata["dry_run_execution_dispatch_boundary_ready"] is True
+    assert worker_image_dispatch_event.metadata["worker_dispatch_allowed"] is False
+    assert worker_image_dispatch_event.metadata["worker_queue_enqueued"] is False
+    assert worker_image_dispatch_event.metadata["worker_execution_allowed"] is False
+    assert worker_image_dispatch_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_dispatch_boundary_statement" not in worker_image_dispatch_event.metadata
 
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:
