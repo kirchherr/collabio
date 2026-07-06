@@ -38,6 +38,9 @@ from suite.platform.legacy_sql_migration_run_registry import (
 from suite.platform.lms_package_installation_dry_run_execution_activation_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_ACTIVATION_BOUNDARY_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_admission_gate import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_ADMISSION_GATE_STATEMENT,
+)
 from suite.platform.lms_package_installation_dry_run_execution_approval_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_APPROVAL_BOUNDARY_STATEMENT,
 )
@@ -926,6 +929,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_final_readiness_gate_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_approval_boundary_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_approval_record_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_dry_run_execution_admission_gate_ready" in future_modules["guardrails"]
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight"
         in future_modules["api_routes"]
@@ -966,7 +970,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records"
         in future_modules["api_routes"]
     )
-    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_admission_gate_without_execution"
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate"
+        in future_modules["api_routes"]
+    )
+    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_runbook_without_execution"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1203,7 +1211,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_admission_gate_without_execution")
+    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_runbook_without_execution")
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -4046,6 +4054,88 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert execution_approval_record_event.metadata["tenant_module_state_created"] is False
     assert "human_confirmation_statement" not in execution_approval_record_event.metadata
 
+    admission_gate_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate",
+        headers=headers,
+        json={
+            "dry_run_execution_approval_boundary_evidence_hash": approval_boundary_body["evidence_hash"],
+            "dry_run_execution_approval_record_hash": execution_approval_record_body["evidence_hash"],
+            "dry_run_execution_admission_gate_ref": "lms-dry-run-execution-admission-gate:api-demo",
+            "change_request_ref": "change:lms-dry-run-execution-admission-gate-api-demo",
+            "idempotency_key_ref": "idempotency:lms-dry-run-execution-admission-gate-api-demo",
+            "prepared_at_utc": "2026-06-30T09:50:00Z",
+            "audit_chain_ref": "audit:lms-dry-run-execution-admission-gate-api-demo",
+            "dry_run_execution_admission_gate_statement": (
+                LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_ADMISSION_GATE_STATEMENT
+            ),
+        },
+    )
+
+    assert admission_gate_response.status_code == 200
+    admission_gate_body = admission_gate_response.json()
+    assert admission_gate_body["schema_version"] == "lms_package_installation_dry_run_execution_admission_gate.v1"
+    assert (
+        admission_gate_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate"
+    )
+    assert (
+        admission_gate_body["dry_run_execution_approval_boundary_evidence_hash"]
+        == approval_boundary_body["evidence_hash"]
+    )
+    assert (
+        admission_gate_body["dry_run_execution_approval_record_hash"] == execution_approval_record_body["evidence_hash"]
+    )
+    assert (
+        admission_gate_body["stored_dry_run_execution_approval_record_hash"]
+        == execution_approval_record_body["evidence_hash"]
+    )
+    assert admission_gate_body["dry_run_execution_admission_gate_ready"] is True
+    assert admission_gate_body["explicit_human_execution_approval_present"] is True
+    assert admission_gate_body["approval_record_tenant_match"] is True
+    assert admission_gate_body["approval_record_hash_match"] is True
+    assert admission_gate_body["future_dry_run_execution_runbook_required"] is True
+    assert admission_gate_body["worker_dispatch_allowed"] is False
+    assert admission_gate_body["worker_queue_enqueued"] is False
+    assert admission_gate_body["worker_execution_allowed"] is False
+    assert admission_gate_body["worker_executed"] is False
+    assert admission_gate_body["package_installation_dry_run_execution_allowed"] is False
+    assert admission_gate_body["package_installation_dry_run_executed"] is False
+    assert admission_gate_body["dry_run_result_persistence_allowed"] is False
+    assert admission_gate_body["dry_run_result_persisted"] is False
+    assert admission_gate_body["tenant_module_state_created"] is False
+    assert admission_gate_body["blocking_reasons"] == []
+    assert admission_gate_body["next_action"] == "prepare_lms_dry_run_execution_runbook_without_execution"
+    assert "dry_run_execution_admission_gate_statement" not in admission_gate_body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_ADMISSION_GATE_STATEMENT not in admission_gate_response.text
+
+    admission_gate_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_admission_gate"
+    ]
+    assert len(admission_gate_events) == 1
+    admission_gate_event = admission_gate_events[0]
+    assert (
+        admission_gate_event.metadata["dry_run_execution_approval_boundary_evidence_hash"]
+        == approval_boundary_body["evidence_hash"]
+    )
+    assert (
+        admission_gate_event.metadata["dry_run_execution_approval_record_hash"]
+        == execution_approval_record_body["evidence_hash"]
+    )
+    assert admission_gate_event.metadata["dry_run_execution_admission_gate_ready"] is True
+    assert admission_gate_event.metadata["explicit_human_execution_approval_present"] is True
+    assert admission_gate_event.metadata["approval_record_tenant_match"] is True
+    assert admission_gate_event.metadata["approval_record_hash_match"] is True
+    assert admission_gate_event.metadata["future_dry_run_execution_runbook_required"] is True
+    assert admission_gate_event.metadata["worker_dispatch_allowed"] is False
+    assert admission_gate_event.metadata["worker_queue_enqueued"] is False
+    assert admission_gate_event.metadata["worker_execution_allowed"] is False
+    assert admission_gate_event.metadata["worker_executed"] is False
+    assert admission_gate_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert admission_gate_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_admission_gate_statement" not in admission_gate_event.metadata
+
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:
     response = client.post(
@@ -4110,6 +4200,16 @@ def test_lms_package_installation_dry_run_execution_approval_boundary_requires_r
 def test_lms_package_installation_dry_run_execution_approval_record_requires_request_context() -> None:
     response = client.post(
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records",
+        json={},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_package_installation_dry_run_execution_admission_gate_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate",
         json={},
     )
 
