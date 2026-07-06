@@ -445,6 +445,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:lms-dry-run-execution-approval-records",
         ),
     ),
+    SqlMigration(
+        version="0049",
+        name="lms_dry_run_execution_job_outbox",
+        resource_name="0049_lms_dry_run_execution_job_outbox.sql",
+        module_id="lms",
+        evidence_refs=(
+            "doc:lms-module-charter",
+            "test:lms-dry-run-execution-job-outbox",
+        ),
+    ),
 )
 
 

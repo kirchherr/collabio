@@ -36,6 +36,8 @@ def test_lms_restore_drill_evidence_verifies_metadata_schema_without_installing_
     assert response.approval_record_store_migration_present is True
     assert response.table_restore_verified is True
     assert response.approval_record_store_restore_verified is True
+    assert response.job_outbox_migration_present is True
+    assert response.job_outbox_restore_verified is True
     assert response.rls_restore_verified is True
     assert response.tenant_isolation_restore_verified is True
     assert response.retention_restore_verified is True
@@ -50,24 +52,27 @@ def test_lms_restore_drill_evidence_verifies_metadata_schema_without_installing_
     assert response.content_included is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_lms_migration_versions == ("0045", "0046", "0047", "0048")
+    assert response.existing_lms_migration_versions == ("0045", "0046", "0047", "0048", "0049")
     assert response.restored_tables == (
         "lms.courses",
         "lms.enrollments",
         "lms.package_install_approval_records",
         "lms.dry_run_execution_approval_records",
+        "lms.dry_run_execution_job_outbox",
     )
     assert response.restored_object_types == ("lms.course", "lms.enrollment")
     assert "lms_metadata_schema_migration_0046" in response.required_restore_evidence
     assert "lms_package_install_approval_record_store_migration_0047" in response.required_restore_evidence
     assert "lms_dry_run_execution_approval_record_store_migration_0048" in response.required_restore_evidence
+    assert "lms_dry_run_execution_job_outbox_migration_0049" in response.required_restore_evidence
+    assert "lms_dry_run_execution_job_outbox_restore_check" in response.required_restore_evidence
     assert "lms_approval_record_store_restore_check" in response.required_restore_evidence
     assert "no_lms_package_or_tenant_activation_confirmed" in response.required_restore_evidence
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
     assert response.evidence_hash == build_lms_restore_drill_evidence_hash(response)
-    assert response.summary.lms_manifest_migration_count == 4
-    assert response.summary.restored_table_count == 4
+    assert response.summary.lms_manifest_migration_count == 5
+    assert response.summary.restored_table_count == 5
     assert response.summary.restored_object_type_count == 2
     assert response.summary.required_restore_evidence_count == len(response.required_restore_evidence)
     assert response.summary.blocking_reason_count == 0

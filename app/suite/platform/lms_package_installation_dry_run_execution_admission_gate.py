@@ -50,6 +50,8 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateCommand(BaseModel):
 
     dry_run_execution_approval_boundary_evidence_hash: str
     dry_run_execution_approval_record_hash: str
+    dry_run_execution_scheduler_boundary_evidence_hash: str = ZERO_SHA256
+    dry_run_execution_worker_image_boundary_evidence_hash: str = ZERO_SHA256
     dry_run_execution_admission_gate_ref: str
     change_request_ref: str
     idempotency_key_ref: str
@@ -57,6 +59,11 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateCommand(BaseModel):
     audit_chain_ref: str
     dry_run_execution_admission_gate_statement: str
     dry_run_execution_admission_gate_requested: bool = True
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_image_resolution_requested: bool = False
+    worker_image_pull_requested: bool = False
+    worker_image_digest_lookup_requested: bool = False
     worker_dispatch_requested: bool = False
     worker_queue_enqueue_requested: bool = False
     worker_execution_requested: bool = False
@@ -71,7 +78,12 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateCommand(BaseModel):
     destructive_actions_requested: bool = False
     external_side_effect_requested: bool = False
 
-    @field_validator("dry_run_execution_approval_boundary_evidence_hash", "dry_run_execution_approval_record_hash")
+    @field_validator(
+        "dry_run_execution_approval_boundary_evidence_hash",
+        "dry_run_execution_approval_record_hash",
+        "dry_run_execution_scheduler_boundary_evidence_hash",
+        "dry_run_execution_worker_image_boundary_evidence_hash",
+    )
     @classmethod
     def require_sha256(cls, value: str) -> str:
         if not SHA256_PATTERN.fullmatch(value):
@@ -132,6 +144,8 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateResponse(BaseModel):
     )
     dry_run_execution_approval_boundary_evidence_hash: str
     dry_run_execution_approval_record_hash: str
+    dry_run_execution_scheduler_boundary_evidence_hash: str = ZERO_SHA256
+    dry_run_execution_worker_image_boundary_evidence_hash: str = ZERO_SHA256
     stored_dry_run_execution_approval_record_hash: str
     tenant_admin_approval_gate_hash: str
     tenant_admin_approval_record_hash: str
@@ -150,7 +164,17 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateResponse(BaseModel):
     explicit_human_execution_approval_present: bool
     approval_record_tenant_match: bool
     approval_record_hash_match: bool
+    worker_image_boundary_evidence_bound: bool = False
     future_dry_run_execution_runbook_required: bool = True
+    scheduler_activation_allowed: bool = False
+    scheduler_job_creation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_image_resolution_allowed: bool = False
+    worker_image_resolved: bool = False
+    worker_image_pull_allowed: bool = False
+    worker_image_pulled: bool = False
+    worker_image_digest_lookup_allowed: bool = False
+    worker_image_digest_looked_up: bool = False
     worker_dispatch_allowed: bool = False
     worker_queue_enqueued: bool = False
     worker_execution_allowed: bool = False
@@ -200,6 +224,8 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateResponse(BaseModel):
     @field_validator(
         "dry_run_execution_approval_boundary_evidence_hash",
         "dry_run_execution_approval_record_hash",
+        "dry_run_execution_scheduler_boundary_evidence_hash",
+        "dry_run_execution_worker_image_boundary_evidence_hash",
         "stored_dry_run_execution_approval_record_hash",
         "tenant_admin_approval_gate_hash",
         "tenant_admin_approval_record_hash",
@@ -259,8 +285,23 @@ class LmsPackageInstallationDryRunExecutionAdmissionGateResponse(BaseModel):
             raise ValueError("LMS dry-run execution admission gate readiness must match prerequisites")
         if not self.future_dry_run_execution_runbook_required:
             raise ValueError("LMS dry-run execution admission gate must require a future runbook")
+        expected_worker_image_bound = (
+            self.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+            or self.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+        )
+        if self.worker_image_boundary_evidence_bound != expected_worker_image_bound:
+            raise ValueError("LMS dry-run execution admission gate worker-image binding flag is invalid")
         if (
-            self.worker_dispatch_allowed
+            self.scheduler_activation_allowed
+            or self.scheduler_job_creation_allowed
+            or self.scheduler_job_created
+            or self.worker_image_resolution_allowed
+            or self.worker_image_resolved
+            or self.worker_image_pull_allowed
+            or self.worker_image_pulled
+            or self.worker_image_digest_lookup_allowed
+            or self.worker_image_digest_looked_up
+            or self.worker_dispatch_allowed
             or self.worker_queue_enqueued
             or self.worker_execution_allowed
             or self.worker_executed
@@ -333,6 +374,12 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
                     command.dry_run_execution_approval_boundary_evidence_hash
                 ),
                 "dry_run_execution_approval_record_hash": command.dry_run_execution_approval_record_hash,
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    command.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    command.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
                 "idempotency_key_ref": command.idempotency_key_ref,
             }
         )
@@ -347,15 +394,24 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
         preparer_role_allowed=preparer_role_allowed,
     )
     admission_gate_ready = not blocking_reasons
+    worker_image_boundary_evidence_bound = (
+        command.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+        or command.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+    )
     gate_steps = (
         "verify_lms_catalog_status_not_installed",
         "bind_lms_package_installation_dry_run_execution_approval_boundary_hash",
         "bind_lms_dry_run_execution_approval_record_hash",
+        "bind_lms_package_installation_dry_run_execution_scheduler_boundary_hash_when_present",
+        "bind_lms_package_installation_dry_run_execution_worker_image_boundary_hash_when_present",
         "verify_approval_record_is_tenant_scoped_and_hash_matched",
         "verify_approval_record_contains_explicit_human_execution_approval",
+        "confirm_worker_image_boundary_chain_preserved_at_admission_gate_when_present",
         "define_admission_gate_idempotency_and_hash_closure",
         "define_admission_gate_as_non_executing_policy_decision",
         "require_future_dry_run_execution_runbook_before_worker_or_scheduler_design",
+        "confirm_scheduler_no_activation_no_job_creation_flags",
+        "confirm_worker_image_no_resolution_no_pull_no_digest_lookup_flags",
         "confirm_worker_no_enqueue_no_dispatch_no_execution_flags",
         "defer_dry_run_result_persistence",
         "confirm_no_tenant_module_state_creation",
@@ -367,6 +423,9 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
         "package_installation_readiness_true",
         "package_installation_dry_run_execution_approval_boundary_hash",
         "lms_dry_run_execution_approval_record_hash",
+        "optional_package_installation_dry_run_execution_scheduler_boundary_hash",
+        "optional_package_installation_dry_run_execution_worker_image_boundary_hash",
+        "worker_image_boundary_chain_hashes_when_present",
         "stored_lms_dry_run_execution_approval_record_hash",
         "approval_record_tenant_match",
         "approval_record_hash_match",
@@ -382,6 +441,11 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
         "dry_run_execution_approval_boundary_schema_version",
         "dry_run_execution_approval_record_schema_version",
         "future_dry_run_execution_runbook_required",
+        "scheduler_activation_disabled",
+        "scheduler_job_creation_disabled",
+        "worker_image_resolution_disabled",
+        "worker_image_pull_disabled",
+        "worker_image_digest_lookup_disabled",
         "worker_no_enqueue_no_dispatch_no_execution_flags",
         "no_lms_dry_run_execution_confirmation",
         "no_dry_run_result_persistence_confirmation",
@@ -394,6 +458,10 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
         human_approval_ready=readiness.human_approval_ready,
         dry_run_execution_approval_boundary_evidence_hash=(command.dry_run_execution_approval_boundary_evidence_hash),
         dry_run_execution_approval_record_hash=command.dry_run_execution_approval_record_hash,
+        dry_run_execution_scheduler_boundary_evidence_hash=(command.dry_run_execution_scheduler_boundary_evidence_hash),
+        dry_run_execution_worker_image_boundary_evidence_hash=(
+            command.dry_run_execution_worker_image_boundary_evidence_hash
+        ),
         stored_dry_run_execution_approval_record_hash=stored_approval_record_hash,
         tenant_admin_approval_gate_hash=readiness.tenant_admin_approval_gate_hash or ZERO_SHA256,
         tenant_admin_approval_record_hash=readiness.tenant_admin_approval_record_hash or ZERO_SHA256,
@@ -412,6 +480,7 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
         explicit_human_execution_approval_present=explicit_human_execution_approval_present,
         approval_record_tenant_match=approval_record_tenant_match,
         approval_record_hash_match=approval_record_hash_match,
+        worker_image_boundary_evidence_bound=worker_image_boundary_evidence_bound,
         dry_run_execution_admission_gate_steps=gate_steps,
         required_dry_run_execution_admission_gate_evidence=required_evidence,
         blocking_reasons=blocking_reasons,
@@ -424,6 +493,8 @@ def build_lms_package_installation_dry_run_execution_admission_gate_response(
             "docs/modules/LMS_MODULE_CHARTER.md",
             "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
             "app/suite/platform/lms_package_installation_readiness.py",
+            "app/suite/platform/lms_package_installation_dry_run_execution_scheduler_boundary.py",
+            "app/suite/platform/lms_package_installation_dry_run_execution_worker_image_boundary.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_approval_boundary.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_approval_record.py",
             "app/suite/platform/lms_package_installation_dry_run_execution_admission_gate.py",
@@ -473,6 +544,17 @@ def _dry_run_execution_admission_gate_blocking_reasons(
         reasons.append("package_installation_dry_run_execution_approval_boundary_hash_missing")
     if command.dry_run_execution_approval_record_hash == ZERO_SHA256:
         reasons.append("lms_dry_run_execution_approval_record_hash_missing")
+    new_worker_image_chain_requested = (
+        command.dry_run_execution_scheduler_boundary_evidence_hash != ZERO_SHA256
+        or command.dry_run_execution_worker_image_boundary_evidence_hash != ZERO_SHA256
+    )
+    if new_worker_image_chain_requested and command.dry_run_execution_scheduler_boundary_evidence_hash == ZERO_SHA256:
+        reasons.append("package_installation_dry_run_execution_scheduler_boundary_hash_missing")
+    if (
+        new_worker_image_chain_requested
+        and command.dry_run_execution_worker_image_boundary_evidence_hash == ZERO_SHA256
+    ):
+        reasons.append("package_installation_dry_run_execution_worker_image_boundary_hash_missing")
     if not approval_record_present:
         reasons.append("lms_dry_run_execution_approval_record_missing")
     elif not approval_record_hash_match:
@@ -481,6 +563,16 @@ def _dry_run_execution_admission_gate_blocking_reasons(
         reasons.append("tenant_admin_role_required")
     if not command.dry_run_execution_admission_gate_requested:
         reasons.append("dry_run_execution_admission_gate_not_requested")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_request_forbidden")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_request_forbidden")
+    if command.worker_image_resolution_requested:
+        reasons.append("worker_image_resolution_request_forbidden")
+    if command.worker_image_pull_requested:
+        reasons.append("worker_image_pull_request_forbidden")
+    if command.worker_image_digest_lookup_requested:
+        reasons.append("worker_image_digest_lookup_request_forbidden")
     if command.worker_dispatch_requested:
         reasons.append("worker_dispatch_request_forbidden")
     if command.worker_queue_enqueue_requested:

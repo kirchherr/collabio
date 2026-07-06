@@ -23,6 +23,7 @@ LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
 LMS_METADATA_SCHEMA_MIGRATION_VERSION = "0046"
 LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION = "0047"
 LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_STORE_MIGRATION_VERSION = "0048"
+LMS_DRY_RUN_EXECUTION_JOB_OUTBOX_MIGRATION_VERSION = "0049"
 LMS_RESTORE_DRILL_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
 
 
@@ -54,8 +55,10 @@ class LmsRestoreDrillEvidenceResponse(BaseModel):
     catalog_registration_migration_present: bool
     metadata_schema_migration_present: bool
     approval_record_store_migration_present: bool
+    job_outbox_migration_present: bool
     table_restore_verified: bool
     approval_record_store_restore_verified: bool
+    job_outbox_restore_verified: bool
     rls_restore_verified: bool
     tenant_isolation_restore_verified: bool
     retention_restore_verified: bool
@@ -151,8 +154,10 @@ class LmsRestoreDrillEvidenceResponse(BaseModel):
             and self.catalog_registration_migration_present
             and self.metadata_schema_migration_present
             and self.approval_record_store_migration_present
+            and self.job_outbox_migration_present
             and self.table_restore_verified
             and self.approval_record_store_restore_verified
+            and self.job_outbox_restore_verified
             and self.rls_restore_verified
             and self.tenant_isolation_restore_verified
             and self.retention_restore_verified
@@ -209,10 +214,15 @@ def build_lms_restore_drill_evidence_response(
         LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION,
         LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_STORE_MIGRATION_VERSION,
     }.issubset(set(lms_migration_versions))
+    job_outbox_migration_present = LMS_DRY_RUN_EXECUTION_JOB_OUTBOX_MIGRATION_VERSION in lms_migration_versions
     sql_checks = _metadata_schema_sql_checks()
     approval_record_store_restore_verified = _approval_record_store_restore_verified()
+    job_outbox_restore_verified = _job_outbox_restore_verified()
     migration_plan_ready = (
-        catalog_migration_present and metadata_migration_present and approval_record_store_migration_present
+        catalog_migration_present
+        and metadata_migration_present
+        and approval_record_store_migration_present
+        and job_outbox_migration_present
     )
     blocking_reasons = _blocking_reasons(
         catalog_status=catalog_status,
@@ -220,12 +230,14 @@ def build_lms_restore_drill_evidence_response(
         migration_plan_ready=migration_plan_ready,
         sql_checks=sql_checks,
         approval_record_store_restore_verified=approval_record_store_restore_verified,
+        job_outbox_restore_verified=job_outbox_restore_verified,
     )
     restored_tables = (
         "lms.courses",
         "lms.enrollments",
         "lms.package_install_approval_records",
         "lms.dry_run_execution_approval_records",
+        "lms.dry_run_execution_job_outbox",
     )
     restored_object_types = ("lms.course", "lms.enrollment")
     required_restore_evidence = (
@@ -233,8 +245,10 @@ def build_lms_restore_drill_evidence_response(
         "lms_metadata_schema_migration_0046",
         "lms_package_install_approval_record_store_migration_0047",
         "lms_dry_run_execution_approval_record_store_migration_0048",
+        "lms_dry_run_execution_job_outbox_migration_0049",
         "lms_course_enrollment_table_restore_check",
         "lms_approval_record_store_restore_check",
+        "lms_dry_run_execution_job_outbox_restore_check",
         "lms_rls_tenant_policy_restore_check",
         "lms_retention_legal_hold_restore_check",
         "lms_kms_audit_reference_restore_check",
@@ -252,8 +266,10 @@ def build_lms_restore_drill_evidence_response(
         catalog_registration_migration_present=catalog_migration_present,
         metadata_schema_migration_present=metadata_migration_present,
         approval_record_store_migration_present=approval_record_store_migration_present,
+        job_outbox_migration_present=job_outbox_migration_present,
         table_restore_verified=sql_checks.table_restore_verified,
         approval_record_store_restore_verified=approval_record_store_restore_verified,
+        job_outbox_restore_verified=job_outbox_restore_verified,
         rls_restore_verified=sql_checks.rls_restore_verified,
         tenant_isolation_restore_verified=sql_checks.tenant_isolation_restore_verified,
         retention_restore_verified=sql_checks.retention_restore_verified,
@@ -284,7 +300,9 @@ def build_lms_restore_drill_evidence_response(
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
+            "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
             "tests/test_lms_restore_drill_evidence.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
             "tests/test_pgvector_migration.py",
         ),
     )
@@ -399,6 +417,39 @@ def _approval_record_store_restore_verified() -> bool:
     return package_store_verified and dry_run_store_verified and forbidden_absent
 
 
+def _job_outbox_restore_verified() -> bool:
+    sql = " ".join(get_migration(LMS_DRY_RUN_EXECUTION_JOB_OUTBOX_MIGRATION_VERSION).sql().lower().split())
+    required_fragments = (
+        "create table if not exists lms.dry_run_execution_job_outbox",
+        "alter table lms.dry_run_execution_job_outbox enable row level security",
+        "alter table lms.dry_run_execution_job_outbox force row level security",
+        "create policy lms_dry_run_execution_job_outbox_tenant_select",
+        "create policy lms_dry_run_execution_job_outbox_tenant_insert",
+        "create policy lms_dry_run_execution_job_outbox_tenant_lease_retry_update",
+        "create policy lms_dry_run_execution_job_outbox_no_hard_delete",
+        "dry_run_execution_worker_image_boundary_evidence_hash text not null",
+        "dry_run_execution_final_readiness_gate_evidence_hash text not null",
+        "worker_idempotency_key_hash text not null",
+        "restore_evidence_hash text not null",
+        "queue_status text not null check (queue_status in ('queued', 'leased', 'retry_scheduled', 'blocked'))",
+        "worker_execution_allowed boolean not null default false",
+        "dry_run_result_persistence_allowed boolean not null default false",
+        "not (job_evidence ? 'human_confirmation_statement')",
+        "not (job_evidence ? 'dry_run_result_payload')",
+    )
+    forbidden_fragments = (
+        "human_confirmation_statement text",
+        "course_content text",
+        "training_content text",
+        "dry_run_result_payload text",
+        "worker_execution_payload text",
+        "password",
+    )
+    return all(fragment in sql for fragment in required_fragments) and all(
+        fragment not in sql for fragment in forbidden_fragments
+    )
+
+
 def _catalog_status(*, module_registry: InMemoryModuleRegistry | PgModuleRegistry) -> str | None:
     try:
         return module_registry.get_catalog_entry(LMS_MODULE_ID).status.value
@@ -431,6 +482,7 @@ def _blocking_reasons(
     migration_plan_ready: bool,
     sql_checks: _MetadataSchemaSqlChecks,
     approval_record_store_restore_verified: bool,
+    job_outbox_restore_verified: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if catalog_status is None:
@@ -445,6 +497,8 @@ def _blocking_reasons(
         reasons.append("lms_course_enrollment_table_restore_unverified")
     if not approval_record_store_restore_verified:
         reasons.append("lms_approval_record_store_restore_unverified")
+    if not job_outbox_restore_verified:
+        reasons.append("lms_dry_run_execution_job_outbox_restore_unverified")
     if not sql_checks.rls_restore_verified or not sql_checks.tenant_isolation_restore_verified:
         reasons.append("lms_tenant_rls_restore_unverified")
     if not sql_checks.retention_restore_verified or not sql_checks.legal_hold_restore_verified:

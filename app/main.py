@@ -1256,8 +1256,10 @@ def build_app() -> FastAPI:
                 "restore_evidence_ready": response.restore_evidence_ready,
                 "evidence_hash": response.evidence_hash,
                 "approval_record_store_migration_present": response.approval_record_store_migration_present,
+                "job_outbox_migration_present": response.job_outbox_migration_present,
                 "table_restore_verified": response.table_restore_verified,
                 "approval_record_store_restore_verified": response.approval_record_store_restore_verified,
+                "job_outbox_restore_verified": response.job_outbox_restore_verified,
                 "rls_restore_verified": response.rls_restore_verified,
                 "tenant_isolation_restore_verified": response.tenant_isolation_restore_verified,
                 "no_content_payload_restore_verified": response.no_content_payload_restore_verified,
@@ -2633,6 +2635,8 @@ def build_app() -> FastAPI:
                     "lms_package_installation_dry_run_execution_final_readiness_gate:"
                     f"{response.dry_run_execution_final_readiness_gate_evidence_hash}"
                 ),
+                f"lms_dry_run_execution_scheduler_boundary:{response.dry_run_execution_scheduler_boundary_evidence_hash}",
+                f"lms_dry_run_execution_worker_image_boundary:{response.dry_run_execution_worker_image_boundary_evidence_hash}",
                 f"lms_tenant_admin_approval_record:{response.tenant_admin_approval_record_hash}",
             ],
             metadata={
@@ -2643,6 +2647,13 @@ def build_app() -> FastAPI:
                 "dry_run_execution_final_readiness_gate_evidence_hash": (
                     response.dry_run_execution_final_readiness_gate_evidence_hash
                 ),
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    response.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    response.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "worker_image_boundary_evidence_bound": response.worker_image_boundary_evidence_bound,
                 "dry_run_execution_approval_boundary_statement_hash": (
                     response.dry_run_execution_approval_boundary_statement_hash
                 ),
@@ -2651,6 +2662,15 @@ def build_app() -> FastAPI:
                     response.future_dry_run_execution_approval_record_required
                 ),
                 "explicit_human_execution_approval_present": response.explicit_human_execution_approval_present,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_creation_allowed": response.scheduler_job_creation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_image_digest_lookup_allowed": response.worker_image_digest_lookup_allowed,
+                "worker_image_digest_looked_up": response.worker_image_digest_looked_up,
                 "worker_dispatch_allowed": response.worker_dispatch_allowed,
                 "worker_queue_enqueued": response.worker_queue_enqueued,
                 "worker_execution_allowed": response.worker_execution_allowed,
@@ -2697,6 +2717,8 @@ def build_app() -> FastAPI:
                     "lms_package_installation_dry_run_execution_approval_boundary:"
                     f"{response.dry_run_execution_approval_boundary_evidence_hash}"
                 ),
+                f"lms_dry_run_execution_scheduler_boundary:{response.dry_run_execution_scheduler_boundary_evidence_hash}",
+                f"lms_dry_run_execution_worker_image_boundary:{response.dry_run_execution_worker_image_boundary_evidence_hash}",
                 f"lms_tenant_admin_approval_record:{response.tenant_admin_approval_record_hash}",
             ],
             metadata={
@@ -2707,12 +2729,28 @@ def build_app() -> FastAPI:
                 "dry_run_execution_approval_boundary_evidence_hash": (
                     response.dry_run_execution_approval_boundary_evidence_hash
                 ),
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    response.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    response.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "worker_image_boundary_evidence_bound": response.worker_image_boundary_evidence_bound,
                 "dry_run_execution_approval_record_created": (response.dry_run_execution_approval_record_created),
                 "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
                 "explicit_human_execution_approval_present": (response.explicit_human_execution_approval_present),
                 "future_dry_run_execution_admission_gate_required": (
                     response.future_dry_run_execution_admission_gate_required
                 ),
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_creation_allowed": response.scheduler_job_creation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_image_digest_lookup_allowed": response.worker_image_digest_lookup_allowed,
+                "worker_image_digest_looked_up": response.worker_image_digest_looked_up,
                 "worker_dispatch_allowed": response.worker_dispatch_allowed,
                 "worker_queue_enqueued": response.worker_queue_enqueued,
                 "worker_execution_allowed": response.worker_execution_allowed,
@@ -2759,6 +2797,8 @@ def build_app() -> FastAPI:
                     f"{response.dry_run_execution_approval_boundary_evidence_hash}"
                 ),
                 f"lms_dry_run_execution_approval_record:{response.dry_run_execution_approval_record_hash}",
+                f"lms_dry_run_execution_scheduler_boundary:{response.dry_run_execution_scheduler_boundary_evidence_hash}",
+                f"lms_dry_run_execution_worker_image_boundary:{response.dry_run_execution_worker_image_boundary_evidence_hash}",
             ],
             metadata={
                 "surface": "platform_api",
@@ -2769,6 +2809,13 @@ def build_app() -> FastAPI:
                     response.dry_run_execution_approval_boundary_evidence_hash
                 ),
                 "dry_run_execution_approval_record_hash": response.dry_run_execution_approval_record_hash,
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    response.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    response.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "worker_image_boundary_evidence_bound": response.worker_image_boundary_evidence_bound,
                 "stored_dry_run_execution_approval_record_hash": (
                     response.stored_dry_run_execution_approval_record_hash
                 ),
@@ -2780,6 +2827,15 @@ def build_app() -> FastAPI:
                 "approval_record_tenant_match": response.approval_record_tenant_match,
                 "approval_record_hash_match": response.approval_record_hash_match,
                 "future_dry_run_execution_runbook_required": response.future_dry_run_execution_runbook_required,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_creation_allowed": response.scheduler_job_creation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_image_digest_lookup_allowed": response.worker_image_digest_lookup_allowed,
+                "worker_image_digest_looked_up": response.worker_image_digest_looked_up,
                 "worker_dispatch_allowed": response.worker_dispatch_allowed,
                 "worker_queue_enqueued": response.worker_queue_enqueued,
                 "worker_execution_allowed": response.worker_execution_allowed,

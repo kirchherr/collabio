@@ -700,7 +700,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_worker_image_boundary_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="prepare_lms_package_installation_dry_run_execution_approval_boundary_without_execution",
+                    next_action="wire_lms_dry_run_execution_job_outbox_to_api_without_worker_execution",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
