@@ -159,6 +159,7 @@ def test_lms_module_charter_documents_contract_gates_and_deferred_scope() -> Non
         "package-installation-dry-run-execution-approval-records",
         "package-installation-dry-run-execution-admission-gate",
         "package-installation-dry-run-execution-runbook",
+        "package-installation-dry-run-execution-plan",
         "SCORM/xAPI runtime",
     ):
         assert expected in charter

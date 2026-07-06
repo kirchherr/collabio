@@ -60,6 +60,9 @@ from suite.platform.lms_package_installation_dry_run_execution_final_readiness_g
 from suite.platform.lms_package_installation_dry_run_execution_gate import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_plan import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_PLAN_STATEMENT,
+)
 from suite.platform.lms_package_installation_dry_run_execution_preflight import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_PREFLIGHT_STATEMENT,
 )
@@ -934,6 +937,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_approval_record_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_admission_gate_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_runbook_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_dry_run_execution_plan_ready" in future_modules["guardrails"]
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight"
         in future_modules["api_routes"]
@@ -982,7 +986,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook"
         in future_modules["api_routes"]
     )
-    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_plan_without_execution"
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-plan" in future_modules["api_routes"]
+    )
+    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_plan_review_without_execution"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1219,7 +1226,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_plan_without_execution")
+    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_plan_review_without_execution")
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -4230,6 +4237,101 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert runbook_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_runbook_statement" not in runbook_event.metadata
 
+    execution_plan_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-plan",
+        headers=headers,
+        json={
+            "dry_run_execution_runbook_evidence_hash": runbook_body["evidence_hash"],
+            "dry_run_execution_admission_gate_evidence_hash": admission_gate_body["evidence_hash"],
+            "dry_run_execution_approval_boundary_evidence_hash": approval_boundary_body["evidence_hash"],
+            "dry_run_execution_approval_record_hash": execution_approval_record_body["evidence_hash"],
+            "dry_run_execution_plan_ref": "lms-dry-run-execution-plan:api-demo",
+            "backup_restore_runbook_ref": "runbook:lms-dry-run-backup-restore-api-demo",
+            "rollback_runbook_ref": "runbook:lms-dry-run-rollback-api-demo",
+            "operator_handoff_ref": "handoff:lms-dry-run-operator-api-demo",
+            "execution_window_ref": "window:lms-dry-run-execution-api-demo",
+            "resource_budget_ref": "budget:lms-dry-run-execution-api-demo",
+            "scheduler_policy_ref": "scheduler-policy:lms-dry-run-execution-api-demo",
+            "idempotency_key_ref": "idempotency:lms-dry-run-execution-plan-api-demo",
+            "change_request_ref": "change:lms-dry-run-execution-plan-api-demo",
+            "prepared_at_utc": "2026-06-30T10:10:00Z",
+            "audit_chain_ref": "audit:lms-dry-run-execution-plan-api-demo",
+            "dry_run_execution_plan_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_PLAN_STATEMENT,
+        },
+    )
+
+    assert execution_plan_response.status_code == 200
+    execution_plan_body = execution_plan_response.json()
+    assert execution_plan_body["schema_version"] == "lms_package_installation_dry_run_execution_plan.v1"
+    assert (
+        execution_plan_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-plan"
+    )
+    assert execution_plan_body["dry_run_execution_runbook_evidence_hash"] == runbook_body["evidence_hash"]
+    assert execution_plan_body["dry_run_execution_admission_gate_evidence_hash"] == admission_gate_body["evidence_hash"]
+    assert (
+        execution_plan_body["dry_run_execution_approval_boundary_evidence_hash"]
+        == approval_boundary_body["evidence_hash"]
+    )
+    assert (
+        execution_plan_body["dry_run_execution_approval_record_hash"] == execution_approval_record_body["evidence_hash"]
+    )
+    assert (
+        execution_plan_body["stored_dry_run_execution_approval_record_hash"]
+        == execution_approval_record_body["evidence_hash"]
+    )
+    assert execution_plan_body["execution_window_ref"] == "window:lms-dry-run-execution-api-demo"
+    assert execution_plan_body["resource_budget_ref"] == "budget:lms-dry-run-execution-api-demo"
+    assert execution_plan_body["scheduler_policy_ref"] == "scheduler-policy:lms-dry-run-execution-api-demo"
+    assert execution_plan_body["dry_run_execution_plan_ready"] is True
+    assert execution_plan_body["explicit_human_execution_approval_present"] is True
+    assert execution_plan_body["approval_record_tenant_match"] is True
+    assert execution_plan_body["approval_record_hash_match"] is True
+    assert execution_plan_body["future_dry_run_execution_plan_review_required"] is True
+    assert execution_plan_body["scheduler_activation_allowed"] is False
+    assert execution_plan_body["worker_image_resolution_allowed"] is False
+    assert execution_plan_body["worker_dispatch_allowed"] is False
+    assert execution_plan_body["worker_queue_enqueued"] is False
+    assert execution_plan_body["worker_execution_allowed"] is False
+    assert execution_plan_body["worker_executed"] is False
+    assert execution_plan_body["package_installation_dry_run_execution_allowed"] is False
+    assert execution_plan_body["package_installation_dry_run_executed"] is False
+    assert execution_plan_body["dry_run_result_persistence_allowed"] is False
+    assert execution_plan_body["dry_run_result_persisted"] is False
+    assert execution_plan_body["rollback_execution_allowed"] is False
+    assert execution_plan_body["failover_execution_allowed"] is False
+    assert execution_plan_body["tenant_module_state_created"] is False
+    assert execution_plan_body["blocking_reasons"] == []
+    assert execution_plan_body["next_action"] == "prepare_lms_dry_run_execution_plan_review_without_execution"
+    assert "dry_run_execution_plan_statement" not in execution_plan_body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_PLAN_STATEMENT not in execution_plan_response.text
+
+    execution_plan_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_plan"
+    ]
+    assert len(execution_plan_events) == 1
+    execution_plan_event = execution_plan_events[0]
+    assert execution_plan_event.metadata["dry_run_execution_runbook_evidence_hash"] == runbook_body["evidence_hash"]
+    assert (
+        execution_plan_event.metadata["dry_run_execution_approval_record_hash"]
+        == execution_approval_record_body["evidence_hash"]
+    )
+    assert execution_plan_event.metadata["dry_run_execution_plan_ready"] is True
+    assert execution_plan_event.metadata["future_dry_run_execution_plan_review_required"] is True
+    assert execution_plan_event.metadata["scheduler_activation_allowed"] is False
+    assert execution_plan_event.metadata["worker_image_resolution_allowed"] is False
+    assert execution_plan_event.metadata["worker_dispatch_allowed"] is False
+    assert execution_plan_event.metadata["worker_queue_enqueued"] is False
+    assert execution_plan_event.metadata["worker_execution_allowed"] is False
+    assert execution_plan_event.metadata["worker_executed"] is False
+    assert execution_plan_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert execution_plan_event.metadata["rollback_execution_allowed"] is False
+    assert execution_plan_event.metadata["failover_execution_allowed"] is False
+    assert execution_plan_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_plan_statement" not in execution_plan_event.metadata
+
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:
     response = client.post(
@@ -4314,6 +4416,16 @@ def test_lms_package_installation_dry_run_execution_admission_gate_requires_requ
 def test_lms_package_installation_dry_run_execution_runbook_requires_request_context() -> None:
     response = client.post(
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook",
+        json={},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_package_installation_dry_run_execution_plan_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-plan",
         json={},
     )
 
