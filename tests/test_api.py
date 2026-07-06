@@ -41,6 +41,9 @@ from suite.platform.lms_package_installation_dry_run_execution_activation_bounda
 from suite.platform.lms_package_installation_dry_run_execution_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_dispatch_boundary import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_STATEMENT,
+)
 from suite.platform.lms_package_installation_dry_run_execution_gate import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
 )
@@ -902,6 +905,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_result_persistence_boundary_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_activation_boundary_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_start_boundary_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_dry_run_execution_dispatch_boundary_ready" in future_modules["guardrails"]
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight"
         in future_modules["api_routes"]
@@ -920,6 +924,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary"
+        in future_modules["api_routes"]
+    )
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary"
         in future_modules["api_routes"]
     )
     assert "full_office_suite_client" in body["deferred_scope"]
@@ -1159,7 +1167,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
     assert families["lms"]["next_action"] == (
-        "prepare_lms_package_installation_dry_run_execution_dispatch_boundary_without_execution"
+        "prepare_lms_package_installation_dry_run_execution_worker_boundary_without_execution"
     )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
@@ -3616,6 +3624,75 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert start_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_start_boundary_statement" not in start_event.metadata
 
+    dispatch_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary",
+        headers=headers,
+        json={
+            "dry_run_plan_evidence_hash": dry_run_plan["evidence_hash"],
+            "dry_run_execution_boundary_evidence_hash": dry_run_boundary["evidence_hash"],
+            "dry_run_execution_skeleton_evidence_hash": dry_run_skeleton["evidence_hash"],
+            "dry_run_executor_implementation_review_evidence_hash": body["evidence_hash"],
+            "dry_run_result_contract_evidence_hash": result_body["evidence_hash"],
+            "dry_run_execution_gate_evidence_hash": gate_body["evidence_hash"],
+            "dry_run_execution_request_boundary_evidence_hash": request_boundary_body["evidence_hash"],
+            "dry_run_executor_runtime_boundary_evidence_hash": runtime_boundary_body["evidence_hash"],
+            "dry_run_execution_preflight_evidence_hash": preflight_body["evidence_hash"],
+            "dry_run_execution_receipt_boundary_evidence_hash": receipt_body["evidence_hash"],
+            "dry_run_result_persistence_boundary_evidence_hash": persistence_body["evidence_hash"],
+            "dry_run_execution_activation_boundary_evidence_hash": activation_body["evidence_hash"],
+            "dry_run_execution_start_boundary_evidence_hash": start_body["evidence_hash"],
+            "execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "executor_skeleton_evidence_hash": skeleton["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "dry_run_execution_dispatch_boundary_ref": "lms-dry-run-execution-dispatch-boundary:api-demo",
+            "change_request_ref": "change:lms-package-install-dry-run-execution-dispatch-boundary-api-demo",
+            "idempotency_key_ref": "idempotency:lms-package-install-dry-run-execution-dispatch-boundary-api-demo",
+            "prepared_at_utc": "2026-06-30T09:20:00Z",
+            "audit_chain_ref": "audit:lms-package-install-dry-run-execution-dispatch-boundary-api-demo",
+            "dry_run_execution_dispatch_boundary_statement": (
+                LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_STATEMENT
+            ),
+        },
+    )
+
+    assert dispatch_response.status_code == 200
+    dispatch_body = dispatch_response.json()
+    assert dispatch_body["schema_version"] == "lms_package_installation_dry_run_execution_dispatch_boundary.v1"
+    assert (
+        dispatch_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary"
+    )
+    assert dispatch_body["dry_run_execution_start_boundary_evidence_hash"] == start_body["evidence_hash"]
+    assert dispatch_body["dry_run_execution_dispatch_boundary_ready"] is True
+    assert dispatch_body["future_dry_run_execution_worker_boundary_required"] is True
+    assert dispatch_body["package_installation_dry_run_execution_allowed"] is False
+    assert dispatch_body["package_installation_dry_run_executed"] is False
+    assert dispatch_body["dry_run_result_persistence_allowed"] is False
+    assert dispatch_body["dry_run_result_persisted"] is False
+    assert dispatch_body["tenant_module_state_created"] is False
+    assert dispatch_body["blocking_reasons"] == []
+    assert (
+        dispatch_body["next_action"]
+        == "prepare_lms_package_installation_dry_run_execution_worker_boundary_without_execution"
+    )
+    assert "dry_run_execution_dispatch_boundary_statement" not in dispatch_body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_DISPATCH_BOUNDARY_STATEMENT not in dispatch_response.text
+
+    dispatch_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_dispatch_boundary"
+    ]
+    assert len(dispatch_events) == 1
+    dispatch_event = dispatch_events[0]
+    assert dispatch_event.metadata["dry_run_execution_start_boundary_evidence_hash"] == start_body["evidence_hash"]
+    assert dispatch_event.metadata["dry_run_execution_dispatch_boundary_ready"] is True
+    assert dispatch_event.metadata["future_dry_run_execution_worker_boundary_required"] is True
+    assert dispatch_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert dispatch_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_dispatch_boundary_statement" not in dispatch_event.metadata
+
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:
     response = client.post(
@@ -3630,6 +3707,16 @@ def test_lms_package_installation_dry_run_execution_activation_boundary_requires
 def test_lms_package_installation_dry_run_execution_start_boundary_requires_request_context() -> None:
     response = client.post(
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary",
+        json={},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_package_installation_dry_run_execution_dispatch_boundary_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary",
         json={},
     )
 
