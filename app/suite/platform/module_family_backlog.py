@@ -34,7 +34,7 @@ PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_st
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
 CATALOG_REGISTERED_NEXT_ACTION = (
-    "prepare_lms_package_installation_dry_run_execution_final_readiness_gate_without_execution"
+    "prepare_lms_package_installation_dry_run_execution_approval_boundary_without_execution"
 )
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {

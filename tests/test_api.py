@@ -1015,7 +1015,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert (
         future_modules["next_action"]
-        == "prepare_lms_package_installation_dry_run_execution_final_readiness_gate_without_execution"
+        == "prepare_lms_package_installation_dry_run_execution_approval_boundary_without_execution"
     )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
@@ -1254,7 +1254,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
     assert families["lms"]["next_action"] == (
-        "prepare_lms_package_installation_dry_run_execution_final_readiness_gate_without_execution"
+        "prepare_lms_package_installation_dry_run_execution_approval_boundary_without_execution"
     )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
@@ -3934,9 +3934,19 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
         == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate"
     )
     assert final_readiness_body["dry_run_execution_worker_boundary_evidence_hash"] == worker_body["evidence_hash"]
+    assert final_readiness_body["worker_image_boundary_evidence_bound"] is False
     assert final_readiness_body["dry_run_execution_final_readiness_gate_ready"] is True
     assert final_readiness_body["future_dry_run_execution_approval_boundary_required"] is True
     assert final_readiness_body["explicit_human_execution_approval_present"] is False
+    assert final_readiness_body["scheduler_activation_allowed"] is False
+    assert final_readiness_body["scheduler_job_creation_allowed"] is False
+    assert final_readiness_body["scheduler_job_created"] is False
+    assert final_readiness_body["worker_image_resolution_allowed"] is False
+    assert final_readiness_body["worker_image_resolved"] is False
+    assert final_readiness_body["worker_image_pull_allowed"] is False
+    assert final_readiness_body["worker_image_pulled"] is False
+    assert final_readiness_body["worker_image_digest_lookup_allowed"] is False
+    assert final_readiness_body["worker_image_digest_looked_up"] is False
     assert final_readiness_body["worker_dispatch_allowed"] is False
     assert final_readiness_body["worker_queue_enqueued"] is False
     assert final_readiness_body["worker_execution_allowed"] is False
@@ -3967,9 +3977,13 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
         final_readiness_event.metadata["dry_run_execution_worker_boundary_evidence_hash"]
         == worker_body["evidence_hash"]
     )
+    assert final_readiness_event.metadata["worker_image_boundary_evidence_bound"] is False
     assert final_readiness_event.metadata["dry_run_execution_final_readiness_gate_ready"] is True
     assert final_readiness_event.metadata["future_dry_run_execution_approval_boundary_required"] is True
     assert final_readiness_event.metadata["explicit_human_execution_approval_present"] is False
+    assert final_readiness_event.metadata["worker_image_resolution_allowed"] is False
+    assert final_readiness_event.metadata["worker_image_pull_allowed"] is False
+    assert final_readiness_event.metadata["worker_image_digest_lookup_allowed"] is False
     assert final_readiness_event.metadata["worker_dispatch_allowed"] is False
     assert final_readiness_event.metadata["worker_queue_enqueued"] is False
     assert final_readiness_event.metadata["worker_execution_allowed"] is False
@@ -4961,6 +4975,122 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert worker_image_worker_event.metadata["worker_execution_allowed"] is False
     assert worker_image_worker_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_worker_boundary_statement" not in worker_image_worker_event.metadata
+
+    worker_image_final_readiness_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate",
+        headers=headers,
+        json={
+            "dry_run_plan_evidence_hash": dry_run_plan["evidence_hash"],
+            "dry_run_execution_boundary_evidence_hash": dry_run_boundary["evidence_hash"],
+            "dry_run_execution_skeleton_evidence_hash": dry_run_skeleton["evidence_hash"],
+            "dry_run_executor_implementation_review_evidence_hash": body["evidence_hash"],
+            "dry_run_result_contract_evidence_hash": result_body["evidence_hash"],
+            "dry_run_execution_gate_evidence_hash": gate_body["evidence_hash"],
+            "dry_run_execution_request_boundary_evidence_hash": request_boundary_body["evidence_hash"],
+            "dry_run_executor_runtime_boundary_evidence_hash": runtime_boundary_body["evidence_hash"],
+            "dry_run_execution_preflight_evidence_hash": preflight_body["evidence_hash"],
+            "dry_run_execution_receipt_boundary_evidence_hash": receipt_body["evidence_hash"],
+            "dry_run_result_persistence_boundary_evidence_hash": persistence_body["evidence_hash"],
+            "dry_run_execution_activation_boundary_evidence_hash": activation_body["evidence_hash"],
+            "dry_run_execution_start_boundary_evidence_hash": start_body["evidence_hash"],
+            "dry_run_execution_dispatch_boundary_evidence_hash": worker_image_dispatch_body["evidence_hash"],
+            "dry_run_execution_worker_boundary_evidence_hash": worker_image_worker_body["evidence_hash"],
+            "dry_run_execution_scheduler_boundary_evidence_hash": scheduler_boundary_body["evidence_hash"],
+            "dry_run_execution_worker_image_boundary_evidence_hash": worker_image_boundary_body["evidence_hash"],
+            "execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "executor_skeleton_evidence_hash": skeleton["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": approval["evidence_hash"],
+            "dry_run_execution_final_readiness_gate_ref": (
+                "lms-dry-run-execution-final-readiness-gate:worker-image-api-demo"
+            ),
+            "change_request_ref": "change:lms-dry-run-execution-final-readiness-worker-image-api-demo",
+            "idempotency_key_ref": "idempotency:lms-dry-run-execution-final-readiness-worker-image-api-demo",
+            "prepared_at_utc": "2026-06-30T11:00:00Z",
+            "audit_chain_ref": "audit:lms-dry-run-execution-final-readiness-worker-image-api-demo",
+            "dry_run_execution_final_readiness_gate_statement": (
+                LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_FINAL_READINESS_GATE_STATEMENT
+            ),
+        },
+    )
+
+    assert worker_image_final_readiness_response.status_code == 200
+    worker_image_final_readiness_body = worker_image_final_readiness_response.json()
+    assert (
+        worker_image_final_readiness_body["schema_version"]
+        == "lms_package_installation_dry_run_execution_final_readiness_gate.v1"
+    )
+    assert (
+        worker_image_final_readiness_body["dry_run_execution_worker_boundary_evidence_hash"]
+        == worker_image_worker_body["evidence_hash"]
+    )
+    assert (
+        worker_image_final_readiness_body["dry_run_execution_scheduler_boundary_evidence_hash"]
+        == scheduler_boundary_body["evidence_hash"]
+    )
+    assert (
+        worker_image_final_readiness_body["dry_run_execution_worker_image_boundary_evidence_hash"]
+        == worker_image_boundary_body["evidence_hash"]
+    )
+    assert worker_image_final_readiness_body["worker_image_boundary_evidence_bound"] is True
+    assert worker_image_final_readiness_body["dry_run_execution_final_readiness_gate_ready"] is True
+    assert worker_image_final_readiness_body["future_dry_run_execution_approval_boundary_required"] is True
+    assert worker_image_final_readiness_body["explicit_human_execution_approval_present"] is False
+    assert worker_image_final_readiness_body["scheduler_activation_allowed"] is False
+    assert worker_image_final_readiness_body["scheduler_job_creation_allowed"] is False
+    assert worker_image_final_readiness_body["scheduler_job_created"] is False
+    assert worker_image_final_readiness_body["worker_image_resolution_allowed"] is False
+    assert worker_image_final_readiness_body["worker_image_resolved"] is False
+    assert worker_image_final_readiness_body["worker_image_pull_allowed"] is False
+    assert worker_image_final_readiness_body["worker_image_pulled"] is False
+    assert worker_image_final_readiness_body["worker_image_digest_lookup_allowed"] is False
+    assert worker_image_final_readiness_body["worker_image_digest_looked_up"] is False
+    assert worker_image_final_readiness_body["worker_dispatch_allowed"] is False
+    assert worker_image_final_readiness_body["worker_queue_enqueued"] is False
+    assert worker_image_final_readiness_body["worker_execution_allowed"] is False
+    assert worker_image_final_readiness_body["worker_executed"] is False
+    assert worker_image_final_readiness_body["package_installation_dry_run_execution_allowed"] is False
+    assert worker_image_final_readiness_body["package_installation_dry_run_executed"] is False
+    assert worker_image_final_readiness_body["dry_run_result_persistence_allowed"] is False
+    assert worker_image_final_readiness_body["tenant_module_state_created"] is False
+    assert worker_image_final_readiness_body["blocking_reasons"] == []
+    assert (
+        worker_image_final_readiness_body["next_action"]
+        == "prepare_lms_package_installation_dry_run_execution_approval_boundary_without_execution"
+    )
+    assert "dry_run_execution_final_readiness_gate_statement" not in worker_image_final_readiness_body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_FINAL_READINESS_GATE_STATEMENT
+        not in worker_image_final_readiness_response.text
+    )
+
+    worker_image_final_readiness_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_final_readiness_gate"
+        and event.metadata["dry_run_execution_worker_image_boundary_evidence_hash"]
+        == worker_image_boundary_body["evidence_hash"]
+    ]
+    assert len(worker_image_final_readiness_events) == 1
+    worker_image_final_readiness_event = worker_image_final_readiness_events[0]
+    assert (
+        worker_image_final_readiness_event.metadata["dry_run_execution_worker_boundary_evidence_hash"]
+        == worker_image_worker_body["evidence_hash"]
+    )
+    assert (
+        worker_image_final_readiness_event.metadata["dry_run_execution_scheduler_boundary_evidence_hash"]
+        == scheduler_boundary_body["evidence_hash"]
+    )
+    assert worker_image_final_readiness_event.metadata["worker_image_boundary_evidence_bound"] is True
+    assert worker_image_final_readiness_event.metadata["dry_run_execution_final_readiness_gate_ready"] is True
+    assert worker_image_final_readiness_event.metadata["worker_image_resolution_allowed"] is False
+    assert worker_image_final_readiness_event.metadata["worker_image_pull_allowed"] is False
+    assert worker_image_final_readiness_event.metadata["worker_image_digest_lookup_allowed"] is False
+    assert worker_image_final_readiness_event.metadata["worker_dispatch_allowed"] is False
+    assert worker_image_final_readiness_event.metadata["worker_queue_enqueued"] is False
+    assert worker_image_final_readiness_event.metadata["worker_execution_allowed"] is False
+    assert worker_image_final_readiness_event.metadata["tenant_module_state_created"] is False
+    assert "dry_run_execution_final_readiness_gate_statement" not in worker_image_final_readiness_event.metadata
 
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:

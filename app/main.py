@@ -2547,6 +2547,8 @@ def build_app() -> FastAPI:
             event_type="platform.lms.package_installation_dry_run_execution_final_readiness_gate",
             source_object_ids=[
                 f"lms_package_installation_dry_run_execution_worker_boundary:{response.dry_run_execution_worker_boundary_evidence_hash}",
+                f"lms_dry_run_execution_scheduler_boundary:{response.dry_run_execution_scheduler_boundary_evidence_hash}",
+                f"lms_dry_run_execution_worker_image_boundary:{response.dry_run_execution_worker_image_boundary_evidence_hash}",
                 f"lms_package_installation_dry_run_execution_dispatch_boundary:{response.dry_run_execution_dispatch_boundary_evidence_hash}",
                 f"lms_package_installation_dry_run_execution_start_boundary:{response.dry_run_execution_start_boundary_evidence_hash}",
                 f"lms_package_installation_dry_run_execution_activation_boundary:{response.dry_run_execution_activation_boundary_evidence_hash}",
@@ -2563,6 +2565,13 @@ def build_app() -> FastAPI:
                 "dry_run_execution_worker_boundary_evidence_hash": (
                     response.dry_run_execution_worker_boundary_evidence_hash
                 ),
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    response.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    response.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "worker_image_boundary_evidence_bound": response.worker_image_boundary_evidence_bound,
                 "dry_run_execution_final_readiness_gate_statement_hash": (
                     response.dry_run_execution_final_readiness_gate_statement_hash
                 ),
@@ -2571,6 +2580,15 @@ def build_app() -> FastAPI:
                     response.future_dry_run_execution_approval_boundary_required
                 ),
                 "explicit_human_execution_approval_present": response.explicit_human_execution_approval_present,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_creation_allowed": response.scheduler_job_creation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_image_digest_lookup_allowed": response.worker_image_digest_lookup_allowed,
+                "worker_image_digest_looked_up": response.worker_image_digest_looked_up,
                 "worker_dispatch_allowed": response.worker_dispatch_allowed,
                 "worker_queue_enqueued": response.worker_queue_enqueued,
                 "worker_execution_allowed": response.worker_execution_allowed,
