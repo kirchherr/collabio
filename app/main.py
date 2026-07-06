@@ -214,6 +214,11 @@ from suite.platform.lms_package_installation_dry_run_execution_activation_bounda
     LmsPackageInstallationDryRunExecutionActivationBoundaryResponse,
     build_lms_package_installation_dry_run_execution_activation_boundary_response,
 )
+from suite.platform.lms_package_installation_dry_run_execution_approval_boundary import (
+    LmsPackageInstallationDryRunExecutionApprovalBoundaryCommand,
+    LmsPackageInstallationDryRunExecutionApprovalBoundaryResponse,
+    build_lms_package_installation_dry_run_execution_approval_boundary_response,
+)
 from suite.platform.lms_package_installation_dry_run_execution_boundary import (
     LmsPackageInstallationDryRunExecutionBoundaryCommand,
     LmsPackageInstallationDryRunExecutionBoundaryResponse,
@@ -2492,6 +2497,68 @@ def build_app() -> FastAPI:
                 "dry_run_execution_final_readiness_gate_ready": (response.dry_run_execution_final_readiness_gate_ready),
                 "future_dry_run_execution_approval_boundary_required": (
                     response.future_dry_run_execution_approval_boundary_required
+                ),
+                "explicit_human_execution_approval_present": response.explicit_human_execution_approval_present,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "worker_executed": response.worker_executed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "package_installation_dry_run_executed": response.package_installation_dry_run_executed,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "evidence_hash": response.evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary",
+        response_model=LmsPackageInstallationDryRunExecutionApprovalBoundaryResponse,
+    )
+    def lms_package_installation_dry_run_execution_approval_boundary(
+        command: LmsPackageInstallationDryRunExecutionApprovalBoundaryCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionApprovalBoundaryResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_lms_package_installation_dry_run_execution_approval_boundary_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.lms_tenant_admin_package_approval_record_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_approval_boundary",
+            source_object_ids=[
+                (
+                    "lms_package_installation_dry_run_execution_final_readiness_gate:"
+                    f"{response.dry_run_execution_final_readiness_gate_evidence_hash}"
+                ),
+                f"lms_tenant_admin_approval_record:{response.tenant_admin_approval_record_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "dry_run_execution_final_readiness_gate_evidence_hash": (
+                    response.dry_run_execution_final_readiness_gate_evidence_hash
+                ),
+                "dry_run_execution_approval_boundary_statement_hash": (
+                    response.dry_run_execution_approval_boundary_statement_hash
+                ),
+                "dry_run_execution_approval_boundary_ready": response.dry_run_execution_approval_boundary_ready,
+                "future_dry_run_execution_approval_record_required": (
+                    response.future_dry_run_execution_approval_record_required
                 ),
                 "explicit_human_execution_approval_present": response.explicit_human_execution_approval_present,
                 "worker_dispatch_allowed": response.worker_dispatch_allowed,
