@@ -31,6 +31,7 @@ LMS_PACKAGE_INSTALLATION_READINESS_RESULT_CONTRACT = "metadata_only_lms_package_
 LMS_PACKAGE_INSTALLATION_READINESS_ENDPOINT = "/v1/platform/modules/families/lms/package-installation-readiness"
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
 LMS_PACKAGE_APPROVAL_RECORD_MIGRATION_VERSION = "0047"
+LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_MIGRATION_VERSION = "0048"
 LMS_METADATA_MIGRATION_NEXT_ACTION = "write_lms_metadata_schema_migration_before_package_installation"
 LMS_RESTORE_EVIDENCE_NEXT_ACTION = "capture_lms_restore_drill_evidence_before_package_installation"
 LMS_APPROVAL_GATE_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
@@ -229,7 +230,12 @@ def build_lms_package_installation_readiness_response(
     business_migration_versions = tuple(
         version
         for version in lms_migration_versions
-        if version not in {LMS_CATALOG_REGISTRATION_MIGRATION_VERSION, LMS_PACKAGE_APPROVAL_RECORD_MIGRATION_VERSION}
+        if version
+        not in {
+            LMS_CATALOG_REGISTRATION_MIGRATION_VERSION,
+            LMS_PACKAGE_APPROVAL_RECORD_MIGRATION_VERSION,
+            LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_MIGRATION_VERSION,
+        }
     )
     restore_drill_evidence = build_lms_restore_drill_evidence_response(
         user_context=user_context,
@@ -312,6 +318,7 @@ def build_lms_package_installation_readiness_response(
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
+            "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_lms_package_installation_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",

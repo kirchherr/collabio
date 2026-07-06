@@ -107,7 +107,7 @@ def test_lms_foundation_registers_catalog_entry_without_install_or_tenant_activa
     catalog_entry = module_registry.get_catalog_entry("lms")
 
     assert catalog_entry.status == ModuleStatus.NOT_INSTALLED
-    assert catalog_entry.required_migration_versions == ("0007", "0008", "0009", "0010", "0011", "0046")
+    assert catalog_entry.required_migration_versions == ("0007", "0008", "0009", "0010", "0011", "0046", "0047", "0048")
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="lms") is None
 
     with pytest.raises(ModuleLifecycleError, match="Module is not installed: lms"):
@@ -156,6 +156,7 @@ def test_lms_module_charter_documents_contract_gates_and_deferred_scope() -> Non
         "package-installation-dry-run-execution-worker-boundary",
         "package-installation-dry-run-execution-final-readiness-gate",
         "package-installation-dry-run-execution-approval-boundary",
+        "package-installation-dry-run-execution-approval-records",
         "SCORM/xAPI runtime",
     ):
         assert expected in charter

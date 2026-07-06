@@ -49,7 +49,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_inst
     assert response.content_included is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_lms_migration_versions == ("0045", "0046", "0047")
+    assert response.existing_lms_migration_versions == ("0045", "0046", "0047", "0048")
     assert "install_lms_package_for_tenant" in response.approval_scope
     assert "bind_lms_restore_drill_evidence_hash" in response.approval_scope
     assert "tenant_admin_identity" in response.required_approval_evidence
@@ -57,7 +57,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_inst
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
     assert response.evidence_hash == build_lms_tenant_admin_package_approval_gate_hash(response)
-    assert response.summary.lms_manifest_migration_count == 3
+    assert response.summary.lms_manifest_migration_count == 4
     assert response.summary.required_approval_evidence_count == len(response.required_approval_evidence)
     assert response.summary.approval_scope_count == len(response.approval_scope)
     assert response.summary.blocking_reason_count == 0

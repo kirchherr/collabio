@@ -22,6 +22,7 @@ LMS_RESTORE_DRILL_EVIDENCE_ENDPOINT = "/v1/platform/modules/families/lms/restore
 LMS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0045"
 LMS_METADATA_SCHEMA_MIGRATION_VERSION = "0046"
 LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION = "0047"
+LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_STORE_MIGRATION_VERSION = "0048"
 LMS_RESTORE_DRILL_NEXT_ACTION = "capture_tenant_admin_package_install_approval_gate"
 
 
@@ -204,7 +205,10 @@ def build_lms_restore_drill_evidence_response(
     lms_migration_versions = _lms_migration_versions(migration_manifest_entries)
     catalog_migration_present = LMS_CATALOG_REGISTRATION_MIGRATION_VERSION in lms_migration_versions
     metadata_migration_present = LMS_METADATA_SCHEMA_MIGRATION_VERSION in lms_migration_versions
-    approval_record_store_migration_present = LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION in lms_migration_versions
+    approval_record_store_migration_present = {
+        LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION,
+        LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_STORE_MIGRATION_VERSION,
+    }.issubset(set(lms_migration_versions))
     sql_checks = _metadata_schema_sql_checks()
     approval_record_store_restore_verified = _approval_record_store_restore_verified()
     migration_plan_ready = (
@@ -217,12 +221,18 @@ def build_lms_restore_drill_evidence_response(
         sql_checks=sql_checks,
         approval_record_store_restore_verified=approval_record_store_restore_verified,
     )
-    restored_tables = ("lms.courses", "lms.enrollments", "lms.package_install_approval_records")
+    restored_tables = (
+        "lms.courses",
+        "lms.enrollments",
+        "lms.package_install_approval_records",
+        "lms.dry_run_execution_approval_records",
+    )
     restored_object_types = ("lms.course", "lms.enrollment")
     required_restore_evidence = (
         "lms_catalog_registration_migration_0045",
         "lms_metadata_schema_migration_0046",
         "lms_package_install_approval_record_store_migration_0047",
+        "lms_dry_run_execution_approval_record_store_migration_0048",
         "lms_course_enrollment_table_restore_check",
         "lms_approval_record_store_restore_check",
         "lms_rls_tenant_policy_restore_check",
@@ -273,6 +283,7 @@ def build_lms_restore_drill_evidence_response(
             "app/suite/persistence/migrations/0045_lms_catalog_registration.sql",
             "app/suite/persistence/migrations/0046_lms_metadata_schema.sql",
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
+            "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_pgvector_migration.py",
         ),
@@ -337,9 +348,12 @@ def _metadata_schema_sql_checks() -> _MetadataSchemaSqlChecks:
 
 
 def _approval_record_store_restore_verified() -> bool:
-    sql = " ".join(get_migration(LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION).sql().lower().split())
-    return all(
-        required in sql
+    package_sql = " ".join(get_migration(LMS_APPROVAL_RECORD_STORE_MIGRATION_VERSION).sql().lower().split())
+    dry_run_sql = " ".join(
+        get_migration(LMS_DRY_RUN_EXECUTION_APPROVAL_RECORD_STORE_MIGRATION_VERSION).sql().lower().split()
+    )
+    package_store_verified = all(
+        required in package_sql
         for required in (
             "create table if not exists lms.package_install_approval_records",
             "alter table lms.package_install_approval_records enable row level security",
@@ -354,8 +368,27 @@ def _approval_record_store_restore_verified() -> bool:
             "tenant_module_state_created boolean not null default false",
             "not (approval_record ? 'human_confirmation_statement')",
         )
-    ) and all(
-        forbidden not in sql
+    )
+    dry_run_store_verified = all(
+        required in dry_run_sql
+        for required in (
+            "create table if not exists lms.dry_run_execution_approval_records",
+            "alter table lms.dry_run_execution_approval_records enable row level security",
+            "alter table lms.dry_run_execution_approval_records force row level security",
+            "create policy lms_dry_run_execution_approval_records_tenant_select",
+            "create policy lms_dry_run_execution_approval_records_tenant_insert",
+            "create policy lms_dry_run_execution_approval_records_no_update",
+            "create policy lms_dry_run_execution_approval_records_no_hard_delete",
+            "future_dry_run_execution_admission_gate_required boolean not null default true",
+            "worker_dispatch_allowed boolean not null default false",
+            "worker_execution_allowed boolean not null default false",
+            "package_installation_dry_run_execution_allowed boolean not null default false",
+            "dry_run_result_persistence_allowed boolean not null default false",
+            "not (approval_record ? 'human_confirmation_statement')",
+        )
+    )
+    forbidden_absent = all(
+        forbidden not in package_sql and forbidden not in dry_run_sql
         for forbidden in (
             "human_confirmation_statement text",
             "course_content text",
@@ -363,6 +396,7 @@ def _approval_record_store_restore_verified() -> bool:
             "raw_payload text",
         )
     )
+    return package_store_verified and dry_run_store_verified and forbidden_absent
 
 
 def _catalog_status(*, module_registry: InMemoryModuleRegistry | PgModuleRegistry) -> str | None:

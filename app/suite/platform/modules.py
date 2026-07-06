@@ -1607,7 +1607,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "separate gates."
             ),
             manifest_hash="sha256:lms-module-manifest",
-            required_migration_versions=("0007", "0008", "0009", "0010", "0011", "0046"),
+            required_migration_versions=("0007", "0008", "0009", "0010", "0011", "0046", "0047", "0048"),
         ),
     )
 

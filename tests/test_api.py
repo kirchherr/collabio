@@ -41,6 +41,10 @@ from suite.platform.lms_package_installation_dry_run_execution_activation_bounda
 from suite.platform.lms_package_installation_dry_run_execution_approval_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_APPROVAL_BOUNDARY_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_approval_record import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+    build_default_lms_package_installation_dry_run_execution_approval_record_store,
+)
 from suite.platform.lms_package_installation_dry_run_execution_boundary import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
 )
@@ -396,6 +400,9 @@ def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
     app.state.lms_tenant_admin_package_approval_record_store = (
         build_default_lms_tenant_admin_package_approval_record_store()
+    )
+    app.state.lms_dry_run_execution_approval_record_store = (
+        build_default_lms_package_installation_dry_run_execution_approval_record_store()
     )
 
 
@@ -918,6 +925,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_worker_boundary_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_final_readiness_gate_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_approval_boundary_ready" in future_modules["guardrails"]
+    assert "lms_package_installation_dry_run_execution_approval_record_ready" in future_modules["guardrails"]
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight"
         in future_modules["api_routes"]
@@ -954,7 +962,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary"
         in future_modules["api_routes"]
     )
-    assert future_modules["next_action"] == "record_lms_dry_run_execution_approval_with_explicit_human_confirmation"
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records"
+        in future_modules["api_routes"]
+    )
+    assert future_modules["next_action"] == "prepare_lms_dry_run_execution_admission_gate_without_execution"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1191,7 +1203,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("record_lms_dry_run_execution_approval_with_explicit_human_confirmation")
+    assert families["lms"]["next_action"] == ("prepare_lms_dry_run_execution_admission_gate_without_execution")
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1342,20 +1354,26 @@ def test_lms_restore_drill_evidence_returns_metadata_only_restore_hash_without_e
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
-    assert body["restored_tables"] == ["lms.courses", "lms.enrollments", "lms.package_install_approval_records"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047", "0048"]
+    assert body["restored_tables"] == [
+        "lms.courses",
+        "lms.enrollments",
+        "lms.package_install_approval_records",
+        "lms.dry_run_execution_approval_records",
+    ]
     assert body["restored_object_types"] == ["lms.course", "lms.enrollment"]
     assert "lms_metadata_schema_migration_0046" in body["required_restore_evidence"]
     assert "lms_package_install_approval_record_store_migration_0047" in body["required_restore_evidence"]
+    assert "lms_dry_run_execution_approval_record_store_migration_0048" in body["required_restore_evidence"]
     assert "lms_approval_record_store_restore_check" in body["required_restore_evidence"]
     assert "no_lms_package_or_tenant_activation_confirmed" in body["required_restore_evidence"]
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "lms_manifest_migration_count": 3,
-        "restored_table_count": 3,
+        "lms_manifest_migration_count": 4,
+        "restored_table_count": 4,
         "restored_object_type_count": 2,
-        "required_restore_evidence_count": 10,
+        "required_restore_evidence_count": 11,
         "blocking_reason_count": 0,
     }
     assert "app/suite/platform/lms_restore_drill_evidence.py" in body["evidence_refs"]
@@ -1438,7 +1456,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_exec
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047", "0048"]
     assert "install_lms_package_for_tenant" in body["approval_scope"]
     assert "bind_lms_restore_drill_evidence_hash" in body["approval_scope"]
     assert "tenant_admin_identity" in body["required_approval_evidence"]
@@ -1446,7 +1464,7 @@ def test_lms_tenant_admin_package_approval_gate_allows_human_record_without_exec
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "lms_manifest_migration_count": 3,
+        "lms_manifest_migration_count": 4,
         "required_approval_evidence_count": 8,
         "approval_scope_count": 5,
         "blocking_reason_count": 0,
@@ -3951,6 +3969,83 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert approval_boundary_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_approval_boundary_statement" not in approval_boundary_event.metadata
 
+    execution_approval_record_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records",
+        headers=headers,
+        json={
+            "dry_run_execution_approval_boundary_evidence_hash": approval_boundary_body["evidence_hash"],
+            "dry_run_execution_approval_record_ref": "lms-dry-run-execution-approval-record:api-demo",
+            "approval_ticket_ref": "ticket:lms-dry-run-execution-api-demo",
+            "human_confirmation_reference": "confirmation:lms-dry-run-execution-api-demo",
+            "human_confirmation_statement": (
+                LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+            ),
+            "change_request_ref": "change:lms-dry-run-execution-approval-record-api-demo",
+            "idempotency_key_ref": "idempotency:lms-dry-run-execution-approval-record-api-demo",
+            "approved_at_utc": "2026-06-30T09:40:00Z",
+            "audit_chain_ref": "audit:lms-dry-run-execution-approval-record-api-demo",
+        },
+    )
+
+    assert execution_approval_record_response.status_code == 200
+    execution_approval_record_body = execution_approval_record_response.json()
+    assert (
+        execution_approval_record_body["schema_version"]
+        == "lms_package_installation_dry_run_execution_approval_record.v1"
+    )
+    assert (
+        execution_approval_record_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records"
+    )
+    assert (
+        execution_approval_record_body["dry_run_execution_approval_boundary_evidence_hash"]
+        == approval_boundary_body["evidence_hash"]
+    )
+    assert execution_approval_record_body["dry_run_execution_approval_record_created"] is True
+    assert execution_approval_record_body["explicit_human_execution_approval_present"] is True
+    assert execution_approval_record_body["future_dry_run_execution_admission_gate_required"] is True
+    assert execution_approval_record_body["worker_dispatch_allowed"] is False
+    assert execution_approval_record_body["worker_queue_enqueued"] is False
+    assert execution_approval_record_body["worker_execution_allowed"] is False
+    assert execution_approval_record_body["worker_executed"] is False
+    assert execution_approval_record_body["package_installation_dry_run_execution_allowed"] is False
+    assert execution_approval_record_body["package_installation_dry_run_executed"] is False
+    assert execution_approval_record_body["dry_run_result_persistence_allowed"] is False
+    assert execution_approval_record_body["dry_run_result_persisted"] is False
+    assert execution_approval_record_body["tenant_module_state_created"] is False
+    assert execution_approval_record_body["blocking_reasons"] == []
+    assert (
+        execution_approval_record_body["next_action"]
+        == "prepare_lms_dry_run_execution_admission_gate_without_execution"
+    )
+    assert "human_confirmation_statement" not in execution_approval_record_body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+        not in execution_approval_record_response.text
+    )
+
+    execution_approval_record_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_approval_record"
+    ]
+    assert len(execution_approval_record_events) == 1
+    execution_approval_record_event = execution_approval_record_events[0]
+    assert (
+        execution_approval_record_event.metadata["dry_run_execution_approval_boundary_evidence_hash"]
+        == approval_boundary_body["evidence_hash"]
+    )
+    assert execution_approval_record_event.metadata["dry_run_execution_approval_record_created"] is True
+    assert execution_approval_record_event.metadata["explicit_human_execution_approval_present"] is True
+    assert execution_approval_record_event.metadata["future_dry_run_execution_admission_gate_required"] is True
+    assert execution_approval_record_event.metadata["worker_dispatch_allowed"] is False
+    assert execution_approval_record_event.metadata["worker_queue_enqueued"] is False
+    assert execution_approval_record_event.metadata["worker_execution_allowed"] is False
+    assert execution_approval_record_event.metadata["worker_executed"] is False
+    assert execution_approval_record_event.metadata["package_installation_dry_run_execution_allowed"] is False
+    assert execution_approval_record_event.metadata["tenant_module_state_created"] is False
+    assert "human_confirmation_statement" not in execution_approval_record_event.metadata
+
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:
     response = client.post(
@@ -4012,6 +4107,16 @@ def test_lms_package_installation_dry_run_execution_approval_boundary_requires_r
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_approval_record_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records",
+        json={},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_package_installation_readiness_requires_request_context() -> None:
     response = client.get("/v1/platform/modules/families/lms/package-installation-readiness")
 
@@ -4051,7 +4156,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047"]
+    assert body["existing_lms_migration_versions"] == ["0045", "0046", "0047", "0048"]
     assert body["existing_lms_business_migration_versions"] == ["0046"]
     assert body["lms_restore_drill_evidence_endpoint"] == "/v1/platform/modules/families/lms/restore-drill-evidence"
     assert body["lms_restore_drill_evidence_hash"].startswith("sha256:")
@@ -4077,7 +4182,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert "tenant_admin_package_install_approval_gate_missing" not in body["blocking_reasons"]
     assert "tenant_admin_package_install_approval_missing" in body["blocking_reasons"]
     assert body["summary"] == {
-        "lms_manifest_migration_count": 3,
+        "lms_manifest_migration_count": 4,
         "lms_business_migration_count": 1,
         "planned_first_object_type_count": 2,
         "required_installation_evidence_count": 7,
@@ -4113,7 +4218,7 @@ def test_lms_package_installation_readiness_blocks_installation_without_executio
     assert event.metadata["tenant_admin_approval_record_allowed"] is True
     assert event.metadata["tenant_admin_approval_record_hash"] is None
     assert event.metadata["human_approval_ready"] is False
-    assert event.metadata["lms_manifest_migration_count"] == 3
+    assert event.metadata["lms_manifest_migration_count"] == 4
     assert event.metadata["lms_business_migration_count"] == 1
     assert event.metadata["blocking_reason_count"] == 1
     assert event.metadata["tenant_provisioning_allowed"] is False

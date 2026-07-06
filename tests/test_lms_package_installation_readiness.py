@@ -40,7 +40,7 @@ def test_lms_package_installation_readiness_blocks_install_until_approval_exists
     assert response.persistent_task_created is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_lms_migration_versions == ("0045", "0046", "0047")
+    assert response.existing_lms_migration_versions == ("0045", "0046", "0047", "0048")
     assert response.existing_lms_business_migration_versions == ("0046",)
     assert response.planned_first_object_types == ("lms.course", "lms.enrollment")
     assert response.lms_restore_drill_evidence_endpoint == "/v1/platform/modules/families/lms/restore-drill-evidence"
@@ -67,7 +67,7 @@ def test_lms_package_installation_readiness_blocks_install_until_approval_exists
     assert "lms_backup_restore_drill_evidence_missing" not in response.blocking_reasons
     assert "tenant_admin_package_install_approval_gate_missing" not in response.blocking_reasons
     assert "tenant_admin_package_install_approval_missing" in response.blocking_reasons
-    assert response.summary.lms_manifest_migration_count == 3
+    assert response.summary.lms_manifest_migration_count == 4
     assert response.summary.lms_business_migration_count == 1
     assert response.summary.blocking_reason_count == len(response.blocking_reasons)
     assert "app/suite/platform/lms_package_installation_readiness.py" in response.evidence_refs

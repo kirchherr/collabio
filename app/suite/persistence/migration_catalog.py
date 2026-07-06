@@ -435,6 +435,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:lms-package-install-approval-records",
         ),
     ),
+    SqlMigration(
+        version="0048",
+        name="lms_dry_run_execution_approval_records",
+        resource_name="0048_lms_dry_run_execution_approval_records.sql",
+        module_id="lms",
+        evidence_refs=(
+            "doc:lms-module-charter",
+            "test:lms-dry-run-execution-approval-records",
+        ),
+    ),
 )
 
 

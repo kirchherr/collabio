@@ -79,6 +79,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0045",
         "0046",
         "0047",
+        "0048",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -94,7 +95,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     lms_migrations = load_module_migrations("lms")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 26
+    assert len(core_migrations) == len(load_migrations()) - 27
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -122,7 +123,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0028",
         "0029",
     ]
-    assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047"]
+    assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "lms"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -268,6 +269,44 @@ def test_lms_package_install_approval_record_migration_is_append_only_metadata_s
     assert "using (false)" in sql
     assert "update collabio.module_catalog" in sql
     assert '["0045", "0046", "0047"]' in sql
+
+
+def test_lms_dry_run_execution_approval_record_migration_is_append_only_metadata_store() -> None:
+    migration = get_migration("0048")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "lms.dry_run_execution_approval_records")
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_dry_run_execution_approval_records"
+    assert "tenant_id" in table
+    assert "dry_run_execution_approval_boundary_evidence_hash" in table
+    assert "tenant_admin_approval_record_hash" in table
+    assert "human_confirmation_statement_hash" in table
+    assert "approval_record jsonb not null" in table
+    assert "lms_package_installation_dry_run_execution_approval_record.v1" in table
+    assert "explicit_human_execution_approval_present boolean not null default true" in table
+    assert "future_dry_run_execution_admission_gate_required" in table
+    assert "worker_dispatch_allowed boolean not null default false" in table
+    assert "worker_queue_enqueued boolean not null default false" in table
+    assert "worker_execution_allowed boolean not null default false" in table
+    assert "package_installation_dry_run_execution_allowed boolean not null default false" in table
+    assert "dry_run_result_persistence_allowed boolean not null default false" in table
+    assert "tenant_module_state_created boolean not null default false" in table
+    assert "content_included boolean not null default false" in table
+    assert "destructive_actions_allowed boolean not null default false" in table
+    assert "external_side_effect_allowed boolean not null default false" in table
+    assert "human_confirmation_statement" in sql
+    assert "not (approval_record ? 'human_confirmation_statement')" in sql
+    assert "alter table lms.dry_run_execution_approval_records enable row level security" in sql
+    assert "alter table lms.dry_run_execution_approval_records force row level security" in sql
+    assert "create policy lms_dry_run_execution_approval_records_tenant_select" in sql
+    assert "create policy lms_dry_run_execution_approval_records_tenant_insert" in sql
+    assert "create policy lms_dry_run_execution_approval_records_no_update" in sql
+    assert "create policy lms_dry_run_execution_approval_records_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0045", "0046", "0047", "0048"]' in sql
 
 
 def test_pgvector_embedding_schema_declares_required_compliance_metadata() -> None:
