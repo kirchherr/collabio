@@ -5,11 +5,15 @@ from pydantic import ValidationError
 
 from suite.persistence.migration_catalog import get_migration
 from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
     InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore,
+    LmsPackageInstallationDryRunExecutionJobOutboxCommand,
     LmsPackageInstallationDryRunExecutionJobOutboxEntry,
     LmsPackageInstallationDryRunExecutionJobStatus,
     build_lms_dry_run_execution_job_outbox_entry,
     build_lms_dry_run_execution_job_outbox_entry_hash,
+    build_lms_package_installation_dry_run_execution_job_outbox_list_response,
+    build_lms_package_installation_dry_run_execution_job_outbox_response,
 )
 
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
@@ -38,6 +42,27 @@ def _job(
         enqueued_at_utc=datetime(2026, 6, 30, 12, 0, tzinfo=UTC),
         max_attempts=max_attempts,
     )
+
+
+def _command(**overrides: object) -> LmsPackageInstallationDryRunExecutionJobOutboxCommand:
+    payload: dict[str, object] = {
+        "dry_run_execution_admission_gate_evidence_hash": ADMISSION_GATE_HASH,
+        "dry_run_execution_approval_boundary_evidence_hash": APPROVAL_BOUNDARY_HASH,
+        "dry_run_execution_approval_record_hash": APPROVAL_RECORD_HASH,
+        "dry_run_execution_scheduler_boundary_evidence_hash": SCHEDULER_BOUNDARY_HASH,
+        "dry_run_execution_worker_image_boundary_evidence_hash": WORKER_IMAGE_BOUNDARY_HASH,
+        "dry_run_execution_final_readiness_gate_evidence_hash": FINAL_READINESS_HASH,
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution",
+        "restore_evidence_hash": RESTORE_EVIDENCE_HASH,
+        "enqueued_at_utc": datetime(2026, 6, 30, 12, 0, tzinfo=UTC),
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-unit",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-unit",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-unit",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    }
+    payload.update(overrides)
+    return LmsPackageInstallationDryRunExecutionJobOutboxCommand.model_validate(payload)
 
 
 def test_lms_dry_run_execution_job_outbox_is_idempotent_tenant_scoped_and_retriable() -> None:
@@ -79,6 +104,86 @@ def test_lms_dry_run_execution_job_outbox_is_idempotent_tenant_scoped_and_retria
     assert "dry_run_result_payload" not in payload
     assert "course_payload" not in payload
     assert 'worker_executed":true' not in payload
+
+
+def test_lms_dry_run_execution_job_outbox_api_response_registers_and_lists_metadata_only_state() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore()
+
+    response = build_lms_package_installation_dry_run_execution_job_outbox_response(
+        command=_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+    duplicate = build_lms_package_installation_dry_run_execution_job_outbox_response(
+        command=_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+    tenant_list = build_lms_package_installation_dry_run_execution_job_outbox_list_response(
+        tenant_id="tenant-demo",
+        store=store,
+    )
+    other_tenant_list = build_lms_package_installation_dry_run_execution_job_outbox_list_response(
+        tenant_id="tenant-other",
+        store=store,
+    )
+
+    assert response.schema_version == "lms_package_installation_dry_run_execution_job_outbox_api.v1"
+    assert response.job_outbox_entry_registered is True
+    assert response.preparer_role_allowed is True
+    assert response.job_outbox_enqueue_requested is True
+    assert response.blocking_reasons == ()
+    assert response.summary.job_outbox_entry_count == 1
+    assert response.summary.blocking_reason_count == 0
+    assert response.job_outbox_entry.tenant_id == "tenant-demo"
+    assert response.job_outbox_entry.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.QUEUED
+    assert response.job_outbox_entry.worker_dispatch_allowed is False
+    assert response.job_outbox_entry.worker_queue_enqueued is False
+    assert response.job_outbox_entry.worker_execution_allowed is False
+    assert response.job_outbox_entry.dry_run_result_persistence_allowed is False
+    assert response.job_outbox_entry.tenant_module_state_created is False
+    assert response.worker_dispatch_allowed is False
+    assert response.worker_queue_enqueued is False
+    assert response.worker_execution_allowed is False
+    assert response.dry_run_result_persistence_allowed is False
+    assert response.tenant_module_state_created is False
+    assert response.evidence_hash.startswith("sha256:")
+    assert duplicate.job_outbox_entry.worker_job_ref == response.job_outbox_entry.worker_job_ref
+    assert duplicate.summary.job_outbox_entry_count == 1
+    assert tenant_list.job_outbox_entries == (response.job_outbox_entry,)
+    assert tenant_list.worker_execution_allowed is False
+    assert tenant_list.summary.job_outbox_entry_count == 1
+    assert other_tenant_list.job_outbox_entries == ()
+    assert other_tenant_list.summary.job_outbox_entry_count == 0
+
+
+def test_lms_dry_run_execution_job_outbox_api_blocks_worker_requests_without_enqueue() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore()
+
+    response = build_lms_package_installation_dry_run_execution_job_outbox_response(
+        command=_command(
+            worker_dispatch_requested=True,
+            worker_queue_enqueue_requested=True,
+            worker_execution_requested=True,
+            dry_run_result_persistence_requested=True,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.job_outbox_entry_registered is False
+    assert "worker_dispatch_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_queue_enqueue_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_execution_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "dry_run_result_persistence_forbidden_until_worker_admission" in response.blocking_reasons
+    assert response.summary.job_outbox_entry_count == 0
+    assert response.job_outbox_entry.worker_dispatch_allowed is False
+    assert response.job_outbox_entry.worker_queue_enqueued is False
+    assert response.job_outbox_entry.worker_execution_allowed is False
+    assert store.list_jobs(tenant_id="tenant-demo") == ()
 
 
 def test_lms_dry_run_execution_job_outbox_blocks_incomplete_evidence_or_execution_flags() -> None:

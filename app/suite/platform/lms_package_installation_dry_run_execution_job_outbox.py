@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Protocol, Self
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.platform.lms_module import LMS_CONTINUITY_DOMAIN, LMS_MODULE_ID
@@ -17,6 +17,28 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_SCHEMA_VERSION = (
 )
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN = "background_jobs_queues"
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_REF_PREFIX = "lms-dry-run-execution-job"
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_API_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_job_outbox_api.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_job_outbox_no_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_LIST_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_job_outbox_list_no_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT = (
+    "I register the LMS package installation dry-run execution job outbox entry without scheduler activation, "
+    "worker dispatch, worker queue enqueue, worker execution, dry-run result persistence, or package installation."
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_READY_NEXT_ACTION = (
+    "inspect_lms_dry_run_execution_job_outbox_without_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RETRY_NEXT_ACTION = (
+    "prepare_lms_dry_run_execution_job_outbox_without_worker_execution"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -171,6 +193,265 @@ class LmsPackageInstallationDryRunExecutionJobOutboxEntry(BaseModel):
                 raise ValueError("retry or blocked LMS dry-run execution jobs must not carry active lease metadata")
             if self.attempt_count < 1 or not self.last_error_type:
                 raise ValueError("retry or blocked LMS dry-run execution jobs require attempt and error metadata")
+        return self
+
+
+class LmsPackageInstallationDryRunExecutionJobOutboxCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dry_run_execution_admission_gate_evidence_hash: str
+    dry_run_execution_approval_boundary_evidence_hash: str
+    dry_run_execution_approval_record_hash: str
+    dry_run_execution_scheduler_boundary_evidence_hash: str
+    dry_run_execution_worker_image_boundary_evidence_hash: str
+    dry_run_execution_final_readiness_gate_evidence_hash: str
+    worker_queue_ref: str
+    restore_evidence_hash: str
+    enqueued_at_utc: datetime
+    max_attempts: int = Field(default=3, ge=1, le=20)
+    change_request_ref: str
+    idempotency_key_ref: str
+    audit_chain_ref: str
+    job_outbox_statement: str
+    job_outbox_enqueue_requested: bool = True
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_image_resolution_requested: bool = False
+    worker_image_pull_requested: bool = False
+    worker_image_digest_lookup_requested: bool = False
+    worker_dispatch_requested: bool = False
+    worker_queue_enqueue_requested: bool = False
+    worker_execution_requested: bool = False
+    package_installation_dry_run_execution_requested: bool = False
+    dry_run_result_persistence_requested: bool = False
+    package_installation_execution_requested: bool = False
+    tenant_module_state_creation_requested: bool = False
+    content_payload_included: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator(
+        "dry_run_execution_admission_gate_evidence_hash",
+        "dry_run_execution_approval_boundary_evidence_hash",
+        "dry_run_execution_approval_record_hash",
+        "dry_run_execution_scheduler_boundary_evidence_hash",
+        "dry_run_execution_worker_image_boundary_evidence_hash",
+        "dry_run_execution_final_readiness_gate_evidence_hash",
+        "restore_evidence_hash",
+    )
+    @classmethod
+    def require_nonzero_sha256(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution job outbox hashes must be sha256 references")
+        if value == ZERO_SHA256:
+            raise ValueError("LMS dry-run execution job outbox requires a complete evidence chain")
+        return value
+
+    @field_validator("worker_queue_ref", "change_request_ref", "idempotency_key_ref", "audit_chain_ref")
+    @classmethod
+    def require_ref(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("LMS dry-run execution job outbox references must use a typed ref prefix")
+        return normalized
+
+    @field_validator("job_outbox_statement")
+    @classmethod
+    def require_exact_statement(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT:
+            raise ValueError("LMS dry-run execution job outbox requires the exact metadata-only statement")
+        return normalized
+
+    @field_validator("enqueued_at_utc")
+    @classmethod
+    def require_timezone_aware_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("LMS dry-run execution job outbox enqueued_at_utc must include a timezone")
+        return value
+
+
+class LmsPackageInstallationDryRunExecutionJobOutboxSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionJobOutboxResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_API_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    command_hash: str
+    idempotency_key_ref_hash: str
+    job_outbox_statement_hash: str
+    job_outbox_entry_registered: bool
+    preparer_role_allowed: bool
+    job_outbox_enqueue_requested: bool
+    job_outbox_entry: LmsPackageInstallationDryRunExecutionJobOutboxEntry
+    scheduler_activation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_image_resolution_allowed: bool = False
+    worker_image_resolved: bool = False
+    worker_image_pull_allowed: bool = False
+    worker_image_pulled: bool = False
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    worker_executed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    package_installation_dry_run_executed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_persisted: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionJobOutboxSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution job outbox response text fields must not be empty")
+        return value
+
+    @field_validator("command_hash", "idempotency_key_ref_hash", "job_outbox_statement_hash", "evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution job outbox response hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution job outbox response lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution job outbox response list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_registered_state(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_API_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution job outbox API schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT:
+            raise ValueError("LMS dry-run execution job outbox endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution job outbox result contract is invalid")
+        if self.module_id != LMS_MODULE_ID or self.job_outbox_entry.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution job outbox only applies to lms")
+        if self.tenant_id != self.job_outbox_entry.tenant_id:
+            raise ValueError("LMS dry-run execution job outbox tenant must match the entry tenant")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution job outbox continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution job outbox LMS continuity domain is invalid")
+        expected_registered = (
+            self.preparer_role_allowed and self.job_outbox_enqueue_requested and not self.blocking_reasons
+        )
+        if self.job_outbox_entry_registered != expected_registered:
+            raise ValueError("LMS dry-run execution job outbox registration flag must match prerequisites")
+        if (
+            self.scheduler_activation_allowed
+            or self.scheduler_job_created
+            or self.worker_image_resolution_allowed
+            or self.worker_image_resolved
+            or self.worker_image_pull_allowed
+            or self.worker_image_pulled
+            or self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.worker_executed
+            or self.package_installation_dry_run_execution_allowed
+            or self.package_installation_dry_run_executed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_persisted
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution job outbox API must remain metadata-only and non-executing")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution job outbox blocking count must match blocking reasons")
+        return self
+
+
+class LmsPackageInstallationDryRunExecutionJobOutboxListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_API_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_LIST_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    job_outbox_entries: tuple[LmsPackageInstallationDryRunExecutionJobOutboxEntry, ...]
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    summary: LmsPackageInstallationDryRunExecutionJobOutboxSummary
+    evidence_hash: str
+    next_action: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_READY_NEXT_ACTION
+
+    @model_validator(mode="after")
+    def require_tenant_scoped_metadata_only_list(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_API_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution job outbox list schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT:
+            raise ValueError("LMS dry-run execution job outbox list endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_LIST_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution job outbox list result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution job outbox list only applies to lms")
+        if any(entry.tenant_id != self.tenant_id for entry in self.job_outbox_entries):
+            raise ValueError("LMS dry-run execution job outbox list must be tenant scoped")
+        if (
+            self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.package_installation_dry_run_execution_allowed
+            or self.dry_run_result_persistence_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution job outbox list must remain metadata-only and non-executing")
+        if self.summary.job_outbox_entry_count != len(self.job_outbox_entries):
+            raise ValueError("LMS dry-run execution job outbox list count must match entries")
+        if self.summary.blocking_reason_count != 0:
+            raise ValueError("LMS dry-run execution job outbox list must not carry blocking reasons")
         return self
 
 
@@ -428,3 +709,152 @@ def build_lms_dry_run_execution_job_outbox_entry_hash(
     entry: LmsPackageInstallationDryRunExecutionJobOutboxEntry,
 ) -> str:
     return stable_hash(canonical_json(entry.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_default_lms_package_installation_dry_run_execution_job_outbox_store() -> (
+    InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore
+):
+    return InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore()
+
+
+def build_lms_package_installation_dry_run_execution_job_outbox_response(
+    *,
+    command: LmsPackageInstallationDryRunExecutionJobOutboxCommand,
+    tenant_id: str,
+    user_role_ids: set[str],
+    store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+) -> LmsPackageInstallationDryRunExecutionJobOutboxResponse:
+    command_hash = build_lms_package_installation_dry_run_execution_job_outbox_command_hash(command)
+    idempotency_key_ref_hash = stable_hash(command.idempotency_key_ref)
+    job_outbox_statement_hash = stable_hash(command.job_outbox_statement)
+    entry = build_lms_dry_run_execution_job_outbox_entry(
+        tenant_id=tenant_id,
+        dry_run_execution_admission_gate_evidence_hash=command.dry_run_execution_admission_gate_evidence_hash,
+        dry_run_execution_approval_boundary_evidence_hash=command.dry_run_execution_approval_boundary_evidence_hash,
+        dry_run_execution_approval_record_hash=command.dry_run_execution_approval_record_hash,
+        dry_run_execution_scheduler_boundary_evidence_hash=command.dry_run_execution_scheduler_boundary_evidence_hash,
+        dry_run_execution_worker_image_boundary_evidence_hash=(
+            command.dry_run_execution_worker_image_boundary_evidence_hash
+        ),
+        dry_run_execution_final_readiness_gate_evidence_hash=(
+            command.dry_run_execution_final_readiness_gate_evidence_hash
+        ),
+        worker_queue_ref=command.worker_queue_ref,
+        restore_evidence_hash=command.restore_evidence_hash,
+        enqueued_at_utc=command.enqueued_at_utc,
+        max_attempts=command.max_attempts,
+    )
+    preparer_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons = _job_outbox_blocking_reasons(
+        command=command,
+        preparer_role_allowed=preparer_role_allowed,
+    )
+    registered_entry = store.enqueue(entry) if not blocking_reasons else entry
+    job_count = len(store.list_jobs(tenant_id=tenant_id))
+    draft = LmsPackageInstallationDryRunExecutionJobOutboxResponse(
+        tenant_id=tenant_id,
+        command_hash=command_hash,
+        idempotency_key_ref_hash=idempotency_key_ref_hash,
+        job_outbox_statement_hash=job_outbox_statement_hash,
+        job_outbox_entry_registered=not blocking_reasons,
+        preparer_role_allowed=preparer_role_allowed,
+        job_outbox_enqueue_requested=command.job_outbox_enqueue_requested,
+        job_outbox_entry=registered_entry,
+        blocking_reasons=blocking_reasons,
+        summary=LmsPackageInstallationDryRunExecutionJobOutboxSummary(
+            job_outbox_entry_count=job_count,
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_READY_NEXT_ACTION
+            if not blocking_reasons
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RETRY_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(update={"evidence_hash": build_lms_dry_run_execution_job_outbox_response_hash(draft)})
+
+
+def build_lms_package_installation_dry_run_execution_job_outbox_list_response(
+    *,
+    tenant_id: str,
+    store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+) -> LmsPackageInstallationDryRunExecutionJobOutboxListResponse:
+    entries = tuple(sorted(store.list_jobs(tenant_id=tenant_id), key=lambda entry: entry.enqueued_at_utc))
+    draft = LmsPackageInstallationDryRunExecutionJobOutboxListResponse(
+        tenant_id=tenant_id,
+        job_outbox_entries=entries,
+        summary=LmsPackageInstallationDryRunExecutionJobOutboxSummary(
+            job_outbox_entry_count=len(entries),
+            blocking_reason_count=0,
+        ),
+        evidence_hash=ZERO_SHA256,
+    )
+    return draft.model_copy(update={"evidence_hash": build_lms_dry_run_execution_job_outbox_list_hash(draft)})
+
+
+def build_lms_package_installation_dry_run_execution_job_outbox_command_hash(
+    command: LmsPackageInstallationDryRunExecutionJobOutboxCommand,
+) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def build_lms_dry_run_execution_job_outbox_response_hash(
+    response: LmsPackageInstallationDryRunExecutionJobOutboxResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_lms_dry_run_execution_job_outbox_list_hash(
+    response: LmsPackageInstallationDryRunExecutionJobOutboxListResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _job_outbox_blocking_reasons(
+    *,
+    command: LmsPackageInstallationDryRunExecutionJobOutboxCommand,
+    preparer_role_allowed: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not preparer_role_allowed:
+        reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_job_outbox")
+    if not command.job_outbox_enqueue_requested:
+        reasons.append("lms_dry_run_execution_job_outbox_enqueue_not_requested")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_forbidden_until_worker_admission")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_forbidden_until_worker_admission")
+    if command.worker_image_resolution_requested:
+        reasons.append("worker_image_resolution_forbidden_until_worker_admission")
+    if command.worker_image_pull_requested:
+        reasons.append("worker_image_pull_forbidden_until_worker_admission")
+    if command.worker_image_digest_lookup_requested:
+        reasons.append("worker_image_digest_lookup_forbidden_until_worker_admission")
+    if command.worker_dispatch_requested:
+        reasons.append("worker_dispatch_forbidden_until_worker_admission")
+    if command.worker_queue_enqueue_requested:
+        reasons.append("worker_queue_enqueue_forbidden_until_worker_admission")
+    if command.worker_execution_requested:
+        reasons.append("worker_execution_forbidden_until_worker_admission")
+    if command.package_installation_dry_run_execution_requested:
+        reasons.append("package_installation_dry_run_execution_forbidden_until_worker_admission")
+    if command.dry_run_result_persistence_requested:
+        reasons.append("dry_run_result_persistence_forbidden_until_worker_admission")
+    if command.package_installation_execution_requested:
+        reasons.append("package_installation_execution_forbidden_until_worker_admission")
+    if command.tenant_module_state_creation_requested:
+        reasons.append("tenant_module_state_creation_forbidden_until_package_installation")
+    if command.content_payload_included:
+        reasons.append("content_payload_forbidden_in_lms_dry_run_execution_job_outbox")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_job_outbox")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_job_outbox")
+    return tuple(reasons)

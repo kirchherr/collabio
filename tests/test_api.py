@@ -60,6 +60,10 @@ from suite.platform.lms_package_installation_dry_run_execution_final_readiness_g
 from suite.platform.lms_package_installation_dry_run_execution_gate import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_GATE_STATEMENT,
 )
+from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    build_default_lms_package_installation_dry_run_execution_job_outbox_store,
+)
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_PLAN_STATEMENT,
 )
@@ -421,6 +425,9 @@ def reset_module_registry() -> None:
     )
     app.state.lms_dry_run_execution_approval_record_store = (
         build_default_lms_package_installation_dry_run_execution_approval_record_store()
+    )
+    app.state.lms_dry_run_execution_job_outbox_store = (
+        build_default_lms_package_installation_dry_run_execution_job_outbox_store()
     )
 
 
@@ -1013,7 +1020,14 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary"
         in future_modules["api_routes"]
     )
-    assert future_modules["next_action"] == "wire_lms_dry_run_execution_job_outbox_to_api_without_worker_execution"
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox"
+        in future_modules["api_routes"]
+    )
+    assert "lms_package_installation_dry_run_execution_job_outbox_ready" in future_modules["guardrails"]
+    assert (
+        future_modules["next_action"] == "prepare_lms_dry_run_execution_outbox_lease_consumer_without_worker_execution"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1250,7 +1264,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("wire_lms_dry_run_execution_job_outbox_to_api_without_worker_execution")
+    assert families["lms"]["next_action"] == (
+        "prepare_lms_dry_run_execution_outbox_lease_consumer_without_worker_execution"
+    )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5132,6 +5148,200 @@ def test_lms_package_installation_dry_run_executor_implementation_review_reviews
     assert worker_image_final_readiness_event.metadata["worker_execution_allowed"] is False
     assert worker_image_final_readiness_event.metadata["tenant_module_state_created"] is False
     assert "dry_run_execution_final_readiness_gate_statement" not in worker_image_final_readiness_event.metadata
+
+
+def test_lms_package_installation_dry_run_execution_job_outbox_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        json={},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    payload = {
+        "dry_run_execution_admission_gate_evidence_hash": api_fixture_hash("lms-job-outbox-admission-gate"),
+        "dry_run_execution_approval_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-approval-boundary"),
+        "dry_run_execution_approval_record_hash": api_fixture_hash("lms-job-outbox-approval-record"),
+        "dry_run_execution_scheduler_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-scheduler-boundary"),
+        "dry_run_execution_worker_image_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-worker-image"),
+        "dry_run_execution_final_readiness_gate_evidence_hash": api_fixture_hash("lms-job-outbox-final-readiness"),
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution-api",
+        "restore_evidence_hash": api_fixture_hash("lms-job-outbox-restore"),
+        "enqueued_at_utc": "2026-06-30T11:10:00Z",
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-api-demo",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-api-demo",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    }
+
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=payload,
+    )
+    duplicate_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=payload,
+    )
+    list_response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert duplicate_response.status_code == 200
+    assert list_response.status_code == 200
+    body = response.json()
+    duplicate_body = duplicate_response.json()
+    list_body = list_response.json()
+    entry = body["job_outbox_entry"]
+
+    assert body["schema_version"] == "lms_package_installation_dry_run_execution_job_outbox_api.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "lms"
+    assert body["endpoint"] == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox"
+    assert (
+        body["result_contract"]
+        == "metadata_only_lms_package_installation_dry_run_execution_job_outbox_no_worker_execution"
+    )
+    assert body["continuity_domain"] == "background_jobs_queues"
+    assert body["lms_continuity_domain"] == "lms_training_records"
+    assert body["job_outbox_entry_registered"] is True
+    assert body["preparer_role_allowed"] is True
+    assert body["job_outbox_enqueue_requested"] is True
+    assert body["blocking_reasons"] == []
+    assert body["summary"] == {"job_outbox_entry_count": 1, "blocking_reason_count": 0}
+    assert body["next_action"] == "inspect_lms_dry_run_execution_job_outbox_without_worker_execution"
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["command_hash"].startswith("sha256:")
+    assert body["idempotency_key_ref_hash"].startswith("sha256:")
+    assert body["job_outbox_statement_hash"].startswith("sha256:")
+    assert entry["tenant_id"] == "tenant-demo"
+    assert entry["schema_version"] == "lms_package_installation_dry_run_execution_job_outbox.v1"
+    assert entry["queue_status"] == "queued"
+    assert entry["worker_queue_ref"] == "worker-queue:lms-dry-run-execution-api"
+    assert entry["worker_job_ref"].startswith("lms-dry-run-execution-job:sha256:")
+    assert entry["attempt_count"] == 0
+    assert entry["max_attempts"] == 3
+    assert entry["lease_id"] is None
+    assert entry["lease_owner"] is None
+    assert entry["leased_until_utc"] is None
+    assert entry["last_error_type"] is None
+    assert entry["scheduler_activation_allowed"] is False
+    assert entry["scheduler_job_created"] is False
+    assert entry["worker_image_resolution_allowed"] is False
+    assert entry["worker_image_resolved"] is False
+    assert entry["worker_image_pull_allowed"] is False
+    assert entry["worker_image_pulled"] is False
+    assert entry["worker_dispatch_allowed"] is False
+    assert entry["worker_queue_enqueued"] is False
+    assert entry["worker_execution_allowed"] is False
+    assert entry["worker_executed"] is False
+    assert entry["package_installation_dry_run_execution_allowed"] is False
+    assert entry["package_installation_dry_run_executed"] is False
+    assert entry["dry_run_result_persistence_allowed"] is False
+    assert entry["dry_run_result_persisted"] is False
+    assert entry["package_installation_execution_allowed"] is False
+    assert entry["tenant_module_state_created"] is False
+    assert entry["destructive_actions_allowed"] is False
+    assert entry["external_side_effect_allowed"] is False
+    assert duplicate_body["job_outbox_entry"]["worker_job_ref"] == entry["worker_job_ref"]
+    assert duplicate_body["summary"] == {"job_outbox_entry_count": 1, "blocking_reason_count": 0}
+    assert list_body["job_outbox_entries"] == [entry]
+    assert list_body["summary"] == {"job_outbox_entry_count": 1, "blocking_reason_count": 0}
+    assert list_body["worker_dispatch_allowed"] is False
+    assert list_body["worker_queue_enqueued"] is False
+    assert list_body["worker_execution_allowed"] is False
+    assert list_body["dry_run_result_persistence_allowed"] is False
+    assert list_body["tenant_module_state_created"] is False
+    assert "job_outbox_statement" not in body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    post_events = [
+        event
+        for event in new_events
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_job_outbox"
+    ]
+    list_events = [
+        event
+        for event in new_events
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_job_outbox_list"
+    ]
+    assert len(post_events) == 2
+    assert len(list_events) == 1
+    event = post_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["job_outbox_entry_registered"] is True
+    assert event.metadata["worker_job_ref"] == entry["worker_job_ref"]
+    assert event.metadata["queue_status"] == "queued"
+    assert event.metadata["job_outbox_entry_count"] == 1
+    assert event.metadata["worker_dispatch_allowed"] is False
+    assert event.metadata["worker_queue_enqueued"] is False
+    assert event.metadata["worker_execution_allowed"] is False
+    assert event.metadata["dry_run_result_persistence_allowed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert "job_outbox_statement" not in event.metadata
+    list_event = next(event for event in list_events if event.tenant_id == "tenant-demo")
+    assert list_event.metadata["job_outbox_entry_count"] == 1
+    assert list_event.metadata["worker_execution_allowed"] is False
+
+
+def test_lms_package_installation_dry_run_execution_job_outbox_blocks_worker_actions_without_enqueue() -> None:
+    reset_module_registry()
+    payload = {
+        "dry_run_execution_admission_gate_evidence_hash": api_fixture_hash("lms-job-outbox-block-admission-gate"),
+        "dry_run_execution_approval_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-block-approval-boundary"),
+        "dry_run_execution_approval_record_hash": api_fixture_hash("lms-job-outbox-block-approval-record"),
+        "dry_run_execution_scheduler_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-block-scheduler"),
+        "dry_run_execution_worker_image_boundary_evidence_hash": api_fixture_hash("lms-job-outbox-block-worker-image"),
+        "dry_run_execution_final_readiness_gate_evidence_hash": api_fixture_hash("lms-job-outbox-block-final"),
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution-blocked-api",
+        "restore_evidence_hash": api_fixture_hash("lms-job-outbox-block-restore"),
+        "enqueued_at_utc": "2026-06-30T11:15:00Z",
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-blocked-api-demo",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-blocked-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-blocked-api-demo",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+        "worker_dispatch_requested": True,
+        "worker_queue_enqueue_requested": True,
+        "worker_execution_requested": True,
+        "dry_run_result_persistence_requested": True,
+    }
+
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=payload,
+    )
+    list_response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert list_response.status_code == 200
+    body = response.json()
+    assert body["job_outbox_entry_registered"] is False
+    assert "worker_dispatch_forbidden_until_worker_admission" in body["blocking_reasons"]
+    assert "worker_queue_enqueue_forbidden_until_worker_admission" in body["blocking_reasons"]
+    assert "worker_execution_forbidden_until_worker_admission" in body["blocking_reasons"]
+    assert "dry_run_result_persistence_forbidden_until_worker_admission" in body["blocking_reasons"]
+    assert body["summary"]["job_outbox_entry_count"] == 0
+    assert body["job_outbox_entry"]["worker_dispatch_allowed"] is False
+    assert body["job_outbox_entry"]["worker_queue_enqueued"] is False
+    assert body["job_outbox_entry"]["worker_execution_allowed"] is False
+    assert list_response.json()["job_outbox_entries"] == []
 
 
 def test_lms_package_installation_dry_run_execution_activation_boundary_requires_request_context() -> None:

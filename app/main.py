@@ -250,6 +250,14 @@ from suite.platform.lms_package_installation_dry_run_execution_gate import (
     LmsPackageInstallationDryRunExecutionGateResponse,
     build_lms_package_installation_dry_run_execution_gate_response,
 )
+from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
+    LmsPackageInstallationDryRunExecutionJobOutboxCommand,
+    LmsPackageInstallationDryRunExecutionJobOutboxListResponse,
+    LmsPackageInstallationDryRunExecutionJobOutboxResponse,
+    build_default_lms_package_installation_dry_run_execution_job_outbox_store,
+    build_lms_package_installation_dry_run_execution_job_outbox_list_response,
+    build_lms_package_installation_dry_run_execution_job_outbox_response,
+)
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
     LmsPackageInstallationDryRunExecutionPlanCommand,
     LmsPackageInstallationDryRunExecutionPlanResponse,
@@ -1127,6 +1135,7 @@ def build_app() -> FastAPI:
     lms_dry_run_execution_approval_record_store = (
         build_default_lms_package_installation_dry_run_execution_approval_record_store()
     )
+    lms_dry_run_execution_job_outbox_store = build_default_lms_package_installation_dry_run_execution_job_outbox_store()
     embedding_model_admin = EmbeddingModelVersionAdminService(
         repository=embedding_model_registry,
         audit_logger=audit_logger,
@@ -3255,6 +3264,140 @@ def build_app() -> FastAPI:
                 "evidence_hash": response.evidence_hash,
                 "command_hash": response.command_hash,
                 "idempotency_key_hash": response.idempotency_key_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        response_model=LmsPackageInstallationDryRunExecutionJobOutboxResponse,
+    )
+    def lms_package_installation_dry_run_execution_job_outbox(
+        command: LmsPackageInstallationDryRunExecutionJobOutboxCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionJobOutboxResponse:
+        response = build_lms_package_installation_dry_run_execution_job_outbox_response(
+            command=command,
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            store=request.app.state.lms_dry_run_execution_job_outbox_store,
+        )
+        entry = response.job_outbox_entry
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_job_outbox",
+            source_object_ids=[
+                f"lms_dry_run_execution_admission_gate:{entry.dry_run_execution_admission_gate_evidence_hash}",
+                f"lms_dry_run_execution_approval_boundary:{entry.dry_run_execution_approval_boundary_evidence_hash}",
+                f"lms_dry_run_execution_approval_record:{entry.dry_run_execution_approval_record_hash}",
+                f"lms_dry_run_execution_scheduler_boundary:{entry.dry_run_execution_scheduler_boundary_evidence_hash}",
+                f"lms_dry_run_execution_worker_image_boundary:{entry.dry_run_execution_worker_image_boundary_evidence_hash}",
+                f"lms_dry_run_execution_final_readiness_gate:{entry.dry_run_execution_final_readiness_gate_evidence_hash}",
+                f"lms_dry_run_execution_job_outbox:{entry.worker_job_ref}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "dry_run_execution_admission_gate_evidence_hash": (
+                    entry.dry_run_execution_admission_gate_evidence_hash
+                ),
+                "dry_run_execution_approval_boundary_evidence_hash": (
+                    entry.dry_run_execution_approval_boundary_evidence_hash
+                ),
+                "dry_run_execution_approval_record_hash": entry.dry_run_execution_approval_record_hash,
+                "dry_run_execution_scheduler_boundary_evidence_hash": (
+                    entry.dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "dry_run_execution_worker_image_boundary_evidence_hash": (
+                    entry.dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "dry_run_execution_final_readiness_gate_evidence_hash": (
+                    entry.dry_run_execution_final_readiness_gate_evidence_hash
+                ),
+                "worker_queue_ref": entry.worker_queue_ref,
+                "worker_job_ref": entry.worker_job_ref,
+                "worker_idempotency_key_hash": entry.worker_idempotency_key_hash,
+                "restore_evidence_hash": entry.restore_evidence_hash,
+                "queue_status": entry.queue_status,
+                "attempt_count": entry.attempt_count,
+                "max_attempts": entry.max_attempts,
+                "job_outbox_entry_registered": response.job_outbox_entry_registered,
+                "preparer_role_allowed": response.preparer_role_allowed,
+                "job_outbox_enqueue_requested": response.job_outbox_enqueue_requested,
+                "job_outbox_statement_hash": response.job_outbox_statement_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_ref_hash": response.idempotency_key_ref_hash,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "worker_executed": response.worker_executed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "package_installation_dry_run_executed": response.package_installation_dry_run_executed,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "evidence_hash": response.evidence_hash,
+                "job_entry_evidence_hash": entry.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        response_model=LmsPackageInstallationDryRunExecutionJobOutboxListResponse,
+    )
+    def list_lms_package_installation_dry_run_execution_job_outbox(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionJobOutboxListResponse:
+        response = build_lms_package_installation_dry_run_execution_job_outbox_list_response(
+            tenant_id=context.user_context.tenant_id,
+            store=request.app.state.lms_dry_run_execution_job_outbox_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_job_outbox_list",
+            source_object_ids=[entry.worker_job_ref for entry in response.job_outbox_entries],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
             },
         )
@@ -16741,6 +16884,7 @@ def build_app() -> FastAPI:
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store
     app.state.lms_tenant_admin_package_approval_record_store = lms_tenant_admin_package_approval_record_store
     app.state.lms_dry_run_execution_approval_record_store = lms_dry_run_execution_approval_record_store
+    app.state.lms_dry_run_execution_job_outbox_store = lms_dry_run_execution_job_outbox_store
     app.state.llm_gateway = llm_gateway
     app.state.embedding_model_admin = embedding_model_admin
     app.state.embedding_model_registry = embedding_model_registry
