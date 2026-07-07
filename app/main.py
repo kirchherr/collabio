@@ -261,6 +261,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
     LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse,
     LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse,
+    LmsPackageInstallationDryRunExecutionOutboxResultReconciliationGateResponse,
     LmsPackageInstallationDryRunExecutionOutboxRetryCommand,
     LmsPackageInstallationDryRunExecutionOutboxRetryResponse,
     LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
@@ -280,6 +281,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
     build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response,
     build_lms_package_installation_dry_run_execution_outbox_result_read_model_response,
+    build_lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_response,
     build_lms_package_installation_dry_run_execution_outbox_retry_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_dispatch_admission_response,
@@ -4232,6 +4234,75 @@ def build_app() -> FastAPI:
                 "job_outbox_entry_count": response.summary.job_outbox_entry_count,
                 "leased_job_count": response.summary.leased_job_count,
                 "missing_job_reference_count": response.summary.missing_job_reference_count,
+                "outbox_state_mutated": response.outbox_state_mutated,
+                "business_writes_executed": response.business_writes_executed,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_payload_included": response.dry_run_result_payload_included,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/"
+        "result-reconciliation-gate",
+        response_model=LmsPackageInstallationDryRunExecutionOutboxResultReconciliationGateResponse,
+    )
+    def read_lms_package_installation_dry_run_execution_job_outbox_result_reconciliation_gate(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultReconciliationGateResponse:
+        response = build_lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_response(
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            job_store=request.app.state.lms_dry_run_execution_job_outbox_store,
+            result_metadata_store=request.app.state.lms_dry_run_execution_result_metadata_store,
+        )
+        source_object_ids = [
+            f"lms_dry_run_execution_job_outbox:{entry.worker_job_ref}" for entry in response.reconciliation_entries
+        ]
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_outbox_result_reconciliation_gate",
+            source_object_ids=source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "result_reconciliation_gate_ready": response.result_reconciliation_gate_ready,
+                "reader_role_allowed": response.reader_role_allowed,
+                "result_read_model_ready": response.result_read_model_ready,
+                "generated_at_utc": response.generated_at_utc,
+                "result_read_model_evidence_hash": response.result_read_model_evidence_hash,
+                "result_metadata_refs": response.result_metadata_refs,
+                "reconciled_result_metadata_refs": response.reconciled_result_metadata_refs,
+                "missing_metadata_record_refs": response.missing_metadata_record_refs,
+                "missing_read_model_entry_refs": response.missing_read_model_entry_refs,
+                "mismatched_result_metadata_refs": response.mismatched_result_metadata_refs,
+                "missing_job_reference_refs": response.missing_job_reference_refs,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "result_metadata_record_count": response.summary.result_metadata_record_count,
+                "result_read_model_entry_count": response.summary.result_read_model_entry_count,
+                "reconciliation_entry_count": response.summary.reconciliation_entry_count,
+                "reconciled_entry_count": response.summary.reconciled_entry_count,
+                "missing_metadata_record_count": response.summary.missing_metadata_record_count,
+                "missing_read_model_entry_count": response.summary.missing_read_model_entry_count,
+                "mismatched_metadata_record_count": response.summary.mismatched_metadata_record_count,
+                "missing_job_reference_count": response.summary.missing_job_reference_count,
+                "read_model_blocking_reason_count": response.summary.read_model_blocking_reason_count,
                 "outbox_state_mutated": response.outbox_state_mutated,
                 "business_writes_executed": response.business_writes_executed,
                 "worker_execution_allowed": response.worker_execution_allowed,
