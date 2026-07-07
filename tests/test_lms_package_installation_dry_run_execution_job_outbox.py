@@ -6,18 +6,21 @@ from pydantic import ValidationError
 from suite.persistence.migration_catalog import get_migration
 from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_DEAD_LETTER_REVIEW_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RETRY_STATEMENT,
     InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore,
     LmsPackageInstallationDryRunExecutionJobOutboxCommand,
     LmsPackageInstallationDryRunExecutionJobOutboxEntry,
     LmsPackageInstallationDryRunExecutionJobStatus,
+    LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewCommand,
     LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
     LmsPackageInstallationDryRunExecutionOutboxRetryCommand,
     build_lms_dry_run_execution_job_outbox_entry,
     build_lms_dry_run_execution_job_outbox_entry_hash,
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
+    build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response,
     build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
     build_lms_package_installation_dry_run_execution_outbox_retry_response,
 )
@@ -102,6 +105,20 @@ def _retry_command(
     }
     payload.update(overrides)
     return LmsPackageInstallationDryRunExecutionOutboxRetryCommand.model_validate(payload)
+
+
+def _dead_letter_review_command(
+    **overrides: object,
+) -> LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewCommand:
+    payload: dict[str, object] = {
+        "reviewer_ref": "reviewer:lms-dry-run-dead-letter-unit",
+        "checked_at_utc": datetime(2026, 6, 30, 12, 10, tzinfo=UTC),
+        "idempotency_key_ref": "idempotency:lms-dry-run-dead-letter-review-unit",
+        "audit_chain_ref": "audit:lms-dry-run-dead-letter-review-unit",
+        "dead_letter_review_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_DEAD_LETTER_REVIEW_STATEMENT,
+    }
+    payload.update(overrides)
+    return LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewCommand.model_validate(payload)
 
 
 def test_lms_dry_run_execution_job_outbox_is_idempotent_tenant_scoped_and_retriable() -> None:
@@ -354,6 +371,100 @@ def test_lms_dry_run_execution_outbox_retry_api_blocks_worker_requests_before_re
     assert "dry_run_result_persistence_forbidden_until_worker_admission" in response.blocking_reasons
     persisted = store.get(tenant_id="tenant-demo", worker_idempotency_key_hash=leased.worker_idempotency_key_hash)
     assert persisted.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+
+
+def test_lms_dry_run_execution_outbox_dead_letter_review_api_reports_blocked_jobs() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(max_attempts=1),))
+    leased = store.lease_next(
+        tenant_id="tenant-demo",
+        lease_owner="lease-consumer:lms-dry-run-dead-letter-unit",
+        now=datetime(2026, 6, 30, 12, 0, 1, tzinfo=UTC),
+    )
+    assert leased is not None
+    assert leased.lease_id is not None
+    blocked = store.record_retry(
+        tenant_id="tenant-demo",
+        worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+        lease_id=leased.lease_id,
+        error_type="worker-not-enabled-yet",
+        next_attempt_after_utc=datetime(2026, 6, 30, 12, 5, tzinfo=UTC),
+        now=datetime(2026, 6, 30, 12, 0, 2, tzinfo=UTC),
+    )
+    assert blocked.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.BLOCKED
+
+    response = build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response(
+        command=_dead_letter_review_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.schema_version == "lms_package_installation_dry_run_execution_outbox_dead_letter_review.v1"
+    assert response.dead_letter_review_ready is True
+    assert response.review_requested is True
+    assert response.blocking_reasons == ()
+    assert response.blocked_jobs == (blocked,)
+    assert response.blocked_jobs[0].queue_status == LmsPackageInstallationDryRunExecutionJobStatus.BLOCKED
+    assert response.blocked_jobs[0].restore_evidence_hash == RESTORE_EVIDENCE_HASH
+    assert response.retry_reset_allowed is False
+    assert response.requeue_allowed is False
+    assert response.dead_letter_release_allowed is False
+    assert response.worker_dispatch_allowed is False
+    assert response.worker_queue_enqueued is False
+    assert response.worker_execution_allowed is False
+    assert response.dry_run_result_persistence_allowed is False
+    assert response.tenant_module_state_created is False
+    assert response.summary.job_outbox_entry_count == 1
+    assert response.summary.blocked_job_count == 1
+    assert response.summary.restore_hash_bound_blocked_job_count == 1
+    assert response.summary.retry_scheduled_job_count == 0
+    assert response.summary.leased_job_count == 0
+    assert response.summary.queued_job_count == 0
+    assert response.evidence_hash.startswith("sha256:")
+
+
+def test_lms_dry_run_execution_outbox_dead_letter_review_blocks_requeue_and_worker_requests() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(max_attempts=1),))
+    leased = store.lease_next(
+        tenant_id="tenant-demo",
+        lease_owner="lease-consumer:lms-dry-run-dead-letter-unit",
+        now=datetime(2026, 6, 30, 12, 0, 1, tzinfo=UTC),
+    )
+    assert leased is not None
+    assert leased.lease_id is not None
+    store.record_retry(
+        tenant_id="tenant-demo",
+        worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+        lease_id=leased.lease_id,
+        error_type="worker-not-enabled-yet",
+        next_attempt_after_utc=datetime(2026, 6, 30, 12, 5, tzinfo=UTC),
+        now=datetime(2026, 6, 30, 12, 0, 2, tzinfo=UTC),
+    )
+
+    response = build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response(
+        command=_dead_letter_review_command(
+            retry_reset_requested=True,
+            requeue_requested=True,
+            worker_dispatch_requested=True,
+            worker_queue_enqueue_requested=True,
+            worker_execution_requested=True,
+            dry_run_result_persistence_requested=True,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.dead_letter_review_ready is False
+    assert response.summary.blocked_job_count == 1
+    assert "retry_reset_forbidden_in_lms_dry_run_execution_outbox_dead_letter_review" in response.blocking_reasons
+    assert "requeue_forbidden_in_lms_dry_run_execution_outbox_dead_letter_review" in response.blocking_reasons
+    assert "worker_dispatch_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_queue_enqueue_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_execution_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "dry_run_result_persistence_forbidden_until_worker_admission" in response.blocking_reasons
+    persisted = store.get(tenant_id="tenant-demo", worker_idempotency_key_hash=leased.worker_idempotency_key_hash)
+    assert persisted.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.BLOCKED
 
 
 def test_lms_dry_run_execution_job_outbox_api_blocks_worker_requests_without_enqueue() -> None:

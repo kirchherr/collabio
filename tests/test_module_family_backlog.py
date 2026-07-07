@@ -87,7 +87,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert lms.pre_catalog_foundation_ready is False
     assert lms.first_slice_foundation_ready is False
     assert lms.runtime_activation_allowed is False
-    assert lms.next_action == "wire_lms_dry_run_execution_outbox_dead_letter_review_without_worker_execution"
+    assert lms.next_action == "wire_lms_dry_run_execution_worker_admission_gate_without_worker_execution"
     assert "module_catalog_entry_required" in lms.required_foundation_gates
     assert "backup_restore_evidence_required" in lms.required_foundation_gates
 
