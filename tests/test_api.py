@@ -1073,6 +1073,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-metadata-records"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model"
+        in future_modules["api_routes"]
+    )
     assert "lms_package_installation_dry_run_execution_job_outbox_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_lease_consumer_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_retry_api_ready" in future_modules["guardrails"]
@@ -1091,7 +1095,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert (
         "lms_package_installation_dry_run_execution_outbox_result_metadata_store_ready" in future_modules["guardrails"]
     )
-    assert future_modules["next_action"] == "build_lms_dry_run_execution_result_read_model_without_business_writes"
+    assert "lms_package_installation_dry_run_execution_outbox_result_read_model_ready" in future_modules["guardrails"]
+    assert (
+        future_modules["next_action"]
+        == "build_lms_dry_run_execution_result_reconciliation_gate_without_business_writes"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1328,7 +1336,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("build_lms_dry_run_execution_result_read_model_without_business_writes")
+    assert families["lms"]["next_action"] == (
+        "build_lms_dry_run_execution_result_reconciliation_gate_without_business_writes"
+    )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5304,6 +5314,14 @@ def test_lms_package_installation_dry_run_execution_outbox_result_metadata_requi
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_outbox_result_read_model_requires_request_context() -> None:
+    response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model"
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -6482,6 +6500,10 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
         headers=DEMO_ADMIN_HEADERS,
         json=result_metadata_payload,
     )
+    result_read_model_response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model",
+        headers=DEMO_ADMIN_HEADERS,
+    )
 
     assert job_response.status_code == 200
     assert lease_response.status_code == 200
@@ -6543,6 +6565,48 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
         LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_STATEMENT not in result_metadata_response.text
     )
 
+    read_model_body = result_read_model_response.json()
+    assert read_model_body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_result_read_model.v1"
+    assert read_model_body["tenant_id"] == "tenant-demo"
+    assert (
+        read_model_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model"
+    )
+    assert (
+        read_model_body["result_contract"]
+        == "metadata_only_lms_package_installation_dry_run_execution_outbox_result_read_model_no_business_writes"
+    )
+    assert read_model_body["result_read_model_ready"] is True
+    assert read_model_body["reader_role_allowed"] is True
+    assert read_model_body["result_metadata_refs"] == [body["result_metadata_ref"]]
+    assert len(read_model_body["result_read_model_entries"]) == 1
+    read_model_entry = read_model_body["result_read_model_entries"][0]
+    assert read_model_entry["tenant_id"] == "tenant-demo"
+    assert read_model_entry["result_metadata_ref"] == body["result_metadata_ref"]
+    assert read_model_entry["worker_job_ref"] == leased_job["worker_job_ref"]
+    assert read_model_entry["received_job_queue_status"] == "leased"
+    assert read_model_entry["dry_run_result_payload_included"] is False
+    assert read_model_entry["business_writes_executed"] is False
+    assert read_model_body["summary"] == {
+        "job_outbox_entry_count": 1,
+        "leased_job_count": 1,
+        "result_metadata_record_count": 1,
+        "result_read_model_entry_count": 1,
+        "missing_job_reference_count": 0,
+        "blocking_reason_count": 0,
+    }
+    assert read_model_body["outbox_state_mutated"] is False
+    assert read_model_body["business_writes_executed"] is False
+    assert read_model_body["worker_execution_allowed"] is False
+    assert read_model_body["dry_run_result_persistence_allowed"] is False
+    assert read_model_body["dry_run_result_payload_included"] is False
+    assert read_model_body["tenant_module_state_created"] is False
+    assert "result_metadata_statement" not in read_model_body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_STATEMENT
+        not in result_read_model_response.text
+    )
+
     result_metadata_events = [
         event
         for event in app.state.audit_logger.events[starting_event_count:]
@@ -6570,6 +6634,28 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
     assert event.metadata["dry_run_result_payload_included"] is False
     assert event.metadata["tenant_module_state_created"] is False
     assert "result_metadata_statement" not in event.metadata
+
+    result_read_model_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_outbox_result_read_model"
+    ]
+    assert len(result_read_model_events) == 1
+    read_event = result_read_model_events[0]
+    assert read_event.tenant_id == "tenant-demo"
+    assert read_event.input_hash is None
+    assert read_event.output_hash is None
+    assert read_event.metadata["result_read_model_ready"] is True
+    assert read_event.metadata["reader_role_allowed"] is True
+    assert read_event.metadata["result_read_model_entry_count"] == 1
+    assert read_event.metadata["result_metadata_record_count"] == 1
+    assert read_event.metadata["missing_job_reference_count"] == 0
+    assert read_event.metadata["business_writes_executed"] is False
+    assert read_event.metadata["worker_execution_allowed"] is False
+    assert read_event.metadata["dry_run_result_persistence_allowed"] is False
+    assert read_event.metadata["dry_run_result_payload_included"] is False
+    assert read_event.metadata["tenant_module_state_created"] is False
+    assert "result_metadata_statement" not in read_event.metadata
 
 
 def test_lms_dry_run_execution_outbox_dead_letter_review_api_reports_blocked_state_without_worker_execution() -> None:

@@ -223,6 +223,24 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_READY_NEXT_ACT
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_REPAIR_NEXT_ACTION = (
     "repair_lms_dry_run_execution_result_metadata_store_prerequisites_without_business_writes"
 )
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_result_read_model.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENTRY_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_result_read_model_entry.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_outbox_result_read_model_no_business_writes"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_READY_NEXT_ACTION = (
+    "inspect_lms_dry_run_execution_result_read_model_without_business_writes"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_REPAIR_NEXT_ACTION = (
+    "repair_lms_dry_run_execution_result_read_model_prerequisites_without_business_writes"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -2791,6 +2809,209 @@ class LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse(BaseMode
         return self
 
 
+class LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENTRY_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    result_metadata_ref: str
+    worker_idempotency_key_hash: str
+    worker_job_ref: str
+    lease_id: str
+    worker_ref: str
+    worker_receipt_ref: str
+    worker_result_stub_ref: str
+    recorded_at_utc: datetime
+    received_job_queue_status: LmsPackageInstallationDryRunExecutionJobStatus | None
+    source_job_evidence_hash: str
+    result_metadata_record_evidence_hash: str
+    dry_run_result_payload_included: bool = False
+    business_writes_executed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    evidence_hash: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "result_metadata_ref",
+        "worker_job_ref",
+        "lease_id",
+        "worker_ref",
+        "worker_receipt_ref",
+        "worker_result_stub_ref",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution result read model entry text fields must not be empty")
+        return value
+
+    @field_validator(
+        "worker_idempotency_key_hash",
+        "source_job_evidence_hash",
+        "result_metadata_record_evidence_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution result read model entry hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_entry(self) -> Self:
+        if (
+            self.schema_version
+            != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENTRY_SCHEMA_VERSION
+        ):
+            raise ValueError("LMS dry-run execution result read model entry schema version is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution result read model entry only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result read model entry continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result read model entry LMS continuity domain is invalid")
+        if (
+            self.dry_run_result_payload_included
+            or self.business_writes_executed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution result read model entry must remain metadata-only")
+        return self
+
+
+class LmsPackageInstallationDryRunExecutionOutboxResultReadModelSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    leased_job_count: int
+    result_metadata_record_count: int
+    result_read_model_entry_count: int
+    missing_job_reference_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    result_read_model_ready: bool
+    reader_role_allowed: bool
+    generated_at_utc: datetime
+    result_read_model_entries: tuple[LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry, ...]
+    result_metadata_refs: tuple[str, ...]
+    outbox_state_mutated: bool = False
+    business_writes_executed: bool = False
+    worker_execution_allowed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_payload_included: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionOutboxResultReadModelSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution result read model response text fields must not be empty")
+        return value
+
+    @field_validator("evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution result read model response hashes must be sha256 references")
+        return value
+
+    @field_validator("result_metadata_refs", "blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution result read model response lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution result read model response list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_read_model(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution result read model schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENDPOINT:
+            raise ValueError("LMS dry-run execution result read model endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution result read model result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution result read model only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result read model continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result read model LMS continuity domain is invalid")
+        if any(entry.tenant_id != self.tenant_id for entry in self.result_read_model_entries):
+            raise ValueError("LMS dry-run execution result read model entries must be tenant scoped")
+        if tuple(entry.result_metadata_ref for entry in self.result_read_model_entries) != self.result_metadata_refs:
+            raise ValueError("LMS dry-run execution result read model refs must match entries")
+        expected_ready = (
+            self.reader_role_allowed and self.summary.missing_job_reference_count == 0 and not self.blocking_reasons
+        )
+        if self.result_read_model_ready != expected_ready:
+            raise ValueError("LMS dry-run execution result read model readiness must match prerequisites")
+        if (
+            self.outbox_state_mutated
+            or self.business_writes_executed
+            or self.worker_execution_allowed
+            or self.package_installation_dry_run_execution_allowed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_payload_included
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution result read model must remain metadata-only")
+        if self.summary.result_read_model_entry_count != len(self.result_read_model_entries):
+            raise ValueError("LMS dry-run execution result read model entry count must match entries")
+        if self.summary.result_metadata_record_count != len(self.result_metadata_refs):
+            raise ValueError("LMS dry-run execution result read model record count must match refs")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution result read model blocking count must match reasons")
+        return self
+
+
 class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
     def enqueue(
         self,
@@ -4731,6 +4952,120 @@ def _outbox_result_metadata_blocking_reasons(
     if command.external_side_effect_requested:
         reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_result_metadata")
     return tuple(reasons)
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_read_model_response(
+    *,
+    tenant_id: str,
+    user_role_ids: set[str],
+    job_store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+    result_metadata_store: LmsPackageInstallationDryRunExecutionResultMetadataStore,
+    generated_at_utc: datetime | None = None,
+) -> LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse:
+    generated_at_utc = generated_at_utc or datetime.now(tz=datetime.now().astimezone().tzinfo)
+    reader_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons: list[str] = []
+    if not reader_role_allowed:
+        blocking_reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_result_read_model")
+    jobs = job_store.list_jobs(tenant_id=tenant_id)
+    leased_job_count = sum(
+        1 for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+    )
+    records = tuple(
+        sorted(
+            result_metadata_store.list_records(tenant_id=tenant_id),
+            key=lambda record: (record.recorded_at_utc, record.result_metadata_ref),
+        )
+    )
+    entries: list[LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry] = []
+    missing_job_reference_count = 0
+    for record in records:
+        received_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry | None = None
+        try:
+            received_job = job_store.get(
+                tenant_id=tenant_id,
+                worker_idempotency_key_hash=record.worker_idempotency_key_hash,
+            )
+        except KeyError:
+            missing_job_reference_count += 1
+        entries.append(
+            build_lms_package_installation_dry_run_execution_outbox_result_read_model_entry(
+                record=record,
+                received_job=received_job,
+            )
+        )
+    if missing_job_reference_count:
+        blocking_reasons.append("lms_dry_run_execution_result_read_model_requires_job_references")
+    ready = reader_role_allowed and missing_job_reference_count == 0 and not blocking_reasons
+    result_metadata_refs = tuple(entry.result_metadata_ref for entry in entries)
+    draft = LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse(
+        tenant_id=tenant_id,
+        result_read_model_ready=ready,
+        reader_role_allowed=reader_role_allowed,
+        generated_at_utc=generated_at_utc,
+        result_read_model_entries=tuple(entries),
+        result_metadata_refs=result_metadata_refs,
+        blocking_reasons=tuple(blocking_reasons),
+        summary=LmsPackageInstallationDryRunExecutionOutboxResultReadModelSummary(
+            job_outbox_entry_count=len(jobs),
+            leased_job_count=leased_job_count,
+            result_metadata_record_count=len(records),
+            result_read_model_entry_count=len(entries),
+            missing_job_reference_count=missing_job_reference_count,
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_READY_NEXT_ACTION
+            if ready
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_REPAIR_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_result_read_model_response_hash(draft)}
+    )
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_read_model_entry(
+    *,
+    record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord,
+    received_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry | None,
+) -> LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry:
+    draft = LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry(
+        tenant_id=record.tenant_id,
+        result_metadata_ref=record.result_metadata_ref,
+        worker_idempotency_key_hash=record.worker_idempotency_key_hash,
+        worker_job_ref=record.worker_job_ref,
+        lease_id=record.lease_id,
+        worker_ref=record.worker_ref,
+        worker_receipt_ref=record.worker_receipt_ref,
+        worker_result_stub_ref=record.worker_result_stub_ref,
+        recorded_at_utc=record.recorded_at_utc,
+        received_job_queue_status=received_job.queue_status if received_job is not None else None,
+        source_job_evidence_hash=record.source_job_evidence_hash,
+        result_metadata_record_evidence_hash=record.evidence_hash,
+        evidence_hash=ZERO_SHA256,
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_result_read_model_entry_hash(draft)}
+    )
+
+
+def build_lms_dry_run_execution_outbox_result_read_model_entry_hash(
+    entry: LmsPackageInstallationDryRunExecutionOutboxResultReadModelEntry,
+) -> str:
+    return stable_hash(canonical_json(entry.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_lms_dry_run_execution_outbox_result_read_model_response_hash(
+    response: LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
 
 
 def _job_outbox_evidence_chain_bound(entry: LmsPackageInstallationDryRunExecutionJobOutboxEntry) -> bool:

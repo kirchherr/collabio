@@ -260,6 +260,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse,
     LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
     LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse,
+    LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse,
     LmsPackageInstallationDryRunExecutionOutboxRetryCommand,
     LmsPackageInstallationDryRunExecutionOutboxRetryResponse,
     LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
@@ -278,6 +279,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response,
     build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
     build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response,
+    build_lms_package_installation_dry_run_execution_outbox_result_read_model_response,
     build_lms_package_installation_dry_run_execution_outbox_retry_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_dispatch_admission_response,
@@ -4187,6 +4189,62 @@ def build_app() -> FastAPI:
                     response.summary.worker_result_stub_ref_validated_job_count
                 ),
                 "status_observed_job_count": response.summary.status_observed_job_count,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-read-model",
+        response_model=LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse,
+    )
+    def read_lms_package_installation_dry_run_execution_job_outbox_result_read_model(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultReadModelResponse:
+        response = build_lms_package_installation_dry_run_execution_outbox_result_read_model_response(
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            job_store=request.app.state.lms_dry_run_execution_job_outbox_store,
+            result_metadata_store=request.app.state.lms_dry_run_execution_result_metadata_store,
+        )
+        source_object_ids = [
+            f"lms_dry_run_execution_job_outbox:{entry.worker_job_ref}" for entry in response.result_read_model_entries
+        ]
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_outbox_result_read_model",
+            source_object_ids=source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "result_read_model_ready": response.result_read_model_ready,
+                "reader_role_allowed": response.reader_role_allowed,
+                "generated_at_utc": response.generated_at_utc,
+                "result_metadata_refs": response.result_metadata_refs,
+                "result_read_model_entry_count": response.summary.result_read_model_entry_count,
+                "result_metadata_record_count": response.summary.result_metadata_record_count,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "leased_job_count": response.summary.leased_job_count,
+                "missing_job_reference_count": response.summary.missing_job_reference_count,
+                "outbox_state_mutated": response.outbox_state_mutated,
+                "business_writes_executed": response.business_writes_executed,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_payload_included": response.dry_run_result_payload_included,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
             },
