@@ -56,7 +56,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.summary.total_family_count == 5
     assert response.summary.catalog_registered_count == 3
     assert response.summary.planned_not_installed_count == 2
-    assert response.summary.pre_catalog_foundation_ready_count == 0
+    assert response.summary.pre_catalog_foundation_ready_count == 1
     assert response.summary.first_slice_foundation_ready_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
 
@@ -112,25 +112,41 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert "module_catalog_entry_required" in tasks.required_foundation_gates
     assert "backup_restore_evidence_required" in tasks.required_foundation_gates
 
-    for planned_family_id in {"tickets_incidents", "time_tracking"}:
-        planned_family = families[planned_family_id]
-        assert planned_family.backlog_status == "planned_not_installed"
-        assert planned_family.catalog_status is None
-        assert planned_family.tenant_module_status is None
-        assert planned_family.catalog_entry_present is False
-        assert planned_family.module_package_installed is False
-        assert planned_family.installed_in_catalog is False
-        assert planned_family.module_charter_ready is False
-        assert planned_family.feature_registry_ready is False
-        assert planned_family.object_rules_ready is False
-        assert planned_family.pre_catalog_foundation_ready is False
-        assert planned_family.first_slice_foundation_ready is False
-        assert planned_family.runtime_activation_allowed is False
-        assert "module_catalog_entry_required" in planned_family.required_foundation_gates
-        assert "backup_restore_evidence_required" in planned_family.required_foundation_gates
+    tickets = families["tickets_incidents"]
+    assert tickets.backlog_status == "planned_not_installed"
+    assert tickets.catalog_status is None
+    assert tickets.tenant_module_status is None
+    assert tickets.catalog_entry_present is False
+    assert tickets.module_package_installed is False
+    assert tickets.installed_in_catalog is False
+    assert tickets.module_charter_ready is True
+    assert tickets.feature_registry_ready is True
+    assert tickets.object_rules_ready is True
+    assert tickets.pre_catalog_foundation_ready is True
+    assert tickets.first_slice_foundation_ready is False
+    assert tickets.runtime_activation_allowed is False
+    assert tickets.next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+    assert "module_catalog_entry_required" in tickets.required_foundation_gates
+    assert "backup_restore_evidence_required" in tickets.required_foundation_gates
+
+    planned_family = families["time_tracking"]
+    assert planned_family.backlog_status == "planned_not_installed"
+    assert planned_family.catalog_status is None
+    assert planned_family.tenant_module_status is None
+    assert planned_family.catalog_entry_present is False
+    assert planned_family.module_package_installed is False
+    assert planned_family.installed_in_catalog is False
+    assert planned_family.module_charter_ready is False
+    assert planned_family.feature_registry_ready is False
+    assert planned_family.object_rules_ready is False
+    assert planned_family.pre_catalog_foundation_ready is False
+    assert planned_family.first_slice_foundation_ready is False
+    assert planned_family.runtime_activation_allowed is False
+    assert "module_catalog_entry_required" in planned_family.required_foundation_gates
+    assert "backup_restore_evidence_required" in planned_family.required_foundation_gates
 
 
-def test_module_family_next_slice_selection_selects_tickets_after_tasks_catalog_registration() -> None:
+def test_module_family_next_slice_selection_reviews_tickets_after_foundation_contract() -> None:
     response = build_module_family_next_slice_selection_response(
         user_context=UserContext(
             tenant_id="tenant-demo",
@@ -149,10 +165,7 @@ def test_module_family_next_slice_selection_selects_tickets_after_tasks_catalog_
     assert response.selection_ready is True
     assert response.selected_module_family == "tickets_incidents"
     assert response.selected_module_id == "tickets_incidents"
-    assert (
-        response.selected_next_action
-        == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert response.selected_next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
     assert response.next_action == response.selected_next_action
     assert response.lms_depth_deferred is True
     assert response.deferred_module_families == ("knowledge_base", "lms", "tasks_activities")
@@ -178,7 +191,7 @@ def test_module_family_next_slice_selection_selects_tickets_after_tasks_catalog_
     assert selected.selection_rank == 1
     assert selected.selection_status == "selected_next"
     assert selected.selection_reason == "first_planned_module_family_after_lms_foundation_seal"
-    assert selected.next_action == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
+    assert selected.next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
     assert selected.default_feature_gate == "tickets.items.read"
     assert selected.continuity_domain == "ticket_incident_records"
     assert selected.runtime_activation_allowed is False

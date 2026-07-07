@@ -943,6 +943,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tasks_activities_foundation_contract_ready" in future_modules["guardrails"]
     assert "tasks_activities_catalog_readiness_ready" in future_modules["guardrails"]
     assert "tasks_activities_catalog_registered_not_installed" in future_modules["guardrails"]
+    assert "tickets_incidents_foundation_contract_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1111,10 +1112,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert (
-        future_modules["next_action"]
-        == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert future_modules["next_action"] == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1332,7 +1330,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
         "total_family_count": 5,
         "catalog_registered_count": 3,
         "planned_not_installed_count": 2,
-        "pre_catalog_foundation_ready_count": 0,
+        "pre_catalog_foundation_ready_count": 1,
         "first_slice_foundation_ready_count": 1,
         "runtime_activation_allowed_count": 0,
     }
@@ -1370,6 +1368,17 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert (
         families["tasks_activities"]["next_action"] == "add_tasks_activities_migration_evidence_before_storage_or_api"
     )
+    assert families["tickets_incidents"]["backlog_status"] == "planned_not_installed"
+    assert families["tickets_incidents"]["catalog_status"] is None
+    assert families["tickets_incidents"]["module_charter_ready"] is True
+    assert families["tickets_incidents"]["feature_registry_ready"] is True
+    assert families["tickets_incidents"]["object_rules_ready"] is True
+    assert families["tickets_incidents"]["pre_catalog_foundation_ready"] is True
+    assert families["tickets_incidents"]["runtime_activation_allowed"] is False
+    assert (
+        families["tickets_incidents"]["next_action"]
+        == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+    )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
     assert "audit:module-seed" not in response.text
@@ -1386,7 +1395,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
     assert event.metadata["planned_not_installed_count"] == 2
-    assert event.metadata["pre_catalog_foundation_ready_count"] == 0
+    assert event.metadata["pre_catalog_foundation_ready_count"] == 1
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
@@ -1411,9 +1420,7 @@ def test_module_family_next_slice_selection_returns_metadata_only_tickets_contra
     assert body["selection_ready"] is True
     assert body["selected_module_family"] == "tickets_incidents"
     assert body["selected_module_id"] == "tickets_incidents"
-    assert body["selected_next_action"] == (
-        "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert body["selected_next_action"] == ("review_tickets_incidents_catalog_readiness_before_catalog_registration")
     assert body["next_action"] == body["selected_next_action"]
     assert body["lms_depth_deferred"] is True
     assert body["deferred_module_families"] == ["knowledge_base", "lms", "tasks_activities"]
@@ -1439,7 +1446,7 @@ def test_module_family_next_slice_selection_returns_metadata_only_tickets_contra
     selected = candidates["tickets_incidents"]
     assert selected["selection_rank"] == 1
     assert selected["selection_status"] == "selected_next"
-    assert selected["next_action"] == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
+    assert selected["next_action"] == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
     assert selected["default_feature_gate"] == "tickets.items.read"
     assert selected["continuity_domain"] == "ticket_incident_records"
     assert selected["runtime_activation_allowed"] is False
