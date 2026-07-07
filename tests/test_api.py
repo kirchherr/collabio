@@ -939,6 +939,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
     assert "module_family_next_slice_selection_ready" in future_modules["guardrails"]
+    assert "tasks_activities_foundation_contract_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1107,10 +1108,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert (
-        future_modules["next_action"]
-        == "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert future_modules["next_action"] == "review_tasks_activities_catalog_readiness_before_catalog_registration"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1328,7 +1326,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
         "total_family_count": 5,
         "catalog_registered_count": 2,
         "planned_not_installed_count": 3,
-        "pre_catalog_foundation_ready_count": 0,
+        "pre_catalog_foundation_ready_count": 1,
         "first_slice_foundation_ready_count": 1,
         "runtime_activation_allowed_count": 0,
     }
@@ -1356,6 +1354,17 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["pre_catalog_foundation_ready"] is False
     assert families["lms"]["next_action"] == ("resume_cross_module_backend_slices_without_lms_depth")
     assert families["lms"]["runtime_activation_allowed"] is False
+    assert families["tasks_activities"]["backlog_status"] == "planned_not_installed"
+    assert families["tasks_activities"]["catalog_status"] is None
+    assert families["tasks_activities"]["module_charter_ready"] is True
+    assert families["tasks_activities"]["feature_registry_ready"] is True
+    assert families["tasks_activities"]["object_rules_ready"] is True
+    assert families["tasks_activities"]["pre_catalog_foundation_ready"] is True
+    assert families["tasks_activities"]["runtime_activation_allowed"] is False
+    assert (
+        families["tasks_activities"]["next_action"]
+        == "review_tasks_activities_catalog_readiness_before_catalog_registration"
+    )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
     assert "audit:module-seed" not in response.text
@@ -1372,7 +1381,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
     assert event.metadata["planned_not_installed_count"] == 3
-    assert event.metadata["pre_catalog_foundation_ready_count"] == 0
+    assert event.metadata["pre_catalog_foundation_ready_count"] == 1
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
@@ -1397,9 +1406,7 @@ def test_module_family_next_slice_selection_returns_metadata_only_tasks_contract
     assert body["selection_ready"] is True
     assert body["selected_module_family"] == "tasks_activities"
     assert body["selected_module_id"] == "tasks_activities"
-    assert body["selected_next_action"] == (
-        "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert body["selected_next_action"] == ("review_tasks_activities_catalog_readiness_before_catalog_registration")
     assert body["next_action"] == body["selected_next_action"]
     assert body["lms_depth_deferred"] is True
     assert body["deferred_module_families"] == ["knowledge_base", "lms"]
@@ -1425,6 +1432,7 @@ def test_module_family_next_slice_selection_returns_metadata_only_tasks_contract
     selected = candidates["tasks_activities"]
     assert selected["selection_rank"] == 1
     assert selected["selection_status"] == "selected_next"
+    assert selected["next_action"] == "review_tasks_activities_catalog_readiness_before_catalog_registration"
     assert selected["default_feature_gate"] == "tasks.items.read"
     assert selected["continuity_domain"] == "task_activity_records"
     assert selected["runtime_activation_allowed"] is False

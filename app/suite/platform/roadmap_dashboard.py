@@ -547,14 +547,15 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="future_modules",
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
-                        "Modulfamilien sind tenant-sicher sichtbar; LMS-Charter, Feature-Registry "
-                        "Object-Rules und Katalogeintrag stehen vor Installation/API."
+                        "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities ist als "
+                        "pre-catalog Foundation vorbereitet, LMS bleibt vor Installation/API."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
                     evidence_refs=(
                         "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
                         "app/suite/platform/module_family_backlog.py",
+                        "app/suite/platform/tasks_activities_module.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -592,8 +593,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
                         "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
                         "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
+                        "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
                         "tests/test_module_family_backlog.py",
+                        "tests/test_tasks_activities_module_foundation.py",
                         "tests/test_lms_module_foundation.py",
                         "tests/test_lms_catalog_readiness.py",
                         "tests/test_lms_package_installation_readiness.py",
@@ -683,6 +686,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tenant_admin_lifecycle",
                         "no_runtime_activation_from_backlog",
                         "module_family_next_slice_selection_ready",
+                        "tasks_activities_foundation_contract_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -731,7 +735,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api",
+                    next_action="review_tasks_activities_catalog_readiness_before_catalog_registration",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

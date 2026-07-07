@@ -40,7 +40,12 @@ PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_st
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
 CATALOG_REGISTERED_NEXT_ACTION = "resume_cross_module_backend_slices_without_lms_depth"
-NEXT_SLICE_SELECTED_NEXT_ACTION = "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
+TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = "review_tasks_activities_catalog_readiness_before_catalog_registration"
+NEXT_SLICE_SELECTED_NEXT_ACTION = TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION
+CATALOG_READY_NEXT_ACTIONS = {
+    "lms": CATALOG_PREPARED_NEXT_ACTION,
+    "tasks_activities": TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION,
+}
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
         "module_charter_ready": True,
@@ -48,6 +53,11 @@ MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
         "object_rules_ready": True,
     },
     "lms": {
+        "module_charter_ready": True,
+        "feature_registry_ready": True,
+        "object_rules_ready": True,
+    },
+    "tasks_activities": {
         "module_charter_ready": True,
         "feature_registry_ready": True,
         "object_rules_ready": True,
@@ -625,8 +635,11 @@ def build_module_family_next_slice_selection_response(
         evidence_refs=(
             "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
             "docs/modules/module_implementation_contract.json",
+            "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
             "app/suite/platform/module_family_backlog.py",
+            "app/suite/platform/tasks_activities_module.py",
             "tests/test_module_family_backlog.py",
+            "tests/test_tasks_activities_module_foundation.py",
             "tests/test_api.py",
         ),
         blocking_reasons=tuple(blocking_reasons),
@@ -642,7 +655,9 @@ def build_module_family_next_slice_selection_response(
             blocking_reason_count=len(blocking_reasons),
         ),
         evidence_hash=ZERO_SHA256,
-        next_action=NEXT_SLICE_SELECTED_NEXT_ACTION if selection_ready else "repair_module_family_next_slice_selection",
+        next_action=selected.next_action
+        if selection_ready and selected is not None
+        else "repair_module_family_next_slice_selection",
     )
     return draft.model_copy(update={"evidence_hash": build_module_family_next_slice_selection_hash(draft)})
 
@@ -674,11 +689,7 @@ def _module_family_next_slice_candidate(
             else "queued_after_selected_module_family_contract"
         ),
         required_foundation_gates=family.required_foundation_gates,
-        next_action=(
-            NEXT_SLICE_SELECTED_NEXT_ACTION
-            if selected and family.module_family == "tasks_activities"
-            else f"create_{family.module_family}_module_charter_then_catalog_entry_before_storage_or_api"
-        ),
+        next_action=family.next_action,
         catalog_entry_present=family.catalog_entry_present,
         module_package_installed=family.module_package_installed,
     )
@@ -733,6 +744,7 @@ def _module_family_backlog_entry(
         first_slice_foundation_ready=first_slice_foundation_ready,
         required_foundation_gates=_required_foundation_gates(definition),
         next_action=_next_action(
+            module_family=definition.module_family,
             first_slice_foundation_ready=first_slice_foundation_ready,
             pre_catalog_foundation_ready=pre_catalog_foundation_ready,
             catalog_entry_present=catalog_entry_present,
@@ -793,6 +805,7 @@ def _required_foundation_gates(definition: ModuleFamilyDefinition) -> tuple[str,
 
 def _next_action(
     *,
+    module_family: str,
     first_slice_foundation_ready: bool,
     pre_catalog_foundation_ready: bool,
     catalog_entry_present: bool,
@@ -803,7 +816,10 @@ def _next_action(
     if catalog_entry_present and not module_package_installed:
         return CATALOG_REGISTERED_NEXT_ACTION
     if pre_catalog_foundation_ready:
-        return CATALOG_PREPARED_NEXT_ACTION
+        return CATALOG_READY_NEXT_ACTIONS.get(
+            module_family,
+            f"review_{module_family}_catalog_readiness_before_catalog_registration",
+        )
     return PLANNED_MODULE_NEXT_ACTION
 
 
