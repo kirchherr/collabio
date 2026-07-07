@@ -39,6 +39,27 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_READY_NEXT_ACTION = (
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_RETRY_NEXT_ACTION = (
     "prepare_lms_dry_run_execution_job_outbox_without_worker_execution"
 )
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_lease_consumer.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_outbox_lease_consumer_no_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT = (
+    "I lease the next LMS package installation dry-run execution outbox entry for metadata inspection only, "
+    "without scheduler activation, worker dispatch, worker queue enqueue, worker execution, "
+    "dry-run result persistence, "
+    "or package installation."
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_READY_NEXT_ACTION = (
+    "inspect_lms_dry_run_execution_outbox_leased_state_without_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_RETRY_NEXT_ACTION = (
+    "wait_for_lms_dry_run_execution_outbox_entry_without_worker_execution"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -455,6 +476,196 @@ class LmsPackageInstallationDryRunExecutionJobOutboxListResponse(BaseModel):
         return self
 
 
+class LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lease_owner_ref: str
+    lease_duration_seconds: int = Field(default=300, ge=1, le=3600)
+    checked_at_utc: datetime
+    idempotency_key_ref: str
+    audit_chain_ref: str
+    lease_consumer_statement: str
+    lease_requested: bool = True
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_image_resolution_requested: bool = False
+    worker_image_pull_requested: bool = False
+    worker_image_digest_lookup_requested: bool = False
+    worker_dispatch_requested: bool = False
+    worker_queue_enqueue_requested: bool = False
+    worker_execution_requested: bool = False
+    package_installation_dry_run_execution_requested: bool = False
+    dry_run_result_persistence_requested: bool = False
+    package_installation_execution_requested: bool = False
+    tenant_module_state_creation_requested: bool = False
+    content_payload_included: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("lease_owner_ref", "idempotency_key_ref", "audit_chain_ref")
+    @classmethod
+    def require_ref(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("LMS dry-run execution outbox lease consumer references must use a typed ref prefix")
+        return normalized
+
+    @field_validator("lease_consumer_statement")
+    @classmethod
+    def require_exact_statement(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT:
+            raise ValueError("LMS dry-run execution outbox lease consumer requires the exact metadata-only statement")
+        return normalized
+
+    @field_validator("checked_at_utc")
+    @classmethod
+    def require_timezone_aware_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("LMS dry-run execution outbox lease consumer checked_at_utc must include a timezone")
+        return value
+
+
+class LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    leased_job_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    command_hash: str
+    idempotency_key_ref_hash: str
+    lease_consumer_statement_hash: str
+    lease_consumer_ready: bool
+    lease_requested: bool
+    lease_owner_ref: str
+    lease_duration_seconds: int
+    checked_at_utc: datetime
+    leased_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry | None
+    outbox_lease_created: bool
+    scheduler_activation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_image_resolution_allowed: bool = False
+    worker_image_resolved: bool = False
+    worker_image_pull_allowed: bool = False
+    worker_image_pulled: bool = False
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    worker_executed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    package_installation_dry_run_executed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_persisted: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "lease_owner_ref",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution outbox lease consumer response text fields must not be empty")
+        return value
+
+    @field_validator("command_hash", "idempotency_key_ref_hash", "lease_consumer_statement_hash", "evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution outbox lease consumer response hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution outbox lease consumer response lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution outbox lease consumer response list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_lease_consumer_state(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution outbox lease consumer schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_ENDPOINT:
+            raise ValueError("LMS dry-run execution outbox lease consumer endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution outbox lease consumer result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution outbox lease consumer only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution outbox lease consumer continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution outbox lease consumer LMS continuity domain is invalid")
+        if self.leased_job is not None and self.leased_job.tenant_id != self.tenant_id:
+            raise ValueError("LMS dry-run execution outbox lease consumer job must be tenant scoped")
+        if self.lease_consumer_ready != (self.leased_job is not None and not self.blocking_reasons):
+            raise ValueError("LMS dry-run execution outbox lease consumer readiness must match leased state")
+        if self.outbox_lease_created != (self.leased_job is not None):
+            raise ValueError("LMS dry-run execution outbox lease created flag must match leased job")
+        if self.leased_job is not None:
+            if self.leased_job.queue_status != LmsPackageInstallationDryRunExecutionJobStatus.LEASED:
+                raise ValueError("LMS dry-run execution outbox lease consumer must return a leased job")
+            if self.leased_job.lease_owner != self.lease_owner_ref:
+                raise ValueError("LMS dry-run execution outbox lease consumer owner must match leased job")
+        if (
+            self.scheduler_activation_allowed
+            or self.scheduler_job_created
+            or self.worker_image_resolution_allowed
+            or self.worker_image_resolved
+            or self.worker_image_pull_allowed
+            or self.worker_image_pulled
+            or self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.worker_executed
+            or self.package_installation_dry_run_execution_allowed
+            or self.package_installation_dry_run_executed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_persisted
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution outbox lease consumer must remain metadata-only and non-executing")
+        if self.summary.leased_job_count != (1 if self.leased_job is not None else 0):
+            raise ValueError("LMS dry-run execution outbox lease consumer leased count must match leased job")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution outbox lease consumer blocking count must match reasons")
+        return self
+
+
 class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
     def enqueue(
         self,
@@ -857,4 +1068,122 @@ def _job_outbox_blocking_reasons(
         reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_job_outbox")
     if command.external_side_effect_requested:
         reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_job_outbox")
+    return tuple(reasons)
+
+
+def build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
+    tenant_id: str,
+    user_role_ids: set[str],
+    store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+) -> LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse:
+    command_hash = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_command_hash(command)
+    idempotency_key_ref_hash = stable_hash(command.idempotency_key_ref)
+    lease_consumer_statement_hash = stable_hash(command.lease_consumer_statement)
+    preparer_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons = list(
+        _outbox_lease_consumer_blocking_reasons(
+            command=command,
+            preparer_role_allowed=preparer_role_allowed,
+        )
+    )
+    leased_job = None
+    if not blocking_reasons:
+        leased_job = store.lease_next(
+            tenant_id=tenant_id,
+            lease_owner=command.lease_owner_ref,
+            lease_duration_seconds=command.lease_duration_seconds,
+            now=command.checked_at_utc,
+        )
+        if leased_job is None:
+            blocking_reasons.append("no_lms_dry_run_execution_outbox_entry_available_for_lease")
+    job_count = len(store.list_jobs(tenant_id=tenant_id))
+    draft = LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse(
+        tenant_id=tenant_id,
+        command_hash=command_hash,
+        idempotency_key_ref_hash=idempotency_key_ref_hash,
+        lease_consumer_statement_hash=lease_consumer_statement_hash,
+        lease_consumer_ready=leased_job is not None and not blocking_reasons,
+        lease_requested=command.lease_requested,
+        lease_owner_ref=command.lease_owner_ref,
+        lease_duration_seconds=command.lease_duration_seconds,
+        checked_at_utc=command.checked_at_utc,
+        leased_job=leased_job,
+        outbox_lease_created=leased_job is not None,
+        blocking_reasons=tuple(blocking_reasons),
+        summary=LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerSummary(
+            job_outbox_entry_count=job_count,
+            leased_job_count=1 if leased_job is not None else 0,
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_READY_NEXT_ACTION
+            if leased_job is not None and not blocking_reasons
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_RETRY_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_lease_consumer_response_hash(draft)}
+    )
+
+
+def build_lms_package_installation_dry_run_execution_outbox_lease_consumer_command_hash(
+    command: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
+) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def build_lms_dry_run_execution_outbox_lease_consumer_response_hash(
+    response: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _outbox_lease_consumer_blocking_reasons(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
+    preparer_role_allowed: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not preparer_role_allowed:
+        reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_outbox_lease_consumer")
+    if not command.lease_requested:
+        reasons.append("lms_dry_run_execution_outbox_lease_not_requested")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_forbidden_until_worker_admission")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_forbidden_until_worker_admission")
+    if command.worker_image_resolution_requested:
+        reasons.append("worker_image_resolution_forbidden_until_worker_admission")
+    if command.worker_image_pull_requested:
+        reasons.append("worker_image_pull_forbidden_until_worker_admission")
+    if command.worker_image_digest_lookup_requested:
+        reasons.append("worker_image_digest_lookup_forbidden_until_worker_admission")
+    if command.worker_dispatch_requested:
+        reasons.append("worker_dispatch_forbidden_until_worker_admission")
+    if command.worker_queue_enqueue_requested:
+        reasons.append("worker_queue_enqueue_forbidden_until_worker_admission")
+    if command.worker_execution_requested:
+        reasons.append("worker_execution_forbidden_until_worker_admission")
+    if command.package_installation_dry_run_execution_requested:
+        reasons.append("package_installation_dry_run_execution_forbidden_until_worker_admission")
+    if command.dry_run_result_persistence_requested:
+        reasons.append("dry_run_result_persistence_forbidden_until_worker_admission")
+    if command.package_installation_execution_requested:
+        reasons.append("package_installation_execution_forbidden_until_worker_admission")
+    if command.tenant_module_state_creation_requested:
+        reasons.append("tenant_module_state_creation_forbidden_until_package_installation")
+    if command.content_payload_included:
+        reasons.append("content_payload_forbidden_in_lms_dry_run_execution_outbox_lease_consumer")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_outbox_lease_consumer")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_outbox_lease_consumer")
     return tuple(reasons)

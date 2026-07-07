@@ -6,14 +6,17 @@ from pydantic import ValidationError
 from suite.persistence.migration_catalog import get_migration
 from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
     InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore,
     LmsPackageInstallationDryRunExecutionJobOutboxCommand,
     LmsPackageInstallationDryRunExecutionJobOutboxEntry,
     LmsPackageInstallationDryRunExecutionJobStatus,
+    LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
     build_lms_dry_run_execution_job_outbox_entry,
     build_lms_dry_run_execution_job_outbox_entry_hash,
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
+    build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
 )
 
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
@@ -63,6 +66,19 @@ def _command(**overrides: object) -> LmsPackageInstallationDryRunExecutionJobOut
     }
     payload.update(overrides)
     return LmsPackageInstallationDryRunExecutionJobOutboxCommand.model_validate(payload)
+
+
+def _lease_command(**overrides: object) -> LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand:
+    payload: dict[str, object] = {
+        "lease_owner_ref": "lease-consumer:lms-dry-run-unit",
+        "lease_duration_seconds": 120,
+        "checked_at_utc": datetime(2026, 6, 30, 12, 0, 1, tzinfo=UTC),
+        "idempotency_key_ref": "idempotency:lms-dry-run-lease-consumer-unit",
+        "audit_chain_ref": "audit:lms-dry-run-lease-consumer-unit",
+        "lease_consumer_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
+    }
+    payload.update(overrides)
+    return LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand.model_validate(payload)
 
 
 def test_lms_dry_run_execution_job_outbox_is_idempotent_tenant_scoped_and_retriable() -> None:
@@ -157,6 +173,79 @@ def test_lms_dry_run_execution_job_outbox_api_response_registers_and_lists_metad
     assert tenant_list.summary.job_outbox_entry_count == 1
     assert other_tenant_list.job_outbox_entries == ()
     assert other_tenant_list.summary.job_outbox_entry_count == 0
+
+
+def test_lms_dry_run_execution_outbox_lease_consumer_leases_metadata_only_once() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+
+    response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+        command=_lease_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+    second_response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+        command=_lease_command(checked_at_utc=datetime(2026, 6, 30, 12, 0, 2, tzinfo=UTC)),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.schema_version == "lms_package_installation_dry_run_execution_outbox_lease_consumer.v1"
+    assert response.lease_consumer_ready is True
+    assert response.outbox_lease_created is True
+    assert response.leased_job is not None
+    assert response.leased_job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+    assert response.leased_job.lease_owner == "lease-consumer:lms-dry-run-unit"
+    assert response.leased_job.lease_id is not None
+    assert response.leased_job.attempt_count == 1
+    assert response.leased_job.worker_dispatch_allowed is False
+    assert response.leased_job.worker_queue_enqueued is False
+    assert response.leased_job.worker_execution_allowed is False
+    assert response.leased_job.dry_run_result_persistence_allowed is False
+    assert response.worker_dispatch_allowed is False
+    assert response.worker_queue_enqueued is False
+    assert response.worker_execution_allowed is False
+    assert response.dry_run_result_persistence_allowed is False
+    assert response.tenant_module_state_created is False
+    assert response.summary.job_outbox_entry_count == 1
+    assert response.summary.leased_job_count == 1
+    assert response.summary.blocking_reason_count == 0
+    assert response.evidence_hash.startswith("sha256:")
+    assert second_response.lease_consumer_ready is False
+    assert second_response.outbox_lease_created is False
+    assert second_response.leased_job is None
+    assert "no_lms_dry_run_execution_outbox_entry_available_for_lease" in second_response.blocking_reasons
+    assert second_response.summary.job_outbox_entry_count == 1
+    assert second_response.summary.leased_job_count == 0
+
+
+def test_lms_dry_run_execution_outbox_lease_consumer_blocks_worker_requests_before_lease() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+
+    response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+        command=_lease_command(
+            worker_dispatch_requested=True,
+            worker_queue_enqueue_requested=True,
+            worker_execution_requested=True,
+            dry_run_result_persistence_requested=True,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.lease_consumer_ready is False
+    assert response.outbox_lease_created is False
+    assert response.leased_job is None
+    assert "worker_dispatch_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_queue_enqueue_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "worker_execution_forbidden_until_worker_admission" in response.blocking_reasons
+    assert "dry_run_result_persistence_forbidden_until_worker_admission" in response.blocking_reasons
+    assert (
+        store.list_jobs(tenant_id="tenant-demo")[0].queue_status
+        == LmsPackageInstallationDryRunExecutionJobStatus.QUEUED
+    )
 
 
 def test_lms_dry_run_execution_job_outbox_api_blocks_worker_requests_without_enqueue() -> None:

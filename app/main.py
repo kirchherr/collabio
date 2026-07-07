@@ -254,9 +254,12 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionJobOutboxCommand,
     LmsPackageInstallationDryRunExecutionJobOutboxListResponse,
     LmsPackageInstallationDryRunExecutionJobOutboxResponse,
+    LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
+    LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse,
     build_default_lms_package_installation_dry_run_execution_job_outbox_store,
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
+    build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
 )
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
     LmsPackageInstallationDryRunExecutionPlanCommand,
@@ -3397,6 +3400,88 @@ def build_app() -> FastAPI:
                 "content_included": response.content_included,
                 "destructive_actions_allowed": response.destructive_actions_allowed,
                 "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases",
+        response_model=LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse,
+    )
+    def lease_lms_package_installation_dry_run_execution_job_outbox(
+        command: LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse:
+        response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+            command=command,
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            store=request.app.state.lms_dry_run_execution_job_outbox_store,
+        )
+        leased_job = response.leased_job
+        source_object_ids = (
+            []
+            if leased_job is None
+            else [
+                f"lms_dry_run_execution_job_outbox:{leased_job.worker_job_ref}",
+                f"lms_dry_run_execution_admission_gate:{leased_job.dry_run_execution_admission_gate_evidence_hash}",
+                f"lms_dry_run_execution_final_readiness_gate:{leased_job.dry_run_execution_final_readiness_gate_evidence_hash}",
+            ]
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_outbox_lease_consumer",
+            source_object_ids=source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "lease_consumer_ready": response.lease_consumer_ready,
+                "lease_requested": response.lease_requested,
+                "lease_owner_ref": response.lease_owner_ref,
+                "lease_duration_seconds": response.lease_duration_seconds,
+                "outbox_lease_created": response.outbox_lease_created,
+                "leased_worker_job_ref": None if leased_job is None else leased_job.worker_job_ref,
+                "leased_worker_idempotency_key_hash": (
+                    None if leased_job is None else leased_job.worker_idempotency_key_hash
+                ),
+                "leased_job_evidence_hash": None if leased_job is None else leased_job.evidence_hash,
+                "leased_job_queue_status": None if leased_job is None else leased_job.queue_status,
+                "leased_job_attempt_count": None if leased_job is None else leased_job.attempt_count,
+                "leased_job_lease_id": None if leased_job is None else leased_job.lease_id,
+                "leased_job_leased_until_utc": None if leased_job is None else leased_job.leased_until_utc,
+                "command_hash": response.command_hash,
+                "idempotency_key_ref_hash": response.idempotency_key_ref_hash,
+                "lease_consumer_statement_hash": response.lease_consumer_statement_hash,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "worker_executed": response.worker_executed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "package_installation_dry_run_executed": response.package_installation_dry_run_executed,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "leased_job_count": response.summary.leased_job_count,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
             },

@@ -663,6 +663,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary",
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary",
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+                        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases",
                     ),
                     guardrails=(
                         "module_contract_first",
@@ -703,9 +704,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_scheduler_boundary_ready",
                         "lms_package_installation_dry_run_execution_worker_image_boundary_ready",
                         "lms_package_installation_dry_run_execution_job_outbox_ready",
+                        "lms_package_installation_dry_run_execution_outbox_lease_consumer_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="prepare_lms_dry_run_execution_outbox_lease_consumer_without_worker_execution",
+                    next_action="wire_lms_dry_run_execution_outbox_retry_api_without_worker_execution",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
