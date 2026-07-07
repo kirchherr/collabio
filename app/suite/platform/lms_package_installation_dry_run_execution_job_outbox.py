@@ -100,6 +100,26 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_DEAD_LETTER_REVIEW_READY_NEXT_
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_DEAD_LETTER_REVIEW_REPAIR_NEXT_ACTION = (
     "repair_lms_dry_run_execution_outbox_dead_letter_review_prerequisites_without_worker_execution"
 )
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-admission-gate"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_worker_admission_gate.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_no_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_STATEMENT = (
+    "I review LMS package installation dry-run execution outbox leased jobs for worker admission metadata only, "
+    "without worker dispatch, worker queue enqueue, worker execution, dry-run result persistence, "
+    "tenant module state creation, or package installation."
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_READY_NEXT_ACTION = (
+    "inspect_lms_dry_run_execution_outbox_worker_admission_gate_without_worker_execution"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_REPAIR_NEXT_ACTION = (
+    "repair_lms_dry_run_execution_outbox_worker_admission_gate_prerequisites_without_worker_execution"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -1166,6 +1186,224 @@ class LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewResponse(BaseMo
         return self
 
 
+class LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reviewer_ref: str
+    checked_at_utc: datetime
+    idempotency_key_ref: str
+    audit_chain_ref: str
+    worker_admission_gate_statement: str
+    worker_admission_review_requested: bool = True
+    worker_admission_grant_requested: bool = False
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_image_resolution_requested: bool = False
+    worker_image_pull_requested: bool = False
+    worker_image_digest_lookup_requested: bool = False
+    worker_dispatch_requested: bool = False
+    worker_queue_enqueue_requested: bool = False
+    worker_execution_requested: bool = False
+    package_installation_dry_run_execution_requested: bool = False
+    dry_run_result_persistence_requested: bool = False
+    package_installation_execution_requested: bool = False
+    tenant_module_state_creation_requested: bool = False
+    content_payload_included: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("reviewer_ref", "idempotency_key_ref", "audit_chain_ref")
+    @classmethod
+    def require_ref(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError(
+                "LMS dry-run execution outbox worker admission gate references must use a typed ref prefix"
+            )
+        return normalized
+
+    @field_validator("worker_admission_gate_statement")
+    @classmethod
+    def require_exact_statement(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_STATEMENT:
+            raise ValueError(
+                "LMS dry-run execution outbox worker admission gate requires the exact metadata-only statement"
+            )
+        return normalized
+
+    @field_validator("checked_at_utc")
+    @classmethod
+    def require_timezone_aware_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError(
+                "LMS dry-run execution outbox worker admission gate checked_at_utc must include a timezone"
+            )
+        return value
+
+
+class LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    leased_job_count: int
+    eligible_leased_job_count: int
+    queued_job_count: int
+    retry_scheduled_job_count: int
+    blocked_job_count: int
+    evidence_chain_bound_leased_job_count: int
+    restore_hash_bound_leased_job_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    command_hash: str
+    idempotency_key_ref_hash: str
+    worker_admission_gate_statement_hash: str
+    reviewer_ref: str
+    checked_at_utc: datetime
+    worker_admission_gate_ready: bool
+    worker_admission_review_requested: bool
+    leased_jobs: tuple[LmsPackageInstallationDryRunExecutionJobOutboxEntry, ...]
+    worker_admission_granted: bool = False
+    scheduler_activation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_image_resolution_allowed: bool = False
+    worker_image_resolved: bool = False
+    worker_image_pull_allowed: bool = False
+    worker_image_pulled: bool = False
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    worker_executed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    package_installation_dry_run_executed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_persisted: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "reviewer_ref",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution outbox worker admission gate text fields must not be empty")
+        return value
+
+    @field_validator(
+        "command_hash",
+        "idempotency_key_ref_hash",
+        "worker_admission_gate_statement_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution outbox worker admission gate hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution outbox worker admission gate lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution outbox worker admission gate list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_worker_admission_gate_state(self) -> Self:
+        if (
+            self.schema_version
+            != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_SCHEMA_VERSION
+        ):
+            raise ValueError("LMS dry-run execution outbox worker admission gate schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_ENDPOINT:
+            raise ValueError("LMS dry-run execution outbox worker admission gate endpoint is invalid")
+        if (
+            self.result_contract
+            != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_RESULT_CONTRACT
+        ):
+            raise ValueError("LMS dry-run execution outbox worker admission gate result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution outbox worker admission gate only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution outbox worker admission gate continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution outbox worker admission gate LMS continuity domain is invalid")
+        if any(job.tenant_id != self.tenant_id for job in self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate must be tenant scoped")
+        if any(job.queue_status != LmsPackageInstallationDryRunExecutionJobStatus.LEASED for job in self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate may only include leased jobs")
+        if any(not job.lease_id or not job.lease_owner or job.leased_until_utc is None for job in self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate leased jobs require lease metadata")
+        if self.worker_admission_gate_ready != (
+            self.worker_admission_review_requested and bool(self.leased_jobs) and not self.blocking_reasons
+        ):
+            raise ValueError("LMS dry-run execution outbox worker admission gate readiness must match prerequisites")
+        if (
+            self.worker_admission_granted
+            or self.scheduler_activation_allowed
+            or self.scheduler_job_created
+            or self.worker_image_resolution_allowed
+            or self.worker_image_resolved
+            or self.worker_image_pull_allowed
+            or self.worker_image_pulled
+            or self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.worker_executed
+            or self.package_installation_dry_run_execution_allowed
+            or self.package_installation_dry_run_executed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_persisted
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution outbox worker admission gate must remain metadata-only")
+        if self.summary.leased_job_count != len(self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate leased count must match jobs")
+        if self.summary.eligible_leased_job_count != len(self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate eligible count must match jobs")
+        if self.summary.evidence_chain_bound_leased_job_count != len(self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate evidence count must match jobs")
+        if self.summary.restore_hash_bound_leased_job_count != len(self.leased_jobs):
+            raise ValueError("LMS dry-run execution outbox worker admission gate restore count must match jobs")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution outbox worker admission gate blocking count must match reasons")
+        return self
+
+
 class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
     def enqueue(
         self,
@@ -1965,4 +2203,159 @@ def _outbox_dead_letter_review_blocking_reasons(
         reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_outbox_dead_letter_review")
     if command.external_side_effect_requested:
         reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_outbox_dead_letter_review")
+    return tuple(reasons)
+
+
+def build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_response(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
+    tenant_id: str,
+    user_role_ids: set[str],
+    store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+) -> LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateResponse:
+    command_hash = build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_command_hash(command)
+    idempotency_key_ref_hash = stable_hash(command.idempotency_key_ref)
+    statement_hash = stable_hash(command.worker_admission_gate_statement)
+    reviewer_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons = list(
+        _outbox_worker_admission_gate_blocking_reasons(
+            command=command,
+            reviewer_role_allowed=reviewer_role_allowed,
+        )
+    )
+    jobs = store.list_jobs(tenant_id=tenant_id)
+    leased_jobs = tuple(
+        job for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+    )
+    queued_job_count = sum(
+        1 for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.QUEUED
+    )
+    retry_scheduled_job_count = sum(
+        1 for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.RETRY_SCHEDULED
+    )
+    blocked_job_count = sum(
+        1 for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.BLOCKED
+    )
+    evidence_chain_bound_leased_job_count = sum(1 for job in leased_jobs if _job_outbox_evidence_chain_bound(job))
+    restore_hash_bound_leased_job_count = sum(
+        1 for job in leased_jobs if SHA256_PATTERN.fullmatch(job.restore_evidence_hash)
+    )
+    if not leased_jobs:
+        blocking_reasons.append("no_lms_dry_run_execution_outbox_leased_job_available_for_worker_admission_gate")
+    if evidence_chain_bound_leased_job_count != len(leased_jobs):
+        blocking_reasons.append("lms_dry_run_execution_outbox_worker_admission_evidence_chain_unbound")
+    if restore_hash_bound_leased_job_count != len(leased_jobs):
+        blocking_reasons.append("lms_dry_run_execution_outbox_worker_admission_restore_evidence_unbound")
+    draft = LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateResponse(
+        tenant_id=tenant_id,
+        command_hash=command_hash,
+        idempotency_key_ref_hash=idempotency_key_ref_hash,
+        worker_admission_gate_statement_hash=statement_hash,
+        reviewer_ref=command.reviewer_ref,
+        checked_at_utc=command.checked_at_utc,
+        worker_admission_gate_ready=command.worker_admission_review_requested
+        and bool(leased_jobs)
+        and not blocking_reasons,
+        worker_admission_review_requested=command.worker_admission_review_requested,
+        leased_jobs=leased_jobs,
+        blocking_reasons=tuple(blocking_reasons),
+        summary=LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateSummary(
+            job_outbox_entry_count=len(jobs),
+            leased_job_count=len(leased_jobs),
+            eligible_leased_job_count=len(leased_jobs),
+            queued_job_count=queued_job_count,
+            retry_scheduled_job_count=retry_scheduled_job_count,
+            blocked_job_count=blocked_job_count,
+            evidence_chain_bound_leased_job_count=evidence_chain_bound_leased_job_count,
+            restore_hash_bound_leased_job_count=restore_hash_bound_leased_job_count,
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_READY_NEXT_ACTION
+            if command.worker_admission_review_requested and bool(leased_jobs) and not blocking_reasons
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_REPAIR_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_worker_admission_gate_response_hash(draft)}
+    )
+
+
+def build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_command_hash(
+    command: LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
+) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def build_lms_dry_run_execution_outbox_worker_admission_gate_response_hash(
+    response: LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _job_outbox_evidence_chain_bound(entry: LmsPackageInstallationDryRunExecutionJobOutboxEntry) -> bool:
+    return all(
+        SHA256_PATTERN.fullmatch(value) and value != ZERO_SHA256
+        for value in (
+            entry.dry_run_execution_admission_gate_evidence_hash,
+            entry.dry_run_execution_approval_boundary_evidence_hash,
+            entry.dry_run_execution_approval_record_hash,
+            entry.dry_run_execution_scheduler_boundary_evidence_hash,
+            entry.dry_run_execution_worker_image_boundary_evidence_hash,
+            entry.dry_run_execution_final_readiness_gate_evidence_hash,
+            entry.worker_idempotency_key_hash,
+            entry.restore_evidence_hash,
+            entry.evidence_hash,
+        )
+    )
+
+
+def _outbox_worker_admission_gate_blocking_reasons(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
+    reviewer_role_allowed: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not reviewer_role_allowed:
+        reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_outbox_worker_admission_gate")
+    if not command.worker_admission_review_requested:
+        reasons.append("lms_dry_run_execution_outbox_worker_admission_gate_review_not_requested")
+    if command.worker_admission_grant_requested:
+        reasons.append("worker_admission_grant_forbidden_without_separate_worker_enablement")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_forbidden_until_worker_admission")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_forbidden_until_worker_admission")
+    if command.worker_image_resolution_requested:
+        reasons.append("worker_image_resolution_forbidden_until_worker_admission")
+    if command.worker_image_pull_requested:
+        reasons.append("worker_image_pull_forbidden_until_worker_admission")
+    if command.worker_image_digest_lookup_requested:
+        reasons.append("worker_image_digest_lookup_forbidden_until_worker_admission")
+    if command.worker_dispatch_requested:
+        reasons.append("worker_dispatch_forbidden_until_worker_admission")
+    if command.worker_queue_enqueue_requested:
+        reasons.append("worker_queue_enqueue_forbidden_until_worker_admission")
+    if command.worker_execution_requested:
+        reasons.append("worker_execution_forbidden_until_worker_admission")
+    if command.package_installation_dry_run_execution_requested:
+        reasons.append("package_installation_dry_run_execution_forbidden_until_worker_admission")
+    if command.dry_run_result_persistence_requested:
+        reasons.append("dry_run_result_persistence_forbidden_until_worker_admission")
+    if command.package_installation_execution_requested:
+        reasons.append("package_installation_execution_forbidden_until_worker_admission")
+    if command.tenant_module_state_creation_requested:
+        reasons.append("tenant_module_state_creation_forbidden_until_package_installation")
+    if command.content_payload_included:
+        reasons.append("content_payload_forbidden_in_lms_dry_run_execution_outbox_worker_admission_gate")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_outbox_worker_admission_gate")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_outbox_worker_admission_gate")
     return tuple(reasons)
