@@ -54,9 +54,9 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
-    assert response.summary.catalog_registered_count == 2
-    assert response.summary.planned_not_installed_count == 3
-    assert response.summary.pre_catalog_foundation_ready_count == 1
+    assert response.summary.catalog_registered_count == 3
+    assert response.summary.planned_not_installed_count == 2
+    assert response.summary.pre_catalog_foundation_ready_count == 0
     assert response.summary.first_slice_foundation_ready_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
 
@@ -96,21 +96,19 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert "backup_restore_evidence_required" in lms.required_foundation_gates
 
     tasks = families["tasks_activities"]
-    assert tasks.backlog_status == "planned_not_installed"
-    assert tasks.catalog_status is None
+    assert tasks.backlog_status == "catalog_registered"
+    assert tasks.catalog_status == "not_installed"
     assert tasks.tenant_module_status is None
-    assert tasks.catalog_entry_present is False
+    assert tasks.catalog_entry_present is True
     assert tasks.module_package_installed is False
     assert tasks.installed_in_catalog is False
     assert tasks.module_charter_ready is True
     assert tasks.feature_registry_ready is True
     assert tasks.object_rules_ready is True
-    assert tasks.pre_catalog_foundation_ready is True
+    assert tasks.pre_catalog_foundation_ready is False
     assert tasks.first_slice_foundation_ready is False
     assert tasks.runtime_activation_allowed is False
-    assert (
-        tasks.next_action == "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
-    )
+    assert tasks.next_action == "add_tasks_activities_migration_evidence_before_storage_or_api"
     assert "module_catalog_entry_required" in tasks.required_foundation_gates
     assert "backup_restore_evidence_required" in tasks.required_foundation_gates
 
@@ -132,7 +130,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
         assert "backup_restore_evidence_required" in planned_family.required_foundation_gates
 
 
-def test_module_family_next_slice_selection_selects_tasks_without_activation() -> None:
+def test_module_family_next_slice_selection_selects_tickets_after_tasks_catalog_registration() -> None:
     response = build_module_family_next_slice_selection_response(
         user_context=UserContext(
             tenant_id="tenant-demo",
@@ -149,15 +147,15 @@ def test_module_family_next_slice_selection_selects_tasks_without_activation() -
     assert response.endpoint == MODULE_FAMILY_NEXT_SLICE_SELECTION_ENDPOINT
     assert response.backlog_endpoint == MODULE_FAMILY_BACKLOG_ENDPOINT
     assert response.selection_ready is True
-    assert response.selected_module_family == "tasks_activities"
-    assert response.selected_module_id == "tasks_activities"
+    assert response.selected_module_family == "tickets_incidents"
+    assert response.selected_module_id == "tickets_incidents"
     assert (
         response.selected_next_action
-        == "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
+        == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
     )
     assert response.next_action == response.selected_next_action
     assert response.lms_depth_deferred is True
-    assert response.deferred_module_families == ("knowledge_base", "lms")
+    assert response.deferred_module_families == ("knowledge_base", "lms", "tasks_activities")
     assert response.content_included is False
     assert response.module_activation_executed is False
     assert response.persistent_task_created is False
@@ -165,28 +163,25 @@ def test_module_family_next_slice_selection_selects_tasks_without_activation() -
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
     assert response.summary.active_foundation_count == 1
-    assert response.summary.catalog_registered_count == 2
-    assert response.summary.planned_candidate_count == 3
+    assert response.summary.catalog_registered_count == 3
+    assert response.summary.planned_candidate_count == 2
     assert response.summary.selected_candidate_count == 1
-    assert response.summary.queued_candidate_count == 2
+    assert response.summary.queued_candidate_count == 1
     assert response.summary.lms_depth_deferred_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
     assert response.summary.blocking_reason_count == 0
     assert response.evidence_hash.startswith("sha256:")
 
     candidates = {candidate.module_family: candidate for candidate in response.candidates}
-    assert tuple(candidates) == ("tasks_activities", "tickets_incidents", "time_tracking")
-    selected = candidates["tasks_activities"]
+    assert tuple(candidates) == ("tickets_incidents", "time_tracking")
+    selected = candidates["tickets_incidents"]
     assert selected.selection_rank == 1
     assert selected.selection_status == "selected_next"
     assert selected.selection_reason == "first_planned_module_family_after_lms_foundation_seal"
-    assert (
-        selected.next_action
-        == "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
-    )
-    assert selected.default_feature_gate == "tasks.items.read"
-    assert selected.continuity_domain == "task_activity_records"
+    assert selected.next_action == "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
+    assert selected.default_feature_gate == "tickets.items.read"
+    assert selected.continuity_domain == "ticket_incident_records"
     assert selected.runtime_activation_allowed is False
     assert selected.module_activation_executed is False
-    assert candidates["tickets_incidents"].selection_status == "queued_next"
-    assert candidates["time_tracking"].selection_rank == 3
+    assert candidates["time_tracking"].selection_status == "queued_next"
+    assert candidates["time_tracking"].selection_rank == 2

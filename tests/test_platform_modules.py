@@ -905,6 +905,7 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     crm_erp_catalog_entry = registry.get_catalog_entry("crm_erp")
     knowledge_base_catalog = registry.get_catalog_entry("knowledge_base")
     lms_catalog = registry.get_catalog_entry("lms")
+    tasks_catalog = registry.get_catalog_entry("tasks_activities")
     response = registry.discover_tenant_modules("tenant-demo")
     module_ids = {module.module_id for module in response.modules}
 
@@ -924,8 +925,11 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
     assert lms_catalog.status == ModuleStatus.NOT_INSTALLED
     assert lms_catalog.required_migration_versions == ("0045", "0046", "0047", "0048", "0049")
+    assert tasks_catalog.status == ModuleStatus.NOT_INSTALLED
+    assert tasks_catalog.required_migration_versions == ("0050",)
     assert module_ids >= {"crm_erp", "knowledge_base"}
     assert "lms" not in module_ids
+    assert "tasks_activities" not in module_ids
     assert all(module.status == ModuleStatus.AVAILABLE for module in response.modules)
 
 

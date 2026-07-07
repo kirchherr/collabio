@@ -119,7 +119,7 @@ New task comments, file attachments, automation rules, notification queues, cale
 
 ## 8. Migrations And Imports
 
-No migration is introduced by this charter. The first future migration must register the module as `not_installed` and create only metadata required for `task.task` and `task.activity` after catalog readiness evidence exists.
+`0050_tasks_activities_catalog_registration.sql` registers the module package as `not_installed` in the global module catalog only. It creates no tenant state, no Tasks & Activities schema, no `task.task` or `task.activity` tables, no content, no worker queue, and no business API runtime.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import or workflow activation.
 

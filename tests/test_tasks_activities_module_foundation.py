@@ -110,7 +110,7 @@ def test_tasks_activities_module_charter_documents_contract_gates_and_deferred_s
         "No Tasks & Activities business API route is enabled by this charter",
         "/v1/platform/modules/families/tasks-activities/catalog-readiness",
         "task_activity_records",
-        "No migration is introduced by this charter",
+        "0050_tasks_activities_catalog_registration.sql",
         "task.task",
         "task.activity",
         "notifications",

@@ -43,10 +43,15 @@ CATALOG_REGISTERED_NEXT_ACTION = "resume_cross_module_backend_slices_without_lms
 TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
     "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )
-NEXT_SLICE_SELECTED_NEXT_ACTION = TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION
+TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
+NEXT_SLICE_SELECTED_NEXT_ACTION = "create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api"
 CATALOG_READY_NEXT_ACTIONS = {
     "lms": CATALOG_PREPARED_NEXT_ACTION,
     "tasks_activities": TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION,
+}
+CATALOG_REGISTERED_NEXT_ACTIONS = {
+    "lms": CATALOG_REGISTERED_NEXT_ACTION,
+    "tasks_activities": TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION,
 }
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
@@ -546,6 +551,7 @@ def build_module_family_backlog_response(
             "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
             "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
             "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
+            "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
             "tests/test_lms_module_foundation.py",
@@ -640,6 +646,7 @@ def build_module_family_next_slice_selection_response(
             "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
             "app/suite/platform/module_family_backlog.py",
             "app/suite/platform/tasks_activities_module.py",
+            "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "tests/test_module_family_backlog.py",
             "tests/test_tasks_activities_module_foundation.py",
             "tests/test_api.py",
@@ -816,13 +823,13 @@ def _next_action(
     if first_slice_foundation_ready:
         return ACTIVE_FOUNDATION_NEXT_ACTION
     if catalog_entry_present and not module_package_installed:
-        return CATALOG_REGISTERED_NEXT_ACTION
+        return CATALOG_REGISTERED_NEXT_ACTIONS.get(module_family, CATALOG_REGISTERED_NEXT_ACTION)
     if pre_catalog_foundation_ready:
         return CATALOG_READY_NEXT_ACTIONS.get(
             module_family,
             f"review_{module_family}_catalog_readiness_before_catalog_registration",
         )
-    return PLANNED_MODULE_NEXT_ACTION
+    return f"create_{module_family}_module_charter_then_catalog_entry_before_storage_or_api"
 
 
 def _module_family_backlog_summary(

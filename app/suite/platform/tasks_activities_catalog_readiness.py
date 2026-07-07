@@ -144,13 +144,23 @@ def build_tasks_activities_catalog_readiness_response(
         tenant_id=user_context.tenant_id,
         catalog_known=catalog_status is not None,
     )
+    catalog_registration_evidence = (
+        (
+            "catalog_registration_status_absent_confirmed",
+            "migration_plan_or_no_table_decision_recorded",
+        )
+        if catalog_status is None
+        else (
+            "catalog_registration_status_not_installed_confirmed",
+            "catalog_registration_migration_0050_recorded",
+        )
+    )
     required_catalog_evidence = (
         "module_charter_reviewed",
         "subfeature_manifest_hash_recorded",
         "object_rule_manifest_hash_recorded",
         "backup_continuity_domain_recorded",
-        "catalog_registration_status_absent_confirmed",
-        "migration_plan_or_no_table_decision_recorded",
+        *catalog_registration_evidence,
         "no_runtime_activation_confirmed",
     )
     return TasksActivitiesCatalogReadinessResponse(
@@ -184,6 +194,7 @@ def build_tasks_activities_catalog_readiness_response(
             "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
             "app/suite/platform/tasks_activities_module.py",
             "app/suite/platform/tasks_activities_catalog_readiness.py",
+            "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_tasks_activities_catalog_readiness.py",
         ),

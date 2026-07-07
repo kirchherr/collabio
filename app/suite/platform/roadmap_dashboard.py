@@ -548,7 +548,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
                         "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities ist als "
-                        "Catalog-Readiness-Boundary vorbereitet, LMS bleibt vor Installation/API."
+                        "not_installed katalogregistriert, LMS bleibt vor Installation/API."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -594,6 +594,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql",
                         "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
                         "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
+                        "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
                         "tests/test_module_family_backlog.py",
@@ -691,6 +692,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "module_family_next_slice_selection_ready",
                         "tasks_activities_foundation_contract_ready",
                         "tasks_activities_catalog_readiness_ready",
+                        "tasks_activities_catalog_registered_not_installed",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -739,7 +741,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review",
+                    next_action="create_tickets_incidents_module_charter_then_catalog_entry_before_storage_or_api",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

@@ -455,6 +455,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:lms-dry-run-execution-job-outbox",
         ),
     ),
+    SqlMigration(
+        version="0050",
+        name="tasks_activities_catalog_registration",
+        resource_name="0050_tasks_activities_catalog_registration.sql",
+        module_id="tasks_activities",
+        evidence_refs=(
+            "doc:tasks-activities-module-charter",
+            "test:tasks-activities-catalog-registration",
+        ),
+    ),
 )
 
 
