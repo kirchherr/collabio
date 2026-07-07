@@ -125,7 +125,10 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert tickets.pre_catalog_foundation_ready is True
     assert tickets.first_slice_foundation_ready is False
     assert tickets.runtime_activation_allowed is False
-    assert tickets.next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+    assert (
+        tickets.next_action
+        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+    )
     assert "module_catalog_entry_required" in tickets.required_foundation_gates
     assert "backup_restore_evidence_required" in tickets.required_foundation_gates
 
@@ -165,7 +168,10 @@ def test_module_family_next_slice_selection_reviews_tickets_after_foundation_con
     assert response.selection_ready is True
     assert response.selected_module_family == "tickets_incidents"
     assert response.selected_module_id == "tickets_incidents"
-    assert response.selected_next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+    assert (
+        response.selected_next_action
+        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+    )
     assert response.next_action == response.selected_next_action
     assert response.lms_depth_deferred is True
     assert response.deferred_module_families == ("knowledge_base", "lms", "tasks_activities")
@@ -191,7 +197,10 @@ def test_module_family_next_slice_selection_reviews_tickets_after_foundation_con
     assert selected.selection_rank == 1
     assert selected.selection_status == "selected_next"
     assert selected.selection_reason == "first_planned_module_family_after_lms_foundation_seal"
-    assert selected.next_action == "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+    assert (
+        selected.next_action
+        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+    )
     assert selected.default_feature_gate == "tickets.items.read"
     assert selected.continuity_domain == "ticket_incident_records"
     assert selected.runtime_activation_allowed is False

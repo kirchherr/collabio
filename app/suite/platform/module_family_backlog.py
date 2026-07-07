@@ -44,7 +44,9 @@ TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
     "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
-NEXT_SLICE_SELECTED_NEXT_ACTION = "review_tickets_incidents_catalog_readiness_before_catalog_registration"
+NEXT_SLICE_SELECTED_NEXT_ACTION = (
+    "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+)
 CATALOG_READY_NEXT_ACTIONS = {
     "lms": CATALOG_PREPARED_NEXT_ACTION,
     "tasks_activities": TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION,
@@ -526,6 +528,7 @@ def build_module_family_backlog_response(
             "app/suite/platform/lms_module.py",
             "app/suite/platform/lms_catalog_readiness.py",
             "app/suite/platform/tickets_incidents_module.py",
+            "app/suite/platform/tickets_incidents_catalog_readiness.py",
             "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
             "app/suite/platform/lms_tenant_admin_package_approval_record.py",
@@ -564,6 +567,7 @@ def build_module_family_backlog_response(
             "tests/test_module_family_backlog.py",
             "tests/test_lms_module_foundation.py",
             "tests/test_tickets_incidents_module_foundation.py",
+            "tests/test_tickets_incidents_catalog_readiness.py",
             "tests/test_lms_catalog_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_lms_tenant_admin_package_approval_gate.py",
@@ -657,10 +661,12 @@ def build_module_family_next_slice_selection_response(
             "app/suite/platform/module_family_backlog.py",
             "app/suite/platform/tasks_activities_module.py",
             "app/suite/platform/tickets_incidents_module.py",
+            "app/suite/platform/tickets_incidents_catalog_readiness.py",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "tests/test_module_family_backlog.py",
             "tests/test_tasks_activities_module_foundation.py",
             "tests/test_tickets_incidents_module_foundation.py",
+            "tests/test_tickets_incidents_catalog_readiness.py",
             "tests/test_api.py",
         ),
         blocking_reasons=tuple(blocking_reasons),

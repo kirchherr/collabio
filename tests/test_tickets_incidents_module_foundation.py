@@ -112,7 +112,7 @@ def test_tickets_incidents_module_charter_documents_contract_gates_and_deferred_
         "candidate IDs only",
         "Local LLM Gateway",
         "No Tickets & Incidents business API route is enabled by this charter",
-        "No platform catalog-readiness endpoint is enabled by this charter",
+        "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
         "ticket_incident_records",
         "ticket.ticket",
         "ticket.event",

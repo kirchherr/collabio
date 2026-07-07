@@ -70,7 +70,7 @@ Compliance-only later:
 - incident evidence export
 - decommission precheck
 
-No Tickets & Incidents business API route is enabled by this charter. No platform catalog-readiness endpoint is enabled by this charter. Module catalog registration, migration evidence, and a future readiness boundary must happen before any business route or worker is wired.
+No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary. Module catalog registration and migration evidence must happen before any business route or worker is wired.
 
 ## 5. Persistent Objects
 
@@ -159,5 +159,6 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 ## 11. Verification
 
 - `tests/test_tickets_incidents_module_foundation.py`
+- `tests/test_tickets_incidents_catalog_readiness.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`
