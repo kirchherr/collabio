@@ -63,6 +63,7 @@ from suite.platform.lms_package_installation_dry_run_execution_gate import (
 from suite.platform.lms_package_installation_dry_run_execution_job_outbox import (
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RETRY_STATEMENT,
     build_default_lms_package_installation_dry_run_execution_job_outbox_store,
 )
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
@@ -1029,9 +1030,16 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/retries"
+        in future_modules["api_routes"]
+    )
     assert "lms_package_installation_dry_run_execution_job_outbox_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_lease_consumer_ready" in future_modules["guardrails"]
-    assert future_modules["next_action"] == "wire_lms_dry_run_execution_outbox_retry_api_without_worker_execution"
+    assert "lms_package_installation_dry_run_execution_outbox_retry_api_ready" in future_modules["guardrails"]
+    assert (
+        future_modules["next_action"] == "wire_lms_dry_run_execution_outbox_dead_letter_review_without_worker_execution"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1268,7 +1276,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("wire_lms_dry_run_execution_outbox_retry_api_without_worker_execution")
+    assert families["lms"]["next_action"] == (
+        "wire_lms_dry_run_execution_outbox_dead_letter_review_without_worker_execution"
+    )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5172,6 +5182,15 @@ def test_lms_package_installation_dry_run_execution_outbox_lease_consumer_requir
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_outbox_retry_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/retries",
+        json={},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -5425,6 +5444,144 @@ def test_lms_dry_run_execution_outbox_lease_consumer_api_leases_without_worker_e
     assert event.metadata["dry_run_result_persistence_allowed"] is False
     assert event.metadata["tenant_module_state_created"] is False
     assert "lease_consumer_statement" not in event.metadata
+
+
+def test_lms_dry_run_execution_outbox_retry_api_records_retry_without_worker_execution() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    job_payload = {
+        "dry_run_execution_admission_gate_evidence_hash": api_fixture_hash("lms-retry-api-admission-gate"),
+        "dry_run_execution_approval_boundary_evidence_hash": api_fixture_hash("lms-retry-api-approval-boundary"),
+        "dry_run_execution_approval_record_hash": api_fixture_hash("lms-retry-api-approval-record"),
+        "dry_run_execution_scheduler_boundary_evidence_hash": api_fixture_hash("lms-retry-api-scheduler-boundary"),
+        "dry_run_execution_worker_image_boundary_evidence_hash": api_fixture_hash("lms-retry-api-worker-image"),
+        "dry_run_execution_final_readiness_gate_evidence_hash": api_fixture_hash("lms-retry-api-final-readiness"),
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution-retry-api",
+        "restore_evidence_hash": api_fixture_hash("lms-retry-api-restore"),
+        "enqueued_at_utc": "2026-06-30T11:30:00Z",
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-retry-api-demo",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-retry-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-retry-api-demo",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    }
+    lease_payload = {
+        "lease_owner_ref": "lease-consumer:lms-dry-run-retry-api",
+        "lease_duration_seconds": 120,
+        "checked_at_utc": "2026-06-30T11:30:01Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-retry-lease-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-retry-lease-api-demo",
+        "lease_consumer_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
+    }
+
+    job_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=job_payload,
+    )
+    lease_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases",
+        headers=DEMO_ADMIN_HEADERS,
+        json=lease_payload,
+    )
+    leased_job = lease_response.json()["leased_job"]
+    retry_payload = {
+        "worker_idempotency_key_hash": leased_job["worker_idempotency_key_hash"],
+        "lease_id": leased_job["lease_id"],
+        "error_type": "worker-not-enabled-yet",
+        "next_attempt_after_utc": "2026-06-30T11:35:00Z",
+        "recorded_at_utc": "2026-06-30T11:30:02Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-retry-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-retry-api-demo",
+        "retry_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RETRY_STATEMENT,
+    }
+
+    retry_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/retries",
+        headers=DEMO_ADMIN_HEADERS,
+        json=retry_payload,
+    )
+    second_retry_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/retries",
+        headers=DEMO_ADMIN_HEADERS,
+        json=retry_payload,
+    )
+
+    assert job_response.status_code == 200
+    assert lease_response.status_code == 200
+    assert retry_response.status_code == 200
+    assert second_retry_response.status_code == 200
+    body = retry_response.json()
+    second_body = second_retry_response.json()
+    retried_job = body["retried_job"]
+
+    assert body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_retry_api.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert (
+        body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/retries"
+    )
+    assert (
+        body["result_contract"]
+        == "metadata_only_lms_package_installation_dry_run_execution_outbox_retry_no_worker_execution"
+    )
+    assert body["retry_recorded"] is True
+    assert body["retry_requested"] is True
+    assert body["outbox_retry_recorded"] is True
+    assert body["error_type"] == "worker-not-enabled-yet"
+    assert body["summary"] == {
+        "job_outbox_entry_count": 1,
+        "retried_job_count": 1,
+        "retry_scheduled_job_count": 1,
+        "blocked_job_count": 0,
+        "blocking_reason_count": 0,
+    }
+    assert body["next_action"] == "inspect_lms_dry_run_execution_outbox_retry_state_without_worker_execution"
+    assert retried_job["worker_job_ref"] == leased_job["worker_job_ref"]
+    assert retried_job["queue_status"] == "retry_scheduled"
+    assert retried_job["lease_id"] is None
+    assert retried_job["lease_owner"] is None
+    assert retried_job["leased_until_utc"] is None
+    assert retried_job["last_error_type"] == "worker-not-enabled-yet"
+    assert retried_job["attempt_count"] == 1
+    assert retried_job["worker_dispatch_allowed"] is False
+    assert retried_job["worker_queue_enqueued"] is False
+    assert retried_job["worker_execution_allowed"] is False
+    assert retried_job["dry_run_result_persistence_allowed"] is False
+    assert body["worker_dispatch_allowed"] is False
+    assert body["worker_queue_enqueued"] is False
+    assert body["worker_execution_allowed"] is False
+    assert body["worker_executed"] is False
+    assert body["dry_run_result_persistence_allowed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert "retry_statement" not in body
+    assert LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RETRY_STATEMENT not in retry_response.text
+    assert second_body["retry_recorded"] is False
+    assert second_body["outbox_retry_recorded"] is False
+    assert second_body["retried_job"] is None
+    assert "lms_dry_run_execution_outbox_retry_requires_leased_job" in second_body["blocking_reasons"]
+
+    retry_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_outbox_retry"
+    ]
+    assert len(retry_events) == 2
+    event = retry_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["retry_recorded"] is True
+    assert event.metadata["outbox_retry_recorded"] is True
+    assert event.metadata["retried_worker_job_ref"] == retried_job["worker_job_ref"]
+    assert event.metadata["retried_job_queue_status"] == "retry_scheduled"
+    assert event.metadata["retried_job_attempt_count"] == 1
+    assert event.metadata["worker_dispatch_allowed"] is False
+    assert event.metadata["worker_queue_enqueued"] is False
+    assert event.metadata["worker_execution_allowed"] is False
+    assert event.metadata["dry_run_result_persistence_allowed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert "retry_statement" not in event.metadata
 
 
 def test_lms_package_installation_dry_run_execution_job_outbox_blocks_worker_actions_without_enqueue() -> None:

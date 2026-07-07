@@ -33,7 +33,7 @@ MODULE_FAMILY_MODULE_IDS = {
 PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_storage_or_api"
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
-CATALOG_REGISTERED_NEXT_ACTION = "wire_lms_dry_run_execution_outbox_retry_api_without_worker_execution"
+CATALOG_REGISTERED_NEXT_ACTION = "wire_lms_dry_run_execution_outbox_dead_letter_review_without_worker_execution"
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
         "module_charter_ready": True,
