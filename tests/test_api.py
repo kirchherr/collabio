@@ -67,6 +67,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RETRY_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_DISPATCH_ADMISSION_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_QUEUE_ADMISSION_STATEMENT,
     build_default_lms_package_installation_dry_run_execution_job_outbox_store,
 )
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
@@ -1049,6 +1050,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-dispatch-admission"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-queue-admission"
+        in future_modules["api_routes"]
+    )
     assert "lms_package_installation_dry_run_execution_job_outbox_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_lease_consumer_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_retry_api_ready" in future_modules["guardrails"]
@@ -1060,7 +1065,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "lms_package_installation_dry_run_execution_outbox_worker_dispatch_admission_ready"
         in future_modules["guardrails"]
     )
-    assert future_modules["next_action"] == "wire_lms_dry_run_execution_worker_queue_admission_without_worker_execution"
+    assert (
+        "lms_package_installation_dry_run_execution_outbox_worker_queue_admission_ready" in future_modules["guardrails"]
+    )
+    assert future_modules["next_action"] == "build_lms_dry_run_execution_worker_receipt_without_business_writes"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1297,9 +1305,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == (
-        "wire_lms_dry_run_execution_worker_queue_admission_without_worker_execution"
-    )
+    assert families["lms"]["next_action"] == ("build_lms_dry_run_execution_worker_receipt_without_business_writes")
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5239,6 +5245,15 @@ def test_lms_package_installation_dry_run_execution_outbox_worker_dispatch_admis
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_outbox_worker_queue_admission_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-queue-admission",
+        json={},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -5895,6 +5910,140 @@ def test_lms_dry_run_execution_outbox_worker_dispatch_admission_api_reports_leas
     assert event.metadata["dry_run_result_persistence_allowed"] is False
     assert event.metadata["tenant_module_state_created"] is False
     assert "worker_dispatch_admission_statement" not in event.metadata
+
+
+def test_lms_dry_run_execution_outbox_worker_queue_admission_api_reports_leased_state_without_worker_execution() -> (
+    None
+):
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    job_payload = {
+        "dry_run_execution_admission_gate_evidence_hash": api_fixture_hash("lms-worker-queue-admission-api-admission"),
+        "dry_run_execution_approval_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-queue-admission-api-approval-boundary"
+        ),
+        "dry_run_execution_approval_record_hash": api_fixture_hash("lms-worker-queue-admission-api-approval-record"),
+        "dry_run_execution_scheduler_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-queue-admission-api-scheduler-boundary"
+        ),
+        "dry_run_execution_worker_image_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-queue-admission-api-worker-image"
+        ),
+        "dry_run_execution_final_readiness_gate_evidence_hash": api_fixture_hash(
+            "lms-worker-queue-admission-api-final-readiness"
+        ),
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution-worker-queue-admission-api",
+        "restore_evidence_hash": api_fixture_hash("lms-worker-queue-admission-api-restore"),
+        "enqueued_at_utc": "2026-06-30T11:55:00Z",
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-worker-queue-admission-api-demo",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-worker-queue-admission-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-worker-queue-admission-api-demo",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    }
+    lease_payload = {
+        "lease_owner_ref": "lease-consumer:lms-dry-run-worker-queue-admission-api",
+        "lease_duration_seconds": 120,
+        "checked_at_utc": "2026-06-30T11:55:01Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-queue-admission-lease-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-worker-queue-admission-lease-api-demo",
+        "lease_consumer_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
+    }
+
+    job_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=job_payload,
+    )
+    lease_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases",
+        headers=DEMO_ADMIN_HEADERS,
+        json=lease_payload,
+    )
+    leased_job = lease_response.json()["leased_job"]
+    admission_payload = {
+        "reviewer_ref": "reviewer:lms-dry-run-worker-queue-admission-api",
+        "checked_at_utc": "2026-06-30T11:55:02Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-queue-admission-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-worker-queue-admission-api-demo",
+        "worker_queue_admission_statement": (
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_QUEUE_ADMISSION_STATEMENT
+        ),
+    }
+    admission_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-queue-admission",
+        headers=DEMO_ADMIN_HEADERS,
+        json=admission_payload,
+    )
+
+    assert job_response.status_code == 200
+    assert lease_response.status_code == 200
+    assert admission_response.status_code == 200
+    body = admission_response.json()
+    admitted_job = body["leased_jobs"][0]
+
+    assert body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_worker_queue_admission.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    expected_endpoint = (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-queue-admission"
+    )
+    expected_contract = (
+        "metadata_only_lms_package_installation_dry_run_execution_outbox_worker_queue_admission_no_worker_execution"
+    )
+    assert body["endpoint"] == expected_endpoint
+    assert body["result_contract"] == expected_contract
+    assert body["worker_queue_admission_ready"] is True
+    assert body["worker_queue_admission_review_requested"] is True
+    assert body["worker_queue_admission_granted"] is False
+    assert body["reviewer_ref"] == "reviewer:lms-dry-run-worker-queue-admission-api"
+    assert body["leased_jobs"] == [leased_job]
+    assert admitted_job["queue_status"] == "leased"
+    assert admitted_job["lease_id"].startswith("lease:")
+    assert admitted_job["lease_owner"] == "lease-consumer:lms-dry-run-worker-queue-admission-api"
+    assert admitted_job["worker_execution_allowed"] is False
+    assert body["summary"] == {
+        "job_outbox_entry_count": 1,
+        "leased_job_count": 1,
+        "queue_admissible_leased_job_count": 1,
+        "queued_job_count": 0,
+        "retry_scheduled_job_count": 0,
+        "blocked_job_count": 0,
+        "evidence_chain_bound_leased_job_count": 1,
+        "restore_hash_bound_leased_job_count": 1,
+        "blocking_reason_count": 0,
+    }
+    assert body["scheduler_activation_allowed"] is False
+    assert body["worker_dispatch_allowed"] is False
+    assert body["worker_queue_enqueued"] is False
+    assert body["worker_execution_allowed"] is False
+    assert body["dry_run_result_persistence_allowed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert "worker_queue_admission_statement" not in body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_QUEUE_ADMISSION_STATEMENT
+        not in admission_response.text
+    )
+
+    admission_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_outbox_worker_queue_admission"
+    ]
+    assert len(admission_events) == 1
+    event = admission_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["worker_queue_admission_ready"] is True
+    assert event.metadata["worker_queue_admission_granted"] is False
+    assert event.metadata["leased_job_count"] == 1
+    assert event.metadata["queue_admissible_leased_job_count"] == 1
+    assert event.metadata["worker_dispatch_allowed"] is False
+    assert event.metadata["worker_queue_enqueued"] is False
+    assert event.metadata["worker_execution_allowed"] is False
+    assert event.metadata["dry_run_result_persistence_allowed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert "worker_queue_admission_statement" not in event.metadata
 
 
 def test_lms_dry_run_execution_outbox_dead_letter_review_api_reports_blocked_state_without_worker_execution() -> None:
