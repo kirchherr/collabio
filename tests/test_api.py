@@ -913,6 +913,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     future_modules = next(capability for capability in capabilities if capability["capability_id"] == "future_modules")
     assert future_modules["status"] == "metadata_only"
     assert "/v1/platform/modules/families/backlog" in future_modules["api_routes"]
+    assert "/v1/platform/modules/families/next-slice-selection" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate" in future_modules["api_routes"]
@@ -937,6 +938,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-result-contract" in future_modules["api_routes"]
     )
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
+    assert "module_family_next_slice_selection_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1105,7 +1107,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert future_modules["next_action"] == "resume_cross_module_backend_slices_without_lms_depth"
+    assert (
+        future_modules["next_action"]
+        == "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1293,6 +1298,13 @@ def test_module_family_backlog_requires_request_context() -> None:
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_module_family_next_slice_selection_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules/families/next-slice-selection")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_module_family_backlog_returns_metadata_only_future_module_contract() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -1367,6 +1379,84 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["persistent_task_created"] is False
     assert event.metadata["destructive_actions_allowed"] is False
     assert event.metadata["external_side_effect_allowed"] is False
+
+
+def test_module_family_next_slice_selection_returns_metadata_only_tasks_contract() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get("/v1/platform/modules/families/next-slice-selection", headers=DEMO_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "platform_module_family_next_slice_selection.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["result_contract"] == "metadata_only_module_family_next_slice_selection_no_activation"
+    assert body["endpoint"] == "/v1/platform/modules/families/next-slice-selection"
+    assert body["backlog_endpoint"] == "/v1/platform/modules/families/backlog"
+    assert body["selection_ready"] is True
+    assert body["selected_module_family"] == "tasks_activities"
+    assert body["selected_module_id"] == "tasks_activities"
+    assert body["selected_next_action"] == (
+        "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
+    )
+    assert body["next_action"] == body["selected_next_action"]
+    assert body["lms_depth_deferred"] is True
+    assert body["deferred_module_families"] == ["knowledge_base", "lms"]
+    assert body["content_included"] is False
+    assert body["module_activation_executed"] is False
+    assert body["persistent_task_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["summary"] == {
+        "total_family_count": 5,
+        "active_foundation_count": 1,
+        "catalog_registered_count": 2,
+        "planned_candidate_count": 3,
+        "selected_candidate_count": 1,
+        "queued_candidate_count": 2,
+        "lms_depth_deferred_count": 1,
+        "runtime_activation_allowed_count": 0,
+        "blocking_reason_count": 0,
+    }
+    assert body["evidence_hash"].startswith("sha256:")
+    candidates = {candidate["module_family"]: candidate for candidate in body["candidates"]}
+    assert list(candidates) == ["tasks_activities", "tickets_incidents", "time_tracking"]
+    selected = candidates["tasks_activities"]
+    assert selected["selection_rank"] == 1
+    assert selected["selection_status"] == "selected_next"
+    assert selected["default_feature_gate"] == "tasks.items.read"
+    assert selected["continuity_domain"] == "task_activity_records"
+    assert selected["runtime_activation_allowed"] is False
+    assert selected["module_activation_executed"] is False
+    assert candidates["tickets_incidents"]["selection_status"] == "queued_next"
+    assert "audit:module-seed" not in response.text
+    assert "policy_snapshot_hash" not in response.text
+    assert "changed_by" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.module_family_next_slice_selection"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_module_family_next_slice_selection_no_activation"
+    assert event.metadata["selection_ready"] is True
+    assert event.metadata["selected_module_family"] == "tasks_activities"
+    assert event.metadata["selected_next_action"] == body["selected_next_action"]
+    assert event.metadata["candidate_count"] == 3
+    assert event.metadata["selected_candidate_count"] == 1
+    assert event.metadata["queued_candidate_count"] == 2
+    assert event.metadata["runtime_activation_allowed_count"] == 0
+    assert event.metadata["content_included"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
 
 
 def test_lms_catalog_readiness_requires_request_context() -> None:

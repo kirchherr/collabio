@@ -401,7 +401,9 @@ from suite.platform.lms_tenant_admin_package_approval_record import (
 )
 from suite.platform.module_family_backlog import (
     ModuleFamilyBacklogResponse,
+    ModuleFamilyNextSliceSelectionResponse,
     build_module_family_backlog_response,
+    build_module_family_next_slice_selection_response,
 )
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -1225,6 +1227,52 @@ def build_app() -> FastAPI:
                 "persistent_task_created": response.persistent_task_created,
                 "destructive_actions_allowed": response.destructive_actions_allowed,
                 "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/next-slice-selection",
+        response_model=ModuleFamilyNextSliceSelectionResponse,
+    )
+    def module_family_next_slice_selection(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> ModuleFamilyNextSliceSelectionResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_module_family_next_slice_selection_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.module_family_next_slice_selection",
+            source_object_ids=[f"module_family:{response.selected_module_family}"],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "contract_id": response.contract_id,
+                "selection_ready": response.selection_ready,
+                "selected_module_family": response.selected_module_family,
+                "selected_module_id": response.selected_module_id,
+                "selected_next_action": response.selected_next_action,
+                "lms_depth_deferred": response.lms_depth_deferred,
+                "candidate_count": response.summary.planned_candidate_count,
+                "selected_candidate_count": response.summary.selected_candidate_count,
+                "queued_candidate_count": response.summary.queued_candidate_count,
+                "active_foundation_count": response.summary.active_foundation_count,
+                "catalog_registered_count": response.summary.catalog_registered_count,
+                "lms_depth_deferred_count": response.summary.lms_depth_deferred_count,
+                "runtime_activation_allowed_count": response.summary.runtime_activation_allowed_count,
+                "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "next_action": response.next_action,
             },
         )
         return response

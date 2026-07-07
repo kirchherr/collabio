@@ -7,14 +7,20 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 
 MODULE_FAMILY_BACKLOG_SCHEMA_VERSION = "platform_module_family_backlog.v1"
 MODULE_FAMILY_BACKLOG_RESULT_CONTRACT = "metadata_only_future_module_backlog_no_activation"
 MODULE_FAMILY_BACKLOG_ENDPOINT = "/v1/platform/modules/families/backlog"
+MODULE_FAMILY_NEXT_SLICE_SELECTION_SCHEMA_VERSION = "platform_module_family_next_slice_selection.v1"
+MODULE_FAMILY_NEXT_SLICE_SELECTION_RESULT_CONTRACT = "metadata_only_module_family_next_slice_selection_no_activation"
+MODULE_FAMILY_NEXT_SLICE_SELECTION_ENDPOINT = "/v1/platform/modules/families/next-slice-selection"
 MODULE_IMPLEMENTATION_CONTRACT_SCHEMA_VERSION = "module_implementation_contract.v1"
 MODULE_FAMILY_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
+ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
 MODULE_FAMILY_DISPLAY_NAMES = {
     "knowledge_base": "Knowledge Base",
@@ -34,6 +40,7 @@ PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_st
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
 CATALOG_REGISTERED_NEXT_ACTION = "resume_cross_module_backend_slices_without_lms_depth"
+NEXT_SLICE_SELECTED_NEXT_ACTION = "create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api"
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
         "module_charter_ready": True,
@@ -258,6 +265,203 @@ class ModuleFamilyBacklogResponse(BaseModel):
         return self
 
 
+class ModuleFamilyNextSliceSelectionCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    module_family: str
+    module_id: str
+    display_name: str
+    first_objects: tuple[str, ...]
+    first_slice: str
+    default_feature_gate: str
+    continuity_domain: str
+    backlog_status: ModuleFamilyBacklogStatus
+    selection_rank: int
+    selection_status: str
+    selection_reason: str
+    required_foundation_gates: tuple[str, ...]
+    next_action: str
+    catalog_entry_present: bool
+    module_package_installed: bool
+    runtime_activation_allowed: bool = False
+    content_included: bool = False
+    module_activation_executed: bool = False
+    persistent_task_created: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+
+    @field_validator(
+        "module_family",
+        "module_id",
+        "display_name",
+        "first_slice",
+        "default_feature_gate",
+        "continuity_domain",
+        "selection_status",
+        "selection_reason",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("module family next-slice candidate text fields must not be empty")
+        return value
+
+    @field_validator("first_objects", "required_foundation_gates")
+    @classmethod
+    def validate_non_empty_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if not value:
+            raise ValueError("module family next-slice candidate lists must not be empty")
+        if len(set(value)) != len(value):
+            raise ValueError("module family next-slice candidate lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("module family next-slice candidate list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_candidate(self) -> ModuleFamilyNextSliceSelectionCandidate:
+        if self.selection_rank < 1:
+            raise ValueError("module family next-slice candidate rank must be positive")
+        if self.selection_status not in {"selected_next", "queued_next"}:
+            raise ValueError("module family next-slice candidate status is invalid")
+        if self.backlog_status != ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED:
+            raise ValueError("module family next-slice candidates must be planned modules")
+        if self.catalog_entry_present or self.module_package_installed:
+            raise ValueError("module family next-slice candidates must not already be catalog-installed")
+        if (
+            self.runtime_activation_allowed
+            or self.content_included
+            or self.module_activation_executed
+            or self.persistent_task_created
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("module family next-slice candidates must remain metadata-only")
+        return self
+
+
+class ModuleFamilyNextSliceSelectionSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    total_family_count: int
+    active_foundation_count: int
+    catalog_registered_count: int
+    planned_candidate_count: int
+    selected_candidate_count: int
+    queued_candidate_count: int
+    lms_depth_deferred_count: int
+    runtime_activation_allowed_count: int = 0
+    blocking_reason_count: int
+
+
+class ModuleFamilyNextSliceSelectionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = MODULE_FAMILY_NEXT_SLICE_SELECTION_SCHEMA_VERSION
+    tenant_id: str
+    contract_schema_version: str
+    contract_id: str
+    result_contract: str = MODULE_FAMILY_NEXT_SLICE_SELECTION_RESULT_CONTRACT
+    endpoint: str = MODULE_FAMILY_NEXT_SLICE_SELECTION_ENDPOINT
+    backlog_endpoint: str = MODULE_FAMILY_BACKLOG_ENDPOINT
+    selection_ready: bool
+    selected_module_family: str
+    selected_module_id: str
+    selected_next_action: str
+    lms_depth_deferred: bool
+    candidates: tuple[ModuleFamilyNextSliceSelectionCandidate, ...]
+    deferred_module_families: tuple[str, ...]
+    required_controls: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    content_included: bool = False
+    module_activation_executed: bool = False
+    persistent_task_created: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: ModuleFamilyNextSliceSelectionSummary
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "contract_schema_version",
+        "contract_id",
+        "result_contract",
+        "endpoint",
+        "backlog_endpoint",
+        "selected_module_family",
+        "selected_module_id",
+        "selected_next_action",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("module family next-slice response text fields must not be empty")
+        return value
+
+    @field_validator("deferred_module_families", "required_controls", "evidence_refs", "blocking_reasons")
+    @classmethod
+    def validate_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("module family next-slice response lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("module family next-slice response list items must not be empty")
+        return value
+
+    @field_validator("evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("module family next-slice response evidence_hash must be a sha256 reference")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_selection(self) -> ModuleFamilyNextSliceSelectionResponse:
+        if self.schema_version != MODULE_FAMILY_NEXT_SLICE_SELECTION_SCHEMA_VERSION:
+            raise ValueError("module family next-slice schema version is invalid")
+        if self.result_contract != MODULE_FAMILY_NEXT_SLICE_SELECTION_RESULT_CONTRACT:
+            raise ValueError("module family next-slice result contract is invalid")
+        if self.endpoint != MODULE_FAMILY_NEXT_SLICE_SELECTION_ENDPOINT:
+            raise ValueError("module family next-slice endpoint is invalid")
+        if self.backlog_endpoint != MODULE_FAMILY_BACKLOG_ENDPOINT:
+            raise ValueError("module family next-slice backlog endpoint is invalid")
+        selected = tuple(candidate for candidate in self.candidates if candidate.selection_status == "selected_next")
+        if self.selection_ready != (len(selected) == 1 and not self.blocking_reasons):
+            raise ValueError("module family next-slice readiness must match selected candidate")
+        if self.selection_ready:
+            if selected[0].module_family != self.selected_module_family:
+                raise ValueError("module family next-slice selected family must match selected candidate")
+            if selected[0].module_id != self.selected_module_id:
+                raise ValueError("module family next-slice selected module must match selected candidate")
+            if selected[0].next_action != self.selected_next_action:
+                raise ValueError("module family next-slice selected action must match selected candidate")
+        if (
+            self.content_included
+            or self.module_activation_executed
+            or self.persistent_task_created
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("module family next-slice selection must remain metadata-only and non-executing")
+        if self.summary.total_family_count < len(self.candidates):
+            raise ValueError("module family next-slice family count must cover candidates")
+        if self.summary.planned_candidate_count != len(self.candidates):
+            raise ValueError("module family next-slice candidate count must match candidates")
+        if self.summary.selected_candidate_count != len(selected):
+            raise ValueError("module family next-slice selected count must match candidates")
+        if self.summary.queued_candidate_count != len(self.candidates) - len(selected):
+            raise ValueError("module family next-slice queued count must match candidates")
+        if self.summary.runtime_activation_allowed_count != 0:
+            raise ValueError("module family next-slice must not allow runtime activation")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("module family next-slice blocking count must match reasons")
+        return self
+
+
 def default_module_implementation_contract_path() -> Path:
     return Path(__file__).resolve().parents[3] / "docs" / "modules" / "module_implementation_contract.json"
 
@@ -365,6 +569,118 @@ def build_module_family_backlog_response(
             "tests/test_lms_package_installation_dry_run_execution_worker_image_boundary.py",
             "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
         ),
+    )
+
+
+def build_module_family_next_slice_selection_response(
+    *,
+    user_context: UserContext,
+    module_registry: InMemoryModuleRegistry | PgModuleRegistry,
+    contract: ModuleImplementationContract | None = None,
+) -> ModuleFamilyNextSliceSelectionResponse:
+    backlog = build_module_family_backlog_response(
+        user_context=user_context,
+        module_registry=module_registry,
+        contract=contract,
+    )
+    planned_families = tuple(
+        family
+        for family in backlog.module_families
+        if family.backlog_status == ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED
+    )
+    candidates = tuple(
+        _module_family_next_slice_candidate(family=family, selection_rank=index + 1)
+        for index, family in enumerate(planned_families)
+    )
+    selected = candidates[0] if candidates else None
+    lms_depth_deferred = any(
+        family.module_family == "lms"
+        and family.backlog_status == ModuleFamilyBacklogStatus.CATALOG_REGISTERED
+        and family.next_action == CATALOG_REGISTERED_NEXT_ACTION
+        for family in backlog.module_families
+    )
+    blocking_reasons: list[str] = []
+    if selected is None:
+        blocking_reasons.append("module_family_next_slice_selection_requires_planned_candidate")
+    if not lms_depth_deferred:
+        blocking_reasons.append("module_family_next_slice_selection_requires_lms_depth_deferred")
+    selection_ready = selected is not None and lms_depth_deferred and not blocking_reasons
+    deferred_module_families = tuple(
+        family.module_family
+        for family in backlog.module_families
+        if family.backlog_status != ModuleFamilyBacklogStatus.PLANNED_NOT_INSTALLED
+    )
+    draft = ModuleFamilyNextSliceSelectionResponse(
+        tenant_id=user_context.tenant_id,
+        contract_schema_version=backlog.contract_schema_version,
+        contract_id=backlog.contract_id,
+        selection_ready=selection_ready,
+        selected_module_family=selected.module_family if selected is not None else "none",
+        selected_module_id=selected.module_id if selected is not None else "none",
+        selected_next_action=selected.next_action if selected is not None else "wait_for_planned_module_candidate",
+        lms_depth_deferred=lms_depth_deferred,
+        candidates=candidates,
+        deferred_module_families=deferred_module_families,
+        required_controls=backlog.required_controls,
+        evidence_refs=(
+            "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
+            "docs/modules/module_implementation_contract.json",
+            "app/suite/platform/module_family_backlog.py",
+            "tests/test_module_family_backlog.py",
+            "tests/test_api.py",
+        ),
+        blocking_reasons=tuple(blocking_reasons),
+        summary=ModuleFamilyNextSliceSelectionSummary(
+            total_family_count=backlog.summary.total_family_count,
+            active_foundation_count=backlog.summary.first_slice_foundation_ready_count,
+            catalog_registered_count=backlog.summary.catalog_registered_count,
+            planned_candidate_count=len(candidates),
+            selected_candidate_count=int(selected is not None),
+            queued_candidate_count=max(0, len(candidates) - int(selected is not None)),
+            lms_depth_deferred_count=int(lms_depth_deferred),
+            runtime_activation_allowed_count=backlog.summary.runtime_activation_allowed_count,
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=NEXT_SLICE_SELECTED_NEXT_ACTION if selection_ready else "repair_module_family_next_slice_selection",
+    )
+    return draft.model_copy(update={"evidence_hash": build_module_family_next_slice_selection_hash(draft)})
+
+
+def build_module_family_next_slice_selection_hash(response: ModuleFamilyNextSliceSelectionResponse) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _module_family_next_slice_candidate(
+    *,
+    family: ModuleFamilyBacklogEntry,
+    selection_rank: int,
+) -> ModuleFamilyNextSliceSelectionCandidate:
+    selected = selection_rank == 1
+    return ModuleFamilyNextSliceSelectionCandidate(
+        module_family=family.module_family,
+        module_id=family.module_id,
+        display_name=family.display_name,
+        first_objects=family.first_objects,
+        first_slice=family.first_slice,
+        default_feature_gate=family.default_feature_gate,
+        continuity_domain=family.continuity_domain,
+        backlog_status=family.backlog_status,
+        selection_rank=selection_rank,
+        selection_status="selected_next" if selected else "queued_next",
+        selection_reason=(
+            "first_planned_module_family_after_lms_foundation_seal"
+            if selected
+            else "queued_after_selected_module_family_contract"
+        ),
+        required_foundation_gates=family.required_foundation_gates,
+        next_action=(
+            NEXT_SLICE_SELECTED_NEXT_ACTION
+            if selected and family.module_family == "tasks_activities"
+            else f"create_{family.module_family}_module_charter_then_catalog_entry_before_storage_or_api"
+        ),
+        catalog_entry_present=family.catalog_entry_present,
+        module_package_installed=family.module_package_installed,
     )
 
 

@@ -631,6 +631,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     ),
                     api_routes=(
                         "/v1/platform/modules/families/backlog",
+                        "/v1/platform/modules/families/next-slice-selection",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -681,6 +682,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "backup_failover_update_required",
                         "tenant_admin_lifecycle",
                         "no_runtime_activation_from_backlog",
+                        "module_family_next_slice_selection_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -729,7 +731,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="resume_cross_module_backend_slices_without_lms_depth",
+                    next_action="create_tasks_activities_module_charter_then_catalog_entry_before_storage_or_api",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
