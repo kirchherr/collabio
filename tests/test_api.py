@@ -1104,10 +1104,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_ready"
         in future_modules["guardrails"]
     )
-    assert (
-        future_modules["next_action"]
-        == "seal_lms_dry_run_execution_foundation_and_return_to_cross_module_backend_slices"
-    )
+    assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
+    assert future_modules["next_action"] == "resume_cross_module_backend_slices_without_lms_depth"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1344,9 +1342,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == (
-        "seal_lms_dry_run_execution_foundation_and_return_to_cross_module_backend_slices"
-    )
+    assert families["lms"]["next_action"] == ("resume_cross_module_backend_slices_without_lms_depth")
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5340,6 +5336,14 @@ def test_lms_package_installation_dry_run_execution_outbox_result_reconciliation
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_outbox_foundation_seal_requires_request_context() -> None:
+    response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/foundation-seal"
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -6527,6 +6531,10 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
         "result-reconciliation-gate",
         headers=DEMO_ADMIN_HEADERS,
     )
+    foundation_seal_response = client.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/foundation-seal",
+        headers=DEMO_ADMIN_HEADERS,
+    )
 
     assert job_response.status_code == 200
     assert lease_response.status_code == 200
@@ -6535,6 +6543,7 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
     assert result_metadata_response.status_code == 200
     assert result_read_model_response.status_code == 200
     assert result_reconciliation_response.status_code == 200
+    assert foundation_seal_response.status_code == 200
     body = result_metadata_response.json()
 
     assert body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_result_metadata_store.v1"
@@ -6695,6 +6704,57 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
         not in result_reconciliation_response.text
     )
 
+    seal_body = foundation_seal_response.json()
+    assert seal_body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_foundation_seal.v1"
+    assert seal_body["tenant_id"] == "tenant-demo"
+    assert (
+        seal_body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/foundation-seal"
+    )
+    assert (
+        seal_body["result_contract"]
+        == "metadata_only_lms_package_installation_dry_run_execution_outbox_foundation_seal_no_business_writes"
+    )
+    assert seal_body["foundation_seal_ready"] is True
+    assert seal_body["reader_role_allowed"] is True
+    assert seal_body["result_reconciliation_gate_ready"] is True
+    assert seal_body["result_reconciliation_gate_evidence_hash"].startswith("sha256:")
+    assert (
+        "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" not in seal_body["sealed_guardrails"]
+    )
+    assert (
+        "lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_ready"
+        in seal_body["sealed_guardrails"]
+    )
+    assert "lms_not_installed_until_catalog_and_migration_evidence" in seal_body["sealed_guardrails"]
+    assert "lms_package_installation_execution" in seal_body["deferred_lms_actions"]
+    assert "lms_worker_execution" in seal_body["deferred_lms_actions"]
+    assert "module_family_backlog_cross_module_slice_selection" in seal_body["cross_module_backend_next_slices"]
+    assert "tasks_activities_foundation_contract" in seal_body["cross_module_backend_next_slices"]
+    assert seal_body["summary"] == {
+        "job_outbox_entry_count": 1,
+        "result_metadata_record_count": 1,
+        "result_read_model_entry_count": 1,
+        "reconciliation_entry_count": 1,
+        "reconciled_entry_count": 1,
+        "sealed_guardrail_count": 7,
+        "sealed_api_route_count": 8,
+        "deferred_lms_action_count": 5,
+        "cross_module_backend_next_slice_count": 5,
+        "blocking_reason_count": 0,
+    }
+    assert seal_body["outbox_state_mutated"] is False
+    assert seal_body["business_writes_executed"] is False
+    assert seal_body["worker_execution_allowed"] is False
+    assert seal_body["dry_run_result_persistence_allowed"] is False
+    assert seal_body["dry_run_result_payload_included"] is False
+    assert seal_body["tenant_module_state_created"] is False
+    assert seal_body["next_action"] == "resume_cross_module_backend_slices_without_lms_depth"
+    assert "result_metadata_statement" not in seal_body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_STATEMENT not in foundation_seal_response.text
+    )
+
     result_metadata_events = [
         event
         for event in app.state.audit_logger.events[starting_event_count:]
@@ -6770,6 +6830,35 @@ def test_lms_dry_run_execution_result_metadata_store_api_registers_stub_bound_me
     assert reconciliation_event.metadata["dry_run_result_payload_included"] is False
     assert reconciliation_event.metadata["tenant_module_state_created"] is False
     assert "result_metadata_statement" not in reconciliation_event.metadata
+
+    foundation_seal_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_outbox_foundation_seal"
+    ]
+    assert len(foundation_seal_events) == 1
+    seal_event = foundation_seal_events[0]
+    assert seal_event.tenant_id == "tenant-demo"
+    assert seal_event.input_hash is None
+    assert seal_event.output_hash is None
+    assert seal_event.metadata["foundation_seal_ready"] is True
+    assert seal_event.metadata["reader_role_allowed"] is True
+    assert seal_event.metadata["result_reconciliation_gate_ready"] is True
+    assert seal_event.metadata["result_metadata_record_count"] == 1
+    assert seal_event.metadata["result_read_model_entry_count"] == 1
+    assert seal_event.metadata["reconciliation_entry_count"] == 1
+    assert seal_event.metadata["reconciled_entry_count"] == 1
+    assert seal_event.metadata["sealed_guardrail_count"] == 7
+    assert seal_event.metadata["sealed_api_route_count"] == 8
+    assert seal_event.metadata["deferred_lms_action_count"] == 5
+    assert seal_event.metadata["cross_module_backend_next_slice_count"] == 5
+    assert seal_event.metadata["business_writes_executed"] is False
+    assert seal_event.metadata["worker_execution_allowed"] is False
+    assert seal_event.metadata["dry_run_result_persistence_allowed"] is False
+    assert seal_event.metadata["dry_run_result_payload_included"] is False
+    assert seal_event.metadata["tenant_module_state_created"] is False
+    assert seal_event.metadata["next_action"] == "resume_cross_module_backend_slices_without_lms_depth"
+    assert "result_metadata_statement" not in seal_event.metadata
 
 
 def test_lms_dry_run_execution_outbox_dead_letter_review_api_reports_blocked_state_without_worker_execution() -> None:

@@ -259,6 +259,21 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_RECONCILIATION_GATE_REA
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_RECONCILIATION_GATE_REPAIR_NEXT_ACTION = (
     "repair_lms_dry_run_execution_result_reconciliation_gate_prerequisites_without_business_writes"
 )
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/foundation-seal"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_foundation_seal.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_outbox_foundation_seal_no_business_writes"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_READY_NEXT_ACTION = (
+    "resume_cross_module_backend_slices_without_lms_depth"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_REPAIR_NEXT_ACTION = (
+    "repair_lms_dry_run_execution_foundation_seal_prerequisites_without_business_writes"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -3279,6 +3294,142 @@ class LmsPackageInstallationDryRunExecutionOutboxResultReconciliationGateRespons
         return self
 
 
+class LmsPackageInstallationDryRunExecutionOutboxFoundationSealSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    result_metadata_record_count: int
+    result_read_model_entry_count: int
+    reconciliation_entry_count: int
+    reconciled_entry_count: int
+    sealed_guardrail_count: int
+    sealed_api_route_count: int
+    deferred_lms_action_count: int
+    cross_module_backend_next_slice_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    foundation_seal_ready: bool
+    reader_role_allowed: bool
+    result_reconciliation_gate_ready: bool
+    sealed_at_utc: datetime
+    result_reconciliation_gate_evidence_hash: str
+    sealed_guardrails: tuple[str, ...]
+    sealed_api_routes: tuple[str, ...]
+    deferred_lms_actions: tuple[str, ...]
+    cross_module_backend_next_slices: tuple[str, ...]
+    outbox_state_mutated: bool = False
+    business_writes_executed: bool = False
+    worker_execution_allowed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_payload_included: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionOutboxFoundationSealSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution foundation seal text fields must not be empty")
+        return value
+
+    @field_validator("result_reconciliation_gate_evidence_hash", "evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution foundation seal hashes must be sha256 references")
+        return value
+
+    @field_validator(
+        "sealed_guardrails",
+        "sealed_api_routes",
+        "deferred_lms_actions",
+        "cross_module_backend_next_slices",
+        "blocking_reasons",
+        "evidence_refs",
+    )
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution foundation seal lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution foundation seal list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_foundation_seal(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution foundation seal schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_ENDPOINT:
+            raise ValueError("LMS dry-run execution foundation seal endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution foundation seal result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution foundation seal only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution foundation seal continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution foundation seal LMS continuity domain is invalid")
+        expected_ready = (
+            self.reader_role_allowed and self.result_reconciliation_gate_ready and not self.blocking_reasons
+        )
+        if self.foundation_seal_ready != expected_ready:
+            raise ValueError("LMS dry-run execution foundation seal readiness must match prerequisites")
+        if (
+            self.outbox_state_mutated
+            or self.business_writes_executed
+            or self.worker_execution_allowed
+            or self.package_installation_dry_run_execution_allowed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_payload_included
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution foundation seal must remain metadata-only")
+        if self.summary.sealed_guardrail_count != len(self.sealed_guardrails):
+            raise ValueError("LMS dry-run execution foundation seal guardrail count must match guardrails")
+        if self.summary.sealed_api_route_count != len(self.sealed_api_routes):
+            raise ValueError("LMS dry-run execution foundation seal API count must match routes")
+        if self.summary.deferred_lms_action_count != len(self.deferred_lms_actions):
+            raise ValueError("LMS dry-run execution foundation seal deferred count must match actions")
+        if self.summary.cross_module_backend_next_slice_count != len(self.cross_module_backend_next_slices):
+            raise ValueError("LMS dry-run execution foundation seal next-slice count must match slices")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution foundation seal blocking count must match reasons")
+        return self
+
+
 class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
     def enqueue(
         self,
@@ -5528,6 +5679,111 @@ def build_lms_dry_run_execution_outbox_result_reconciliation_gate_entry_hash(
 
 def build_lms_dry_run_execution_outbox_result_reconciliation_gate_response_hash(
     response: LmsPackageInstallationDryRunExecutionOutboxResultReconciliationGateResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response(
+    *,
+    tenant_id: str,
+    user_role_ids: set[str],
+    job_store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+    result_metadata_store: LmsPackageInstallationDryRunExecutionResultMetadataStore,
+    sealed_at_utc: datetime | None = None,
+) -> LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse:
+    sealed_at_utc = sealed_at_utc or datetime.now(tz=datetime.now().astimezone().tzinfo)
+    reconciliation_gate = build_lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_response(
+        tenant_id=tenant_id,
+        user_role_ids=user_role_ids,
+        job_store=job_store,
+        result_metadata_store=result_metadata_store,
+        generated_at_utc=sealed_at_utc,
+    )
+    reader_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons: list[str] = []
+    if not reader_role_allowed:
+        blocking_reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_foundation_seal")
+    if not reconciliation_gate.result_reconciliation_gate_ready:
+        blocking_reasons.append("lms_dry_run_execution_foundation_seal_requires_ready_reconciliation_gate")
+    ready = reader_role_allowed and reconciliation_gate.result_reconciliation_gate_ready and not blocking_reasons
+    sealed_guardrails = (
+        "lms_package_installation_dry_run_execution_job_outbox_ready",
+        "lms_package_installation_dry_run_execution_outbox_result_metadata_store_ready",
+        "lms_package_installation_dry_run_execution_outbox_result_read_model_ready",
+        "lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_ready",
+        "lms_not_installed_until_catalog_and_migration_evidence",
+        "backup_failover_update_required",
+        "no_runtime_activation_from_backlog",
+    )
+    sealed_api_routes = (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RECEIPT_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_READ_MODEL_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_RECONCILIATION_GATE_ENDPOINT,
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_ENDPOINT,
+    )
+    deferred_lms_actions = (
+        "lms_package_installation_execution",
+        "lms_tenant_module_activation",
+        "lms_business_api_enablement",
+        "lms_worker_execution",
+        "lms_dry_run_result_payload_persistence",
+    )
+    cross_module_backend_next_slices = (
+        "module_family_backlog_cross_module_slice_selection",
+        "knowledge_base_runtime_reconciliation_continuity",
+        "tasks_activities_foundation_contract",
+        "tickets_incidents_foundation_contract",
+        "time_tracking_foundation_contract",
+    )
+    draft = LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse(
+        tenant_id=tenant_id,
+        foundation_seal_ready=ready,
+        reader_role_allowed=reader_role_allowed,
+        result_reconciliation_gate_ready=reconciliation_gate.result_reconciliation_gate_ready,
+        sealed_at_utc=sealed_at_utc,
+        result_reconciliation_gate_evidence_hash=reconciliation_gate.evidence_hash,
+        sealed_guardrails=sealed_guardrails,
+        sealed_api_routes=sealed_api_routes,
+        deferred_lms_actions=deferred_lms_actions,
+        cross_module_backend_next_slices=cross_module_backend_next_slices,
+        blocking_reasons=tuple(blocking_reasons),
+        summary=LmsPackageInstallationDryRunExecutionOutboxFoundationSealSummary(
+            job_outbox_entry_count=reconciliation_gate.summary.job_outbox_entry_count,
+            result_metadata_record_count=reconciliation_gate.summary.result_metadata_record_count,
+            result_read_model_entry_count=reconciliation_gate.summary.result_read_model_entry_count,
+            reconciliation_entry_count=reconciliation_gate.summary.reconciliation_entry_count,
+            reconciled_entry_count=reconciliation_gate.summary.reconciled_entry_count,
+            sealed_guardrail_count=len(sealed_guardrails),
+            sealed_api_route_count=len(sealed_api_routes),
+            deferred_lms_action_count=len(deferred_lms_actions),
+            cross_module_backend_next_slice_count=len(cross_module_backend_next_slices),
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "app/suite/platform/roadmap_dashboard.py",
+            "app/suite/platform/module_family_backlog.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_READY_NEXT_ACTION
+            if ready
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_FOUNDATION_SEAL_REPAIR_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_foundation_seal_response_hash(draft)}
+    )
+
+
+def build_lms_dry_run_execution_outbox_foundation_seal_response_hash(
+    response: LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse,
 ) -> str:
     return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
 

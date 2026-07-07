@@ -34,6 +34,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
     build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response,
+    build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response,
     build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
     build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response,
     build_lms_package_installation_dry_run_execution_outbox_result_read_model_response,
@@ -1496,6 +1497,153 @@ def test_lms_dry_run_execution_result_reconciliation_gate_blocks_missing_job_ref
     assert response.reconciliation_entries[0].metadata_record_matches_read_model is True
     assert response.reconciliation_entries[0].job_reference_found is False
     assert response.business_writes_executed is False
+
+
+def test_lms_dry_run_execution_foundation_seal_closes_lms_path_without_business_writes() -> None:
+    job_store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+    result_metadata_store = InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore()
+    lease_response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+        command=_lease_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=job_store,
+    )
+    leased = lease_response.leased_job
+    assert leased is not None
+    assert leased.lease_id is not None
+    receipt_response = build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response(
+        command=_worker_receipt_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=job_store,
+    )
+    result_stub_response = build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_response(
+        command=_worker_result_stub_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+            worker_receipt_ref=receipt_response.worker_receipt_ref,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=job_store,
+    )
+    build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response(
+        command=_result_metadata_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+            worker_receipt_ref=receipt_response.worker_receipt_ref,
+            worker_result_stub_ref=result_stub_response.worker_result_stub_ref,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        job_store=job_store,
+        result_metadata_store=result_metadata_store,
+    )
+
+    response = build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response(
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        job_store=job_store,
+        result_metadata_store=result_metadata_store,
+        sealed_at_utc=datetime(2026, 6, 30, 12, 55, tzinfo=UTC),
+    )
+
+    assert response.schema_version == "lms_package_installation_dry_run_execution_outbox_foundation_seal.v1"
+    assert response.foundation_seal_ready is True
+    assert response.reader_role_allowed is True
+    assert response.result_reconciliation_gate_ready is True
+    assert response.result_reconciliation_gate_evidence_hash.startswith("sha256:")
+    assert (
+        "lms_package_installation_dry_run_execution_outbox_result_reconciliation_gate_ready"
+        in response.sealed_guardrails
+    )
+    assert "lms_not_installed_until_catalog_and_migration_evidence" in response.sealed_guardrails
+    assert "lms_package_installation_execution" in response.deferred_lms_actions
+    assert "lms_worker_execution" in response.deferred_lms_actions
+    assert "module_family_backlog_cross_module_slice_selection" in response.cross_module_backend_next_slices
+    assert "tasks_activities_foundation_contract" in response.cross_module_backend_next_slices
+    assert response.outbox_state_mutated is False
+    assert response.business_writes_executed is False
+    assert response.worker_execution_allowed is False
+    assert response.dry_run_result_persistence_allowed is False
+    assert response.dry_run_result_payload_included is False
+    assert response.tenant_module_state_created is False
+    assert response.summary.job_outbox_entry_count == 1
+    assert response.summary.result_metadata_record_count == 1
+    assert response.summary.result_read_model_entry_count == 1
+    assert response.summary.reconciliation_entry_count == 1
+    assert response.summary.reconciled_entry_count == 1
+    assert response.summary.blocking_reason_count == 0
+    assert response.next_action == "resume_cross_module_backend_slices_without_lms_depth"
+    assert response.evidence_hash.startswith("sha256:")
+
+
+def test_lms_dry_run_execution_foundation_seal_blocks_unreconciled_results() -> None:
+    source_job_store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+    source_metadata_store = InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore()
+    leased = source_job_store.lease_next(
+        tenant_id="tenant-demo",
+        lease_owner="lease-consumer:lms-dry-run-unit",
+        now=datetime(2026, 6, 30, 12, 0, 1, tzinfo=UTC),
+    )
+    assert leased is not None
+    assert leased.lease_id is not None
+    receipt_response = build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response(
+        command=_worker_receipt_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=source_job_store,
+    )
+    result_stub_response = build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_response(
+        command=_worker_result_stub_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+            worker_receipt_ref=receipt_response.worker_receipt_ref,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=source_job_store,
+    )
+    metadata_response = build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response(
+        command=_result_metadata_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+            worker_receipt_ref=receipt_response.worker_receipt_ref,
+            worker_result_stub_ref=result_stub_response.worker_result_stub_ref,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        job_store=source_job_store,
+        result_metadata_store=source_metadata_store,
+    )
+    assert metadata_response.result_metadata_record is not None
+    read_metadata_store = InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore(
+        (metadata_response.result_metadata_record,)
+    )
+
+    response = build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response(
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        job_store=InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore(),
+        result_metadata_store=read_metadata_store,
+        sealed_at_utc=datetime(2026, 6, 30, 12, 55, tzinfo=UTC),
+    )
+
+    assert response.foundation_seal_ready is False
+    assert response.result_reconciliation_gate_ready is False
+    assert "lms_dry_run_execution_foundation_seal_requires_ready_reconciliation_gate" in response.blocking_reasons
+    assert response.summary.result_metadata_record_count == 1
+    assert response.summary.result_read_model_entry_count == 1
+    assert response.summary.reconciliation_entry_count == 1
+    assert response.summary.reconciled_entry_count == 0
+    assert response.business_writes_executed is False
+    assert response.next_action == "repair_lms_dry_run_execution_foundation_seal_prerequisites_without_business_writes"
 
 
 def test_lms_dry_run_execution_job_outbox_api_blocks_worker_requests_without_enqueue() -> None:

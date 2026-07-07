@@ -256,6 +256,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionJobOutboxResponse,
     LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewCommand,
     LmsPackageInstallationDryRunExecutionOutboxDeadLetterReviewResponse,
+    LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse,
     LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerCommand,
     LmsPackageInstallationDryRunExecutionOutboxLeaseConsumerResponse,
     LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
@@ -278,6 +279,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
     build_lms_package_installation_dry_run_execution_outbox_dead_letter_review_response,
+    build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response,
     build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response,
     build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response,
     build_lms_package_installation_dry_run_execution_outbox_result_read_model_response,
@@ -4318,6 +4320,69 @@ def build_app() -> FastAPI:
                 "external_side_effect_allowed": response.external_side_effect_allowed,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/foundation-seal",
+        response_model=LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse,
+    )
+    def read_lms_package_installation_dry_run_execution_job_outbox_foundation_seal(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionOutboxFoundationSealResponse:
+        response = build_lms_package_installation_dry_run_execution_outbox_foundation_seal_response(
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            job_store=request.app.state.lms_dry_run_execution_job_outbox_store,
+            result_metadata_store=request.app.state.lms_dry_run_execution_result_metadata_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_outbox_foundation_seal",
+            source_object_ids=[f"lms_dry_run_execution_foundation_seal:{response.evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "foundation_seal_ready": response.foundation_seal_ready,
+                "reader_role_allowed": response.reader_role_allowed,
+                "result_reconciliation_gate_ready": response.result_reconciliation_gate_ready,
+                "sealed_at_utc": response.sealed_at_utc,
+                "result_reconciliation_gate_evidence_hash": response.result_reconciliation_gate_evidence_hash,
+                "sealed_guardrails": response.sealed_guardrails,
+                "sealed_api_routes": response.sealed_api_routes,
+                "deferred_lms_actions": response.deferred_lms_actions,
+                "cross_module_backend_next_slices": response.cross_module_backend_next_slices,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "result_metadata_record_count": response.summary.result_metadata_record_count,
+                "result_read_model_entry_count": response.summary.result_read_model_entry_count,
+                "reconciliation_entry_count": response.summary.reconciliation_entry_count,
+                "reconciled_entry_count": response.summary.reconciled_entry_count,
+                "sealed_guardrail_count": response.summary.sealed_guardrail_count,
+                "sealed_api_route_count": response.summary.sealed_api_route_count,
+                "deferred_lms_action_count": response.summary.deferred_lms_action_count,
+                "cross_module_backend_next_slice_count": response.summary.cross_module_backend_next_slice_count,
+                "outbox_state_mutated": response.outbox_state_mutated,
+                "business_writes_executed": response.business_writes_executed,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_payload_included": response.dry_run_result_payload_included,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "next_action": response.next_action,
             },
         )
         return response
