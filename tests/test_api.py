@@ -69,6 +69,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_DISPATCH_ADMISSION_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_QUEUE_ADMISSION_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RECEIPT_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_STATEMENT,
     build_default_lms_package_installation_dry_run_execution_job_outbox_store,
 )
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
@@ -1059,6 +1060,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-receipts"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs"
+        in future_modules["api_routes"]
+    )
     assert "lms_package_installation_dry_run_execution_job_outbox_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_lease_consumer_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_outbox_retry_api_ready" in future_modules["guardrails"]
@@ -1074,7 +1079,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "lms_package_installation_dry_run_execution_outbox_worker_queue_admission_ready" in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_worker_receipt_ready" in future_modules["guardrails"]
-    assert future_modules["next_action"] == "build_lms_dry_run_execution_worker_result_stub_without_business_writes"
+    assert future_modules["next_action"] == "build_lms_dry_run_execution_result_metadata_store_without_business_writes"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1311,7 +1316,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["feature_registry_ready"] is True
     assert families["lms"]["object_rules_ready"] is True
     assert families["lms"]["pre_catalog_foundation_ready"] is False
-    assert families["lms"]["next_action"] == ("build_lms_dry_run_execution_worker_result_stub_without_business_writes")
+    assert families["lms"]["next_action"] == (
+        "build_lms_dry_run_execution_result_metadata_store_without_business_writes"
+    )
     assert families["lms"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -5269,6 +5276,15 @@ def test_lms_package_installation_dry_run_execution_outbox_worker_receipt_requir
     assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
 
 
+def test_lms_package_installation_dry_run_execution_outbox_worker_result_stub_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs",
+        json={},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
 def test_lms_dry_run_execution_job_outbox_api_registers_tenant_scoped_state() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
@@ -6187,6 +6203,165 @@ def test_lms_dry_run_execution_outbox_worker_receipt_api_reports_leased_status_w
     assert event.metadata["dry_run_result_persistence_allowed"] is False
     assert event.metadata["tenant_module_state_created"] is False
     assert "worker_receipt_statement" not in event.metadata
+
+
+def test_lms_dry_run_execution_outbox_worker_result_stub_api_reports_receipt_bound_status_without_business_writes() -> (
+    None
+):
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+    job_payload = {
+        "dry_run_execution_admission_gate_evidence_hash": api_fixture_hash("lms-worker-result-stub-api-admission"),
+        "dry_run_execution_approval_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-result-stub-api-approval-boundary"
+        ),
+        "dry_run_execution_approval_record_hash": api_fixture_hash("lms-worker-result-stub-api-approval-record"),
+        "dry_run_execution_scheduler_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-result-stub-api-scheduler-boundary"
+        ),
+        "dry_run_execution_worker_image_boundary_evidence_hash": api_fixture_hash(
+            "lms-worker-result-stub-api-worker-image"
+        ),
+        "dry_run_execution_final_readiness_gate_evidence_hash": api_fixture_hash(
+            "lms-worker-result-stub-api-final-readiness"
+        ),
+        "worker_queue_ref": "worker-queue:lms-dry-run-execution-worker-result-stub-api",
+        "restore_evidence_hash": api_fixture_hash("lms-worker-result-stub-api-restore"),
+        "enqueued_at_utc": "2026-06-30T11:59:00Z",
+        "max_attempts": 3,
+        "change_request_ref": "change:lms-dry-run-job-outbox-worker-result-stub-api-demo",
+        "idempotency_key_ref": "idempotency:lms-dry-run-job-outbox-worker-result-stub-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-job-outbox-worker-result-stub-api-demo",
+        "job_outbox_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_STATEMENT,
+    }
+    lease_payload = {
+        "lease_owner_ref": "lease-consumer:lms-dry-run-worker-result-stub-api",
+        "lease_duration_seconds": 120,
+        "checked_at_utc": "2026-06-30T11:59:01Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-result-stub-lease-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-worker-result-stub-lease-api-demo",
+        "lease_consumer_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_LEASE_CONSUMER_STATEMENT,
+    }
+
+    job_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox",
+        headers=DEMO_ADMIN_HEADERS,
+        json=job_payload,
+    )
+    lease_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/leases",
+        headers=DEMO_ADMIN_HEADERS,
+        json=lease_payload,
+    )
+    leased_job = lease_response.json()["leased_job"]
+    receipt_payload = {
+        "worker_idempotency_key_hash": leased_job["worker_idempotency_key_hash"],
+        "lease_id": leased_job["lease_id"],
+        "worker_ref": "lease-consumer:lms-dry-run-worker-result-stub-api",
+        "checked_at_utc": "2026-06-30T11:59:02Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-result-stub-receipt-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-worker-result-stub-receipt-api-demo",
+        "worker_receipt_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RECEIPT_STATEMENT,
+    }
+    receipt_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-receipts",
+        headers=DEMO_ADMIN_HEADERS,
+        json=receipt_payload,
+    )
+    receipt_body = receipt_response.json()
+    result_stub_payload = {
+        "worker_idempotency_key_hash": leased_job["worker_idempotency_key_hash"],
+        "lease_id": leased_job["lease_id"],
+        "worker_ref": "lease-consumer:lms-dry-run-worker-result-stub-api",
+        "worker_receipt_ref": receipt_body["worker_receipt_ref"],
+        "worker_receipt_idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-result-stub-receipt-api-demo",
+        "checked_at_utc": "2026-06-30T11:59:03Z",
+        "idempotency_key_ref": "idempotency:lms-dry-run-outbox-worker-result-stub-api-demo",
+        "audit_chain_ref": "audit:lms-dry-run-outbox-worker-result-stub-api-demo",
+        "worker_result_stub_statement": (
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_STATEMENT
+        ),
+    }
+    result_stub_response = client.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs",
+        headers=DEMO_ADMIN_HEADERS,
+        json=result_stub_payload,
+    )
+
+    assert job_response.status_code == 200
+    assert lease_response.status_code == 200
+    assert receipt_response.status_code == 200
+    assert result_stub_response.status_code == 200
+    body = result_stub_response.json()
+
+    assert body["schema_version"] == "lms_package_installation_dry_run_execution_outbox_worker_result_stub.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert (
+        body["endpoint"]
+        == "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs"
+    )
+    assert (
+        body["result_contract"]
+        == "metadata_only_lms_package_installation_dry_run_execution_outbox_worker_result_stub_no_business_writes"
+    )
+    assert body["worker_result_stub_ready"] is True
+    assert body["worker_result_stub_requested"] is True
+    assert body["worker_result_stub_issued"] is True
+    assert body["worker_receipt_ref_validated"] is True
+    assert body["worker_status_observed"] is True
+    assert body["lease_validated"] is True
+    assert body["worker_result_stub_ref"].startswith("worker-result-stub:sha256:")
+    assert body["worker_receipt_ref"] == receipt_body["worker_receipt_ref"]
+    assert body["expected_worker_receipt_ref"] == receipt_body["worker_receipt_ref"]
+    assert body["received_job"] == leased_job
+    assert body["received_job_queue_status"] == "leased"
+    assert body["summary"] == {
+        "job_outbox_entry_count": 1,
+        "leased_job_count": 1,
+        "result_stub_job_count": 1,
+        "lease_validated_job_count": 1,
+        "receipt_ref_validated_job_count": 1,
+        "status_observed_job_count": 1,
+        "blocking_reason_count": 0,
+    }
+    assert body["outbox_state_mutated"] is False
+    assert body["business_writes_executed"] is False
+    assert body["worker_dispatch_allowed"] is False
+    assert body["worker_queue_enqueued"] is False
+    assert body["worker_execution_allowed"] is False
+    assert body["dry_run_result_persistence_allowed"] is False
+    assert body["dry_run_result_persisted"] is False
+    assert body["tenant_module_state_created"] is False
+    assert "worker_result_stub_statement" not in body
+    assert (
+        LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_STATEMENT not in result_stub_response.text
+    )
+
+    result_stub_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.lms.package_installation_dry_run_execution_outbox_worker_result_stub"
+    ]
+    assert len(result_stub_events) == 1
+    event = result_stub_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["worker_result_stub_ready"] is True
+    assert event.metadata["worker_result_stub_issued"] is True
+    assert event.metadata["worker_receipt_ref_validated"] is True
+    assert event.metadata["worker_status_observed"] is True
+    assert event.metadata["lease_validated"] is True
+    assert event.metadata["received_worker_job_ref"] == leased_job["worker_job_ref"]
+    assert event.metadata["received_job_queue_status"] == "leased"
+    assert event.metadata["result_stub_job_count"] == 1
+    assert event.metadata["receipt_ref_validated_job_count"] == 1
+    assert event.metadata["outbox_state_mutated"] is False
+    assert event.metadata["business_writes_executed"] is False
+    assert event.metadata["worker_execution_allowed"] is False
+    assert event.metadata["dry_run_result_persistence_allowed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert "worker_result_stub_statement" not in event.metadata
 
 
 def test_lms_dry_run_execution_outbox_dead_letter_review_api_reports_blocked_state_without_worker_execution() -> None:

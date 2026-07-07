@@ -268,6 +268,8 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionOutboxWorkerQueueAdmissionResponse,
     LmsPackageInstallationDryRunExecutionOutboxWorkerReceiptCommand,
     LmsPackageInstallationDryRunExecutionOutboxWorkerReceiptResponse,
+    LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubCommand,
+    LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubResponse,
     build_default_lms_package_installation_dry_run_execution_job_outbox_store,
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
     build_lms_package_installation_dry_run_execution_job_outbox_response,
@@ -278,6 +280,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_outbox_worker_dispatch_admission_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_queue_admission_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response,
+    build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_response,
 )
 from suite.platform.lms_package_installation_dry_run_execution_plan import (
     LmsPackageInstallationDryRunExecutionPlanCommand,
@@ -3979,6 +3982,101 @@ def build_app() -> FastAPI:
                 "leased_job_count": response.summary.leased_job_count,
                 "received_job_count": response.summary.received_job_count,
                 "lease_validated_job_count": response.summary.lease_validated_job_count,
+                "status_observed_job_count": response.summary.status_observed_job_count,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs",
+        response_model=LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubResponse,
+    )
+    def acknowledge_lms_package_installation_dry_run_execution_job_outbox_worker_result_stub(
+        command: LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubResponse:
+        response = build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_response(
+            command=command,
+            tenant_id=context.user_context.tenant_id,
+            user_role_ids=context.user_context.role_ids,
+            store=request.app.state.lms_dry_run_execution_job_outbox_store,
+        )
+        source_object_ids = (
+            [f"lms_dry_run_execution_job_outbox:{response.received_job.worker_job_ref}"]
+            if response.received_job is not None
+            else []
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.lms.package_installation_dry_run_execution_outbox_worker_result_stub",
+            source_object_ids=source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "continuity_domain": response.continuity_domain,
+                "lms_continuity_domain": response.lms_continuity_domain,
+                "worker_result_stub_ready": response.worker_result_stub_ready,
+                "worker_result_stub_requested": response.worker_result_stub_requested,
+                "worker_result_stub_issued": response.worker_result_stub_issued,
+                "worker_receipt_ref_validated": response.worker_receipt_ref_validated,
+                "worker_status_observed": response.worker_status_observed,
+                "lease_validated": response.lease_validated,
+                "worker_result_stub_ref": response.worker_result_stub_ref,
+                "worker_receipt_ref": response.worker_receipt_ref,
+                "expected_worker_receipt_ref": response.expected_worker_receipt_ref,
+                "worker_ref": response.worker_ref,
+                "checked_at_utc": response.checked_at_utc,
+                "received_worker_job_ref": (
+                    response.received_job.worker_job_ref if response.received_job is not None else None
+                ),
+                "received_worker_idempotency_key_hash": (
+                    response.received_job.worker_idempotency_key_hash if response.received_job is not None else None
+                ),
+                "received_job_queue_status": (
+                    response.received_job_queue_status.value if response.received_job_queue_status is not None else None
+                ),
+                "received_job_attempt_count": (
+                    response.received_job.attempt_count if response.received_job is not None else None
+                ),
+                "received_job_evidence_hash": (
+                    response.received_job.evidence_hash if response.received_job is not None else None
+                ),
+                "command_hash": response.command_hash,
+                "idempotency_key_ref_hash": response.idempotency_key_ref_hash,
+                "worker_result_stub_statement_hash": response.worker_result_stub_statement_hash,
+                "outbox_state_mutated": response.outbox_state_mutated,
+                "business_writes_executed": response.business_writes_executed,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "worker_executed": response.worker_executed,
+                "package_installation_dry_run_execution_allowed": (
+                    response.package_installation_dry_run_execution_allowed
+                ),
+                "package_installation_dry_run_executed": response.package_installation_dry_run_executed,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "package_installation_execution_allowed": response.package_installation_execution_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "job_outbox_entry_count": response.summary.job_outbox_entry_count,
+                "leased_job_count": response.summary.leased_job_count,
+                "result_stub_job_count": response.summary.result_stub_job_count,
+                "lease_validated_job_count": response.summary.lease_validated_job_count,
+                "receipt_ref_validated_job_count": response.summary.receipt_ref_validated_job_count,
                 "status_observed_job_count": response.summary.status_observed_job_count,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
