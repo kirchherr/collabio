@@ -800,6 +800,10 @@ from suite.platform.source_object_preview_renderer import (
     build_source_object_preview_renderer_run,
 )
 from suite.platform.storage_paths import suite_data_dir
+from suite.platform.tasks_activities_catalog_readiness import (
+    TasksActivitiesCatalogReadinessResponse,
+    build_tasks_activities_catalog_readiness_response,
+)
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.platform.workspace_source_objects import (
     WorkspaceSourceObjectCatalog,
@@ -1272,6 +1276,48 @@ def build_app() -> FastAPI:
                 "external_side_effect_allowed": response.external_side_effect_allowed,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": response.summary.blocking_reason_count,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/tasks-activities/catalog-readiness",
+        response_model=TasksActivitiesCatalogReadinessResponse,
+    )
+    def tasks_activities_catalog_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TasksActivitiesCatalogReadinessResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tasks_activities_catalog_readiness_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tasks_activities.catalog_readiness",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "module_catalog_entry_present": response.module_catalog_entry_present,
+                "tenant_module_state_present": response.tenant_module_state_present,
+                "catalog_registration_ready": response.catalog_registration_ready,
+                "feature_manifest_hash": response.feature_manifest_hash,
+                "object_rule_manifest_hash": response.object_rule_manifest_hash,
+                "feature_count": response.summary.feature_count,
+                "object_type_count": response.summary.object_type_count,
+                "required_catalog_evidence_count": response.summary.required_catalog_evidence_count,
+                "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
                 "next_action": response.next_action,
             },
         )

@@ -40,7 +40,9 @@ PLANNED_MODULE_NEXT_ACTION = "create_module_charter_then_catalog_entry_before_st
 ACTIVE_FOUNDATION_NEXT_ACTION = "continue_existing_slice_hardening_without_broadening_scope"
 CATALOG_PREPARED_NEXT_ACTION = "review_lms_catalog_readiness_before_catalog_registration"
 CATALOG_REGISTERED_NEXT_ACTION = "resume_cross_module_backend_slices_without_lms_depth"
-TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = "review_tasks_activities_catalog_readiness_before_catalog_registration"
+TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
+    "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
+)
 NEXT_SLICE_SELECTED_NEXT_ACTION = TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION
 CATALOG_READY_NEXT_ACTIONS = {
     "lms": CATALOG_PREPARED_NEXT_ACTION,

@@ -69,7 +69,7 @@ Compliance-only later:
 - activity evidence export
 - decommission precheck
 
-No Tasks & Activities API route is enabled by this charter. Module catalog registration and migration evidence must happen before any route or worker is wired.
+No Tasks & Activities business API route is enabled by this charter. `GET /v1/platform/modules/families/tasks-activities/catalog-readiness` exposes only the platform catalog-readiness boundary. Module catalog registration and migration evidence must happen before any business route or worker is wired.
 
 ## 5. Persistent Objects
 
