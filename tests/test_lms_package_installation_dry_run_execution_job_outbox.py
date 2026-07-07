@@ -12,6 +12,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_ADMISSION_GATE_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_DISPATCH_ADMISSION_STATEMENT,
     LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_QUEUE_ADMISSION_STATEMENT,
+    LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RECEIPT_STATEMENT,
     InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore,
     LmsPackageInstallationDryRunExecutionJobOutboxCommand,
     LmsPackageInstallationDryRunExecutionJobOutboxEntry,
@@ -22,6 +23,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     LmsPackageInstallationDryRunExecutionOutboxWorkerAdmissionGateCommand,
     LmsPackageInstallationDryRunExecutionOutboxWorkerDispatchAdmissionCommand,
     LmsPackageInstallationDryRunExecutionOutboxWorkerQueueAdmissionCommand,
+    LmsPackageInstallationDryRunExecutionOutboxWorkerReceiptCommand,
     build_lms_dry_run_execution_job_outbox_entry,
     build_lms_dry_run_execution_job_outbox_entry_hash,
     build_lms_package_installation_dry_run_execution_job_outbox_list_response,
@@ -32,6 +34,7 @@ from suite.platform.lms_package_installation_dry_run_execution_job_outbox import
     build_lms_package_installation_dry_run_execution_outbox_worker_admission_gate_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_dispatch_admission_response,
     build_lms_package_installation_dry_run_execution_outbox_worker_queue_admission_response,
+    build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response,
 )
 
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
@@ -176,6 +179,26 @@ def _worker_queue_admission_command(
     }
     payload.update(overrides)
     return LmsPackageInstallationDryRunExecutionOutboxWorkerQueueAdmissionCommand.model_validate(payload)
+
+
+def _worker_receipt_command(
+    *,
+    worker_idempotency_key_hash: str,
+    lease_id: str,
+    worker_ref: str = "lease-consumer:lms-dry-run-unit",
+    **overrides: object,
+) -> LmsPackageInstallationDryRunExecutionOutboxWorkerReceiptCommand:
+    payload: dict[str, object] = {
+        "worker_idempotency_key_hash": worker_idempotency_key_hash,
+        "lease_id": lease_id,
+        "worker_ref": worker_ref,
+        "checked_at_utc": datetime(2026, 6, 30, 12, 30, tzinfo=UTC),
+        "idempotency_key_ref": "idempotency:lms-dry-run-worker-receipt-unit",
+        "audit_chain_ref": "audit:lms-dry-run-worker-receipt-unit",
+        "worker_receipt_statement": LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RECEIPT_STATEMENT,
+    }
+    payload.update(overrides)
+    return LmsPackageInstallationDryRunExecutionOutboxWorkerReceiptCommand.model_validate(payload)
 
 
 def test_lms_dry_run_execution_job_outbox_is_idempotent_tenant_scoped_and_retriable() -> None:
@@ -754,6 +777,98 @@ def test_lms_dry_run_execution_outbox_worker_queue_admission_blocks_grant_and_wo
     assert "worker_queue_enqueue_forbidden_until_worker_queue_admission" in response.blocking_reasons
     assert "worker_execution_forbidden_until_worker_queue_admission" in response.blocking_reasons
     assert "dry_run_result_persistence_forbidden_until_worker_queue_admission" in response.blocking_reasons
+    persisted = store.get(tenant_id="tenant-demo", worker_idempotency_key_hash=leased.worker_idempotency_key_hash)
+    assert persisted.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+
+
+def test_lms_dry_run_execution_outbox_worker_receipt_reports_leased_job_status_without_mutation() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+    lease_response = build_lms_package_installation_dry_run_execution_outbox_lease_consumer_response(
+        command=_lease_command(),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+    leased = lease_response.leased_job
+    assert leased is not None
+    assert leased.lease_id is not None
+
+    response = build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response(
+        command=_worker_receipt_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id=leased.lease_id,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.schema_version == "lms_package_installation_dry_run_execution_outbox_worker_receipt.v1"
+    assert response.worker_receipt_ready is True
+    assert response.worker_receipt_requested is True
+    assert response.worker_receipt_issued is True
+    assert response.worker_status_observed is True
+    assert response.lease_validated is True
+    assert response.worker_receipt_ref.startswith("worker-receipt:sha256:")
+    assert response.received_job == leased
+    assert response.received_job_queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+    assert response.outbox_state_mutated is False
+    assert response.business_writes_executed is False
+    assert response.worker_dispatch_allowed is False
+    assert response.worker_queue_enqueued is False
+    assert response.worker_execution_allowed is False
+    assert response.dry_run_result_persistence_allowed is False
+    assert response.tenant_module_state_created is False
+    assert response.summary.job_outbox_entry_count == 1
+    assert response.summary.leased_job_count == 1
+    assert response.summary.received_job_count == 1
+    assert response.summary.lease_validated_job_count == 1
+    assert response.summary.status_observed_job_count == 1
+    assert response.summary.blocking_reason_count == 0
+    assert response.evidence_hash.startswith("sha256:")
+    persisted = store.get(tenant_id="tenant-demo", worker_idempotency_key_hash=leased.worker_idempotency_key_hash)
+    assert persisted == leased
+
+
+def test_lms_dry_run_execution_outbox_worker_receipt_blocks_bad_lease_and_business_write_requests() -> None:
+    store = InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore((_job(),))
+    leased = store.lease_next(
+        tenant_id="tenant-demo",
+        lease_owner="lease-consumer:lms-dry-run-unit",
+        now=datetime(2026, 6, 30, 12, 0, 1, tzinfo=UTC),
+    )
+    assert leased is not None
+
+    response = build_lms_package_installation_dry_run_execution_outbox_worker_receipt_response(
+        command=_worker_receipt_command(
+            worker_idempotency_key_hash=leased.worker_idempotency_key_hash,
+            lease_id="lease:wrong",
+            worker_ref="lease-consumer:mismatch",
+            worker_execution_requested=True,
+            dry_run_result_persistence_requested=True,
+            business_write_requested=True,
+            outbox_state_mutation_requested=True,
+        ),
+        tenant_id="tenant-demo",
+        user_role_ids={"tenant-admin"},
+        store=store,
+    )
+
+    assert response.worker_receipt_ready is False
+    assert response.worker_receipt_issued is False
+    assert response.worker_status_observed is True
+    assert response.lease_validated is False
+    assert response.summary.received_job_count == 1
+    assert response.summary.lease_validated_job_count == 0
+    assert "lms_dry_run_execution_outbox_worker_receipt_lease_mismatch" in response.blocking_reasons
+    assert "lms_dry_run_execution_outbox_worker_receipt_worker_ref_mismatch" in response.blocking_reasons
+    assert "outbox_state_mutation_forbidden_in_lms_dry_run_execution_outbox_worker_receipt" in response.blocking_reasons
+    assert "worker_execution_forbidden_in_lms_dry_run_execution_outbox_worker_receipt" in response.blocking_reasons
+    assert (
+        "dry_run_result_persistence_forbidden_in_lms_dry_run_execution_outbox_worker_receipt"
+        in response.blocking_reasons
+    )
+    assert "business_write_forbidden_in_lms_dry_run_execution_outbox_worker_receipt" in response.blocking_reasons
     persisted = store.get(tenant_id="tenant-demo", worker_idempotency_key_hash=leased.worker_idempotency_key_hash)
     assert persisted.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
 
