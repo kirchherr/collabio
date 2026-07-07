@@ -671,6 +671,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-queue-admission",
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-receipts",
                         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/worker-result-stubs",
+                        "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-metadata-records",
                     ),
                     guardrails=(
                         "module_contract_first",
@@ -719,9 +720,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_worker_queue_admission_ready",
                         "lms_package_installation_dry_run_execution_outbox_worker_receipt_ready",
                         "lms_package_installation_dry_run_execution_outbox_worker_result_stub_ready",
+                        "lms_package_installation_dry_run_execution_outbox_result_metadata_store_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="build_lms_dry_run_execution_result_metadata_store_without_business_writes",
+                    next_action="build_lms_dry_run_execution_result_read_model_without_business_writes",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

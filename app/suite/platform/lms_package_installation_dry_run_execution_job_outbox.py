@@ -200,6 +200,29 @@ LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_READY_NEXT_
 LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_WORKER_RESULT_STUB_REPAIR_NEXT_ACTION = (
     "repair_lms_dry_run_execution_worker_result_stub_prerequisites_without_business_writes"
 )
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_ENDPOINT = (
+    "/v1/platform/modules/families/lms/package-installation-dry-run-execution-job-outbox/result-metadata-records"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_result_metadata_store.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RECORD_SCHEMA_VERSION = (
+    "lms_package_installation_dry_run_execution_outbox_result_metadata_record.v1"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RESULT_CONTRACT = (
+    "metadata_only_lms_package_installation_dry_run_execution_outbox_result_metadata_store_no_business_writes"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_STATEMENT = (
+    "I register LMS package installation dry-run execution result metadata only, bound to the worker result stub, "
+    "without dry-run result payload persistence, business writes, tenant module state creation, "
+    "or package installation."
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_READY_NEXT_ACTION = (
+    "inspect_lms_dry_run_execution_result_metadata_store_without_business_writes"
+)
+LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_REPAIR_NEXT_ACTION = (
+    "repair_lms_dry_run_execution_result_metadata_store_prerequisites_without_business_writes"
+)
 ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -2411,6 +2434,363 @@ class LmsPackageInstallationDryRunExecutionOutboxWorkerResultStubResponse(BaseMo
         return self
 
 
+class LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    worker_idempotency_key_hash: str
+    lease_id: str
+    worker_ref: str
+    worker_receipt_ref: str
+    worker_receipt_idempotency_key_ref: str
+    worker_result_stub_ref: str
+    worker_result_stub_idempotency_key_ref: str
+    recorded_at_utc: datetime
+    idempotency_key_ref: str
+    audit_chain_ref: str
+    result_metadata_statement: str
+    result_metadata_record_requested: bool = True
+    worker_result_stub_validation_requested: bool = True
+    worker_receipt_validation_requested: bool = True
+    status_report_requested: bool = True
+    outbox_state_mutation_requested: bool = False
+    scheduler_activation_requested: bool = False
+    scheduler_job_creation_requested: bool = False
+    worker_image_resolution_requested: bool = False
+    worker_image_pull_requested: bool = False
+    worker_image_digest_lookup_requested: bool = False
+    worker_dispatch_requested: bool = False
+    worker_queue_enqueue_requested: bool = False
+    worker_execution_requested: bool = False
+    package_installation_dry_run_execution_requested: bool = False
+    dry_run_result_persistence_requested: bool = False
+    dry_run_result_payload_included: bool = False
+    business_write_requested: bool = False
+    package_installation_execution_requested: bool = False
+    tenant_module_state_creation_requested: bool = False
+    content_payload_included: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator("worker_idempotency_key_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution result metadata job hash must be a sha256 reference")
+        return value
+
+    @field_validator(
+        "lease_id",
+        "worker_ref",
+        "worker_receipt_ref",
+        "worker_receipt_idempotency_key_ref",
+        "worker_result_stub_ref",
+        "worker_result_stub_idempotency_key_ref",
+        "idempotency_key_ref",
+        "audit_chain_ref",
+    )
+    @classmethod
+    def require_ref(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("LMS dry-run execution result metadata references must use a typed ref prefix")
+        return normalized
+
+    @field_validator("result_metadata_statement")
+    @classmethod
+    def require_exact_statement(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_STATEMENT:
+            raise ValueError("LMS dry-run execution result metadata requires the exact metadata-only statement")
+        return normalized
+
+    @field_validator("recorded_at_utc")
+    @classmethod
+    def require_timezone_aware_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("LMS dry-run execution result metadata recorded_at_utc must include a timezone")
+        return value
+
+
+class LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RECORD_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    worker_idempotency_key_hash: str
+    worker_job_ref: str
+    lease_id: str
+    worker_ref: str
+    worker_receipt_ref: str
+    worker_result_stub_ref: str
+    result_metadata_ref: str
+    idempotency_key_ref_hash: str
+    audit_chain_ref: str
+    recorded_at_utc: datetime
+    source_job_evidence_hash: str
+    dry_run_result_payload_included: bool = False
+    business_writes_executed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    evidence_hash: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "worker_job_ref",
+        "lease_id",
+        "worker_ref",
+        "worker_receipt_ref",
+        "worker_result_stub_ref",
+        "result_metadata_ref",
+        "audit_chain_ref",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution result metadata record text fields must not be empty")
+        return value
+
+    @field_validator(
+        "worker_idempotency_key_hash", "idempotency_key_ref_hash", "source_job_evidence_hash", "evidence_hash"
+    )
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution result metadata record hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_record(self) -> Self:
+        if (
+            self.schema_version
+            != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RECORD_SCHEMA_VERSION
+        ):
+            raise ValueError("LMS dry-run execution result metadata record schema version is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution result metadata record only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result metadata record continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result metadata record LMS continuity domain is invalid")
+        if (
+            self.dry_run_result_payload_included
+            or self.business_writes_executed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution result metadata record must remain metadata-only")
+        return self
+
+
+class LmsPackageInstallationDryRunExecutionOutboxResultMetadataSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_outbox_entry_count: int
+    leased_job_count: int
+    result_metadata_record_count: int
+    received_job_count: int
+    lease_validated_job_count: int
+    receipt_ref_validated_job_count: int
+    worker_result_stub_ref_validated_job_count: int
+    status_observed_job_count: int
+    blocking_reason_count: int
+
+
+class LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = LMS_MODULE_ID
+    endpoint: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_ENDPOINT
+    result_contract: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RESULT_CONTRACT
+    continuity_domain: str = LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN
+    lms_continuity_domain: str = LMS_CONTINUITY_DOMAIN
+    command_hash: str
+    idempotency_key_ref_hash: str
+    result_metadata_statement_hash: str
+    result_metadata_ref: str
+    worker_receipt_ref: str
+    expected_worker_receipt_ref: str
+    worker_result_stub_ref: str
+    expected_worker_result_stub_ref: str
+    worker_ref: str
+    recorded_at_utc: datetime
+    result_metadata_store_ready: bool
+    result_metadata_record_requested: bool
+    worker_result_stub_validation_requested: bool
+    worker_receipt_validation_requested: bool
+    status_report_requested: bool
+    result_metadata_record_registered: bool
+    result_metadata_record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord | None
+    received_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry | None
+    received_job_queue_status: LmsPackageInstallationDryRunExecutionJobStatus | None
+    lease_validated: bool
+    worker_receipt_ref_validated: bool
+    worker_result_stub_ref_validated: bool
+    worker_status_observed: bool
+    outbox_state_mutated: bool = False
+    business_writes_executed: bool = False
+    scheduler_activation_allowed: bool = False
+    scheduler_job_created: bool = False
+    worker_image_resolution_allowed: bool = False
+    worker_image_resolved: bool = False
+    worker_image_pull_allowed: bool = False
+    worker_image_pulled: bool = False
+    worker_dispatch_allowed: bool = False
+    worker_queue_enqueued: bool = False
+    worker_execution_allowed: bool = False
+    worker_executed: bool = False
+    package_installation_dry_run_execution_allowed: bool = False
+    package_installation_dry_run_executed: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    dry_run_result_persisted: bool = False
+    dry_run_result_payload_included: bool = False
+    package_installation_execution_allowed: bool = False
+    tenant_module_state_created: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    blocking_reasons: tuple[str, ...]
+    summary: LmsPackageInstallationDryRunExecutionOutboxResultMetadataSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "lms_continuity_domain",
+        "result_metadata_ref",
+        "worker_receipt_ref",
+        "expected_worker_receipt_ref",
+        "worker_result_stub_ref",
+        "expected_worker_result_stub_ref",
+        "worker_ref",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("LMS dry-run execution result metadata response text fields must not be empty")
+        return value
+
+    @field_validator("command_hash", "idempotency_key_ref_hash", "result_metadata_statement_hash", "evidence_hash")
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("LMS dry-run execution result metadata response hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("LMS dry-run execution result metadata response lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("LMS dry-run execution result metadata response list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_metadata_only_store_state(self) -> Self:
+        if self.schema_version != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_SCHEMA_VERSION:
+            raise ValueError("LMS dry-run execution result metadata schema version is invalid")
+        if self.endpoint != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_ENDPOINT:
+            raise ValueError("LMS dry-run execution result metadata endpoint is invalid")
+        if self.result_contract != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_RESULT_CONTRACT:
+            raise ValueError("LMS dry-run execution result metadata result contract is invalid")
+        if self.module_id != LMS_MODULE_ID:
+            raise ValueError("LMS dry-run execution result metadata only applies to lms")
+        if self.continuity_domain != LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_JOB_OUTBOX_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result metadata continuity domain is invalid")
+        if self.lms_continuity_domain != LMS_CONTINUITY_DOMAIN:
+            raise ValueError("LMS dry-run execution result metadata LMS continuity domain is invalid")
+        if self.result_metadata_record is not None and self.result_metadata_record.tenant_id != self.tenant_id:
+            raise ValueError("LMS dry-run execution result metadata record must be tenant scoped")
+        if self.received_job is None:
+            if self.received_job_queue_status is not None:
+                raise ValueError("LMS dry-run execution result metadata status requires a received job")
+        else:
+            if self.received_job.tenant_id != self.tenant_id:
+                raise ValueError("LMS dry-run execution result metadata must be tenant scoped")
+            if self.received_job_queue_status != self.received_job.queue_status:
+                raise ValueError("LMS dry-run execution result metadata status must match the received job")
+        expected_ready = (
+            self.result_metadata_record_requested
+            and self.worker_result_stub_validation_requested
+            and self.worker_receipt_validation_requested
+            and self.status_report_requested
+            and self.received_job is not None
+            and self.lease_validated
+            and self.worker_receipt_ref_validated
+            and self.worker_result_stub_ref_validated
+            and not self.blocking_reasons
+        )
+        if self.result_metadata_store_ready != expected_ready:
+            raise ValueError("LMS dry-run execution result metadata readiness must match prerequisites")
+        if self.result_metadata_record_registered != self.result_metadata_store_ready:
+            raise ValueError("LMS dry-run execution result metadata record state must match readiness")
+        if self.result_metadata_store_ready and self.result_metadata_record is None:
+            raise ValueError("LMS dry-run execution result metadata readiness requires a metadata record")
+        if not self.result_metadata_store_ready and self.result_metadata_record is not None:
+            raise ValueError("LMS dry-run execution result metadata record must not be created while blocked")
+        if self.worker_status_observed != (self.status_report_requested and self.received_job is not None):
+            raise ValueError("LMS dry-run execution result metadata status observation must match the job")
+        if (
+            self.outbox_state_mutated
+            or self.business_writes_executed
+            or self.scheduler_activation_allowed
+            or self.scheduler_job_created
+            or self.worker_image_resolution_allowed
+            or self.worker_image_resolved
+            or self.worker_image_pull_allowed
+            or self.worker_image_pulled
+            or self.worker_dispatch_allowed
+            or self.worker_queue_enqueued
+            or self.worker_execution_allowed
+            or self.worker_executed
+            or self.package_installation_dry_run_execution_allowed
+            or self.package_installation_dry_run_executed
+            or self.dry_run_result_persistence_allowed
+            or self.dry_run_result_persisted
+            or self.dry_run_result_payload_included
+            or self.package_installation_execution_allowed
+            or self.tenant_module_state_created
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("LMS dry-run execution result metadata response must remain metadata-only")
+        if self.summary.received_job_count != int(self.received_job is not None):
+            raise ValueError("LMS dry-run execution result metadata received count must match the job")
+        if self.summary.lease_validated_job_count != int(self.lease_validated):
+            raise ValueError("LMS dry-run execution result metadata lease count must match validation")
+        if self.summary.receipt_ref_validated_job_count != int(self.worker_receipt_ref_validated):
+            raise ValueError("LMS dry-run execution result metadata receipt count must match validation")
+        if self.summary.worker_result_stub_ref_validated_job_count != int(self.worker_result_stub_ref_validated):
+            raise ValueError("LMS dry-run execution result metadata stub count must match validation")
+        if self.summary.status_observed_job_count != int(self.worker_status_observed):
+            raise ValueError("LMS dry-run execution result metadata status count must match observation")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("LMS dry-run execution result metadata blocking count must match reasons")
+        if self.summary.result_metadata_record_count < int(self.result_metadata_record_registered):
+            raise ValueError("LMS dry-run execution result metadata count must include registered records")
+        return self
+
+
 class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
     def enqueue(
         self,
@@ -2445,6 +2825,74 @@ class LmsPackageInstallationDryRunExecutionJobOutboxStore(Protocol):
         next_attempt_after_utc: datetime,
         now: datetime | None = None,
     ) -> LmsPackageInstallationDryRunExecutionJobOutboxEntry: ...
+
+
+class LmsPackageInstallationDryRunExecutionResultMetadataStore(Protocol):
+    def register(
+        self,
+        record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord,
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord: ...
+
+    def get(
+        self,
+        *,
+        tenant_id: str,
+        result_metadata_ref: str,
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord: ...
+
+    def list_records(
+        self,
+        *,
+        tenant_id: str,
+    ) -> tuple[LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord, ...]: ...
+
+
+class InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore:
+    def __init__(
+        self,
+        records: Iterable[LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord] = (),
+    ) -> None:
+        self._by_tenant_ref: dict[tuple[str, str], LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord] = {}
+        self._by_tenant_idempotency: dict[
+            tuple[str, str], LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord
+        ] = {}
+        for record in records:
+            self.register(record)
+
+    def register(
+        self,
+        record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord,
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord:
+        idempotency_key = (record.tenant_id, record.idempotency_key_ref_hash)
+        existing_for_idempotency = self._by_tenant_idempotency.get(idempotency_key)
+        if existing_for_idempotency is not None:
+            if existing_for_idempotency.result_metadata_ref != record.result_metadata_ref:
+                raise ValueError("LMS dry-run execution result metadata idempotency key conflict")
+            return existing_for_idempotency
+        record_key = (record.tenant_id, record.result_metadata_ref)
+        if record_key in self._by_tenant_ref:
+            raise ValueError("LMS dry-run execution result metadata ref already exists")
+        self._by_tenant_ref[record_key] = record
+        self._by_tenant_idempotency[idempotency_key] = record
+        return record
+
+    def get(
+        self,
+        *,
+        tenant_id: str,
+        result_metadata_ref: str,
+    ) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord:
+        key = (tenant_id, result_metadata_ref)
+        if key not in self._by_tenant_ref:
+            raise KeyError("LMS dry-run execution result metadata record not found")
+        return self._by_tenant_ref[key]
+
+    def list_records(
+        self,
+        *,
+        tenant_id: str,
+    ) -> tuple[LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord, ...]:
+        return tuple(record for (record_tenant, _), record in self._by_tenant_ref.items() if record_tenant == tenant_id)
 
 
 class InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore:
@@ -2671,6 +3119,12 @@ def build_default_lms_package_installation_dry_run_execution_job_outbox_store() 
     InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore
 ):
     return InMemoryLmsPackageInstallationDryRunExecutionJobOutboxStore()
+
+
+def build_default_lms_package_installation_dry_run_execution_result_metadata_store() -> (
+    InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore
+):
+    return InMemoryLmsPackageInstallationDryRunExecutionResultMetadataStore()
 
 
 def build_lms_package_installation_dry_run_execution_job_outbox_response(
@@ -3978,6 +4432,304 @@ def _outbox_worker_result_stub_blocking_reasons(
         reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_outbox_worker_result_stub")
     if command.external_side_effect_requested:
         reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_outbox_worker_result_stub")
+    return tuple(reasons)
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_metadata_store_response(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
+    tenant_id: str,
+    user_role_ids: set[str],
+    job_store: LmsPackageInstallationDryRunExecutionJobOutboxStore,
+    result_metadata_store: LmsPackageInstallationDryRunExecutionResultMetadataStore,
+) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse:
+    command_hash = build_lms_package_installation_dry_run_execution_outbox_result_metadata_command_hash(command)
+    idempotency_key_ref_hash = stable_hash(command.idempotency_key_ref)
+    statement_hash = stable_hash(command.result_metadata_statement)
+    reviewer_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_role_ids)
+    blocking_reasons = list(
+        _outbox_result_metadata_blocking_reasons(
+            command=command,
+            reviewer_role_allowed=reviewer_role_allowed,
+        )
+    )
+    jobs = job_store.list_jobs(tenant_id=tenant_id)
+    leased_job_count = sum(
+        1 for job in jobs if job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+    )
+    received_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry | None = None
+    try:
+        received_job = job_store.get(
+            tenant_id=tenant_id,
+            worker_idempotency_key_hash=command.worker_idempotency_key_hash,
+        )
+    except KeyError:
+        blocking_reasons.append("lms_dry_run_execution_result_metadata_job_not_found")
+
+    expected_worker_receipt_ref = build_lms_package_installation_dry_run_execution_outbox_worker_receipt_ref_for_fields(
+        tenant_id=tenant_id,
+        worker_idempotency_key_hash=command.worker_idempotency_key_hash,
+        lease_id=command.lease_id,
+        worker_ref=command.worker_ref,
+        idempotency_key_ref=command.worker_receipt_idempotency_key_ref,
+    )
+    receipt_ref_validated = command.worker_receipt_ref == expected_worker_receipt_ref
+    if not receipt_ref_validated:
+        blocking_reasons.append("lms_dry_run_execution_result_metadata_receipt_ref_mismatch")
+
+    expected_worker_result_stub_ref = (
+        build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_ref_for_fields(
+            tenant_id=tenant_id,
+            worker_idempotency_key_hash=command.worker_idempotency_key_hash,
+            lease_id=command.lease_id,
+            worker_ref=command.worker_ref,
+            worker_receipt_ref=command.worker_receipt_ref,
+            idempotency_key_ref=command.worker_result_stub_idempotency_key_ref,
+        )
+    )
+    worker_result_stub_ref_validated = command.worker_result_stub_ref == expected_worker_result_stub_ref
+    if not worker_result_stub_ref_validated:
+        blocking_reasons.append("lms_dry_run_execution_result_metadata_worker_result_stub_ref_mismatch")
+
+    lease_validated = False
+    if received_job is not None:
+        if received_job.queue_status != LmsPackageInstallationDryRunExecutionJobStatus.LEASED:
+            blocking_reasons.append("lms_dry_run_execution_result_metadata_requires_leased_job")
+        if received_job.lease_id != command.lease_id:
+            blocking_reasons.append("lms_dry_run_execution_result_metadata_lease_mismatch")
+        if received_job.lease_owner != command.worker_ref:
+            blocking_reasons.append("lms_dry_run_execution_result_metadata_worker_ref_mismatch")
+        if not _job_outbox_evidence_chain_bound(received_job):
+            blocking_reasons.append("lms_dry_run_execution_result_metadata_evidence_chain_unbound")
+        lease_validated = (
+            received_job.queue_status == LmsPackageInstallationDryRunExecutionJobStatus.LEASED
+            and received_job.lease_id == command.lease_id
+            and received_job.lease_owner == command.worker_ref
+        )
+    worker_status_observed = command.status_report_requested and received_job is not None
+    ready = (
+        command.result_metadata_record_requested
+        and command.worker_result_stub_validation_requested
+        and command.worker_receipt_validation_requested
+        and command.status_report_requested
+        and received_job is not None
+        and lease_validated
+        and receipt_ref_validated
+        and worker_result_stub_ref_validated
+        and not blocking_reasons
+    )
+    result_metadata_ref = build_lms_package_installation_dry_run_execution_outbox_result_metadata_ref(
+        tenant_id=tenant_id,
+        command=command,
+    )
+    result_metadata_record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord | None = None
+    if ready and received_job is not None:
+        result_metadata_record = build_lms_package_installation_dry_run_execution_outbox_result_metadata_record(
+            tenant_id=tenant_id,
+            command=command,
+            received_job=received_job,
+            result_metadata_ref=result_metadata_ref,
+            idempotency_key_ref_hash=idempotency_key_ref_hash,
+        )
+        result_metadata_record = result_metadata_store.register(result_metadata_record)
+    result_metadata_records = result_metadata_store.list_records(tenant_id=tenant_id)
+    draft = LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse(
+        tenant_id=tenant_id,
+        command_hash=command_hash,
+        idempotency_key_ref_hash=idempotency_key_ref_hash,
+        result_metadata_statement_hash=statement_hash,
+        result_metadata_ref=result_metadata_ref,
+        worker_receipt_ref=command.worker_receipt_ref,
+        expected_worker_receipt_ref=expected_worker_receipt_ref,
+        worker_result_stub_ref=command.worker_result_stub_ref,
+        expected_worker_result_stub_ref=expected_worker_result_stub_ref,
+        worker_ref=command.worker_ref,
+        recorded_at_utc=command.recorded_at_utc,
+        result_metadata_store_ready=ready,
+        result_metadata_record_requested=command.result_metadata_record_requested,
+        worker_result_stub_validation_requested=command.worker_result_stub_validation_requested,
+        worker_receipt_validation_requested=command.worker_receipt_validation_requested,
+        status_report_requested=command.status_report_requested,
+        result_metadata_record_registered=ready,
+        result_metadata_record=result_metadata_record,
+        received_job=received_job,
+        received_job_queue_status=received_job.queue_status if received_job is not None else None,
+        lease_validated=lease_validated,
+        worker_receipt_ref_validated=receipt_ref_validated,
+        worker_result_stub_ref_validated=worker_result_stub_ref_validated,
+        worker_status_observed=worker_status_observed,
+        blocking_reasons=tuple(blocking_reasons),
+        summary=LmsPackageInstallationDryRunExecutionOutboxResultMetadataSummary(
+            job_outbox_entry_count=len(jobs),
+            leased_job_count=leased_job_count,
+            result_metadata_record_count=len(result_metadata_records),
+            received_job_count=int(received_job is not None),
+            lease_validated_job_count=int(lease_validated),
+            receipt_ref_validated_job_count=int(receipt_ref_validated),
+            worker_result_stub_ref_validated_job_count=int(worker_result_stub_ref_validated),
+            status_observed_job_count=int(worker_status_observed),
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "app/suite/platform/lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_lms_package_installation_dry_run_execution_job_outbox.py",
+            "tests/test_api.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_READY_NEXT_ACTION
+            if ready
+            else LMS_PACKAGE_INSTALLATION_DRY_RUN_EXECUTION_OUTBOX_RESULT_METADATA_REPAIR_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_result_metadata_response_hash(draft)}
+    )
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_metadata_command_hash(
+    command: LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
+) -> str:
+    return stable_hash(canonical_json(command.model_dump(mode="json")))
+
+
+def build_lms_dry_run_execution_outbox_result_metadata_response_hash(
+    response: LmsPackageInstallationDryRunExecutionOutboxResultMetadataResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_metadata_record(
+    *,
+    tenant_id: str,
+    command: LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
+    received_job: LmsPackageInstallationDryRunExecutionJobOutboxEntry,
+    result_metadata_ref: str,
+    idempotency_key_ref_hash: str,
+) -> LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord:
+    draft = LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord(
+        tenant_id=tenant_id,
+        worker_idempotency_key_hash=command.worker_idempotency_key_hash,
+        worker_job_ref=received_job.worker_job_ref,
+        lease_id=command.lease_id,
+        worker_ref=command.worker_ref,
+        worker_receipt_ref=command.worker_receipt_ref,
+        worker_result_stub_ref=command.worker_result_stub_ref,
+        result_metadata_ref=result_metadata_ref,
+        idempotency_key_ref_hash=idempotency_key_ref_hash,
+        audit_chain_ref=command.audit_chain_ref,
+        recorded_at_utc=command.recorded_at_utc,
+        source_job_evidence_hash=received_job.evidence_hash,
+        evidence_hash=ZERO_SHA256,
+    )
+    return draft.model_copy(
+        update={"evidence_hash": build_lms_dry_run_execution_outbox_result_metadata_record_hash(draft)}
+    )
+
+
+def build_lms_dry_run_execution_outbox_result_metadata_record_hash(
+    record: LmsPackageInstallationDryRunExecutionOutboxResultMetadataRecord,
+) -> str:
+    return stable_hash(canonical_json(record.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_lms_package_installation_dry_run_execution_outbox_result_metadata_ref(
+    *,
+    tenant_id: str,
+    command: LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
+) -> str:
+    return "result-metadata:" + stable_hash(
+        canonical_json(
+            {
+                "schema_version": "lms_package_installation_dry_run_execution_outbox_result_metadata_ref.v1",
+                "tenant_id": tenant_id,
+                "worker_idempotency_key_hash": command.worker_idempotency_key_hash,
+                "lease_id": command.lease_id,
+                "worker_ref": command.worker_ref,
+                "worker_receipt_ref": command.worker_receipt_ref,
+                "worker_result_stub_ref": command.worker_result_stub_ref,
+                "idempotency_key_ref": command.idempotency_key_ref,
+            }
+        )
+    )
+
+
+def build_lms_package_installation_dry_run_execution_outbox_worker_result_stub_ref_for_fields(
+    *,
+    tenant_id: str,
+    worker_idempotency_key_hash: str,
+    lease_id: str,
+    worker_ref: str,
+    worker_receipt_ref: str,
+    idempotency_key_ref: str,
+) -> str:
+    return "worker-result-stub:" + stable_hash(
+        canonical_json(
+            {
+                "schema_version": "lms_package_installation_dry_run_execution_outbox_worker_result_stub_ref.v1",
+                "tenant_id": tenant_id,
+                "worker_idempotency_key_hash": worker_idempotency_key_hash,
+                "lease_id": lease_id,
+                "worker_ref": worker_ref,
+                "worker_receipt_ref": worker_receipt_ref,
+                "idempotency_key_ref": idempotency_key_ref,
+            }
+        )
+    )
+
+
+def _outbox_result_metadata_blocking_reasons(
+    *,
+    command: LmsPackageInstallationDryRunExecutionOutboxResultMetadataCommand,
+    reviewer_role_allowed: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not reviewer_role_allowed:
+        reasons.append("tenant_admin_role_required_for_lms_dry_run_execution_result_metadata")
+    if not command.result_metadata_record_requested:
+        reasons.append("lms_dry_run_execution_result_metadata_record_not_requested")
+    if not command.worker_result_stub_validation_requested:
+        reasons.append("lms_dry_run_execution_result_metadata_stub_validation_not_requested")
+    if not command.worker_receipt_validation_requested:
+        reasons.append("lms_dry_run_execution_result_metadata_receipt_validation_not_requested")
+    if not command.status_report_requested:
+        reasons.append("lms_dry_run_execution_result_metadata_status_report_not_requested")
+    if command.outbox_state_mutation_requested:
+        reasons.append("outbox_state_mutation_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.scheduler_activation_requested:
+        reasons.append("scheduler_activation_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.scheduler_job_creation_requested:
+        reasons.append("scheduler_job_creation_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_image_resolution_requested:
+        reasons.append("worker_image_resolution_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_image_pull_requested:
+        reasons.append("worker_image_pull_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_image_digest_lookup_requested:
+        reasons.append("worker_image_digest_lookup_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_dispatch_requested:
+        reasons.append("worker_dispatch_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_queue_enqueue_requested:
+        reasons.append("worker_queue_enqueue_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.worker_execution_requested:
+        reasons.append("worker_execution_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.package_installation_dry_run_execution_requested:
+        reasons.append("package_installation_dry_run_execution_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.dry_run_result_persistence_requested:
+        reasons.append("dry_run_result_persistence_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.dry_run_result_payload_included:
+        reasons.append("dry_run_result_payload_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.business_write_requested:
+        reasons.append("business_write_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.package_installation_execution_requested:
+        reasons.append("package_installation_execution_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.tenant_module_state_creation_requested:
+        reasons.append("tenant_module_state_creation_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.content_payload_included:
+        reasons.append("content_payload_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_actions_forbidden_in_lms_dry_run_execution_result_metadata")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_forbidden_in_lms_dry_run_execution_result_metadata")
     return tuple(reasons)
 
 
