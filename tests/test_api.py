@@ -916,6 +916,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/modules/families/next-slice-selection" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/tasks-activities/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/tickets-incidents/catalog-readiness" in future_modules["api_routes"]
+    assert "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate" in future_modules["api_routes"]
@@ -947,6 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_foundation_contract_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_readiness_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_registered_not_installed" in future_modules["guardrails"]
+    assert "tickets_incidents_migration_evidence_gate_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1115,7 +1117,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert future_modules["next_action"] == "add_tickets_incidents_migration_evidence_before_storage_or_api"
+    assert (
+        future_modules["next_action"] == "draft_tickets_incidents_metadata_schema_migration_evidence_without_execution"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1381,7 +1385,8 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["pre_catalog_foundation_ready"] is False
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
-        families["tickets_incidents"]["next_action"] == "add_tickets_incidents_migration_evidence_before_storage_or_api"
+        families["tickets_incidents"]["next_action"]
+        == "draft_tickets_incidents_metadata_schema_migration_evidence_without_execution"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1643,6 +1648,102 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
     assert event.metadata["feature_count"] == 5
     assert event.metadata["object_type_count"] == 2
     assert event.metadata["required_catalog_evidence_count"] == 7
+    assert event.metadata["content_included"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
+
+
+def test_tickets_incidents_migration_evidence_gate_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules/families/tickets-incidents/migration-evidence-gate")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_tickets_incidents_migration_evidence_gate_returns_metadata_only_storage_gate() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get(
+        "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate",
+        headers=DEMO_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "tickets_incidents_migration_evidence_gate.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "tickets_incidents"
+    assert body["endpoint"] == "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate"
+    assert body["result_contract"] == "metadata_only_tickets_incidents_migration_evidence_gate_no_storage"
+    assert body["continuity_domain"] == "ticket_incident_records"
+    assert body["catalog_readiness_endpoint"] == "/v1/platform/modules/families/tickets-incidents/catalog-readiness"
+    assert body["catalog_status"] == "not_installed"
+    assert body["tenant_module_status"] is None
+    assert body["module_catalog_entry_present"] is True
+    assert body["module_package_installed"] is False
+    assert body["tenant_module_state_present"] is False
+    assert body["catalog_registration_migration_present"] is True
+    assert body["migration_evidence_gate_ready"] is True
+    assert body["storage_migration_evidence_ready"] is False
+    assert body["storage_migration_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["tickets_business_api_allowed"] is False
+    assert body["business_tables_created"] is False
+    assert body["content_included"] is False
+    assert body["module_activation_executed"] is False
+    assert body["persistent_task_created"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["planned_schema_name"] == "tickets"
+    assert body["planned_object_types"] == ["ticket.ticket", "ticket.event"]
+    assert body["existing_tickets_migration_versions"] == ["0051"]
+    assert body["existing_tickets_storage_migration_versions"] == []
+    assert body["feature_manifest_hash"].startswith("sha256:")
+    assert body["object_rule_manifest_hash"].startswith("sha256:")
+    assert "backup_restore_ticket_incident_records_update" in body["required_storage_migration_evidence"]
+    assert "no_tenant_state_creation_confirmed" in body["required_storage_migration_evidence"]
+    assert "no_business_api_or_worker_activation_confirmed" in body["required_storage_migration_evidence"]
+    assert body["summary"] == {
+        "tickets_manifest_migration_count": 1,
+        "tickets_storage_migration_count": 0,
+        "planned_object_type_count": 2,
+        "required_storage_evidence_count": 8,
+        "blocking_reason_count": 0,
+    }
+    assert body["blocking_reasons"] == []
+    assert "app/suite/platform/tickets_incidents_migration_evidence_gate.py" in body["evidence_refs"]
+    assert "tests/test_tickets_incidents_migration_evidence_gate.py" in body["evidence_refs"]
+    assert "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql" in body["evidence_refs"]
+    assert body["next_action"] == "draft_tickets_incidents_metadata_schema_migration_evidence_without_execution"
+    assert "audit:module-seed" not in response.text
+    assert "policy_snapshot_hash" not in response.text
+    assert "changed_by" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.tickets_incidents.migration_evidence_gate"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_tickets_incidents_migration_evidence_gate_no_storage"
+    assert event.metadata["module_id"] == "tickets_incidents"
+    assert event.metadata["catalog_status"] == "not_installed"
+    assert event.metadata["tenant_module_status"] is None
+    assert event.metadata["catalog_registration_migration_present"] is True
+    assert event.metadata["migration_evidence_gate_ready"] is True
+    assert event.metadata["storage_migration_evidence_ready"] is False
+    assert event.metadata["tickets_manifest_migration_count"] == 1
+    assert event.metadata["tickets_storage_migration_count"] == 0
+    assert event.metadata["planned_object_type_count"] == 2
+    assert event.metadata["required_storage_evidence_count"] == 8
+    assert event.metadata["blocking_reason_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
     assert event.metadata["persistent_task_created"] is False

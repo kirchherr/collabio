@@ -1,6 +1,6 @@
 # Tickets & Incidents Module Charter
 
-Status: catalog_registered_metadata_only
+Status: migration_evidence_gate_ready_metadata_only
 Date: 2026-07-07
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
@@ -70,7 +70,7 @@ Compliance-only later:
 - incident evidence export
 - decommission precheck
 
-No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary. The module is registered in the platform catalog as `not_installed`; migration evidence, tenant state, storage, business routes, and workers must happen in later explicit gates.
+No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary. The module is registered in the platform catalog as `not_installed`; tenant state, storage, business routes, workers, and content must happen in later explicit gates.
 
 ## 5. Persistent Objects
 
@@ -121,7 +121,7 @@ New comments, attachments, escalation rules, notification queues, mail integrati
 
 ## 8. Migrations And Imports
 
-`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. The first future storage migration must be preceded by migration evidence and restore planning.
+`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the catalog migration and required storage evidence while still blocking storage migration execution. The first future storage migration must be preceded by schema evidence, restore planning, and an explicit no-tenant-state/no-business-API confirmation.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
 
@@ -160,6 +160,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 - `tests/test_tickets_incidents_module_foundation.py`
 - `tests/test_tickets_incidents_catalog_readiness.py`
+- `tests/test_tickets_incidents_migration_evidence_gate.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`

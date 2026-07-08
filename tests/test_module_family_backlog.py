@@ -125,7 +125,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert tickets.pre_catalog_foundation_ready is False
     assert tickets.first_slice_foundation_ready is False
     assert tickets.runtime_activation_allowed is False
-    assert tickets.next_action == "add_tickets_incidents_migration_evidence_before_storage_or_api"
+    assert tickets.next_action == "draft_tickets_incidents_metadata_schema_migration_evidence_without_execution"
     assert "module_catalog_entry_required" in tickets.required_foundation_gates
     assert "backup_restore_evidence_required" in tickets.required_foundation_gates
 
