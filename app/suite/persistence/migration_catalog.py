@@ -465,6 +465,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tasks-activities-catalog-registration",
         ),
     ),
+    SqlMigration(
+        version="0051",
+        name="tickets_incidents_catalog_registration",
+        resource_name="0051_tickets_incidents_catalog_registration.sql",
+        module_id="tickets_incidents",
+        evidence_refs=(
+            "doc:tickets-incidents-module-charter",
+            "test:tickets-incidents-catalog-registration",
+        ),
+    ),
 )
 
 

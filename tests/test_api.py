@@ -946,6 +946,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tasks_activities_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "tickets_incidents_foundation_contract_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_readiness_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1114,10 +1115,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert (
-        future_modules["next_action"]
-        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
-    )
+    assert future_modules["next_action"] == "add_tickets_incidents_migration_evidence_before_storage_or_api"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1333,9 +1331,9 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "total_family_count": 5,
-        "catalog_registered_count": 3,
-        "planned_not_installed_count": 2,
-        "pre_catalog_foundation_ready_count": 1,
+        "catalog_registered_count": 4,
+        "planned_not_installed_count": 1,
+        "pre_catalog_foundation_ready_count": 0,
         "first_slice_foundation_ready_count": 1,
         "runtime_activation_allowed_count": 0,
     }
@@ -1373,16 +1371,17 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert (
         families["tasks_activities"]["next_action"] == "add_tasks_activities_migration_evidence_before_storage_or_api"
     )
-    assert families["tickets_incidents"]["backlog_status"] == "planned_not_installed"
-    assert families["tickets_incidents"]["catalog_status"] is None
+    assert families["tickets_incidents"]["backlog_status"] == "catalog_registered"
+    assert families["tickets_incidents"]["catalog_status"] == "not_installed"
+    assert families["tickets_incidents"]["catalog_entry_present"] is True
+    assert families["tickets_incidents"]["module_package_installed"] is False
     assert families["tickets_incidents"]["module_charter_ready"] is True
     assert families["tickets_incidents"]["feature_registry_ready"] is True
     assert families["tickets_incidents"]["object_rules_ready"] is True
-    assert families["tickets_incidents"]["pre_catalog_foundation_ready"] is True
+    assert families["tickets_incidents"]["pre_catalog_foundation_ready"] is False
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
-        families["tickets_incidents"]["next_action"]
-        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+        families["tickets_incidents"]["next_action"] == "add_tickets_incidents_migration_evidence_before_storage_or_api"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1399,8 +1398,8 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
-    assert event.metadata["planned_not_installed_count"] == 2
-    assert event.metadata["pre_catalog_foundation_ready_count"] == 1
+    assert event.metadata["planned_not_installed_count"] == 1
+    assert event.metadata["pre_catalog_foundation_ready_count"] == 0
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
@@ -1409,7 +1408,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["external_side_effect_allowed"] is False
 
 
-def test_module_family_next_slice_selection_returns_metadata_only_tickets_contract() -> None:
+def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_contract() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
 
@@ -1423,14 +1422,14 @@ def test_module_family_next_slice_selection_returns_metadata_only_tickets_contra
     assert body["endpoint"] == "/v1/platform/modules/families/next-slice-selection"
     assert body["backlog_endpoint"] == "/v1/platform/modules/families/backlog"
     assert body["selection_ready"] is True
-    assert body["selected_module_family"] == "tickets_incidents"
-    assert body["selected_module_id"] == "tickets_incidents"
-    assert body["selected_next_action"] == (
-        "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
+    assert body["selected_module_family"] == "time_tracking"
+    assert body["selected_module_id"] == "time_tracking"
+    assert (
+        body["selected_next_action"] == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
     )
     assert body["next_action"] == body["selected_next_action"]
     assert body["lms_depth_deferred"] is True
-    assert body["deferred_module_families"] == ["knowledge_base", "lms", "tasks_activities"]
+    assert body["deferred_module_families"] == ["knowledge_base", "lms", "tasks_activities", "tickets_incidents"]
     assert body["content_included"] is False
     assert body["module_activation_executed"] is False
     assert body["persistent_task_created"] is False
@@ -1439,29 +1438,25 @@ def test_module_family_next_slice_selection_returns_metadata_only_tickets_contra
     assert body["summary"] == {
         "total_family_count": 5,
         "active_foundation_count": 1,
-        "catalog_registered_count": 3,
-        "planned_candidate_count": 2,
+        "catalog_registered_count": 4,
+        "planned_candidate_count": 1,
         "selected_candidate_count": 1,
-        "queued_candidate_count": 1,
+        "queued_candidate_count": 0,
         "lms_depth_deferred_count": 1,
         "runtime_activation_allowed_count": 0,
         "blocking_reason_count": 0,
     }
     assert body["evidence_hash"].startswith("sha256:")
     candidates = {candidate["module_family"]: candidate for candidate in body["candidates"]}
-    assert list(candidates) == ["tickets_incidents", "time_tracking"]
-    selected = candidates["tickets_incidents"]
+    assert list(candidates) == ["time_tracking"]
+    selected = candidates["time_tracking"]
     assert selected["selection_rank"] == 1
     assert selected["selection_status"] == "selected_next"
-    assert (
-        selected["next_action"]
-        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
-    )
-    assert selected["default_feature_gate"] == "tickets.items.read"
-    assert selected["continuity_domain"] == "ticket_incident_records"
+    assert selected["next_action"] == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
+    assert selected["default_feature_gate"] == "time_tracking.entries.read"
+    assert selected["continuity_domain"] == "time_tracking_records"
     assert selected["runtime_activation_allowed"] is False
     assert selected["module_activation_executed"] is False
-    assert candidates["time_tracking"]["selection_status"] == "queued_next"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1477,11 +1472,11 @@ def test_module_family_next_slice_selection_returns_metadata_only_tickets_contra
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_module_family_next_slice_selection_no_activation"
     assert event.metadata["selection_ready"] is True
-    assert event.metadata["selected_module_family"] == "tickets_incidents"
+    assert event.metadata["selected_module_family"] == "time_tracking"
     assert event.metadata["selected_next_action"] == body["selected_next_action"]
-    assert event.metadata["candidate_count"] == 2
+    assert event.metadata["candidate_count"] == 1
     assert event.metadata["selected_candidate_count"] == 1
-    assert event.metadata["queued_candidate_count"] == 1
+    assert event.metadata["queued_candidate_count"] == 0
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
@@ -1595,11 +1590,11 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
     assert body["result_contract"] == "metadata_only_tickets_incidents_catalog_readiness_no_activation"
     assert body["continuity_domain"] == "ticket_incident_records"
     assert body["module_family_backlog_endpoint"] == "/v1/platform/modules/families/backlog"
-    assert body["catalog_status"] is None
+    assert body["catalog_status"] == "not_installed"
     assert body["tenant_module_status"] is None
-    assert body["module_catalog_entry_present"] is False
+    assert body["module_catalog_entry_present"] is True
     assert body["tenant_module_state_present"] is False
-    assert body["catalog_registration_ready"] is True
+    assert body["catalog_registration_ready"] is False
     assert body["module_package_installed"] is False
     assert body["migration_executed"] is False
     assert body["api_routes_registered"] is False
@@ -1620,15 +1615,13 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
         "personal_object_type_count": 2,
         "required_catalog_evidence_count": 7,
     }
-    assert "catalog_registration_status_absent_confirmed" in body["required_catalog_evidence"]
-    assert "migration_plan_or_no_table_decision_recorded" in body["required_catalog_evidence"]
+    assert "catalog_registration_status_not_installed_confirmed" in body["required_catalog_evidence"]
+    assert "catalog_registration_migration_0051_recorded" in body["required_catalog_evidence"]
     assert "no_runtime_activation_confirmed" in body["required_catalog_evidence"]
     assert "app/suite/platform/tickets_incidents_catalog_readiness.py" in body["evidence_refs"]
+    assert "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql" in body["evidence_refs"]
     assert "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md" in body["evidence_refs"]
-    assert (
-        body["next_action"]
-        == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
-    )
+    assert body["next_action"] == "add_tickets_incidents_migration_evidence_before_storage_or_api"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1644,9 +1637,9 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_tickets_incidents_catalog_readiness_no_activation"
     assert event.metadata["module_id"] == "tickets_incidents"
-    assert event.metadata["catalog_status"] is None
+    assert event.metadata["catalog_status"] == "not_installed"
     assert event.metadata["tenant_module_status"] is None
-    assert event.metadata["catalog_registration_ready"] is True
+    assert event.metadata["catalog_registration_ready"] is False
     assert event.metadata["feature_count"] == 5
     assert event.metadata["object_type_count"] == 2
     assert event.metadata["required_catalog_evidence_count"] == 7

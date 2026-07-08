@@ -1,6 +1,6 @@
 # Tickets & Incidents Module Charter
 
-Status: proposed
+Status: catalog_registered_metadata_only
 Date: 2026-07-07
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
@@ -70,7 +70,7 @@ Compliance-only later:
 - incident evidence export
 - decommission precheck
 
-No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary. Module catalog registration and migration evidence must happen before any business route or worker is wired.
+No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary. The module is registered in the platform catalog as `not_installed`; migration evidence, tenant state, storage, business routes, and workers must happen in later explicit gates.
 
 ## 5. Persistent Objects
 
@@ -121,7 +121,7 @@ New comments, attachments, escalation rules, notification queues, mail integrati
 
 ## 8. Migrations And Imports
 
-No migration is introduced by this charter. The first future migration must register the module as `not_installed` and create no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime.
+`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. The first future storage migration must be preceded by migration evidence and restore planning.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
 
@@ -160,5 +160,6 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 - `tests/test_tickets_incidents_module_foundation.py`
 - `tests/test_tickets_incidents_catalog_readiness.py`
+- `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`

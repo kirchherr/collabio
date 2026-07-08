@@ -44,6 +44,7 @@ TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
     "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
+TICKETS_INCIDENTS_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tickets_incidents_migration_evidence_before_storage_or_api"
 NEXT_SLICE_SELECTED_NEXT_ACTION = (
     "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )
@@ -55,6 +56,7 @@ CATALOG_READY_NEXT_ACTIONS = {
 CATALOG_REGISTERED_NEXT_ACTIONS = {
     "lms": CATALOG_REGISTERED_NEXT_ACTION,
     "tasks_activities": TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION,
+    "tickets_incidents": TICKETS_INCIDENTS_MIGRATION_EVIDENCE_NEXT_ACTION,
 }
 MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
     "knowledge_base": {
@@ -563,6 +565,7 @@ def build_module_family_backlog_response(
             "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
             "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
+            "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_module_family_backlog.py",
             "tests/test_lms_module_foundation.py",
@@ -663,6 +666,7 @@ def build_module_family_next_slice_selection_response(
             "app/suite/platform/tickets_incidents_module.py",
             "app/suite/platform/tickets_incidents_catalog_readiness.py",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
+            "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "tests/test_module_family_backlog.py",
             "tests/test_tasks_activities_module_foundation.py",
             "tests/test_tickets_incidents_module_foundation.py",

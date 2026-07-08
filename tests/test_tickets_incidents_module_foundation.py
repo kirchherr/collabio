@@ -113,6 +113,7 @@ def test_tickets_incidents_module_charter_documents_contract_gates_and_deferred_
         "Local LLM Gateway",
         "No Tickets & Incidents business API route is enabled by this charter",
         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
+        "0051_tickets_incidents_catalog_registration.sql",
         "ticket_incident_records",
         "ticket.ticket",
         "ticket.event",

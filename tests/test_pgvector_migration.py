@@ -82,6 +82,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0048",
         "0049",
         "0050",
+        "0051",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -96,9 +97,10 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     knowledge_base_migrations = load_module_migrations("knowledge_base")
     lms_migrations = load_module_migrations("lms")
     tasks_activities_migrations = load_module_migrations("tasks_activities")
+    tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 29
+    assert len(core_migrations) == len(load_migrations()) - 30
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -128,8 +130,9 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     ]
     assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
     assert [migration.version for migration in tasks_activities_migrations] == ["0050"]
+    assert [migration.version for migration in tickets_incidents_migrations] == ["0051"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "tasks_activities"
+    assert manifest[-1].module_id == "tickets_incidents"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -172,6 +175,25 @@ def test_tasks_activities_catalog_registration_migration_is_metadata_only_not_in
     assert "create table" not in sql
     assert "task.task" not in sql
     assert "task.activity" not in sql
+
+
+def test_tickets_incidents_catalog_registration_migration_is_metadata_only_not_installed_seed() -> None:
+    migration = get_migration("0051")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_catalog_registration"
+    assert "insert into collabio.module_catalog" in sql
+    assert "'tickets_incidents'" in sql
+    assert "'tickets and incidents'" in sql
+    assert "'not_installed'" in sql
+    assert '"0051"' in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "create schema" not in sql
+    assert "create table" not in sql
+    assert "ticket.ticket" not in sql
+    assert "ticket.event" not in sql
 
 
 def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_content_storage() -> None:

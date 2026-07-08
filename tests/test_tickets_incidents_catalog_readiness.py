@@ -1,7 +1,5 @@
-import pytest
-
 from suite.ai_control_plane.models import UserContext
-from suite.platform.modules import default_module_registry
+from suite.platform.modules import InMemoryModuleRegistry, default_module_registry
 from suite.platform.tickets_incidents_catalog_readiness import (
     TICKETS_INCIDENTS_CATALOG_READINESS_ENDPOINT,
     TICKETS_INCIDENTS_CATALOG_READINESS_RESULT_CONTRACT,
@@ -10,7 +8,7 @@ from suite.platform.tickets_incidents_catalog_readiness import (
 )
 
 
-def test_tickets_incidents_catalog_readiness_declares_metadata_only_registration_boundary() -> None:
+def test_tickets_incidents_catalog_readiness_declares_metadata_only_registered_boundary() -> None:
     module_registry = default_module_registry()
     response = build_tickets_incidents_catalog_readiness_response(
         user_context=UserContext(tenant_id="tenant-demo", user_id="u-1", role_ids={"admin"}),
@@ -23,11 +21,11 @@ def test_tickets_incidents_catalog_readiness_declares_metadata_only_registration
     assert response.tenant_id == "tenant-demo"
     assert response.module_id == "tickets_incidents"
     assert response.continuity_domain == "ticket_incident_records"
-    assert response.catalog_status is None
+    assert response.catalog_status == "not_installed"
     assert response.tenant_module_status is None
-    assert response.module_catalog_entry_present is False
+    assert response.module_catalog_entry_present is True
     assert response.tenant_module_state_present is False
-    assert response.catalog_registration_ready is True
+    assert response.catalog_registration_ready is False
     assert response.module_package_installed is False
     assert response.migration_executed is False
     assert response.api_routes_registered is False
@@ -46,22 +44,37 @@ def test_tickets_incidents_catalog_readiness_declares_metadata_only_registration
     assert response.summary.object_type_count == 2
     assert response.summary.personal_object_type_count == 2
     assert response.summary.required_catalog_evidence_count == len(response.required_catalog_evidence)
-    assert "catalog_registration_status_absent_confirmed" in response.required_catalog_evidence
-    assert "migration_plan_or_no_table_decision_recorded" in response.required_catalog_evidence
+    assert "catalog_registration_status_not_installed_confirmed" in response.required_catalog_evidence
+    assert "catalog_registration_migration_0051_recorded" in response.required_catalog_evidence
     assert "no_runtime_activation_confirmed" in response.required_catalog_evidence
     assert "app/suite/platform/tickets_incidents_catalog_readiness.py" in response.evidence_refs
     assert "app/suite/platform/tickets_incidents_module.py" in response.evidence_refs
+    assert "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql" in response.evidence_refs
     assert "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md" in response.evidence_refs
+    assert response.next_action == "add_tickets_incidents_migration_evidence_before_storage_or_api"
+
+    assert module_registry.get_catalog_entry("tickets_incidents").status.value == "not_installed"
+    assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="tickets_incidents") is None
+
+
+def test_tickets_incidents_catalog_readiness_keeps_pre_registration_boundary_for_empty_registry() -> None:
+    response = build_tickets_incidents_catalog_readiness_response(
+        user_context=UserContext(tenant_id="tenant-demo", user_id="u-1", role_ids={"admin"}),
+        module_registry=InMemoryModuleRegistry(),
+    )
+
+    assert response.catalog_status is None
+    assert response.module_catalog_entry_present is False
+    assert response.catalog_registration_ready is True
+    assert "catalog_registration_status_absent_confirmed" in response.required_catalog_evidence
+    assert "migration_plan_or_no_table_decision_recorded" in response.required_catalog_evidence
     assert (
         response.next_action
         == "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
     )
 
-    with pytest.raises(LookupError):
-        module_registry.get_catalog_entry("tickets_incidents")
 
-
-def test_tickets_incidents_catalog_readiness_is_tenant_scoped_without_catalog_side_effects() -> None:
+def test_tickets_incidents_catalog_readiness_is_tenant_scoped_without_tenant_side_effects() -> None:
     module_registry = default_module_registry()
 
     first = build_tickets_incidents_catalog_readiness_response(
@@ -77,9 +90,10 @@ def test_tickets_incidents_catalog_readiness_is_tenant_scoped_without_catalog_si
     assert second.tenant_id == "tenant-b"
     assert first.feature_manifest_hash == second.feature_manifest_hash
     assert first.object_rule_manifest_hash == second.object_rule_manifest_hash
-    assert first.catalog_registration_ready is True
-    assert second.catalog_registration_ready is True
-    assert first.module_catalog_entry_present is False
-    assert second.module_catalog_entry_present is False
-    with pytest.raises(LookupError):
-        module_registry.get_catalog_entry("tickets_incidents")
+    assert first.catalog_registration_ready is False
+    assert second.catalog_registration_ready is False
+    assert first.module_catalog_entry_present is True
+    assert second.module_catalog_entry_present is True
+    assert module_registry.get_catalog_entry("tickets_incidents").status.value == "not_installed"
+    assert module_registry.get_tenant_module_or_none(tenant_id="tenant-a", module_id="tickets_incidents") is None
+    assert module_registry.get_tenant_module_or_none(tenant_id="tenant-b", module_id="tickets_incidents") is None

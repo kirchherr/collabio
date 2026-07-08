@@ -152,7 +152,7 @@ def build_tickets_incidents_catalog_readiness_response(
         if catalog_status is None
         else (
             "catalog_registration_status_not_installed_confirmed",
-            "catalog_registration_migration_future_recorded",
+            "catalog_registration_migration_0051_recorded",
         )
     )
     required_catalog_evidence = (
@@ -194,6 +194,7 @@ def build_tickets_incidents_catalog_readiness_response(
             "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
             "app/suite/platform/tickets_incidents_module.py",
             "app/suite/platform/tickets_incidents_catalog_readiness.py",
+            "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_tickets_incidents_catalog_readiness.py",
         ),

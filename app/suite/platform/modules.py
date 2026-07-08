@@ -1623,6 +1623,20 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
             manifest_hash="sha256:tasks-activities-module-manifest",
             required_migration_versions=("0050",),
         ),
+        ModuleCatalogEntry(
+            module_id="tickets_incidents",
+            display_name="Tickets and Incidents",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.NOT_INSTALLED,
+            description=(
+                "Optional governed tickets and incidents module. Catalog-registered only; storage migrations, "
+                "tenant provisioning, business API routes, workflow automation, notifications, RAG, and AI assist "
+                "remain separate gates."
+            ),
+            manifest_hash="sha256:tickets-incidents-module-manifest",
+            required_migration_versions=("0051",),
+        ),
     )
 
 
