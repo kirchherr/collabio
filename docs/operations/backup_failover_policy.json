@@ -216,7 +216,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore ticket state and communications; verify escalation history, SLA state, legal-hold scopes, and tenant isolation before queues reopen",
-      "state_artifacts": ["reports", "incidents", "tickets", "ticket SLA state", "communications", "escalation history", "service-desk evidence"]
+      "state_artifacts": ["reports", "incidents", "tickets", "ticket SLA state", "communications", "escalation history", "service-desk evidence", "Tickets & Incidents storage migration evidence hash", "Tickets & Incidents metadata schema restore checks"]
     },
     {
       "domain_id": "time_tracking_records",
@@ -444,6 +444,7 @@
     "knowledge-base source-version evidence hashes when applicable",
     "knowledge-base restore evidence hash when applicable",
     "LMS restore drill evidence hash when applicable",
+    "Tickets & Incidents storage migration evidence hash when applicable",
     "Knowledge Base runtime reconciliation run report hash when applicable",
     "restore target",
     "tenant and data scope",

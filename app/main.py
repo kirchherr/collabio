@@ -813,6 +813,10 @@ from suite.platform.tickets_incidents_migration_evidence_gate import (
     TicketsIncidentsMigrationEvidenceGateResponse,
     build_tickets_incidents_migration_evidence_gate_response,
 )
+from suite.platform.tickets_incidents_storage_migration_evidence import (
+    TicketsIncidentsStorageMigrationEvidenceResponse,
+    build_tickets_incidents_storage_migration_evidence_response,
+)
 from suite.platform.workspace_source_objects import (
     WorkspaceSourceObjectCatalog,
     build_default_workspace_source_object_catalog,
@@ -1408,6 +1412,59 @@ def build_app() -> FastAPI:
                 "planned_object_type_count": response.summary.planned_object_type_count,
                 "required_storage_evidence_count": response.summary.required_storage_evidence_count,
                 "blocking_reason_count": response.summary.blocking_reason_count,
+                "content_included": response.content_included,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence",
+        response_model=TicketsIncidentsStorageMigrationEvidenceResponse,
+    )
+    def tickets_incidents_storage_migration_evidence(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsStorageMigrationEvidenceResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_storage_migration_evidence_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.storage_migration_evidence",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "migration_evidence_gate_ready": response.migration_evidence_gate_ready,
+                "catalog_registration_migration_present": response.catalog_registration_migration_present,
+                "storage_migration_evidence_ready": response.storage_migration_evidence_ready,
+                "table_design_review_ready": response.table_design_review_ready,
+                "rls_policy_plan_ready": response.rls_policy_plan_ready,
+                "tenant_isolation_plan_ready": response.tenant_isolation_plan_ready,
+                "retention_legal_hold_plan_ready": response.retention_legal_hold_plan_ready,
+                "kms_audit_reference_plan_ready": response.kms_audit_reference_plan_ready,
+                "backup_failover_update_planned": response.backup_failover_update_planned,
+                "no_content_payload_columns_planned": response.no_content_payload_columns_planned,
+                "planned_table_count": response.summary.planned_table_count,
+                "planned_object_type_count": response.summary.planned_object_type_count,
+                "required_storage_evidence_count": response.summary.required_storage_evidence_count,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "evidence_hash": response.evidence_hash,
+                "metadata_schema_migration_file_created": response.metadata_schema_migration_file_created,
+                "metadata_schema_migration_registered": response.metadata_schema_migration_registered,
+                "storage_migration_execution_allowed": response.storage_migration_execution_allowed,
                 "content_included": response.content_included,
                 "module_activation_executed": response.module_activation_executed,
                 "persistent_task_created": response.persistent_task_created,

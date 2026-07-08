@@ -548,7 +548,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
                         "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities und Tickets & Incidents "
-                        "sind katalogregistriert; der Tickets-Migration-Evidence-Gate ist bereit, "
+                        "sind katalogregistriert; der Tickets-Storage-Evidence-Entwurf ist bereit, "
                         "Zeiterfassung bleibt bewusst geplant."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
@@ -561,6 +561,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_module.py",
                         "app/suite/platform/tickets_incidents_catalog_readiness.py",
                         "app/suite/platform/tickets_incidents_migration_evidence_gate.py",
+                        "app/suite/platform/tickets_incidents_storage_migration_evidence.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -609,6 +610,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_tickets_incidents_module_foundation.py",
                         "tests/test_tickets_incidents_catalog_readiness.py",
                         "tests/test_tickets_incidents_migration_evidence_gate.py",
+                        "tests/test_tickets_incidents_storage_migration_evidence.py",
                         "tests/test_lms_module_foundation.py",
                         "tests/test_lms_catalog_readiness.py",
                         "tests/test_lms_package_installation_readiness.py",
@@ -650,6 +652,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tasks-activities/catalog-readiness",
                         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
                         "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate",
+                        "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -708,6 +711,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_catalog_readiness_ready",
                         "tickets_incidents_catalog_registered_not_installed",
                         "tickets_incidents_migration_evidence_gate_ready",
+                        "tickets_incidents_storage_migration_evidence_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -756,7 +760,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="draft_tickets_incidents_metadata_schema_migration_evidence_without_execution",
+                    next_action="write_tickets_incidents_metadata_schema_migration_after_evidence_review_without_execution",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

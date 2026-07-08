@@ -108,6 +108,8 @@ The drill emits metadata-only `module_registry_operations_report.v1` evidence fo
 
 Before LMS package installation approval, call `GET /v1/platform/modules/families/lms/restore-drill-evidence`. The endpoint emits metadata-only `lms_restore_drill_evidence.v1` with an evidence hash for `lms_training_records`, verifies the `0045`/`0046` migration boundary, RLS/tenant isolation, retention, Legal Hold, KMS/audit references, and confirms that no LMS package installation, tenant module state, runtime, worker, or content payload is created.
 
+Before Tickets & Incidents metadata schema SQL is written, call `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence`. The endpoint emits metadata-only `tickets_incidents_storage_migration_evidence.v1` with an evidence hash for `ticket_incident_records`, verifies planned ticket/event metadata tables, RLS/tenant isolation, retention, Legal Hold, KMS/audit references, backup evidence, and confirms that no migration file, migration registration, storage execution, tenant state, worker, runtime, or content payload is created.
+
 Run the Legacy SQL discovery intake drill before any real SQL metadata worker command is scheduled:
 
 ```bash
