@@ -1,6 +1,6 @@
 # Tickets & Incidents Module Charter
 
-Status: storage_migration_evidence_ready_metadata_only
+Status: metadata_schema_migration_registered_metadata_only
 Date: 2026-07-07
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
@@ -70,7 +70,7 @@ Compliance-only later:
 - incident evidence export
 - decommission precheck
 
-No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary; `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` exposes the metadata-only schema-evidence draft. The module is registered in the platform catalog as `not_installed`; tenant state, storage, business routes, workers, and content must happen in later explicit gates.
+No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary; `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` exposes the metadata-only schema-evidence result for migration `0052`. The module is registered in the platform catalog as `not_installed`; tenant state, business routes, workers, and content must happen in later explicit gates.
 
 ## 5. Persistent Objects
 
@@ -121,7 +121,7 @@ New comments, attachments, escalation rules, notification queues, mail integrati
 
 ## 8. Migrations And Imports
 
-`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the catalog migration boundary. `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` drafts planned metadata tables, RLS policy names, retention/Legal Hold/KMS/audit columns, backup evidence, and no-content-payload constraints while still creating no migration file, registering no migration, and executing no storage change. The first future storage migration must be preceded by schema evidence, restore planning, and an explicit no-tenant-state/no-business-API confirmation.
+`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `0052_tickets_incidents_metadata_schema.sql` creates the tenant-scoped `tickets.ticket_items` and `tickets.ticket_events` metadata tables, RLS policies, no-hard-delete policies, retention/Legal Hold/KMS/audit columns, and module-catalog migration registration while still creating no tenant module state, business API route, worker, message body, attachment payload, RAG index, or AI/voice runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the `0051`/`0052` boundary. `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` verifies the metadata schema SQL, migration registration, backup evidence, and no-content-payload constraints. The next gate is restore-drill review before any tenant provisioning or business API activation.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
 

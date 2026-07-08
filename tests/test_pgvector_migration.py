@@ -83,6 +83,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0049",
         "0050",
         "0051",
+        "0052",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -100,7 +101,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 30
+    assert len(core_migrations) == len(load_migrations()) - 31
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -130,7 +131,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     ]
     assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
     assert [migration.version for migration in tasks_activities_migrations] == ["0050"]
-    assert [migration.version for migration in tickets_incidents_migrations] == ["0051"]
+    assert [migration.version for migration in tickets_incidents_migrations] == ["0051", "0052"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "tickets_incidents"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -194,6 +195,87 @@ def test_tickets_incidents_catalog_registration_migration_is_metadata_only_not_i
     assert "create table" not in sql
     assert "ticket.ticket" not in sql
     assert "ticket.event" not in sql
+
+
+def test_tickets_incidents_metadata_schema_migration_declares_ticket_event_tables_rls_and_no_payload_storage() -> None:
+    migration = get_migration("0052")
+    sql = normalized(migration.sql())
+    ticket_items_body = table_body(migration.sql(), "tickets.ticket_items")
+    ticket_events_body = table_body(migration.sql(), "tickets.ticket_events")
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_metadata_schema"
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in (
+        (ticket_items_body, "tickets.ticket_items"),
+        (ticket_events_body, "tickets.ticket_events"),
+    ):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "retention_policy_id text not null default 'rp-standard'" in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in ["ticket_id", "ticket_number", "ticket_status", "priority", "subject_redacted", "sla_state"]:
+        assert re.search(rf"\b{column}\b", ticket_items_body), f"{column} missing from tickets.ticket_items"
+    for column in ["event_id", "ticket_id", "event_type", "event_status", "event_summary_redacted"]:
+        assert re.search(rf"\b{column}\b", ticket_events_body), f"{column} missing from tickets.ticket_events"
+
+    assert (
+        "object_type text not null default 'ticket.ticket' check (object_type = 'ticket.ticket')" in ticket_items_body
+    )
+    assert "object_type text not null default 'ticket.event' check (object_type = 'ticket.event')" in ticket_events_body
+    assert "foreign key (tenant_id, ticket_id)" in ticket_events_body
+    assert "references tickets.ticket_items (tenant_id, ticket_id)" in ticket_events_body
+    assert "alter table tickets.ticket_items enable row level security" in sql
+    assert "alter table tickets.ticket_items force row level security" in sql
+    assert "alter table tickets.ticket_events enable row level security" in sql
+    assert "alter table tickets.ticket_events force row level security" in sql
+    assert "create policy tickets_ticket_items_tenant_select" in sql
+    assert "create policy tickets_ticket_items_tenant_insert" in sql
+    assert "create policy tickets_ticket_items_tenant_update" in sql
+    assert "create policy tickets_ticket_items_no_hard_delete" in sql
+    assert "create policy tickets_ticket_events_tenant_select" in sql
+    assert "create policy tickets_ticket_events_tenant_insert" in sql
+    assert "create policy tickets_ticket_events_no_update" in sql
+    assert "create policy tickets_ticket_events_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger tickets_ticket_items_touch_updated_at_utc" in sql
+    assert "create trigger tickets_ticket_events_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table tickets.ticket_items to collabio_app" in sql
+    assert "grant select, insert on table tickets.ticket_events to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "raw_message text" not in sql
+    assert "attachment_payload" not in sql
+    assert "prompt" not in sql
+    assert "ai_output" not in sql
+    assert "transcript" not in sql
+    assert "audio_blob" not in sql
+    assert "description text" not in sql
+    assert "body text" not in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0051", "0052"]' in sql
+    assert "where module_id = 'tickets_incidents'" in sql
+    assert "status = 'not_installed'" in sql
 
 
 def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_content_storage() -> None:

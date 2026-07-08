@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
-from suite.persistence.migration_catalog import MigrationManifestEntry
+from suite.persistence.migration_catalog import MigrationManifestEntry, get_migration
 from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 from suite.platform.tickets_incidents_migration_evidence_gate import (
     TICKETS_INCIDENTS_MIGRATION_EVIDENCE_GATE_ENDPOINT,
@@ -30,12 +31,11 @@ TICKETS_INCIDENTS_STORAGE_MIGRATION_EVIDENCE_ENDPOINT = (
     "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence"
 )
 TICKETS_INCIDENTS_METADATA_SCHEMA_MIGRATION_NAME = "tickets_incidents_metadata_schema"
+TICKETS_INCIDENTS_METADATA_SCHEMA_MIGRATION_VERSION = "0052"
 TICKETS_INCIDENTS_STORAGE_EVIDENCE_REPAIR_NEXT_ACTION = (
     "repair_tickets_incidents_migration_evidence_gate_before_storage_draft"
 )
-TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = (
-    "write_tickets_incidents_metadata_schema_migration_after_evidence_review_without_execution"
-)
+TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = "review_tickets_incidents_restore_drill_before_storage_execution"
 
 
 class TicketsIncidentsPlannedStorageTable(BaseModel):
@@ -204,14 +204,14 @@ class TicketsIncidentsStorageMigrationEvidenceResponse(BaseModel):
             and self.kms_audit_reference_plan_ready
             and self.backup_failover_update_planned
             and self.no_content_payload_columns_planned
+            and self.metadata_schema_migration_file_created
+            and self.metadata_schema_migration_registered
             and not self.blocking_reasons
         )
         if self.storage_migration_evidence_ready != expected_ready:
             raise ValueError("Tickets & Incidents storage migration evidence readiness must match evidence checks")
         if (
-            self.metadata_schema_migration_file_created
-            or self.metadata_schema_migration_registered
-            or self.storage_migration_execution_allowed
+            self.storage_migration_execution_allowed
             or self.tenant_provisioning_allowed
             or self.tickets_business_api_allowed
             or self.business_tables_created
@@ -242,26 +242,28 @@ def build_tickets_incidents_storage_migration_evidence_response(
     feature_registry = build_default_tickets_incidents_subfeature_registry()
     object_rule_manifest = build_default_tickets_incidents_object_rule_manifest()
     object_rule_manifest.validate_subfeature_registry(feature_registry)
+    migration_manifest = tuple(migration_manifest_entries)
 
     gate = build_tickets_incidents_migration_evidence_gate_response(
         user_context=user_context,
         module_registry=module_registry,
-        migration_manifest_entries=migration_manifest_entries,
+        migration_manifest_entries=migration_manifest,
     )
     planned_tables = _planned_tables()
     planned_object_types = tuple(table.object_type for table in planned_tables)
-    table_design_review_ready = planned_object_types == TICKETS_INCIDENTS_OBJECT_TYPES
-    rls_policy_plan_ready = all(table.planned_rls_policies for table in planned_tables)
-    tenant_isolation_plan_ready = all("tenant_id" in table.required_columns for table in planned_tables)
-    retention_legal_hold_plan_ready = all(
-        {"retention_policy_id", "legal_hold_state"}.issubset(table.required_columns) for table in planned_tables
+    migration_versions = tuple(
+        sorted(entry.version for entry in migration_manifest if entry.module_id == TICKETS_INCIDENTS_MODULE_ID)
     )
-    kms_audit_reference_plan_ready = all(
-        {"kms_key_ref", "audit_chain_ref"}.issubset(table.required_columns) for table in planned_tables
+    metadata_schema_migration_registered = TICKETS_INCIDENTS_METADATA_SCHEMA_MIGRATION_VERSION in migration_versions
+    sql_checks = _metadata_schema_sql_checks()
+    table_design_review_ready = (
+        planned_object_types == TICKETS_INCIDENTS_OBJECT_TYPES and sql_checks.table_design_verified
     )
-    no_content_payload_columns_planned = all(
-        set(table.required_columns).isdisjoint(table.forbidden_payload_columns_absent) for table in planned_tables
-    )
+    rls_policy_plan_ready = sql_checks.rls_verified
+    tenant_isolation_plan_ready = sql_checks.tenant_isolation_verified
+    retention_legal_hold_plan_ready = sql_checks.retention_legal_hold_verified
+    kms_audit_reference_plan_ready = sql_checks.kms_audit_reference_verified
+    no_content_payload_columns_planned = sql_checks.no_content_payload_columns_verified
     required_storage_evidence = (
         "ticket_metadata_schema_design_review",
         "ticket_event_metadata_schema_design_review",
@@ -271,7 +273,9 @@ def build_tickets_incidents_storage_migration_evidence_response(
         "kms_audit_reference_columns_plan",
         "no_content_payload_columns_confirmed",
         "backup_restore_ticket_incident_records_update",
-        "no_storage_migration_file_created_confirmed",
+        "tickets_incidents_metadata_schema_migration_0052",
+        "tickets_incidents_metadata_schema_migration_registered",
+        "tickets_metadata_schema_sql_restore_checks",
         "no_storage_migration_execution_confirmed",
         "no_tenant_state_creation_confirmed",
         "no_business_api_or_worker_activation_confirmed",
@@ -286,6 +290,8 @@ def build_tickets_incidents_storage_migration_evidence_response(
         kms_audit_reference_plan_ready=kms_audit_reference_plan_ready,
         backup_failover_update_planned=backup_failover_update_planned,
         no_content_payload_columns_planned=no_content_payload_columns_planned,
+        metadata_schema_migration_file_created=sql_checks.metadata_schema_migration_file_created,
+        metadata_schema_migration_registered=metadata_schema_migration_registered,
     )
     draft = TicketsIncidentsStorageMigrationEvidenceResponse(
         tenant_id=user_context.tenant_id,
@@ -301,6 +307,8 @@ def build_tickets_incidents_storage_migration_evidence_response(
         kms_audit_reference_plan_ready=kms_audit_reference_plan_ready,
         backup_failover_update_planned=backup_failover_update_planned,
         no_content_payload_columns_planned=no_content_payload_columns_planned,
+        metadata_schema_migration_file_created=sql_checks.metadata_schema_migration_file_created,
+        metadata_schema_migration_registered=metadata_schema_migration_registered,
         planned_tables=planned_tables,
         planned_object_types=planned_object_types,
         required_storage_migration_evidence=required_storage_evidence,
@@ -319,6 +327,7 @@ def build_tickets_incidents_storage_migration_evidence_response(
             "app/suite/platform/tickets_incidents_migration_evidence_gate.py",
             "app/suite/platform/tickets_incidents_storage_migration_evidence.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
+            "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "tests/test_tickets_incidents_storage_migration_evidence.py",
         ),
         next_action=_next_action(storage_migration_evidence_ready=not blocking_reasons),
@@ -401,6 +410,8 @@ def _blocking_reasons(
     kms_audit_reference_plan_ready: bool,
     backup_failover_update_planned: bool,
     no_content_payload_columns_planned: bool,
+    metadata_schema_migration_file_created: bool,
+    metadata_schema_migration_registered: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if not gate_ready:
@@ -417,6 +428,10 @@ def _blocking_reasons(
         reasons.append("tickets_incidents_backup_failover_update_missing")
     if not no_content_payload_columns_planned:
         reasons.append("tickets_incidents_content_payload_column_boundary_failed")
+    if not metadata_schema_migration_file_created:
+        reasons.append("tickets_incidents_metadata_schema_migration_file_missing")
+    if not metadata_schema_migration_registered:
+        reasons.append("tickets_incidents_metadata_schema_migration_not_registered")
     return tuple(reasons)
 
 
@@ -424,3 +439,97 @@ def _next_action(*, storage_migration_evidence_ready: bool) -> str:
     if not storage_migration_evidence_ready:
         return TICKETS_INCIDENTS_STORAGE_EVIDENCE_REPAIR_NEXT_ACTION
     return TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION
+
+
+@dataclass(frozen=True)
+class _MetadataSchemaSqlChecks:
+    metadata_schema_migration_file_created: bool
+    table_design_verified: bool
+    rls_verified: bool
+    tenant_isolation_verified: bool
+    retention_legal_hold_verified: bool
+    kms_audit_reference_verified: bool
+    no_content_payload_columns_verified: bool
+
+
+def _metadata_schema_sql_checks() -> _MetadataSchemaSqlChecks:
+    try:
+        sql = " ".join(get_migration(TICKETS_INCIDENTS_METADATA_SCHEMA_MIGRATION_VERSION).sql().lower().split())
+    except (FileNotFoundError, LookupError):
+        return _MetadataSchemaSqlChecks(
+            metadata_schema_migration_file_created=False,
+            table_design_verified=False,
+            rls_verified=False,
+            tenant_isolation_verified=False,
+            retention_legal_hold_verified=False,
+            kms_audit_reference_verified=False,
+            no_content_payload_columns_verified=False,
+        )
+
+    table_design_verified = all(
+        marker in sql
+        for marker in (
+            "create schema if not exists tickets",
+            "create table if not exists tickets.ticket_items",
+            "create table if not exists tickets.ticket_events",
+            "object_type text not null default 'ticket.ticket'",
+            "object_type text not null default 'ticket.event'",
+            "subject_redacted text not null",
+            "event_summary_redacted text not null",
+            "foreign key (tenant_id, ticket_id)",
+        )
+    )
+    rls_verified = all(
+        marker in sql
+        for marker in (
+            "alter table tickets.ticket_items enable row level security",
+            "alter table tickets.ticket_items force row level security",
+            "alter table tickets.ticket_events enable row level security",
+            "alter table tickets.ticket_events force row level security",
+            "create policy tickets_ticket_items_tenant_select",
+            "create policy tickets_ticket_items_tenant_insert",
+            "create policy tickets_ticket_items_tenant_update",
+            "create policy tickets_ticket_items_no_hard_delete",
+            "create policy tickets_ticket_events_tenant_select",
+            "create policy tickets_ticket_events_tenant_insert",
+            "create policy tickets_ticket_events_no_update",
+            "create policy tickets_ticket_events_no_hard_delete",
+        )
+    )
+    tenant_isolation_verified = "tenant_id = collabio.current_tenant_id()" in sql
+    retention_legal_hold_verified = all(
+        marker in sql
+        for marker in (
+            "retention_policy_id text not null default 'rp-standard'",
+            "legal_hold_state text not null default 'none'",
+        )
+    )
+    kms_audit_reference_verified = all(
+        marker in sql
+        for marker in (
+            "kms_key_ref text not null check",
+            "audit_chain_ref text not null check",
+        )
+    )
+    no_content_payload_columns_verified = not any(
+        forbidden in sql
+        for forbidden in (
+            "raw_message text",
+            "attachment_payload",
+            "prompt",
+            "ai_output",
+            "transcript",
+            "audio_blob",
+            "description text",
+            "body text",
+        )
+    )
+    return _MetadataSchemaSqlChecks(
+        metadata_schema_migration_file_created=True,
+        table_design_verified=table_design_verified,
+        rls_verified=rls_verified,
+        tenant_isolation_verified=tenant_isolation_verified,
+        retention_legal_hold_verified=retention_legal_hold_verified,
+        kms_audit_reference_verified=kms_audit_reference_verified,
+        no_content_payload_columns_verified=no_content_payload_columns_verified,
+    )

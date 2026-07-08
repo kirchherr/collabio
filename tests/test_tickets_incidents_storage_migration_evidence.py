@@ -40,8 +40,8 @@ def test_tickets_incidents_storage_migration_evidence_drafts_schema_without_exec
     assert response.kms_audit_reference_plan_ready is True
     assert response.backup_failover_update_planned is True
     assert response.no_content_payload_columns_planned is True
-    assert response.metadata_schema_migration_file_created is False
-    assert response.metadata_schema_migration_registered is False
+    assert response.metadata_schema_migration_file_created is True
+    assert response.metadata_schema_migration_registered is True
     assert response.storage_migration_execution_allowed is False
     assert response.tenant_provisioning_allowed is False
     assert response.tickets_business_api_allowed is False
@@ -70,7 +70,9 @@ def test_tickets_incidents_storage_migration_evidence_drafts_schema_without_exec
     assert "description" not in response.planned_tables[0].required_columns
     assert "raw_message" not in response.planned_tables[1].required_columns
     assert "backup_restore_ticket_incident_records_update" in response.required_storage_migration_evidence
-    assert "no_storage_migration_file_created_confirmed" in response.required_storage_migration_evidence
+    assert "tickets_incidents_metadata_schema_migration_0052" in response.required_storage_migration_evidence
+    assert "tickets_incidents_metadata_schema_migration_registered" in response.required_storage_migration_evidence
+    assert "tickets_metadata_schema_sql_restore_checks" in response.required_storage_migration_evidence
     assert "no_storage_migration_execution_confirmed" in response.required_storage_migration_evidence
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
@@ -80,6 +82,7 @@ def test_tickets_incidents_storage_migration_evidence_drafts_schema_without_exec
     assert response.summary.required_storage_evidence_count == len(response.required_storage_migration_evidence)
     assert response.summary.blocking_reason_count == 0
     assert "app/suite/platform/tickets_incidents_storage_migration_evidence.py" in response.evidence_refs
+    assert "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql" in response.evidence_refs
     assert "tests/test_tickets_incidents_storage_migration_evidence.py" in response.evidence_refs
     assert response.next_action == TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION
 
@@ -98,7 +101,10 @@ def test_tickets_incidents_storage_migration_evidence_blocks_without_gate_readin
     assert response.migration_evidence_gate_ready is False
     assert response.catalog_registration_migration_present is False
     assert response.storage_migration_evidence_ready is False
+    assert response.metadata_schema_migration_file_created is True
+    assert response.metadata_schema_migration_registered is False
     assert "tickets_incidents_migration_evidence_gate_not_ready" in response.blocking_reasons
+    assert "tickets_incidents_metadata_schema_migration_not_registered" in response.blocking_reasons
     assert response.next_action == "repair_tickets_incidents_migration_evidence_gate_before_storage_draft"
 
 

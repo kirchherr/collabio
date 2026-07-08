@@ -240,6 +240,7 @@ def build_tickets_incidents_migration_evidence_gate_response(
             "app/suite/platform/tickets_incidents_catalog_readiness.py",
             "app/suite/platform/tickets_incidents_migration_evidence_gate.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
+            "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_tickets_incidents_migration_evidence_gate.py",
         ),

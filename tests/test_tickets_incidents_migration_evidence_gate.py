@@ -5,7 +5,7 @@ from suite.platform.tickets_incidents_migration_evidence_gate import (
     TICKETS_INCIDENTS_MIGRATION_EVIDENCE_GATE_ENDPOINT,
     TICKETS_INCIDENTS_MIGRATION_EVIDENCE_GATE_RESULT_CONTRACT,
     TICKETS_INCIDENTS_MIGRATION_EVIDENCE_GATE_SCHEMA_VERSION,
-    TICKETS_INCIDENTS_STORAGE_MIGRATION_DRAFT_NEXT_ACTION,
+    TICKETS_INCIDENTS_RESTORE_REVIEW_NEXT_ACTION,
     build_tickets_incidents_migration_evidence_gate_response,
 )
 
@@ -32,7 +32,7 @@ def test_tickets_incidents_migration_evidence_gate_is_metadata_only_before_stora
     assert response.tenant_module_state_present is False
     assert response.catalog_registration_migration_present is True
     assert response.migration_evidence_gate_ready is True
-    assert response.storage_migration_evidence_ready is False
+    assert response.storage_migration_evidence_ready is True
     assert response.storage_migration_execution_allowed is False
     assert response.tenant_provisioning_allowed is False
     assert response.tickets_business_api_allowed is False
@@ -44,15 +44,15 @@ def test_tickets_incidents_migration_evidence_gate_is_metadata_only_before_stora
     assert response.external_side_effect_allowed is False
     assert response.planned_schema_name == "tickets"
     assert response.planned_object_types == ("ticket.ticket", "ticket.event")
-    assert response.existing_tickets_migration_versions == ("0051",)
-    assert response.existing_tickets_storage_migration_versions == ()
+    assert response.existing_tickets_migration_versions == ("0051", "0052")
+    assert response.existing_tickets_storage_migration_versions == ("0052",)
     assert response.feature_manifest_hash.startswith("sha256:")
     assert response.object_rule_manifest_hash.startswith("sha256:")
     assert "backup_restore_ticket_incident_records_update" in response.required_storage_migration_evidence
     assert "no_tenant_state_creation_confirmed" in response.required_storage_migration_evidence
     assert "no_business_api_or_worker_activation_confirmed" in response.required_storage_migration_evidence
-    assert response.summary.tickets_manifest_migration_count == 1
-    assert response.summary.tickets_storage_migration_count == 0
+    assert response.summary.tickets_manifest_migration_count == 2
+    assert response.summary.tickets_storage_migration_count == 1
     assert response.summary.planned_object_type_count == 2
     assert response.summary.required_storage_evidence_count == len(response.required_storage_migration_evidence)
     assert response.summary.blocking_reason_count == 0
@@ -60,7 +60,8 @@ def test_tickets_incidents_migration_evidence_gate_is_metadata_only_before_stora
     assert "app/suite/platform/tickets_incidents_migration_evidence_gate.py" in response.evidence_refs
     assert "tests/test_tickets_incidents_migration_evidence_gate.py" in response.evidence_refs
     assert "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql" in response.evidence_refs
-    assert response.next_action == TICKETS_INCIDENTS_STORAGE_MIGRATION_DRAFT_NEXT_ACTION
+    assert "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql" in response.evidence_refs
+    assert response.next_action == TICKETS_INCIDENTS_RESTORE_REVIEW_NEXT_ACTION
 
     assert module_registry.get_catalog_entry("tickets_incidents").status.value == "not_installed"
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="tickets_incidents") is None
@@ -104,7 +105,7 @@ def test_tickets_incidents_migration_evidence_gate_is_tenant_scoped_without_side
     assert first.object_rule_manifest_hash == second.object_rule_manifest_hash
     assert first.migration_evidence_gate_ready is True
     assert second.migration_evidence_gate_ready is True
-    assert first.storage_migration_evidence_ready is False
-    assert second.storage_migration_evidence_ready is False
+    assert first.storage_migration_evidence_ready is True
+    assert second.storage_migration_evidence_ready is True
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-a", module_id="tickets_incidents") is None
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-b", module_id="tickets_incidents") is None

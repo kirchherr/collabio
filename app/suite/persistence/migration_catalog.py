@@ -475,6 +475,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tickets-incidents-catalog-registration",
         ),
     ),
+    SqlMigration(
+        version="0052",
+        name="tickets_incidents_metadata_schema",
+        resource_name="0052_tickets_incidents_metadata_schema.sql",
+        module_id="tickets_incidents",
+        evidence_refs=(
+            "doc:tickets-incidents-module-charter",
+            "test:tickets-incidents-metadata-schema",
+        ),
+    ),
 )
 
 
