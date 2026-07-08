@@ -952,6 +952,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_migration_evidence_gate_ready" in future_modules["guardrails"]
     assert "tickets_incidents_storage_migration_evidence_ready" in future_modules["guardrails"]
     assert "tickets_incidents_metadata_schema_migration_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_restore_drill_evidence_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -985,6 +986,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_plan_review_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_scheduler_boundary_ready" in future_modules["guardrails"]
     assert "lms_package_installation_dry_run_execution_worker_image_boundary_ready" in future_modules["guardrails"]
+    assert "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence" in future_modules["api_routes"]
     assert (
         "/v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight"
         in future_modules["api_routes"]
@@ -1120,7 +1122,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert future_modules["next_action"] == "review_tickets_incidents_restore_drill_before_storage_execution"
+    assert (
+        future_modules["next_action"]
+        == "prepare_tickets_incidents_tenant_admin_activation_approval_gate_without_runtime_activation"
+    )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1387,7 +1392,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
         families["tickets_incidents"]["next_action"]
-        == "review_tickets_incidents_restore_drill_before_storage_execution"
+        == "prepare_tickets_incidents_tenant_admin_activation_approval_gate_without_runtime_activation"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1866,6 +1871,123 @@ def test_tickets_incidents_storage_migration_evidence_returns_metadata_only_sche
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
     assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
+
+
+def test_tickets_incidents_restore_drill_evidence_requires_request_context() -> None:
+    response = client.get("/v1/platform/modules/families/tickets-incidents/restore-drill-evidence")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_tickets_incidents_restore_drill_evidence_returns_metadata_only_restore_hash_without_activation() -> None:
+    reset_module_registry()
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get(
+        "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence",
+        headers=DEMO_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "tickets_incidents_restore_drill_evidence.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "tickets_incidents"
+    assert body["endpoint"] == "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence"
+    assert body["result_contract"] == "metadata_only_tickets_incidents_restore_drill_evidence_no_activation"
+    assert body["continuity_domain"] == "ticket_incident_records"
+    assert body["catalog_status"] == "not_installed"
+    assert body["tenant_module_status"] is None
+    assert body["module_catalog_entry_present"] is True
+    assert body["module_package_installed"] is False
+    assert body["tenant_module_state_present"] is False
+    assert body["storage_migration_evidence_ready"] is True
+    assert body["migration_plan_ready"] is True
+    assert body["catalog_registration_migration_present"] is True
+    assert body["metadata_schema_migration_present"] is True
+    assert body["table_restore_verified"] is True
+    assert body["rls_restore_verified"] is True
+    assert body["tenant_isolation_restore_verified"] is True
+    assert body["retention_restore_verified"] is True
+    assert body["legal_hold_restore_verified"] is True
+    assert body["kms_reference_restore_verified"] is True
+    assert body["audit_reference_restore_verified"] is True
+    assert body["sla_state_restore_verified"] is True
+    assert body["no_content_payload_restore_verified"] is True
+    assert body["restore_evidence_ready"] is True
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["tickets_business_api_allowed"] is False
+    assert body["worker_activation_allowed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["persistent_task_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert body["existing_tickets_migration_versions"] == ["0051", "0052"]
+    assert body["restored_tables"] == ["tickets.ticket_items", "tickets.ticket_events"]
+    assert body["restored_object_types"] == ["ticket.ticket", "ticket.event"]
+    assert "tickets_incidents_metadata_schema_migration_0052" in body["required_restore_evidence"]
+    assert "tickets_tenant_rls_restore_check" in body["required_restore_evidence"]
+    assert "tickets_sla_state_restore_check" in body["required_restore_evidence"]
+    assert "no_tickets_tenant_activation_or_worker_confirmed" in body["required_restore_evidence"]
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["summary"] == {
+        "tickets_manifest_migration_count": 2,
+        "restored_table_count": 2,
+        "restored_object_type_count": 2,
+        "required_restore_evidence_count": 11,
+        "blocking_reason_count": 0,
+    }
+    assert "app/suite/platform/tickets_incidents_restore_drill_evidence.py" in body["evidence_refs"]
+    assert "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql" in body["evidence_refs"]
+    assert "tests/test_tickets_incidents_restore_drill_evidence.py" in body["evidence_refs"]
+    assert (
+        body["next_action"]
+        == "prepare_tickets_incidents_tenant_admin_activation_approval_gate_without_runtime_activation"
+    )
+    assert "audit:module-seed" not in response.text
+    assert "policy_snapshot_hash" not in response.text
+    assert "changed_by" not in response.text
+    assert "human_confirmation_statement" not in response.text
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.tickets_incidents.restore_drill_evidence"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == "metadata_only_tickets_incidents_restore_drill_evidence_no_activation"
+    assert event.metadata["module_id"] == "tickets_incidents"
+    assert event.metadata["catalog_status"] == "not_installed"
+    assert event.metadata["tenant_module_status"] is None
+    assert event.metadata["storage_migration_evidence_ready"] is True
+    assert event.metadata["restore_evidence_ready"] is True
+    assert event.metadata["migration_plan_ready"] is True
+    assert event.metadata["metadata_schema_migration_present"] is True
+    assert event.metadata["table_restore_verified"] is True
+    assert event.metadata["rls_restore_verified"] is True
+    assert event.metadata["tenant_isolation_restore_verified"] is True
+    assert event.metadata["sla_state_restore_verified"] is True
+    assert event.metadata["no_content_payload_restore_verified"] is True
+    assert event.metadata["tickets_manifest_migration_count"] == 2
+    assert event.metadata["restored_table_count"] == 2
+    assert event.metadata["restored_object_type_count"] == 2
+    assert event.metadata["required_restore_evidence_count"] == 11
+    assert event.metadata["blocking_reason_count"] == 0
+    assert event.metadata["tenant_provisioning_allowed"] is False
+    assert event.metadata["tickets_business_api_allowed"] is False
+    assert event.metadata["worker_activation_allowed"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["persistent_task_created"] is False
+    assert event.metadata["content_included"] is False
     assert event.metadata["destructive_actions_allowed"] is False
     assert event.metadata["external_side_effect_allowed"] is False
     assert event.metadata["next_action"] == body["next_action"]

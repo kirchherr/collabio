@@ -548,8 +548,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
                         "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities und Tickets & Incidents "
-                        "sind katalogregistriert; die Tickets-Metadata-Schema-Migration ist registriert, "
-                        "der Restore-Drill ist der naechste Gate."
+                        "sind katalogregistriert; die Tickets-Restore-Evidence ist metadata-only bereit, "
+                        "Tenant-Admin-Approval bleibt der naechste Gate."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -562,6 +562,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_catalog_readiness.py",
                         "app/suite/platform/tickets_incidents_migration_evidence_gate.py",
                         "app/suite/platform/tickets_incidents_storage_migration_evidence.py",
+                        "app/suite/platform/tickets_incidents_restore_drill_evidence.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -602,6 +603,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
                         "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
                         "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
+                        "tests/test_tickets_incidents_restore_drill_evidence.py",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
@@ -654,6 +656,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
                         "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate",
                         "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence",
+                        "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -714,6 +717,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_migration_evidence_gate_ready",
                         "tickets_incidents_storage_migration_evidence_ready",
                         "tickets_incidents_metadata_schema_migration_ready",
+                        "tickets_incidents_restore_drill_evidence_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -762,7 +766,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="review_tickets_incidents_restore_drill_before_storage_execution",
+                    next_action="prepare_tickets_incidents_tenant_admin_activation_approval_gate_without_runtime_activation",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
