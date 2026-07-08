@@ -821,6 +821,10 @@ from suite.platform.tickets_incidents_storage_migration_evidence import (
     TicketsIncidentsStorageMigrationEvidenceResponse,
     build_tickets_incidents_storage_migration_evidence_response,
 )
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
+    TicketsIncidentsTenantAdminActivationApprovalGateResponse,
+    build_tickets_incidents_tenant_admin_activation_approval_gate_response,
+)
 from suite.platform.workspace_source_objects import (
     WorkspaceSourceObjectCatalog,
     build_default_workspace_source_object_catalog,
@@ -1532,6 +1536,60 @@ def build_app() -> FastAPI:
                 "content_included": response.content_included,
                 "destructive_actions_allowed": response.destructive_actions_allowed,
                 "external_side_effect_allowed": response.external_side_effect_allowed,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate",
+        response_model=TicketsIncidentsTenantAdminActivationApprovalGateResponse,
+    )
+    def tickets_incidents_tenant_admin_activation_approval_gate(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsTenantAdminActivationApprovalGateResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_tenant_admin_activation_approval_gate_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.tenant_admin_activation_approval_gate",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "catalog_status": response.catalog_status,
+                "tenant_module_status": response.tenant_module_status,
+                "module_catalog_entry_present": response.module_catalog_entry_present,
+                "tenant_module_state_present": response.tenant_module_state_present,
+                "migration_plan_ready": response.migration_plan_ready,
+                "restore_evidence_ready": response.restore_evidence_ready,
+                "tickets_restore_drill_evidence_hash": response.tickets_restore_drill_evidence_hash,
+                "approval_gate_ready": response.approval_gate_ready,
+                "human_approval_record_allowed": response.human_approval_record_allowed,
+                "human_approval_record_created": response.human_approval_record_created,
+                "human_approval_ready": response.human_approval_ready,
+                "activation_ready": response.activation_ready,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "persistent_task_created": response.persistent_task_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "tickets_manifest_migration_count": response.summary.tickets_manifest_migration_count,
+                "required_approval_evidence_count": response.summary.required_approval_evidence_count,
+                "approval_scope_count": response.summary.approval_scope_count,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "evidence_hash": response.evidence_hash,
                 "next_action": response.next_action,
             },
         )

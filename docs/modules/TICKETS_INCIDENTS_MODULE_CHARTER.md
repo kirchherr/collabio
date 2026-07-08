@@ -1,6 +1,6 @@
 # Tickets & Incidents Module Charter
 
-Status: restore_drill_evidence_ready_metadata_only
+Status: tenant_admin_activation_approval_gate_ready_metadata_only
 Date: 2026-07-07
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
@@ -70,7 +70,7 @@ Compliance-only later:
 - incident evidence export
 - decommission precheck
 
-No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary; `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` exposes the metadata-only schema-evidence result for migration `0052`; `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` exposes the metadata-only restore evidence hash for `ticket_incident_records`. The module is registered in the platform catalog as `not_installed`; tenant state, business routes, workers, and content must happen in later explicit gates.
+No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary; `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` exposes the metadata-only schema-evidence result for migration `0052`; `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` exposes the metadata-only restore evidence hash for `ticket_incident_records`; `GET /v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate` exposes the metadata-only approval boundary before any human approval record. The module is registered in the platform catalog as `not_installed`; tenant state, business routes, workers, and content must happen in later explicit gates.
 
 ## 5. Persistent Objects
 
@@ -121,7 +121,7 @@ New comments, attachments, escalation rules, notification queues, mail integrati
 
 ## 8. Migrations And Imports
 
-`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `0052_tickets_incidents_metadata_schema.sql` creates the tenant-scoped `tickets.ticket_items` and `tickets.ticket_events` metadata tables, RLS policies, no-hard-delete policies, retention/Legal Hold/KMS/audit columns, and module-catalog migration registration while still creating no tenant module state, business API route, worker, message body, attachment payload, RAG index, or AI/voice runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the `0051`/`0052` boundary. `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` verifies the metadata schema SQL, migration registration, backup evidence, and no-content-payload constraints. `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` binds those checks into a tenant-scoped restore-evidence hash while still allowing no tenant provisioning, business API, worker, content, search, RAG, AI, or voice runtime. The next gate is explicit tenant-admin approval before any activation path.
+`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `0052_tickets_incidents_metadata_schema.sql` creates the tenant-scoped `tickets.ticket_items` and `tickets.ticket_events` metadata tables, RLS policies, no-hard-delete policies, retention/Legal Hold/KMS/audit columns, and module-catalog migration registration while still creating no tenant module state, business API route, worker, message body, attachment payload, RAG index, or AI/voice runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the `0051`/`0052` boundary. `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` verifies the metadata schema SQL, migration registration, backup evidence, and no-content-payload constraints. `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` binds those checks into a tenant-scoped restore-evidence hash while still allowing no tenant provisioning, business API, worker, content, search, RAG, AI, or voice runtime. The next gate is an explicit tenant-admin approval record before any activation path.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
 
@@ -163,6 +163,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 - `tests/test_tickets_incidents_migration_evidence_gate.py`
 - `tests/test_tickets_incidents_storage_migration_evidence.py`
 - `tests/test_tickets_incidents_restore_drill_evidence.py`
+- `tests/test_tickets_incidents_tenant_admin_activation_approval_gate.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`
