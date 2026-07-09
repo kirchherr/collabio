@@ -216,7 +216,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore ticket state and communications; verify escalation history, SLA state, legal-hold scopes, and tenant isolation before queues reopen",
-      "state_artifacts": ["reports", "incidents", "tickets", "ticket SLA state", "communications", "escalation history", "service-desk evidence", "Tickets & Incidents storage migration evidence hash", "Tickets & Incidents restore drill evidence hash", "Tickets & Incidents tenant-admin activation approval gate hash", "Tickets & Incidents tenant-admin activation approval record hash", "Tickets & Incidents activation execution boundary hash", "Tickets & Incidents metadata schema migration 0052", "Tickets & Incidents metadata schema restore checks"]
+      "state_artifacts": ["reports", "incidents", "tickets", "ticket SLA state", "communications", "escalation history", "service-desk evidence", "Tickets & Incidents storage migration evidence hash", "Tickets & Incidents restore drill evidence hash", "Tickets & Incidents tenant-admin activation approval gate hash", "Tickets & Incidents tenant-admin activation approval record hash", "Tickets & Incidents activation execution boundary hash", "Tickets & Incidents activation executor skeleton hash", "Tickets & Incidents metadata schema migration 0052", "Tickets & Incidents metadata schema restore checks"]
     },
     {
       "domain_id": "time_tracking_records",
@@ -449,6 +449,7 @@
     "Tickets & Incidents tenant-admin activation approval gate hash when applicable",
     "Tickets & Incidents tenant-admin activation approval record hash when applicable",
     "Tickets & Incidents activation execution boundary hash when applicable",
+    "Tickets & Incidents activation executor skeleton hash when applicable",
     "Tickets & Incidents metadata schema migration 0052 restore checks when applicable",
     "Knowledge Base runtime reconciliation run report hash when applicable",
     "restore target",

@@ -147,6 +147,9 @@ from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
 from suite.platform.tickets_incidents_activation_execution_boundary import (
     TICKETS_INCIDENTS_ACTIVATION_EXECUTION_BOUNDARY_REVIEW_STATEMENT,
 )
+from suite.platform.tickets_incidents_activation_executor_skeleton import (
+    TICKETS_INCIDENTS_ACTIVATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT,
+)
 from suite.platform.tickets_incidents_tenant_admin_activation_approval_record import (
     TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
     build_default_tickets_incidents_tenant_admin_activation_approval_record_store,
@@ -966,6 +969,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_tenant_admin_activation_approval_gate_ready" in future_modules["guardrails"]
     assert "tickets_incidents_tenant_admin_activation_approval_record_ready" in future_modules["guardrails"]
     assert "tickets_incidents_activation_execution_boundary_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_activation_executor_skeleton_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1144,7 +1148,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
     assert (
-        future_modules["next_action"] == "prepare_tickets_incidents_activation_executor_without_business_api_activation"
+        future_modules["next_action"] == "prepare_tickets_incidents_activation_dry_run_plan_without_tenant_activation"
     )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
@@ -1412,7 +1416,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
         families["tickets_incidents"]["next_action"]
-        == "prepare_tickets_incidents_activation_executor_without_business_api_activation"
+        == "prepare_tickets_incidents_activation_dry_run_plan_without_tenant_activation"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -2419,6 +2423,184 @@ def test_tickets_incidents_activation_execution_boundary_reviews_without_activat
     assert event.metadata["external_side_effect_allowed"] is False
     assert event.metadata["next_action"] == body["next_action"]
     assert "activation_execution_boundary_review_statement" not in event.metadata
+
+
+def test_tickets_incidents_activation_executor_skeleton_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-executor-skeleton",
+        json={
+            "activation_execution_boundary_evidence_hash": "sha256:" + "0" * 64,
+            "tenant_admin_approval_gate_hash": "sha256:" + "1" * 64,
+            "tenant_admin_approval_record_hash": "sha256:" + "2" * 64,
+            "activation_executor_skeleton_ref": "tickets-activation-executor-skeleton:missing-context",
+            "change_request_ref": "change:tickets-activation-executor-skeleton-missing-context",
+            "idempotency_key_ref": "idempotency:tickets-activation-executor-skeleton-missing-context",
+            "prepared_at_utc": "2026-07-09T08:10:00Z",
+            "audit_chain_ref": "audit:tickets-activation-executor-skeleton-missing-context",
+            "activation_executor_skeleton_preparation_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_tickets_incidents_activation_executor_skeleton_prepares_without_activation() -> None:
+    reset_module_registry()
+    headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "tenant-admin-api",
+    }
+    starting_event_count = len(app.state.audit_logger.events)
+
+    gate_response = client.get(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate",
+        headers=headers,
+    )
+    assert gate_response.status_code == 200
+    gate = gate_response.json()
+
+    record_response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records",
+        headers=headers,
+        json={
+            "approval_gate_evidence_hash": gate["evidence_hash"],
+            "approval_record_ref": "tickets-approval:skeleton-api-demo",
+            "approval_ticket_ref": "ticket:tickets-skeleton-api-demo",
+            "human_confirmation_reference": "confirmation:tickets-skeleton-api-demo",
+            "human_confirmation_statement": (
+                TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+            ),
+            "change_request_ref": "change:tickets-skeleton-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-skeleton-api-demo",
+            "approved_at_utc": "2026-07-09T08:00:00Z",
+            "audit_chain_ref": "audit:tickets-skeleton-api-demo",
+        },
+    )
+    assert record_response.status_code == 200
+    record = record_response.json()
+
+    boundary_response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-execution-boundary",
+        headers=headers,
+        json={
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": record["evidence_hash"],
+            "activation_execution_boundary_ref": "tickets-activation-boundary:skeleton-api-demo",
+            "change_request_ref": "change:tickets-activation-boundary-skeleton-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-activation-boundary-skeleton-api-demo",
+            "reviewed_at_utc": "2026-07-09T08:05:00Z",
+            "audit_chain_ref": "audit:tickets-activation-boundary-skeleton-api-demo",
+            "activation_execution_boundary_review_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_EXECUTION_BOUNDARY_REVIEW_STATEMENT
+            ),
+        },
+    )
+    assert boundary_response.status_code == 200
+    boundary = boundary_response.json()
+
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-executor-skeleton",
+        headers=headers,
+        json={
+            "activation_execution_boundary_evidence_hash": boundary["evidence_hash"],
+            "tenant_admin_approval_gate_hash": gate["evidence_hash"],
+            "tenant_admin_approval_record_hash": record["evidence_hash"],
+            "activation_executor_skeleton_ref": "tickets-activation-executor-skeleton:api-demo",
+            "change_request_ref": "change:tickets-activation-executor-skeleton-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-activation-executor-skeleton-api-demo",
+            "prepared_at_utc": "2026-07-09T08:10:00Z",
+            "audit_chain_ref": "audit:tickets-activation-executor-skeleton-api-demo",
+            "activation_executor_skeleton_preparation_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "tickets_incidents_activation_executor_skeleton.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "tickets_incidents"
+    assert body["endpoint"] == "/v1/platform/modules/families/tickets-incidents/activation-executor-skeleton"
+    assert body["result_contract"] == "metadata_only_tickets_incidents_activation_executor_skeleton_no_activation"
+    assert body["approval_gate_ready"] is True
+    assert body["human_approval_ready"] is True
+    assert body["activation_execution_boundary_evidence_hash"] == boundary["evidence_hash"]
+    assert body["tenant_admin_approval_gate_hash"] == gate["evidence_hash"]
+    assert body["tenant_admin_approval_record_hash"] == record["evidence_hash"]
+    assert body["tickets_restore_drill_evidence_hash"] == record["tickets_restore_drill_evidence_hash"]
+    assert body["command_hash"].startswith("sha256:")
+    assert body["idempotency_key_hash"].startswith("sha256:")
+    assert body["activation_executor_skeleton_preparation_statement_hash"].startswith("sha256:")
+    assert body["preparer_role_allowed"] is True
+    assert body["activation_executor_skeleton_requested"] is True
+    assert body["activation_executor_skeleton_prepared"] is True
+    assert body["activation_executor_implementation_required"] is True
+    assert body["activation_dry_run_required"] is True
+    assert body["activation_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["migration_execution_allowed"] is False
+    assert body["tickets_business_api_allowed"] is False
+    assert body["worker_activation_allowed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert body["persistent_task_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "bind_activation_execution_boundary_hash" in body["skeleton_steps"]
+    assert "defer_tickets_business_api_activation" in body["skeleton_steps"]
+    assert "future_activation_dry_run_required" in body["required_executor_skeleton_evidence"]
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["next_action"] == "prepare_tickets_incidents_activation_dry_run_plan_without_tenant_activation"
+    assert TICKETS_INCIDENTS_ACTIVATION_EXECUTOR_SKELETON_PREPARATION_STATEMENT not in response.text
+    assert (
+        app.state.module_registry.get_tenant_module_or_none(
+            tenant_id="tenant-demo",
+            module_id="tickets_incidents",
+        )
+        is None
+    )
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event for event in new_events if event.event_type == "platform.tickets_incidents.activation_executor_skeleton"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == (
+        "metadata_only_tickets_incidents_activation_executor_skeleton_no_activation"
+    )
+    assert event.metadata["activation_execution_boundary_evidence_hash"] == boundary["evidence_hash"]
+    assert event.metadata["tenant_admin_approval_gate_hash"] == gate["evidence_hash"]
+    assert event.metadata["tenant_admin_approval_record_hash"] == record["evidence_hash"]
+    assert (
+        event.metadata["activation_executor_skeleton_preparation_statement_hash"]
+        == body["activation_executor_skeleton_preparation_statement_hash"]
+    )
+    assert event.metadata["activation_executor_skeleton_prepared"] is True
+    assert event.metadata["activation_executor_implementation_required"] is True
+    assert event.metadata["activation_dry_run_required"] is True
+    assert event.metadata["activation_execution_allowed"] is False
+    assert event.metadata["tenant_provisioning_allowed"] is False
+    assert event.metadata["migration_execution_allowed"] is False
+    assert event.metadata["tickets_business_api_allowed"] is False
+    assert event.metadata["worker_activation_allowed"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
+    assert "activation_executor_skeleton_preparation_statement" not in event.metadata
 
 
 def test_lms_catalog_readiness_requires_request_context() -> None:
