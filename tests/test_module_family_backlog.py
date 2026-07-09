@@ -127,7 +127,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert tickets.runtime_activation_allowed is False
     assert (
         tickets.next_action
-        == "prepare_tickets_incidents_activation_dry_run_execution_skeleton_without_tenant_activation"
+        == "review_tickets_incidents_activation_dry_run_executor_implementation_without_tenant_activation"
     )
     assert "module_catalog_entry_required" in tickets.required_foundation_gates
     assert "backup_restore_evidence_required" in tickets.required_foundation_gates
