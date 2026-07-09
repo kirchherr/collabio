@@ -45,7 +45,7 @@ TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
 TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = (
-    "prepare_tickets_incidents_activation_dry_run_result_persistence_boundary_without_execution"
+    "prepare_tickets_incidents_activation_dry_run_execution_activation_boundary_without_execution"
 )
 NEXT_SLICE_SELECTED_NEXT_ACTION = (
     "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
@@ -549,6 +549,8 @@ def build_module_family_backlog_response(
             "app/suite/platform/tickets_incidents_activation_dry_run_execution_request_boundary.py",
             "app/suite/platform/tickets_incidents_activation_dry_run_executor_runtime_boundary.py",
             "app/suite/platform/tickets_incidents_activation_dry_run_execution_preflight.py",
+            "app/suite/platform/tickets_incidents_activation_dry_run_execution_receipt_boundary.py",
+            "app/suite/platform/tickets_incidents_activation_dry_run_result_persistence_boundary.py",
             "app/suite/platform/lms_restore_drill_evidence.py",
             "app/suite/platform/lms_tenant_admin_package_approval_gate.py",
             "app/suite/platform/lms_tenant_admin_package_approval_record.py",
@@ -606,6 +608,8 @@ def build_module_family_backlog_response(
             "tests/test_tickets_incidents_activation_dry_run_execution_request_boundary.py",
             "tests/test_tickets_incidents_activation_dry_run_executor_runtime_boundary.py",
             "tests/test_tickets_incidents_activation_dry_run_execution_preflight.py",
+            "tests/test_tickets_incidents_activation_dry_run_execution_receipt_boundary.py",
+            "tests/test_tickets_incidents_activation_dry_run_result_persistence_boundary.py",
             "tests/test_lms_catalog_readiness.py",
             "tests/test_lms_restore_drill_evidence.py",
             "tests/test_lms_tenant_admin_package_approval_gate.py",
@@ -716,6 +720,8 @@ def build_module_family_next_slice_selection_response(
             "app/suite/platform/tickets_incidents_activation_dry_run_execution_request_boundary.py",
             "app/suite/platform/tickets_incidents_activation_dry_run_executor_runtime_boundary.py",
             "app/suite/platform/tickets_incidents_activation_dry_run_execution_preflight.py",
+            "app/suite/platform/tickets_incidents_activation_dry_run_execution_receipt_boundary.py",
+            "app/suite/platform/tickets_incidents_activation_dry_run_result_persistence_boundary.py",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
@@ -739,6 +745,8 @@ def build_module_family_next_slice_selection_response(
             "tests/test_tickets_incidents_activation_dry_run_execution_request_boundary.py",
             "tests/test_tickets_incidents_activation_dry_run_executor_runtime_boundary.py",
             "tests/test_tickets_incidents_activation_dry_run_execution_preflight.py",
+            "tests/test_tickets_incidents_activation_dry_run_execution_receipt_boundary.py",
+            "tests/test_tickets_incidents_activation_dry_run_result_persistence_boundary.py",
             "tests/test_api.py",
         ),
         blocking_reasons=tuple(blocking_reasons),
