@@ -548,8 +548,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
                         "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities und Tickets & Incidents "
-                        "sind katalogregistriert; Restore-, Tenant-Admin-Approval-Gate und Approval-Record-Boundary "
-                        "sind metadata-only bereit; die Activation-Execution-Boundary bleibt der naechste Gate."
+                        "sind katalogregistriert; Restore-, Tenant-Admin-Approval-Gate, Approval-Record- und "
+                        "Activation-Execution-Boundary sind metadata-only bereit; der Executor bleibt "
+                        "naechster Schritt."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -565,6 +566,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_restore_drill_evidence.py",
                         "app/suite/platform/tickets_incidents_tenant_admin_activation_approval_gate.py",
                         "app/suite/platform/tickets_incidents_tenant_admin_activation_approval_record.py",
+                        "app/suite/platform/tickets_incidents_activation_execution_boundary.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -608,6 +610,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_tickets_incidents_restore_drill_evidence.py",
                         "tests/test_tickets_incidents_tenant_admin_activation_approval_gate.py",
                         "tests/test_tickets_incidents_tenant_admin_activation_approval_record.py",
+                        "tests/test_tickets_incidents_activation_execution_boundary.py",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
@@ -663,6 +666,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence",
                         "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate",
                         "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records",
+                        "/v1/platform/modules/families/tickets-incidents/activation-execution-boundary",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -726,6 +730,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_restore_drill_evidence_ready",
                         "tickets_incidents_tenant_admin_activation_approval_gate_ready",
                         "tickets_incidents_tenant_admin_activation_approval_record_ready",
+                        "tickets_incidents_activation_execution_boundary_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -774,7 +779,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="review_tickets_incidents_activation_execution_boundary",
+                    next_action="prepare_tickets_incidents_activation_executor_without_business_api_activation",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

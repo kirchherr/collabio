@@ -805,6 +805,11 @@ from suite.platform.tasks_activities_catalog_readiness import (
     build_tasks_activities_catalog_readiness_response,
 )
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
+from suite.platform.tickets_incidents_activation_execution_boundary import (
+    TicketsIncidentsActivationExecutionBoundaryCommand,
+    TicketsIncidentsActivationExecutionBoundaryResponse,
+    build_tickets_incidents_activation_execution_boundary_response,
+)
 from suite.platform.tickets_incidents_catalog_readiness import (
     TicketsIncidentsCatalogReadinessResponse,
     build_tickets_incidents_catalog_readiness_response,
@@ -1660,6 +1665,72 @@ def build_app() -> FastAPI:
                 "content_included": response.content_included,
                 "destructive_actions_allowed": response.destructive_actions_allowed,
                 "external_side_effect_allowed": response.external_side_effect_allowed,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-execution-boundary",
+        response_model=TicketsIncidentsActivationExecutionBoundaryResponse,
+    )
+    def tickets_incidents_activation_execution_boundary(
+        command: TicketsIncidentsActivationExecutionBoundaryCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsActivationExecutionBoundaryResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_activation_execution_boundary_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.tickets_incidents_tenant_admin_activation_approval_record_store,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.activation_execution_boundary",
+            source_object_ids=[
+                f"tickets_incidents_tenant_admin_activation_approval_gate:{response.tenant_admin_approval_gate_hash}",
+                f"tickets_incidents_tenant_admin_activation_approval_record:{response.tenant_admin_approval_record_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "approval_gate_ready": response.approval_gate_ready,
+                "human_approval_ready": response.human_approval_ready,
+                "tenant_admin_approval_gate_hash": response.tenant_admin_approval_gate_hash,
+                "tenant_admin_approval_record_hash": response.tenant_admin_approval_record_hash,
+                "tickets_restore_drill_evidence_hash": response.tickets_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "activation_execution_boundary_review_statement_hash": (
+                    response.activation_execution_boundary_review_statement_hash
+                ),
+                "approver_role_allowed": response.approver_role_allowed,
+                "activation_execution_boundary_review_requested": (
+                    response.activation_execution_boundary_review_requested
+                ),
+                "activation_execution_boundary_review_ready": response.activation_execution_boundary_review_ready,
+                "tickets_incidents_activation_execution_boundary_ready": (
+                    response.tickets_incidents_activation_execution_boundary_ready
+                ),
+                "future_activation_executor_required": response.future_activation_executor_required,
+                "activation_execution_allowed": response.activation_execution_allowed,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "persistent_task_created": response.persistent_task_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
                 "next_action": response.next_action,
             },
         )
