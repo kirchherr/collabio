@@ -144,6 +144,10 @@ from suite.platform.source_object_preview_decisions import (
     JsonlSourceObjectPreviewDecisionLedger,
 )
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_record import (
+    TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+    build_default_tickets_incidents_tenant_admin_activation_approval_record_store,
+)
 from suite.platform.workspace_source_objects import (
     ConfiguredWorkspaceSourceObjectCatalog,
     WorkspaceSourceObjectRef,
@@ -432,6 +436,9 @@ def reset_module_registry() -> None:
     app.state.module_registry = default_module_registry()
     app.state.lms_tenant_admin_package_approval_record_store = (
         build_default_lms_tenant_admin_package_approval_record_store()
+    )
+    app.state.tickets_incidents_tenant_admin_activation_approval_record_store = (
+        build_default_tickets_incidents_tenant_admin_activation_approval_record_store()
     )
     app.state.lms_dry_run_execution_approval_record_store = (
         build_default_lms_package_installation_dry_run_execution_approval_record_store()
@@ -954,6 +961,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_metadata_schema_migration_ready" in future_modules["guardrails"]
     assert "tickets_incidents_restore_drill_evidence_ready" in future_modules["guardrails"]
     assert "tickets_incidents_tenant_admin_activation_approval_gate_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_tenant_admin_activation_approval_record_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -990,6 +998,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence" in future_modules["api_routes"]
     assert (
         "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate"
+        in future_modules["api_routes"]
+    )
+    assert (
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records"
         in future_modules["api_routes"]
     )
     assert (
@@ -1127,10 +1139,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert (
-        future_modules["next_action"]
-        == "record_tickets_incidents_tenant_admin_activation_approval_with_explicit_human_confirmation"
-    )
+    assert future_modules["next_action"] == "review_tickets_incidents_activation_execution_boundary"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1395,10 +1404,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["object_rules_ready"] is True
     assert families["tickets_incidents"]["pre_catalog_foundation_ready"] is False
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
-    assert (
-        families["tickets_incidents"]["next_action"]
-        == "record_tickets_incidents_tenant_admin_activation_approval_with_explicit_human_confirmation"
-    )
+    assert families["tickets_incidents"]["next_action"] == "review_tickets_incidents_activation_execution_boundary"
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
     assert "audit:module-seed" not in response.text
@@ -2115,6 +2121,142 @@ def test_tickets_incidents_activation_approval_gate_returns_metadata_only_bounda
     assert event.metadata["blocking_reason_count"] == 0
     assert event.metadata["evidence_hash"] == body["evidence_hash"]
     assert event.metadata["next_action"] == body["next_action"]
+
+
+def test_tickets_incidents_tenant_admin_activation_approval_record_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records",
+        json={
+            "approval_gate_evidence_hash": "sha256:" + "0" * 64,
+            "approval_record_ref": "tickets-approval:record-missing-context",
+            "approval_ticket_ref": "ticket:tickets-activation-missing-context",
+            "human_confirmation_reference": "confirmation:tickets-activation-missing-context",
+            "human_confirmation_statement": (
+                TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+            ),
+            "change_request_ref": "change:tickets-activation-missing-context",
+            "idempotency_key_ref": "idempotency:tickets-activation-missing-context",
+            "approved_at_utc": "2026-07-09T08:00:00Z",
+            "audit_chain_ref": "audit:tickets-activation-missing-context",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_tickets_incidents_activation_approval_record_persists_without_activation() -> None:
+    reset_module_registry()
+    headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "tenant-admin-api",
+    }
+    starting_event_count = len(app.state.audit_logger.events)
+
+    gate_response = client.get(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate",
+        headers=headers,
+    )
+    assert gate_response.status_code == 200
+    gate = gate_response.json()
+
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records",
+        headers=headers,
+        json={
+            "approval_gate_evidence_hash": gate["evidence_hash"],
+            "approval_record_ref": "tickets-approval:record-api-demo",
+            "approval_ticket_ref": "ticket:tickets-activation-api-demo",
+            "human_confirmation_reference": "confirmation:tickets-activation-api-demo",
+            "human_confirmation_statement": (
+                TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+            ),
+            "change_request_ref": "change:tickets-activation-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-activation-api-demo",
+            "approved_at_utc": "2026-07-09T08:00:00Z",
+            "audit_chain_ref": "audit:tickets-activation-api-demo",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "tickets_incidents_tenant_admin_activation_approval_record.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "tickets_incidents"
+    assert body["endpoint"] == (
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records"
+    )
+    assert body["result_contract"] == (
+        "metadata_only_tickets_incidents_tenant_admin_activation_approval_record_no_activation"
+    )
+    assert body["approval_gate_ready"] is True
+    assert body["approval_gate_evidence_hash"] == gate["evidence_hash"]
+    assert body["tickets_restore_drill_evidence_hash"] == gate["tickets_restore_drill_evidence_hash"]
+    assert body["command_hash"].startswith("sha256:")
+    assert body["idempotency_key_hash"].startswith("sha256:")
+    assert body["human_confirmation_statement_hash"].startswith("sha256:")
+    assert body["approver_role_allowed"] is True
+    assert body["record_status"] == "approved_for_activation_execution_gate"
+    assert body["approval_record_created"] is True
+    assert body["human_confirmation_captured"] is True
+    assert body["human_confirmation_statement_matched"] is True
+    assert body["future_activation_execution_gate_required"] is True
+    assert body["activation_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["migration_execution_allowed"] is False
+    assert body["tickets_business_api_allowed"] is False
+    assert body["worker_activation_allowed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert body["persistent_task_created"] is False
+    assert body["content_included"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert "exact_human_confirmation_statement_hash" in body["required_approval_evidence"]
+    assert "future_activation_execution_gate_required" in body["required_approval_evidence"]
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["next_action"] == "review_tickets_incidents_activation_execution_boundary"
+    assert TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT not in response.text
+    assert (
+        app.state.module_registry.get_tenant_module_or_none(
+            tenant_id="tenant-demo",
+            module_id="tickets_incidents",
+        )
+        is None
+    )
+
+    new_events = app.state.audit_logger.events[starting_event_count:]
+    matching_events = [
+        event
+        for event in new_events
+        if event.event_type == "platform.tickets_incidents.tenant_admin_activation_approval_record"
+    ]
+    assert len(matching_events) == 1
+    event = matching_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == (
+        "metadata_only_tickets_incidents_tenant_admin_activation_approval_record_no_activation"
+    )
+    assert event.metadata["approval_gate_evidence_hash"] == gate["evidence_hash"]
+    assert event.metadata["approval_record_created"] is True
+    assert event.metadata["human_confirmation_captured"] is True
+    assert event.metadata["human_confirmation_statement_hash"] == body["human_confirmation_statement_hash"]
+    assert event.metadata["activation_execution_allowed"] is False
+    assert event.metadata["tenant_provisioning_allowed"] is False
+    assert event.metadata["migration_execution_allowed"] is False
+    assert event.metadata["tickets_business_api_allowed"] is False
+    assert event.metadata["worker_activation_allowed"] is False
+    assert event.metadata["module_activation_executed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert event.metadata["content_included"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
+    assert "human_confirmation_statement" not in event.metadata
 
 
 def test_lms_catalog_readiness_requires_request_context() -> None:

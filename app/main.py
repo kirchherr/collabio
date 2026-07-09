@@ -825,6 +825,12 @@ from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate impo
     TicketsIncidentsTenantAdminActivationApprovalGateResponse,
     build_tickets_incidents_tenant_admin_activation_approval_gate_response,
 )
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_record import (
+    TicketsIncidentsTenantAdminActivationApprovalRecordCommand,
+    TicketsIncidentsTenantAdminActivationApprovalRecordResponse,
+    build_default_tickets_incidents_tenant_admin_activation_approval_record_store,
+    build_tickets_incidents_tenant_admin_activation_approval_record_response,
+)
 from suite.platform.workspace_source_objects import (
     WorkspaceSourceObjectCatalog,
     build_default_workspace_source_object_catalog,
@@ -1191,6 +1197,9 @@ def build_app() -> FastAPI:
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
     legacy_sql_migration_run_registry_store = build_default_legacy_sql_migration_run_registry_store()
     lms_tenant_admin_package_approval_record_store = build_default_lms_tenant_admin_package_approval_record_store()
+    tickets_incidents_tenant_admin_activation_approval_record_store = (
+        build_default_tickets_incidents_tenant_admin_activation_approval_record_store()
+    )
     lms_dry_run_execution_approval_record_store = (
         build_default_lms_package_installation_dry_run_execution_approval_record_store()
     )
@@ -1590,6 +1599,67 @@ def build_app() -> FastAPI:
                 "approval_scope_count": response.summary.approval_scope_count,
                 "blocking_reason_count": response.summary.blocking_reason_count,
                 "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records",
+        response_model=TicketsIncidentsTenantAdminActivationApprovalRecordResponse,
+    )
+    def tickets_incidents_tenant_admin_activation_approval_record(
+        command: TicketsIncidentsTenantAdminActivationApprovalRecordCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsTenantAdminActivationApprovalRecordResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_tenant_admin_activation_approval_record_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+        )
+        if response.approval_record_created:
+            response = request.app.state.tickets_incidents_tenant_admin_activation_approval_record_store.append(
+                response
+            )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.tenant_admin_activation_approval_record",
+            source_object_ids=[
+                f"tickets_incidents_tenant_admin_activation_approval_gate:{response.approval_gate_evidence_hash}"
+            ],
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "approval_gate_ready": response.approval_gate_ready,
+                "approval_gate_evidence_hash": response.approval_gate_evidence_hash,
+                "tickets_restore_drill_evidence_hash": response.tickets_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "approver_role_allowed": response.approver_role_allowed,
+                "record_status": response.record_status,
+                "approval_record_created": response.approval_record_created,
+                "human_confirmation_captured": response.human_confirmation_captured,
+                "human_confirmation_statement_matched": response.human_confirmation_statement_matched,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "future_activation_execution_gate_required": response.future_activation_execution_gate_required,
+                "activation_execution_allowed": response.activation_execution_allowed,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "persistent_task_created": response.persistent_task_created,
+                "content_included": response.content_included,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
                 "next_action": response.next_action,
             },
         )
@@ -18233,6 +18303,9 @@ def build_app() -> FastAPI:
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store
     app.state.lms_tenant_admin_package_approval_record_store = lms_tenant_admin_package_approval_record_store
+    app.state.tickets_incidents_tenant_admin_activation_approval_record_store = (
+        tickets_incidents_tenant_admin_activation_approval_record_store
+    )
     app.state.lms_dry_run_execution_approval_record_store = lms_dry_run_execution_approval_record_store
     app.state.lms_dry_run_execution_job_outbox_store = lms_dry_run_execution_job_outbox_store
     app.state.llm_gateway = llm_gateway

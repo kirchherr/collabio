@@ -389,6 +389,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         in policy.domain("service_ticket_records").state_artifacts
     )
     assert (
+        "Tickets & Incidents tenant-admin activation approval record hash"
+        in policy.domain("service_ticket_records").state_artifacts
+    )
+    assert (
         "Tickets & Incidents metadata schema migration 0052" in policy.domain("service_ticket_records").state_artifacts
     )
     assert "time entries" in policy.domain("time_tracking_records").state_artifacts
@@ -410,6 +414,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "Tickets & Incidents restore drill evidence hash when applicable" in policy.restore_drill_evidence
     assert (
         "Tickets & Incidents tenant-admin activation approval gate hash when applicable"
+        in policy.restore_drill_evidence
+    )
+    assert (
+        "Tickets & Incidents tenant-admin activation approval record hash when applicable"
         in policy.restore_drill_evidence
     )
     assert (
