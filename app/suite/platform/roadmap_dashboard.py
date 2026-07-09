@@ -551,9 +551,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "sind katalogregistriert; Restore-, Tenant-Admin-Approval-Gate, Approval-Record- und "
                         "Activation-Execution-Boundary, Executor-Skeleton, Dry-run-Plan, Dry-run-Execution-Boundary "
                         "und Dry-run-Execution-Skeleton, Executor-Implementation-Review, Result-Contract, "
-                        "Execution-Gate, Execution-Request-Boundary, Executor-Runtime-Boundary und Dry-run-Execution-"
-                        "Preflight-Boundary sind metadata-only bereit; naechster Schritt ist die "
-                        "Dry-run-Execution-Receipt-Boundary."
+                        "Execution-Gate, Execution-Request-Boundary, Executor-Runtime-Boundary, Dry-run-Execution-"
+                        "Preflight-Boundary und Dry-run-Execution-Receipt-Boundary sind metadata-only bereit; "
+                        "naechster Schritt ist die Dry-run-Result-Persistence-Boundary."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -822,7 +822,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="prepare_tickets_incidents_activation_dry_run_execution_receipt_boundary_without_execution",
+                    next_action="prepare_tickets_incidents_activation_dry_run_result_persistence_boundary_without_execution",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

@@ -45,7 +45,7 @@ TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
 TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = (
-    "prepare_tickets_incidents_activation_dry_run_execution_receipt_boundary_without_execution"
+    "prepare_tickets_incidents_activation_dry_run_result_persistence_boundary_without_execution"
 )
 NEXT_SLICE_SELECTED_NEXT_ACTION = (
     "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
