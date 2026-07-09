@@ -550,9 +550,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities und Tickets & Incidents "
                         "sind katalogregistriert; Restore-, Tenant-Admin-Approval-Gate, Approval-Record- und "
                         "Activation-Execution-Boundary, Executor-Skeleton, Dry-run-Plan, Dry-run-Execution-Boundary "
-                        "und Dry-run-Execution-Skeleton, Executor-Implementation-Review und Result-Contract sind "
-                        "metadata-only "
-                        "bereit; das Activation-Dry-run-Execution-Gate bleibt naechster Schritt."
+                        "und Dry-run-Execution-Skeleton, Executor-Implementation-Review, Result-Contract und "
+                        "Execution-Gate sind metadata-only bereit; die Dry-run-Execution-Request-Boundary bleibt "
+                        "naechster Schritt."
                     ),
                     status=RoadmapCapabilityStatus.METADATA_ONLY,
                     capability_type="module_backlog",
@@ -575,6 +575,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_skeleton.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_executor_implementation_review.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_result_contract.py",
+                        "app/suite/platform/tickets_incidents_activation_dry_run_execution_gate.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -625,6 +626,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_tickets_incidents_activation_dry_run_execution_skeleton.py",
                         "tests/test_tickets_incidents_activation_dry_run_executor_implementation_review.py",
                         "tests/test_tickets_incidents_activation_dry_run_result_contract.py",
+                        "tests/test_tickets_incidents_activation_dry_run_execution_gate.py",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
@@ -687,6 +689,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-skeleton",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-implementation-review",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-result-contract",
+                        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-gate",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -757,6 +760,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_activation_dry_run_execution_skeleton_ready",
                         "tickets_incidents_activation_dry_run_executor_implementation_review_ready",
                         "tickets_incidents_activation_dry_run_result_contract_ready",
+                        "tickets_incidents_activation_dry_run_execution_gate_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -805,7 +809,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="prepare_tickets_incidents_activation_dry_run_execution_gate_without_execution",
+                    next_action="prepare_tickets_incidents_activation_dry_run_execution_request_boundary_without_execution",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
