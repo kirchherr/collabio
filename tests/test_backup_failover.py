@@ -426,6 +426,7 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     )
     assert "Tickets & Incidents activation execution boundary hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents activation executor skeleton hash when applicable" in policy.restore_drill_evidence
+    assert "Tickets & Incidents activation dry-run plan hash when applicable" in policy.restore_drill_evidence
     assert (
         "Tickets & Incidents metadata schema migration 0052 restore checks when applicable"
         in policy.restore_drill_evidence
