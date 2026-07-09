@@ -159,6 +159,9 @@ from suite.platform.tickets_incidents_activation_dry_run_execution_skeleton impo
 from suite.platform.tickets_incidents_activation_dry_run_executor_implementation_review import (
     TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_IMPLEMENTATION_REVIEW_STATEMENT,
 )
+from suite.platform.tickets_incidents_activation_dry_run_executor_runtime_boundary import (
+    TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_RUNTIME_BOUNDARY_STATEMENT,
+)
 from suite.platform.tickets_incidents_activation_dry_run_plan import (
     TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_STATEMENT,
 )
@@ -977,6 +980,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-request-boundary"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-runtime-boundary"
+        in future_modules["api_routes"]
+    )
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate" in future_modules["api_routes"]
@@ -1023,6 +1030,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_activation_dry_run_result_contract_ready" in future_modules["guardrails"]
     assert "tickets_incidents_activation_dry_run_execution_gate_ready" in future_modules["guardrails"]
     assert "tickets_incidents_activation_dry_run_execution_request_boundary_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_activation_dry_run_executor_runtime_boundary_ready" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1202,7 +1210,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
     assert (
         future_modules["next_action"]
-        == "prepare_tickets_incidents_activation_dry_run_executor_runtime_boundary_without_execution"
+        == "prepare_tickets_incidents_activation_dry_run_execution_preflight_without_execution"
     )
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
@@ -1470,7 +1478,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
         families["tickets_incidents"]["next_action"]
-        == "prepare_tickets_incidents_activation_dry_run_executor_runtime_boundary_without_execution"
+        == "prepare_tickets_incidents_activation_dry_run_execution_preflight_without_execution"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -4621,6 +4629,226 @@ def test_tickets_incidents_activation_dry_run_execution_request_boundary_prepare
     assert event.metadata["next_action"] == body["next_action"]
     assert "activation_dry_run_execution_request_boundary_statement" not in event.metadata
     assert TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTION_REQUEST_BOUNDARY_STATEMENT not in str(event.metadata)
+
+
+def test_tickets_incidents_activation_dry_run_executor_runtime_boundary_requires_request_context() -> None:
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-runtime-boundary",
+        json={
+            "activation_dry_run_plan_evidence_hash": "sha256:" + "0" * 64,
+            "activation_dry_run_execution_boundary_evidence_hash": "sha256:" + "1" * 64,
+            "activation_dry_run_execution_skeleton_evidence_hash": "sha256:" + "2" * 64,
+            "activation_dry_run_executor_implementation_review_evidence_hash": "sha256:" + "3" * 64,
+            "activation_dry_run_result_contract_evidence_hash": "sha256:" + "4" * 64,
+            "activation_dry_run_execution_gate_evidence_hash": "sha256:" + "5" * 64,
+            "activation_dry_run_execution_request_boundary_evidence_hash": "sha256:" + "6" * 64,
+            "activation_execution_boundary_evidence_hash": "sha256:" + "7" * 64,
+            "activation_executor_skeleton_evidence_hash": "sha256:" + "8" * 64,
+            "tenant_admin_approval_gate_hash": "sha256:" + "9" * 64,
+            "tenant_admin_approval_record_hash": "sha256:" + "a" * 64,
+            "activation_dry_run_executor_runtime_boundary_ref": (
+                "tickets-activation-dry-run-executor-runtime-boundary:missing-context"
+            ),
+            "change_request_ref": "change:tickets-activation-dry-run-executor-runtime-boundary-missing-context",
+            "idempotency_key_ref": "idempotency:tickets-activation-dry-run-executor-runtime-boundary-missing-context",
+            "prepared_at_utc": "2026-07-09T08:50:00Z",
+            "audit_chain_ref": "audit:tickets-activation-dry-run-executor-runtime-boundary-missing-context",
+            "activation_dry_run_executor_runtime_boundary_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_RUNTIME_BOUNDARY_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Tenant context requires X-Tenant-Id and X-User-Id headers"
+
+
+def test_tickets_incidents_activation_dry_run_executor_runtime_boundary_prepares_runtime_without_execution() -> None:
+    reset_module_registry()
+    headers = {
+        **DEMO_ADMIN_HEADERS,
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "tenant-admin-api",
+    }
+    starting_event_count = len(app.state.audit_logger.events)
+    chain = _prepare_tickets_incidents_activation_dry_run_result_contract_chain(
+        headers=headers,
+        suffix="dry-run-executor-runtime-boundary-api-demo",
+    )
+
+    gate_response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-gate",
+        headers=headers,
+        json={
+            "activation_dry_run_plan_evidence_hash": chain["plan"]["evidence_hash"],
+            "activation_dry_run_execution_boundary_evidence_hash": chain["dry_run_boundary"]["evidence_hash"],
+            "activation_dry_run_execution_skeleton_evidence_hash": chain["dry_run_skeleton"]["evidence_hash"],
+            "activation_dry_run_executor_implementation_review_evidence_hash": chain["review"]["evidence_hash"],
+            "activation_dry_run_result_contract_evidence_hash": chain["result_contract"]["evidence_hash"],
+            "activation_execution_boundary_evidence_hash": chain["boundary"]["evidence_hash"],
+            "activation_executor_skeleton_evidence_hash": chain["skeleton"]["evidence_hash"],
+            "tenant_admin_approval_gate_hash": chain["gate"]["evidence_hash"],
+            "tenant_admin_approval_record_hash": chain["record"]["evidence_hash"],
+            "activation_dry_run_execution_gate_ref": (
+                "tickets-activation-dry-run-execution-gate:runtime-boundary-api-demo"
+            ),
+            "change_request_ref": "change:tickets-activation-dry-run-execution-gate-runtime-boundary-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-activation-dry-run-execution-gate-runtime-boundary-api-demo",
+            "prepared_at_utc": "2026-07-09T08:40:00Z",
+            "audit_chain_ref": "audit:tickets-activation-dry-run-execution-gate-runtime-boundary-api-demo",
+            "activation_dry_run_execution_gate_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTION_GATE_STATEMENT
+            ),
+        },
+    )
+    assert gate_response.status_code == 200
+    gate = gate_response.json()
+
+    request_boundary_response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-request-boundary",
+        headers=headers,
+        json={
+            "activation_dry_run_plan_evidence_hash": chain["plan"]["evidence_hash"],
+            "activation_dry_run_execution_boundary_evidence_hash": chain["dry_run_boundary"]["evidence_hash"],
+            "activation_dry_run_execution_skeleton_evidence_hash": chain["dry_run_skeleton"]["evidence_hash"],
+            "activation_dry_run_executor_implementation_review_evidence_hash": chain["review"]["evidence_hash"],
+            "activation_dry_run_result_contract_evidence_hash": chain["result_contract"]["evidence_hash"],
+            "activation_dry_run_execution_gate_evidence_hash": gate["evidence_hash"],
+            "activation_execution_boundary_evidence_hash": chain["boundary"]["evidence_hash"],
+            "activation_executor_skeleton_evidence_hash": chain["skeleton"]["evidence_hash"],
+            "tenant_admin_approval_gate_hash": chain["gate"]["evidence_hash"],
+            "tenant_admin_approval_record_hash": chain["record"]["evidence_hash"],
+            "activation_dry_run_execution_request_boundary_ref": (
+                "tickets-activation-dry-run-execution-request-boundary:runtime-boundary-api-demo"
+            ),
+            "change_request_ref": (
+                "change:tickets-activation-dry-run-execution-request-boundary-runtime-boundary-api-demo"
+            ),
+            "idempotency_key_ref": (
+                "idempotency:tickets-activation-dry-run-execution-request-boundary-runtime-boundary-api-demo"
+            ),
+            "prepared_at_utc": "2026-07-09T08:45:00Z",
+            "audit_chain_ref": "audit:tickets-activation-dry-run-execution-request-boundary-runtime-boundary-api-demo",
+            "activation_dry_run_execution_request_boundary_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTION_REQUEST_BOUNDARY_STATEMENT
+            ),
+        },
+    )
+    assert request_boundary_response.status_code == 200
+    request_boundary = request_boundary_response.json()
+
+    response = client.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-runtime-boundary",
+        headers=headers,
+        json={
+            "activation_dry_run_plan_evidence_hash": chain["plan"]["evidence_hash"],
+            "activation_dry_run_execution_boundary_evidence_hash": chain["dry_run_boundary"]["evidence_hash"],
+            "activation_dry_run_execution_skeleton_evidence_hash": chain["dry_run_skeleton"]["evidence_hash"],
+            "activation_dry_run_executor_implementation_review_evidence_hash": chain["review"]["evidence_hash"],
+            "activation_dry_run_result_contract_evidence_hash": chain["result_contract"]["evidence_hash"],
+            "activation_dry_run_execution_gate_evidence_hash": gate["evidence_hash"],
+            "activation_dry_run_execution_request_boundary_evidence_hash": request_boundary["evidence_hash"],
+            "activation_execution_boundary_evidence_hash": chain["boundary"]["evidence_hash"],
+            "activation_executor_skeleton_evidence_hash": chain["skeleton"]["evidence_hash"],
+            "tenant_admin_approval_gate_hash": chain["gate"]["evidence_hash"],
+            "tenant_admin_approval_record_hash": chain["record"]["evidence_hash"],
+            "activation_dry_run_executor_runtime_boundary_ref": (
+                "tickets-activation-dry-run-executor-runtime-boundary:api-demo"
+            ),
+            "change_request_ref": "change:tickets-activation-dry-run-executor-runtime-boundary-api-demo",
+            "idempotency_key_ref": "idempotency:tickets-activation-dry-run-executor-runtime-boundary-api-demo",
+            "prepared_at_utc": "2026-07-09T08:50:00Z",
+            "audit_chain_ref": "audit:tickets-activation-dry-run-executor-runtime-boundary-api-demo",
+            "activation_dry_run_executor_runtime_boundary_statement": (
+                TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_RUNTIME_BOUNDARY_STATEMENT
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "tickets_incidents_activation_dry_run_executor_runtime_boundary.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["module_id"] == "tickets_incidents"
+    assert body["endpoint"] == (
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-runtime-boundary"
+    )
+    assert body["result_contract"] == (
+        "metadata_only_tickets_incidents_activation_dry_run_executor_runtime_boundary_no_execution"
+    )
+    assert body["activation_dry_run_execution_gate_evidence_hash"] == gate["evidence_hash"]
+    assert body["activation_dry_run_execution_request_boundary_evidence_hash"] == request_boundary["evidence_hash"]
+    assert body["activation_dry_run_executor_runtime_boundary_statement_hash"].startswith("sha256:")
+    assert body["activation_dry_run_executor_runtime_boundary_requested"] is True
+    assert body["activation_dry_run_executor_runtime_boundary_ready"] is True
+    assert body["future_activation_dry_run_execution_preflight_required"] is True
+    assert body["activation_dry_run_execution_allowed"] is False
+    assert body["activation_dry_run_executed"] is False
+    assert body["activation_execution_allowed"] is False
+    assert body["tenant_provisioning_allowed"] is False
+    assert body["migration_execution_allowed"] is False
+    assert body["tickets_business_api_allowed"] is False
+    assert body["worker_activation_allowed"] is False
+    assert body["module_activation_executed"] is False
+    assert body["tenant_module_state_created"] is False
+    assert body["dry_run_result_persistence_allowed"] is False
+    assert body["dry_run_result_persisted"] is False
+    assert body["destructive_actions_allowed"] is False
+    assert body["external_side_effect_allowed"] is False
+    assert (
+        "define_runtime_adapter_contract_without_provider_activation"
+        in body["activation_dry_run_executor_runtime_boundary_steps"]
+    )
+    assert (
+        "future_activation_dry_run_execution_preflight_required"
+        in body["required_activation_dry_run_executor_runtime_boundary_evidence"]
+    )
+    assert body["blocking_reasons"] == []
+    assert body["evidence_hash"].startswith("sha256:")
+    assert body["next_action"] == "prepare_tickets_incidents_activation_dry_run_execution_preflight_without_execution"
+    assert "activation_dry_run_executor_runtime_boundary_statement" not in body
+    assert TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_RUNTIME_BOUNDARY_STATEMENT not in response.text
+    assert (
+        app.state.module_registry.get_tenant_module_or_none(
+            tenant_id="tenant-demo",
+            module_id="tickets_incidents",
+        )
+        is None
+    )
+
+    runtime_events = [
+        event
+        for event in app.state.audit_logger.events[starting_event_count:]
+        if event.event_type == "platform.tickets_incidents.activation_dry_run_executor_runtime_boundary"
+    ]
+    assert len(runtime_events) == 1
+    event = runtime_events[0]
+    assert event.tenant_id == "tenant-demo"
+    assert event.input_hash is None
+    assert event.output_hash is None
+    assert event.metadata["result_contract"] == (
+        "metadata_only_tickets_incidents_activation_dry_run_executor_runtime_boundary_no_execution"
+    )
+    assert event.metadata["activation_dry_run_execution_gate_evidence_hash"] == gate["evidence_hash"]
+    assert (
+        event.metadata["activation_dry_run_execution_request_boundary_evidence_hash"]
+        == request_boundary["evidence_hash"]
+    )
+    assert (
+        event.metadata["activation_dry_run_executor_runtime_boundary_statement_hash"]
+        == body["activation_dry_run_executor_runtime_boundary_statement_hash"]
+    )
+    assert event.metadata["activation_dry_run_executor_runtime_boundary_ready"] is True
+    assert event.metadata["future_activation_dry_run_execution_preflight_required"] is True
+    assert event.metadata["activation_dry_run_execution_allowed"] is False
+    assert event.metadata["activation_dry_run_executed"] is False
+    assert event.metadata["tenant_module_state_created"] is False
+    assert event.metadata["dry_run_result_persistence_allowed"] is False
+    assert event.metadata["destructive_actions_allowed"] is False
+    assert event.metadata["external_side_effect_allowed"] is False
+    assert event.metadata["next_action"] == body["next_action"]
+    assert "activation_dry_run_executor_runtime_boundary_statement" not in event.metadata
+    assert TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_EXECUTOR_RUNTIME_BOUNDARY_STATEMENT not in str(event.metadata)
 
 
 def test_lms_catalog_readiness_requires_request_context() -> None:
