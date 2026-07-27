@@ -810,6 +810,11 @@ from suite.platform.tickets_incidents_activation_dry_run_execution_activation_bo
     TicketsIncidentsActivationDryRunExecutionActivationBoundaryResponse,
     build_tickets_incidents_activation_dry_run_execution_activation_boundary_response,
 )
+from suite.platform.tickets_incidents_activation_dry_run_execution_approval_boundary import (
+    TicketsIncidentsActivationDryRunExecutionApprovalBoundaryCommand,
+    TicketsIncidentsActivationDryRunExecutionApprovalBoundaryResponse,
+    build_tickets_incidents_activation_dry_run_execution_approval_boundary_response,
+)
 from suite.platform.tickets_incidents_activation_dry_run_execution_boundary import (
     TicketsIncidentsActivationDryRunExecutionBoundaryCommand,
     TicketsIncidentsActivationDryRunExecutionBoundaryResponse,
@@ -3919,6 +3924,122 @@ def build_app() -> FastAPI:
                 "evidence_hash": response.evidence_hash,
                 "activation_dry_run_execution_final_readiness_gate_step_count": (
                     response.summary.activation_dry_run_execution_final_readiness_gate_step_count
+                ),
+                "blocking_reason_count": response.summary.blocking_reason_count,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-boundary",
+        response_model=TicketsIncidentsActivationDryRunExecutionApprovalBoundaryResponse,
+    )
+    def tickets_incidents_activation_dry_run_execution_approval_boundary(
+        command: TicketsIncidentsActivationDryRunExecutionApprovalBoundaryCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalBoundaryResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_activation_dry_run_execution_approval_boundary_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.tickets_incidents_tenant_admin_activation_approval_record_store,
+        )
+        source_object_ids = [
+            (
+                "tickets_incidents_activation_dry_run_execution_final_readiness_gate:"
+                f"{response.activation_dry_run_execution_final_readiness_gate_evidence_hash}"
+            ),
+            f"tickets_incidents_tenant_admin_activation_approval_gate:{response.tenant_admin_approval_gate_hash}",
+            f"tickets_incidents_tenant_admin_activation_approval_record:{response.tenant_admin_approval_record_hash}",
+        ]
+        if response.worker_image_boundary_evidence_bound:
+            source_object_ids.extend(
+                [
+                    (
+                        "tickets_incidents_activation_dry_run_execution_scheduler_boundary:"
+                        f"{response.activation_dry_run_execution_scheduler_boundary_evidence_hash}"
+                    ),
+                    (
+                        "tickets_incidents_activation_dry_run_execution_worker_image_boundary:"
+                        f"{response.activation_dry_run_execution_worker_image_boundary_evidence_hash}"
+                    ),
+                ]
+            )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.activation_dry_run_execution_approval_boundary",
+            source_object_ids=source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "result_contract": response.result_contract,
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "approval_gate_ready": response.approval_gate_ready,
+                "human_approval_ready": response.human_approval_ready,
+                "activation_dry_run_execution_final_readiness_gate_evidence_hash": (
+                    response.activation_dry_run_execution_final_readiness_gate_evidence_hash
+                ),
+                "activation_dry_run_execution_scheduler_boundary_evidence_hash": (
+                    response.activation_dry_run_execution_scheduler_boundary_evidence_hash
+                ),
+                "activation_dry_run_execution_worker_image_boundary_evidence_hash": (
+                    response.activation_dry_run_execution_worker_image_boundary_evidence_hash
+                ),
+                "worker_image_boundary_evidence_bound": response.worker_image_boundary_evidence_bound,
+                "tenant_admin_approval_gate_hash": response.tenant_admin_approval_gate_hash,
+                "tenant_admin_approval_record_hash": response.tenant_admin_approval_record_hash,
+                "tickets_restore_drill_evidence_hash": response.tickets_restore_drill_evidence_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "activation_dry_run_execution_approval_boundary_statement_hash": (
+                    response.activation_dry_run_execution_approval_boundary_statement_hash
+                ),
+                "preparer_role_allowed": response.preparer_role_allowed,
+                "activation_dry_run_execution_approval_boundary_requested": (
+                    response.activation_dry_run_execution_approval_boundary_requested
+                ),
+                "activation_dry_run_execution_approval_boundary_ready": (
+                    response.activation_dry_run_execution_approval_boundary_ready
+                ),
+                "future_activation_dry_run_execution_approval_record_required": (
+                    response.future_activation_dry_run_execution_approval_record_required
+                ),
+                "explicit_human_execution_approval_present": response.explicit_human_execution_approval_present,
+                "scheduler_activation_allowed": response.scheduler_activation_allowed,
+                "scheduler_job_creation_allowed": response.scheduler_job_creation_allowed,
+                "scheduler_job_created": response.scheduler_job_created,
+                "worker_image_resolution_allowed": response.worker_image_resolution_allowed,
+                "worker_image_resolved": response.worker_image_resolved,
+                "worker_image_pull_allowed": response.worker_image_pull_allowed,
+                "worker_image_pulled": response.worker_image_pulled,
+                "worker_image_digest_lookup_allowed": response.worker_image_digest_lookup_allowed,
+                "worker_image_digest_looked_up": response.worker_image_digest_looked_up,
+                "worker_dispatch_allowed": response.worker_dispatch_allowed,
+                "worker_queue_enqueued": response.worker_queue_enqueued,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "worker_executed": response.worker_executed,
+                "activation_dry_run_execution_allowed": response.activation_dry_run_execution_allowed,
+                "activation_dry_run_executed": response.activation_dry_run_executed,
+                "activation_execution_allowed": response.activation_execution_allowed,
+                "tenant_provisioning_allowed": response.tenant_provisioning_allowed,
+                "migration_execution_allowed": response.migration_execution_allowed,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "persistent_task_created": response.persistent_task_created,
+                "content_included": response.content_included,
+                "dry_run_result_persistence_allowed": response.dry_run_result_persistence_allowed,
+                "dry_run_result_persisted": response.dry_run_result_persisted,
+                "destructive_actions_allowed": response.destructive_actions_allowed,
+                "external_side_effect_allowed": response.external_side_effect_allowed,
+                "evidence_hash": response.evidence_hash,
+                "activation_dry_run_execution_approval_boundary_step_count": (
+                    response.summary.activation_dry_run_execution_approval_boundary_step_count
                 ),
                 "blocking_reason_count": response.summary.blocking_reason_count,
                 "next_action": response.next_action,

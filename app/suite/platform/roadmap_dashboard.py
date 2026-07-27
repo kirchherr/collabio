@@ -330,7 +330,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
             group_id="workspace_modules",
             title="Workspace, Module und erste Fachslices",
             summary=(
-                "Modul-Discovery, Workspace Cockpit, KB, CRM, ERP und ACL-first Suche sind tenant-sicher angebunden."
+                "Modul-Discovery, Workspace Cockpit, KB, CRM, ERP, Tickets-Dry-Run-Approval-Boundary "
+                "und ACL-first Suche sind tenant-sicher angebunden."
             ),
             capabilities=(
                 RoadmapCapability(
@@ -590,6 +591,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_dispatch_boundary.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_worker_boundary.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_final_readiness_gate.py",
+                        "app/suite/platform/tickets_incidents_activation_dry_run_execution_approval_boundary.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -651,6 +653,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_tickets_incidents_activation_dry_run_execution_dispatch_boundary.py",
                         "tests/test_tickets_incidents_activation_dry_run_execution_worker_boundary.py",
                         "tests/test_tickets_incidents_activation_dry_run_execution_final_readiness_gate.py",
+                        "tests/test_tickets_incidents_activation_dry_run_execution_approval_boundary.py",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
@@ -724,6 +727,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-dispatch-boundary",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-worker-boundary",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-final-readiness-gate",
+                        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-boundary",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -805,6 +809,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_activation_dry_run_execution_dispatch_boundary_ready",
                         "tickets_incidents_activation_dry_run_execution_worker_boundary_ready",
                         "tickets_incidents_activation_dry_run_execution_final_readiness_gate_ready",
+                        "tickets_incidents_activation_dry_run_execution_approval_boundary_ready",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -853,7 +858,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="prepare_tickets_incidents_activation_dry_run_execution_approval_boundary_without_execution",
+                    next_action="record_tickets_incidents_activation_dry_run_execution_approval_with_explicit_human_confirmation",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",
