@@ -780,6 +780,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Tickets & Incidents activation dry-run execution start boundary hash" in runbook
     assert "Tickets & Incidents activation dry-run execution dispatch boundary hash" in runbook
     assert "Tickets & Incidents activation dry-run execution worker boundary hash" in runbook
+    assert "Tickets & Incidents activation dry-run execution final readiness gate hash" in runbook
     assert "activation-dry-run-execution-gate" in runbook
     assert "activation-dry-run-execution-request-boundary" in runbook
     assert "activation-dry-run-executor-runtime-boundary" in runbook
@@ -790,6 +791,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "activation-dry-run-execution-start-boundary" in runbook
     assert "activation-dry-run-execution-dispatch-boundary" in runbook
     assert "activation-dry-run-execution-worker-boundary" in runbook
+    assert "activation-dry-run-execution-final-readiness-gate" in runbook
     assert "activation dry-run execution preflight" in runbook
     assert "activation dry-run executor runtime boundary" in runbook
     assert "activation dry-run result persistence boundary" in runbook
@@ -797,6 +799,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "activation dry-run execution start boundary" in runbook
     assert "activation dry-run execution dispatch boundary" in runbook
     assert "activation dry-run execution worker boundary" in runbook
+    assert "activation dry-run execution final readiness gate" in runbook
     assert "time entries" in runbook
 
 
