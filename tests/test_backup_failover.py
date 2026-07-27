@@ -443,6 +443,10 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         in policy.domain("service_ticket_records").state_artifacts
     )
     assert (
+        "Tickets & Incidents activation dry-run execution worker boundary hash"
+        in policy.domain("service_ticket_records").state_artifacts
+    )
+    assert (
         "Tickets & Incidents metadata schema migration 0052" in policy.domain("service_ticket_records").state_artifacts
     )
     assert "time entries" in policy.domain("time_tracking_records").state_artifacts
@@ -519,6 +523,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     )
     assert (
         "Tickets & Incidents activation dry-run execution dispatch boundary hash when applicable"
+        in policy.restore_drill_evidence
+    )
+    assert (
+        "Tickets & Incidents activation dry-run execution worker boundary hash when applicable"
         in policy.restore_drill_evidence
     )
     assert (
@@ -771,6 +779,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "Tickets & Incidents activation dry-run execution activation boundary hash" in runbook
     assert "Tickets & Incidents activation dry-run execution start boundary hash" in runbook
     assert "Tickets & Incidents activation dry-run execution dispatch boundary hash" in runbook
+    assert "Tickets & Incidents activation dry-run execution worker boundary hash" in runbook
     assert "activation-dry-run-execution-gate" in runbook
     assert "activation-dry-run-execution-request-boundary" in runbook
     assert "activation-dry-run-executor-runtime-boundary" in runbook
@@ -780,12 +789,14 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "activation-dry-run-execution-activation-boundary" in runbook
     assert "activation-dry-run-execution-start-boundary" in runbook
     assert "activation-dry-run-execution-dispatch-boundary" in runbook
+    assert "activation-dry-run-execution-worker-boundary" in runbook
     assert "activation dry-run execution preflight" in runbook
     assert "activation dry-run executor runtime boundary" in runbook
     assert "activation dry-run result persistence boundary" in runbook
     assert "activation dry-run execution activation boundary" in runbook
     assert "activation dry-run execution start boundary" in runbook
     assert "activation dry-run execution dispatch boundary" in runbook
+    assert "activation dry-run execution worker boundary" in runbook
     assert "time entries" in runbook
 
 
