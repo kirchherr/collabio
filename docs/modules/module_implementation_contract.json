@@ -82,8 +82,8 @@
     {
       "module_family": "tickets_incidents",
       "first_objects": ["ticket.ticket", "ticket.event"],
-      "first_slice": "ticket summary read slice with SLA state",
-      "default_feature_gate": "tickets.items.read",
+      "first_slice": "ticket metadata and append-only event vertical slice",
+      "default_feature_gate": "tickets_incidents.items.read",
       "continuity_domain": "ticket_incident_records"
     },
     {

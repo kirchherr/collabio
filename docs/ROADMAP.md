@@ -1521,6 +1521,16 @@ Enthaelt:
 - [ ] Optionales CRM/ERP Modul als erster Business-Modulnachweis.
 - [ ] Vorbereitete Modulpfade fuer Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
+## Aktueller Umsetzungsstand: Tickets & Incidents
+
+- [x] Modulvertrag, Feature Registry, Objektregeln und Catalog-Discovery.
+- [x] Migrationen `0051` bis `0053` fuer Catalog, Ticket/Event-Metadaten und append-only Ausfuehrungsfreigaben.
+- [x] Tenant-sichere produktive API-Vertikale fuer Ticketanlage, autorisierte Reads, Statuswechsel und Ereigniskette.
+- [x] Atomare Ticket/Event-Writes, optimistische Statuspruefung, Audit, PostgreSQL-RLS-Adapter und Legal-Hold-Schutz.
+- [x] Expliziter Human-Approval-Record ohne Aktivierungs- oder Worker-Seiteneffekt.
+- [x] Backup/Restore-Vertrag fuer Ticket-, Event-, Approval-, Modul- und Feature-Zustand.
+- [ ] Kontrollierter Pilot: Paket installieren, einen Test-Tenant provisionieren, Read/Write-Features explizit aktivieren und Restore-/API-Nachweise abnehmen.
+- [ ] Nach Pilotfreigabe naechste produktive Modulfamilie anhand des Masterfahrplans auswaehlen.
 ## Kritische Fallstricke
 
 - DSGVO-Loeschung vs. GoBD-Aufbewahrung: nie direkter Delete ohne Policy Engine.

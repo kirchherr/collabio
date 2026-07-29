@@ -10,11 +10,13 @@ from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass
 
 TICKETS_INCIDENTS_MODULE_ID = "tickets_incidents"
-TICKETS_ITEMS_READ_FEATURE_ID = "tickets.items.read"
-TICKETS_EVENTS_READ_FEATURE_ID = "tickets.events.read"
-TICKETS_COMPLIANCE_EVIDENCE_FEATURE_ID = "tickets.compliance_evidence.read"
-TICKETS_RAG_INDEXING_FEATURE_ID = "tickets.rag_indexing"
-TICKETS_AI_ASSIST_FEATURE_ID = "tickets.ai_assist"
+TICKETS_ITEMS_READ_FEATURE_ID = "tickets_incidents.items.read"
+TICKETS_ITEMS_WRITE_FEATURE_ID = "tickets_incidents.items.write"
+TICKETS_EVENTS_READ_FEATURE_ID = "tickets_incidents.events.read"
+TICKETS_EVENTS_WRITE_FEATURE_ID = "tickets_incidents.events.write"
+TICKETS_COMPLIANCE_EVIDENCE_FEATURE_ID = "tickets_incidents.compliance_evidence.read"
+TICKETS_RAG_INDEXING_FEATURE_ID = "tickets_incidents.rag_indexing"
+TICKETS_AI_ASSIST_FEATURE_ID = "tickets_incidents.ai_assist"
 TICKETS_INCIDENTS_CONTINUITY_DOMAIN = "ticket_incident_records"
 TICKETS_INCIDENTS_SCHEMA_NAME = "tickets"
 TICKETS_INCIDENTS_OBJECT_TYPES = ("ticket.ticket", "ticket.event")
@@ -36,7 +38,7 @@ TICKETS_INCIDENTS_REQUIRED_OBJECT_METADATA_FIELDS = (
     "schema_version",
 )
 
-FEATURE_ID_PATTERN = re.compile(r"^tickets\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
+FEATURE_ID_PATTERN = re.compile(r"^tickets_incidents\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 OBJECT_TYPE_PATTERN = re.compile(r"^ticket\.[a-z][a-z0-9_]*$")
 RETENTION_POLICY_PATTERN = re.compile(r"^rp-[a-z0-9-]+$")
 WORKER_SURFACES = frozenset({"normal_api", "compliance_api", "feature_worker", "compliance_worker"})
@@ -354,6 +356,19 @@ def build_default_tickets_incidents_subfeature_registry() -> TicketsIncidentsSub
                 worker_surfaces=("normal_api", "feature_worker"),
             ),
             TicketsIncidentsSubfeatureDefinition(
+                feature_id=TICKETS_ITEMS_WRITE_FEATURE_ID,
+                display_name="Create and transition governed ticket metadata",
+                area=TicketsIncidentsSubfeatureArea.TICKETS,
+                default_enabled=False,
+                requires_approval=True,
+                object_types=("ticket.ticket",),
+                data_classes=(DataClass.PERSONAL,),
+                retention_policy_ids=("rp-standard", "rp-restricted", "rp-legal-hold"),
+                worker_surfaces=("normal_api",),
+                dependency_feature_ids=(TICKETS_ITEMS_READ_FEATURE_ID,),
+                evidence_required=("explicit_module_enablement", "append_only_ticket_event"),
+            ),
+            TicketsIncidentsSubfeatureDefinition(
                 feature_id=TICKETS_EVENTS_READ_FEATURE_ID,
                 display_name="Ticket event log read",
                 area=TicketsIncidentsSubfeatureArea.EVENT_LOG,
@@ -363,6 +378,19 @@ def build_default_tickets_incidents_subfeature_registry() -> TicketsIncidentsSub
                 data_classes=(DataClass.PERSONAL,),
                 retention_policy_ids=("rp-standard", "rp-restricted", "rp-legal-hold"),
                 worker_surfaces=("normal_api", "feature_worker"),
+            ),
+            TicketsIncidentsSubfeatureDefinition(
+                feature_id=TICKETS_EVENTS_WRITE_FEATURE_ID,
+                display_name="Append governed ticket lifecycle events",
+                area=TicketsIncidentsSubfeatureArea.EVENT_LOG,
+                default_enabled=False,
+                requires_approval=True,
+                object_types=("ticket.event",),
+                data_classes=(DataClass.PERSONAL,),
+                retention_policy_ids=("rp-standard", "rp-restricted", "rp-legal-hold"),
+                worker_surfaces=("normal_api",),
+                dependency_feature_ids=(TICKETS_ITEMS_READ_FEATURE_ID, TICKETS_EVENTS_READ_FEATURE_ID),
+                evidence_required=("explicit_module_enablement", "append_only_ticket_event"),
             ),
             TicketsIncidentsSubfeatureDefinition(
                 feature_id=TICKETS_COMPLIANCE_EVIDENCE_FEATURE_ID,

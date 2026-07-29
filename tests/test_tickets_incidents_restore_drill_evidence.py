@@ -34,6 +34,8 @@ def test_tickets_incidents_restore_drill_evidence_verifies_metadata_schema_witho
     assert response.migration_plan_ready is True
     assert response.catalog_registration_migration_present is True
     assert response.metadata_schema_migration_present is True
+    assert response.approval_record_migration_present is True
+    assert response.approval_record_restore_verified is True
     assert response.table_restore_verified is True
     assert response.rls_restore_verified is True
     assert response.tenant_isolation_restore_verified is True
@@ -52,10 +54,16 @@ def test_tickets_incidents_restore_drill_evidence_verifies_metadata_schema_witho
     assert response.content_included is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_tickets_migration_versions == ("0051", "0052")
-    assert response.restored_tables == ("tickets.ticket_items", "tickets.ticket_events")
+    assert response.existing_tickets_migration_versions == ("0051", "0052", "0053")
+    assert response.restored_tables == (
+        "tickets.ticket_items",
+        "tickets.ticket_events",
+        "tickets.activation_dry_run_execution_approval_records",
+    )
     assert response.restored_object_types == ("ticket.ticket", "ticket.event")
     assert "tickets_incidents_metadata_schema_migration_0052" in response.required_restore_evidence
+    assert "tickets_incidents_approval_record_migration_0053" in response.required_restore_evidence
+    assert "tickets_activation_approval_record_append_only_restore_check" in response.required_restore_evidence
     assert "tickets_items_table_restore_check" in response.required_restore_evidence
     assert "tickets_events_table_restore_check" in response.required_restore_evidence
     assert "tickets_tenant_rls_restore_check" in response.required_restore_evidence
@@ -66,13 +74,17 @@ def test_tickets_incidents_restore_drill_evidence_verifies_metadata_schema_witho
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
     assert response.evidence_hash == build_tickets_incidents_restore_drill_evidence_hash(response)
-    assert response.summary.tickets_manifest_migration_count == 2
-    assert response.summary.restored_table_count == 2
+    assert response.summary.tickets_manifest_migration_count == 3
+    assert response.summary.restored_table_count == 3
     assert response.summary.restored_object_type_count == 2
     assert response.summary.required_restore_evidence_count == len(response.required_restore_evidence)
     assert response.summary.blocking_reason_count == 0
     assert "app/suite/platform/tickets_incidents_restore_drill_evidence.py" in response.evidence_refs
     assert "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql" in response.evidence_refs
+    assert (
+        "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql"
+        in response.evidence_refs
+    )
     assert "tests/test_tickets_incidents_restore_drill_evidence.py" in response.evidence_refs
     assert (
         response.next_action
@@ -94,6 +106,8 @@ def test_tickets_incidents_restore_drill_evidence_blocks_without_catalog_or_mani
     assert response.migration_plan_ready is False
     assert response.catalog_registration_migration_present is False
     assert response.metadata_schema_migration_present is False
+    assert response.approval_record_migration_present is False
+    assert response.approval_record_restore_verified is True
     assert response.table_restore_verified is True
     assert response.restore_evidence_ready is False
     assert "tickets_incidents_catalog_entry_missing" in response.blocking_reasons

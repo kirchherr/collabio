@@ -815,6 +815,12 @@ from suite.platform.tickets_incidents_activation_dry_run_execution_approval_boun
     TicketsIncidentsActivationDryRunExecutionApprovalBoundaryResponse,
     build_tickets_incidents_activation_dry_run_execution_approval_boundary_response,
 )
+from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
+    TicketsIncidentsActivationDryRunExecutionApprovalRecordCommand,
+    TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse,
+    build_default_tickets_incidents_activation_dry_run_execution_approval_record_store,
+    build_tickets_incidents_activation_dry_run_execution_approval_record_response,
+)
 from suite.platform.tickets_incidents_activation_dry_run_execution_boundary import (
     TicketsIncidentsActivationDryRunExecutionBoundaryCommand,
     TicketsIncidentsActivationDryRunExecutionBoundaryResponse,
@@ -908,9 +914,26 @@ from suite.platform.tickets_incidents_migration_evidence_gate import (
     TicketsIncidentsMigrationEvidenceGateResponse,
     build_tickets_incidents_migration_evidence_gate_response,
 )
+from suite.platform.tickets_incidents_module import (
+    TICKETS_EVENTS_READ_FEATURE_ID,
+    TICKETS_EVENTS_WRITE_FEATURE_ID,
+    TICKETS_INCIDENTS_MODULE_ID,
+    TICKETS_ITEMS_READ_FEATURE_ID,
+    TICKETS_ITEMS_WRITE_FEATURE_ID,
+)
 from suite.platform.tickets_incidents_restore_drill_evidence import (
     TicketsIncidentsRestoreDrillEvidenceResponse,
     build_tickets_incidents_restore_drill_evidence_response,
+)
+from suite.platform.tickets_incidents_service import (
+    CreateTicketCommand,
+    TicketEventsResponse,
+    TicketMutationResponse,
+    TicketResponse,
+    TicketService,
+    TicketsResponse,
+    TransitionTicketCommand,
+    build_default_ticket_repository,
 )
 from suite.platform.tickets_incidents_storage_migration_evidence import (
     TicketsIncidentsStorageMigrationEvidenceResponse,
@@ -1295,6 +1318,11 @@ def build_app() -> FastAPI:
     tickets_incidents_tenant_admin_activation_approval_record_store = (
         build_default_tickets_incidents_tenant_admin_activation_approval_record_store()
     )
+    tickets_incidents_dry_run_execution_approval_record_store = (
+        build_default_tickets_incidents_activation_dry_run_execution_approval_record_store()
+    )
+    ticket_repository = build_default_ticket_repository()
+    ticket_service = TicketService(repository=ticket_repository, audit_logger=audit_logger)
     lms_dry_run_execution_approval_record_store = (
         build_default_lms_package_installation_dry_run_execution_approval_record_store()
     )
@@ -1618,6 +1646,8 @@ def build_app() -> FastAPI:
                 "migration_plan_ready": response.migration_plan_ready,
                 "catalog_registration_migration_present": response.catalog_registration_migration_present,
                 "metadata_schema_migration_present": response.metadata_schema_migration_present,
+                "approval_record_migration_present": response.approval_record_migration_present,
+                "approval_record_restore_verified": response.approval_record_restore_verified,
                 "table_restore_verified": response.table_restore_verified,
                 "rls_restore_verified": response.rls_restore_verified,
                 "tenant_isolation_restore_verified": response.tenant_isolation_restore_verified,
@@ -4042,6 +4072,66 @@ def build_app() -> FastAPI:
                     response.summary.activation_dry_run_execution_approval_boundary_step_count
                 ),
                 "blocking_reason_count": response.summary.blocking_reason_count,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-records",
+        response_model=TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse,
+    )
+    def tickets_incidents_activation_dry_run_execution_approval_record(
+        command: TicketsIncidentsActivationDryRunExecutionApprovalRecordCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        response = build_tickets_incidents_activation_dry_run_execution_approval_record_response(
+            command=command,
+            user_context=context.user_context,
+            module_registry=module_registry,
+            migration_manifest_entries=migration_manifest,
+            tenant_approval_record_store=(
+                request.app.state.tickets_incidents_tenant_admin_activation_approval_record_store
+            ),
+        )
+        if response.approval_record_created:
+            try:
+                response = request.app.state.tickets_incidents_dry_run_execution_approval_record_store.append(response)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=str(exc),
+                ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type=("platform.tickets_incidents.activation_dry_run_execution_approval_record"),
+            source_object_ids=[
+                (
+                    "tickets_incidents_activation_dry_run_execution_approval_boundary:"
+                    f"{response.approval_boundary_evidence_hash}"
+                ),
+                (
+                    "tickets_incidents_tenant_admin_activation_approval_record:"
+                    f"{response.tenant_admin_approval_record_hash}"
+                ),
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "result_contract": response.result_contract,
+                "module_id": response.module_id,
+                "approval_record_created": response.approval_record_created,
+                "explicit_human_execution_approval_present": (response.explicit_human_execution_approval_present),
+                "confirmation_statement_hash": response.confirmation_statement_hash,
+                "worker_execution_allowed": response.worker_execution_allowed,
+                "activation_dry_run_execution_allowed": (response.activation_dry_run_execution_allowed),
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "tenant_module_state_created": response.tenant_module_state_created,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": len(response.blocking_reasons),
                 "next_action": response.next_action,
             },
         )
@@ -20629,6 +20719,161 @@ def build_app() -> FastAPI:
         erp_sales = cast(ErpSalesService, request.app.state.erp_sales_service)
         return erp_sales.list_invoice_items(user_context=context.user_context)
 
+    @app.get("/v1/tickets", response_model=TicketsResponse)
+    def list_tickets(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_ITEMS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TicketsResponse:
+        del gate
+        service = cast(TicketService, request.app.state.ticket_service)
+        return service.list_tickets(user_context=context.user_context)
+
+    @app.post(
+        "/v1/tickets",
+        response_model=TicketMutationResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def create_ticket(
+        command: CreateTicketCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        items_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_ITEMS_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        events_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_EVENTS_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TicketMutationResponse:
+        del items_gate, events_gate
+        service = cast(TicketService, request.app.state.ticket_service)
+        try:
+            return service.create_ticket(
+                user_context=context.user_context,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.get("/v1/tickets/{ticket_id}", response_model=TicketResponse)
+    def get_ticket(
+        ticket_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_ITEMS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TicketResponse:
+        del gate
+        service = cast(TicketService, request.app.state.ticket_service)
+        try:
+            return service.get_ticket(
+                user_context=context.user_context,
+                ticket_id=ticket_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    @app.get("/v1/tickets/{ticket_id}/events", response_model=TicketEventsResponse)
+    def list_ticket_events(
+        ticket_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_EVENTS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TicketEventsResponse:
+        del gate
+        service = cast(TicketService, request.app.state.ticket_service)
+        try:
+            return service.list_events(
+                user_context=context.user_context,
+                ticket_id=ticket_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/tickets/{ticket_id}/transitions",
+        response_model=TicketMutationResponse,
+    )
+    def transition_ticket(
+        ticket_id: str,
+        command: TransitionTicketCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        items_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_ITEMS_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        events_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TICKETS_INCIDENTS_MODULE_ID,
+                    feature_id=TICKETS_EVENTS_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TicketMutationResponse:
+        del items_gate, events_gate
+        service = cast(TicketService, request.app.state.ticket_service)
+        try:
+            return service.transition_ticket(
+                user_context=context.user_context,
+                ticket_id=ticket_id,
+                command=command,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
     @app.get("/v1/kb/articles", response_model=KnowledgeBaseArticlesResponse)
     def list_knowledge_base_articles(
         request: Request,
@@ -20683,6 +20928,11 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
+    app.state.tickets_incidents_dry_run_execution_approval_record_store = (
+        tickets_incidents_dry_run_execution_approval_record_store
+    )
+    app.state.ticket_repository = ticket_repository
+    app.state.ticket_service = ticket_service
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store
     app.state.lms_tenant_admin_package_approval_record_store = lms_tenant_admin_package_approval_record_store
     app.state.tickets_incidents_tenant_admin_activation_approval_record_store = (

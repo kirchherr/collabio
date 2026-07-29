@@ -5,9 +5,11 @@ from suite.platform.tickets_incidents_module import (
     TICKETS_AI_ASSIST_FEATURE_ID,
     TICKETS_COMPLIANCE_EVIDENCE_FEATURE_ID,
     TICKETS_EVENTS_READ_FEATURE_ID,
+    TICKETS_EVENTS_WRITE_FEATURE_ID,
     TICKETS_INCIDENTS_CONTINUITY_DOMAIN,
     TICKETS_INCIDENTS_REQUIRED_OBJECT_METADATA_FIELDS,
     TICKETS_ITEMS_READ_FEATURE_ID,
+    TICKETS_ITEMS_WRITE_FEATURE_ID,
     TICKETS_RAG_INDEXING_FEATURE_ID,
     TicketsIncidentsSubfeatureArea,
     build_default_tickets_incidents_object_rule_manifest,
@@ -26,7 +28,9 @@ def test_tickets_incidents_subfeature_registry_declares_first_safe_feature_set()
 
     assert registry.feature_ids == (
         TICKETS_ITEMS_READ_FEATURE_ID,
+        TICKETS_ITEMS_WRITE_FEATURE_ID,
         TICKETS_EVENTS_READ_FEATURE_ID,
+        TICKETS_EVENTS_WRITE_FEATURE_ID,
         TICKETS_COMPLIANCE_EVIDENCE_FEATURE_ID,
         TICKETS_RAG_INDEXING_FEATURE_ID,
         TICKETS_AI_ASSIST_FEATURE_ID,
@@ -34,9 +38,9 @@ def test_tickets_incidents_subfeature_registry_declares_first_safe_feature_set()
     assert summary == {
         "module_id": "tickets_incidents",
         "registry_version": "tickets_incidents_subfeatures.v1",
-        "feature_count": 5,
+        "feature_count": 7,
         "default_enabled_count": 2,
-        "approval_required_count": 3,
+        "approval_required_count": 5,
         "compliance_relevant_count": 1,
         "manifest_hash": registry.manifest_hash,
     }
@@ -103,7 +107,7 @@ def test_tickets_incidents_module_charter_documents_contract_gates_and_deferred_
     for expected in (
         "`tickets_incidents`",
         "Tenant Context",
-        "feature permission",
+        "explicit feature enablement",
         "object authorization",
         "Legal Hold",
         "retention",
@@ -111,7 +115,7 @@ def test_tickets_incidents_module_charter_documents_contract_gates_and_deferred_
         "restore",
         "candidate IDs only",
         "Local LLM Gateway",
-        "No Tickets & Incidents business API route is enabled by this charter",
+        "The global catalog remains `not_installed`",
         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
         "0051_tickets_incidents_catalog_registration.sql",
         "ticket_incident_records",

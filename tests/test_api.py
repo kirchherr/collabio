@@ -975,7 +975,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/admin/crm-erp/legacy-sql/migration-reports" in legacy_registry["api_routes"]
     assert "import_write_execution_false" in legacy_registry["guardrails"]
     future_modules = next(capability for capability in capabilities if capability["capability_id"] == "future_modules")
-    assert future_modules["status"] == "metadata_only"
+    assert future_modules["status"] == "guarded"
     assert "/v1/platform/modules/families/backlog" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/next-slice-selection" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/tasks-activities/catalog-readiness" in future_modules["api_routes"]
@@ -1047,6 +1047,13 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-boundary"
         in future_modules["api_routes"]
     )
+    assert (
+        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-records"
+        in future_modules["api_routes"]
+    )
+    assert "/v1/tickets" in future_modules["api_routes"]
+    assert "/v1/tickets/{ticket_id}/events" in future_modules["api_routes"]
+    assert "/v1/tickets/{ticket_id}/transitions" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/catalog-readiness" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/restore-drill-evidence" in future_modules["api_routes"]
     assert "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate" in future_modules["api_routes"]
@@ -1103,6 +1110,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tickets_incidents_activation_dry_run_execution_worker_boundary_ready" in future_modules["guardrails"]
     assert "tickets_incidents_activation_dry_run_execution_final_readiness_gate_ready" in future_modules["guardrails"]
     assert "tickets_incidents_activation_dry_run_execution_approval_boundary_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_activation_dry_run_execution_approval_record_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_productive_vertical_slice_code_ready" in future_modules["guardrails"]
+    assert "tickets_incidents_productive_routes_module_and_feature_gated" in future_modules["guardrails"]
     assert "lms_readiness_metadata_only" in future_modules["guardrails"]
     assert "lms_catalog_registered_not_installed" in future_modules["guardrails"]
     assert "lms_package_installation_readiness_blocks_install" in future_modules["guardrails"]
@@ -1280,10 +1290,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in future_modules["guardrails"]
     )
     assert "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready" in future_modules["guardrails"]
-    assert (
-        future_modules["next_action"]
-        == "record_tickets_incidents_activation_dry_run_execution_approval_with_explicit_human_confirmation"
-    )
+    assert future_modules["next_action"] == "run_controlled_tickets_incidents_pilot_installation_and_vertical_slice"
     assert "full_office_suite_client" in body["deferred_scope"]
     assert "backup_failover_policy_must_follow_new_state" in body["evidence_contracts"]
 
@@ -1550,7 +1557,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["tickets_incidents"]["runtime_activation_allowed"] is False
     assert (
         families["tickets_incidents"]["next_action"]
-        == "record_tickets_incidents_activation_dry_run_execution_approval_with_explicit_human_confirmation"
+        == "run_controlled_tickets_incidents_pilot_installation_and_vertical_slice"
     )
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
@@ -1776,9 +1783,9 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
     assert body["feature_manifest_hash"].startswith("sha256:")
     assert body["object_rule_manifest_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "feature_count": 5,
+        "feature_count": 7,
         "default_enabled_feature_count": 2,
-        "approval_required_feature_count": 3,
+        "approval_required_feature_count": 5,
         "compliance_relevant_feature_count": 1,
         "object_type_count": 2,
         "personal_object_type_count": 2,
@@ -1809,7 +1816,7 @@ def test_tickets_incidents_catalog_readiness_returns_metadata_only_registration_
     assert event.metadata["catalog_status"] == "not_installed"
     assert event.metadata["tenant_module_status"] is None
     assert event.metadata["catalog_registration_ready"] is False
-    assert event.metadata["feature_count"] == 5
+    assert event.metadata["feature_count"] == 7
     assert event.metadata["object_type_count"] == 2
     assert event.metadata["required_catalog_evidence_count"] == 7
     assert event.metadata["content_included"] is False
@@ -1864,16 +1871,16 @@ def test_tickets_incidents_migration_evidence_gate_returns_metadata_only_storage
     assert body["external_side_effect_allowed"] is False
     assert body["planned_schema_name"] == "tickets"
     assert body["planned_object_types"] == ["ticket.ticket", "ticket.event"]
-    assert body["existing_tickets_migration_versions"] == ["0051", "0052"]
-    assert body["existing_tickets_storage_migration_versions"] == ["0052"]
+    assert body["existing_tickets_migration_versions"] == ["0051", "0052", "0053"]
+    assert body["existing_tickets_storage_migration_versions"] == ["0052", "0053"]
     assert body["feature_manifest_hash"].startswith("sha256:")
     assert body["object_rule_manifest_hash"].startswith("sha256:")
     assert "backup_restore_ticket_incident_records_update" in body["required_storage_migration_evidence"]
     assert "no_tenant_state_creation_confirmed" in body["required_storage_migration_evidence"]
     assert "no_business_api_or_worker_activation_confirmed" in body["required_storage_migration_evidence"]
     assert body["summary"] == {
-        "tickets_manifest_migration_count": 2,
-        "tickets_storage_migration_count": 1,
+        "tickets_manifest_migration_count": 3,
+        "tickets_storage_migration_count": 2,
         "planned_object_type_count": 2,
         "required_storage_evidence_count": 8,
         "blocking_reason_count": 0,
@@ -1904,8 +1911,8 @@ def test_tickets_incidents_migration_evidence_gate_returns_metadata_only_storage
     assert event.metadata["catalog_registration_migration_present"] is True
     assert event.metadata["migration_evidence_gate_ready"] is True
     assert event.metadata["storage_migration_evidence_ready"] is True
-    assert event.metadata["tickets_manifest_migration_count"] == 2
-    assert event.metadata["tickets_storage_migration_count"] == 1
+    assert event.metadata["tickets_manifest_migration_count"] == 3
+    assert event.metadata["tickets_storage_migration_count"] == 2
     assert event.metadata["planned_object_type_count"] == 2
     assert event.metadata["required_storage_evidence_count"] == 8
     assert event.metadata["blocking_reason_count"] == 0
@@ -2067,6 +2074,8 @@ def test_tickets_incidents_restore_drill_evidence_returns_metadata_only_restore_
     assert body["migration_plan_ready"] is True
     assert body["catalog_registration_migration_present"] is True
     assert body["metadata_schema_migration_present"] is True
+    assert body["approval_record_migration_present"] is True
+    assert body["approval_record_restore_verified"] is True
     assert body["table_restore_verified"] is True
     assert body["rls_restore_verified"] is True
     assert body["tenant_isolation_restore_verified"] is True
@@ -2085,20 +2094,26 @@ def test_tickets_incidents_restore_drill_evidence_returns_metadata_only_restore_
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_tickets_migration_versions"] == ["0051", "0052"]
-    assert body["restored_tables"] == ["tickets.ticket_items", "tickets.ticket_events"]
+    assert body["existing_tickets_migration_versions"] == ["0051", "0052", "0053"]
+    assert body["restored_tables"] == [
+        "tickets.ticket_items",
+        "tickets.ticket_events",
+        "tickets.activation_dry_run_execution_approval_records",
+    ]
     assert body["restored_object_types"] == ["ticket.ticket", "ticket.event"]
     assert "tickets_incidents_metadata_schema_migration_0052" in body["required_restore_evidence"]
+    assert "tickets_incidents_approval_record_migration_0053" in body["required_restore_evidence"]
+    assert "tickets_activation_approval_record_append_only_restore_check" in body["required_restore_evidence"]
     assert "tickets_tenant_rls_restore_check" in body["required_restore_evidence"]
     assert "tickets_sla_state_restore_check" in body["required_restore_evidence"]
     assert "no_tickets_tenant_activation_or_worker_confirmed" in body["required_restore_evidence"]
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "tickets_manifest_migration_count": 2,
-        "restored_table_count": 2,
+        "tickets_manifest_migration_count": 3,
+        "restored_table_count": 3,
         "restored_object_type_count": 2,
-        "required_restore_evidence_count": 11,
+        "required_restore_evidence_count": 13,
         "blocking_reason_count": 0,
     }
     assert "app/suite/platform/tickets_incidents_restore_drill_evidence.py" in body["evidence_refs"]
@@ -2130,15 +2145,17 @@ def test_tickets_incidents_restore_drill_evidence_returns_metadata_only_restore_
     assert event.metadata["restore_evidence_ready"] is True
     assert event.metadata["migration_plan_ready"] is True
     assert event.metadata["metadata_schema_migration_present"] is True
+    assert event.metadata["approval_record_migration_present"] is True
+    assert event.metadata["approval_record_restore_verified"] is True
     assert event.metadata["table_restore_verified"] is True
     assert event.metadata["rls_restore_verified"] is True
     assert event.metadata["tenant_isolation_restore_verified"] is True
     assert event.metadata["sla_state_restore_verified"] is True
     assert event.metadata["no_content_payload_restore_verified"] is True
-    assert event.metadata["tickets_manifest_migration_count"] == 2
-    assert event.metadata["restored_table_count"] == 2
+    assert event.metadata["tickets_manifest_migration_count"] == 3
+    assert event.metadata["restored_table_count"] == 3
     assert event.metadata["restored_object_type_count"] == 2
-    assert event.metadata["required_restore_evidence_count"] == 11
+    assert event.metadata["required_restore_evidence_count"] == 13
     assert event.metadata["blocking_reason_count"] == 0
     assert event.metadata["tenant_provisioning_allowed"] is False
     assert event.metadata["tickets_business_api_allowed"] is False
@@ -2202,7 +2219,7 @@ def test_tickets_incidents_activation_approval_gate_returns_metadata_only_bounda
     assert body["content_included"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["existing_tickets_migration_versions"] == ["0051", "0052"]
+    assert body["existing_tickets_migration_versions"] == ["0051", "0052", "0053"]
     assert "approve_future_tickets_incidents_tenant_activation" in body["approval_scope"]
     assert "bind_tickets_restore_drill_evidence_hash" in body["approval_scope"]
     assert "tenant_admin_identity" in body["required_approval_evidence"]
@@ -2211,7 +2228,7 @@ def test_tickets_incidents_activation_approval_gate_returns_metadata_only_bounda
     assert body["blocking_reasons"] == []
     assert body["evidence_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "tickets_manifest_migration_count": 2,
+        "tickets_manifest_migration_count": 3,
         "required_approval_evidence_count": 8,
         "approval_scope_count": 5,
         "blocking_reason_count": 0,
@@ -2262,7 +2279,7 @@ def test_tickets_incidents_activation_approval_gate_returns_metadata_only_bounda
     assert event.metadata["content_included"] is False
     assert event.metadata["destructive_actions_allowed"] is False
     assert event.metadata["external_side_effect_allowed"] is False
-    assert event.metadata["tickets_manifest_migration_count"] == 2
+    assert event.metadata["tickets_manifest_migration_count"] == 3
     assert event.metadata["required_approval_evidence_count"] == 8
     assert event.metadata["approval_scope_count"] == 5
     assert event.metadata["blocking_reason_count"] == 0

@@ -548,19 +548,13 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="future_modules",
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
-                        "Modulfamilien sind tenant-sicher sichtbar; Tasks & Activities und Tickets & Incidents "
-                        "sind katalogregistriert; Restore-, Tenant-Admin-Approval-Gate, Approval-Record- und "
-                        "Activation-Execution-Boundary, Executor-Skeleton, Dry-run-Plan, Dry-run-Execution-Boundary "
-                        "und Dry-run-Execution-Skeleton, Executor-Implementation-Review, Result-Contract, "
-                        "Execution-Gate, Execution-Request-Boundary, Executor-Runtime-Boundary, Dry-run-Execution-"
-                        "Preflight-Boundary, Dry-run-Execution-Receipt-Boundary, Dry-run-Result-Persistence-"
-                        "Boundary, Dry-run-Execution-Activation-Boundary, Dry-run-Execution-Start-Boundary, "
-                        "Dry-run-Execution-Dispatch-Boundary, Dry-run-Execution-Worker-Boundary und "
-                        "Dry-run-Execution-Final-Readiness-Gate sind metadata-only bereit; naechster Schritt ist "
-                        "der separate Dry-run-Execution-Approval-Boundary."
+                        "Tickets & Incidents hat jetzt neben der vollstaendigen Aktivierungskontrollkette eine "
+                        "produktive, tenant-sichere Ticket/Event-Vertikale mit explizitem Approval Record, "
+                        "atomaren Writes, Audit, RLS-Repository und geschlossenem Standardzustand. Der naechste "
+                        "Schritt ist ein kontrollierter Pilot statt weiterer Metadata-only-Boundaries."
                     ),
-                    status=RoadmapCapabilityStatus.METADATA_ONLY,
-                    capability_type="module_backlog",
+                    status=RoadmapCapabilityStatus.GUARDED,
+                    capability_type="module_foundation_and_productive_vertical_slice",
                     evidence_refs=(
                         "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
                         "app/suite/platform/module_family_backlog.py",
@@ -592,6 +586,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_worker_boundary.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_final_readiness_gate.py",
                         "app/suite/platform/tickets_incidents_activation_dry_run_execution_approval_boundary.py",
+                        "app/suite/platform/tickets_incidents_activation_dry_run_execution_approval_record.py",
+                        "app/suite/platform/tickets_incidents_service.py",
                         "app/suite/platform/lms_module.py",
                         "app/suite/platform/lms_catalog_readiness.py",
                         "app/suite/platform/lms_package_installation_readiness.py",
@@ -632,6 +628,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
                         "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
                         "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
+                        "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
                         "tests/test_tickets_incidents_restore_drill_evidence.py",
                         "tests/test_tickets_incidents_tenant_admin_activation_approval_gate.py",
                         "tests/test_tickets_incidents_tenant_admin_activation_approval_record.py",
@@ -654,6 +651,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_tickets_incidents_activation_dry_run_execution_worker_boundary.py",
                         "tests/test_tickets_incidents_activation_dry_run_execution_final_readiness_gate.py",
                         "tests/test_tickets_incidents_activation_dry_run_execution_approval_boundary.py",
+                        "tests/test_tickets_incidents_activation_dry_run_execution_approval_record.py",
+                        "tests/test_tickets_incidents_service.py",
+                        "tests/test_tickets_incidents_api.py",
                         "docs/modules/TASKS_ACTIVITIES_MODULE_CHARTER.md",
                         "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
                         "docs/modules/LMS_MODULE_CHARTER.md",
@@ -728,6 +728,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-worker-boundary",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-final-readiness-gate",
                         "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-boundary",
+                        "/v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-records",
+                        "/v1/tickets",
+                        "/v1/tickets/{ticket_id}",
+                        "/v1/tickets/{ticket_id}/events",
+                        "/v1/tickets/{ticket_id}/transitions",
                         "/v1/platform/modules/families/lms/catalog-readiness",
                         "/v1/platform/modules/families/lms/restore-drill-evidence",
                         "/v1/platform/modules/families/lms/tenant-admin-package-approval-gate",
@@ -810,6 +815,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tickets_incidents_activation_dry_run_execution_worker_boundary_ready",
                         "tickets_incidents_activation_dry_run_execution_final_readiness_gate_ready",
                         "tickets_incidents_activation_dry_run_execution_approval_boundary_ready",
+                        "tickets_incidents_activation_dry_run_execution_approval_record_ready",
+                        "tickets_incidents_productive_vertical_slice_code_ready",
+                        "tickets_incidents_productive_routes_module_and_feature_gated",
+                        "tickets_incidents_ticket_event_writes_atomic",
+                        "tickets_incidents_restore_contract_includes_approval_records",
                         "lms_readiness_metadata_only",
                         "lms_catalog_registered_not_installed",
                         "lms_package_installation_readiness_blocks_install",
@@ -858,7 +868,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "lms_package_installation_dry_run_execution_outbox_foundation_seal_ready",
                         "lms_not_installed_until_catalog_and_migration_evidence",
                     ),
-                    next_action="record_tickets_incidents_activation_dry_run_execution_approval_with_explicit_human_confirmation",
+                    next_action="run_controlled_tickets_incidents_pilot_installation_and_vertical_slice",
                 ),
                 RoadmapCapability(
                     capability_id="productive_import_writes",

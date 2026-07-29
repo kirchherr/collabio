@@ -1,7 +1,7 @@
 # Tickets & Incidents Module Charter
 
-Status: activation_dry_run_execution_approval_boundary_ready_metadata_only
-Date: 2026-07-07
+Status: productive_vertical_slice_code_ready_controlled_activation_only
+Date: 2026-07-29
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
 Owner: platform/product
@@ -13,7 +13,7 @@ Tickets & Incidents is a native optional suite module for service tickets, incid
 
 The module is optional in normal use. Compliance obligations for existing ticket and incident records, Legal Hold, retention, backup, restore, export, and audit remain mandatory.
 
-The first slice is intentionally small: ticket summary metadata with SLA state and ticket event metadata. It does not include ticket creation, comments, attachments, notification delivery, escalation automation, external service desk synchronization, RAG, AI assist, voice commands, or destructive workflow actions.
+The first productive slice is intentionally small but usable: tenant-scoped ticket creation, owner/operator reads, controlled status transitions, append-only ticket events, SLA metadata, audit evidence, optimistic transition checks, and PostgreSQL RLS persistence. It does not include comments, attachments, notification delivery, escalation automation, external service desk synchronization, RAG, AI assist, voice commands, or destructive workflow actions.
 
 ## 2. Lifecycle And Activation
 
@@ -38,40 +38,44 @@ Disabled stops normal ticket and event browsing. Disabled does not stop retentio
 
 | Feature ID | Default | Requires approval | Notes |
 | --- | --- | --- | --- |
-| `tickets.items.read` | on | no | Ticket summary metadata, state, priority, and SLA state |
-| `tickets.events.read` | on | no | Ticket and incident event-log metadata for authorized objects |
-| `tickets.compliance_evidence.read` | off | yes | Compliance read path for held or retained ticket/event evidence |
-| `tickets.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
-| `tickets.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
+| `tickets_incidents.items.read` | on | no | Authorized ticket summary, state, priority, and SLA metadata |
+| `tickets_incidents.items.write` | off | yes | Ticket creation and controlled status transitions for ticket operators |
+| `tickets_incidents.events.read` | on | no | Authorized append-only ticket and incident event metadata |
+| `tickets_incidents.events.write` | off | yes | Initial and transition event writes, atomically coupled to ticket writes |
+| `tickets_incidents.compliance_evidence.read` | off | yes | Compliance read path for held or retained ticket/event evidence |
+| `tickets_incidents.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
+| `tickets_incidents.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
 
-The canonical registry lives in `app/suite/platform/tickets_incidents_module.py`.
-
+The canonical registry lives in `app/suite/platform/tickets_incidents_module.py`. Write features remain disabled until a tenant-admin-controlled installation and feature approval.
 ## 4. API And Worker Gates
 
-Every future normal Tickets & Incidents route must require:
+Every Tickets & Incidents business route requires:
 
 ```text
 Tenant Context
-+ tickets_incidents enabled
-+ feature permission
-+ object authorization
++ tickets_incidents installed, provisioned, and enabled
++ explicit feature enablement
++ role and object authorization
 ```
 
-Initial planned API:
+Code-ready productive API:
 
-- `GET /v1/tickets/items`
-- `GET /v1/tickets/events`
+- `GET /v1/tickets`
+- `POST /v1/tickets`
+- `GET /v1/tickets/{ticket_id}`
+- `GET /v1/tickets/{ticket_id}/events`
+- `POST /v1/tickets/{ticket_id}/transitions`
+
+The global catalog remains `not_installed`; these routes therefore return the module gate response in the standard environment. A controlled pilot must install the package, apply migrations `0051` through `0053`, provision and enable the tenant module, and explicitly enable the read/write features. Ticket creation atomically appends a `created` event. Status transitions use an allowed transition matrix plus `expected_status`, atomically update the ticket and append an immutable event, and reject archival under active Legal Hold. Non-operator users can only read tickets they own; ticket operators can read tenant tickets, while writes require an operator role.
+
+Discovery and readiness start with `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness`; the activation control chain remains available under `/v1/platform/modules/families/tickets-incidents/*`. Its final explicit approval endpoint is `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-records`. The endpoint stores hash/reference metadata only, requires an exact human confirmation statement and tenant-admin role, is tenant scoped and append-only, and does not itself execute a dry-run, install a package, provision tenant state, dispatch a worker, or activate the business API.
 
 Compliance-only later:
 
-- retention evaluation
-- Legal Hold enforcement
-- ticket evidence export
-- incident evidence export
+- retention evaluation and disposition execution
+- Legal Hold administration
+- ticket and incident evidence export
 - decommission precheck
-
-No Tickets & Incidents business API route is enabled by this charter. `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness` exposes only the platform catalog-readiness boundary; `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` exposes the metadata-only storage-preparation boundary; `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` exposes the metadata-only schema-evidence result for migration `0052`; `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` exposes the metadata-only restore evidence hash for `ticket_incident_records`; `GET /v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-gate` exposes the metadata-only approval boundary before any human approval record; `POST /v1/platform/modules/families/tickets-incidents/tenant-admin-activation-approval-records` records the explicit tenant-admin approval as metadata-only evidence while still executing no activation path; `POST /v1/platform/modules/families/tickets-incidents/activation-execution-boundary` reviews the activation execution boundary and binds the approval gate, approval record, restore evidence, change request, idempotency key, and audit chain as metadata-only evidence without executing activation; `POST /v1/platform/modules/families/tickets-incidents/activation-executor-skeleton` prepares the non-executing activation executor skeleton while deferring business API activation, worker activation, tenant state creation, and ticket content payloads; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-plan` prepares the non-executing activation dry-run plan and requires a future dry-run execution boundary before any activation path; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-boundary` reviews that boundary while still executing no dry-run, no activation, no worker, no business API, and no result persistence; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-skeleton` prepares the non-executing dry-run execution skeleton while deferring executor implementation, dry-run result contract, result persistence, worker/business API runtime, and tenant activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-implementation-review` reviews the non-executing dry-run executor implementation boundary and still defers result contract, result persistence, worker/business API runtime, dry-run execution, and tenant activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-result-contract` defines the non-executing dry-run result receipt contract while still deferring dry-run execution, result persistence, worker/business API runtime, tenant state creation, and module activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-gate` prepares the metadata-only activation dry-run execution gate, requires a future request boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-request-boundary` prepares the metadata-only dry-run execution request boundary, binds the execution-gate hash, requires a future executor runtime boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-executor-runtime-boundary` prepares the metadata-only dry-run executor runtime boundary, binds the request-boundary hash, requires a future dry-run execution preflight, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-preflight` prepares the metadata-only dry-run execution preflight, binds the executor-runtime-boundary hash, requires a future dry-run execution receipt boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation; `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-receipt-boundary` prepares the metadata-only dry-run execution receipt boundary, binds the preflight hash, requires a future dry-run result persistence boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-result-persistence-boundary` prepares the metadata-only dry-run result persistence boundary, binds the execution receipt boundary hash, requires a future dry-run execution activation boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-activation-boundary` prepares the metadata-only dry-run execution activation boundary, binds the result persistence boundary hash, requires a future dry-run execution start boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-start-boundary` prepares the metadata-only dry-run execution start boundary, binds the execution activation boundary hash, requires a future dry-run execution dispatch boundary, and still performs no dry-run execution, result persistence, worker/business API activation, tenant module state creation, tenant provisioning, or module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-dispatch-boundary` prepares the metadata-only dry-run execution dispatch boundary, binds the start boundary hash, requires a future dry-run execution worker boundary, and still performs no scheduler activation, no scheduler job creation, no worker dispatch, no worker queue enqueue, no worker execution, no dry-run execution, no result persistence, no business API activation, no tenant module state creation, no tenant provisioning, and no module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-worker-boundary` prepares the metadata-only dry-run execution worker boundary, binds the dispatch boundary hash, requires a future dry-run execution final readiness gate, and still performs no worker image resolution, no image pull, no digest lookup, no scheduler job, no worker dispatch, no worker queue enqueue, no worker execution, no dry-run execution, no result persistence, no business API activation, no tenant module state creation, no tenant provisioning, and no module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-final-readiness-gate` prepares the metadata-only final readiness gate, binds the worker boundary hash, requires a future separate dry-run execution approval boundary, records no explicit execution approval, and still performs no worker image resolution, no image pull, no digest lookup, no scheduler job, no worker dispatch, no worker queue enqueue, no worker execution, no dry-run execution, no result persistence, no business API activation, no tenant module state creation, no tenant provisioning, and no module activation. `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-boundary` prepares the metadata-only approval boundary, binds the final-readiness-gate hash, requires a future separate explicit dry-run execution approval record, records no execution approval, and still performs no scheduler activation, no scheduler job creation, no worker image resolution, no image pull, no digest lookup, no worker dispatch, no worker queue enqueue, no worker execution, no dry-run execution, no result persistence, no business API activation, no tenant module state creation, no tenant provisioning, and no module activation. The module is registered in the platform catalog as `not_installed`; tenant state, business routes, workers, and content must happen in later explicit gates.
-
 ## 5. Persistent Objects
 
 First planned object types:
@@ -103,28 +107,31 @@ Voice input is not part of the first Tickets & Incidents slice.
 
 ## 7. Backup, Restore, And Failover
 
-Continuity domain: `ticket_incident_records`
+Continuity domain: `ticket_incident_records` (policy domain `service_ticket_records`)
 
 Required evidence:
 
-- module state restore check
-- ticket row-count check
-- ticket event row-count check
-- SLA state restore check
+- module state and feature-flag restore check
+- `tickets.ticket_items` row-count and tenant-isolation check
+- `tickets.ticket_events` row-count, ordering, immutability, and ticket foreign-key check
+- `tickets.activation_dry_run_execution_approval_records` row-count, uniqueness, RLS, and append-only check
+- SLA, lifecycle, retention, Legal Hold, KMS, and audit-reference restore checks
 - source-version or evidence hashes where external records are referenced
-- tenant isolation check after restore
 - disabled-state restore check
-- Legal Hold restore check
 - restore evidence hash for `ticket_incident_records`
 
-New comments, attachments, escalation rules, notification queues, mail integrations, search indexes, RAG chunks, embeddings, approvals, exports, or workflow engines must update this continuity domain in the same change.
-
+A restored tenant must keep business routes closed until module and feature state are restored and validated. New comments, attachments, escalation rules, notification queues, mail integrations, search indexes, RAG chunks, embeddings, approvals, exports, or workflow engines must update this continuity domain in the same change.
 ## 8. Migrations And Imports
 
-`0051_tickets_incidents_catalog_registration.sql` registers the module as `not_installed` and creates no tenant state, Tickets & Incidents schema, ticket/event tables, content, worker queue, or business API runtime. `0052_tickets_incidents_metadata_schema.sql` creates the tenant-scoped `tickets.ticket_items` and `tickets.ticket_events` metadata tables, RLS policies, no-hard-delete policies, retention/Legal Hold/KMS/audit columns, and module-catalog migration registration while still creating no tenant module state, business API route, worker, message body, attachment payload, RAG index, or AI/voice runtime. `GET /v1/platform/modules/families/tickets-incidents/migration-evidence-gate` confirms the `0051`/`0052` boundary. `GET /v1/platform/modules/families/tickets-incidents/storage-migration-evidence` verifies the metadata schema SQL, migration registration, backup evidence, and no-content-payload constraints. `GET /v1/platform/modules/families/tickets-incidents/restore-drill-evidence` binds those checks into a tenant-scoped restore-evidence hash while still allowing no tenant provisioning, business API, worker, content, search, RAG, AI, or voice runtime. The activation execution boundary review, activation executor skeleton, activation dry-run plan, activation dry-run execution boundary review, activation dry-run execution skeleton, activation dry-run executor implementation review, activation dry-run result contract, activation dry-run execution gate, activation dry-run execution request boundary, activation dry-run executor runtime boundary, activation dry-run execution preflight, activation dry-run execution receipt boundary, activation dry-run result persistence boundary, and activation dry-run execution activation boundary, activation dry-run execution start boundary, activation dry-run execution dispatch boundary, activation dry-run execution worker boundary, activation dry-run execution final readiness gate, and activation dry-run execution approval boundary are metadata-only ready and still permit no tenant provisioning, business API activation, scheduler job, worker dispatch, worker queue, worker execution, dry-run execution, result persistence, execution approval record, or module activation path. The next gate is a future explicit activation dry-run execution approval record before any executable activation path.
+- `0051_tickets_incidents_catalog_registration.sql` registers the package as `not_installed` and creates no tenant state.
+- `0052_tickets_incidents_metadata_schema.sql` creates tenant-scoped ticket and immutable event metadata tables with RLS, no-hard-delete policies, retention, Legal Hold, KMS, audit, and SLA columns.
+- `0053_tickets_incidents_dry_run_execution_approval_records.sql` adds the tenant-scoped append-only explicit approval record table and advances the module migration manifest to `0051`/`0052`/`0053`.
+
+The productive service has in-memory and PostgreSQL repository adapters. PostgreSQL writes set tenant context inside each transaction; ticket creation and transitions couple ticket/event persistence atomically. No body, comment, attachment, prompt, output, transcript, audio, password, or raw human confirmation statement is stored in these tables.
+
+The next step is a controlled pilot installation, not another metadata boundary: run migrations, provision one test tenant, explicitly enable all four read/write features, execute the API integration tests and restore drill, then review evidence before widening access.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
-
 ## 9. Decommissioning
 
 Decommissioning requires:
@@ -142,7 +149,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Explicit Non-Goals For The First Slice
 
-- ticket creation or updates
+- free-form ticket body or comment storage
 - comments
 - attachments
 - notification sending
@@ -179,6 +186,9 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 - `tests/test_tickets_incidents_activation_dry_run_execution_receipt_boundary.py`
 - `tests/test_tickets_incidents_activation_dry_run_result_persistence_boundary.py`
 - `tests/test_tickets_incidents_activation_dry_run_execution_activation_boundary.py`
+- `tests/test_tickets_incidents_activation_dry_run_execution_approval_record.py`
+- `tests/test_tickets_incidents_service.py`
+- `tests/test_tickets_incidents_api.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`

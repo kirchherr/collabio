@@ -37,9 +37,9 @@ def test_tickets_incidents_catalog_readiness_declares_metadata_only_registered_b
     assert response.external_side_effect_allowed is False
     assert response.feature_manifest_hash.startswith("sha256:")
     assert response.object_rule_manifest_hash.startswith("sha256:")
-    assert response.summary.feature_count == 5
+    assert response.summary.feature_count == 7
     assert response.summary.default_enabled_feature_count == 2
-    assert response.summary.approval_required_feature_count == 3
+    assert response.summary.approval_required_feature_count == 5
     assert response.summary.compliance_relevant_feature_count == 1
     assert response.summary.object_type_count == 2
     assert response.summary.personal_object_type_count == 2

@@ -15,6 +15,7 @@ from suite.platform.tickets_incidents_module import (
     build_default_tickets_incidents_subfeature_registry,
 )
 from suite.platform.tickets_incidents_restore_drill_evidence import (
+    TICKETS_INCIDENTS_APPROVAL_RECORD_MIGRATION_VERSION,
     TICKETS_INCIDENTS_CATALOG_REGISTRATION_MIGRATION_VERSION,
     TICKETS_INCIDENTS_RESTORE_DRILL_EVIDENCE_ENDPOINT,
     build_tickets_incidents_restore_drill_evidence_response,
@@ -225,6 +226,7 @@ def build_tickets_incidents_tenant_admin_activation_approval_gate_response(
     migration_plan_ready = {
         TICKETS_INCIDENTS_CATALOG_REGISTRATION_MIGRATION_VERSION,
         TICKETS_INCIDENTS_METADATA_SCHEMA_MIGRATION_VERSION,
+        TICKETS_INCIDENTS_APPROVAL_RECORD_MIGRATION_VERSION,
     }.issubset(set(tickets_migration_versions))
     restore_drill_evidence = build_tickets_incidents_restore_drill_evidence_response(
         user_context=user_context,
@@ -239,7 +241,7 @@ def build_tickets_incidents_tenant_admin_activation_approval_gate_response(
     )
     approval_scope = (
         "approve_future_tickets_incidents_tenant_activation",
-        "bind_tickets_incidents_migrations_0051_0052",
+        "bind_tickets_incidents_migrations_0051_0052_0053",
         "bind_tickets_restore_drill_evidence_hash",
         "keep_tickets_business_api_disabled_until_activation_execution_gate",
         "no_content_payload_search_rag_ai_voice_or_worker_activation",
