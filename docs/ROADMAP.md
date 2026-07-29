@@ -98,6 +98,7 @@ Bereits umgesetzt:
 - [x] Docker-PostgreSQL/pgvector-Service mit Migrationsrunner und Live-RLS-Integrationstests.
 - [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
 - [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
+- [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
 
 Noch nicht umgesetzt:
 

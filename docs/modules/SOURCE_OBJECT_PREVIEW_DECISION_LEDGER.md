@@ -59,11 +59,15 @@ The Docker Compose API profile sets `SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEN
 
 The `content_preview_enabled` TenantPolicy switch only satisfies one evidence item. Even when tenant policy, ACL,
 detail audit, parser/sanitizer evidence, renderer sandbox worker evidence, backup coverage evidence, restore drill
-evidence, and human confirmation are all present, the endpoint still returns `decision_status=blocked` and
-`content_release_allowed=false` until a hardened renderer service, tenant-scoped sandbox proof, and release workflow
-are separately implemented.
+evidence, and human confirmation are all present, this decision endpoint still returns `decision_status=blocked` and
+`content_release_allowed=false`. A decision is evidence, not content authorization by itself.
+
+The separate guarded `preview-content-releases` endpoint may release only allowlisted UTF-8 plain text after it
+revalidates the complete decision, current tenant policy, authoritative ACL, renderer evidence, a fresh renderer release
+gate, source manifest/content hashes, ACL version, and an exact one-time human confirmation. See
+`docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md`.
 
 ## Next Boundary
 
-Run a repeatable restore drill that proves preview decision and renderer evidence remain recoverable, tenant-scoped, and
-queue-idempotent before considering any content rendering path.
+Keep mail bodies, attachments, HTML, PDF, rich Office formats, persistent preview artifacts, and active content closed
+until format-specific hardened workers, recovery drills, and release policies exist.

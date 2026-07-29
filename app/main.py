@@ -785,6 +785,15 @@ from suite.platform.source_object_details import (
     SourceObjectMetadataDetailResponse,
     build_source_object_metadata_detail_response,
 )
+from suite.platform.source_object_preview_content_release import (
+    SourceObjectPreviewContentReleaseAccessDenied,
+    SourceObjectPreviewContentReleaseInvalidRequest,
+    SourceObjectPreviewContentReleaseRequest,
+    SourceObjectPreviewContentReleaseResponse,
+    SourceObjectPreviewContentReleaseUnsupportedMediaType,
+    build_default_source_object_preview_content_release_receipt_store,
+    build_source_object_preview_content_release,
+)
 from suite.platform.source_object_preview_decisions import (
     SourceObjectPreviewDecisionAccessDenied,
     SourceObjectPreviewDecisionInvalidRequest,
@@ -798,6 +807,9 @@ from suite.platform.source_object_preview_renderer import (
     SourceObjectPreviewRendererRunResponse,
     build_default_source_object_preview_renderer_evidence_store,
     build_source_object_preview_renderer_run,
+)
+from suite.platform.source_object_preview_renderer_release_gate import (
+    build_default_source_object_preview_renderer_release_gate_evidence_store,
 )
 from suite.platform.storage_paths import suite_data_dir
 from suite.platform.tasks_activities_catalog_readiness import (
@@ -1202,6 +1214,12 @@ def build_app() -> FastAPI:
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
     source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
         data_dir
+    )
+    source_object_preview_renderer_release_gate_store = (
+        build_default_source_object_preview_renderer_release_gate_evidence_store(data_dir=data_dir)
+    )
+    source_object_preview_content_release_receipt_store = (
+        build_default_source_object_preview_content_release_receipt_store()
     )
     crm_account_repository = InMemoryCrmAccountRepository.demo()
     crm_contact_repository = InMemoryCrmContactRepository.demo()
@@ -19298,6 +19316,47 @@ def build_app() -> FastAPI:
         except SourceObjectDetailNotFound as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
+    @app.post(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-content-releases",
+        response_model=SourceObjectPreviewContentReleaseResponse,
+    )
+    def source_object_preview_content_release(
+        source_object_id: str,
+        source_version_id: str,
+        release_request: SourceObjectPreviewContentReleaseRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> SourceObjectPreviewContentReleaseResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_source_object_preview_content_release(
+                user_context=context.user_context,
+                tenant_policy=context.tenant_policy,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+                preview_renderer_evidence_store=request.app.state.source_object_preview_renderer_evidence_store,
+                renderer_release_gate_store=request.app.state.source_object_preview_renderer_release_gate_store,
+                content_release_receipt_store=(request.app.state.source_object_preview_content_release_receipt_store),
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+                request=release_request,
+            )
+        except SourceObjectPreviewContentReleaseAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectPreviewContentReleaseUnsupportedMediaType as exc:
+            raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
+        except SourceObjectPreviewContentReleaseInvalidRequest as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
     def tenant_policy_snapshot_hash(policy: TenantPolicy) -> str:
         return stable_hash(canonical_json(policy.model_dump(mode="json")))
 
@@ -21046,8 +21105,10 @@ def build_app() -> FastAPI:
     app.state.module_registry = module_registry
     app.state.principal_resolver = principal_resolver
     app.state.rag_pipeline = rag_pipeline
+    app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger
     app.state.source_object_preview_renderer_evidence_store = source_object_preview_renderer_evidence_store
+    app.state.source_object_preview_renderer_release_gate_store = source_object_preview_renderer_release_gate_store
     app.state.tenant_policy_repository = tenant_policy_repository
     app.state.voice_guard = voice_guard
     app.state.workspace_source_object_catalog = workspace_source_object_catalog

@@ -1108,6 +1108,10 @@ services:
       SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_TICKETS_REPOSITORY_BACKEND: postgres
       SUITE_TICKETS_APPROVAL_RECORD_BACKEND: postgres
       SUITE_TICKETS_PILOT_RECEIPT_BACKEND: postgres

@@ -32,7 +32,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "PITR or latest verified logical dump; run migration checksum verification after restore",
-      "state_artifacts": ["schema migrations", "policy registries", "source object metadata", "source object storage manifests", "source object write receipts", "source object preview decision evidence", "source object preview renderer sandbox evidence", "legal hold decisions", "retention manifest re-evaluation evidence", "domain tables", "metadata tables"]
+      "state_artifacts": ["schema migrations", "policy registries", "source object metadata", "source object storage manifests", "source object write receipts", "source object preview decision evidence", "source object preview renderer sandbox evidence", "source object preview renderer release gate evidence", "source object preview content release receipts", "legal hold decisions", "retention manifest re-evaluation evidence", "domain tables", "metadata tables"]
     },
     {
       "domain_id": "audit_evidence",
@@ -40,7 +40,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore audit tables and WORM snapshots; verify hash chain before declaring service recovered",
-      "state_artifacts": ["audit events", "audit hashes", "audit checkpoints", "audit WORM export evidence", "vector worker audit events", "embedding model approval audit events", "preview renderer worker audit events", "verification checkpoints", "WORM audit snapshots"]
+      "state_artifacts": ["audit events", "audit hashes", "audit checkpoints", "audit WORM export evidence", "vector worker audit events", "embedding model approval audit events", "preview renderer worker audit events", "preview content release audit events", "verification checkpoints", "WORM audit snapshots"]
     },
     {
       "domain_id": "object_storage_records",
@@ -443,6 +443,7 @@
     "business module row-count and checksum evidence when applicable",
     "knowledge-base source-version evidence hashes when applicable",
     "knowledge-base restore evidence hash when applicable",
+    "source preview content release receipt hashes and tenant isolation checks when applicable",
     "LMS restore drill evidence hash when applicable",
     "Tickets & Incidents storage migration evidence hash when applicable",
     "Tickets & Incidents restore drill evidence hash when applicable",

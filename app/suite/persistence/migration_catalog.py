@@ -505,6 +505,26 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tickets-incidents-controlled-pilot",
         ),
     ),
+    SqlMigration(
+        version="0055",
+        name="source_object_preview_content_release_receipts",
+        resource_name="0055_source_object_preview_content_release_receipts.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:source-object-preview-content-release",
+            "test:source-object-preview-content-release",
+        ),
+    ),
+    SqlMigration(
+        version="0056",
+        name="source_object_preview_content_release_nonempty",
+        resource_name="0056_source_object_preview_content_release_nonempty.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:source-object-preview-content-release",
+            "test:source-object-preview-content-release",
+        ),
+    ),
 )
 
 

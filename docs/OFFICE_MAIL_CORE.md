@@ -69,6 +69,18 @@ Current implementation:
 - `rich-document-parser` in Docker Compose runs the parser manifest command in a read-only, no-network, no-new-privileges container.
 - Complex PDFs, scanned PDFs, macro-bearing files, password-protected files, and high-fidelity Office compatibility still require dedicated hardened parser engines and malicious-file test corpora.
 
+## Guarded Plain-Text Preview Release
+
+The shared content boundary now includes a productive but deliberately narrow preview release for UTF-8 `text/plain`
+and `text/markdown` documents, wiki objects, and procedure documents. It requires current tenant policy, authoritative
+ACL revalidation, complete preview-decision and renderer evidence, a fresh operational release gate, unchanged source
+manifest/content hashes and ACL version, and exact human confirmation. Output is returned as plain text only and is not
+persisted in release receipts or normal audit logs.
+
+This does not open RFC mail bodies, attachments, HTML, PDF, DOCX, ODT, spreadsheets, presentations, macros, active
+content, external resources, or mail sending. Those surfaces retain their dedicated hardened worker and action gates.
+See `docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md`.
+
 ## Indexing Flow
 
 ```text

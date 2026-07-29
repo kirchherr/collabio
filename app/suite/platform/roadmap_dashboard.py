@@ -306,22 +306,33 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 ),
                 RoadmapCapability(
                     capability_id="preview_renderer",
-                    title="Preview Renderer Sandbox und Decision Ledger",
-                    summary="Preview-Evidence und Decisions laufen metadata-only; Content-Rendering bleibt blockiert.",
-                    status=RoadmapCapabilityStatus.METADATA_ONLY,
+                    title="Preview Renderer, Decision Ledger und Safe-Text-Release",
+                    summary=(
+                        "Preview-Evidence und Decisions bleiben metadata-only; ein evidence-gebundener, "
+                        "ACL-gepruefter Klartext-Release ist guarded produktiv. Rich Content und Mail "
+                        "bleiben blockiert."
+                    ),
+                    status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="content_boundary",
                     evidence_refs=(
                         "tests/test_source_object_preview_renderer_release_gate.py",
                         "tests/test_source_object_preview_decision_ledger.py",
+                        "tests/test_source_object_preview_content_release.py",
+                        "docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/preview-renderer-runs",
                         "/v1/source-objects/{object_id}/versions/{version_id}/preview-decisions",
+                        "/v1/source-objects/{object_id}/versions/{version_id}/preview-content-releases",
                     ),
                     guardrails=(
-                        "metadata_only_no_source_content",
-                        "human_confirmation_reference",
-                        "content_release_allowed_false",
+                        "tenant_policy_and_authoritative_acl_revalidation",
+                        "exact_human_confirmation",
+                        "fresh_renderer_release_gate",
+                        "manifest_content_hash_and_acl_version_binding",
+                        "plain_text_and_markdown_allowlist",
+                        "mail_attachments_html_and_binary_content_blocked",
+                        "content_excluded_from_audit_and_release_receipts",
                     ),
                 ),
             ),
