@@ -64,17 +64,17 @@ docker compose run --rm test
 docker compose run --rm migrate
 docker compose run --rm backup
 docker compose run --rm backup-verify
-docker compose --profile object-storage run --rm object-storage-profile-check
+docker compose run --rm source-object-runtime-bootstrap
 docker compose up api
 ```
 
 The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
 
-The Compose stack includes PostgreSQL 18 with pgvector on host port `5433`. `migrate` applies packaged SQL migrations with the owner DSN; application and integration tests use the non-owner `collabio_app` role to exercise RLS.
+The Compose stack includes PostgreSQL 18 with pgvector on configurable host port `SUITE_POSTGRES_PORT` (default `5433`). Runtime state uses `postgres18_data`; tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume.
 
 Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
 
-The optional `object-storage` profile starts MinIO and runs `object-storage-profile-check`, which bootstraps S3-compatible bucket profiles and emits `s3_compatible_provider_profile_evidence.v1` for versioning, Object Lock, and Legal Hold readiness.
+MinIO is part of the default API foundation on configurable ports `SUITE_MINIO_API_PORT`/`SUITE_MINIO_CONSOLE_PORT` (defaults `29000`/`29001`). API startup requires bucket-profile evidence plus a successful `persistent_source_object_runtime_report.v1` covering fresh-instance reads and tenant-scoped content reconciliation.
 
 API:
 

@@ -1437,6 +1437,18 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 239. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung in eine nicht aktivierte Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 240. [ ] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung in einen nicht persistierenden Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung-Dry-Run fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
 
+## Aktueller Fokus: Persistente Backend-Runtime
+
+- [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
+- [x] MinIO-Bucket-Bootstrap mit Versionierung, Object Lock und Legal-Hold-Providerprofil zum API-Startgate gemacht.
+- [x] `persistent_source_object_runtime_report.v1` fuer idempotentes Dev-Seeding, frische Repository-Instanz, exakte Versions-Reads und tenant-sichere Content-Reconciliation implementiert.
+- [x] Test- und Quality-Datenbank vom Runtime-PostgreSQL getrennt, damit append-only Testevidenz keinen Produktzustand mehr verschmutzt.
+- [x] Isolierten Compose-Nachweis mit drei SourceObjects, zwei Tenants, null fehlenden/orphaned Objekten und erfolgreichem tenant-/ACL-geprueftem API-Read erbracht.
+- [ ] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold operationalisieren.
+- [ ] Danach Backend-Completion-Gate ueber Tenant/IAM, Audit, Module, SourceObjects, PostgreSQL-Backup und Object-Storage-Restore als zusammenhaengenden Releasepfad abnehmen.
+
+Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
+
 Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
 
 - [ ] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: Adapter-Port, Wiring-Guard und metadata-only Dry-Run anbinden, ohne gerenderten Content oder Dateiinhalte auszugeben.

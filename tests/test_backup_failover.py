@@ -63,6 +63,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
     assert "acl_version_checkpoint_check" in postgres.integrity_checks
     assert "source_object_storage_manifest_hash_check" in postgres.integrity_checks
+    assert "persistent_source_object_runtime_report_hash_check" in postgres.integrity_checks
+    assert "persistent_source_object_restart_read_check" in postgres.integrity_checks
+    assert "runtime_test_database_isolation_check" in postgres.integrity_checks
     assert "source_object_write_receipt_hash_check" in postgres.integrity_checks
     assert "source_object_preview_decision_evidence_hash_check" in postgres.integrity_checks
     assert "source_object_preview_renderer_evidence_hash_check" in postgres.integrity_checks
@@ -220,6 +223,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "legal_hold_decision_check" in object_storage.integrity_checks
     assert "legal_hold_reevaluation_check" in object_storage.integrity_checks
     assert "storage_object_manifest_hash_check" in object_storage.integrity_checks
+    assert "persistent_source_object_runtime_report_hash_check" in object_storage.integrity_checks
+    assert "source_object_content_recovery_evidence_hash_check" in object_storage.integrity_checks
+    assert "source_object_restart_read_check" in object_storage.integrity_checks
     assert "envelope_encryption_manifest_hash_check" in object_storage.integrity_checks
     assert "restore_drill_report_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_source_version_evidence_hash_check" in object_storage.integrity_checks
@@ -230,6 +236,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "content_hash_verifier_check" in object_storage.integrity_checks
     assert "bucket_profile_policy_export" in object_storage.backup_methods
     assert "docker compose run --rm kb-runtime-reconciler" in object_storage.current_dev_commands
+    assert "docker compose run --rm source-object-runtime-bootstrap" in object_storage.current_dev_commands
 
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks
@@ -471,6 +478,10 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "office store" in rules
     assert "continuity domain" in rules
     assert "Knowledge Base runtime reconciliation run report hash when applicable" in policy.restore_drill_evidence
+    assert (
+        "Persistent SourceObject runtime report hash and restart-read/reconciliation evidence when applicable"
+        in policy.restore_drill_evidence
+    )
     assert "LMS restore drill evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents storage migration evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents restore drill evidence hash when applicable" in policy.restore_drill_evidence

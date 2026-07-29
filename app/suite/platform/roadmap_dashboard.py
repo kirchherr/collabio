@@ -138,20 +138,22 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="crm_erp_vertical_slice_after_foundation",
-        current_foundation_state="metadata_only_foundation_operational_with_crm_erp_slice_complete",
+        current_focus="persistent_source_object_runtime_and_backend_completion",
+        current_foundation_state="persistent_backend_foundation_operational_restore_drill_guarded",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
+            "persistent_source_object_runtime_and_restore_drill",
+            "backend_foundation_completion_gate",
             "crm_accounts_contacts_activities_operational_hardening",
-            "crm_erp_slice_complete_next_governed_rag_readiness",
-            "crm_erp_search_acl_first_then_rag",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
         deferred_scope=(
             "full_office_suite_client",
             "mail_client_runtime",
             "productive_legacy_sql_import_writes",
+            "erp_products_to_orders_invoices_slice",
+            "crm_erp_search_acl_first_then_rag",
             "full_content_preview_rendering",
             "automation_execution_for_tasks_tickets_lms_time_tracking",
         ),
@@ -257,17 +259,25 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
             capabilities=(
                 RoadmapCapability(
                     capability_id="source_objects",
-                    title="SourceObject Metadata Pipeline",
-                    summary=("Workspace-Quellen werden ACL-geprueft als Metadaten sichtbar."),
-                    status=RoadmapCapabilityStatus.METADATA_ONLY,
+                    title="Persistente SourceObject Runtime",
+                    summary=("PostgreSQL-Metadaten und exakte S3-Objektversionen sind im API-Startpfad verifiziert."),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
                     capability_type="data_foundation",
                     evidence_refs=(
                         "tests/test_source_objects.py",
                         "tests/test_source_object_storage_bridge.py",
+                        "tests/test_persistent_source_object_runtime.py",
+                        "app/suite/storage/persistent_source_object_runtime.py",
                         "docs/SOURCE_OBJECT_MODEL.md",
                     ),
                     api_routes=("/v1/source-objects/{object_id}/versions/{version_id}/metadata",),
-                    guardrails=("acl_checked", "content_included_false", "classification_retention_legal_hold_visible"),
+                    guardrails=(
+                        "acl_checked",
+                        "fresh_repository_restart_read_verified",
+                        "tenant_content_reconciliation_required",
+                        "content_included_false",
+                        "classification_retention_legal_hold_visible",
+                    ),
                 ),
                 RoadmapCapability(
                     capability_id="storage_kms_retention",

@@ -541,6 +541,31 @@ content release remains closed until tenant policy, source objects, decision evi
 evidence, audit events, and release receipts are restored and their RLS, append-only rules, hashes, source binding, and
 gate freshness are verified. Rich formats and mail remain closed regardless of receipt recovery.
 
+## Persistent SourceObject Runtime
+
+The default API runtime uses PostgreSQL for source metadata and exact-version S3-compatible storage for content bytes.
+`minio`, `object-storage-profile-check`, migrations, and `source-object-runtime-bootstrap` are ordered startup
+dependencies. The API does not start when bucket capabilities, restart reads, or source-content reconciliation fail.
+
+Run the metadata-only runtime proof after storage, retention, SourceObject, backup, or restore changes:
+
+```bash
+docker compose run --rm source-object-runtime-bootstrap
+```
+
+The command emits `persistent_source_object_runtime_report.v1`. Retain its report hash with release and restore
+evidence. A valid report proves the provider profile, exact object versions, reads through a fresh repository instance,
+and tenant-scoped `source_object_content_recovery_evidence.v1`; it never contains source bodies or content bytes.
+
+`SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO=1` is a development-only convenience and is rejected when `SUITE_ENV` is
+`prod` or `production`. Production runs must use existing governed records and a real restore-drill report hash.
+
+Tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume. Runtime state stays in
+`postgres` and `postgres18_data`. A blocked reconciliation must not be bypassed by deleting manifests or narrowing the
+inventory scope. Recover missing exact object versions from backup, reconcile orphaned versions, or restore into an
+isolated environment. PostgreSQL metadata and object storage are one recovery unit even though their backups are
+implemented by different systems.
+
 Local dumps are written to `./backups/`, which is gitignored.
 
 ## Minimum Restore Drill

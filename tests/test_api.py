@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "crm_erp_vertical_slice_after_foundation"
+    assert body["current_focus"] == "persistent_source_object_runtime_and_backend_completion"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1323,8 +1323,11 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "crm_erp_vertical_slice_after_foundation"
-    assert body["decision_rule"] == "foundation_first_only_pull_forward_items_that_unlock_current_crm_erp_slice"
+    assert body["current_focus"] == "persistent_source_object_runtime_and_backend_completion"
+    assert (
+        body["decision_rule"]
+        == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
+    )
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1339,18 +1342,18 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
         "crm_accounts_contacts_activities_operational_hardening",
-        "erp_products_to_orders_invoices_slice",
-        "crm_erp_search_acl_first_then_rag",
+        "persistent_source_object_runtime_and_restore_drill",
+        "backend_foundation_completion_gate",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "now"
-    assert items["erp_products_to_orders_invoices_slice"]["can_start_now"] is True
-    assert "legacy_migration_registry" in items["erp_products_to_orders_invoices_slice"]["capability_ids"]
-    assert items["crm_erp_search_acl_first_then_rag"]["priority"] == "next"
+    assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "next"
+    assert items["persistent_source_object_runtime_and_restore_drill"]["priority"] == "now"
+    assert "source_objects" in items["persistent_source_object_runtime_and_restore_drill"]["capability_ids"]
+    assert items["backend_foundation_completion_gate"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True

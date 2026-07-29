@@ -87,13 +87,16 @@ def test_storage_adapter_docs_bind_sdk_behind_content_store_port() -> None:
     assert "`s3_compatible_provider_profile_evidence.v1`" in storage_manifest
 
 
-def test_object_storage_compose_profile_runs_provider_profile_evidence_check() -> None:
+def test_object_storage_is_mandatory_api_dependency_and_runs_provider_profile_evidence_check() -> None:
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
     requirements = REQUIREMENTS_PATH.read_text(encoding="utf-8")
 
     assert "boto3>=1.35.0,<2.0" in requirements
     assert "\n  minio:\n" in compose
-    assert 'profiles: ["object-storage"]' in compose
+    assert 'profiles: ["object-storage"]' not in compose
     assert "\n  object-storage-profile-check:\n" in compose
     assert "python -m suite.storage.s3_provider_profile_check" in compose
     assert 'SUITE_S3_BOOTSTRAP_BUCKETS: "1"' in compose
+    assert "\n  source-object-runtime-bootstrap:\n" in compose
+    assert "python -m suite.storage.persistent_source_object_runtime" in compose
+    assert "source-object-runtime-bootstrap:\n        condition: service_completed_successfully" in compose

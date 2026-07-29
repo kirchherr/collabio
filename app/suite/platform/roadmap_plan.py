@@ -112,7 +112,7 @@ def build_roadmap_plan_snapshot_response(*, user_context: UserContext) -> Roadma
         tenant_id=user_context.tenant_id,
         dashboard_schema_version=dashboard.schema_version,
         current_focus=dashboard.current_focus,
-        decision_rule="foundation_first_only_pull_forward_items_that_unlock_current_crm_erp_slice",
+        decision_rule="foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity",
         summary=_roadmap_plan_summary(items=items, dashboard=dashboard),
         items=items,
     )
@@ -155,53 +155,50 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
+            work_item_id="persistent_source_object_runtime_and_restore_drill",
+            title="SourceObject Runtime und Restore Drill abschliessen",
+            summary=(
+                "PostgreSQL/S3-Runtime, Neustart-Reads und Reconciliation sind aktiv; jetzt folgt der "
+                "isolierte Restore exakter Objektversionen."
+            ),
+            priority=RoadmapPlanPriority.NOW,
+            capability_ids=("source_objects", "storage_kms_retention", "backup_failover"),
+            readiness_gate="persistent_runtime_report_ready_and_exact_version_restore_drill_required",
+            decision="must_now_because_persistent_content_is_not_complete_until_restore_is_proven",
+            evidence_refs=(
+                "tests/test_persistent_source_object_runtime.py",
+                "app/suite/storage/persistent_source_object_runtime.py",
+                "docs/operations/BACKUP_FAILOVER.md",
+            ),
+            can_start_now=True,
+        ),
+        RoadmapPlanItem(
+            work_item_id="backend_foundation_completion_gate",
+            title="Backend-Fundament als Ganzes abnehmen",
+            summary=(
+                "Tenant, Rechte, Audit, Module, SourceObjects und Recovery werden als zusammenhaengender "
+                "Backend-Releasepfad geprueft."
+            ),
+            priority=RoadmapPlanPriority.NOW,
+            capability_ids=("tenant_authz", "audit_chain", "module_registry", "source_objects", "backup_failover"),
+            readiness_gate="cross_foundation_api_smoke_backup_restore_and_tenant_isolation_must_pass",
+            decision="must_now_because_more_module_depth_would_hide_remaining_backend_release_risk",
+            evidence_refs=(
+                "tests/test_api.py",
+                "tests/test_backup_failover.py",
+                "docs/ROADMAP.md",
+            ),
+            can_start_now=True,
+        ),
+        RoadmapPlanItem(
             work_item_id="crm_accounts_contacts_activities_operational_hardening",
             title="CRM Basis stabilisieren",
-            summary="Accounts, Contacts, Activities und Notes bleiben der aktuelle Produktivitaets-Pfad.",
-            priority=RoadmapPlanPriority.NOW,
-            capability_ids=("crm_erp_first_slices",),
-            readiness_gate="tenant_module_gate_and_acl_contracts_ready",
-            decision="must_now_because_it_turns_foundation_into_a_usable_business_slice",
-            evidence_refs=("tests/test_crm_accounts.py", "tests/test_crm_contacts.py", "tests/test_crm_activities.py"),
-            can_start_now=True,
-        ),
-        RoadmapPlanItem(
-            work_item_id="erp_products_to_orders_invoices_slice",
-            title="ERP Slice von Produkten zu Belegen ziehen",
-            summary="Orders und Invoices folgen als naechster schmaler Slice ohne Legacy-Write-Freigabe.",
-            priority=RoadmapPlanPriority.NOW,
-            capability_ids=("crm_erp_first_slices", "legacy_migration_registry"),
-            readiness_gate="metadata_only_erp_product_slice_ready_and_legacy_writes_blocked",
-            decision="must_now_because_it_completes_the_first_crm_erp_workflow_without_destructive_imports",
-            evidence_refs=(
-                "tests/test_erp_products.py",
-                "tests/test_erp_sales.py",
-                "tests/test_legacy_sql_migration_run_registry.py",
-            ),
-            can_start_now=True,
-        ),
-        RoadmapPlanItem(
-            work_item_id="crm_erp_search_acl_first_then_rag",
-            title="CRM/ERP Suche von Keyword zu RAG fuehren",
-            summary=(
-                "ACL-first Keyword-Suche, Source-Resolver, Citation-, Prompt-Audit-, Redaction-, "
-                "Authorized-Context- und Inference-Execution-Boundary stehen; Provider-Ausfuehrung bleibt separat."
-            ),
+            summary="Accounts, Contacts, Activities und Notes folgen nach dem Backend-Abnahmegate.",
             priority=RoadmapPlanPriority.NEXT,
-            capability_ids=(
-                "crm_erp_first_slices",
-                "crm_erp_acl_first_search",
-                "rag_vector_security",
-                "source_objects",
-            ),
-            readiness_gate="search_readiness_and_authoritative_acl_validation_before_vector_results",
-            decision="next_because_inference_boundary_is_safe_but_answer_execution_should_be_a_separate_decision",
-            evidence_refs=(
-                "tests/test_crm_erp_search.py",
-                "app/suite/platform/crm_erp_search_readiness.py",
-                "tests/test_rag_security.py",
-                "docs/RAG_SECURITY_MODEL.md",
-            ),
+            capability_ids=("crm_erp_first_slices",),
+            readiness_gate="backend_foundation_completion_gate_ready",
+            decision="next_because_the_business_slice_should_consume_a_proven_backend_runtime",
+            evidence_refs=("tests/test_crm_accounts.py", "tests/test_crm_contacts.py", "tests/test_crm_activities.py"),
             can_start_now=True,
         ),
         RoadmapPlanItem(

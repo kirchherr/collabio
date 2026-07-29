@@ -11,21 +11,35 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "5433:5432"
+      - "${SUITE_POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres18_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
 
+  postgres-test:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio_test
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres18_test_data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
   minio:
     image: ${MINIO_IMAGE:-minio/minio:latest}
-    profiles: ["object-storage"]
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-collabio-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${SUITE_MINIO_API_PORT:-29000}:9000"
+      - "${SUITE_MINIO_CONSOLE_PORT:-29001}:9001"
     volumes:
       - minio_data:/data
 
@@ -33,7 +47,6 @@ services:
     build:
       context: .
       target: dev
-    profiles: ["object-storage"]
     command: python -m suite.storage.s3_provider_profile_check
     depends_on:
       - minio
@@ -50,6 +63,46 @@ services:
       SUITE_S3_PROFILE_CHECK_RETRIES: "30"
     volumes:
       - ./app:/workspace/app
+      - ./docs:/workspace/docs:ro
+
+  source-object-runtime-bootstrap:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.persistent_source_object_runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
+      SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH: ${SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH:-sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee}
+    volumes:
+      - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
   migrate:
@@ -1093,6 +1146,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /workspace/data
@@ -1104,6 +1159,16 @@ services:
       SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: postgres
       SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres
       SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
       SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
@@ -1119,11 +1184,12 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
     ports:
-      - "8000:8000"
+      - "${SUITE_API_PORT:-8000}:8000"
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./data:/workspace/data
+      - ./docs:/workspace/docs:ro
 
   test:
     build:
@@ -1131,16 +1197,16 @@ services:
       target: dev
     command: pytest -q
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
-      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
-      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
-      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
-      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
-      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres-test:5432/collabio_test
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres-test:5432/collabio_test
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres-test:5432/collabio_test
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -1194,16 +1260,16 @@ services:
       target: dev
     command: sh -lc "ruff check . && ruff format --check . && mypy app tests && pytest -q"
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
-      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
-      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
-      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
-      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
-      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres-test:5432/collabio_test
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres-test:5432/collabio_test
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres-test:5432/collabio_test
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -1218,4 +1284,5 @@ services:
 
 volumes:
   postgres18_data:
+  postgres18_test_data:
   minio_data:
