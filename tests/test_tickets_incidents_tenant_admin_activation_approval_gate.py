@@ -51,7 +51,7 @@ def test_tickets_incidents_tenant_admin_activation_approval_gate_allows_human_re
     assert response.content_included is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
-    assert response.existing_tickets_migration_versions == ("0051", "0052", "0053")
+    assert response.existing_tickets_migration_versions == ("0051", "0052", "0053", "0054")
     assert "approve_future_tickets_incidents_tenant_activation" in response.approval_scope
     assert "bind_tickets_restore_drill_evidence_hash" in response.approval_scope
     assert "tenant_admin_identity" in response.required_approval_evidence
@@ -60,7 +60,7 @@ def test_tickets_incidents_tenant_admin_activation_approval_gate_allows_human_re
     assert response.blocking_reasons == ()
     assert response.evidence_hash.startswith("sha256:")
     assert response.evidence_hash == build_tickets_incidents_tenant_admin_activation_approval_gate_hash(response)
-    assert response.summary.tickets_manifest_migration_count == 3
+    assert response.summary.tickets_manifest_migration_count == 4
     assert response.summary.required_approval_evidence_count == len(response.required_approval_evidence)
     assert response.summary.approval_scope_count == len(response.approval_scope)
     assert response.summary.blocking_reason_count == 0

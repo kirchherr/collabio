@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
@@ -217,10 +220,117 @@ class InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
         return self._by_boundary.get((tenant_id, approval_boundary_evidence_hash))
 
 
-def build_default_tickets_incidents_activation_dry_run_execution_approval_record_store() -> (
-    InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore
-):
-    return InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore()
+class PgTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    @staticmethod
+    def _set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+
+    def append(
+        self,
+        record: TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse,
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse:
+        if not record.approval_record_created:
+            raise ValueError("blocked approval attempts must not be appended")
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, record.tenant_id)
+            existing = connection.execute(
+                """
+                SELECT approval_record
+                FROM tickets.activation_dry_run_execution_approval_records
+                WHERE tenant_id = %s AND idempotency_key_hash = %s
+                """,
+                (record.tenant_id, record.idempotency_key_hash),
+            ).fetchone()
+            if existing is not None:
+                return TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse.model_validate(existing[0])
+            try:
+                connection.execute(
+                    """
+                    INSERT INTO tickets.activation_dry_run_execution_approval_records (
+                        tenant_id,
+                        approval_boundary_evidence_hash,
+                        tenant_admin_approval_record_hash,
+                        tickets_restore_drill_evidence_hash,
+                        command_hash,
+                        idempotency_key_hash,
+                        confirmation_statement_hash,
+                        approval_record_ref,
+                        approval_ticket_ref,
+                        human_confirmation_reference,
+                        change_request_ref,
+                        audit_chain_ref,
+                        approved_by,
+                        approved_at_utc,
+                        approval_record,
+                        evidence_hash
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        record.tenant_id,
+                        record.approval_boundary_evidence_hash,
+                        record.tenant_admin_approval_record_hash,
+                        record.tickets_restore_drill_evidence_hash,
+                        record.command_hash,
+                        record.idempotency_key_hash,
+                        record.confirmation_statement_hash,
+                        record.approval_record_ref,
+                        record.approval_ticket_ref,
+                        record.human_confirmation_reference,
+                        record.change_request_ref,
+                        record.audit_chain_ref,
+                        record.approved_by,
+                        record.approved_at_utc,
+                        Jsonb(record.model_dump(mode="json")),
+                        record.evidence_hash,
+                    ),
+                )
+            except psycopg.errors.UniqueViolation as exc:
+                raise ValueError("approval boundary already has a record") from exc
+        return record
+
+    def latest_for_boundary(
+        self, *, tenant_id: str, approval_boundary_evidence_hash: str
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT approval_record
+                FROM tickets.activation_dry_run_execution_approval_records
+                WHERE tenant_id = %s AND approval_boundary_evidence_hash = %s
+                """,
+                (tenant_id, approval_boundary_evidence_hash),
+            ).fetchone()
+        if row is None:
+            return None
+        return TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse.model_validate(row[0])
+
+
+def build_default_tickets_incidents_activation_dry_run_execution_approval_record_store(
+    environ: Mapping[str, str] | None = None,
+) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
+    env = os.environ if environ is None else environ
+    backend = env.get("SUITE_TICKETS_APPROVAL_RECORD_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore()
+    if backend in {"postgres", "postgresql", "pg"}:
+        database_dsn = env.get("SUITE_TICKETS_APPROVAL_RECORD_DSN") or env.get("SUITE_DATABASE_DSN")
+        if not database_dsn:
+            raise ValueError(
+                "PostgreSQL Tickets approval record store requires "
+                "SUITE_TICKETS_APPROVAL_RECORD_DSN or SUITE_DATABASE_DSN"
+            )
+        return PgTicketsIncidentsActivationDryRunExecutionApprovalRecordStore(database_dsn=database_dsn)
+    raise ValueError(f"Unsupported SUITE_TICKETS_APPROVAL_RECORD_BACKEND: {backend}")
 
 
 def build_tickets_incidents_activation_dry_run_execution_approval_record_response(

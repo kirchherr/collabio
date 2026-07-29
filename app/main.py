@@ -910,6 +910,13 @@ from suite.platform.tickets_incidents_catalog_readiness import (
     TicketsIncidentsCatalogReadinessResponse,
     build_tickets_incidents_catalog_readiness_response,
 )
+from suite.platform.tickets_incidents_controlled_pilot import (
+    TicketsIncidentsControlledPilotAdmissionCommand,
+    TicketsIncidentsControlledPilotEnablementCommand,
+    TicketsIncidentsControlledPilotReceipt,
+    TicketsIncidentsControlledPilotService,
+    build_default_tickets_incidents_controlled_pilot_receipt_store,
+)
 from suite.platform.tickets_incidents_migration_evidence_gate import (
     TicketsIncidentsMigrationEvidenceGateResponse,
     build_tickets_incidents_migration_evidence_gate_response,
@@ -1321,6 +1328,7 @@ def build_app() -> FastAPI:
     tickets_incidents_dry_run_execution_approval_record_store = (
         build_default_tickets_incidents_activation_dry_run_execution_approval_record_store()
     )
+    tickets_incidents_controlled_pilot_receipt_store = build_default_tickets_incidents_controlled_pilot_receipt_store()
     ticket_repository = build_default_ticket_repository()
     ticket_service = TicketService(repository=ticket_repository, audit_logger=audit_logger)
     lms_dry_run_execution_approval_record_store = (
@@ -4132,6 +4140,94 @@ def build_app() -> FastAPI:
                 "content_included": response.content_included,
                 "evidence_hash": response.evidence_hash,
                 "blocking_reason_count": len(response.blocking_reasons),
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/controlled-pilot/admission",
+        response_model=TicketsIncidentsControlledPilotReceipt,
+    )
+    def tickets_incidents_controlled_pilot_admission(
+        command: TicketsIncidentsControlledPilotAdmissionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsControlledPilotReceipt:
+        service = TicketsIncidentsControlledPilotService(
+            module_registry=request.app.state.module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.tickets_incidents_dry_run_execution_approval_record_store,
+            receipt_store=request.app.state.tickets_incidents_controlled_pilot_receipt_store,
+        )
+        try:
+            response = service.admit(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except (LookupError, ValueError) as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.controlled_pilot_admission",
+            source_object_ids=[f"tickets_pilot_receipt:{response.evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "receipt_type": response.receipt_type,
+                "module_status": response.module_status,
+                "feature_manifest_hash": response.feature_manifest_hash,
+                "approval_record_evidence_hash": response.approval_record_evidence_hash,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/modules/families/tickets-incidents/controlled-pilot/enablement",
+        response_model=TicketsIncidentsControlledPilotReceipt,
+    )
+    def tickets_incidents_controlled_pilot_enablement(
+        command: TicketsIncidentsControlledPilotEnablementCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> TicketsIncidentsControlledPilotReceipt:
+        service = TicketsIncidentsControlledPilotService(
+            module_registry=request.app.state.module_registry,
+            migration_manifest_entries=migration_manifest,
+            approval_record_store=request.app.state.tickets_incidents_dry_run_execution_approval_record_store,
+            receipt_store=request.app.state.tickets_incidents_controlled_pilot_receipt_store,
+        )
+        try:
+            response = service.enable(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except (LookupError, ValueError) as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.controlled_pilot_enablement",
+            source_object_ids=[
+                f"tickets_pilot_receipt:{response.evidence_hash}",
+                f"tickets_pilot_authorization:{response.authorization_receipt_evidence_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "receipt_type": response.receipt_type,
+                "module_status": response.module_status,
+                "enabled_features": response.enabled_features,
+                "feature_manifest_hash": response.feature_manifest_hash,
+                "approval_record_evidence_hash": response.approval_record_evidence_hash,
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "ai_or_rag_allowed": response.ai_or_rag_allowed,
+                "compliance_feature_allowed": response.compliance_feature_allowed,
+                "evidence_hash": response.evidence_hash,
                 "next_action": response.next_action,
             },
         )
@@ -20931,6 +21027,7 @@ def build_app() -> FastAPI:
     app.state.tickets_incidents_dry_run_execution_approval_record_store = (
         tickets_incidents_dry_run_execution_approval_record_store
     )
+    app.state.tickets_incidents_controlled_pilot_receipt_store = tickets_incidents_controlled_pilot_receipt_store
     app.state.ticket_repository = ticket_repository
     app.state.ticket_service = ticket_service
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store

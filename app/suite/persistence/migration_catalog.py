@@ -495,6 +495,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tickets-incidents-dry-run-execution-approval-records",
         ),
     ),
+    SqlMigration(
+        version="0054",
+        name="tickets_incidents_controlled_pilot",
+        resource_name="0054_tickets_incidents_controlled_pilot.sql",
+        module_id="tickets_incidents",
+        evidence_refs=(
+            "doc:tickets-incidents-module-charter",
+            "test:tickets-incidents-controlled-pilot",
+        ),
+    ),
 )
 
 

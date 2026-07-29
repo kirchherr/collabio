@@ -1109,6 +1109,8 @@ services:
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_TICKETS_REPOSITORY_BACKEND: postgres
+      SUITE_TICKETS_APPROVAL_RECORD_BACKEND: postgres
+      SUITE_TICKETS_PILOT_RECEIPT_BACKEND: postgres
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio

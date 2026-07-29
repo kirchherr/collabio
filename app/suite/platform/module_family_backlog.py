@@ -44,9 +44,7 @@ TASKS_ACTIVITIES_CATALOG_READY_NEXT_ACTION = (
     "register_tasks_activities_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
-TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = (
-    "run_controlled_tickets_incidents_pilot_installation_and_vertical_slice"
-)
+TICKETS_INCIDENTS_STORAGE_EVIDENCE_NEXT_ACTION = "execute_controlled_tickets_incidents_pilot_on_designated_test_tenant"
 NEXT_SLICE_SELECTED_NEXT_ACTION = (
     "register_tickets_incidents_catalog_entry_as_not_installed_after_catalog_readiness_review"
 )

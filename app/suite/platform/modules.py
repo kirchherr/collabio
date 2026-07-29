@@ -618,6 +618,37 @@ class InMemoryModuleRegistry:
         self._catalog[entry.module_id] = entry
         return entry
 
+    def install_catalog_module_for_controlled_pilot(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        expected_manifest_hash: str,
+        approval_evidence_hash: str,
+        installed_at_utc: datetime | None = None,
+    ) -> ModuleCatalogEntry:
+        if module_id != "tickets_incidents":
+            raise ModuleLifecycleError("controlled pilot installation is restricted to tickets_incidents")
+        if not tenant_id.strip():
+            raise ModuleLifecycleError("tenant_id is required for controlled pilot installation")
+        if not re.fullmatch(r"sha256:[a-f0-9]{64}", approval_evidence_hash):
+            raise ModuleLifecycleError("persisted approval evidence hash is required")
+        entry = self.get_catalog_entry(module_id)
+        if entry.manifest_hash != expected_manifest_hash:
+            raise ModuleLifecycleError("Tickets module manifest hash mismatch")
+        if entry.status not in {ModuleStatus.NOT_INSTALLED, ModuleStatus.INSTALLED}:
+            raise ModuleLifecycleError(f"Module cannot be installed from catalog state {entry.status}: {module_id}")
+        if entry.status == ModuleStatus.INSTALLED:
+            return entry
+        installed = entry.model_copy(
+            update={
+                "status": ModuleStatus.INSTALLED,
+                "installed_at_utc": installed_at_utc or utc_now(),
+            }
+        )
+        self._catalog[module_id] = installed
+        return installed
+
     def get_catalog_entry(self, module_id: str) -> ModuleCatalogEntry:
         try:
             return self._catalog[module_id]
@@ -1239,6 +1270,33 @@ class PgModuleRegistry(InMemoryModuleRegistry):
             )
         return entry
 
+    def install_catalog_module_for_controlled_pilot(
+        self,
+        *,
+        tenant_id: str,
+        module_id: str,
+        expected_manifest_hash: str,
+        approval_evidence_hash: str,
+        installed_at_utc: datetime | None = None,
+    ) -> ModuleCatalogEntry:
+        if module_id != "tickets_incidents":
+            raise ModuleLifecycleError("controlled pilot installation is restricted to tickets_incidents")
+        installed_at = installed_at_utc or utc_now()
+        try:
+            with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+                self._set_tenant(connection, tenant_id)
+                row = connection.execute(
+                    """
+                    SELECT collabio.install_tickets_incidents_catalog_for_pilot(%s, %s, %s, %s)
+                    """,
+                    (tenant_id, approval_evidence_hash, expected_manifest_hash, installed_at),
+                ).fetchone()
+                if row is None or str(row[0]) != ModuleStatus.INSTALLED.value:
+                    raise ModuleLifecycleError("Tickets module catalog installation was not confirmed")
+        except psycopg.Error as exc:
+            raise ModuleLifecycleError("Tickets controlled pilot catalog installation failed closed") from exc
+        return self.get_catalog_entry(module_id)
+
     def get_catalog_entry(self, module_id: str) -> ModuleCatalogEntry:
         with psycopg.connect(self.database_dsn) as connection:
             row = connection.execute(
@@ -1635,7 +1693,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "remain separate gates."
             ),
             manifest_hash="sha256:tickets-incidents-module-manifest",
-            required_migration_versions=("0051", "0052", "0053"),
+            required_migration_versions=("0051", "0052", "0053", "0054"),
         ),
     )
 

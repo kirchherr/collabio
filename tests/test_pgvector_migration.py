@@ -85,6 +85,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0051",
         "0052",
         "0053",
+        "0054",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -102,7 +103,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 32
+    assert len(core_migrations) == len(load_migrations()) - 33
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -132,7 +133,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     ]
     assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
     assert [migration.version for migration in tasks_activities_migrations] == ["0050"]
-    assert [migration.version for migration in tickets_incidents_migrations] == ["0051", "0052", "0053"]
+    assert [migration.version for migration in tickets_incidents_migrations] == ["0051", "0052", "0053", "0054"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "tickets_incidents"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
@@ -321,6 +322,45 @@ def test_tickets_incidents_activation_approval_records_migration_is_append_only_
     assert "update collabio.module_catalog" in sql
     assert '["0051", "0052", "0053"]' in sql
     assert "where module_id = 'tickets_incidents'" in sql
+
+
+def test_tickets_incidents_controlled_pilot_migration_is_scoped_append_only_and_tenant_safe() -> None:
+    migration = get_migration("0054")
+    sql = normalized(migration.sql())
+    table = "tickets.controlled_pilot_receipts"
+    body = table_body(migration.sql(), table)
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_controlled_pilot"
+    assert f"create table if not exists {table}" in sql
+    for column in (
+        "tenant_id",
+        "receipt_type",
+        "approval_boundary_evidence_hash",
+        "approval_record_evidence_hash",
+        "tickets_restore_drill_evidence_hash",
+        "idempotency_key_hash",
+        "enabled_features",
+        "receipt",
+        "evidence_hash",
+    ):
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from {table}"
+    assert f"alter table {table} enable row level security" in sql
+    assert f"alter table {table} force row level security" in sql
+    assert "create policy tickets_controlled_pilot_receipts_tenant_select" in sql
+    assert "create policy tickets_controlled_pilot_receipts_tenant_insert" in sql
+    assert "create policy tickets_controlled_pilot_receipts_no_update" in sql
+    assert "create policy tickets_controlled_pilot_receipts_no_hard_delete" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "security definer" in sql
+    assert "persisted explicit tickets pilot approval not found" in sql
+    assert "revoke all on function collabio.install_tickets_incidents_catalog_for_pilot" in sql
+    assert "grant execute on function collabio.install_tickets_incidents_catalog_for_pilot" in sql
+    assert "grant update on table collabio.module_catalog" not in sql
+    assert "human_confirmation_statement text" not in sql
+    assert "ticket_content text" not in sql
+    assert "raw_payload text" not in sql
+    assert '["0051", "0052", "0053", "0054"]' in sql
 
 
 def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_content_storage() -> None:
