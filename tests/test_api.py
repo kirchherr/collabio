@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "persistent_source_object_runtime_and_backend_completion"
+    assert body["current_focus"] == "backend_foundation_completion_gate"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1323,7 +1323,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "persistent_source_object_runtime_and_backend_completion"
+    assert body["current_focus"] == "backend_foundation_completion_gate"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1342,7 +1342,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
         "crm_accounts_contacts_activities_operational_hardening",
-        "persistent_source_object_runtime_and_restore_drill",
+        "postgres_backup_restore_runtime_evidence",
         "backend_foundation_completion_gate",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
@@ -1351,8 +1351,8 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
     assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "next"
-    assert items["persistent_source_object_runtime_and_restore_drill"]["priority"] == "now"
-    assert "source_objects" in items["persistent_source_object_runtime_and_restore_drill"]["capability_ids"]
+    assert items["postgres_backup_restore_runtime_evidence"]["priority"] == "now"
+    assert "backup_failover" in items["postgres_backup_restore_runtime_evidence"]["capability_ids"]
     assert items["backend_foundation_completion_gate"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"

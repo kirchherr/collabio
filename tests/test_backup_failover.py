@@ -226,6 +226,11 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "persistent_source_object_runtime_report_hash_check" in object_storage.integrity_checks
     assert "source_object_content_recovery_evidence_hash_check" in object_storage.integrity_checks
     assert "source_object_restart_read_check" in object_storage.integrity_checks
+    assert "exact_version_restore_drill_report_hash_check" in object_storage.integrity_checks
+    assert "backend_storage_foundation_gate_hash_check" in object_storage.integrity_checks
+    assert "independent_restore_target_check" in object_storage.integrity_checks
+    assert "restore_target_object_lock_control_check" in object_storage.integrity_checks
+    assert "restore_target_legal_hold_control_check" in object_storage.integrity_checks
     assert "envelope_encryption_manifest_hash_check" in object_storage.integrity_checks
     assert "restore_drill_report_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_source_version_evidence_hash_check" in object_storage.integrity_checks
@@ -237,6 +242,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "bucket_profile_policy_export" in object_storage.backup_methods
     assert "docker compose run --rm kb-runtime-reconciler" in object_storage.current_dev_commands
     assert "docker compose run --rm source-object-runtime-bootstrap" in object_storage.current_dev_commands
+    assert "docker compose run --rm backend-storage-foundation-gate" in object_storage.current_dev_commands
 
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks
@@ -482,6 +488,8 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
         "Persistent SourceObject runtime report hash and restart-read/reconciliation evidence when applicable"
         in policy.restore_drill_evidence
     )
+    assert "exact-version restore drill report hash when object storage is covered" in policy.restore_drill_evidence
+    assert "backend storage foundation gate hash when object storage is covered" in policy.restore_drill_evidence
     assert "LMS restore drill evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents storage migration evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents restore drill evidence hash when applicable" in policy.restore_drill_evidence
@@ -747,6 +755,9 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "legacy_sql_migration_report_metadata.v1" in runbook
     assert "docker compose run --rm kb-runtime-reconciler" in runbook
     assert "knowledge_base_runtime_reconciliation_run_report.v1" in runbook
+    assert "docker compose run --rm backend-storage-foundation-gate" in runbook
+    assert "exact_version_restore_drill_report.v1" in runbook
+    assert "backend_storage_foundation_gate.v1" in runbook
     assert "Continuity Domains" in runbook
     assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook

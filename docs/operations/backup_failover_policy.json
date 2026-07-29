@@ -283,9 +283,9 @@
         "monthly": 24
       },
       "restore_drill_frequency_days": 60,
-      "integrity_checks": ["persistent_source_object_runtime_report_hash_check", "source_object_content_recovery_evidence_hash_check", "source_object_restart_read_check", "storage_object_manifest_hash_check", "envelope_encryption_manifest_hash_check", "restore_drill_report_hash_check", "source_object_manifest_hash_check", "knowledge_base_source_version_evidence_hash_check", "knowledge_base_restore_evidence_hash_check", "knowledge_base_runtime_reconciliation_restore_drill_binding_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "content_hash_verifier_check", "ciphertext_hash_check", "aad_hash_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
-      "failover_mode": "manual bucket endpoint switch until object-store implementation and restore drills are passing",
-      "current_dev_commands": ["docker compose run --rm source-object-runtime-bootstrap", "docker compose run --rm kb-runtime-reconciler"]
+      "integrity_checks": ["persistent_source_object_runtime_report_hash_check", "source_object_content_recovery_evidence_hash_check", "source_object_restart_read_check", "exact_version_restore_drill_report_hash_check", "backend_storage_foundation_gate_hash_check", "independent_restore_target_check", "exact_source_and_target_object_version_read_check", "restore_target_object_lock_control_check", "restore_target_legal_hold_control_check", "storage_object_manifest_hash_check", "envelope_encryption_manifest_hash_check", "restore_drill_report_hash_check", "source_object_manifest_hash_check", "knowledge_base_source_version_evidence_hash_check", "knowledge_base_restore_evidence_hash_check", "knowledge_base_runtime_reconciliation_restore_drill_binding_check", "retention_manifest_hash_check", "retention_policy_snapshot_hash_check", "legal_hold_decision_check", "legal_hold_reevaluation_check", "object_manifest_hash", "content_hash_check", "content_hash_verifier_check", "ciphertext_hash_check", "aad_hash_check", "bucket_profile_policy_check", "object_lock_configuration_check", "retention_policy_check", "legal_hold_check", "chain_of_custody_check"],
+      "failover_mode": "manual switch to an independently verified versioned restore target; production replication remains a deployment prerequisite",
+      "current_dev_commands": ["docker compose run --rm source-object-runtime-bootstrap", "docker compose run --rm backend-storage-foundation-gate", "docker compose run --rm kb-runtime-reconciler"]
     },
     {
       "target_id": "kms_and_secrets",
@@ -405,6 +405,8 @@
     "continuity domains covered",
     "verification command output",
     "restore drill report hash",
+    "exact-version restore drill report hash when object storage is covered",
+    "backend storage foundation gate hash when object storage is covered",
     "storage, envelope, retention, and KMS evidence hashes",
     "module registry state and tenant module lifecycle result",
     "module registry operations report hash when applicable",

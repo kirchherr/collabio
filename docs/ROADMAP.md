@@ -1444,8 +1444,9 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] `persistent_source_object_runtime_report.v1` fuer idempotentes Dev-Seeding, frische Repository-Instanz, exakte Versions-Reads und tenant-sichere Content-Reconciliation implementiert.
 - [x] Test- und Quality-Datenbank vom Runtime-PostgreSQL getrennt, damit append-only Testevidenz keinen Produktzustand mehr verschmutzt.
 - [x] Isolierten Compose-Nachweis mit drei SourceObjects, zwei Tenants, null fehlenden/orphaned Objekten und erfolgreichem tenant-/ACL-geprueftem API-Read erbracht.
-- [ ] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold operationalisieren.
-- [ ] Danach Backend-Completion-Gate ueber Tenant/IAM, Audit, Module, SourceObjects, PostgreSQL-Backup und Object-Storage-Restore als zusammenhaengenden Releasepfad abnehmen.
+- [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
+- [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
+- [ ] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abnehmen.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 

@@ -483,6 +483,13 @@ class PgSourceObjectRepository:
         )
         return draft.model_copy(update={"evidence_hash": build_source_object_content_recovery_evidence_hash(draft)})
 
+    def list_storage_manifests(self, *, tenant_id: str) -> tuple[StorageObjectManifest, ...]:
+        if not tenant_id.strip():
+            raise ValueError("tenant_id must not be empty")
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            return self._list_storage_manifests(connection, tenant_id=tenant_id)
+
     def _insert_source_metadata(
         self,
         connection: psycopg.Connection[Any],

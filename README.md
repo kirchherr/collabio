@@ -65,6 +65,7 @@ docker compose run --rm migrate
 docker compose run --rm backup
 docker compose run --rm backup-verify
 docker compose run --rm source-object-runtime-bootstrap
+docker compose run --rm backend-storage-foundation-gate
 docker compose up api
 ```
 
@@ -75,6 +76,8 @@ The Compose stack includes PostgreSQL 18 with pgvector on configurable host port
 Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
 
 MinIO is part of the default API foundation on configurable ports `SUITE_MINIO_API_PORT`/`SUITE_MINIO_CONSOLE_PORT` (defaults `29000`/`29001`). API startup requires bucket-profile evidence plus a successful `persistent_source_object_runtime_report.v1` covering fresh-instance reads and tenant-scoped content reconciliation.
+
+The opt-in `restore-drill` profile adds an independent MinIO target on configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`). `backend-storage-foundation-gate` restores every tenant-scoped storage manifest by exact source version, reads the exact target version, verifies metadata, retention, Object Lock and Legal Hold controls, then binds the current restore report back into a fresh persistent-runtime report. Evidence is metadata-only.
 
 API:
 

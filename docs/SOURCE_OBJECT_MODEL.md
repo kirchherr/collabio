@@ -139,6 +139,10 @@ The local content-store implementation is `InMemorySourceObjectContentStore`. It
 
 `source_object_content_recovery_evidence.v1` is the API-wiring gate for production Knowledge Base writes. `PgSourceObjectRepository.build_content_recovery_evidence` compares tenant-scoped content-store inventory with `collabio.source_object_storage_manifests`, verifies manifest-backed content hashes through the content-store read path, records orphaned content reference hashes and missing manifest hashes, binds a restore-drill report hash, and returns `api_wiring_allowed=true` only when there are no orphaned or missing content objects. `SourceObjectContentReconciliationWorker` turns that evidence into a metadata-only recommended action: `ready_for_api_wiring` or `manual_reconciliation_required`. The evidence and worker run never include source bytes.
 
+`exact_version_restore_drill_report.v1` enumerates manifests only through the tenant-scoped PostgreSQL repository, reads each authoritative source object version, copies it to an independently addressed S3-compatible target, reads the exact returned target version, and verifies content hash, byte length, target metadata, bucket policy, Object Lock and Legal Hold controls. It stores only hashes, counts and status fields. `backend_storage_foundation_gate.v1` then recomputes `persistent_source_object_runtime_report.v1` with the new restore-report hash and opens only when runtime, restore, tenant scope, target isolation and metadata-only evidence all agree.
+
+The drill target is never treated as the authorization source and its target version IDs never replace authoritative PostgreSQL manifests. A real failover restores PostgreSQL metadata and object storage as one recovery unit, validates this gate, and only then changes the governed object-store endpoint.
+
 Content hash verification is documented in:
 
 ```text

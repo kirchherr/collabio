@@ -43,6 +43,20 @@ services:
     volumes:
       - minio_data:/data
 
+  minio-restore:
+    profiles: ["restore-drill"]
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      MINIO_ROOT_PASSWORD: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+    ports:
+      - "${SUITE_MINIO_RESTORE_API_PORT:-29100}:9000"
+      - "${SUITE_MINIO_RESTORE_CONSOLE_PORT:-29101}:9001"
+    volumes:
+      - minio_restore_data:/data
+
+
   object-storage-profile-check:
     build:
       context: .
@@ -59,6 +73,29 @@ services:
       SUITE_S3_REGION: us-east-1
       SUITE_S3_STORAGE_PROVIDER: minio
       SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_S3_BOOTSTRAP_BUCKETS: "1"
+      SUITE_S3_PROFILE_CHECK_RETRIES: "30"
+    volumes:
+      - ./app:/workspace/app
+      - ./docs:/workspace/docs:ro
+
+  object-storage-restore-profile-check:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.s3_provider_profile_check
+    depends_on:
+      - minio-restore
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
       SUITE_S3_BOOTSTRAP_BUCKETS: "1"
       SUITE_S3_PROFILE_CHECK_RETRIES: "30"
     volumes:
@@ -101,6 +138,55 @@ services:
       SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
       SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
       SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH: ${SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH:-sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  backend-storage-foundation-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.backend_storage_foundation_gate
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      object-storage-restore-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_RESTORE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
+      SUITE_RESTORE_S3_PROFILE_CHECK_RETRIES: "30"
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
     volumes:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
@@ -1286,3 +1372,4 @@ volumes:
   postgres18_data:
   postgres18_test_data:
   minio_data:
+  minio_restore_data:

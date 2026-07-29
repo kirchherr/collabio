@@ -155,19 +155,19 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="persistent_source_object_runtime_and_restore_drill",
-            title="SourceObject Runtime und Restore Drill abschliessen",
+            work_item_id="postgres_backup_restore_runtime_evidence",
+            title="PostgreSQL Backup und Restore runtime-nah abnehmen",
             summary=(
-                "PostgreSQL/S3-Runtime, Neustart-Reads und Reconciliation sind aktiv; jetzt folgt der "
-                "isolierte Restore exakter Objektversionen."
+                "Der Object-Storage-Restore ist bewiesen; jetzt werden Dump, Checksumme, Restore-Katalog "
+                "und isolierter Datenbank-Restore in denselben Release-Nachweis gezogen."
             ),
             priority=RoadmapPlanPriority.NOW,
-            capability_ids=("source_objects", "storage_kms_retention", "backup_failover"),
-            readiness_gate="persistent_runtime_report_ready_and_exact_version_restore_drill_required",
-            decision="must_now_because_persistent_content_is_not_complete_until_restore_is_proven",
+            capability_ids=("source_objects", "audit_chain", "backup_failover"),
+            readiness_gate="postgres_backup_checksum_catalog_and_isolated_restore_evidence_required",
+            decision="must_now_because_database_and_object_storage_form_one_recovery_unit",
             evidence_refs=(
-                "tests/test_persistent_source_object_runtime.py",
-                "app/suite/storage/persistent_source_object_runtime.py",
+                "tests/test_backup_failover.py",
+                "docker-compose.yml",
                 "docs/operations/BACKUP_FAILOVER.md",
             ),
             can_start_now=True,

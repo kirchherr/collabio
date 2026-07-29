@@ -9,6 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 from suite.storage.adapter_policy import ObjectLockMode, StorageAdapterPolicy
 from suite.storage.s3_compatible_content_store import (
     S3CompatibleBucketCapabilities,
+    S3CompatibleObjectVersionControls,
     S3CompatibleObjectWriteResult,
     S3CompatibleStoredObjectVersion,
 )
@@ -195,6 +196,42 @@ class Boto3S3CompatibleObjectStoreClient:
                 )
         return tuple(sorted(versions, key=lambda item: (item.object_key, item.object_version_id)))
 
+    def object_version_controls(
+        self,
+        *,
+        bucket_id: str,
+        object_key: str,
+        object_version_id: str,
+    ) -> S3CompatibleObjectVersionControls:
+        head = self._sdk_call(
+            "head_object",
+            lambda: self.sdk_client.head_object(
+                Bucket=bucket_id,
+                Key=object_key,
+                VersionId=object_version_id,
+            ),
+        )
+        metadata = head.get("Metadata", {})
+        if not isinstance(metadata, Mapping):
+            metadata = {}
+        mode_value = str(head.get("ObjectLockMode", "")).strip().lower()
+        try:
+            object_lock_mode = ObjectLockMode(mode_value) if mode_value else ObjectLockMode.NONE
+        except ValueError as exc:
+            raise SourceObjectStorageError("S3-compatible object version returned an unknown Object Lock mode") from exc
+        retain_until = head.get("ObjectLockRetainUntilDate")
+        retain_until_utc = _timestamp_text(retain_until) if retain_until is not None else None
+        return S3CompatibleObjectVersionControls(
+            bucket_id=bucket_id,
+            object_key=object_key,
+            object_version_id=object_version_id,
+            storage_provider=self.storage_provider,
+            object_lock_mode=object_lock_mode,
+            object_lock_retain_until_utc=retain_until_utc,
+            legal_hold_enabled=str(head.get("ObjectLockLegalHoldStatus", "")).strip().upper() == "ON",
+            metadata={str(key): str(value) for key, value in metadata.items()},
+        )
+
     def _list_object_version_pages(self, *, bucket_id: str, prefix: str) -> Iterable[Mapping[str, Any]]:
         try:
             paginator = self.sdk_client.get_paginator("list_object_versions")
@@ -285,3 +322,12 @@ def _looks_like_existing_bucket_error(exc: Exception) -> bool:
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _timestamp_text(value: object) -> str:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    normalized = str(value).strip()
+    if not normalized:
+        raise SourceObjectStorageError("S3-compatible Object Lock retain-until timestamp is empty")
+    return normalized

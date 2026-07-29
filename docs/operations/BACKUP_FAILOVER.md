@@ -566,6 +566,26 @@ inventory scope. Recover missing exact object versions from backup, reconcile or
 isolated environment. PostgreSQL metadata and object storage are one recovery unit even though their backups are
 implemented by different systems.
 
+## Exact-Version Object-Storage Restore Drill
+
+Run the integrated storage gate after object-storage, retention, SourceObject, backup, failover, or provider changes:
+
+```bash
+docker compose run --rm backend-storage-foundation-gate
+```
+
+The targeted service activates the opt-in `restore-drill` profile and starts `minio-restore` as an independently
+addressed target. For every manifest in `SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS`, it reads the exact source
+version, writes to the target, reads the exact returned target version, and verifies the storage/source/retention
+manifest chain, content hash and byte length, target metadata, versioning, Object Lock and Legal Hold controls. The
+resulting `exact_version_restore_drill_report.v1` contains hashes, counts and status only.
+
+The same command immediately recomputes `persistent_source_object_runtime_report.v1` with the current restore-report
+hash and emits `backend_storage_foundation_gate.v1`. A stale runtime/restore binding, empty drill, shared source/target
+endpoint, tenant mismatch, missing version, metadata drift, content drift, or control mismatch keeps
+`api_start_allowed=false`. The local target proves the restore mechanism; it does not replace production replication,
+off-site durability, provider credentials, approved endpoint switching, or a PostgreSQL point-in-time recovery design.
+
 Local dumps are written to `./backups/`, which is gitignored.
 
 ## Minimum Restore Drill

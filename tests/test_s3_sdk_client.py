@@ -78,6 +78,9 @@ class FakeBoto3S3Client:
             "Body": body,
             "Metadata": metadata,
             "LastModified": "2026-06-12T12:00:00Z",
+            "ObjectLockMode": str(metadata.get("collabio-object-lock-mode", "")).upper(),
+            "ObjectLockRetainUntilDate": "2033-06-12T12:00:00Z",
+            "ObjectLockLegalHoldStatus": kwargs.get("ObjectLockLegalHoldStatus", "OFF"),
         }
         self.put_object_calls.append(kwargs)
         return {"VersionId": version_id}
@@ -90,7 +93,15 @@ class FakeBoto3S3Client:
 
     def head_object(self, **kwargs: object) -> dict[str, object]:
         stored = self.objects[(str(kwargs["Bucket"]), str(kwargs["Key"]), str(kwargs["VersionId"]))]
-        return {"Metadata": stored["Metadata"], "LastModified": stored["LastModified"]}
+        result = {
+            "Metadata": stored["Metadata"],
+            "LastModified": stored["LastModified"],
+            "ObjectLockLegalHoldStatus": stored["ObjectLockLegalHoldStatus"],
+        }
+        if stored["ObjectLockMode"]:
+            result["ObjectLockMode"] = stored["ObjectLockMode"]
+            result["ObjectLockRetainUntilDate"] = stored["ObjectLockRetainUntilDate"]
+        return result
 
     def list_object_versions(self, **kwargs: object) -> dict[str, object]:
         bucket = str(kwargs["Bucket"])
@@ -166,6 +177,11 @@ def test_boto3_s3_compatible_client_put_get_and_list_versions() -> None:
         legal_hold=True,
     )
     listed = client.list_object_versions(bucket_id="business-records", prefix="tenant-1/")
+    controls = client.object_version_controls(
+        bucket_id="business-records",
+        object_key=result.object_key,
+        object_version_id=result.object_version_id,
+    )
 
     assert result.object_version_id == "version-1"
     assert client.get_object(bucket_id="business-records", object_key=result.object_key, object_version_id="version-1")
@@ -175,3 +191,7 @@ def test_boto3_s3_compatible_client_put_get_and_list_versions() -> None:
     metadata = sdk_client.put_object_calls[0]["Metadata"]
     assert isinstance(metadata, dict)
     assert metadata["collabio-object-lock-mode"] == "compliance"
+    assert controls.object_lock_mode == ObjectLockMode.COMPLIANCE
+    assert controls.object_lock_retain_until_utc == "2033-06-12T12:00:00Z"
+    assert controls.legal_hold_enabled is True
+    assert controls.metadata["tenant_id"] == "tenant-1"

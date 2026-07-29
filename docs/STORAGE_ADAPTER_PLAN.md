@@ -111,6 +111,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 4. [x] Persist source object metadata and storage-manifest references in PostgreSQL through `PgSourceObjectRepository`.
 5. [x] Add an S3/MinIO-compatible content-store adapter port behind the `SourceObjectContentStore` contract, with versioning, Object Lock, and legal-hold capability checks.
 6. Write object version IDs and manifest evidence into audit/outbox events.
-7. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
+7. [x] Add an exact-version restore command and metadata-only report for storage manifests, content hashes, target metadata, Object Lock, Legal Hold, and isolated-target evidence.
 8. [x] Add provider profile tests before allowing production object writes.
 9. [x] Bind the concrete MinIO/AWS SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
+10. [x] Bind the exact-version restore report to a freshly recomputed persistent runtime report in `backend_storage_foundation_gate.v1`; production cross-site replication and provider-specific failover automation remain deployment work.

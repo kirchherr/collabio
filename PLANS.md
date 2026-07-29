@@ -100,15 +100,17 @@ Current sprint:
 90. [x] S3/MinIO-compatible content-store adapter port with Object-Lock/WORM capability checks, metadata-only orphan-reconciliation worker output, and clean recovery-evidence gate for `PostgresKnowledgeBaseWriteUnitOfWork`.
 91. [x] Knowledge Base production write deployment gate that requires clean source-content recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence before Postgres UoW API wiring can be enabled.
 92. [x] Concrete boto3/MinIO-compatible SDK client behind `S3CompatibleObjectStoreClient`, Compose `object-storage` profile, bucket bootstrap, and provider-profile evidence check service.
+93. [x] Default API runtime on PostgreSQL source manifests plus S3-compatible exact-version content, with isolated test database and metadata-only runtime report.
+94. [x] Exact-version restore drill to an independently addressed MinIO target with source/target version reads, manifest/content verification, Object Lock, Legal Hold, and metadata-only report.
+95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, a PostgreSQL source metadata/storage-manifest bridge, a coordinated write unit-of-work, a shared PostgreSQL metadata transaction for that unit of work, content-store recovery evidence, an S3/MinIO-compatible content-store adapter port, a production write deployment gate, and a concrete SDK client behind the object-store protocol. The next narrow step is runtime provider configuration:
+Complete the backend foundation as one release path instead of extending another module:
 
-- Wire `S3CompatibleSourceObjectContentStore`, provider-profile evidence, source-content recovery evidence, and the Knowledge Base deployment gate from explicit runtime configuration.
-- Keep the object-store provider disabled by default until the evidence chain is present.
-- Re-run restore-drill and source-content recovery evidence against the configured object store before API writes are enabled.
-- Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
+- Combine Tenant/IAM, append-only Audit, Module Registry, migration catalog, PostgreSQL backup verification, persistent SourceObjects, and `backend_storage_foundation_gate.v1` into one metadata-only backend completion gate.
+- Run the completion gate in Compose and retain its hash as release evidence.
+- Keep ERP/Legacy SQL depth, RAG provider execution, rich viewers, full Office/Mail clients, and new module functionality deferred until that foundation gate is green.
 
 ## Module Expansion Stance
 

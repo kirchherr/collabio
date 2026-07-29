@@ -47,6 +47,17 @@ class S3CompatibleStoredObjectVersion(BaseModel):
     metadata: dict[str, str]
 
 
+class S3CompatibleObjectVersionControls(BaseModel):
+    bucket_id: str
+    object_key: str
+    object_version_id: str
+    storage_provider: str = "s3-compatible"
+    object_lock_mode: ObjectLockMode = ObjectLockMode.NONE
+    object_lock_retain_until_utc: str | None = None
+    legal_hold_enabled: bool = False
+    metadata: dict[str, str]
+
+
 class S3CompatibleProviderProfileStatus(StrEnum):
     READY = "ready"
     BLOCKED = "blocked"

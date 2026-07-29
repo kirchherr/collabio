@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="persistent_source_object_runtime_and_backend_completion",
-        current_foundation_state="persistent_backend_foundation_operational_restore_drill_guarded",
+        current_focus="backend_foundation_completion_gate",
+        current_foundation_state="object_restore_proven_backend_completion_in_progress",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "persistent_source_object_runtime_and_restore_drill",
+            "postgres_backup_restore_runtime_evidence",
             "backend_foundation_completion_gate",
             "crm_accounts_contacts_activities_operational_hardening",
             "module_family_backlog_kb_lms_tickets_time_tracking",
@@ -240,13 +240,18 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 RoadmapCapability(
                     capability_id="backup_failover",
                     title="Backup- und Failover-Kultur",
-                    summary="Continuity Domains, Restore-Drills und Change-Control sind getestet.",
+                    summary="Continuity Domains und ein unabhaengiger Exact-Version-Object-Restore sind getestet.",
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_control",
-                    evidence_refs=("tests/test_backup_failover.py", "docs/operations/BACKUP_FAILOVER.md"),
+                    evidence_refs=(
+                        "tests/test_backup_failover.py",
+                        "tests/test_exact_version_restore_drill.py",
+                        "app/suite/storage/backend_storage_foundation_gate.py",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
                     guardrails=(
                         "continuity_domain_required",
-                        "restore_drill_required",
+                        "independent_exact_version_restore_required",
                         "future_modules_must_extend_policy",
                     ),
                 ),
@@ -267,7 +272,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_source_objects.py",
                         "tests/test_source_object_storage_bridge.py",
                         "tests/test_persistent_source_object_runtime.py",
+                        "tests/test_exact_version_restore_drill.py",
                         "app/suite/storage/persistent_source_object_runtime.py",
+                        "app/suite/storage/exact_version_restore_drill.py",
                         "docs/SOURCE_OBJECT_MODEL.md",
                     ),
                     api_routes=("/v1/source-objects/{object_id}/versions/{version_id}/metadata",),
