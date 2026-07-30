@@ -88,6 +88,8 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0054",
         "0055",
         "0056",
+        "0057",
+        "0058",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -105,7 +107,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 33
+    assert len(core_migrations) == len(load_migrations()) - 34
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -123,6 +125,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0042",
         "0043",
         "0044",
+        "0057",
     ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",

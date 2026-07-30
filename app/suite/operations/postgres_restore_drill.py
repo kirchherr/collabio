@@ -63,6 +63,17 @@ SOURCE_OBJECT_TABLES = {
     "collabio.source_object_storage_manifests",
     "collabio.source_object_write_receipts",
 }
+CRM_ATOMIC_WRITE_TABLES = {
+    "crm.accounts",
+    "crm.contacts",
+    "crm.activities",
+    "crm.notes",
+    "crm.account_onboarding_receipts",
+}
+CRM_ATOMIC_RECEIPT_POLICIES = {
+    "crm_account_onboarding_receipts_no_update",
+    "crm_account_onboarding_receipts_no_hard_delete",
+}
 
 
 class PostgresBackupArtifactEvidence(BaseModel):
@@ -93,6 +104,7 @@ class PostgresDatabaseSnapshot(BaseModel):
     service_role_grant_count: int = Field(ge=0)
     schema_manifest_hash: str
     relation_manifest_hash: str
+    crm_atomic_write_controls_verified: bool
     row_count_manifest_hash: str
     migration_manifest_hash: str
     rls_policy_manifest_hash: str
@@ -123,6 +135,7 @@ class PostgresRestoreDrillReport(BaseModel):
     migration_count: int = Field(ge=1)
     table_count: int = Field(ge=1)
     row_count_total: int = Field(ge=0)
+    crm_atomic_write_controls_verified: bool
     source_target_state_verified: bool
     backup_integrity_verified: bool
     target_isolation_verified: bool
@@ -232,6 +245,28 @@ def build_postgres_database_snapshot(
     )
     module_registry_verified = table_names >= MODULE_REGISTRY_TABLES and "collabio.tenant_modules" in forced_rls_tables
     source_object_verified = table_names >= SOURCE_OBJECT_TABLES and forced_rls_tables >= SOURCE_OBJECT_TABLES
+    crm_receipt_policies = {
+        str(row.get("policy_name", ""))
+        for row in normalized["policies"]
+        if _qualified_name(row) == "crm.account_onboarding_receipts"
+    }
+    crm_authz_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_authz_admin" and _qualified_name(row) == table_name
+        }
+        for table_name in CRM_ATOMIC_WRITE_TABLES
+    }
+    crm_atomic_write_verified = (
+        table_names >= CRM_ATOMIC_WRITE_TABLES
+        and forced_rls_tables >= CRM_ATOMIC_WRITE_TABLES
+        and crm_receipt_policies >= CRM_ATOMIC_RECEIPT_POLICIES
+        and all(
+            {"SELECT", "INSERT"} <= privileges and not ({"UPDATE", "DELETE"} & privileges)
+            for privileges in crm_authz_privileges_by_table.values()
+        )
+    )
     migration_catalog_verified = _migration_catalog_matches_code(normalized["migrations"])
     service_roles_verified = service_role_names >= SERVICE_ROLES
 
@@ -286,6 +321,7 @@ def build_postgres_database_snapshot(
         append_only_audit_controls_verified=audit_verified,
         module_registry_controls_verified=module_registry_verified,
         source_object_controls_verified=source_object_verified,
+        crm_atomic_write_controls_verified=crm_atomic_write_verified,
         snapshot_hash="sha256:" + "0" * 64,
     )
     return draft.model_copy(update={"snapshot_hash": build_postgres_database_snapshot_hash(draft)})
@@ -346,6 +382,9 @@ def build_postgres_restore_drill_report(
         "source_object_controls_verified": (
             source_snapshot.source_object_controls_verified and target_snapshot.source_object_controls_verified
         ),
+        "crm_atomic_write_controls_verified": (
+            source_snapshot.crm_atomic_write_controls_verified and target_snapshot.crm_atomic_write_controls_verified
+        ),
     }
     metadata_only = not source_snapshot.content_included and not target_snapshot.content_included
     checks = {
@@ -359,6 +398,7 @@ def build_postgres_restore_drill_report(
         "tenant_iam_controls_not_verified": control_pairs["tenant_iam_controls_verified"],
         "append_only_audit_controls_not_verified": control_pairs["append_only_audit_controls_verified"],
         "module_registry_controls_not_verified": control_pairs["module_registry_controls_verified"],
+        "crm_atomic_write_controls_not_verified": control_pairs["crm_atomic_write_controls_verified"],
         "source_object_controls_not_verified": control_pairs["source_object_controls_verified"],
         "evidence_contains_content": metadata_only,
     }
@@ -388,6 +428,7 @@ def build_postgres_restore_drill_report(
         tenant_iam_controls_verified=control_pairs["tenant_iam_controls_verified"],
         append_only_audit_controls_verified=control_pairs["append_only_audit_controls_verified"],
         module_registry_controls_verified=control_pairs["module_registry_controls_verified"],
+        crm_atomic_write_controls_verified=control_pairs["crm_atomic_write_controls_verified"],
         source_object_controls_verified=control_pairs["source_object_controls_verified"],
         metadata_only_evidence_verified=metadata_only,
         blocking_reasons=blocking_reasons,

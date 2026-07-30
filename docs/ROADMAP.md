@@ -99,6 +99,7 @@ Bereits umgesetzt:
 - [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
 - [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
 - [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
+- [x] Atomarer CRM-Account-Onboarding-Write fuer Account, Contact, Activity, metadata-only Note, vier Objekt-ACLs und append-only Receipt in einer PostgreSQL-Transaktion mit Idempotenz-, Rollen-, RLS-, Rollback- und Restore-Proof.
 
 Noch nicht umgesetzt:
 
@@ -1538,13 +1539,13 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Backend-Fundament
 
 - [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
-- [x] Exakter Quell-/Zielvergleich fuer 56 Migrationen, 59 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Exakter Quell-/Zielvergleich fuer 58 Migrationen, 60 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
-- [x] Runtime-Proof am 2026-07-30 nach CRM-Integration erneut gruen: 12 CRM-Records in vier RLS-Tabellen, unabhaengiger PostgreSQL-/Object-Storage-Restore und Backend-Gate-Hash `sha256:8c16021bcee992982867b5f31dacb15a0883d27f80f6a7007f59aa129556440f`.
+- [x] Runtime-Proof am 2026-07-30 nach atomarem CRM-Onboarding erneut gruen: vier Fachdatenzeilen, vier Objekt-ACLs, ein append-only Receipt, idempotenter Replay, unabhaengiger PostgreSQL-/Object-Storage-Restore und Backend-Gate-Hash `sha256:7097229f672bfbed7a5bb858b68caf2433bba2350be7b1ac15f66dba8def47a3`.
 - [ ] Deployment-Gates fuer produktives PITR/WAL-Archiv, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennten Failover umsetzen.
 - [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
-- [ ] Aktueller Fokus: CRM-Schreibpfad als atomare Unit of Work fuer Fachdaten, Objekt-ACL und Audit-Receipt schliessen.
+- [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen; aktueller Fokus ist der produktive Aufgaben-/Aktivitaeten-Slice.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

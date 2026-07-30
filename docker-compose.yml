@@ -1392,6 +1392,7 @@ services:
     environment:
       PYTHONPATH: /workspace/app
       SUITE_CRM_REPOSITORY_BACKEND: postgres
+      SUITE_CRM_ONBOARDING_BACKEND: postgres
       SUITE_DATA_DIR: /workspace/data
       SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_AUTHZ_ADMIN_STORE_BACKEND: postgres

@@ -36,7 +36,7 @@ The backup service depends on the CRM bootstrap, so CRM records are included in 
 
 ## Deliberate Boundary
 
-This milestone closes the productive read workflow. It does not expose CRM mutations yet. The next required slice must atomically bind a CRM record write, its object ACL grant, and append-only audit evidence. A data row without its matching authorization state must never become an accepted write result.
+The read workflow remains the authoritative account-centered projection. The productive mutation boundary is now implemented by POST /v1/crm/account-onboardings: Account, Contact, Activity, metadata-only Note, four owner ACL grants, and an immutable receipt commit atomically. See CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md.
 
 ## Verification
 

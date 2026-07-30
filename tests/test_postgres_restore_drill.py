@@ -12,6 +12,8 @@ from suite.operations.backend_foundation_completion_gate import (
 from suite.operations.postgres_restore_drill import (
     AUDIT_APPEND_ONLY_POLICIES_BY_TABLE,
     AUDIT_TABLES,
+    CRM_ATOMIC_RECEIPT_POLICIES,
+    CRM_ATOMIC_WRITE_TABLES,
     MODULE_REGISTRY_TABLES,
     SERVICE_ROLES,
     SOURCE_OBJECT_TABLES,
@@ -36,7 +38,9 @@ CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
 def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> PostgresDatabaseSnapshot:
-    table_names = sorted(TENANT_IAM_TABLES | AUDIT_TABLES | MODULE_REGISTRY_TABLES | SOURCE_OBJECT_TABLES)
+    table_names = sorted(
+        TENANT_IAM_TABLES | AUDIT_TABLES | MODULE_REGISTRY_TABLES | SOURCE_OBJECT_TABLES | CRM_ATOMIC_WRITE_TABLES
+    )
     tables = [
         {
             "schema_name": qualified_name.split(".", 1)[0],
@@ -75,6 +79,14 @@ def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> Postgre
         for qualified_name, policy_names in sorted(AUDIT_APPEND_ONLY_POLICIES_BY_TABLE.items())
         for policy_name in sorted(policy_names)
     ]
+    policies.extend(
+        {
+            "schema_name": "crm",
+            "table_name": "account_onboarding_receipts",
+            "policy_name": policy_name,
+        }
+        for policy_name in sorted(CRM_ATOMIC_RECEIPT_POLICIES)
+    )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
     grants = [
         {
@@ -86,6 +98,16 @@ def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> Postgre
         for table_name in sorted(AUDIT_TABLES)
         for privilege in ("INSERT", "SELECT")
     ]
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_authz_admin",
+            "privilege_type": privilege,
+        }
+        for table_name in sorted(CRM_ATOMIC_WRITE_TABLES)
+        for privilege in ("INSERT", "SELECT")
+    )
     return build_postgres_database_snapshot(
         database_ref_hash=database_hash,
         schemas=[{"schema_name": "collabio"}],
@@ -162,6 +184,7 @@ def test_postgres_restore_drill_verifies_exact_isolated_state() -> None:
     assert report.module_registry_controls_verified is True
     assert report.source_object_controls_verified is True
     assert report.content_included is False
+    assert report.crm_atomic_write_controls_verified is True
     assert report.report_hash == build_postgres_restore_drill_report_hash(report)
 
 

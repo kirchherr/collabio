@@ -155,21 +155,26 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="crm_atomic_mutation_acl_unit_of_work",
-            title="CRM Schreibpfad schliessen",
+            work_item_id="tasks_activities_productive_vertical_slice",
+            title="Aufgaben und Aktivitaeten produktiv anbinden",
             summary=(
-                "Der PostgreSQL-Lesepfad und Account Workspace sind operational; als naechstes werden CRM-Write, "
-                "Objekt-ACL und Audit-Receipt atomar gebunden."
+                "Der atomare CRM-Schreibvertrag ist operational; als naechstes wird die registrierte Modul-Familie "
+                "fuer Aufgaben und Aktivitaeten mit demselben Daten-, ACL-, Audit- und Restore-Vertrag produktiv."
             ),
             priority=RoadmapPlanPriority.NOW,
-            capability_ids=("crm_account_workspace_runtime", "tenant_authz"),
-            readiness_gate="crm_postgres_read_runtime_and_backend_foundation_ready",
-            decision="must_now_because_productive_mutations_require_atomic_data_acl_and_audit_consistency",
+            capability_ids=(
+                "crm_atomic_account_onboarding_runtime",
+                "module_registry",
+                "future_modules",
+                "tenant_authz",
+                "backup_failover",
+            ),
+            readiness_gate="crm_atomic_write_pattern_and_module_foundation_ready",
+            decision="must_now_because_the_next_module_should_reuse_the_proven_write_contract",
             evidence_refs=(
-                "tests/test_crm_runtime.py",
-                "tests/test_crm_workspace.py",
-                "tests/test_crm_workspace_api.py",
-                "docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md",
+                "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
+                "docs/ROADMAP.md",
+                "docs/operations/BACKUP_FAILOVER.md",
             ),
             can_start_now=True,
         ),

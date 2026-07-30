@@ -117,6 +117,13 @@ from suite.platform.crm_erp_source_resolver import (
     CrmErpSourceResolverAclTraceService,
     build_crm_erp_source_resolver_acl_trace_service,
 )
+from suite.platform.crm_onboarding import (
+    CrmAccountOnboardingCommand,
+    CrmAccountOnboardingResponse,
+    CrmAccountOnboardingService,
+    CrmOnboardingConflict,
+    build_default_crm_account_onboarding_store,
+)
 from suite.platform.crm_runtime import build_default_crm_repositories
 from suite.platform.crm_workspace import (
     CrmAccountWorkspaceResponse,
@@ -1244,6 +1251,10 @@ def build_app() -> FastAPI:
     crm_activity_service = CrmActivityService(
         activity_repository=crm_activity_repository,
         note_repository=crm_note_repository,
+        audit_logger=audit_logger,
+    )
+    crm_account_onboarding_service = CrmAccountOnboardingService(
+        store=build_default_crm_account_onboarding_store(),
         audit_logger=audit_logger,
     )
     crm_account_workspace_service = CrmAccountWorkspaceService(
@@ -20753,6 +20764,48 @@ def build_app() -> FastAPI:
         search_service = cast(CrmErpSearchService, request.app.state.crm_erp_search_service)
         return search_service.search(query=query, user_context=context.user_context)
 
+    @app.post(
+        "/v1/crm/account-onboardings",
+        response_model=CrmAccountOnboardingResponse,
+    )
+    def create_crm_account_onboarding(
+        command: CrmAccountOnboardingCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        accounts_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACCOUNTS_FEATURE_ID)),
+        ],
+        contacts_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_CONTACTS_FEATURE_ID)),
+        ],
+        activities_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACTIVITIES_FEATURE_ID)),
+        ],
+    ) -> CrmAccountOnboardingResponse:
+        del accounts_gate, contacts_gate, activities_gate
+        onboarding = cast(
+            CrmAccountOnboardingService,
+            request.app.state.crm_account_onboarding_service,
+        )
+        try:
+            return onboarding.create(
+                user_context=context.user_context,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(exc),
+            ) from exc
+        except CrmOnboardingConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+
     @app.get("/v1/crm/accounts", response_model=CrmAccountsResponse)
     def list_crm_accounts(
         request: Request,
@@ -21110,6 +21163,7 @@ def build_app() -> FastAPI:
     app.state.audit_logger = audit_logger
     app.state.authz_admin_store = authz_admin_store
     app.state.crm_account_service = crm_account_service
+    app.state.crm_account_onboarding_service = crm_account_onboarding_service
     app.state.crm_account_workspace_service = crm_account_workspace_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service

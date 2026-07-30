@@ -2,10 +2,11 @@ import os
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import psycopg
 import pytest
 from pydantic import ValidationError
 
-from suite.persistence.migration_catalog import load_migration_manifest
+from suite.persistence.migration_catalog import get_migration, load_migration_manifest
 from suite.persistence.migrator import apply_migrations
 from suite.platform.modules import (
     InMemoryModuleRegistry,
@@ -910,7 +911,7 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     response = registry.discover_tenant_modules("tenant-demo")
     module_ids = {module.module_id for module in response.modules}
 
-    assert crm_erp_catalog_entry.required_migration_versions[-11:] == (
+    assert crm_erp_catalog_entry.required_migration_versions[-12:] == (
         "0034",
         "0035",
         "0036",
@@ -922,6 +923,7 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
         "0042",
         "0043",
         "0044",
+        "0057",
     )
     assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
     assert lms_catalog.status == ModuleStatus.NOT_INSTALLED
@@ -935,6 +937,50 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     assert "tasks_activities" not in module_ids
     assert "tickets_incidents" not in module_ids
     assert all(module.status == ModuleStatus.AVAILABLE for module in response.modules)
+
+
+def test_upgrade_reconciles_new_crm_migration_evidence_without_rewriting_lifecycle(
+    live_database: LiveDatabase,
+) -> None:
+    tenant_id = f"tenant-pg-crm-upgrade-{uuid4().hex}"
+    registry = PgModuleRegistry(database_dsn=live_database.app_dsn)
+    required_evidence = registry.migration_evidence_for_module(
+        module_id="crm_erp",
+        migration_manifest_entries=load_migration_manifest(),
+    )
+    stale_evidence = tuple(evidence for evidence in required_evidence if evidence.version != "0057")
+    original = TenantModuleState(
+        tenant_id=tenant_id,
+        module_id="crm_erp",
+        status=ModuleStatus.ENABLED,
+        enabled_features={
+            "crm_erp.crm.accounts": True,
+            "crm_erp.crm.activities": True,
+            "crm_erp.crm.contacts": True,
+        },
+        migration_evidence=stale_evidence,
+        policy_snapshot_hash="sha256:crm-upgrade-policy",
+        changed_by="tenant-admin",
+        audit_chain_ref="audit:crm-upgrade-before-0057",
+        provisioned_at_utc=NOW,
+        enabled_at_utc=NOW,
+        created_at_utc=NOW,
+        updated_at_utc=NOW,
+    )
+    registry.upsert_tenant_module(original)
+
+    with psycopg.connect(live_database.migration_dsn) as connection, connection.transaction():
+        connection.execute(get_migration("0058").sql())
+
+    reconciled = registry.get_tenant_module(tenant_id, "crm_erp")
+
+    evidence_by_version = {evidence.version: evidence for evidence in reconciled.migration_evidence}
+    manifest_by_version = {entry.version: entry for entry in load_migration_manifest()}
+    assert evidence_by_version["0057"] == ModuleMigrationEvidence.model_validate(manifest_by_version["0057"])
+    assert reconciled.status == original.status
+    assert reconciled.enabled_features == original.enabled_features
+    assert reconciled.changed_by == original.changed_by
+    assert reconciled.audit_chain_ref == original.audit_chain_ref
 
 
 def test_pg_module_registry_lifecycle_and_worker_gate_share_persistent_state(

@@ -525,6 +525,23 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:source-object-preview-content-release",
         ),
     ),
+    SqlMigration(
+        version="0057",
+        name="crm_atomic_account_onboarding",
+        resource_name="0057_crm_atomic_account_onboarding.sql",
+        module_id="crm_erp",
+        evidence_refs=("doc:crm-account-onboarding", "test:crm-atomic-account-onboarding"),
+    ),
+    SqlMigration(
+        version="0058",
+        name="tenant_module_migration_evidence_reconciliation",
+        resource_name="0058_tenant_module_migration_evidence_reconciliation.sql",
+        module_id="core",
+        evidence_refs=(
+            "adr:platform-module-system",
+            "test:tenant-module-migration-evidence-reconciliation",
+        ),
+    ),
 )
 
 

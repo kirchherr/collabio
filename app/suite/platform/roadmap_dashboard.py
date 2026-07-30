@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="crm_atomic_mutation_acl_unit_of_work",
-        current_foundation_state="backend_foundation_green_crm_postgres_read_runtime_operational",
+        current_focus="tasks_activities_productive_vertical_slice",
+        current_foundation_state="backend_foundation_green_crm_atomic_write_operational",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "crm_atomic_mutation_acl_unit_of_work",
+            "tasks_activities_productive_vertical_slice",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
         deferred_scope=(
@@ -454,7 +454,38 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="crm_atomic_mutation_acl_unit_of_work",
+                    next_action="tasks_activities_productive_vertical_slice",
+                ),
+                RoadmapCapability(
+                    capability_id="crm_atomic_account_onboarding_runtime",
+                    title="CRM Atomic Account Onboarding",
+                    summary=(
+                        "Account, Contact, Activity, metadata-only Note, vier Owner-ACLs und ein unveraenderliches "
+                        "Receipt werden in einer PostgreSQL-Transaktion geschrieben."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="productive_business_write_workflow",
+                    evidence_refs=(
+                        "app/suite/platform/crm_onboarding.py",
+                        "app/suite/persistence/migrations/0057_crm_atomic_account_onboarding.sql",
+                        "tests/test_crm_onboarding.py",
+                        "tests/test_crm_onboarding_api.py",
+                        "tests/test_crm_onboarding_migration.py",
+                        "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
+                    ),
+                    api_routes=("/v1/crm/account-onboardings",),
+                    guardrails=(
+                        "all_three_crm_feature_gates_required",
+                        "server_side_operator_role_required",
+                        "forced_tenant_rls",
+                        "business_rows_acl_and_receipt_one_transaction",
+                        "actor_bound_idempotency",
+                        "append_only_metadata_receipt",
+                        "partial_write_rollback_proven",
+                        "restore_control_verification_required",
+                        "note_body_forbidden",
+                    ),
+                    next_action="tasks_activities_productive_vertical_slice",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",
