@@ -155,17 +155,22 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="crm_accounts_contacts_activities_operational_hardening",
-            title="CRM Basis stabilisieren",
+            work_item_id="crm_atomic_mutation_acl_unit_of_work",
+            title="CRM Schreibpfad schliessen",
             summary=(
-                "Das Backend-Abnahmegate ist gruen; Accounts, Contacts, Activities und Notes werden jetzt "
-                "als erster produktiver Business-Slice stabilisiert."
+                "Der PostgreSQL-Lesepfad und Account Workspace sind operational; als naechstes werden CRM-Write, "
+                "Objekt-ACL und Audit-Receipt atomar gebunden."
             ),
             priority=RoadmapPlanPriority.NOW,
-            capability_ids=("crm_erp_first_slices",),
-            readiness_gate="backend_foundation_completion_gate_ready",
-            decision="must_now_because_the_backend_foundation_is_proven_and_productivity_is_the_next_value_gate",
-            evidence_refs=("tests/test_crm_accounts.py", "tests/test_crm_contacts.py", "tests/test_crm_activities.py"),
+            capability_ids=("crm_account_workspace_runtime", "tenant_authz"),
+            readiness_gate="crm_postgres_read_runtime_and_backend_foundation_ready",
+            decision="must_now_because_productive_mutations_require_atomic_data_acl_and_audit_consistency",
+            evidence_refs=(
+                "tests/test_crm_runtime.py",
+                "tests/test_crm_workspace.py",
+                "tests/test_crm_workspace_api.py",
+                "docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md",
+            ),
             can_start_now=True,
         ),
         RoadmapPlanItem(

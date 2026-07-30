@@ -160,6 +160,32 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  crm-runtime-bootstrap:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.crm_runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_CRM_REPOSITORY_BACKEND: postgres
+      SUITE_CRM_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_CRM_RUNTIME_SEED_DEMO: ${SUITE_CRM_RUNTIME_SEED_DEMO:-1}
+    volumes:
+      - ./app:/workspace/app:ro
+
   backend-storage-foundation-gate:
     profiles: ["restore-drill"]
     build:
@@ -231,6 +257,8 @@ services:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
     depends_on:
       source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      crm-runtime-bootstrap:
         condition: service_completed_successfully
     environment:
       PGPASSWORD: collabio_owner
@@ -1359,8 +1387,11 @@ services:
         condition: service_completed_successfully
       source-object-runtime-bootstrap:
         condition: service_completed_successfully
+      crm-runtime-bootstrap:
+        condition: service_completed_successfully
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_CRM_REPOSITORY_BACKEND: postgres
       SUITE_DATA_DIR: /workspace/data
       SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_AUTHZ_ADMIN_STORE_BACKEND: postgres

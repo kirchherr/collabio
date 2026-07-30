@@ -57,21 +57,17 @@ from suite.platform.crm_accounts import (
     CRM_ERP_MODULE_ID,
     CrmAccountService,
     CrmAccountsResponse,
-    InMemoryCrmAccountRepository,
 )
 from suite.platform.crm_activities import (
     CRM_ACTIVITIES_FEATURE_ID,
     CrmActivitiesResponse,
     CrmActivityService,
     CrmNotesResponse,
-    InMemoryCrmActivityRepository,
-    InMemoryCrmNoteRepository,
 )
 from suite.platform.crm_contacts import (
     CRM_CONTACTS_FEATURE_ID,
     CrmContactService,
     CrmContactsResponse,
-    InMemoryCrmContactRepository,
 )
 from suite.platform.crm_erp_authorized_context_contract import (
     CrmErpAuthorizedContextContractRequest,
@@ -120,6 +116,11 @@ from suite.platform.crm_erp_source_resolver import (
     CrmErpSourceResolverAclTraceResponse,
     CrmErpSourceResolverAclTraceService,
     build_crm_erp_source_resolver_acl_trace_service,
+)
+from suite.platform.crm_runtime import build_default_crm_repositories
+from suite.platform.crm_workspace import (
+    CrmAccountWorkspaceResponse,
+    CrmAccountWorkspaceService,
 )
 from suite.platform.erp_products import (
     ERP_PRODUCTS_FEATURE_ID,
@@ -1221,10 +1222,11 @@ def build_app() -> FastAPI:
     source_object_preview_content_release_receipt_store = (
         build_default_source_object_preview_content_release_receipt_store()
     )
-    crm_account_repository = InMemoryCrmAccountRepository.demo()
-    crm_contact_repository = InMemoryCrmContactRepository.demo()
-    crm_activity_repository = InMemoryCrmActivityRepository.demo()
-    crm_note_repository = InMemoryCrmNoteRepository.demo()
+    crm_repositories = build_default_crm_repositories()
+    crm_account_repository = crm_repositories.account_repository
+    crm_contact_repository = crm_repositories.contact_repository
+    crm_activity_repository = crm_repositories.activity_repository
+    crm_note_repository = crm_repositories.note_repository
     erp_product_repository = InMemoryErpProductRepository.demo()
     erp_supplier_repository = InMemoryErpSupplierRepository.demo()
     erp_order_repository = InMemoryErpOrderRepository.demo()
@@ -1240,6 +1242,13 @@ def build_app() -> FastAPI:
         audit_logger=audit_logger,
     )
     crm_activity_service = CrmActivityService(
+        activity_repository=crm_activity_repository,
+        note_repository=crm_note_repository,
+        audit_logger=audit_logger,
+    )
+    crm_account_workspace_service = CrmAccountWorkspaceService(
+        account_repository=crm_account_repository,
+        contact_repository=crm_contact_repository,
         activity_repository=crm_activity_repository,
         note_repository=crm_note_repository,
         audit_logger=audit_logger,
@@ -20757,6 +20766,43 @@ def build_app() -> FastAPI:
         crm_accounts = cast(CrmAccountService, request.app.state.crm_account_service)
         return crm_accounts.list_accounts(user_context=context.user_context)
 
+    @app.get(
+        "/v1/crm/accounts/{account_object_id}/workspace",
+        response_model=CrmAccountWorkspaceResponse,
+    )
+    def read_crm_account_workspace(
+        account_object_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        accounts_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACCOUNTS_FEATURE_ID)),
+        ],
+        contacts_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_CONTACTS_FEATURE_ID)),
+        ],
+        activities_gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=CRM_ERP_MODULE_ID, feature_id=CRM_ACTIVITIES_FEATURE_ID)),
+        ],
+    ) -> CrmAccountWorkspaceResponse:
+        del accounts_gate, contacts_gate, activities_gate
+        crm_workspace = cast(
+            CrmAccountWorkspaceService,
+            request.app.state.crm_account_workspace_service,
+        )
+        try:
+            return crm_workspace.read_account_workspace(
+                user_context=context.user_context,
+                account_object_id=account_object_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="CRM account workspace not found",
+            ) from exc
+
     @app.get("/v1/crm/contacts", response_model=CrmContactsResponse)
     def list_crm_contacts(
         request: Request,
@@ -21064,6 +21110,7 @@ def build_app() -> FastAPI:
     app.state.audit_logger = audit_logger
     app.state.authz_admin_store = authz_admin_store
     app.state.crm_account_service = crm_account_service
+    app.state.crm_account_workspace_service = crm_account_workspace_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service
     app.state.crm_erp_authorized_context_contract_service = crm_erp_authorized_context_contract_service

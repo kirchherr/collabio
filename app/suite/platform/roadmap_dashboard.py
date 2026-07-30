@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="crm_accounts_contacts_activities_operational_hardening",
-        current_foundation_state="backend_foundation_completion_gate_green_productivity_slice_next",
+        current_focus="crm_atomic_mutation_acl_unit_of_work",
+        current_foundation_state="backend_foundation_green_crm_postgres_read_runtime_operational",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "crm_accounts_contacts_activities_operational_hardening",
+            "crm_atomic_mutation_acl_unit_of_work",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
         deferred_scope=(
@@ -420,6 +420,41 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "source_restore_evidence_required",
                         "runtime_activation_audited",
                     ),
+                ),
+                RoadmapCapability(
+                    capability_id="crm_account_workspace_runtime",
+                    title="CRM Account Workspace Runtime",
+                    summary=(
+                        "Accounts, Contacts, Activities und Notes laufen ueber PostgreSQL-RLS und werden als "
+                        "gemeinsamer ACL-gepruefter Account-Workflow gelesen."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="productive_business_read_workflow",
+                    evidence_refs=(
+                        "app/suite/platform/crm_runtime.py",
+                        "app/suite/platform/crm_workspace.py",
+                        "tests/test_crm_runtime.py",
+                        "tests/test_crm_workspace.py",
+                        "tests/test_crm_workspace_api.py",
+                        "docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md",
+                    ),
+                    api_routes=(
+                        "/v1/crm/accounts",
+                        "/v1/crm/contacts",
+                        "/v1/crm/activities",
+                        "/v1/crm/notes",
+                        "/v1/crm/accounts/{account_object_id}/workspace",
+                    ),
+                    guardrails=(
+                        "postgres_runtime_required",
+                        "forced_tenant_rls",
+                        "all_three_crm_feature_gates_required",
+                        "authoritative_object_acl_filtering",
+                        "linked_object_redaction",
+                        "metadata_only_note_contract",
+                        "backup_dependency_required",
+                    ),
+                    next_action="crm_atomic_mutation_acl_unit_of_work",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",

@@ -74,6 +74,8 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - incident reports, tickets, immutable event chains, SLA state, explicit approval records, communications, and escalation evidence
 - time entries, corrections, approvals, and export metadata
 
+The CRM runtime bootstrap is an explicit predecessor of both the API and PostgreSQL backup in Compose. This guarantees that the account, contact, activity, and note tables enter the same checksum, catalog, row-count, RLS, and independent-restore proof as the rest of the backend before the CRM read workflow is treated as operational.
+
 When a future feature introduces a new stateful subsystem, one of these domains must be updated or a new domain must be added in the same change.
 
 ## Current Dev Commands

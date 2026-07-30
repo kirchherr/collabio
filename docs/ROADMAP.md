@@ -1446,7 +1446,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Isolierten Compose-Nachweis mit drei SourceObjects, zwei Tenants, null fehlenden/orphaned Objekten und erfolgreichem tenant-/ACL-geprueftem API-Read erbracht.
 - [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
 - [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
-- [ ] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abnehmen.
+- [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 
@@ -1541,9 +1541,10 @@ Enthaelt:
 - [x] Exakter Quell-/Zielvergleich fuer 56 Migrationen, 59 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
-- [x] Runtime-Proof am 2026-07-30 gruen; Gate-Hash `sha256:d04b078579274f56779bbd8c575d60ad8528d894ae52ae82f932ad79f599a08b`.
+- [x] Runtime-Proof am 2026-07-30 nach CRM-Integration erneut gruen: 12 CRM-Records in vier RLS-Tabellen, unabhaengiger PostgreSQL-/Object-Storage-Restore und Backend-Gate-Hash `sha256:8c16021bcee992982867b5f31dacb15a0883d27f80f6a7007f59aa129556440f`.
 - [ ] Deployment-Gates fuer produktives PITR/WAL-Archiv, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennten Failover umsetzen.
-- [ ] Aktueller Fokus: CRM Accounts, Contacts, Activities und Notes als erste produktive Vertikale auf dem bewiesenen Backend stabilisieren.
+- [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
+- [ ] Aktueller Fokus: CRM-Schreibpfad als atomare Unit of Work fuer Fachdaten, Objekt-ACL und Audit-Receipt schliessen.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 
