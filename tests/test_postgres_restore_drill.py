@@ -17,6 +17,8 @@ from suite.operations.postgres_restore_drill import (
     MODULE_REGISTRY_TABLES,
     SERVICE_ROLES,
     SOURCE_OBJECT_TABLES,
+    TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE,
+    TASKS_ACTIVITIES_WRITE_TABLES,
     TENANT_IAM_TABLES,
     PostgresBackupArtifactEvidence,
     PostgresDatabaseSnapshot,
@@ -37,9 +39,16 @@ from suite.storage.backend_storage_foundation_gate import (
 CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
-def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> PostgresDatabaseSnapshot:
+def _snapshot(
+    *, database_hash: str, changed_row_count: bool = False, tasks_controls: bool = True
+) -> PostgresDatabaseSnapshot:
     table_names = sorted(
-        TENANT_IAM_TABLES | AUDIT_TABLES | MODULE_REGISTRY_TABLES | SOURCE_OBJECT_TABLES | CRM_ATOMIC_WRITE_TABLES
+        TENANT_IAM_TABLES
+        | AUDIT_TABLES
+        | MODULE_REGISTRY_TABLES
+        | SOURCE_OBJECT_TABLES
+        | CRM_ATOMIC_WRITE_TABLES
+        | TASKS_ACTIVITIES_WRITE_TABLES
     )
     tables = [
         {
@@ -87,6 +96,15 @@ def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> Postgre
         }
         for policy_name in sorted(CRM_ATOMIC_RECEIPT_POLICIES)
     )
+    policies.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "policy_name": policy_name,
+        }
+        for table_name, policy_names in sorted(TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE.items())
+        for policy_name in sorted(policy_names)
+    )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
     grants = [
         {
@@ -108,6 +126,34 @@ def _snapshot(*, database_hash: str, changed_row_count: bool = False) -> Postgre
         for table_name in sorted(CRM_ATOMIC_WRITE_TABLES)
         for privilege in ("INSERT", "SELECT")
     )
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_authz_admin",
+            "privilege_type": privilege,
+        }
+        for table_name in sorted(TASKS_ACTIVITIES_WRITE_TABLES)
+        for privilege in ("INSERT", "SELECT")
+    )
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_app",
+            "privilege_type": "SELECT",
+        }
+        for table_name in sorted(TASKS_ACTIVITIES_WRITE_TABLES)
+    )
+    if not tasks_controls:
+        grants.append(
+            {
+                "schema_name": "tasks",
+                "table_name": "items",
+                "grantee": "collabio_app",
+                "privilege_type": "INSERT",
+            }
+        )
     return build_postgres_database_snapshot(
         database_ref_hash=database_hash,
         schemas=[{"schema_name": "collabio"}],
@@ -135,13 +181,16 @@ def _backup_evidence() -> PostgresBackupArtifactEvidence:
     )
 
 
-def _restore_report(*, changed_target_row_count: bool = False) -> PostgresRestoreDrillReport:
+def _restore_report(
+    *, changed_target_row_count: bool = False, target_tasks_controls: bool = True
+) -> PostgresRestoreDrillReport:
     return build_postgres_restore_drill_report(
         backup_evidence=_backup_evidence(),
         source_snapshot=_snapshot(database_hash="sha256:" + "b" * 64),
         target_snapshot=_snapshot(
             database_hash="sha256:" + "c" * 64,
             changed_row_count=changed_target_row_count,
+            tasks_controls=target_tasks_controls,
         ),
         target_isolation_ref_hash="sha256:" + "d" * 64,
         checked_at_utc=CHECKED_AT,
@@ -185,6 +234,7 @@ def test_postgres_restore_drill_verifies_exact_isolated_state() -> None:
     assert report.source_object_controls_verified is True
     assert report.content_included is False
     assert report.crm_atomic_write_controls_verified is True
+    assert report.tasks_activities_write_controls_verified is True
     assert report.report_hash == build_postgres_restore_drill_report_hash(report)
 
 
@@ -195,6 +245,14 @@ def test_postgres_restore_drill_blocks_exact_row_count_drift() -> None:
     assert report.exact_row_counts_verified is False
     assert "exact_row_counts_mismatch" in report.blocking_reasons
     assert "source_target_state_mismatch" in report.blocking_reasons
+
+
+def test_postgres_restore_drill_blocks_unsafe_tasks_application_grant() -> None:
+    report = _restore_report(target_tasks_controls=False)
+
+    assert report.restore_ready is False
+    assert report.tasks_activities_write_controls_verified is False
+    assert "tasks_activities_write_controls_not_verified" in report.blocking_reasons
 
 
 def test_postgres_restore_target_must_be_independent() -> None:

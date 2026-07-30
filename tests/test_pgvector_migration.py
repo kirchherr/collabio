@@ -90,6 +90,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0056",
         "0057",
         "0058",
+        "0059",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -107,7 +108,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 34
+    assert len(core_migrations) == len(load_migrations()) - 35
     assert [migration.version for migration in crm_erp_migrations] == [
         "0016",
         "0017",
@@ -137,10 +138,10 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0029",
     ]
     assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
-    assert [migration.version for migration in tasks_activities_migrations] == ["0050"]
+    assert [migration.version for migration in tasks_activities_migrations] == ["0050", "0059"]
     assert [migration.version for migration in tickets_incidents_migrations] == ["0051", "0052", "0053", "0054"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "core"
+    assert manifest[-1].module_id == "tasks_activities"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)

@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "tasks_activities_productive_vertical_slice"
+    assert body["current_focus"] == "time_tracking_module_foundation_vertical_slice"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -965,6 +965,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "crm_erp_first_slices",
         "crm_account_workspace_runtime",
         "crm_atomic_account_onboarding_runtime",
+        "tasks_activities_runtime",
         "crm_erp_acl_first_search",
         "legacy_migration_registry",
         "office_mail_clients",
@@ -1083,7 +1084,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "module_family_next_slice_selection_ready" in future_modules["guardrails"]
     assert "tasks_activities_foundation_contract_ready" in future_modules["guardrails"]
     assert "tasks_activities_catalog_readiness_ready" in future_modules["guardrails"]
-    assert "tasks_activities_catalog_registered_not_installed" in future_modules["guardrails"]
+    assert "tasks_activities_catalog_package_installed" in future_modules["guardrails"]
+    assert "tasks_activities_atomic_write_operational" in future_modules["guardrails"]
+    assert "tasks_activities_authoritative_acl_reads_operational" in future_modules["guardrails"]
+    assert "tasks_activities_restore_controls_required" in future_modules["guardrails"]
     assert "tickets_incidents_foundation_contract_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_readiness_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_registered_not_installed" in future_modules["guardrails"]
@@ -1325,7 +1329,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "tasks_activities_productive_vertical_slice"
+    assert body["current_focus"] == "time_tracking_module_foundation_vertical_slice"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1339,18 +1343,18 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 1,
         "later_count": 4,
         "total_count": 6,
-        "foundation_ready_count": 20,
+        "foundation_ready_count": 21,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
-        "tasks_activities_productive_vertical_slice",
+        "time_tracking_module_foundation_vertical_slice",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["tasks_activities_productive_vertical_slice"]["priority"] == "now"
+    assert items["time_tracking_module_foundation_vertical_slice"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True
@@ -1514,7 +1518,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
         "catalog_registered_count": 4,
         "planned_not_installed_count": 1,
         "pre_catalog_foundation_ready_count": 0,
-        "first_slice_foundation_ready_count": 1,
+        "first_slice_foundation_ready_count": 2,
         "runtime_activation_allowed_count": 0,
     }
     assert "tenant_context" in body["required_controls"]
@@ -1541,16 +1545,15 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert families["lms"]["pre_catalog_foundation_ready"] is False
     assert families["lms"]["next_action"] == ("resume_cross_module_backend_slices_without_lms_depth")
     assert families["lms"]["runtime_activation_allowed"] is False
-    assert families["tasks_activities"]["backlog_status"] == "catalog_registered"
-    assert families["tasks_activities"]["catalog_status"] == "not_installed"
+    assert families["tasks_activities"]["backlog_status"] == "active_foundation"
+    assert families["tasks_activities"]["catalog_status"] == "installed"
     assert families["tasks_activities"]["module_charter_ready"] is True
     assert families["tasks_activities"]["feature_registry_ready"] is True
     assert families["tasks_activities"]["object_rules_ready"] is True
     assert families["tasks_activities"]["pre_catalog_foundation_ready"] is False
     assert families["tasks_activities"]["runtime_activation_allowed"] is False
-    assert (
-        families["tasks_activities"]["next_action"] == "add_tasks_activities_migration_evidence_before_storage_or_api"
-    )
+    assert families["tasks_activities"]["first_slice_foundation_ready"] is True
+    assert families["tasks_activities"]["next_action"] == "continue_existing_slice_hardening_without_broadening_scope"
     assert families["tickets_incidents"]["backlog_status"] == "catalog_registered"
     assert families["tickets_incidents"]["catalog_status"] == "not_installed"
     assert families["tickets_incidents"]["catalog_entry_present"] is True
@@ -1618,7 +1621,7 @@ def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "total_family_count": 5,
-        "active_foundation_count": 1,
+        "active_foundation_count": 2,
         "catalog_registered_count": 4,
         "planned_candidate_count": 1,
         "selected_candidate_count": 1,
@@ -1689,12 +1692,12 @@ def test_tasks_activities_catalog_readiness_returns_metadata_only_registration_b
     assert body["result_contract"] == "metadata_only_tasks_activities_catalog_readiness_no_activation"
     assert body["continuity_domain"] == "task_activity_records"
     assert body["module_family_backlog_endpoint"] == "/v1/platform/modules/families/backlog"
-    assert body["catalog_status"] == "not_installed"
+    assert body["catalog_status"] == "installed"
     assert body["tenant_module_status"] is None
     assert body["module_catalog_entry_present"] is True
     assert body["tenant_module_state_present"] is False
     assert body["catalog_registration_ready"] is False
-    assert body["module_package_installed"] is False
+    assert body["module_package_installed"] is True
     assert body["migration_executed"] is False
     assert body["api_routes_registered"] is False
     assert body["business_tables_created"] is False
@@ -1706,20 +1709,21 @@ def test_tasks_activities_catalog_readiness_returns_metadata_only_registration_b
     assert body["feature_manifest_hash"].startswith("sha256:")
     assert body["object_rule_manifest_hash"].startswith("sha256:")
     assert body["summary"] == {
-        "feature_count": 5,
+        "feature_count": 6,
         "default_enabled_feature_count": 2,
-        "approval_required_feature_count": 3,
-        "compliance_relevant_feature_count": 1,
+        "approval_required_feature_count": 4,
+        "compliance_relevant_feature_count": 2,
         "object_type_count": 2,
         "personal_object_type_count": 2,
-        "required_catalog_evidence_count": 7,
+        "required_catalog_evidence_count": 8,
     }
-    assert "catalog_registration_status_not_installed_confirmed" in body["required_catalog_evidence"]
+    assert "productive_storage_migration_0059_recorded" in body["required_catalog_evidence"]
+    assert "catalog_package_status_installed_confirmed" in body["required_catalog_evidence"]
     assert "catalog_registration_migration_0050_recorded" in body["required_catalog_evidence"]
     assert "no_runtime_activation_confirmed" in body["required_catalog_evidence"]
     assert "app/suite/platform/tasks_activities_catalog_readiness.py" in body["evidence_refs"]
     assert "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql" in body["evidence_refs"]
-    assert body["next_action"] == "add_tasks_activities_migration_evidence_before_storage_or_api"
+    assert body["next_action"] == "provision_tasks_activities_for_tenant_before_runtime_use"
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1735,12 +1739,12 @@ def test_tasks_activities_catalog_readiness_returns_metadata_only_registration_b
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_tasks_activities_catalog_readiness_no_activation"
     assert event.metadata["module_id"] == "tasks_activities"
-    assert event.metadata["catalog_status"] == "not_installed"
+    assert event.metadata["catalog_status"] == "installed"
     assert event.metadata["tenant_module_status"] is None
     assert event.metadata["catalog_registration_ready"] is False
-    assert event.metadata["feature_count"] == 5
+    assert event.metadata["feature_count"] == 6
     assert event.metadata["object_type_count"] == 2
-    assert event.metadata["required_catalog_evidence_count"] == 7
+    assert event.metadata["required_catalog_evidence_count"] == 8
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
     assert event.metadata["persistent_task_created"] is False

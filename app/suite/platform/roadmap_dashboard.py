@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="tasks_activities_productive_vertical_slice",
-        current_foundation_state="backend_foundation_green_crm_atomic_write_operational",
+        current_focus="time_tracking_module_foundation_vertical_slice",
+        current_foundation_state="backend_foundation_green_tasks_activities_atomic_write_operational",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "tasks_activities_productive_vertical_slice",
+            "time_tracking_module_foundation_vertical_slice",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
         deferred_scope=(
@@ -454,7 +454,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="tasks_activities_productive_vertical_slice",
+                    next_action="time_tracking_module_foundation_vertical_slice",
                 ),
                 RoadmapCapability(
                     capability_id="crm_atomic_account_onboarding_runtime",
@@ -485,7 +485,41 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "note_body_forbidden",
                     ),
-                    next_action="tasks_activities_productive_vertical_slice",
+                    next_action="time_tracking_module_foundation_vertical_slice",
+                ),
+                RoadmapCapability(
+                    capability_id="tasks_activities_runtime",
+                    title="Tasks and Activities Runtime",
+                    summary=(
+                        "Task, initiale Aktivitaet, autoritative ACLs und ein metadata-only Receipt werden "
+                        "tenant-sicher und atomar in PostgreSQL angelegt und ACL-geprueft gelesen."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="productive_business_write_workflow",
+                    evidence_refs=(
+                        "app/suite/platform/tasks_activities_service.py",
+                        "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+                        "tests/test_tasks_activities_productive_slice.py",
+                        "tests/test_tasks_activities_api.py",
+                        "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
+                    ),
+                    api_routes=(
+                        "/v1/tasks/items",
+                        "/v1/tasks/activities",
+                    ),
+                    guardrails=(
+                        "tenant_module_and_feature_gates_required",
+                        "server_side_operator_role_required",
+                        "forced_tenant_rls",
+                        "authoritative_object_acl_filtering",
+                        "task_activity_acl_and_receipt_one_transaction",
+                        "actor_and_assignee_bound_idempotency",
+                        "append_only_business_rows_and_metadata_receipt",
+                        "linked_task_acl_required_for_activity_read",
+                        "partial_write_rollback_proven",
+                        "restore_control_verification_required",
+                    ),
+                    next_action="time_tracking_module_foundation_vertical_slice",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",
@@ -648,10 +682,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="future_modules",
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
-                        "Tickets & Incidents hat jetzt neben der vollstaendigen Aktivierungskontrollkette eine "
-                        "produktive, tenant-sichere Ticket/Event-Vertikale mit explizitem Approval Record, "
-                        "atomaren Writes, Audit, RLS-Repository und geschlossenem Standardzustand. Der naechste "
-                        "Schritt ist ein kontrollierter Pilot statt weiterer Metadata-only-Boundaries."
+                        "Tasks & Activities hat jetzt einen produktiven atomaren Write/Read-Slice. Tickets & "
+                        "Incidents besitzt neben der vollstaendigen Aktivierungskontrollkette eine produktive, "
+                        "tenant-sichere Ticket/Event-Vertikale mit explizitem Approval Record, atomaren Writes, "
+                        "Audit, RLS-Repository und geschlossenem Standardzustand. Als naechste Fundamentfamilie "
+                        "folgt die Zeiterfassung; der Ticket-Pilot bleibt kontrolliert."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="module_foundation_and_productive_vertical_slice",
@@ -726,6 +761,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
                         "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
                         "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
+                        "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+                        "app/suite/platform/tasks_activities_service.py",
+                        "tests/test_tasks_activities_productive_slice.py",
+                        "tests/test_tasks_activities_api.py",
                         "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
                         "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
                         "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -804,6 +843,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/next-slice-selection",
                         "/v1/platform/modules/families/tasks-activities/catalog-readiness",
                         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
+                        "/v1/tasks/items",
+                        "/v1/tasks/activities",
                         "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate",
                         "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence",
                         "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence",
@@ -886,7 +927,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "module_family_next_slice_selection_ready",
                         "tasks_activities_foundation_contract_ready",
                         "tasks_activities_catalog_readiness_ready",
-                        "tasks_activities_catalog_registered_not_installed",
+                        "tasks_activities_catalog_package_installed",
+                        "tasks_activities_atomic_write_operational",
+                        "tasks_activities_authoritative_acl_reads_operational",
+                        "tasks_activities_restore_controls_required",
                         "tickets_incidents_foundation_contract_ready",
                         "tickets_incidents_catalog_readiness_ready",
                         "tickets_incidents_catalog_registered_not_installed",

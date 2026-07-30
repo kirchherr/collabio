@@ -591,6 +591,9 @@ def build_module_family_backlog_response(
             "app/suite/persistence/migrations/0048_lms_dry_run_execution_approval_records.sql",
             "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
+            "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+            "app/suite/platform/tasks_activities_service.py",
+            "tests/test_tasks_activities_productive_slice.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -747,6 +750,9 @@ def build_module_family_next_slice_selection_response(
             "app/suite/platform/tickets_incidents_activation_dry_run_execution_approval_record.py",
             "app/suite/platform/tickets_incidents_service.py",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
+            "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+            "app/suite/platform/tasks_activities_service.py",
+            "tests/test_tasks_activities_productive_slice.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -853,7 +859,9 @@ def _module_family_backlog_entry(
     artifact_readiness = MODULE_FAMILY_FOUNDATION_ARTIFACTS.get(definition.module_family, {})
     catalog_entry_present = catalog_status is not None
     module_package_installed = catalog_status in {"available", "installed"}
-    first_slice_foundation_ready = definition.module_family == "knowledge_base" and module_package_installed
+    first_slice_foundation_ready = (
+        definition.module_family in {"knowledge_base", "tasks_activities"} and module_package_installed
+    )
     pre_catalog_foundation_ready = (
         not catalog_entry_present
         and bool(artifact_readiness.get("module_charter_ready", False))

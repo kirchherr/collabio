@@ -824,6 +824,22 @@ from suite.platform.tasks_activities_catalog_readiness import (
     TasksActivitiesCatalogReadinessResponse,
     build_tasks_activities_catalog_readiness_response,
 )
+from suite.platform.tasks_activities_module import (
+    TASKS_ACTIVITIES_MODULE_ID,
+    TASKS_ACTIVITY_READ_FEATURE_ID,
+    TASKS_ITEMS_READ_FEATURE_ID,
+    TASKS_WORKFLOW_WRITE_FEATURE_ID,
+)
+from suite.platform.tasks_activities_service import (
+    CreateTaskCommand,
+    TaskActivitiesResponse,
+    TaskCreationResponse,
+    TaskItemsResponse,
+    TasksActivitiesAssignmentError,
+    TasksActivitiesConflict,
+    TasksActivitiesService,
+    build_default_tasks_activities_store,
+)
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
 from suite.platform.tickets_incidents_activation_dry_run_execution_activation_boundary import (
     TicketsIncidentsActivationDryRunExecutionActivationBoundaryCommand,
@@ -1255,6 +1271,10 @@ def build_app() -> FastAPI:
     )
     crm_account_onboarding_service = CrmAccountOnboardingService(
         store=build_default_crm_account_onboarding_store(),
+        audit_logger=audit_logger,
+    )
+    tasks_activities_service = TasksActivitiesService(
+        store=build_default_tasks_activities_store(),
         audit_logger=audit_logger,
     )
     crm_account_workspace_service = CrmAccountWorkspaceService(
@@ -20750,6 +20770,86 @@ def build_app() -> FastAPI:
         keyword_service = cast(KeywordSearchService, request.app.state.keyword_search_service)
         return keyword_service.search(query=query, user_context=context.user_context)
 
+    @app.post("/v1/tasks/items", response_model=TaskCreationResponse)
+    def create_task_item(
+        command: CreateTaskCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        write_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_WORKFLOW_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        items_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ITEMS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+        activities_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ACTIVITY_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TaskCreationResponse:
+        del write_gate, items_gate, activities_gate
+        tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
+        try:
+            return tasks_service.create_task(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except TasksActivitiesConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except TasksActivitiesAssignmentError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/v1/tasks/items", response_model=TaskItemsResponse)
+    def list_task_items(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ITEMS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TaskItemsResponse:
+        del gate
+        tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
+        return tasks_service.list_items(user_context=context.user_context)
+
+    @app.get("/v1/tasks/activities", response_model=TaskActivitiesResponse)
+    def list_task_activities(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ACTIVITY_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TaskActivitiesResponse:
+        del gate
+        tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
+        return tasks_service.list_activities(user_context=context.user_context)
+
     @app.post("/v1/crm-erp/search", response_model=CrmErpSearchResponse)
     def crm_erp_keyword_search(
         query: KeywordSearchQuery,
@@ -21164,6 +21264,7 @@ def build_app() -> FastAPI:
     app.state.authz_admin_store = authz_admin_store
     app.state.crm_account_service = crm_account_service
     app.state.crm_account_onboarding_service = crm_account_onboarding_service
+    app.state.tasks_activities_service = tasks_activities_service
     app.state.crm_account_workspace_service = crm_account_workspace_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service

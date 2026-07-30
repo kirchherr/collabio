@@ -1,7 +1,7 @@
 # Tasks & Activities Module Charter
 
-Status: proposed
-Date: 2026-07-07
+Status: operational first productive slice
+Date: 2026-07-30
 Module ID: `tasks_activities`
 Module kind: `business_domain`
 Owner: platform/product
@@ -13,7 +13,7 @@ Tasks & Activities is a native optional suite module for assigned work, follow-u
 
 The module is optional in normal use. Compliance obligations for existing task and activity records, Legal Hold, retention, backup, restore, export, and audit remain mandatory.
 
-The first slice is intentionally small: assigned task metadata and activity-log metadata. It does not include task creation, comments, file attachments, notifications, workflow automations, calendar sync, email send, RAG, AI assist, voice commands, or external integrations.
+The first productive slice is intentionally small: atomic task creation with one initial activity, authoritative ACL grants, an append-only metadata receipt, and ACL-filtered reads. It does not include later status transitions, comments, file attachments, notifications, workflow automations, calendar sync, email send, RAG, AI assist, voice commands, or external integrations.
 
 ## 2. Lifecycle And Activation
 
@@ -38,11 +38,12 @@ Disabled stops normal task and activity browsing. Disabled does not stop retenti
 
 | Feature ID | Default | Requires approval | Notes |
 | --- | --- | --- | --- |
-| `tasks.items.read` | on | no | Assigned task metadata and lifecycle state |
-| `tasks.activities.read` | on | no | Activity-log metadata for authorized objects |
-| `tasks.compliance_evidence.read` | off | yes | Compliance read path for held or retained task/activity evidence |
-| `tasks.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
-| `tasks.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
+| `tasks_activities.tasks.items.read` | on | no | Assigned task metadata and lifecycle state |
+| `tasks_activities.tasks.activities.read` | on | no | Activity-log metadata for authorized objects and readable linked tasks |
+| `tasks_activities.tasks.compliance_evidence.read` | off | yes | Compliance read path for held or retained task/activity evidence |
+| `tasks_activities.tasks.workflow.write` | off | yes | Atomic task, initial activity, ACL and receipt creation |
+| `tasks_activities.tasks.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
+| `tasks_activities.tasks.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
 
 The canonical registry lives in `app/suite/platform/tasks_activities_module.py`.
 
@@ -57,8 +58,9 @@ Tenant Context
 + object authorization
 ```
 
-Initial planned API:
+Productive API:
 
+- `POST /v1/tasks/items`
 - `GET /v1/tasks/items`
 - `GET /v1/tasks/activities`
 
@@ -69,7 +71,9 @@ Compliance-only later:
 - activity evidence export
 - decommission precheck
 
-No Tasks & Activities business API route is enabled by this charter. `GET /v1/platform/modules/families/tasks-activities/catalog-readiness` exposes only the platform catalog-readiness boundary. Module catalog registration and migration evidence must happen before any business route or worker is wired.
+The business routes require a provisioned and enabled tenant module. Creation additionally requires `tasks_activities.tasks.workflow.write`, both read dependencies, and an operator role. The catalog-readiness endpoint remains metadata-only and performs no tenant provisioning or activation.
+
+`GET /v1/platform/modules/families/tasks-activities/catalog-readiness` remains the metadata-only package and tenant-state discovery boundary.
 
 ## 5. Persistent Objects
 
@@ -114,12 +118,16 @@ Required evidence:
 - disabled-state restore check
 - Legal Hold restore check
 - restore evidence hash for `task_activity_records`
+- exact task, activity, ACL and creation-receipt row counts
+- Forced RLS and append-only policy verification on all three Tasks tables
+- `collabio_authz_admin` write-without-update/delete and `collabio_app` read-only grants
+- source/target equality through `postgres_restore_drill_report.v1`
 
 New task comments, file attachments, automation rules, notification queues, calendar/mail integrations, search indexes, RAG chunks, embeddings, approvals, exports, or workflow engines must update this continuity domain in the same change.
 
 ## 8. Migrations And Imports
 
-`0050_tasks_activities_catalog_registration.sql` registers the module package as `not_installed` in the global module catalog only. It creates no tenant state, no Tasks & Activities schema, no `task.task` or `task.activity` tables, no content, no worker queue, and no business API runtime.
+`0050_tasks_activities_catalog_registration.sql` introduced the metadata-only package entry. `0059_tasks_activities_productive_slice.sql` creates the governed `tasks.items`, `tasks.activities`, and `tasks.creation_receipts` tables with Forced RLS, append-only policies, minimal service-role grants, and updates the package to `installed`. Neither migration creates tenant module state or enables a feature.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import or workflow activation.
 
@@ -140,7 +148,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Explicit Non-Goals For The First Slice
 
-- task creation or updates
+- task updates and lifecycle transitions after creation
 - comments
 - attachments
 - notifications
@@ -156,5 +164,9 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 ## 11. Verification
 
 - `tests/test_tasks_activities_module_foundation.py`
+- `tests/test_tasks_activities_productive_migration.py`
+- `tests/test_tasks_activities_productive_slice.py`
+- `tests/test_tasks_activities_api.py`
+- `tests/test_postgres_restore_drill.py`
 - `tests/test_module_family_backlog.py`
 - `tests/test_api.py`

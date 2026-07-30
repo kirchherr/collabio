@@ -1671,16 +1671,16 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
         ModuleCatalogEntry(
             module_id="tasks_activities",
             display_name="Tasks and Activities",
-            module_version="0.1.0",
+            module_version="0.2.0",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
-            status=ModuleStatus.NOT_INSTALLED,
+            status=ModuleStatus.INSTALLED,
             description=(
-                "Optional governed tasks and activities module. Catalog-registered only; storage migrations, "
-                "tenant provisioning, business API routes, workflow automation, notifications, RAG, and AI assist "
-                "remain separate gates."
+                "Optional governed tasks and activities module with a tenant-gated productive task and initial "
+                "activity slice. Workflow transitions, notifications, integrations, RAG, and AI remain separate "
+                "gates."
             ),
             manifest_hash="sha256:tasks-activities-module-manifest",
-            required_migration_versions=("0050",),
+            required_migration_versions=("0050", "0059"),
         ),
         ModuleCatalogEntry(
             module_id="tickets_incidents",

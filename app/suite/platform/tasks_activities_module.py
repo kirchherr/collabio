@@ -10,11 +10,12 @@ from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass
 
 TASKS_ACTIVITIES_MODULE_ID = "tasks_activities"
-TASKS_ITEMS_READ_FEATURE_ID = "tasks.items.read"
-TASKS_ACTIVITY_READ_FEATURE_ID = "tasks.activities.read"
-TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID = "tasks.compliance_evidence.read"
-TASKS_RAG_INDEXING_FEATURE_ID = "tasks.rag_indexing"
-TASKS_AI_ASSIST_FEATURE_ID = "tasks.ai_assist"
+TASKS_ITEMS_READ_FEATURE_ID = "tasks_activities.tasks.items.read"
+TASKS_ACTIVITY_READ_FEATURE_ID = "tasks_activities.tasks.activities.read"
+TASKS_WORKFLOW_WRITE_FEATURE_ID = "tasks_activities.tasks.workflow.write"
+TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID = "tasks_activities.tasks.compliance_evidence.read"
+TASKS_RAG_INDEXING_FEATURE_ID = "tasks_activities.tasks.rag_indexing"
+TASKS_AI_ASSIST_FEATURE_ID = "tasks_activities.tasks.ai_assist"
 TASKS_ACTIVITIES_CONTINUITY_DOMAIN = "task_activity_records"
 TASKS_ACTIVITIES_SCHEMA_NAME = "tasks"
 TASKS_ACTIVITIES_OBJECT_TYPES = ("task.task", "task.activity")
@@ -36,7 +37,7 @@ TASKS_ACTIVITIES_REQUIRED_OBJECT_METADATA_FIELDS = (
     "schema_version",
 )
 
-FEATURE_ID_PATTERN = re.compile(r"^tasks\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
+FEATURE_ID_PATTERN = re.compile(r"^tasks_activities\.tasks\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
 OBJECT_TYPE_PATTERN = re.compile(r"^task\.[a-z][a-z0-9_]*$")
 RETENTION_POLICY_PATTERN = re.compile(r"^rp-[a-z0-9-]+$")
 WORKER_SURFACES = frozenset({"normal_api", "compliance_api", "feature_worker", "compliance_worker"})
@@ -363,6 +364,24 @@ def build_default_tasks_activities_subfeature_registry() -> TasksActivitiesSubfe
                 data_classes=(DataClass.PERSONAL,),
                 retention_policy_ids=("rp-standard", "rp-restricted", "rp-legal-hold"),
                 worker_surfaces=("normal_api", "feature_worker"),
+            ),
+            TasksActivitiesSubfeatureDefinition(
+                feature_id=TASKS_WORKFLOW_WRITE_FEATURE_ID,
+                display_name="Task workflow write",
+                area=TasksActivitiesSubfeatureArea.TASKS,
+                default_enabled=False,
+                requires_approval=True,
+                compliance_relevant=True,
+                object_types=TASKS_ACTIVITIES_OBJECT_TYPES,
+                data_classes=(DataClass.PERSONAL,),
+                retention_policy_ids=("rp-standard", "rp-restricted", "rp-legal-hold"),
+                worker_surfaces=("normal_api", "compliance_worker"),
+                dependency_feature_ids=(TASKS_ITEMS_READ_FEATURE_ID, TASKS_ACTIVITY_READ_FEATURE_ID),
+                evidence_required=(
+                    "atomic_business_acl_receipt_write",
+                    "tenant_principal_assignment_validation",
+                    "backup_restore_evidence",
+                ),
             ),
             TasksActivitiesSubfeatureDefinition(
                 feature_id=TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID,

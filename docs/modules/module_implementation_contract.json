@@ -76,7 +76,7 @@
       "module_family": "tasks_activities",
       "first_objects": ["task.task", "task.activity"],
       "first_slice": "assigned task/activity read slice",
-      "default_feature_gate": "tasks.items.read",
+      "default_feature_gate": "tasks_activities.tasks.items.read",
       "continuity_domain": "task_activity_records"
     },
     {

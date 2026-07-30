@@ -100,6 +100,7 @@ Bereits umgesetzt:
 - [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
 - [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
 - [x] Atomarer CRM-Account-Onboarding-Write fuer Account, Contact, Activity, metadata-only Note, vier Objekt-ACLs und append-only Receipt in einer PostgreSQL-Transaktion mit Idempotenz-, Rollen-, RLS-, Rollback- und Restore-Proof.
+- [x] Produktiver Tasks-&-Activities-Slice fuer atomare Task-/Initialaktivitaets-/ACL-/Receipt-Writes, ACL-gepruefte Reads, Rollen- und Feature-Gates sowie PostgreSQL-Restore-Kontrollen.
 
 Noch nicht umgesetzt:
 
@@ -1448,6 +1449,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
 - [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
 - [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
+- [x] Tasks & Activities mit Migration `0059`, tenant-sicherer API, atomarem Write-Vertrag, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert; naechster Fundamentfokus ist die Zeiterfassung.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 
@@ -1539,13 +1541,13 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Backend-Fundament
 
 - [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
-- [x] Exakter Quell-/Zielvergleich fuer 58 Migrationen, 60 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Exakter Quell-/Zielvergleich fuer 59 Migrationen, 63 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
-- [x] Runtime-Proof am 2026-07-30 nach atomarem CRM-Onboarding erneut gruen: vier Fachdatenzeilen, vier Objekt-ACLs, ein append-only Receipt, idempotenter Replay, unabhaengiger PostgreSQL-/Object-Storage-Restore und Backend-Gate-Hash `sha256:7097229f672bfbed7a5bb858b68caf2433bba2350be7b1ac15f66dba8def47a3`.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Tasks-Slice erneut gruen: Task, initiale Activity, zwei Objekt-ACLs, ein append-only Receipt, idempotenter Replay, exakter unabhaengiger Restore (`1|1|2|1`), 59 Migrationen, 63 Tabellen und Backend-Gate-Hash `sha256:66d6b7d91ce2d2fdb8f9d21f90a38797e3c637d59ffc0ec2eff25fe6b2f25836`.
 - [ ] Deployment-Gates fuer produktives PITR/WAL-Archiv, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennten Failover umsetzen.
 - [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
-- [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen; aktueller Fokus ist der produktive Aufgaben-/Aktivitaeten-Slice.
+- [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

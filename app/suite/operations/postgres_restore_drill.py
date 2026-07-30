@@ -74,6 +74,22 @@ CRM_ATOMIC_RECEIPT_POLICIES = {
     "crm_account_onboarding_receipts_no_update",
     "crm_account_onboarding_receipts_no_hard_delete",
 }
+TASKS_ACTIVITIES_WRITE_TABLES = {
+    "tasks.items",
+    "tasks.activities",
+    "tasks.creation_receipts",
+}
+TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
+    "tasks.items": {"tasks_items_no_update", "tasks_items_no_hard_delete"},
+    "tasks.activities": {
+        "tasks_activities_no_update",
+        "tasks_activities_no_hard_delete",
+    },
+    "tasks.creation_receipts": {
+        "tasks_creation_receipts_no_update",
+        "tasks_creation_receipts_no_hard_delete",
+    },
+}
 
 
 class PostgresBackupArtifactEvidence(BaseModel):
@@ -107,6 +123,7 @@ class PostgresDatabaseSnapshot(BaseModel):
     crm_atomic_write_controls_verified: bool
     row_count_manifest_hash: str
     migration_manifest_hash: str
+    tasks_activities_write_controls_verified: bool
     rls_policy_manifest_hash: str
     database_control_manifest_hash: str
     state_manifest_hash: str
@@ -138,6 +155,7 @@ class PostgresRestoreDrillReport(BaseModel):
     crm_atomic_write_controls_verified: bool
     source_target_state_verified: bool
     backup_integrity_verified: bool
+    tasks_activities_write_controls_verified: bool
     target_isolation_verified: bool
     migration_catalog_verified: bool
     schema_inventory_verified: bool
@@ -267,6 +285,44 @@ def build_postgres_database_snapshot(
             for privileges in crm_authz_privileges_by_table.values()
         )
     )
+    tasks_policy_names_by_table = {
+        table_name: {
+            str(row.get("policy_name", "")) for row in normalized["policies"] if _qualified_name(row) == table_name
+        }
+        for table_name in TASKS_ACTIVITIES_WRITE_TABLES
+    }
+    tasks_authz_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_authz_admin" and _qualified_name(row) == table_name
+        }
+        for table_name in TASKS_ACTIVITIES_WRITE_TABLES
+    }
+    tasks_app_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_app" and _qualified_name(row) == table_name
+        }
+        for table_name in TASKS_ACTIVITIES_WRITE_TABLES
+    }
+    tasks_activities_write_verified = (
+        table_names >= TASKS_ACTIVITIES_WRITE_TABLES
+        and forced_rls_tables >= TASKS_ACTIVITIES_WRITE_TABLES
+        and all(
+            tasks_policy_names_by_table[table_name] >= expected_policies
+            for table_name, expected_policies in TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        and all(
+            {"SELECT", "INSERT"} <= privileges and not ({"UPDATE", "DELETE"} & privileges)
+            for privileges in tasks_authz_privileges_by_table.values()
+        )
+        and all(
+            "SELECT" in privileges and not ({"INSERT", "UPDATE", "DELETE"} & privileges)
+            for privileges in tasks_app_privileges_by_table.values()
+        )
+    )
     migration_catalog_verified = _migration_catalog_matches_code(normalized["migrations"])
     service_roles_verified = service_role_names >= SERVICE_ROLES
 
@@ -322,6 +378,7 @@ def build_postgres_database_snapshot(
         module_registry_controls_verified=module_registry_verified,
         source_object_controls_verified=source_object_verified,
         crm_atomic_write_controls_verified=crm_atomic_write_verified,
+        tasks_activities_write_controls_verified=tasks_activities_write_verified,
         snapshot_hash="sha256:" + "0" * 64,
     )
     return draft.model_copy(update={"snapshot_hash": build_postgres_database_snapshot_hash(draft)})
@@ -385,6 +442,10 @@ def build_postgres_restore_drill_report(
         "crm_atomic_write_controls_verified": (
             source_snapshot.crm_atomic_write_controls_verified and target_snapshot.crm_atomic_write_controls_verified
         ),
+        "tasks_activities_write_controls_verified": (
+            source_snapshot.tasks_activities_write_controls_verified
+            and target_snapshot.tasks_activities_write_controls_verified
+        ),
     }
     metadata_only = not source_snapshot.content_included and not target_snapshot.content_included
     checks = {
@@ -399,6 +460,7 @@ def build_postgres_restore_drill_report(
         "append_only_audit_controls_not_verified": control_pairs["append_only_audit_controls_verified"],
         "module_registry_controls_not_verified": control_pairs["module_registry_controls_verified"],
         "crm_atomic_write_controls_not_verified": control_pairs["crm_atomic_write_controls_verified"],
+        "tasks_activities_write_controls_not_verified": control_pairs["tasks_activities_write_controls_verified"],
         "source_object_controls_not_verified": control_pairs["source_object_controls_verified"],
         "evidence_contains_content": metadata_only,
     }
@@ -429,6 +491,7 @@ def build_postgres_restore_drill_report(
         append_only_audit_controls_verified=control_pairs["append_only_audit_controls_verified"],
         module_registry_controls_verified=control_pairs["module_registry_controls_verified"],
         crm_atomic_write_controls_verified=control_pairs["crm_atomic_write_controls_verified"],
+        tasks_activities_write_controls_verified=control_pairs["tasks_activities_write_controls_verified"],
         source_object_controls_verified=control_pairs["source_object_controls_verified"],
         metadata_only_evidence_verified=metadata_only,
         blocking_reasons=blocking_reasons,

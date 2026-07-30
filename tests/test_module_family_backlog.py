@@ -57,7 +57,7 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.summary.catalog_registered_count == 4
     assert response.summary.planned_not_installed_count == 1
     assert response.summary.pre_catalog_foundation_ready_count == 0
-    assert response.summary.first_slice_foundation_ready_count == 1
+    assert response.summary.first_slice_foundation_ready_count == 2
     assert response.summary.runtime_activation_allowed_count == 0
 
     families = {family.module_family: family for family in response.module_families}
@@ -96,19 +96,19 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert "backup_restore_evidence_required" in lms.required_foundation_gates
 
     tasks = families["tasks_activities"]
-    assert tasks.backlog_status == "catalog_registered"
-    assert tasks.catalog_status == "not_installed"
+    assert tasks.backlog_status == "active_foundation"
+    assert tasks.catalog_status == "installed"
     assert tasks.tenant_module_status is None
     assert tasks.catalog_entry_present is True
-    assert tasks.module_package_installed is False
-    assert tasks.installed_in_catalog is False
+    assert tasks.module_package_installed is True
+    assert tasks.installed_in_catalog is True
     assert tasks.module_charter_ready is True
     assert tasks.feature_registry_ready is True
     assert tasks.object_rules_ready is True
     assert tasks.pre_catalog_foundation_ready is False
-    assert tasks.first_slice_foundation_ready is False
+    assert tasks.first_slice_foundation_ready is True
     assert tasks.runtime_activation_allowed is False
-    assert tasks.next_action == "add_tasks_activities_migration_evidence_before_storage_or_api"
+    assert tasks.next_action == "continue_existing_slice_hardening_without_broadening_scope"
     assert "module_catalog_entry_required" in tasks.required_foundation_gates
     assert "backup_restore_evidence_required" in tasks.required_foundation_gates
 
@@ -177,7 +177,7 @@ def test_module_family_next_slice_selection_moves_to_time_tracking_after_ticket_
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
-    assert response.summary.active_foundation_count == 1
+    assert response.summary.active_foundation_count == 2
     assert response.summary.catalog_registered_count == 4
     assert response.summary.planned_candidate_count == 1
     assert response.summary.selected_candidate_count == 1

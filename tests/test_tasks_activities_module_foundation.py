@@ -9,6 +9,7 @@ from suite.platform.tasks_activities_module import (
     TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID,
     TASKS_ITEMS_READ_FEATURE_ID,
     TASKS_RAG_INDEXING_FEATURE_ID,
+    TASKS_WORKFLOW_WRITE_FEATURE_ID,
     TasksActivitiesSubfeatureArea,
     build_default_tasks_activities_object_rule_manifest,
     build_default_tasks_activities_subfeature_registry,
@@ -27,6 +28,7 @@ def test_tasks_activities_subfeature_registry_declares_first_safe_feature_set() 
     assert registry.feature_ids == (
         TASKS_ITEMS_READ_FEATURE_ID,
         TASKS_ACTIVITY_READ_FEATURE_ID,
+        TASKS_WORKFLOW_WRITE_FEATURE_ID,
         TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID,
         TASKS_RAG_INDEXING_FEATURE_ID,
         TASKS_AI_ASSIST_FEATURE_ID,
@@ -34,19 +36,26 @@ def test_tasks_activities_subfeature_registry_declares_first_safe_feature_set() 
     assert summary == {
         "module_id": "tasks_activities",
         "registry_version": "tasks_activities_subfeatures.v1",
-        "feature_count": 5,
+        "feature_count": 6,
         "default_enabled_count": 2,
-        "approval_required_count": 3,
-        "compliance_relevant_count": 1,
+        "approval_required_count": 4,
+        "compliance_relevant_count": 2,
         "manifest_hash": registry.manifest_hash,
     }
     assert registry.manifest_hash.startswith("sha256:")
     assert registry.enabled_feature_defaults == default_tasks_activities_enabled_features()
 
     compliance = registry.feature(TASKS_COMPLIANCE_EVIDENCE_FEATURE_ID)
+    workflow_write = registry.feature(TASKS_WORKFLOW_WRITE_FEATURE_ID)
     rag = registry.feature(TASKS_RAG_INDEXING_FEATURE_ID)
     ai_assist = registry.feature(TASKS_AI_ASSIST_FEATURE_ID)
 
+    assert workflow_write.requires_approval
+    assert workflow_write.compliance_relevant
+    assert workflow_write.dependency_feature_ids == (
+        TASKS_ITEMS_READ_FEATURE_ID,
+        TASKS_ACTIVITY_READ_FEATURE_ID,
+    )
     assert compliance.area == TasksActivitiesSubfeatureArea.COMPLIANCE
     assert compliance.requires_approval
     assert compliance.compliance_relevant
@@ -107,10 +116,11 @@ def test_tasks_activities_module_charter_documents_contract_gates_and_deferred_s
         "restore",
         "candidate IDs only",
         "Local LLM Gateway",
-        "No Tasks & Activities business API route is enabled by this charter",
+        "POST /v1/tasks/items",
         "/v1/platform/modules/families/tasks-activities/catalog-readiness",
         "task_activity_records",
         "0050_tasks_activities_catalog_registration.sql",
+        "0059_tasks_activities_productive_slice.sql",
         "task.task",
         "task.activity",
         "notifications",

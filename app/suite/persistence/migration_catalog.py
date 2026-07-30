@@ -542,6 +542,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tenant-module-migration-evidence-reconciliation",
         ),
     ),
+    SqlMigration(
+        version="0059",
+        name="tasks_activities_productive_slice",
+        resource_name="0059_tasks_activities_productive_slice.sql",
+        module_id="tasks_activities",
+        evidence_refs=("doc:tasks-activities-productive-slice", "test:tasks-activities-productive-slice"),
+    ),
 )
 
 

@@ -155,26 +155,26 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="tasks_activities_productive_vertical_slice",
-            title="Aufgaben und Aktivitaeten produktiv anbinden",
+            work_item_id="time_tracking_module_foundation_vertical_slice",
+            title="Zeiterfassung als naechste Modul-Familie gruenden",
             summary=(
-                "Der atomare CRM-Schreibvertrag ist operational; als naechstes wird die registrierte Modul-Familie "
-                "fuer Aufgaben und Aktivitaeten mit demselben Daten-, ACL-, Audit- und Restore-Vertrag produktiv."
+                "Tasks & Activities ist produktiv und restore-geprueft. Als naechstes wird Zeiterfassung mit "
+                "dem gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag als Fundament-Slice angelegt."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
-                "crm_atomic_account_onboarding_runtime",
+                "tasks_activities_runtime",
                 "module_registry",
                 "future_modules",
                 "tenant_authz",
                 "backup_failover",
             ),
-            readiness_gate="crm_atomic_write_pattern_and_module_foundation_ready",
-            decision="must_now_because_the_next_module_should_reuse_the_proven_write_contract",
+            readiness_gate="tasks_activities_atomic_write_and_module_family_selection_ready",
+            decision="must_now_because_time_tracking_is_the_selected_remaining_foundation_family",
             evidence_refs=(
-                "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
+                "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
+                "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
                 "docs/ROADMAP.md",
-                "docs/operations/BACKUP_FAILOVER.md",
             ),
             can_start_now=True,
         ),

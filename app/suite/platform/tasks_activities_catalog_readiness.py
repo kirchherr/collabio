@@ -19,6 +19,7 @@ TASKS_ACTIVITIES_CATALOG_REGISTRATION_NEXT_ACTION = (
 )
 TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION = "add_tasks_activities_migration_evidence_before_storage_or_api"
 TASKS_ACTIVITIES_TENANT_STATE_REVIEW_NEXT_ACTION = "review_tasks_activities_tenant_state_before_runtime_activation"
+TASKS_ACTIVITIES_TENANT_PROVISIONING_NEXT_ACTION = "provision_tasks_activities_for_tenant_before_runtime_use"
 
 
 class TasksActivitiesCatalogReadinessSummary(BaseModel):
@@ -122,7 +123,7 @@ class TasksActivitiesCatalogReadinessResponse(BaseModel):
             raise ValueError(
                 "Tasks & Activities catalog readiness must only be ready before catalog or tenant state exists"
             )
-        if self.module_package_installed != (self.catalog_status in {"available", "installed"}):
+        if self.module_package_installed != (self.catalog_status == "installed"):
             raise ValueError("Tasks & Activities catalog readiness package flag must match catalog status")
         if self.summary.required_catalog_evidence_count != len(self.required_catalog_evidence):
             raise ValueError("Tasks & Activities catalog readiness evidence count must match evidence list")
@@ -144,7 +145,7 @@ def build_tasks_activities_catalog_readiness_response(
         tenant_id=user_context.tenant_id,
         catalog_known=catalog_status is not None,
     )
-    catalog_registration_evidence = (
+    catalog_registration_evidence: tuple[str, ...] = (
         (
             "catalog_registration_status_absent_confirmed",
             "migration_plan_or_no_table_decision_recorded",
@@ -155,6 +156,12 @@ def build_tasks_activities_catalog_readiness_response(
             "catalog_registration_migration_0050_recorded",
         )
     )
+    if catalog_status == "installed":
+        catalog_registration_evidence = (
+            "catalog_package_status_installed_confirmed",
+            "catalog_registration_migration_0050_recorded",
+            "productive_storage_migration_0059_recorded",
+        )
     required_catalog_evidence = (
         "module_charter_reviewed",
         "subfeature_manifest_hash_recorded",
@@ -168,7 +175,7 @@ def build_tasks_activities_catalog_readiness_response(
         catalog_status=catalog_status,
         tenant_module_status=tenant_module_status,
         module_catalog_entry_present=catalog_status is not None,
-        module_package_installed=catalog_status in {"available", "installed"},
+        module_package_installed=catalog_status == "installed",
         tenant_module_state_present=tenant_module_status is not None,
         catalog_registration_ready=catalog_status is None and tenant_module_status is None,
         feature_manifest_hash=feature_registry.manifest_hash,
@@ -196,6 +203,9 @@ def build_tasks_activities_catalog_readiness_response(
             "app/suite/platform/tasks_activities_catalog_readiness.py",
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
+            "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+            "app/suite/platform/tasks_activities_service.py",
+            "tests/test_tasks_activities_productive_slice.py",
             "tests/test_tasks_activities_catalog_readiness.py",
         ),
     )
@@ -225,4 +235,6 @@ def _next_action(*, catalog_status: str | None, tenant_module_status: str | None
         return TASKS_ACTIVITIES_CATALOG_REGISTRATION_NEXT_ACTION
     if tenant_module_status is not None:
         return TASKS_ACTIVITIES_TENANT_STATE_REVIEW_NEXT_ACTION
+    if catalog_status == "installed":
+        return TASKS_ACTIVITIES_TENANT_PROVISIONING_NEXT_ACTION
     return TASKS_ACTIVITIES_MIGRATION_EVIDENCE_NEXT_ACTION
