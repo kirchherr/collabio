@@ -61,6 +61,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "pg_restore_catalog" in postgres.integrity_checks
     assert "business_backend_release_gate_hash_check" in postgres.integrity_checks
     assert "productivity_pilot_preflight_gate_hash_check" in postgres.integrity_checks
+    assert "productivity_pilot_admission_record_hash_check" in postgres.integrity_checks
+    assert "productivity_pilot_admission_rls_append_only_check" in postgres.integrity_checks
     assert postgres.restore_verification_gates == [
         "postgres_restore_drill_report.v1",
         "isolated_postgres_restore",
@@ -70,6 +72,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "backend_foundation_completion_gate.v1",
         "business_backend_release_gate.v1",
         "productivity_pilot_preflight_gate.v1",
+        "productivity_pilot_admission_record.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks

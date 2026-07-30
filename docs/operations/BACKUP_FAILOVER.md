@@ -109,7 +109,7 @@ Run the complete backend release proof:
 docker compose run --rm backend-foundation-completion-gate
 ```
 
-The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain separate deployment gates.
+The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, productivity pilot preflight/admission controls, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain separate deployment gates.
 
 Bind the restored foundation to the productive CRM, Tasks, and Time Tracking API package:
 
@@ -126,7 +126,7 @@ SUITE_PRODUCTIVITY_PILOT_TENANT_IDS=tenant-demo \
   docker compose --profile restore-drill run --rm productivity-pilot-preflight-gate
 ```
 
-The metadata-only `productivity_pilot_preflight_gate.v1` binds the business release hash to selected tenant module states, required/forbidden feature flags, the seven-operation route contract, five monitoring controls and four non-destructive rollback controls. A green preflight still sets `pilot_start_allowed=false`; human admission and traffic-scope enforcement remain separate. See `docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md`.
+The metadata-only `productivity_pilot_preflight_gate.v1` binds the business release hash to selected tenant module states, required/forbidden feature flags, the seven-operation route contract, five monitoring controls and four non-destructive rollback controls. Ready reports are persisted for tenant-scoped admission. Migration 0061 and the PostgreSQL restore drill verify the preflight and admission tables, forced RLS, exact role grants, append-only policies and mutation-rejecting triggers. Admission still sets `pilot_start_allowed=false` and `traffic_scope_enforced=false`. See `docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md` and `docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md`.
 
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 

@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "explicit_productivity_pilot_admission"
+    assert body["current_focus"] == "productivity_pilot_traffic_scope_enforcement"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1339,7 +1339,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "explicit_productivity_pilot_admission"
+    assert body["current_focus"] == "productivity_pilot_traffic_scope_enforcement"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1353,18 +1353,18 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 1,
         "later_count": 4,
         "total_count": 6,
-        "foundation_ready_count": 24,
+        "foundation_ready_count": 25,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
-        "explicit_productivity_pilot_admission",
+        "productivity_pilot_traffic_scope_enforcement",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["explicit_productivity_pilot_admission"]["priority"] == "now"
+    assert items["productivity_pilot_traffic_scope_enforcement"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True

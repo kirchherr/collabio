@@ -446,6 +446,7 @@ services:
       SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json
       SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
       SUITE_PRODUCTIVITY_PILOT_TENANT_IDS: ${SUITE_PRODUCTIVITY_PILOT_TENANT_IDS:-tenant-demo}
+      SUITE_PRODUCTIVITY_PILOT_EVIDENCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
     volumes:
       - ./app:/workspace/app:ro
@@ -1483,6 +1484,8 @@ services:
       SUITE_TICKETS_REPOSITORY_BACKEND: postgres
       SUITE_TICKETS_APPROVAL_RECORD_BACKEND: postgres
       SUITE_TICKETS_PILOT_RECEIPT_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_PREFLIGHT_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_ADMISSION_STORE_BACKEND: postgres
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio

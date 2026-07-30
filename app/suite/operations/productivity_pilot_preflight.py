@@ -10,6 +10,7 @@ from typing import Self
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.operations.business_backend_release_gate import (
@@ -394,6 +395,68 @@ def build_productivity_pilot_preflight_gate_hash(gate: ProductivityPilotPrefligh
     )
 
 
+def persist_productivity_pilot_preflight_gate(
+    *,
+    database_dsn: str,
+    gate: ProductivityPilotPreflightGate,
+) -> ProductivityPilotPreflightGate:
+    if build_productivity_pilot_preflight_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("productivity pilot preflight gate hash is invalid")
+    if not gate.preflight_ready:
+        raise ValueError("only ready productivity pilot preflight evidence may be persisted")
+    with psycopg.connect(database_dsn) as connection, connection.transaction():
+        connection.execute(
+            """
+            INSERT INTO collabio.productivity_pilot_preflight_reports (
+                gate_hash, checked_at_utc, policy_hash,
+                business_backend_release_gate_hash, tenant_module_state_manifest_hash,
+                candidate_tenant_ids, report, schema_version
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (gate_hash) DO NOTHING
+            """,
+            (
+                gate.gate_hash,
+                gate.checked_at_utc,
+                gate.policy_hash,
+                gate.business_backend_release_gate_hash,
+                gate.tenant_module_state_manifest_hash,
+                Jsonb(list(gate.candidate_tenant_ids)),
+                Jsonb(gate.model_dump(mode="json")),
+                gate.schema_version,
+            ),
+        )
+    return gate
+
+
+def load_productivity_pilot_preflight_gate(
+    *,
+    database_dsn: str,
+    tenant_id: str,
+    gate_hash: str,
+) -> ProductivityPilotPreflightGate:
+    if not TENANT_ID_PATTERN.fullmatch(tenant_id):
+        raise ValueError("tenant ID has an invalid format")
+    with psycopg.connect(database_dsn) as connection, connection.transaction():
+        connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+        row = connection.execute(
+            """
+            SELECT report
+            FROM collabio.productivity_pilot_preflight_reports
+            WHERE gate_hash = %s
+            """,
+            (gate_hash,),
+        ).fetchone()
+    if row is None:
+        raise KeyError("authoritative productivity pilot preflight evidence not found")
+    gate = ProductivityPilotPreflightGate.model_validate(row[0])
+    if build_productivity_pilot_preflight_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("persisted productivity pilot preflight gate hash is invalid")
+    if tenant_id not in gate.candidate_tenant_ids:
+        raise KeyError("authoritative productivity pilot preflight evidence not found")
+    return gate
+
+
 def _load_tenant_module_rows(
     *,
     database_dsn: str,
@@ -441,12 +504,16 @@ def run_productivity_pilot_preflight_from_environment(
         tenant_ids=tenant_ids,
         module_ids=module_ids,
     )
-    return build_productivity_pilot_preflight_gate(
+    gate = build_productivity_pilot_preflight_gate(
         business_gate=business_gate,
         policy=policy,
         candidate_tenant_ids=tenant_ids,
         tenant_module_rows=rows,
     )
+    evidence_dsn = env.get("SUITE_PRODUCTIVITY_PILOT_EVIDENCE_DSN", "").strip()
+    if evidence_dsn and gate.preflight_ready:
+        persist_productivity_pilot_preflight_gate(database_dsn=evidence_dsn, gate=gate)
+    return gate
 
 
 def main() -> None:

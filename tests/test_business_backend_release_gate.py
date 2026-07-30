@@ -36,6 +36,7 @@ def _backend_gate(*, complete: bool = True) -> BackendFoundationCompletionGate:
         crm_atomic_write_controls_verified=complete,
         tasks_activities_write_controls_verified=complete,
         time_tracking_write_controls_verified=complete,
+        productivity_pilot_admission_controls_verified=complete,
         productive_business_write_controls_verified=complete,
         migration_catalog_verified=complete,
         postgres_backup_restore_verified=complete,

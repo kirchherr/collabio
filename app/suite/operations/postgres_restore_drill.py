@@ -103,6 +103,28 @@ TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
         "time_entry_receipts_no_hard_delete",
     },
 }
+PRODUCTIVITY_PILOT_CONTROL_TABLES = {
+    "collabio.productivity_pilot_preflight_reports",
+    "collabio.productivity_pilot_admission_records",
+}
+PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE = {
+    "collabio.productivity_pilot_preflight_reports": {
+        "productivity_pilot_preflight_reports_no_update",
+        "productivity_pilot_preflight_reports_no_hard_delete",
+    },
+    "collabio.productivity_pilot_admission_records": {
+        "productivity_pilot_admission_records_no_update",
+        "productivity_pilot_admission_records_no_hard_delete",
+    },
+}
+PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE = {
+    "collabio.productivity_pilot_preflight_reports": {
+        "productivity_pilot_preflight_reports_append_only",
+    },
+    "collabio.productivity_pilot_admission_records": {
+        "productivity_pilot_admission_records_append_only",
+    },
+}
 
 
 class PostgresBackupArtifactEvidence(BaseModel):
@@ -138,6 +160,7 @@ class PostgresDatabaseSnapshot(BaseModel):
     migration_manifest_hash: str
     tasks_activities_write_controls_verified: bool
     time_tracking_write_controls_verified: bool
+    productivity_pilot_admission_controls_verified: bool
     rls_policy_manifest_hash: str
     database_control_manifest_hash: str
     state_manifest_hash: str
@@ -171,6 +194,7 @@ class PostgresRestoreDrillReport(BaseModel):
     backup_integrity_verified: bool
     tasks_activities_write_controls_verified: bool
     time_tracking_write_controls_verified: bool
+    productivity_pilot_admission_controls_verified: bool
     target_isolation_verified: bool
     migration_catalog_verified: bool
     schema_inventory_verified: bool
@@ -376,6 +400,50 @@ def build_postgres_database_snapshot(
             for privileges in time_tracking_app_privileges_by_table.values()
         )
     )
+    productivity_pilot_policy_names_by_table = {
+        table_name: {
+            str(row.get("policy_name", "")) for row in normalized["policies"] if _qualified_name(row) == table_name
+        }
+        for table_name in PRODUCTIVITY_PILOT_CONTROL_TABLES
+    }
+    productivity_pilot_trigger_names_by_table = {
+        table_name: {
+            str(row.get("trigger_name", "")) for row in normalized["triggers"] if _qualified_name(row) == table_name
+        }
+        for table_name in PRODUCTIVITY_PILOT_CONTROL_TABLES
+    }
+    productivity_pilot_authz_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_authz_admin" and _qualified_name(row) == table_name
+        }
+        for table_name in PRODUCTIVITY_PILOT_CONTROL_TABLES
+    }
+    productivity_pilot_app_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_app" and _qualified_name(row) == table_name
+        }
+        for table_name in PRODUCTIVITY_PILOT_CONTROL_TABLES
+    }
+    productivity_pilot_admission_verified = (
+        table_names >= PRODUCTIVITY_PILOT_CONTROL_TABLES
+        and forced_rls_tables >= PRODUCTIVITY_PILOT_CONTROL_TABLES
+        and all(
+            productivity_pilot_policy_names_by_table[table_name] >= expected_policies
+            for table_name, expected_policies in PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        and all(
+            productivity_pilot_trigger_names_by_table[table_name] >= expected_triggers
+            for table_name, expected_triggers in PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE.items()
+        )
+        and productivity_pilot_authz_privileges_by_table["collabio.productivity_pilot_preflight_reports"] == {"SELECT"}
+        and productivity_pilot_authz_privileges_by_table["collabio.productivity_pilot_admission_records"]
+        == {"SELECT", "INSERT"}
+        and all(not privileges for privileges in productivity_pilot_app_privileges_by_table.values())
+    )
     migration_catalog_verified = _migration_catalog_matches_code(normalized["migrations"])
     service_roles_verified = service_role_names >= SERVICE_ROLES
 
@@ -433,6 +501,7 @@ def build_postgres_database_snapshot(
         crm_atomic_write_controls_verified=crm_atomic_write_verified,
         tasks_activities_write_controls_verified=tasks_activities_write_verified,
         time_tracking_write_controls_verified=time_tracking_write_verified,
+        productivity_pilot_admission_controls_verified=productivity_pilot_admission_verified,
         snapshot_hash="sha256:" + "0" * 64,
     )
     return draft.model_copy(update={"snapshot_hash": build_postgres_database_snapshot_hash(draft)})
@@ -504,6 +573,10 @@ def build_postgres_restore_drill_report(
             source_snapshot.time_tracking_write_controls_verified
             and target_snapshot.time_tracking_write_controls_verified
         ),
+        "productivity_pilot_admission_controls_verified": (
+            source_snapshot.productivity_pilot_admission_controls_verified
+            and target_snapshot.productivity_pilot_admission_controls_verified
+        ),
     }
     metadata_only = not source_snapshot.content_included and not target_snapshot.content_included
     checks = {
@@ -520,6 +593,9 @@ def build_postgres_restore_drill_report(
         "crm_atomic_write_controls_not_verified": control_pairs["crm_atomic_write_controls_verified"],
         "tasks_activities_write_controls_not_verified": control_pairs["tasks_activities_write_controls_verified"],
         "time_tracking_write_controls_not_verified": control_pairs["time_tracking_write_controls_verified"],
+        "productivity_pilot_admission_controls_not_verified": control_pairs[
+            "productivity_pilot_admission_controls_verified"
+        ],
         "source_object_controls_not_verified": control_pairs["source_object_controls_verified"],
         "evidence_contains_content": metadata_only,
     }
@@ -552,6 +628,7 @@ def build_postgres_restore_drill_report(
         crm_atomic_write_controls_verified=control_pairs["crm_atomic_write_controls_verified"],
         tasks_activities_write_controls_verified=control_pairs["tasks_activities_write_controls_verified"],
         time_tracking_write_controls_verified=control_pairs["time_tracking_write_controls_verified"],
+        productivity_pilot_admission_controls_verified=control_pairs["productivity_pilot_admission_controls_verified"],
         source_object_controls_verified=control_pairs["source_object_controls_verified"],
         metadata_only_evidence_verified=metadata_only,
         blocking_reasons=blocking_reasons,

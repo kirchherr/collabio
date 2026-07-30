@@ -784,6 +784,15 @@ from suite.platform.product_cockpit import (
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_dry_run_response as build_activation_dry_run_response,  # noqa: E501
 )
+from suite.platform.productivity_pilot_admission import (
+    ProductivityPilotAdmissionCommand,
+    ProductivityPilotAdmissionConflict,
+    ProductivityPilotAdmissionRecord,
+    ProductivityPilotAdmissionService,
+    ProductivityPilotPreflightNotFound,
+    build_default_productivity_pilot_admission_record_store,
+    build_default_productivity_pilot_preflight_store,
+)
 from suite.platform.roadmap_dashboard import RoadmapDashboardResponse, build_roadmap_dashboard_response
 from suite.platform.roadmap_plan import RoadmapPlanSnapshotResponse, build_roadmap_plan_snapshot_response
 from suite.platform.runtime import suite_auth_mode
@@ -1395,6 +1404,12 @@ def build_app() -> FastAPI:
     )
     module_registry = build_default_module_registry()
     migration_manifest = load_migration_manifest()
+    productivity_pilot_preflight_store = build_default_productivity_pilot_preflight_store()
+    productivity_pilot_admission_record_store = build_default_productivity_pilot_admission_record_store()
+    productivity_pilot_admission_service = ProductivityPilotAdmissionService(
+        preflight_store=productivity_pilot_preflight_store,
+        record_store=productivity_pilot_admission_record_store,
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1422,6 +1437,51 @@ def build_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post(
+        "/v1/platform/productivity-pilot/admissions",
+        response_model=ProductivityPilotAdmissionRecord,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def record_productivity_pilot_admission(
+        command: ProductivityPilotAdmissionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotAdmissionRecord:
+        service: ProductivityPilotAdmissionService = request.app.state.productivity_pilot_admission_service
+        try:
+            response = service.admit(user_context=context.user_context, command=command)
+        except ProductivityPilotPreflightNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ProductivityPilotAdmissionConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.admission_recorded",
+            source_object_ids=[f"productivity_pilot_preflight:{response.preflight_gate_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "admission_id": response.admission_id,
+                "preflight_gate_hash": response.preflight_gate_hash,
+                "policy_hash": response.policy_hash,
+                "business_backend_release_gate_hash": response.business_backend_release_gate_hash,
+                "tenant_module_state_manifest_hash": response.tenant_module_state_manifest_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "admission_recorded": response.admission_recorded,
+                "idempotent_replay": response.idempotent_replay,
+                "pilot_start_allowed": response.pilot_start_allowed,
+                "traffic_scope_enforced": response.traffic_scope_enforced,
+                "tenant_state_changed": response.tenant_state_changed,
+                "business_write_executed": response.business_write_executed,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
 
     @app.get("/workspace", response_class=FileResponse)
     def workspace_shell() -> FileResponse:
@@ -21407,6 +21467,9 @@ def build_app() -> FastAPI:
     app.state.migration_manifest = migration_manifest
     app.state.module_registry = module_registry
     app.state.principal_resolver = principal_resolver
+    app.state.productivity_pilot_preflight_store = productivity_pilot_preflight_store
+    app.state.productivity_pilot_admission_record_store = productivity_pilot_admission_record_store
+    app.state.productivity_pilot_admission_service = productivity_pilot_admission_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

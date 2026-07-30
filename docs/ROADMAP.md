@@ -104,6 +104,8 @@ Bereits umgesetzt:
 - [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
 - [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
 - [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
+- [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; Pilotstart und Traffic-Freigabe bleiben gesperrt.
+- [ ] Tenant- und routenspezifische Traffic-Scope-Erzwingung an Admission und Preflight binden; separate Start-Autorisierung weiterhin erforderlich.
 
 Noch nicht umgesetzt:
 

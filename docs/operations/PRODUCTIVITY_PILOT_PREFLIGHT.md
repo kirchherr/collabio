@@ -45,7 +45,7 @@ Even when `preflight_ready=true`, the following remain false:
 - `destructive_actions_allowed`
 - `external_side_effect_allowed`
 
-The next action is an append-only human admission record bound to this preflight hash, followed by enforceable route scope. No activation may be inferred from this document or the preflight output.
+Ready preflight reports are now persisted as authoritative, tenant-visible metadata for the append-only admission endpoint described in docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md. After admission, enforceable tenant and route scope remains the next separate gate. No activation may be inferred from this document, its persisted evidence, or an admission record.
 
 ## Current Runtime Proof
 
@@ -55,9 +55,9 @@ The isolated development proof on 2026-07-30 passed for `tenant-demo`:
 - productive slices ready: `3/3`
 - monitoring controls: `5`
 - rollback controls: `4`
-- business release gate: `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`
+- business release gate: `sha256:8eb3074aeb99220e66a92055dd4c0942eb0b6e0dc9b17ce256e30bfde2abb4f2`
 - pilot policy: `sha256:112ca01a2e483743310feebbac652c5cbbc6df061f007b86b4d22849175ff457`
 - tenant module state manifest: `sha256:445362da208ff065f556eee498a60542587a2fb2c2caac5fc6f86fb20a9c83ab`
-- preflight gate: `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`
+- preflight gate: `sha256:51ce7d873398b80f24144fe0b7dffb847cd1dbb7c40d55331f130c86c798d7ac`
 
 These hashes prove this development run only. Every release, recovery, tenant selection, or policy change requires fresh evidence.
