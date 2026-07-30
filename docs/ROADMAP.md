@@ -104,8 +104,8 @@ Noch nicht umgesetzt:
 
 - [x] Master-Compliance-Dokumente.
 - [x] ADR-Struktur.
-- [ ] Persistente Datenbank.
-- [ ] Vollstaendiger IAM/OIDC Auth Context.
+- [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
+- [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
@@ -1534,6 +1534,16 @@ Enthaelt:
 - [ ] Platform Module System.
 - [ ] Optionales CRM/ERP Modul als erster Business-Modulnachweis.
 - [ ] Vorbereitete Modulpfade fuer Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
+
+## Aktueller Umsetzungsstand: Backend-Fundament
+
+- [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
+- [x] Exakter Quell-/Zielvergleich fuer 56 Migrationen, 59 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
+- [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
+- [x] Runtime-Proof am 2026-07-30 gruen; Gate-Hash `sha256:d04b078579274f56779bbd8c575d60ad8528d894ae52ae82f932ad79f599a08b`.
+- [ ] Deployment-Gates fuer produktives PITR/WAL-Archiv, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennten Failover umsetzen.
+- [ ] Aktueller Fokus: CRM Accounts, Contacts, Activities und Notes als erste produktive Vertikale auf dem bewiesenen Backend stabilisieren.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

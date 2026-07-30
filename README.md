@@ -66,6 +66,8 @@ docker compose run --rm backup
 docker compose run --rm backup-verify
 docker compose run --rm source-object-runtime-bootstrap
 docker compose run --rm backend-storage-foundation-gate
+docker compose run --rm postgres-restore-drill
+docker compose run --rm backend-foundation-completion-gate
 docker compose up api
 ```
 
@@ -73,11 +75,11 @@ The `quality` service is the local and CI gate. It runs Ruff, Ruff format check,
 
 The Compose stack includes PostgreSQL 18 with pgvector on configurable host port `SUITE_POSTGRES_PORT` (default `5433`). Runtime state uses `postgres18_data`; tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume.
 
-Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
+Local database backups are written to `./backups/`. `postgres-restore-drill` verifies the checksum and restore catalog, recreates an isolated PostgreSQL target, and compares migrations, schema, exact row counts, RLS policies, roles, and grants without emitting row content.
 
 MinIO is part of the default API foundation on configurable ports `SUITE_MINIO_API_PORT`/`SUITE_MINIO_CONSOLE_PORT` (defaults `29000`/`29001`). API startup requires bucket-profile evidence plus a successful `persistent_source_object_runtime_report.v1` covering fresh-instance reads and tenant-scoped content reconciliation.
 
-The opt-in `restore-drill` profile adds an independent MinIO target on configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`). `backend-storage-foundation-gate` restores every tenant-scoped storage manifest by exact source version, reads the exact target version, verifies metadata, retention, Object Lock and Legal Hold controls, then binds the current restore report back into a fresh persistent-runtime report. Evidence is metadata-only.
+The opt-in `restore-drill` profile adds independent MinIO and PostgreSQL targets. MinIO uses configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`); PostgreSQL uses `SUITE_POSTGRES_RESTORE_PORT` (default `55433`). `backend-storage-foundation-gate` proves exact-version object recovery. `backend-foundation-completion-gate` binds that evidence to isolated PostgreSQL recovery plus Tenant/IAM, append-only Audit, Module Registry, migration catalog, and persistent SourceObject controls. All gate output is metadata-only.
 
 API:
 

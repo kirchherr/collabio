@@ -155,49 +155,16 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="postgres_backup_restore_runtime_evidence",
-            title="PostgreSQL Backup und Restore runtime-nah abnehmen",
-            summary=(
-                "Der Object-Storage-Restore ist bewiesen; jetzt werden Dump, Checksumme, Restore-Katalog "
-                "und isolierter Datenbank-Restore in denselben Release-Nachweis gezogen."
-            ),
-            priority=RoadmapPlanPriority.NOW,
-            capability_ids=("source_objects", "audit_chain", "backup_failover"),
-            readiness_gate="postgres_backup_checksum_catalog_and_isolated_restore_evidence_required",
-            decision="must_now_because_database_and_object_storage_form_one_recovery_unit",
-            evidence_refs=(
-                "tests/test_backup_failover.py",
-                "docker-compose.yml",
-                "docs/operations/BACKUP_FAILOVER.md",
-            ),
-            can_start_now=True,
-        ),
-        RoadmapPlanItem(
-            work_item_id="backend_foundation_completion_gate",
-            title="Backend-Fundament als Ganzes abnehmen",
-            summary=(
-                "Tenant, Rechte, Audit, Module, SourceObjects und Recovery werden als zusammenhaengender "
-                "Backend-Releasepfad geprueft."
-            ),
-            priority=RoadmapPlanPriority.NOW,
-            capability_ids=("tenant_authz", "audit_chain", "module_registry", "source_objects", "backup_failover"),
-            readiness_gate="cross_foundation_api_smoke_backup_restore_and_tenant_isolation_must_pass",
-            decision="must_now_because_more_module_depth_would_hide_remaining_backend_release_risk",
-            evidence_refs=(
-                "tests/test_api.py",
-                "tests/test_backup_failover.py",
-                "docs/ROADMAP.md",
-            ),
-            can_start_now=True,
-        ),
-        RoadmapPlanItem(
             work_item_id="crm_accounts_contacts_activities_operational_hardening",
             title="CRM Basis stabilisieren",
-            summary="Accounts, Contacts, Activities und Notes folgen nach dem Backend-Abnahmegate.",
-            priority=RoadmapPlanPriority.NEXT,
+            summary=(
+                "Das Backend-Abnahmegate ist gruen; Accounts, Contacts, Activities und Notes werden jetzt "
+                "als erster produktiver Business-Slice stabilisiert."
+            ),
+            priority=RoadmapPlanPriority.NOW,
             capability_ids=("crm_erp_first_slices",),
             readiness_gate="backend_foundation_completion_gate_ready",
-            decision="next_because_the_business_slice_should_consume_a_proven_backend_runtime",
+            decision="must_now_because_the_backend_foundation_is_proven_and_productivity_is_the_next_value_gate",
             evidence_refs=("tests/test_crm_accounts.py", "tests/test_crm_contacts.py", "tests/test_crm_activities.py"),
             can_start_now=True,
         ),

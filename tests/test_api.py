@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "backend_foundation_completion_gate"
+    assert body["current_focus"] == "crm_accounts_contacts_activities_operational_hardening"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1323,7 +1323,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "backend_foundation_completion_gate"
+    assert body["current_focus"] == "crm_accounts_contacts_activities_operational_hardening"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1333,27 +1333,22 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
-        "now_count": 2,
-        "next_count": 2,
+        "now_count": 1,
+        "next_count": 1,
         "later_count": 4,
-        "total_count": 8,
+        "total_count": 6,
         "foundation_ready_count": 18,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
         "crm_accounts_contacts_activities_operational_hardening",
-        "postgres_backup_restore_runtime_evidence",
-        "backend_foundation_completion_gate",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "next"
-    assert items["postgres_backup_restore_runtime_evidence"]["priority"] == "now"
-    assert "backup_failover" in items["postgres_backup_restore_runtime_evidence"]["capability_ids"]
-    assert items["backend_foundation_completion_gate"]["priority"] == "now"
+    assert items["crm_accounts_contacts_activities_operational_hardening"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True
@@ -1369,8 +1364,8 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert event.input_hash is None
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_roadmap_plan_snapshot"
-    assert event.metadata["now_count"] == 2
-    assert event.metadata["next_count"] == 2
+    assert event.metadata["now_count"] == 1
+    assert event.metadata["next_count"] == 1
     assert event.metadata["later_count"] == 4
     assert event.metadata["content_included"] is False
     assert event.metadata["destructive_actions_allowed"] is False

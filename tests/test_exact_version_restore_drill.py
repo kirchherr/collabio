@@ -393,7 +393,7 @@ def test_compose_exposes_isolated_restore_target_and_foundation_gate() -> None:
     compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 
     assert "\n  minio-restore:\n" in compose
-    assert compose.count('profiles: ["restore-drill"]') == 3
+    assert compose.count('profiles: ["restore-drill"]') == 7
     assert "\n  object-storage-restore-profile-check:\n" in compose
     assert "\n  backend-storage-foundation-gate:\n" in compose
     assert "command: python -m suite.storage.backend_storage_foundation_gate" in compose

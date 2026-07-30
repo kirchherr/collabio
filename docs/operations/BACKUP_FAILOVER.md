@@ -90,6 +90,22 @@ Verify the newest local backup checksum and pg_restore catalog:
 docker compose run --rm backup-verify
 ```
 
+Restore the newest dump into the isolated PostgreSQL target and compare source and target state:
+
+```bash
+docker compose run --rm postgres-restore-drill
+```
+
+The command emits metadata-only `postgres_restore_drill_report.v1`. It binds the dump SHA-256 to the successful loader receipt and verifies the current migration catalog, schemas, relations, exact table row counts, RLS policies, constraints, indexes, triggers, extensions, service roles, and grants. It never emits row values. The target is recreated from scratch and is addressed independently from the source database.
+
+Run the complete backend release proof:
+
+```bash
+docker compose run --rm backend-foundation-completion-gate
+```
+
+The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain separate deployment gates.
+
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 
 ```bash

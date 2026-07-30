@@ -31,6 +31,24 @@ services:
       - postgres18_test_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
 
+  postgres-restore:
+    profiles: ["restore-drill"]
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio_restore
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio_restore"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${SUITE_POSTGRES_RESTORE_PORT:-55433}:5432"
+    volumes:
+      - postgres18_restore_data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
   minio:
     image: ${MINIO_IMAGE:-minio/minio:latest}
     command: server /data --console-address ":9001"
@@ -212,8 +230,8 @@ services:
   backup:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
     depends_on:
-      postgres:
-        condition: service_healthy
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
     environment:
       PGPASSWORD: collabio_owner
     entrypoint: ["/bin/sh", "-lc"]
@@ -230,6 +248,9 @@ services:
 
   backup-verify:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
+    depends_on:
+      backup:
+        condition: service_completed_successfully
     entrypoint: ["/bin/sh", "-lc"]
     command: >
       "set -eu;
@@ -239,6 +260,110 @@ services:
       echo Verified $${latest}"
     volumes:
       - ./backups:/backups
+
+  postgres-backup-restore-loader:
+    profiles: ["restore-drill"]
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    depends_on:
+      backup:
+        condition: service_completed_successfully
+      postgres-restore:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: collabio_owner
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "set -eu;
+      latest=$$(ls -1t /backups/*.dump | head -n 1);
+      sha256sum -c $${latest}.sha256;
+      pg_restore --list $${latest} > /dev/null;
+      dropdb -h postgres-restore -U collabio_owner --if-exists --force collabio_restore;
+      createdb -h postgres-restore -U collabio_owner -O collabio_owner collabio_restore;
+      pg_restore -h postgres-restore -U collabio_owner -d collabio_restore --exit-on-error $${latest};
+      digest=$$(sha256sum $${latest} | cut -d ' ' -f 1);
+      printf 'sha256:%s' $${digest} > /backups/postgres-restore-receipt.sha256.tmp;
+      mv /backups/postgres-restore-receipt.sha256.tmp /backups/postgres-restore-receipt.sha256;
+      echo Restored $${latest} into isolated PostgreSQL target"
+    volumes:
+      - ./backups:/backups
+
+  postgres-restore-drill:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.postgres_restore_drill
+    depends_on:
+      postgres-backup-restore-loader:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_restore
+      SUITE_POSTGRES_BACKUP_DIRECTORY: /backups
+      SUITE_POSTGRES_RESTORE_RECEIPT_PATH: /backups/postgres-restore-receipt.sha256
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups:ro
+
+  backend-foundation-completion-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.backend_foundation_completion_gate
+    depends_on:
+      postgres-backup-restore-loader:
+        condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      object-storage-restore-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_restore
+      SUITE_POSTGRES_BACKUP_DIRECTORY: /backups
+      SUITE_POSTGRES_RESTORE_RECEIPT_PATH: /backups/postgres-restore-receipt.sha256
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_RESTORE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
+      SUITE_RESTORE_S3_PROFILE_CHECK_RETRIES: "30"
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups:ro
 
   rich-document-parser:
     build:
@@ -1371,5 +1496,6 @@ services:
 volumes:
   postgres18_data:
   postgres18_test_data:
+  postgres18_restore_data:
   minio_data:
   minio_restore_data:

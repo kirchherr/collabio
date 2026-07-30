@@ -103,14 +103,16 @@ Current sprint:
 93. [x] Default API runtime on PostgreSQL source manifests plus S3-compatible exact-version content, with isolated test database and metadata-only runtime report.
 94. [x] Exact-version restore drill to an independently addressed MinIO target with source/target version reads, manifest/content verification, Object Lock, Legal Hold, and metadata-only report.
 95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
+96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
+97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
 
 ## Next Engineering Step
 
-Complete the backend foundation as one release path instead of extending another module:
+Use the proven backend foundation for the first focused productivity slice:
 
-- Combine Tenant/IAM, append-only Audit, Module Registry, migration catalog, PostgreSQL backup verification, persistent SourceObjects, and `backend_storage_foundation_gate.v1` into one metadata-only backend completion gate.
-- Run the completion gate in Compose and retain its hash as release evidence.
-- Keep ERP/Legacy SQL depth, RAG provider execution, rich viewers, full Office/Mail clients, and new module functionality deferred until that foundation gate is green.
+- Stabilize CRM accounts, contacts, activities, and notes as one tenant-safe operational workflow.
+- Keep the green `backend_foundation_completion_gate.v1` in the release path and extend its continuity expectations whenever durable state changes.
+- Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
 
 ## Module Expansion Stance
 

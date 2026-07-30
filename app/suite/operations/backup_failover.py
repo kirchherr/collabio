@@ -23,6 +23,7 @@ class BackupTarget(BaseModel):
     retention: BackupRetention
     restore_drill_frequency_days: int = Field(ge=1, le=90)
     integrity_checks: list[str] = Field(min_length=1)
+    restore_verification_gates: list[str] = Field(default_factory=list)
     failover_mode: str
     current_dev_commands: list[str] = Field(default_factory=list)
 

@@ -138,13 +138,11 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="backend_foundation_completion_gate",
-        current_foundation_state="object_restore_proven_backend_completion_in_progress",
+        current_focus="crm_accounts_contacts_activities_operational_hardening",
+        current_foundation_state="backend_foundation_completion_gate_green_productivity_slice_next",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "postgres_backup_restore_runtime_evidence",
-            "backend_foundation_completion_gate",
             "crm_accounts_contacts_activities_operational_hardening",
             "module_family_backlog_kb_lms_tickets_time_tracking",
         ),
@@ -240,18 +238,26 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 RoadmapCapability(
                     capability_id="backup_failover",
                     title="Backup- und Failover-Kultur",
-                    summary="Continuity Domains und ein unabhaengiger Exact-Version-Object-Restore sind getestet.",
+                    summary=(
+                        "PostgreSQL und Object Storage sind auf unabhaengige Ziele restauriert und im "
+                        "Backend-Completion-Gate gemeinsam abgenommen."
+                    ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_control",
                     evidence_refs=(
                         "tests/test_backup_failover.py",
                         "tests/test_exact_version_restore_drill.py",
                         "app/suite/storage/backend_storage_foundation_gate.py",
+                        "app/suite/operations/postgres_restore_drill.py",
+                        "app/suite/operations/backend_foundation_completion_gate.py",
+                        "tests/test_postgres_restore_drill.py",
                         "docs/operations/BACKUP_FAILOVER.md",
                     ),
                     guardrails=(
                         "continuity_domain_required",
                         "independent_exact_version_restore_required",
+                        "isolated_postgres_restore_required",
+                        "backend_foundation_completion_gate_required",
                         "future_modules_must_extend_policy",
                     ),
                 ),
