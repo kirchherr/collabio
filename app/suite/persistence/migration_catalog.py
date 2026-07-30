@@ -549,6 +549,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="tasks_activities",
         evidence_refs=("doc:tasks-activities-productive-slice", "test:tasks-activities-productive-slice"),
     ),
+    SqlMigration(
+        version="0060",
+        name="time_tracking_productive_slice",
+        resource_name="0060_time_tracking_productive_slice.sql",
+        module_id="time_tracking",
+        evidence_refs=("doc:time-tracking-module-charter", "test:time-tracking-productive-slice"),
+    ),
 )
 
 

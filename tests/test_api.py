@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "time_tracking_module_foundation_vertical_slice"
+    assert body["current_focus"] == "cross_module_backend_release_readiness"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -966,6 +966,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "crm_account_workspace_runtime",
         "crm_atomic_account_onboarding_runtime",
         "tasks_activities_runtime",
+        "time_tracking_runtime",
         "crm_erp_acl_first_search",
         "legacy_migration_registry",
         "office_mail_clients",
@@ -1081,13 +1082,20 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/platform/modules/families/lms/package-installation-dry-run-result-contract" in future_modules["api_routes"]
     )
     assert "no_runtime_activation_from_backlog" in future_modules["guardrails"]
-    assert "module_family_next_slice_selection_ready" in future_modules["guardrails"]
+    assert "module_family_foundation_queue_complete" in future_modules["guardrails"]
     assert "tasks_activities_foundation_contract_ready" in future_modules["guardrails"]
     assert "tasks_activities_catalog_readiness_ready" in future_modules["guardrails"]
     assert "tasks_activities_catalog_package_installed" in future_modules["guardrails"]
     assert "tasks_activities_atomic_write_operational" in future_modules["guardrails"]
     assert "tasks_activities_authoritative_acl_reads_operational" in future_modules["guardrails"]
     assert "tasks_activities_restore_controls_required" in future_modules["guardrails"]
+    assert "time_tracking_foundation_contract_ready" in future_modules["guardrails"]
+    assert "time_tracking_catalog_package_installed" in future_modules["guardrails"]
+    assert "time_tracking_atomic_write_operational" in future_modules["guardrails"]
+    assert "time_tracking_authoritative_acl_reads_operational" in future_modules["guardrails"]
+    assert "time_tracking_restore_controls_required" in future_modules["guardrails"]
+    assert "/v1/time-tracking/entries" in future_modules["api_routes"]
+    assert "/v1/time-tracking/approvals" in future_modules["api_routes"]
     assert "tickets_incidents_foundation_contract_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_readiness_ready" in future_modules["guardrails"]
     assert "tickets_incidents_catalog_registered_not_installed" in future_modules["guardrails"]
@@ -1329,7 +1337,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "time_tracking_module_foundation_vertical_slice"
+    assert body["current_focus"] == "cross_module_backend_release_readiness"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1343,18 +1351,18 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 1,
         "later_count": 4,
         "total_count": 6,
-        "foundation_ready_count": 21,
+        "foundation_ready_count": 22,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
-        "time_tracking_module_foundation_vertical_slice",
+        "cross_module_backend_release_readiness",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["time_tracking_module_foundation_vertical_slice"]["priority"] == "now"
+    assert items["cross_module_backend_release_readiness"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True
@@ -1515,10 +1523,10 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "total_family_count": 5,
-        "catalog_registered_count": 4,
-        "planned_not_installed_count": 1,
+        "catalog_registered_count": 5,
+        "planned_not_installed_count": 0,
         "pre_catalog_foundation_ready_count": 0,
-        "first_slice_foundation_ready_count": 2,
+        "first_slice_foundation_ready_count": 3,
         "runtime_activation_allowed_count": 0,
     }
     assert "tenant_context" in body["required_controls"]
@@ -1567,6 +1575,15 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
         families["tickets_incidents"]["next_action"]
         == "execute_controlled_tickets_incidents_pilot_on_designated_test_tenant"
     )
+    assert families["time_tracking"]["backlog_status"] == "active_foundation"
+    assert families["time_tracking"]["catalog_status"] == "installed"
+    assert families["time_tracking"]["catalog_entry_present"] is True
+    assert families["time_tracking"]["module_package_installed"] is True
+    assert families["time_tracking"]["module_charter_ready"] is True
+    assert families["time_tracking"]["feature_registry_ready"] is True
+    assert families["time_tracking"]["object_rules_ready"] is True
+    assert families["time_tracking"]["first_slice_foundation_ready"] is True
+    assert families["time_tracking"]["runtime_activation_allowed"] is False
     assert "default_feature_gate:lms.courses.read" in families["lms"]["required_foundation_gates"]
     assert "continuity_domain:lms_training_records" in families["lms"]["required_foundation_gates"]
     assert "audit:module-seed" not in response.text
@@ -1582,7 +1599,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_future_module_backlog_no_activation"
     assert event.metadata["total_family_count"] == 5
-    assert event.metadata["planned_not_installed_count"] == 1
+    assert event.metadata["planned_not_installed_count"] == 0
     assert event.metadata["pre_catalog_foundation_ready_count"] == 0
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False
@@ -1592,7 +1609,7 @@ def test_module_family_backlog_returns_metadata_only_future_module_contract() ->
     assert event.metadata["external_side_effect_allowed"] is False
 
 
-def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_contract() -> None:
+def test_module_family_next_slice_selection_reports_completed_foundation_queue() -> None:
     reset_module_registry()
     starting_event_count = len(app.state.audit_logger.events)
 
@@ -1605,15 +1622,19 @@ def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_
     assert body["result_contract"] == "metadata_only_module_family_next_slice_selection_no_activation"
     assert body["endpoint"] == "/v1/platform/modules/families/next-slice-selection"
     assert body["backlog_endpoint"] == "/v1/platform/modules/families/backlog"
-    assert body["selection_ready"] is True
-    assert body["selected_module_family"] == "time_tracking"
-    assert body["selected_module_id"] == "time_tracking"
-    assert (
-        body["selected_next_action"] == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert body["selection_ready"] is False
+    assert body["selected_module_family"] == "none"
+    assert body["selected_module_id"] == "none"
+    assert body["selected_next_action"] == "module_family_foundation_queue_complete"
     assert body["next_action"] == body["selected_next_action"]
     assert body["lms_depth_deferred"] is True
-    assert body["deferred_module_families"] == ["knowledge_base", "lms", "tasks_activities", "tickets_incidents"]
+    assert body["deferred_module_families"] == [
+        "knowledge_base",
+        "lms",
+        "tasks_activities",
+        "tickets_incidents",
+        "time_tracking",
+    ]
     assert body["content_included"] is False
     assert body["module_activation_executed"] is False
     assert body["persistent_task_created"] is False
@@ -1621,26 +1642,17 @@ def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "total_family_count": 5,
-        "active_foundation_count": 2,
-        "catalog_registered_count": 4,
-        "planned_candidate_count": 1,
-        "selected_candidate_count": 1,
+        "active_foundation_count": 3,
+        "catalog_registered_count": 5,
+        "planned_candidate_count": 0,
+        "selected_candidate_count": 0,
         "queued_candidate_count": 0,
         "lms_depth_deferred_count": 1,
         "runtime_activation_allowed_count": 0,
         "blocking_reason_count": 0,
     }
     assert body["evidence_hash"].startswith("sha256:")
-    candidates = {candidate["module_family"]: candidate for candidate in body["candidates"]}
-    assert list(candidates) == ["time_tracking"]
-    selected = candidates["time_tracking"]
-    assert selected["selection_rank"] == 1
-    assert selected["selection_status"] == "selected_next"
-    assert selected["next_action"] == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
-    assert selected["default_feature_gate"] == "time_tracking.entries.read"
-    assert selected["continuity_domain"] == "time_tracking_records"
-    assert selected["runtime_activation_allowed"] is False
-    assert selected["module_activation_executed"] is False
+    assert body["candidates"] == []
     assert "audit:module-seed" not in response.text
     assert "policy_snapshot_hash" not in response.text
     assert "changed_by" not in response.text
@@ -1655,11 +1667,11 @@ def test_module_family_next_slice_selection_returns_metadata_only_time_tracking_
     assert event.input_hash is None
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_module_family_next_slice_selection_no_activation"
-    assert event.metadata["selection_ready"] is True
-    assert event.metadata["selected_module_family"] == "time_tracking"
+    assert event.metadata["selection_ready"] is False
+    assert event.metadata["selected_module_family"] == "none"
     assert event.metadata["selected_next_action"] == body["selected_next_action"]
-    assert event.metadata["candidate_count"] == 1
-    assert event.metadata["selected_candidate_count"] == 1
+    assert event.metadata["candidate_count"] == 0
+    assert event.metadata["selected_candidate_count"] == 0
     assert event.metadata["queued_candidate_count"] == 0
     assert event.metadata["runtime_activation_allowed_count"] == 0
     assert event.metadata["content_included"] is False

@@ -138,13 +138,13 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="time_tracking_module_foundation_vertical_slice",
-        current_foundation_state="backend_foundation_green_tasks_activities_atomic_write_operational",
+        current_focus="cross_module_backend_release_readiness",
+        current_foundation_state="backend_foundation_green_tasks_and_time_tracking_atomic_writes_operational",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "time_tracking_module_foundation_vertical_slice",
-            "module_family_backlog_kb_lms_tickets_time_tracking",
+            "cross_module_backend_release_readiness",
+            "controlled_pilot_and_release_backlog",
         ),
         deferred_scope=(
             "full_office_suite_client",
@@ -454,7 +454,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="time_tracking_module_foundation_vertical_slice",
+                    next_action="cross_module_backend_release_readiness",
                 ),
                 RoadmapCapability(
                     capability_id="crm_atomic_account_onboarding_runtime",
@@ -485,7 +485,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "note_body_forbidden",
                     ),
-                    next_action="time_tracking_module_foundation_vertical_slice",
+                    next_action="cross_module_backend_release_readiness",
                 ),
                 RoadmapCapability(
                     capability_id="tasks_activities_runtime",
@@ -519,7 +519,43 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
                     ),
-                    next_action="time_tracking_module_foundation_vertical_slice",
+                    next_action="cross_module_backend_release_readiness",
+                ),
+                RoadmapCapability(
+                    capability_id="time_tracking_runtime",
+                    title="Time Tracking Runtime",
+                    summary=(
+                        "Zeiteintrag, initialer Freigabestatus, autoritative ACLs und metadata-only Receipt werden "
+                        "tenant-sicher und atomar in PostgreSQL angelegt und ACL-geprueft gelesen."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="productive_business_write_workflow",
+                    evidence_refs=(
+                        "app/suite/platform/time_tracking_module.py",
+                        "app/suite/platform/time_tracking_service.py",
+                        "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+                        "tests/test_time_tracking_productive_slice.py",
+                        "tests/test_time_tracking_api.py",
+                        "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
+                    ),
+                    api_routes=(
+                        "/v1/time-tracking/entries",
+                        "/v1/time-tracking/approvals",
+                    ),
+                    guardrails=(
+                        "tenant_module_and_feature_gates_required",
+                        "server_side_creator_role_required",
+                        "forced_tenant_rls",
+                        "authoritative_object_acl_filtering",
+                        "entry_approval_acl_and_receipt_one_transaction",
+                        "actor_and_worker_bound_idempotency",
+                        "append_only_business_rows_and_metadata_receipt",
+                        "linked_entry_acl_required_for_approval_read",
+                        "partial_write_rollback_proven",
+                        "restore_control_verification_required",
+                        "approval_decisions_and_payroll_exports_deferred",
+                    ),
+                    next_action="cross_module_backend_release_readiness",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",
@@ -682,11 +718,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="future_modules",
                     title="LMS, Tickets, Zeiterfassung und weitere Module",
                     summary=(
-                        "Tasks & Activities hat jetzt einen produktiven atomaren Write/Read-Slice. Tickets & "
-                        "Incidents besitzt neben der vollstaendigen Aktivierungskontrollkette eine produktive, "
-                        "tenant-sichere Ticket/Event-Vertikale mit explizitem Approval Record, atomaren Writes, "
-                        "Audit, RLS-Repository und geschlossenem Standardzustand. Als naechste Fundamentfamilie "
-                        "folgt die Zeiterfassung; der Ticket-Pilot bleibt kontrolliert."
+                        "Tasks & Activities und Zeiterfassung besitzen produktive atomare Write/Read-Slices. "
+                        "Tickets & Incidents besitzt neben der vollstaendigen Aktivierungskontrollkette eine "
+                        "produktive, tenant-sichere Ticket/Event-Vertikale. Die definierte Modul-Familien-Queue "
+                        "ist geschlossen; naechster Fokus ist gemeinsame Backend-Release-Readiness."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="module_foundation_and_productive_vertical_slice",
@@ -765,6 +800,13 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/tasks_activities_service.py",
                         "tests/test_tasks_activities_productive_slice.py",
                         "tests/test_tasks_activities_api.py",
+                        "app/suite/platform/time_tracking_module.py",
+                        "app/suite/platform/time_tracking_service.py",
+                        "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+                        "tests/test_time_tracking_module_foundation.py",
+                        "tests/test_time_tracking_productive_slice.py",
+                        "tests/test_time_tracking_api.py",
+                        "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
                         "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
                         "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
                         "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -845,6 +887,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/modules/families/tickets-incidents/catalog-readiness",
                         "/v1/tasks/items",
                         "/v1/tasks/activities",
+                        "/v1/time-tracking/entries",
+                        "/v1/time-tracking/approvals",
                         "/v1/platform/modules/families/tickets-incidents/migration-evidence-gate",
                         "/v1/platform/modules/families/tickets-incidents/storage-migration-evidence",
                         "/v1/platform/modules/families/tickets-incidents/restore-drill-evidence",
@@ -924,13 +968,18 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "backup_failover_update_required",
                         "tenant_admin_lifecycle",
                         "no_runtime_activation_from_backlog",
-                        "module_family_next_slice_selection_ready",
+                        "module_family_foundation_queue_complete",
                         "tasks_activities_foundation_contract_ready",
                         "tasks_activities_catalog_readiness_ready",
                         "tasks_activities_catalog_package_installed",
                         "tasks_activities_atomic_write_operational",
                         "tasks_activities_authoritative_acl_reads_operational",
                         "tasks_activities_restore_controls_required",
+                        "time_tracking_foundation_contract_ready",
+                        "time_tracking_catalog_package_installed",
+                        "time_tracking_atomic_write_operational",
+                        "time_tracking_authoritative_acl_reads_operational",
+                        "time_tracking_restore_controls_required",
                         "tickets_incidents_foundation_contract_ready",
                         "tickets_incidents_catalog_readiness_ready",
                         "tickets_incidents_catalog_registered_not_installed",

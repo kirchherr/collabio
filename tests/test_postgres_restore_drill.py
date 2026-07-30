@@ -20,6 +20,8 @@ from suite.operations.postgres_restore_drill import (
     TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE,
     TASKS_ACTIVITIES_WRITE_TABLES,
     TENANT_IAM_TABLES,
+    TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE,
+    TIME_TRACKING_WRITE_TABLES,
     PostgresBackupArtifactEvidence,
     PostgresDatabaseSnapshot,
     PostgresRestoreDrillReport,
@@ -40,7 +42,7 @@ CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
 def _snapshot(
-    *, database_hash: str, changed_row_count: bool = False, tasks_controls: bool = True
+    *, database_hash: str, changed_row_count: bool = False, tasks_controls: bool = True, time_controls: bool = True
 ) -> PostgresDatabaseSnapshot:
     table_names = sorted(
         TENANT_IAM_TABLES
@@ -49,6 +51,7 @@ def _snapshot(
         | SOURCE_OBJECT_TABLES
         | CRM_ATOMIC_WRITE_TABLES
         | TASKS_ACTIVITIES_WRITE_TABLES
+        | TIME_TRACKING_WRITE_TABLES
     )
     tables = [
         {
@@ -105,6 +108,15 @@ def _snapshot(
         for table_name, policy_names in sorted(TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE.items())
         for policy_name in sorted(policy_names)
     )
+    policies.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "policy_name": policy_name,
+        }
+        for table_name, policy_names in sorted(TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE.items())
+        for policy_name in sorted(policy_names)
+    )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
     grants = [
         {
@@ -145,11 +157,39 @@ def _snapshot(
         }
         for table_name in sorted(TASKS_ACTIVITIES_WRITE_TABLES)
     )
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_authz_admin",
+            "privilege_type": privilege,
+        }
+        for table_name in sorted(TIME_TRACKING_WRITE_TABLES)
+        for privilege in ("INSERT", "SELECT")
+    )
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_app",
+            "privilege_type": "SELECT",
+        }
+        for table_name in sorted(TIME_TRACKING_WRITE_TABLES)
+    )
     if not tasks_controls:
         grants.append(
             {
                 "schema_name": "tasks",
                 "table_name": "items",
+                "grantee": "collabio_app",
+                "privilege_type": "INSERT",
+            }
+        )
+    if not time_controls:
+        grants.append(
+            {
+                "schema_name": "time_tracking",
+                "table_name": "entries",
                 "grantee": "collabio_app",
                 "privilege_type": "INSERT",
             }
@@ -182,7 +222,7 @@ def _backup_evidence() -> PostgresBackupArtifactEvidence:
 
 
 def _restore_report(
-    *, changed_target_row_count: bool = False, target_tasks_controls: bool = True
+    *, changed_target_row_count: bool = False, target_tasks_controls: bool = True, target_time_controls: bool = True
 ) -> PostgresRestoreDrillReport:
     return build_postgres_restore_drill_report(
         backup_evidence=_backup_evidence(),
@@ -191,6 +231,7 @@ def _restore_report(
             database_hash="sha256:" + "c" * 64,
             changed_row_count=changed_target_row_count,
             tasks_controls=target_tasks_controls,
+            time_controls=target_time_controls,
         ),
         target_isolation_ref_hash="sha256:" + "d" * 64,
         checked_at_utc=CHECKED_AT,
@@ -235,6 +276,7 @@ def test_postgres_restore_drill_verifies_exact_isolated_state() -> None:
     assert report.content_included is False
     assert report.crm_atomic_write_controls_verified is True
     assert report.tasks_activities_write_controls_verified is True
+    assert report.time_tracking_write_controls_verified is True
     assert report.report_hash == build_postgres_restore_drill_report_hash(report)
 
 
@@ -253,6 +295,14 @@ def test_postgres_restore_drill_blocks_unsafe_tasks_application_grant() -> None:
     assert report.restore_ready is False
     assert report.tasks_activities_write_controls_verified is False
     assert "tasks_activities_write_controls_not_verified" in report.blocking_reasons
+
+
+def test_postgres_restore_drill_blocks_unsafe_time_tracking_application_grant() -> None:
+    report = _restore_report(target_time_controls=False)
+
+    assert report.restore_ready is False
+    assert report.time_tracking_write_controls_verified is False
+    assert "time_tracking_write_controls_not_verified" in report.blocking_reasons
 
 
 def test_postgres_restore_target_must_be_independent() -> None:

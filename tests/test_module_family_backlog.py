@@ -54,10 +54,10 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
-    assert response.summary.catalog_registered_count == 4
-    assert response.summary.planned_not_installed_count == 1
+    assert response.summary.catalog_registered_count == 5
+    assert response.summary.planned_not_installed_count == 0
     assert response.summary.pre_catalog_foundation_ready_count == 0
-    assert response.summary.first_slice_foundation_ready_count == 2
+    assert response.summary.first_slice_foundation_ready_count == 3
     assert response.summary.runtime_activation_allowed_count == 0
 
     families = {family.module_family: family for family in response.module_families}
@@ -129,24 +129,25 @@ def test_module_family_backlog_is_tenant_scoped_metadata_only_without_activation
     assert "module_catalog_entry_required" in tickets.required_foundation_gates
     assert "backup_restore_evidence_required" in tickets.required_foundation_gates
 
-    planned_family = families["time_tracking"]
-    assert planned_family.backlog_status == "planned_not_installed"
-    assert planned_family.catalog_status is None
-    assert planned_family.tenant_module_status is None
-    assert planned_family.catalog_entry_present is False
-    assert planned_family.module_package_installed is False
-    assert planned_family.installed_in_catalog is False
-    assert planned_family.module_charter_ready is False
-    assert planned_family.feature_registry_ready is False
-    assert planned_family.object_rules_ready is False
-    assert planned_family.pre_catalog_foundation_ready is False
-    assert planned_family.first_slice_foundation_ready is False
-    assert planned_family.runtime_activation_allowed is False
-    assert "module_catalog_entry_required" in planned_family.required_foundation_gates
-    assert "backup_restore_evidence_required" in planned_family.required_foundation_gates
+    time_tracking = families["time_tracking"]
+    assert time_tracking.backlog_status == "active_foundation"
+    assert time_tracking.catalog_status == "installed"
+    assert time_tracking.tenant_module_status is None
+    assert time_tracking.catalog_entry_present is True
+    assert time_tracking.module_package_installed is True
+    assert time_tracking.installed_in_catalog is True
+    assert time_tracking.module_charter_ready is True
+    assert time_tracking.feature_registry_ready is True
+    assert time_tracking.object_rules_ready is True
+    assert time_tracking.pre_catalog_foundation_ready is False
+    assert time_tracking.first_slice_foundation_ready is True
+    assert time_tracking.runtime_activation_allowed is False
+    assert time_tracking.next_action == "continue_existing_slice_hardening_without_broadening_scope"
+    assert "module_catalog_entry_required" in time_tracking.required_foundation_gates
+    assert "backup_restore_evidence_required" in time_tracking.required_foundation_gates
 
 
-def test_module_family_next_slice_selection_moves_to_time_tracking_after_ticket_catalog_registration() -> None:
+def test_module_family_next_slice_selection_reports_completed_foundation_queue() -> None:
     response = build_module_family_next_slice_selection_response(
         user_context=UserContext(
             tenant_id="tenant-demo",
@@ -162,40 +163,33 @@ def test_module_family_next_slice_selection_moves_to_time_tracking_after_ticket_
     assert response.result_contract == MODULE_FAMILY_NEXT_SLICE_SELECTION_RESULT_CONTRACT
     assert response.endpoint == MODULE_FAMILY_NEXT_SLICE_SELECTION_ENDPOINT
     assert response.backlog_endpoint == MODULE_FAMILY_BACKLOG_ENDPOINT
-    assert response.selection_ready is True
-    assert response.selected_module_family == "time_tracking"
-    assert response.selected_module_id == "time_tracking"
-    assert (
-        response.selected_next_action == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
-    )
+    assert response.selection_ready is False
+    assert response.selected_module_family == "none"
+    assert response.selected_module_id == "none"
+    assert response.selected_next_action == "module_family_foundation_queue_complete"
     assert response.next_action == response.selected_next_action
     assert response.lms_depth_deferred is True
-    assert response.deferred_module_families == ("knowledge_base", "lms", "tasks_activities", "tickets_incidents")
+    assert response.deferred_module_families == (
+        "knowledge_base",
+        "lms",
+        "tasks_activities",
+        "tickets_incidents",
+        "time_tracking",
+    )
     assert response.content_included is False
     assert response.module_activation_executed is False
     assert response.persistent_task_created is False
     assert response.destructive_actions_allowed is False
     assert response.external_side_effect_allowed is False
     assert response.summary.total_family_count == 5
-    assert response.summary.active_foundation_count == 2
-    assert response.summary.catalog_registered_count == 4
-    assert response.summary.planned_candidate_count == 1
-    assert response.summary.selected_candidate_count == 1
+    assert response.summary.active_foundation_count == 3
+    assert response.summary.catalog_registered_count == 5
+    assert response.summary.planned_candidate_count == 0
+    assert response.summary.selected_candidate_count == 0
     assert response.summary.queued_candidate_count == 0
     assert response.summary.lms_depth_deferred_count == 1
     assert response.summary.runtime_activation_allowed_count == 0
     assert response.summary.blocking_reason_count == 0
     assert response.evidence_hash.startswith("sha256:")
 
-    candidates = {candidate.module_family: candidate for candidate in response.candidates}
-    assert tuple(candidates) == ("time_tracking",)
-    selected = candidates["time_tracking"]
-    assert selected.selection_rank == 1
-    assert selected.selection_status == "selected_next"
-    assert selected.selection_reason == "first_planned_module_family_after_lms_foundation_seal"
-    assert selected.next_action == "create_time_tracking_module_charter_then_catalog_entry_before_storage_or_api"
-    assert selected.default_feature_gate == "time_tracking.entries.read"
-    assert selected.continuity_domain == "time_tracking_records"
-    assert selected.runtime_activation_allowed is False
-    assert selected.module_activation_executed is False
-    assert selected.selection_rank == 1
+    assert response.candidates == ()

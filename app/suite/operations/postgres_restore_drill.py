@@ -90,6 +90,19 @@ TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
         "tasks_creation_receipts_no_hard_delete",
     },
 }
+TIME_TRACKING_WRITE_TABLES = {
+    "time_tracking.entries",
+    "time_tracking.approvals",
+    "time_tracking.entry_creation_receipts",
+}
+TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
+    "time_tracking.entries": {"time_entries_no_update", "time_entries_no_hard_delete"},
+    "time_tracking.approvals": {"time_approvals_no_update", "time_approvals_no_hard_delete"},
+    "time_tracking.entry_creation_receipts": {
+        "time_entry_receipts_no_update",
+        "time_entry_receipts_no_hard_delete",
+    },
+}
 
 
 class PostgresBackupArtifactEvidence(BaseModel):
@@ -124,6 +137,7 @@ class PostgresDatabaseSnapshot(BaseModel):
     row_count_manifest_hash: str
     migration_manifest_hash: str
     tasks_activities_write_controls_verified: bool
+    time_tracking_write_controls_verified: bool
     rls_policy_manifest_hash: str
     database_control_manifest_hash: str
     state_manifest_hash: str
@@ -156,6 +170,7 @@ class PostgresRestoreDrillReport(BaseModel):
     source_target_state_verified: bool
     backup_integrity_verified: bool
     tasks_activities_write_controls_verified: bool
+    time_tracking_write_controls_verified: bool
     target_isolation_verified: bool
     migration_catalog_verified: bool
     schema_inventory_verified: bool
@@ -323,6 +338,44 @@ def build_postgres_database_snapshot(
             for privileges in tasks_app_privileges_by_table.values()
         )
     )
+    time_tracking_policy_names_by_table = {
+        table_name: {
+            str(row.get("policy_name", "")) for row in normalized["policies"] if _qualified_name(row) == table_name
+        }
+        for table_name in TIME_TRACKING_WRITE_TABLES
+    }
+    time_tracking_authz_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_authz_admin" and _qualified_name(row) == table_name
+        }
+        for table_name in TIME_TRACKING_WRITE_TABLES
+    }
+    time_tracking_app_privileges_by_table = {
+        table_name: {
+            str(row.get("privilege_type", ""))
+            for row in normalized["grants"]
+            if row.get("grantee") == "collabio_app" and _qualified_name(row) == table_name
+        }
+        for table_name in TIME_TRACKING_WRITE_TABLES
+    }
+    time_tracking_write_verified = (
+        table_names >= TIME_TRACKING_WRITE_TABLES
+        and forced_rls_tables >= TIME_TRACKING_WRITE_TABLES
+        and all(
+            time_tracking_policy_names_by_table[table_name] >= expected_policies
+            for table_name, expected_policies in TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        and all(
+            {"SELECT", "INSERT"} <= privileges and not ({"UPDATE", "DELETE"} & privileges)
+            for privileges in time_tracking_authz_privileges_by_table.values()
+        )
+        and all(
+            "SELECT" in privileges and not ({"INSERT", "UPDATE", "DELETE"} & privileges)
+            for privileges in time_tracking_app_privileges_by_table.values()
+        )
+    )
     migration_catalog_verified = _migration_catalog_matches_code(normalized["migrations"])
     service_roles_verified = service_role_names >= SERVICE_ROLES
 
@@ -379,6 +432,7 @@ def build_postgres_database_snapshot(
         source_object_controls_verified=source_object_verified,
         crm_atomic_write_controls_verified=crm_atomic_write_verified,
         tasks_activities_write_controls_verified=tasks_activities_write_verified,
+        time_tracking_write_controls_verified=time_tracking_write_verified,
         snapshot_hash="sha256:" + "0" * 64,
     )
     return draft.model_copy(update={"snapshot_hash": build_postgres_database_snapshot_hash(draft)})
@@ -446,6 +500,10 @@ def build_postgres_restore_drill_report(
             source_snapshot.tasks_activities_write_controls_verified
             and target_snapshot.tasks_activities_write_controls_verified
         ),
+        "time_tracking_write_controls_verified": (
+            source_snapshot.time_tracking_write_controls_verified
+            and target_snapshot.time_tracking_write_controls_verified
+        ),
     }
     metadata_only = not source_snapshot.content_included and not target_snapshot.content_included
     checks = {
@@ -461,6 +519,7 @@ def build_postgres_restore_drill_report(
         "module_registry_controls_not_verified": control_pairs["module_registry_controls_verified"],
         "crm_atomic_write_controls_not_verified": control_pairs["crm_atomic_write_controls_verified"],
         "tasks_activities_write_controls_not_verified": control_pairs["tasks_activities_write_controls_verified"],
+        "time_tracking_write_controls_not_verified": control_pairs["time_tracking_write_controls_verified"],
         "source_object_controls_not_verified": control_pairs["source_object_controls_verified"],
         "evidence_contains_content": metadata_only,
     }
@@ -492,6 +551,7 @@ def build_postgres_restore_drill_report(
         module_registry_controls_verified=control_pairs["module_registry_controls_verified"],
         crm_atomic_write_controls_verified=control_pairs["crm_atomic_write_controls_verified"],
         tasks_activities_write_controls_verified=control_pairs["tasks_activities_write_controls_verified"],
+        time_tracking_write_controls_verified=control_pairs["time_tracking_write_controls_verified"],
         source_object_controls_verified=control_pairs["source_object_controls_verified"],
         metadata_only_evidence_verified=metadata_only,
         blocking_reasons=blocking_reasons,

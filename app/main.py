@@ -992,6 +992,22 @@ from suite.platform.tickets_incidents_tenant_admin_activation_approval_record im
     build_default_tickets_incidents_tenant_admin_activation_approval_record_store,
     build_tickets_incidents_tenant_admin_activation_approval_record_response,
 )
+from suite.platform.time_tracking_module import (
+    TIME_APPROVALS_READ_FEATURE_ID,
+    TIME_ENTRIES_READ_FEATURE_ID,
+    TIME_ENTRIES_WRITE_FEATURE_ID,
+    TIME_TRACKING_MODULE_ID,
+)
+from suite.platform.time_tracking_service import (
+    CreateTimeEntryCommand,
+    TimeApprovalsResponse,
+    TimeEntriesResponse,
+    TimeEntryCreationResponse,
+    TimeTrackingAssignmentError,
+    TimeTrackingConflict,
+    TimeTrackingService,
+    build_default_time_tracking_store,
+)
 from suite.platform.workspace_source_objects import (
     WorkspaceSourceObjectCatalog,
     build_default_workspace_source_object_catalog,
@@ -1275,6 +1291,10 @@ def build_app() -> FastAPI:
     )
     tasks_activities_service = TasksActivitiesService(
         store=build_default_tasks_activities_store(),
+        audit_logger=audit_logger,
+    )
+    time_tracking_service = TimeTrackingService(
+        store=build_default_time_tracking_store(),
         audit_logger=audit_logger,
     )
     crm_account_workspace_service = CrmAccountWorkspaceService(
@@ -20850,6 +20870,86 @@ def build_app() -> FastAPI:
         tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
         return tasks_service.list_activities(user_context=context.user_context)
 
+    @app.post("/v1/time-tracking/entries", response_model=TimeEntryCreationResponse)
+    def create_time_entry(
+        command: CreateTimeEntryCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        write_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_ENTRIES_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        entries_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_ENTRIES_READ_FEATURE_ID,
+                )
+            ),
+        ],
+        approvals_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_APPROVALS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TimeEntryCreationResponse:
+        del write_gate, entries_gate, approvals_gate
+        service = cast(TimeTrackingService, request.app.state.time_tracking_service)
+        try:
+            return service.create_entry(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except TimeTrackingConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except TimeTrackingAssignmentError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/v1/time-tracking/entries", response_model=TimeEntriesResponse)
+    def list_time_entries(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_ENTRIES_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TimeEntriesResponse:
+        del gate
+        service = cast(TimeTrackingService, request.app.state.time_tracking_service)
+        return service.list_entries(user_context=context.user_context)
+
+    @app.get("/v1/time-tracking/approvals", response_model=TimeApprovalsResponse)
+    def list_time_approvals(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_APPROVALS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TimeApprovalsResponse:
+        del gate
+        service = cast(TimeTrackingService, request.app.state.time_tracking_service)
+        return service.list_approvals(user_context=context.user_context)
+
     @app.post("/v1/crm-erp/search", response_model=CrmErpSearchResponse)
     def crm_erp_keyword_search(
         query: KeywordSearchQuery,
@@ -21265,6 +21365,7 @@ def build_app() -> FastAPI:
     app.state.crm_account_service = crm_account_service
     app.state.crm_account_onboarding_service = crm_account_onboarding_service
     app.state.tasks_activities_service = tasks_activities_service
+    app.state.time_tracking_service = time_tracking_service
     app.state.crm_account_workspace_service = crm_account_workspace_service
     app.state.crm_activity_service = crm_activity_service
     app.state.crm_contact_service = crm_contact_service

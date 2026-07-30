@@ -76,6 +76,7 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 
 The CRM runtime bootstrap is an explicit predecessor of both the API and PostgreSQL backup in Compose. This guarantees that the account, contact, activity, and note tables enter the same checksum, catalog, row-count, RLS, and independent-restore proof as the rest of the backend before the CRM read workflow is treated as operational.
 The Tasks & Activities runtime follows the same rule. Migration `0059` places task, initial activity, authoritative ACL, and creation-receipt state inside the PostgreSQL backup domain. The isolated restore drill verifies exact rows, Forced RLS, append-only policies, authz-admin insert-only writes, and application read-only grants before `restore_ready` can be true.
+The Time Tracking runtime is part of that release gate from its first productive change. Migration `0060` adds entries, linked initial approval state, authoritative ACLs, and metadata-only creation receipts to the `time_tracking_records` continuity domain. Source and isolated target must both prove exact rows, Forced RLS, append-only policies, authz-admin `SELECT`/`INSERT` only, and application read-only grants. Any unsafe application write grant blocks `restore_ready`.
 
 
 When a future feature introduces a new stateful subsystem, one of these domains must be updated or a new domain must be added in the same change.

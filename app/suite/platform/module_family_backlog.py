@@ -79,6 +79,11 @@ MODULE_FAMILY_FOUNDATION_ARTIFACTS = {
         "feature_registry_ready": True,
         "object_rules_ready": True,
     },
+    "time_tracking": {
+        "module_charter_ready": True,
+        "feature_registry_ready": True,
+        "object_rules_ready": True,
+    },
 }
 
 
@@ -594,6 +599,13 @@ def build_module_family_backlog_response(
             "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
             "app/suite/platform/tasks_activities_service.py",
             "tests/test_tasks_activities_productive_slice.py",
+            "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
+            "app/suite/platform/time_tracking_module.py",
+            "app/suite/platform/time_tracking_service.py",
+            "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+            "tests/test_time_tracking_module_foundation.py",
+            "tests/test_time_tracking_productive_slice.py",
+            "tests/test_time_tracking_api.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -692,7 +704,10 @@ def build_module_family_next_slice_selection_response(
         for family in backlog.module_families
     )
     blocking_reasons: list[str] = []
-    if selected is None:
+    queue_complete = (
+        not planned_families and backlog.summary.catalog_registered_count == backlog.summary.total_family_count
+    )
+    if selected is None and not queue_complete:
         blocking_reasons.append("module_family_next_slice_selection_requires_planned_candidate")
     if not lms_depth_deferred:
         blocking_reasons.append("module_family_next_slice_selection_requires_lms_depth_deferred")
@@ -709,7 +724,9 @@ def build_module_family_next_slice_selection_response(
         selection_ready=selection_ready,
         selected_module_family=selected.module_family if selected is not None else "none",
         selected_module_id=selected.module_id if selected is not None else "none",
-        selected_next_action=selected.next_action if selected is not None else "wait_for_planned_module_candidate",
+        selected_next_action=(
+            selected.next_action if selected is not None else "module_family_foundation_queue_complete"
+        ),
         lms_depth_deferred=lms_depth_deferred,
         candidates=candidates,
         deferred_module_families=deferred_module_families,
@@ -753,6 +770,13 @@ def build_module_family_next_slice_selection_response(
             "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
             "app/suite/platform/tasks_activities_service.py",
             "tests/test_tasks_activities_productive_slice.py",
+            "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
+            "app/suite/platform/time_tracking_module.py",
+            "app/suite/platform/time_tracking_service.py",
+            "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+            "tests/test_time_tracking_module_foundation.py",
+            "tests/test_time_tracking_productive_slice.py",
+            "tests/test_time_tracking_api.py",
             "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
@@ -804,7 +828,9 @@ def build_module_family_next_slice_selection_response(
         evidence_hash=ZERO_SHA256,
         next_action=selected.next_action
         if selection_ready and selected is not None
-        else "repair_module_family_next_slice_selection",
+        else (
+            "module_family_foundation_queue_complete" if queue_complete else "repair_module_family_next_slice_selection"
+        ),
     )
     return draft.model_copy(update={"evidence_hash": build_module_family_next_slice_selection_hash(draft)})
 
@@ -860,7 +886,7 @@ def _module_family_backlog_entry(
     catalog_entry_present = catalog_status is not None
     module_package_installed = catalog_status in {"available", "installed"}
     first_slice_foundation_ready = (
-        definition.module_family in {"knowledge_base", "tasks_activities"} and module_package_installed
+        definition.module_family in {"knowledge_base", "tasks_activities", "time_tracking"} and module_package_installed
     )
     pre_catalog_foundation_ready = (
         not catalog_entry_present

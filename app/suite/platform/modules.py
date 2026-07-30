@@ -1683,6 +1683,20 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
             required_migration_versions=("0050", "0059"),
         ),
         ModuleCatalogEntry(
+            module_id="time_tracking",
+            display_name="Time Tracking",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.INSTALLED,
+            description=(
+                "Optional governed Time Tracking module with tenant-gated time-entry creation, initial approval "
+                "state and authoritative ACL reads. Corrections, approval decisions, payroll exports and "
+                "automation remain separate gates."
+            ),
+            manifest_hash="sha256:time-tracking-module-manifest",
+            required_migration_versions=("0060",),
+        ),
+        ModuleCatalogEntry(
             module_id="tickets_incidents",
             display_name="Tickets and Incidents",
             module_version="0.1.0",

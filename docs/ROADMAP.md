@@ -1545,9 +1545,13 @@ Enthaelt:
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
 - [x] Runtime-Proof am 2026-07-30 nach produktivem Tasks-Slice erneut gruen: Task, initiale Activity, zwei Objekt-ACLs, ein append-only Receipt, idempotenter Replay, exakter unabhaengiger Restore (`1|1|2|1`), 59 Migrationen, 63 Tabellen und Backend-Gate-Hash `sha256:66d6b7d91ce2d2fdb8f9d21f90a38797e3c637d59ffc0ec2eff25fe6b2f25836`.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Time-Tracking-Slice gruen: Entry, initiales Approval `not_submitted`, zwei Objekt-ACLs, ein metadata-only Receipt, autorisierte Reads (`1|1`) und atomare PostgreSQL-Zaehlung (`1|1|2|1`); isolierter Restore mit Time-Tracking-Schreibkontrollen, 60 Migrationen, 66 Tabellen und Backend-Gate-Hash `sha256:690d59e7515854c3a6dc79bb6f817b739a249cbcd6a7a43abc74732d08f3071d`.
 - [ ] Deployment-Gates fuer produktives PITR/WAL-Archiv, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennten Failover umsetzen.
 - [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
 - [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
+- [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
+- [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
+- [ ] Naechster Fokus: gemeinsame Backend-Release-Readiness fuer CRM-Onboarding, Tasks und Zeiterfassung mit Full-Suite-, Runtime- und isoliertem Restore-Nachweis; danach kontrollierte Piloten statt weiterer Fundamentbreite.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

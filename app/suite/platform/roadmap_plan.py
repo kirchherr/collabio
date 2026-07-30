@@ -155,25 +155,28 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="time_tracking_module_foundation_vertical_slice",
-            title="Zeiterfassung als naechste Modul-Familie gruenden",
+            work_item_id="cross_module_backend_release_readiness",
+            title="Gemeinsame Backend-Release-Readiness schliessen",
             summary=(
-                "Tasks & Activities ist produktiv und restore-geprueft. Als naechstes wird Zeiterfassung mit "
-                "dem gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag als Fundament-Slice angelegt."
+                "CRM-Onboarding, Tasks und Zeiterfassung schreiben atomar und restore-geprueft. Jetzt werden "
+                "die produktiven Fundament-Slices gemeinsam als pilotfaehiges Backend-Paket abgenommen."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
+                "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
+                "time_tracking_runtime",
                 "module_registry",
-                "future_modules",
                 "tenant_authz",
                 "backup_failover",
             ),
-            readiness_gate="tasks_activities_atomic_write_and_module_family_selection_ready",
-            decision="must_now_because_time_tracking_is_the_selected_remaining_foundation_family",
+            readiness_gate="atomic_business_slices_full_test_restore_and_runtime_proof_green",
+            decision="must_now_because_the_module_foundation_queue_is_complete_and_productivity_needs_one_release_gate",
             evidence_refs=(
+                "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
                 "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
-                "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
+                "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
+                "docs/operations/BACKUP_FAILOVER.md",
                 "docs/ROADMAP.md",
             ),
             can_start_now=True,
