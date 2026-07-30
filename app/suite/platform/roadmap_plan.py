@@ -155,30 +155,31 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="controlled_productivity_pilot_release",
-            title="Kontrollierten Produktivitaets-Piloten vorbereiten",
+            work_item_id="explicit_productivity_pilot_admission",
+            title="Explizite Productivity-Pilot-Admission persistieren",
             summary=(
-                "Das gemeinsame Release-Gate fuer CRM-Onboarding, Tasks und Zeiterfassung ist gruen. Jetzt wird ein "
-                "eng begrenzter Pilot mit Tenant-Auswahl, Betriebsfreigabe, Monitoring und "
-                "Rollback-Grenzen vorbereitet."
+                "Der nicht-ausfuehrende Preflight ist fuer den ausgewaehlten Tenant gruen. Als naechstes wird eine "
+                "append-only Human-Admission an Tenant-, Policy-, Release- und Preflight-Hash gebunden; automatische "
+                "Aktivierung und Business-Writes bleiben ausgeschlossen."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
+                "productivity_pilot_preflight",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
                 "time_tracking_runtime",
                 "module_registry",
                 "tenant_authz",
+                "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="business_backend_release_gate_green_pilot_tenant_runbook_monitoring_and_rollback_approved",
-            decision="must_now_because_the_backend_release_boundary_is_green_and_the_next_value_is_controlled_usage",
+            readiness_gate="append_only_human_admission_bound_to_tenant_policy_release_and_preflight_hashes",
+            decision="must_now_because_preflight_is_green_but_no_pilot_may_start_without_explicit_admission",
             evidence_refs=(
+                "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
+                "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
-                "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
-                "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
-                "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
                 "docs/operations/BACKUP_FAILOVER.md",
                 "docs/ROADMAP.md",
             ),

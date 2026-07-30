@@ -415,6 +415,7 @@ services:
     environment:
       PYTHONPATH: /workspace/app
       SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json
       SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
       SUITE_RELEASE_API_BASE_URL: http://api:8000
       SUITE_RELEASE_API_RETRIES: "60"
@@ -423,6 +424,32 @@ services:
       SUITE_TIME_TRACKING_BACKEND: postgres
     volumes:
       - ./app:/workspace/app:ro
+      - ./backups:/backups
+  productivity-pilot-preflight-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.productivity_pilot_preflight
+    depends_on:
+      business-backend-release-gate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json
+      SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
+      SUITE_PRODUCTIVITY_PILOT_TENANT_IDS: ${SUITE_PRODUCTIVITY_PILOT_TENANT_IDS:-tenant-demo}
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
       - ./backups:/backups:ro
   rich-document-parser:
     build:

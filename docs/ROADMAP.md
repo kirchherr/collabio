@@ -103,6 +103,7 @@ Bereits umgesetzt:
 - [x] Produktiver Tasks-&-Activities-Slice fuer atomare Task-/Initialaktivitaets-/ACL-/Receipt-Writes, ACL-gepruefte Reads, Rollen- und Feature-Gates sowie PostgreSQL-Restore-Kontrollen.
 - [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
 - [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
+- [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
 
 Noch nicht umgesetzt:
 
@@ -1553,8 +1554,9 @@ Enthaelt:
 - [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
 - [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
 - [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
-- [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:b4da6b5abcf6b9f129f5ba5829416fa6d13291e2be54d820ce5251bc21f4b462`.
-- [ ] Naechster Fokus: kontrollierten Produktivitaets-Piloten fuer CRM-Onboarding, Tasks und Zeiterfassung mit expliziter Tenant-Auswahl, Betriebsfreigabe, Monitoring und Rollback-Grenzen vorbereiten; keine weitere Fundamentbreite vorziehen.
+- [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
+- [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.
+- [ ] Naechster Fokus: append-only Human-Admission fuer den ausgewaehlten Productivity-Pilot an Tenant-, Policy-, Release- und Preflight-Hash binden; automatische Aktivierung und Business-Writes weiterhin ausschliessen.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

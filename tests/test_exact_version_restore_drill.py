@@ -393,9 +393,10 @@ def test_compose_exposes_isolated_restore_target_and_foundation_gate() -> None:
     compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 
     assert "\n  minio-restore:\n" in compose
-    assert compose.count('profiles: ["restore-drill"]') == 8
+    assert compose.count('profiles: ["restore-drill"]') == 9
     assert "\n  object-storage-restore-profile-check:\n" in compose
     assert "\n  business-backend-release-gate:\n" in compose
+    assert "\n  productivity-pilot-preflight-gate:\n" in compose
     assert "\n  backend-storage-foundation-gate:\n" in compose
     assert "command: python -m suite.storage.backend_storage_foundation_gate" in compose
     assert "SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000" in compose

@@ -1,0 +1,121 @@
+{
+  "schema_version": "productivity_pilot_policy.v1",
+  "policy_id": "controlled-productivity-pilot",
+  "max_candidate_tenants": 3,
+  "required_release_schema_version": "business_backend_release_gate.v1",
+  "slices": [
+    {
+      "slice_id": "crm_account_onboarding",
+      "module_id": "crm_erp",
+      "required_feature_ids": [
+        "crm_erp.crm.accounts",
+        "crm_erp.crm.contacts",
+        "crm_erp.crm.activities"
+      ],
+      "forbidden_feature_ids": [
+        "crm_erp.legacy_import.sqlserver",
+        "crm_erp.gobd_export",
+        "crm_erp.rag_indexing",
+        "crm_erp.ai_assist"
+      ]
+    },
+    {
+      "slice_id": "tasks_activities",
+      "module_id": "tasks_activities",
+      "required_feature_ids": [
+        "tasks_activities.tasks.items.read",
+        "tasks_activities.tasks.activities.read",
+        "tasks_activities.tasks.workflow.write"
+      ],
+      "forbidden_feature_ids": [
+        "tasks_activities.tasks.compliance_evidence.read",
+        "tasks_activities.tasks.rag_indexing",
+        "tasks_activities.tasks.ai_assist"
+      ]
+    },
+    {
+      "slice_id": "time_tracking",
+      "module_id": "time_tracking",
+      "required_feature_ids": [
+        "time_tracking.entries.read",
+        "time_tracking.entries.write",
+        "time_tracking.approvals.read"
+      ],
+      "forbidden_feature_ids": [
+        "time_tracking.compliance_evidence.read",
+        "time_tracking.exports.execute"
+      ]
+    }
+  ],
+  "allowed_api_operations": [
+    "POST /v1/crm/account-onboardings",
+    "POST /v1/tasks/items",
+    "GET /v1/tasks/items",
+    "GET /v1/tasks/activities",
+    "POST /v1/time-tracking/entries",
+    "GET /v1/time-tracking/entries",
+    "GET /v1/time-tracking/approvals"
+  ],
+  "monitoring_controls": [
+    {
+      "control_id": "api_health_and_latency",
+      "evidence_ref": "monitoring:pilot-api-health-latency",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "write_error_and_conflict_rate",
+      "evidence_ref": "monitoring:pilot-write-errors",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "authorization_denial_rate",
+      "evidence_ref": "monitoring:pilot-authz-denials",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "audit_chain_continuity",
+      "evidence_ref": "monitoring:pilot-audit-chain",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "postgres_capacity_and_backup_age",
+      "evidence_ref": "monitoring:pilot-postgres-continuity",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    }
+  ],
+  "rollback_controls": [
+    {
+      "control_id": "disable_pilot_module_features",
+      "evidence_ref": "rollback:pilot-disable-features",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "block_pilot_ingress_routes",
+      "evidence_ref": "rollback:pilot-block-ingress",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "preserve_business_and_audit_records",
+      "evidence_ref": "rollback:pilot-preserve-records",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    },
+    {
+      "control_id": "restore_verified_recovery",
+      "evidence_ref": "rollback:pilot-restore-recovery",
+      "required_before_start": true,
+      "destructive_action_allowed": false
+    }
+  ],
+  "human_admission_required": true,
+  "traffic_scope_enforcement_required": true,
+  "automatic_tenant_activation_allowed": false,
+  "destructive_rollback_allowed": false
+}

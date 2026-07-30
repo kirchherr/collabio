@@ -403,6 +403,7 @@ def test_compose_exposes_isolated_postgres_restore_and_completion_gate() -> None
     assert "\n  postgres-restore-drill:\n" in compose
     assert "\n  backend-foundation-completion-gate:\n" in compose
     assert "\n  business-backend-release-gate:\n" in compose
+    assert "\n  productivity-pilot-preflight-gate:\n" in compose
     assert "dropdb -h postgres-restore" in compose
     assert "pg_restore -h postgres-restore" in compose
     assert "--exit-on-error" in compose
@@ -410,4 +411,6 @@ def test_compose_exposes_isolated_postgres_restore_and_completion_gate() -> None
     assert "python -m suite.operations.postgres_restore_drill" in compose
     assert "python -m suite.operations.backend_foundation_completion_gate" in compose
     assert "python -m suite.operations.business_backend_release_gate" in compose
+    assert "python -m suite.operations.productivity_pilot_preflight" in compose
     assert "SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json" in compose
+    assert "SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json" in compose

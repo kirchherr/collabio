@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from suite.operations.backend_foundation_completion_gate import (
     BackendFoundationCompletionGate,
     build_backend_foundation_completion_gate_hash,
@@ -8,6 +12,8 @@ from suite.operations.business_backend_release_gate import (
     PRODUCTIVE_SLICES,
     build_business_backend_release_gate,
     build_business_backend_release_gate_hash,
+    load_business_backend_release_gate,
+    persist_business_backend_release_gate,
 )
 
 CHECKED_AT = "2026-07-30T12:00:00Z"
@@ -138,3 +144,25 @@ def test_business_backend_release_gate_blocks_incomplete_catalog_and_foundation(
     tasks = next(item for item in gate.slices if item.slice_id == "tasks_activities")
     assert "module_package_not_installed" in crm.blocking_reasons
     assert "module_required_migration_missing" in tasks.blocking_reasons
+
+
+def test_business_backend_release_gate_report_round_trip_and_tamper_detection(tmp_path: Path) -> None:
+    gate = build_business_backend_release_gate(
+        backend_gate=_backend_gate(),
+        module_catalog_rows=_catalog_rows(),
+        api_operations=_api_operations(),
+        api_health_verified=True,
+        backend_settings=_backend_settings(),
+        checked_at_utc=CHECKED_AT,
+    )
+    report_path = tmp_path / "business-release-gate.json"
+
+    persist_business_backend_release_gate(gate=gate, report_path=report_path)
+
+    assert load_business_backend_release_gate(report_path) == gate
+    report_path.write_text(
+        report_path.read_text(encoding="utf-8").replace('"release_ready":true', '"release_ready":false'),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hash is invalid"):
+        load_business_backend_release_gate(report_path)

@@ -119,6 +119,15 @@ docker compose --profile restore-drill run --rm business-backend-release-gate
 
 The command emits metadata-only `business_backend_release_gate.v1`. It verifies the persisted foundation hash, live API health and OpenAPI operations, installed module packages, required migration versions, PostgreSQL backend selection, and restored write controls. It performs no tenant activation and no business write. See `docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md`.
 
+Prepare an explicitly selected tenant for a controlled productivity pilot without starting it:
+
+```bash
+SUITE_PRODUCTIVITY_PILOT_TENANT_IDS=tenant-demo \
+  docker compose --profile restore-drill run --rm productivity-pilot-preflight-gate
+```
+
+The metadata-only `productivity_pilot_preflight_gate.v1` binds the business release hash to selected tenant module states, required/forbidden feature flags, the seven-operation route contract, five monitoring controls and four non-destructive rollback controls. A green preflight still sets `pilot_start_allowed=false`; human admission and traffic-scope enforcement remain separate. See `docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md`.
+
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 
 ```bash

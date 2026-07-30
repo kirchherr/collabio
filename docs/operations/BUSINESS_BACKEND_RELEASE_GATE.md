@@ -18,7 +18,7 @@ Use the isolated restore profile:
 docker compose --profile restore-drill run --rm business-backend-release-gate
 ```
 
-Compose first rebuilds `backend_foundation_completion_gate.v1` and writes its canonical hash-verified report to the backup evidence volume. The release gate then verifies:
+Compose first rebuilds `backend_foundation_completion_gate.v1` and writes its canonical hash-verified report to the backup evidence volume. The release gate verifies the package and persists its own canonical report as `/backups/business-backend-release-gate.json` for downstream gates. It verifies:
 
 - the backend foundation report hash and green state;
 - live API health and every required operation in `/openapi.json`;
@@ -37,8 +37,10 @@ The evidence is metadata-only. It does not activate a tenant, create a business 
 
 The isolated development proof on 2026-07-30 passed all `3/3` slices:
 
-- backend foundation gate: `sha256:bc7221c1fe39f78d02d9c4e83d43723d8bcbb35bca7c73a714b002e067f809d4`
-- business backend release gate: `sha256:b4da6b5abcf6b9f129f5ba5829416fa6d13291e2be54d820ce5251bc21f4b462`
+- backend foundation gate: `sha256:673e3f4bd669f0b749b153262278b748e58054798c0d40d19f4eeefc7b5b7feb`
+- business backend release gate: `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`
 - module catalog manifest: `sha256:d5d815a69b37a430d92a8d2a8d9614b3f1933bb2bfd9399663fad6384b621b9f`
 
 These hashes prove that run only; every release or recovery must generate fresh evidence.
+
+The next non-executing boundary is docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md.

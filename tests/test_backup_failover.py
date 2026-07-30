@@ -60,6 +60,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "sha256_manifest" in postgres.integrity_checks
     assert "pg_restore_catalog" in postgres.integrity_checks
     assert "business_backend_release_gate_hash_check" in postgres.integrity_checks
+    assert "productivity_pilot_preflight_gate_hash_check" in postgres.integrity_checks
     assert postgres.restore_verification_gates == [
         "postgres_restore_drill_report.v1",
         "isolated_postgres_restore",
@@ -68,6 +69,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "rls_policy_role_grant_match",
         "backend_foundation_completion_gate.v1",
         "business_backend_release_gate.v1",
+        "productivity_pilot_preflight_gate.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
@@ -503,6 +505,9 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
     assert "PostgreSQL restore drill report hash when PostgreSQL is covered" in policy.restore_drill_evidence
     assert "backend foundation completion gate hash for release evidence" in policy.restore_drill_evidence
     assert "business backend release gate hash for productive slice release evidence" in policy.restore_drill_evidence
+    assert "productivity pilot preflight gate hash and selected tenant module state manifest hash" in (
+        policy.restore_drill_evidence
+    )
     assert "LMS restore drill evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents storage migration evidence hash when applicable" in policy.restore_drill_evidence
     assert "Tickets & Incidents restore drill evidence hash when applicable" in policy.restore_drill_evidence
@@ -646,6 +651,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "docker compose run --rm postgres-restore-drill" in runbook
     assert "docker compose run --rm backend-foundation-completion-gate" in runbook
     assert "docker compose --profile restore-drill run --rm business-backend-release-gate" in runbook
+    assert "docker compose --profile restore-drill run --rm productivity-pilot-preflight-gate" in runbook
     assert "docker compose run --rm module-registry-drill" in runbook
     assert "docker compose run --rm legacy-sql-discovery-intake" in runbook
     assert "docker compose run --rm legacy-sql-readiness-smoke" in runbook
@@ -777,6 +783,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "postgres_restore_drill_report.v1" in runbook
     assert "backend_foundation_completion_gate.v1" in runbook
     assert "business_backend_release_gate.v1" in runbook
+    assert "productivity_pilot_preflight_gate.v1" in runbook
     assert "Continuity Domains" in runbook
     assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook

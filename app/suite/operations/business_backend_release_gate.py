@@ -225,6 +225,29 @@ def build_business_backend_release_gate_hash(gate: BusinessBackendReleaseGate) -
     )
 
 
+def persist_business_backend_release_gate(
+    *,
+    gate: BusinessBackendReleaseGate,
+    report_path: Path,
+) -> None:
+    if build_business_backend_release_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("business backend release gate hash is invalid")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = report_path.with_suffix(report_path.suffix + ".tmp")
+    temporary_path.write_text(
+        json.dumps(gate.model_dump(mode="json"), sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(report_path)
+
+
+def load_business_backend_release_gate(report_path: Path) -> BusinessBackendReleaseGate:
+    gate = BusinessBackendReleaseGate.model_validate_json(report_path.read_text(encoding="utf-8"))
+    if build_business_backend_release_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("persisted business backend release gate hash is invalid")
+    return gate
+
+
 def _read_json_url(*, url: str, retries: int, retry_delay_seconds: float) -> Any:
     last_error: Exception | None = None
     for attempt in range(retries):
@@ -296,6 +319,9 @@ def run_business_backend_release_gate_from_environment(
 
 def main() -> None:
     gate = run_business_backend_release_gate_from_environment(os.environ)
+    report_path = os.environ.get("SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH", "").strip()
+    if report_path:
+        persist_business_backend_release_gate(gate=gate, report_path=Path(report_path))
     print(json.dumps(gate.model_dump(mode="json"), sort_keys=True))
     raise SystemExit(0 if gate.release_ready else 2)
 
