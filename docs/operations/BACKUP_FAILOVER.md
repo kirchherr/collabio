@@ -111,6 +111,14 @@ docker compose run --rm backend-foundation-completion-gate
 
 The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain separate deployment gates.
 
+Bind the restored foundation to the productive CRM, Tasks, and Time Tracking API package:
+
+```bash
+docker compose --profile restore-drill run --rm business-backend-release-gate
+```
+
+The command emits metadata-only `business_backend_release_gate.v1`. It verifies the persisted foundation hash, live API health and OpenAPI operations, installed module packages, required migration versions, PostgreSQL backend selection, and restored write controls. It performs no tenant activation and no business write. See `docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md`.
+
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 
 ```bash

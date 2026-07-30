@@ -368,6 +368,7 @@ services:
       SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_restore
       SUITE_POSTGRES_BACKUP_DIRECTORY: /backups
       SUITE_POSTGRES_RESTORE_RECEIPT_PATH: /backups/postgres-restore-receipt.sha256
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
@@ -391,8 +392,38 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
-      - ./backups:/backups:ro
+      - ./backups:/backups
 
+  business-backend-release-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.business_backend_release_gate
+    depends_on:
+      backend-foundation-completion-gate:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_RELEASE_API_BASE_URL: http://api:8000
+      SUITE_RELEASE_API_RETRIES: "60"
+      SUITE_CRM_ONBOARDING_BACKEND: postgres
+      SUITE_TASKS_ACTIVITIES_BACKEND: postgres
+      SUITE_TIME_TRACKING_BACKEND: postgres
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups:ro
   rich-document-parser:
     build:
       context: .

@@ -68,6 +68,7 @@ docker compose run --rm source-object-runtime-bootstrap
 docker compose run --rm backend-storage-foundation-gate
 docker compose run --rm postgres-restore-drill
 docker compose run --rm backend-foundation-completion-gate
+docker compose --profile restore-drill run --rm business-backend-release-gate
 docker compose up api
 ```
 
@@ -79,7 +80,7 @@ Local database backups are written to `./backups/`. `postgres-restore-drill` ver
 
 MinIO is part of the default API foundation on configurable ports `SUITE_MINIO_API_PORT`/`SUITE_MINIO_CONSOLE_PORT` (defaults `29000`/`29001`). API startup requires bucket-profile evidence plus a successful `persistent_source_object_runtime_report.v1` covering fresh-instance reads and tenant-scoped content reconciliation.
 
-The opt-in `restore-drill` profile adds independent MinIO and PostgreSQL targets. MinIO uses configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`); PostgreSQL uses `SUITE_POSTGRES_RESTORE_PORT` (default `55433`). `backend-storage-foundation-gate` proves exact-version object recovery. `backend-foundation-completion-gate` binds that evidence to isolated PostgreSQL recovery plus Tenant/IAM, append-only Audit, Module Registry, migration catalog, and persistent SourceObject controls. All gate output is metadata-only.
+The opt-in `restore-drill` profile adds independent MinIO and PostgreSQL targets. MinIO uses configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`); PostgreSQL uses `SUITE_POSTGRES_RESTORE_PORT` (default `55433`). `backend-storage-foundation-gate` proves exact-version object recovery. `backend-foundation-completion-gate` binds that evidence to isolated PostgreSQL recovery plus Tenant/IAM, append-only Audit, Module Registry, migration catalog, and persistent SourceObject controls. All gate output is metadata-only. `business-backend-release-gate` additionally binds the green foundation hash to the live API/OpenAPI contract, installed module and migration catalog, PostgreSQL backend configuration, and restored write controls for CRM onboarding, Tasks, and Time Tracking without activating tenants or executing business writes.
 
 API:
 

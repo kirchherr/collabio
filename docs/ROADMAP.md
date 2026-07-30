@@ -101,6 +101,8 @@ Bereits umgesetzt:
 - [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
 - [x] Atomarer CRM-Account-Onboarding-Write fuer Account, Contact, Activity, metadata-only Note, vier Objekt-ACLs und append-only Receipt in einer PostgreSQL-Transaktion mit Idempotenz-, Rollen-, RLS-, Rollback- und Restore-Proof.
 - [x] Produktiver Tasks-&-Activities-Slice fuer atomare Task-/Initialaktivitaets-/ACL-/Receipt-Writes, ACL-gepruefte Reads, Rollen- und Feature-Gates sowie PostgreSQL-Restore-Kontrollen.
+- [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
+- [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
 
 Noch nicht umgesetzt:
 
@@ -1449,7 +1451,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
 - [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
 - [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
-- [x] Tasks & Activities mit Migration `0059`, tenant-sicherer API, atomarem Write-Vertrag, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert; naechster Fundamentfokus ist die Zeiterfassung.
+- [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 
@@ -1551,7 +1553,8 @@ Enthaelt:
 - [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
 - [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
 - [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
-- [ ] Naechster Fokus: gemeinsame Backend-Release-Readiness fuer CRM-Onboarding, Tasks und Zeiterfassung mit Full-Suite-, Runtime- und isoliertem Restore-Nachweis; danach kontrollierte Piloten statt weiterer Fundamentbreite.
+- [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:b4da6b5abcf6b9f129f5ba5829416fa6d13291e2be54d820ce5251bc21f4b462`.
+- [ ] Naechster Fokus: kontrollierten Produktivitaets-Piloten fuer CRM-Onboarding, Tasks und Zeiterfassung mit expliziter Tenant-Auswahl, Betriebsfreigabe, Monitoring und Rollback-Grenzen vorbereiten; keine weitere Fundamentbreite vorziehen.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

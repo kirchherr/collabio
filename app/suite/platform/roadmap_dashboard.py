@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="cross_module_backend_release_readiness",
-        current_foundation_state="backend_foundation_green_tasks_and_time_tracking_atomic_writes_operational",
+        current_focus="controlled_productivity_pilot_release",
+        current_foundation_state="business_backend_release_gate_green_three_productive_slices_ready_for_controlled_pilot",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "cross_module_backend_release_readiness",
+            "controlled_productivity_pilot_release",
             "controlled_pilot_and_release_backlog",
         ),
         deferred_scope=(
@@ -260,6 +260,31 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "backend_foundation_completion_gate_required",
                         "future_modules_must_extend_policy",
                     ),
+                ),
+                RoadmapCapability(
+                    capability_id="business_backend_release_gate",
+                    title="Business Backend Release Gate",
+                    summary=(
+                        "CRM-Onboarding, Tasks und Zeiterfassung sind als gemeinsames Backend-Paket durch "
+                        "Restore, Modulkatalog, PostgreSQL-Konfiguration und Live-OpenAPI-Vertrag abgenommen."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_release_control",
+                    evidence_refs=(
+                        "app/suite/operations/business_backend_release_gate.py",
+                        "tests/test_business_backend_release_gate.py",
+                        "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "backend_foundation_gate_hash_required",
+                        "live_api_health_and_openapi_contract_required",
+                        "installed_module_and_migration_catalog_required",
+                        "postgres_business_backends_required",
+                        "metadata_only_release_evidence",
+                        "no_tenant_activation_or_business_write",
+                    ),
+                    next_action="controlled_productivity_pilot_release",
                 ),
             ),
         ),
@@ -454,7 +479,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="cross_module_backend_release_readiness",
+                    next_action="controlled_productivity_pilot_release",
                 ),
                 RoadmapCapability(
                     capability_id="crm_atomic_account_onboarding_runtime",
@@ -485,7 +510,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "note_body_forbidden",
                     ),
-                    next_action="cross_module_backend_release_readiness",
+                    next_action="controlled_productivity_pilot_release",
                 ),
                 RoadmapCapability(
                     capability_id="tasks_activities_runtime",
@@ -519,7 +544,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
                     ),
-                    next_action="cross_module_backend_release_readiness",
+                    next_action="controlled_productivity_pilot_release",
                 ),
                 RoadmapCapability(
                     capability_id="time_tracking_runtime",
@@ -555,7 +580,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "approval_decisions_and_payroll_exports_deferred",
                     ),
-                    next_action="cross_module_backend_release_readiness",
+                    next_action="controlled_productivity_pilot_release",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",

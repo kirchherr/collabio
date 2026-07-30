@@ -155,14 +155,16 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="cross_module_backend_release_readiness",
-            title="Gemeinsame Backend-Release-Readiness schliessen",
+            work_item_id="controlled_productivity_pilot_release",
+            title="Kontrollierten Produktivitaets-Piloten vorbereiten",
             summary=(
-                "CRM-Onboarding, Tasks und Zeiterfassung schreiben atomar und restore-geprueft. Jetzt werden "
-                "die produktiven Fundament-Slices gemeinsam als pilotfaehiges Backend-Paket abgenommen."
+                "Das gemeinsame Release-Gate fuer CRM-Onboarding, Tasks und Zeiterfassung ist gruen. Jetzt wird ein "
+                "eng begrenzter Pilot mit Tenant-Auswahl, Betriebsfreigabe, Monitoring und "
+                "Rollback-Grenzen vorbereitet."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
+                "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
                 "time_tracking_runtime",
@@ -170,9 +172,10 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "tenant_authz",
                 "backup_failover",
             ),
-            readiness_gate="atomic_business_slices_full_test_restore_and_runtime_proof_green",
-            decision="must_now_because_the_module_foundation_queue_is_complete_and_productivity_needs_one_release_gate",
+            readiness_gate="business_backend_release_gate_green_pilot_tenant_runbook_monitoring_and_rollback_approved",
+            decision="must_now_because_the_backend_release_boundary_is_green_and_the_next_value_is_controlled_usage",
             evidence_refs=(
+                "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/modules/CRM_ACCOUNT_ONBOARDING_VERTICAL_SLICE.md",
                 "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
                 "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",

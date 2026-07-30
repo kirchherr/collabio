@@ -8,6 +8,8 @@ import pytest
 from suite.operations.backend_foundation_completion_gate import (
     build_backend_foundation_completion_gate,
     build_backend_foundation_completion_gate_hash,
+    load_backend_foundation_completion_gate,
+    persist_backend_foundation_completion_gate,
 )
 from suite.operations.postgres_restore_drill import (
     AUDIT_APPEND_ONLY_POLICIES_BY_TABLE,
@@ -341,8 +343,45 @@ def test_backend_foundation_completion_gate_binds_database_and_object_recovery()
     assert gate.tenant_iam_verified is True
     assert gate.postgres_backup_restore_verified is True
     assert gate.exact_version_object_restore_verified is True
+    assert gate.crm_atomic_write_controls_verified is True
+    assert gate.tasks_activities_write_controls_verified is True
+    assert gate.time_tracking_write_controls_verified is True
+    assert gate.productive_business_write_controls_verified is True
     assert gate.content_included is False
     assert gate.gate_hash == build_backend_foundation_completion_gate_hash(gate)
+
+
+def test_backend_foundation_completion_gate_blocks_missing_productive_write_control() -> None:
+    gate = build_backend_foundation_completion_gate(
+        postgres_restore_report=_restore_report(target_time_controls=False),
+        storage_gate=_storage_gate(),
+    )
+
+    assert gate.backend_foundation_complete is False
+    assert gate.productive_business_write_controls_verified is False
+    assert "time_tracking_write_controls_not_verified" in gate.blocking_reasons
+    assert "productive_business_write_controls_not_verified" in gate.blocking_reasons
+
+
+def test_backend_foundation_completion_gate_report_round_trip_and_tamper_detection(tmp_path: Path) -> None:
+    gate = build_backend_foundation_completion_gate(
+        postgres_restore_report=_restore_report(),
+        storage_gate=_storage_gate(),
+    )
+    report_path = tmp_path / "backend-gate.json"
+
+    persist_backend_foundation_completion_gate(gate=gate, report_path=report_path)
+
+    assert load_backend_foundation_completion_gate(report_path) == gate
+    report_path.write_text(
+        report_path.read_text(encoding="utf-8").replace(
+            f'"migration_count":{gate.migration_count}',
+            f'"migration_count":{gate.migration_count + 1}',
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hash is invalid"):
+        load_backend_foundation_completion_gate(report_path)
 
 
 def test_backend_foundation_completion_gate_blocks_failed_storage_recovery() -> None:
@@ -363,9 +402,12 @@ def test_compose_exposes_isolated_postgres_restore_and_completion_gate() -> None
     assert "\n  postgres-backup-restore-loader:\n" in compose
     assert "\n  postgres-restore-drill:\n" in compose
     assert "\n  backend-foundation-completion-gate:\n" in compose
+    assert "\n  business-backend-release-gate:\n" in compose
     assert "dropdb -h postgres-restore" in compose
     assert "pg_restore -h postgres-restore" in compose
     assert "--exit-on-error" in compose
     assert "postgres18_restore_data:/var/lib/postgresql" in compose
     assert "python -m suite.operations.postgres_restore_drill" in compose
     assert "python -m suite.operations.backend_foundation_completion_gate" in compose
+    assert "python -m suite.operations.business_backend_release_gate" in compose
+    assert "SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json" in compose

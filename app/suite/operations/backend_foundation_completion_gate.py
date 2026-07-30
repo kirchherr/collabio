@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Mapping
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,10 @@ class BackendFoundationCompletionGate(BaseModel):
     tenant_iam_verified: bool
     append_only_audit_verified: bool
     module_registry_verified: bool
+    crm_atomic_write_controls_verified: bool
+    tasks_activities_write_controls_verified: bool
+    time_tracking_write_controls_verified: bool
+    productive_business_write_controls_verified: bool
     migration_catalog_verified: bool
     postgres_backup_restore_verified: bool
     persistent_source_objects_verified: bool
@@ -66,10 +71,21 @@ def build_backend_foundation_completion_gate(
         and not postgres_restore_report.content_included
         and not storage_gate.content_included
     )
+    productive_business_writes = (
+        postgres_restore_report.crm_atomic_write_controls_verified
+        and postgres_restore_report.tasks_activities_write_controls_verified
+        and postgres_restore_report.time_tracking_write_controls_verified
+    )
     checks = {
         "tenant_iam_not_verified": postgres_restore_report.tenant_iam_controls_verified,
         "append_only_audit_not_verified": postgres_restore_report.append_only_audit_controls_verified,
         "module_registry_not_verified": postgres_restore_report.module_registry_controls_verified,
+        "crm_atomic_write_controls_not_verified": postgres_restore_report.crm_atomic_write_controls_verified,
+        "tasks_activities_write_controls_not_verified": (
+            postgres_restore_report.tasks_activities_write_controls_verified
+        ),
+        "time_tracking_write_controls_not_verified": postgres_restore_report.time_tracking_write_controls_verified,
+        "productive_business_write_controls_not_verified": productive_business_writes,
         "migration_catalog_not_verified": postgres_restore_report.migration_catalog_verified,
         "postgres_backup_restore_not_verified": postgres_restore_report.restore_ready,
         "persistent_source_objects_not_verified": storage_gate.persistent_runtime_verified,
@@ -94,6 +110,10 @@ def build_backend_foundation_completion_gate(
         tenant_iam_verified=postgres_restore_report.tenant_iam_controls_verified,
         append_only_audit_verified=postgres_restore_report.append_only_audit_controls_verified,
         module_registry_verified=postgres_restore_report.module_registry_controls_verified,
+        crm_atomic_write_controls_verified=postgres_restore_report.crm_atomic_write_controls_verified,
+        tasks_activities_write_controls_verified=postgres_restore_report.tasks_activities_write_controls_verified,
+        time_tracking_write_controls_verified=postgres_restore_report.time_tracking_write_controls_verified,
+        productive_business_write_controls_verified=productive_business_writes,
         migration_catalog_verified=postgres_restore_report.migration_catalog_verified,
         postgres_backup_restore_verified=postgres_restore_report.restore_ready,
         persistent_source_objects_verified=storage_gate.persistent_runtime_verified,
@@ -119,6 +139,29 @@ def build_backend_foundation_completion_gate_hash(gate: BackendFoundationComplet
     )
 
 
+def persist_backend_foundation_completion_gate(
+    *,
+    gate: BackendFoundationCompletionGate,
+    report_path: Path,
+) -> None:
+    if build_backend_foundation_completion_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("backend foundation completion gate hash is invalid")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = report_path.with_suffix(report_path.suffix + ".tmp")
+    temporary_path.write_text(
+        json.dumps(gate.model_dump(mode="json"), sort_keys=True, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(report_path)
+
+
+def load_backend_foundation_completion_gate(report_path: Path) -> BackendFoundationCompletionGate:
+    gate = BackendFoundationCompletionGate.model_validate_json(report_path.read_text(encoding="utf-8"))
+    if build_backend_foundation_completion_gate_hash(gate) != gate.gate_hash:
+        raise ValueError("persisted backend foundation completion gate hash is invalid")
+    return gate
+
+
 def run_backend_foundation_completion_gate_from_environment(
     env: Mapping[str, str],
 ) -> BackendFoundationCompletionGate:
@@ -132,6 +175,9 @@ def run_backend_foundation_completion_gate_from_environment(
 
 def main() -> None:
     gate = run_backend_foundation_completion_gate_from_environment(os.environ)
+    report_path = os.environ.get("SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH", "").strip()
+    if report_path:
+        persist_backend_foundation_completion_gate(gate=gate, report_path=Path(report_path))
     print(json.dumps(gate.model_dump(mode="json"), sort_keys=True))
     raise SystemExit(0 if gate.backend_foundation_complete else 2)
 
