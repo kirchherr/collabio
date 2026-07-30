@@ -105,7 +105,8 @@ Bereits umgesetzt:
 - [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
 - [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
 - [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; Pilotstart und Traffic-Freigabe bleiben gesperrt.
-- [ ] Tenant- und routenspezifische Traffic-Scope-Erzwingung an Admission und Preflight binden; separate Start-Autorisierung weiterhin erforderlich.
+- [x] Tenant- und routenspezifische Traffic-Scope-Erzwingung append-only an Admission, Preflight und Policy binden; Default Deny blockiert alle verwalteten Pilot-Routen bis zur separaten Start-Autorisierung.
+- [ ] Explizite Start-Autorisierung an Admission, Preflight, Policy und Traffic-Scope-Evidenz binden und erst dann die sieben freigegebenen Pilot-Operationen oeffnen.
 
 Noch nicht umgesetzt:
 

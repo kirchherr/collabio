@@ -563,6 +563,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="core",
         evidence_refs=("doc:productivity-pilot-admission", "test:productivity-pilot-admission"),
     ),
+    SqlMigration(
+        version="0062",
+        name="productivity_pilot_traffic_scope",
+        resource_name="0062_productivity_pilot_traffic_scope.sql",
+        module_id="core",
+        evidence_refs=("doc:productivity-pilot-traffic-scope", "test:productivity-pilot-traffic-scope"),
+    ),
 )
 
 

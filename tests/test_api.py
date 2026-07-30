@@ -948,12 +948,13 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "productivity_pilot_traffic_scope_enforcement"
+    assert body["current_focus"] == "productivity_pilot_start_authorization"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["summary"]["foundation_ready_count"] >= 10
+    assert body["summary"]["foundation_ready_count"] == 26
+    assert body["summary"]["total_count"] == 28
     assert body["summary"]["total_count"] == sum(len(group["capabilities"]) for group in body["groups"])
     capabilities = [capability for group in body["groups"] for capability in group["capabilities"]]
     capability_ids = {capability["capability_id"] for capability in capabilities}
@@ -961,6 +962,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "tenant_authz",
         "business_backend_release_gate",
         "productivity_pilot_preflight",
+        "productivity_pilot_admission",
+        "productivity_pilot_traffic_scope_enforcement",
         "module_registry",
         "workspace_cockpit",
         "knowledge_base",
@@ -1339,7 +1342,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "productivity_pilot_traffic_scope_enforcement"
+    assert body["current_focus"] == "productivity_pilot_start_authorization"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1353,18 +1356,18 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 1,
         "later_count": 4,
         "total_count": 6,
-        "foundation_ready_count": 25,
+        "foundation_ready_count": 26,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
-        "productivity_pilot_traffic_scope_enforcement",
+        "productivity_pilot_start_authorization",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["productivity_pilot_traffic_scope_enforcement"]["priority"] == "now"
+    assert items["productivity_pilot_start_authorization"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True

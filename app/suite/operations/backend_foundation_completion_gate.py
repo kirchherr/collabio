@@ -37,6 +37,7 @@ class BackendFoundationCompletionGate(BaseModel):
     tasks_activities_write_controls_verified: bool
     time_tracking_write_controls_verified: bool
     productivity_pilot_admission_controls_verified: bool
+    productivity_pilot_traffic_scope_controls_verified: bool
     productive_business_write_controls_verified: bool
     migration_catalog_verified: bool
     postgres_backup_restore_verified: bool
@@ -89,6 +90,9 @@ def build_backend_foundation_completion_gate(
         "productivity_pilot_admission_controls_not_verified": (
             postgres_restore_report.productivity_pilot_admission_controls_verified
         ),
+        "productivity_pilot_traffic_scope_controls_not_verified": (
+            postgres_restore_report.productivity_pilot_traffic_scope_controls_verified
+        ),
         "productive_business_write_controls_not_verified": productive_business_writes,
         "migration_catalog_not_verified": postgres_restore_report.migration_catalog_verified,
         "postgres_backup_restore_not_verified": postgres_restore_report.restore_ready,
@@ -119,6 +123,9 @@ def build_backend_foundation_completion_gate(
         time_tracking_write_controls_verified=postgres_restore_report.time_tracking_write_controls_verified,
         productivity_pilot_admission_controls_verified=(
             postgres_restore_report.productivity_pilot_admission_controls_verified
+        ),
+        productivity_pilot_traffic_scope_controls_verified=(
+            postgres_restore_report.productivity_pilot_traffic_scope_controls_verified
         ),
         productive_business_write_controls_verified=productive_business_writes,
         migration_catalog_verified=postgres_restore_report.migration_catalog_verified,

@@ -27,6 +27,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM base AS runtime
 
 COPY app ./app
+COPY docs/operations/productivity_pilot_policy.json ./docs/operations/productivity_pilot_policy.json
 
 ENV PYTHONPATH=/workspace/app
 

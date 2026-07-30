@@ -155,17 +155,18 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="productivity_pilot_traffic_scope_enforcement",
-            title="Productivity-Pilot-Traffic tenantgenau erzwingen",
+            work_item_id="productivity_pilot_start_authorization",
+            title="Productivity-Pilot-Start explizit autorisieren",
             summary=(
-                "Preflight und append-only Human-Admission sind operational. Als naechster separater Schritt wird "
-                "nur der freigegebene Tenant- und Routen-Scope technisch erzwungen und nachgewiesen; der Pilotstart "
-                "bleibt bis zu einer weiteren expliziten Start-Autorisierung gesperrt."
+                "Preflight, Human-Admission und Default-Deny-Traffic-Scope sind operational. Als naechster separater "
+                "Schritt wird die Start-Autorisierung an genau diese Evidenz gebunden; ohne sie bleibt jeder "
+                "verwaltete Pilot-Request gesperrt."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
                 "productivity_pilot_preflight",
                 "productivity_pilot_admission",
+                "productivity_pilot_traffic_scope_enforcement",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
@@ -175,11 +176,12 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="tenant_and_route_scope_enforced_against_admission_preflight_and_policy_hashes",
-            decision="must_now_because_admission_exists_but_no_pilot_may_start_without_enforced_traffic_scope",
+            readiness_gate="explicit_start_authorization_bound_to_admission_preflight_policy_and_traffic_scope_hashes",
+            decision="must_now_because_default_deny_is_enforced_and_no_managed_pilot_request_can_pass_without_start_authorization",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md",
+                "docs/operations/PRODUCTIVITY_PILOT_TRAFFIC_SCOPE.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/operations/BACKUP_FAILOVER.md",

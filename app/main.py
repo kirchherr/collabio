@@ -27,6 +27,7 @@ from suite.llm_gateway.gateway import LocalLLMGateway
 from suite.llm_gateway.providers.mock import MockLLMProvider
 from suite.llm_gateway.providers.ollama import OllamaProvider
 from suite.llm_gateway.providers.openai_compatible import OpenAICompatibleProvider
+from suite.operations.productivity_pilot_preflight import load_productivity_pilot_policy
 from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.admin_models import TenantAiPolicyUpdate
 from suite.platform.authz_admin import (
@@ -793,6 +794,14 @@ from suite.platform.productivity_pilot_admission import (
     build_default_productivity_pilot_admission_record_store,
     build_default_productivity_pilot_preflight_store,
 )
+from suite.platform.productivity_pilot_traffic_scope import (
+    ProductivityPilotTrafficDecision,
+    ProductivityPilotTrafficScopeCommand,
+    ProductivityPilotTrafficScopeConflict,
+    ProductivityPilotTrafficScopeEnforcement,
+    ProductivityPilotTrafficScopeService,
+    build_default_productivity_pilot_traffic_scope_store,
+)
 from suite.platform.roadmap_dashboard import RoadmapDashboardResponse, build_roadmap_dashboard_response
 from suite.platform.roadmap_plan import RoadmapPlanSnapshotResponse, build_roadmap_plan_snapshot_response
 from suite.platform.runtime import suite_auth_mode
@@ -1154,6 +1163,54 @@ def require_tenant_admin(
     return context
 
 
+def require_productivity_pilot_traffic_scope(
+    request: Request,
+    context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+) -> ProductivityPilotTrafficDecision:
+    route = request.scope.get("route")
+    route_path = getattr(route, "path", request.url.path)
+    operation = f"{request.method.upper()} {route_path}"
+    service: ProductivityPilotTrafficScopeService = request.app.state.productivity_pilot_traffic_scope_service
+    try:
+        decision = service.authorize_operation(
+            tenant_id=context.user_context.tenant_id,
+            operation=operation,
+        )
+    except ProductivityPilotTrafficScopeConflict as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Productivity pilot traffic scope evidence is invalid",
+        ) from exc
+    if not decision.authorization_allowed:
+        request.app.state.audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.traffic_denied",
+            source_object_ids=(
+                [f"productivity_pilot_traffic_scope:{decision.enforcement_evidence_hash}"]
+                if decision.enforcement_evidence_hash
+                else []
+            ),
+            metadata={
+                "surface": "platform_api",
+                "schema_version": decision.schema_version,
+                "operation": decision.operation,
+                "operation_in_scope": decision.operation_in_scope,
+                "tenant_scope_enforced": decision.tenant_scope_enforced,
+                "route_scope_enforced": decision.route_scope_enforced,
+                "default_deny_enabled": decision.default_deny_enabled,
+                "pilot_start_authorized": decision.pilot_start_authorized,
+                "blocking_reason": decision.blocking_reason,
+                "enforcement_evidence_hash": decision.enforcement_evidence_hash,
+                "content_included": decision.content_included,
+            },
+        )
+        raise HTTPException(
+            status_code=decision.http_status_code,
+            detail=decision.blocking_reason,
+        )
+    return decision
+
+
 def require_security_admin(
     context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
 ) -> TenantRequestContext:
@@ -1410,6 +1467,20 @@ def build_app() -> FastAPI:
         preflight_store=productivity_pilot_preflight_store,
         record_store=productivity_pilot_admission_record_store,
     )
+    productivity_pilot_policy_path = Path(
+        os.environ.get(
+            "SUITE_PRODUCTIVITY_PILOT_POLICY_PATH",
+            str(Path(__file__).resolve().parents[1] / "docs" / "operations" / "productivity_pilot_policy.json"),
+        )
+    )
+    productivity_pilot_policy = load_productivity_pilot_policy(productivity_pilot_policy_path)
+    productivity_pilot_traffic_scope_store = build_default_productivity_pilot_traffic_scope_store()
+    productivity_pilot_traffic_scope_service = ProductivityPilotTrafficScopeService(
+        policy=productivity_pilot_policy,
+        preflight_store=productivity_pilot_preflight_store,
+        admission_store=productivity_pilot_admission_record_store,
+        traffic_scope_store=productivity_pilot_traffic_scope_store,
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1475,6 +1546,57 @@ def build_app() -> FastAPI:
                 "pilot_start_allowed": response.pilot_start_allowed,
                 "traffic_scope_enforced": response.traffic_scope_enforced,
                 "tenant_state_changed": response.tenant_state_changed,
+                "business_write_executed": response.business_write_executed,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/productivity-pilot/traffic-scope-enforcements",
+        response_model=ProductivityPilotTrafficScopeEnforcement,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def enforce_productivity_pilot_traffic_scope(
+        command: ProductivityPilotTrafficScopeCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotTrafficScopeEnforcement:
+        service: ProductivityPilotTrafficScopeService = request.app.state.productivity_pilot_traffic_scope_service
+        try:
+            response = service.enforce(user_context=context.user_context, command=command)
+        except ProductivityPilotPreflightNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except (ProductivityPilotTrafficScopeConflict, ProductivityPilotAdmissionConflict) as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.traffic_scope_enforced",
+            source_object_ids=[
+                f"productivity_pilot_admission:{response.admission_evidence_hash}",
+                f"productivity_pilot_preflight:{response.preflight_gate_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "enforcement_id": response.enforcement_id,
+                "admission_id": response.admission_id,
+                "admission_evidence_hash": response.admission_evidence_hash,
+                "preflight_gate_hash": response.preflight_gate_hash,
+                "policy_hash": response.policy_hash,
+                "route_scope_hash": response.route_scope_hash,
+                "allowed_api_operation_count": len(response.allowed_api_operations),
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "tenant_scope_enforced": response.tenant_scope_enforced,
+                "route_scope_enforced": response.route_scope_enforced,
+                "default_deny_enabled": response.default_deny_enabled,
+                "pilot_start_authorized": response.pilot_start_authorized,
+                "pilot_business_traffic_allowed": response.pilot_business_traffic_allowed,
+                "idempotent_replay": response.idempotent_replay,
                 "business_write_executed": response.business_write_executed,
                 "content_included": response.content_included,
                 "evidence_hash": response.evidence_hash,
@@ -20850,7 +20972,11 @@ def build_app() -> FastAPI:
         keyword_service = cast(KeywordSearchService, request.app.state.keyword_search_service)
         return keyword_service.search(query=query, user_context=context.user_context)
 
-    @app.post("/v1/tasks/items", response_model=TaskCreationResponse)
+    @app.post(
+        "/v1/tasks/items",
+        response_model=TaskCreationResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def create_task_item(
         command: CreateTaskCommand,
         request: Request,
@@ -20894,7 +21020,11 @@ def build_app() -> FastAPI:
         except TasksActivitiesAssignmentError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    @app.get("/v1/tasks/items", response_model=TaskItemsResponse)
+    @app.get(
+        "/v1/tasks/items",
+        response_model=TaskItemsResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_task_items(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -20912,7 +21042,11 @@ def build_app() -> FastAPI:
         tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
         return tasks_service.list_items(user_context=context.user_context)
 
-    @app.get("/v1/tasks/activities", response_model=TaskActivitiesResponse)
+    @app.get(
+        "/v1/tasks/activities",
+        response_model=TaskActivitiesResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_task_activities(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -20930,7 +21064,11 @@ def build_app() -> FastAPI:
         tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
         return tasks_service.list_activities(user_context=context.user_context)
 
-    @app.post("/v1/time-tracking/entries", response_model=TimeEntryCreationResponse)
+    @app.post(
+        "/v1/time-tracking/entries",
+        response_model=TimeEntryCreationResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def create_time_entry(
         command: CreateTimeEntryCommand,
         request: Request,
@@ -20974,7 +21112,11 @@ def build_app() -> FastAPI:
         except TimeTrackingAssignmentError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    @app.get("/v1/time-tracking/entries", response_model=TimeEntriesResponse)
+    @app.get(
+        "/v1/time-tracking/entries",
+        response_model=TimeEntriesResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_time_entries(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -20992,7 +21134,11 @@ def build_app() -> FastAPI:
         service = cast(TimeTrackingService, request.app.state.time_tracking_service)
         return service.list_entries(user_context=context.user_context)
 
-    @app.get("/v1/time-tracking/approvals", response_model=TimeApprovalsResponse)
+    @app.get(
+        "/v1/time-tracking/approvals",
+        response_model=TimeApprovalsResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_time_approvals(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -21010,7 +21156,11 @@ def build_app() -> FastAPI:
         service = cast(TimeTrackingService, request.app.state.time_tracking_service)
         return service.list_approvals(user_context=context.user_context)
 
-    @app.post("/v1/crm-erp/search", response_model=CrmErpSearchResponse)
+    @app.post(
+        "/v1/crm-erp/search",
+        response_model=CrmErpSearchResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def crm_erp_keyword_search(
         query: KeywordSearchQuery,
         request: Request,
@@ -21027,6 +21177,7 @@ def build_app() -> FastAPI:
     @app.post(
         "/v1/crm/account-onboardings",
         response_model=CrmAccountOnboardingResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
     )
     def create_crm_account_onboarding(
         command: CrmAccountOnboardingCommand,
@@ -21066,7 +21217,11 @@ def build_app() -> FastAPI:
                 detail=str(exc),
             ) from exc
 
-    @app.get("/v1/crm/accounts", response_model=CrmAccountsResponse)
+    @app.get(
+        "/v1/crm/accounts",
+        response_model=CrmAccountsResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_crm_accounts(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -21082,6 +21237,7 @@ def build_app() -> FastAPI:
     @app.get(
         "/v1/crm/accounts/{account_object_id}/workspace",
         response_model=CrmAccountWorkspaceResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
     )
     def read_crm_account_workspace(
         account_object_id: str,
@@ -21116,7 +21272,11 @@ def build_app() -> FastAPI:
                 detail="CRM account workspace not found",
             ) from exc
 
-    @app.get("/v1/crm/contacts", response_model=CrmContactsResponse)
+    @app.get(
+        "/v1/crm/contacts",
+        response_model=CrmContactsResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_crm_contacts(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -21129,7 +21289,11 @@ def build_app() -> FastAPI:
         crm_contacts = cast(CrmContactService, request.app.state.crm_contact_service)
         return crm_contacts.list_contacts(user_context=context.user_context)
 
-    @app.get("/v1/crm/activities", response_model=CrmActivitiesResponse)
+    @app.get(
+        "/v1/crm/activities",
+        response_model=CrmActivitiesResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_crm_activities(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -21142,7 +21306,11 @@ def build_app() -> FastAPI:
         crm_activities = cast(CrmActivityService, request.app.state.crm_activity_service)
         return crm_activities.list_activities(user_context=context.user_context)
 
-    @app.get("/v1/crm/notes", response_model=CrmNotesResponse)
+    @app.get(
+        "/v1/crm/notes",
+        response_model=CrmNotesResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
     def list_crm_notes(
         request: Request,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
@@ -21470,6 +21638,8 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_preflight_store = productivity_pilot_preflight_store
     app.state.productivity_pilot_admission_record_store = productivity_pilot_admission_record_store
     app.state.productivity_pilot_admission_service = productivity_pilot_admission_service
+    app.state.productivity_pilot_traffic_scope_store = productivity_pilot_traffic_scope_store
+    app.state.productivity_pilot_traffic_scope_service = productivity_pilot_traffic_scope_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger
