@@ -138,13 +138,13 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="controlled_productivity_pilot_runtime_observation",
-        current_foundation_state="productivity_pilot_runtime_window_enforcement_operational_designated_user_pilot_execution_next",
+        current_focus="productivity_pilot_closure_report",
+        current_foundation_state="controlled_development_productivity_pilot_closed_and_restore_verified",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "controlled_productivity_pilot_runtime_observation",
-            "controlled_pilot_and_release_backlog",
+            "productivity_pilot_closure_report",
+            "real_user_productivity_pilot_admission",
         ),
         deferred_scope=(
             "full_office_suite_client",
@@ -284,7 +284,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_release_evidence",
                         "no_tenant_activation_or_business_write",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_preflight",
@@ -309,7 +309,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "traffic_scope_enforcement_still_required",
                         "pilot_start_and_tenant_mutation_forbidden",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_admission",
@@ -336,7 +336,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "pilot_start_traffic_enforcement_activation_and_business_writes_forbidden",
                     ),
                     api_routes=("/v1/platform/productivity-pilot/admissions",),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_traffic_scope_enforcement",
@@ -368,7 +368,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/tasks/*",
                         "/v1/time-tracking/*",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_start_authorization",
@@ -407,7 +407,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "GET /v1/time-tracking/entries",
                         "GET /v1/time-tracking/approvals",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_runtime_window",
@@ -424,6 +424,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0064_productivity_pilot_runtime_window.sql",
                         "tests/test_productivity_pilot_start_authorization.py",
                         "docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md",
+                        "docs/operations/PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md",
                         "docs/operations/BACKUP_FAILOVER.md",
                     ),
                     guardrails=(
@@ -439,7 +440,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/runtime-windows",
                         "/v1/platform/productivity-pilot/runtime-windows/current",
                     ),
-                    next_action="run_designated_user_observation_then_close_kill_switch_and_refresh_restore_evidence",
+                    next_action="productivity_pilot_closure_report",
                 ),
             ),
         ),
@@ -634,7 +635,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="crm_atomic_account_onboarding_runtime",
@@ -665,7 +666,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "note_body_forbidden",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="tasks_activities_runtime",
@@ -699,7 +700,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="time_tracking_runtime",
@@ -735,7 +736,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "approval_decisions_and_payroll_exports_deferred",
                     ),
-                    next_action="controlled_productivity_pilot_runtime_observation",
+                    next_action="productivity_pilot_closure_report",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",

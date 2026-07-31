@@ -948,7 +948,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "controlled_productivity_pilot_runtime_observation"
+    assert body["current_focus"] == "productivity_pilot_closure_report"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1344,7 +1344,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "controlled_productivity_pilot_runtime_observation"
+    assert body["current_focus"] == "productivity_pilot_closure_report"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1362,14 +1362,14 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
-        "controlled_productivity_pilot_runtime_observation",
+        "productivity_pilot_closure_report",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
         "mail_client_runtime",
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["controlled_productivity_pilot_runtime_observation"]["priority"] == "now"
+    assert items["productivity_pilot_closure_report"]["priority"] == "now"
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
     assert items["full_office_suite_client"]["deferred"] is True

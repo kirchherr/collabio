@@ -65,4 +65,6 @@ Both tables use forced RLS, tenant-scoped `SELECT`/`INSERT`, explicit no-update/
 5. Close the deployment switch at expiry or immediately on a control breach.
 6. Verify backup integrity, isolated PostgreSQL restore, exact-version object restore, and the backend completion gate.
 
-The next boundary is a closure report that proves the switch is closed and binds the observed window to refreshed backup and restore evidence. It must not auto-delete or rewrite pilot, business, or audit records.
+The controlled development execution from 2026-07-31 is recorded in `PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md`. It proves all seven operations, immediate kill-switch closure, and refreshed isolated restore evidence without claiming a real-user or production pilot.
+
+The next boundary is a tenant-scoped, append-only closure report that proves the switch is closed and binds the observed window to its observation manifest, domain receipts, and refreshed backup and restore evidence. It must not auto-delete or rewrite pilot, business, or audit records.
