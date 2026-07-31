@@ -253,11 +253,7 @@ def test_closure_report_requires_four_eyes_and_exact_restore_counts() -> None:
         )
 
     mismatched = command.model_copy(
-        update={
-            "recovery_evidence": command.recovery_evidence.model_copy(
-                update={"restored_observation_count": 8}
-            )
-        }
+        update={"recovery_evidence": command.recovery_evidence.model_copy(update={"restored_observation_count": 8})}
     )
     with pytest.raises(ProductivityPilotClosureConflict, match="recovery evidence counts"):
         service.close(user_context=_closure_actor(), command=mismatched)

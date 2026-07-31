@@ -369,11 +369,7 @@ class InMemoryProductivityPilotRuntimeWindowStore:
     ) -> tuple[ProductivityPilotRuntimeObservation, ...]:
         return tuple(
             sorted(
-                (
-                    item
-                    for item in self.observations
-                    if item.tenant_id == tenant_id and item.window_id == window_id
-                ),
+                (item for item in self.observations if item.tenant_id == tenant_id and item.window_id == window_id),
                 key=lambda item: (item.observed_at_utc, item.evidence_hash),
             )
         )

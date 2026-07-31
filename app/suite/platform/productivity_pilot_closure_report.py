@@ -336,9 +336,7 @@ class InMemoryProductivityPilotDomainReceiptStore:
         del tenant_id
         effective = _utc(effective_at_utc)
         closed = _utc(closed_at_utc)
-        return tuple(
-            item for item in self.receipts if effective <= _utc(item.committed_at_utc) <= closed
-        )
+        return tuple(item for item in self.receipts if effective <= _utc(item.committed_at_utc) <= closed)
 
 
 class PgProductivityPilotDomainReceiptStore:
@@ -401,9 +399,7 @@ class ProductivityPilotClosureReportStore(Protocol):
 
     def current(self, *, tenant_id: str) -> ProductivityPilotClosureReport | None: ...
 
-    def for_idempotency(
-        self, *, tenant_id: str, idempotency_key_hash: str
-    ) -> ProductivityPilotClosureReport | None: ...
+    def for_idempotency(self, *, tenant_id: str, idempotency_key_hash: str) -> ProductivityPilotClosureReport | None: ...
 
 
 class InMemoryProductivityPilotClosureReportStore:
@@ -425,9 +421,7 @@ class InMemoryProductivityPilotClosureReportStore:
     def current(self, *, tenant_id: str) -> ProductivityPilotClosureReport | None:
         return next((item for item in reversed(self.records) if item.tenant_id == tenant_id), None)
 
-    def for_idempotency(
-        self, *, tenant_id: str, idempotency_key_hash: str
-    ) -> ProductivityPilotClosureReport | None:
+    def for_idempotency(self, *, tenant_id: str, idempotency_key_hash: str) -> ProductivityPilotClosureReport | None:
         return next(
             (
                 item
@@ -513,9 +507,7 @@ class PgProductivityPilotClosureReportStore:
     def current(self, *, tenant_id: str) -> ProductivityPilotClosureReport | None:
         return self._one(tenant_id=tenant_id, where_sql="tenant_id = %s", value=tenant_id)
 
-    def for_idempotency(
-        self, *, tenant_id: str, idempotency_key_hash: str
-    ) -> ProductivityPilotClosureReport | None:
+    def for_idempotency(self, *, tenant_id: str, idempotency_key_hash: str) -> ProductivityPilotClosureReport | None:
         return self._one(tenant_id=tenant_id, where_sql="idempotency_key_hash = %s", value=idempotency_key_hash)
 
     def _one(self, *, tenant_id: str, where_sql: str, value: str) -> ProductivityPilotClosureReport | None:

@@ -1880,13 +1880,9 @@ def build_app() -> FastAPI:
                 "domain_receipt_manifest_hash": response.domain_receipt_manifest_hash,
                 "domain_receipt_count": len(response.domain_receipts),
                 "backup_sha256": response.recovery_evidence.backup_sha256,
-                "postgres_restore_drill_report_hash": (
-                    response.recovery_evidence.postgres_restore_drill_report_hash
-                ),
+                "postgres_restore_drill_report_hash": (response.recovery_evidence.postgres_restore_drill_report_hash),
                 "backend_foundation_gate_hash": response.recovery_evidence.backend_foundation_gate_hash,
-                "business_backend_release_gate_hash": (
-                    response.recovery_evidence.business_backend_release_gate_hash
-                ),
+                "business_backend_release_gate_hash": (response.recovery_evidence.business_backend_release_gate_hash),
                 "command_hash": response.command_hash,
                 "idempotency_key_hash": response.idempotency_key_hash,
                 "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
