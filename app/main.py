@@ -794,6 +794,14 @@ from suite.platform.productivity_pilot_admission import (
     build_default_productivity_pilot_admission_record_store,
     build_default_productivity_pilot_preflight_store,
 )
+from suite.platform.productivity_pilot_closure_report import (
+    ProductivityPilotClosureCommand,
+    ProductivityPilotClosureConflict,
+    ProductivityPilotClosureReport,
+    ProductivityPilotClosureService,
+    build_default_productivity_pilot_closure_report_store,
+    build_default_productivity_pilot_domain_receipt_store,
+)
 from suite.platform.productivity_pilot_runtime_window import (
     ProductivityPilotRuntimeWindow,
     ProductivityPilotRuntimeWindowCommand,
@@ -1579,6 +1587,15 @@ def build_app() -> FastAPI:
         runtime_window_store=productivity_pilot_runtime_window_store,
         runtime_enabled=productivity_pilot_runtime_enabled(),
     )
+    productivity_pilot_domain_receipt_store = build_default_productivity_pilot_domain_receipt_store()
+    productivity_pilot_closure_report_store = build_default_productivity_pilot_closure_report_store()
+    productivity_pilot_closure_service = ProductivityPilotClosureService(
+        start_authorization_store=productivity_pilot_start_authorization_store,
+        runtime_window_store=productivity_pilot_runtime_window_store,
+        domain_receipt_store=productivity_pilot_domain_receipt_store,
+        closure_report_store=productivity_pilot_closure_report_store,
+        runtime_enabled=productivity_pilot_runtime_enabled(),
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1821,6 +1838,88 @@ def build_app() -> FastAPI:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Productivity pilot runtime window evidence is invalid",
+            ) from exc
+
+    @app.post(
+        "/v1/platform/productivity-pilot/closure-reports",
+        response_model=ProductivityPilotClosureReport,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def close_productivity_pilot(
+        command: ProductivityPilotClosureCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductivityPilotClosureReport:
+        service: ProductivityPilotClosureService = request.app.state.productivity_pilot_closure_service
+        try:
+            response = service.close(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except ProductivityPilotClosureConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.closed",
+            source_object_ids=[
+                f"productivity_pilot_runtime_window:{response.runtime_window_evidence_hash}",
+                f"productivity_pilot_observation_manifest:{response.observation_manifest_hash}",
+                f"productivity_pilot_domain_receipt_manifest:{response.domain_receipt_manifest_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "closure_id": response.closure_id,
+                "window_id": response.window_id,
+                "authorization_id": response.authorization_id,
+                "runtime_window_evidence_hash": response.runtime_window_evidence_hash,
+                "start_authorization_evidence_hash": response.start_authorization_evidence_hash,
+                "route_scope_hash": response.route_scope_hash,
+                "observation_manifest_hash": response.observation_manifest_hash,
+                "observation_count": response.observation_count,
+                "distinct_principal_hash_count": response.distinct_principal_hash_count,
+                "domain_receipt_manifest_hash": response.domain_receipt_manifest_hash,
+                "domain_receipt_count": len(response.domain_receipts),
+                "backup_sha256": response.recovery_evidence.backup_sha256,
+                "postgres_restore_drill_report_hash": (
+                    response.recovery_evidence.postgres_restore_drill_report_hash
+                ),
+                "backend_foundation_gate_hash": response.recovery_evidence.backend_foundation_gate_hash,
+                "business_backend_release_gate_hash": (
+                    response.recovery_evidence.business_backend_release_gate_hash
+                ),
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "closed_at_utc": response.closed_at_utc.isoformat(),
+                "runtime_switch_closed": response.runtime_switch_closed,
+                "exact_route_observations_verified": response.exact_route_observations_verified,
+                "designated_principals_verified": response.designated_principals_verified,
+                "domain_receipts_verified": response.domain_receipts_verified,
+                "recovery_evidence_verified": response.recovery_evidence_verified,
+                "records_preserved": response.records_preserved,
+                "idempotent_replay": response.idempotent_replay,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/productivity-pilot/closure-reports/current",
+        response_model=ProductivityPilotClosureReport | None,
+    )
+    def get_current_productivity_pilot_closure_report(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductivityPilotClosureReport | None:
+        service: ProductivityPilotClosureService = request.app.state.productivity_pilot_closure_service
+        try:
+            return service.current(tenant_id=context.user_context.tenant_id)
+        except ProductivityPilotClosureConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Productivity pilot closure report evidence is invalid",
             ) from exc
 
     @app.get("/workspace", response_class=FileResponse)
@@ -21862,6 +21961,9 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_start_authorization_service = productivity_pilot_start_authorization_service
     app.state.productivity_pilot_runtime_window_store = productivity_pilot_runtime_window_store
     app.state.productivity_pilot_runtime_window_service = productivity_pilot_runtime_window_service
+    app.state.productivity_pilot_domain_receipt_store = productivity_pilot_domain_receipt_store
+    app.state.productivity_pilot_closure_report_store = productivity_pilot_closure_report_store
+    app.state.productivity_pilot_closure_service = productivity_pilot_closure_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

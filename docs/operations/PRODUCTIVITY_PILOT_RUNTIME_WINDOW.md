@@ -67,4 +67,4 @@ Both tables use forced RLS, tenant-scoped `SELECT`/`INSERT`, explicit no-update/
 
 The controlled development execution from 2026-07-31 is recorded in `PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md`. It proves all seven operations, immediate kill-switch closure, and refreshed isolated restore evidence without claiming a real-user or production pilot.
 
-The next boundary is a tenant-scoped, append-only closure report that proves the switch is closed and binds the observed window to its observation manifest, domain receipts, and refreshed backup and restore evidence. It must not auto-delete or rewrite pilot, business, or audit records.
+The tenant-scoped, append-only closure boundary is implemented as `productivity_pilot_closure_report.v1`. It proves the switch is closed and binds the observed window to its observation manifest, domain receipts, and refreshed backup and restore evidence without deleting or rewriting pilot, business, or audit records. See `docs/operations/PRODUCTIVITY_PILOT_CLOSURE_REPORT.md`.

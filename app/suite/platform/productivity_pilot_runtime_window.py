@@ -289,6 +289,16 @@ def build_productivity_pilot_runtime_observation_hash(record: ProductivityPilotR
     return _canonical_hash(record.model_dump(mode="json", exclude={"evidence_hash"}))
 
 
+def build_productivity_pilot_principal_observation_hash(*, tenant_id: str, principal_id: str) -> str:
+    return _canonical_hash(
+        {
+            "schema_version": "productivity_pilot_principal_observation.v1",
+            "tenant_id": tenant_id,
+            "principal_id": principal_id,
+        }
+    )
+
+
 class ProductivityPilotRuntimeWindowStore(Protocol):
     def append_window(self, record: ProductivityPilotRuntimeWindow) -> ProductivityPilotRuntimeWindow: ...
 
@@ -301,6 +311,10 @@ class ProductivityPilotRuntimeWindowStore(Protocol):
     def append_observation(
         self, record: ProductivityPilotRuntimeObservation
     ) -> ProductivityPilotRuntimeObservation: ...
+
+    def observations_for_window(
+        self, *, tenant_id: str, window_id: str
+    ) -> tuple[ProductivityPilotRuntimeObservation, ...]: ...
 
 
 class InMemoryProductivityPilotRuntimeWindowStore:
@@ -349,6 +363,20 @@ class InMemoryProductivityPilotRuntimeWindowStore:
             raise ProductivityPilotRuntimeWindowConflict("productivity pilot runtime observation already exists")
         self.observations.append(record)
         return record
+
+    def observations_for_window(
+        self, *, tenant_id: str, window_id: str
+    ) -> tuple[ProductivityPilotRuntimeObservation, ...]:
+        return tuple(
+            sorted(
+                (
+                    item
+                    for item in self.observations
+                    if item.tenant_id == tenant_id and item.window_id == window_id
+                ),
+                key=lambda item: (item.observed_at_utc, item.evidence_hash),
+            )
+        )
 
 
 class PgProductivityPilotRuntimeWindowStore:
@@ -472,6 +500,25 @@ class PgProductivityPilotRuntimeWindowStore:
                 "productivity pilot runtime observation already exists"
             ) from exc
         return record
+
+    def observations_for_window(
+        self, *, tenant_id: str, window_id: str
+    ) -> tuple[ProductivityPilotRuntimeObservation, ...]:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT observation_record
+                FROM collabio.productivity_pilot_runtime_observations
+                WHERE tenant_id = %s AND window_id = %s
+                ORDER BY observed_at_utc, evidence_hash
+                """,
+                (tenant_id, window_id),
+            ).fetchall()
+        records = tuple(ProductivityPilotRuntimeObservation.model_validate(row[0]) for row in rows)
+        if any(build_productivity_pilot_runtime_observation_hash(item) != item.evidence_hash for item in records):
+            raise ValueError("persisted productivity pilot runtime observation evidence hash is invalid")
+        return records
 
 
 class ProductivityPilotRuntimeWindowService:
@@ -632,12 +679,9 @@ class ProductivityPilotRuntimeWindowService:
                 status_code=403,
                 window=window,
             )
-        principal_id_hash = _canonical_hash(
-            {
-                "schema_version": "productivity_pilot_principal_observation.v1",
-                "tenant_id": tenant_id,
-                "principal_id": principal_id,
-            }
+        principal_id_hash = build_productivity_pilot_principal_observation_hash(
+            tenant_id=tenant_id,
+            principal_id=principal_id,
         )
         draft = ProductivityPilotRuntimeObservation(
             tenant_id=tenant_id,
