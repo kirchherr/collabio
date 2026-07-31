@@ -304,6 +304,9 @@ class ProductivityPilotClosureReport(BaseModel):
         return self
 
 
+ProductivityPilotClosureReportResult = ProductivityPilotClosureReport | None
+
+
 @dataclass(frozen=True)
 class ProductivityPilotDomainReceipt:
     operation: str
@@ -399,9 +402,7 @@ class ProductivityPilotClosureReportStore(Protocol):
 
     def current(self, *, tenant_id: str) -> ProductivityPilotClosureReport | None: ...
 
-    def for_idempotency(
-        self, *, tenant_id: str, idempotency_key_hash: str
-    ) -> ProductivityPilotClosureReport | None: ...  # noqa: E501
+    def for_idempotency(self, *, tenant_id: str, idempotency_key_hash: str) -> ProductivityPilotClosureReportResult: ...
 
 
 class InMemoryProductivityPilotClosureReportStore:
