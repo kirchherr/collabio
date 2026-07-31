@@ -107,6 +107,7 @@ Bereits umgesetzt:
 - [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; dieser Schritt allein startet keinen Pilot-Traffic.
 - [x] Tenant- und routenspezifische Traffic-Scope-Erzwingung append-only an Admission, Preflight und Policy binden; Default Deny blockiert alle verwalteten Pilot-Routen bis zur separaten Start-Autorisierung.
 - [x] Explizite, maximal acht Stunden gueltige Start-Autorisierung mit Vier-Augen-Prinzip, vollstaendiger Monitoring-/Rollback-Evidenz, automatischem Ablauf und default-closed Deployment-Kill-Switch an Admission, Preflight, Policy und Traffic-Scope binden.
+- [x] Designated-User-Runtime-Window mit separatem Tenant-Admin-Vier-Augen-Schritt, exakter Start-/Route-Bindung und append-only metadata-only Zugriffsbeobachtungen erzwingen.
 - [ ] Fachliches Productivity-Pilot-Laufzeitfenster mit designierten Pilotnutzern auf genau sieben Operationen beobachten, danach Kill-Switch schliessen und Backup-/Restore-Evidenz erneuern.
 
 Noch nicht umgesetzt:
@@ -1562,7 +1563,8 @@ Enthaelt:
 - [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.
 - [x] Productivity-Pilot-Startfreigabe operational: Migration `0063`, tenant-sicheres append-only RLS-Ledger, Security-Admin-Vier-Augen-Prinzip, exakt fuenf Monitoring- und vier Rollback-Nachweise, maximal acht Stunden, per Request gepruefter Ablauf und default-closed Runtime-Kill-Switch.
 - [x] Technischer Runtime-Proof geschlossen: vier freigegebene Reads `200`, Fremdroute `403`, nach Kill-Switch `423`, Business-Row-Counts unveraendert, Start-Evidenz `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7`, 63 Migrationen, 70 Tabellen, exakter isolierter Restore und Backend-Gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c`.
-- [ ] Naechster Fokus: fachliches Runtime-Beobachtungsfenster mit designierten Pilotnutzern auf den sieben freigegebenen Operationen fahren; der Kill-Switch bleibt bis dahin geschlossen.
+- [x] Technische Runtime-Window-Grenze geschlossen: Migration `0064`, tenant-sichere append-only RLS-Ledger fuer designierte Nutzer und inhaltsfreie Zugriffsbeobachtungen, separates Tenant-Admin-Vier-Augen-Prinzip sowie per Request gepruefte Nutzer-, Zeit-, Start- und Routenbindung.
+- [ ] Naechster Fokus: fachliches Runtime-Beobachtungsfenster mit real designierten Pilotnutzern auf den sieben freigegebenen Operationen fahren, danach Kill-Switch schliessen und Backup-/Restore-Evidenz erneuern.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

@@ -141,16 +141,32 @@ PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_APPEND_ONLY_TRIGGERS_BY_TABLE = {
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES = {
     "collabio.productivity_pilot_start_authorizations",
+    "collabio.productivity_pilot_runtime_windows",
+    "collabio.productivity_pilot_runtime_observations",
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE = {
     "collabio.productivity_pilot_start_authorizations": {
         "productivity_pilot_start_authorizations_no_update",
         "productivity_pilot_start_authorizations_no_hard_delete",
     },
+    "collabio.productivity_pilot_runtime_windows": {
+        "productivity_pilot_runtime_windows_no_update",
+        "productivity_pilot_runtime_windows_no_hard_delete",
+    },
+    "collabio.productivity_pilot_runtime_observations": {
+        "productivity_pilot_runtime_observations_no_update",
+        "productivity_pilot_runtime_observations_no_hard_delete",
+    },
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     "collabio.productivity_pilot_start_authorizations": {
         "productivity_pilot_start_authorizations_append_only",
+    },
+    "collabio.productivity_pilot_runtime_windows": {
+        "productivity_pilot_runtime_windows_append_only",
+    },
+    "collabio.productivity_pilot_runtime_observations": {
+        "productivity_pilot_runtime_observations_append_only",
     },
 }
 

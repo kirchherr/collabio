@@ -159,8 +159,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
             title="Kontrollierten Productivity Pilot beobachten",
             summary=(
                 "Preflight, Human-Admission, Default-Deny-Traffic-Scope und zeitlich begrenzte Start-Autorisierung "
-                "sind operational. Jetzt folgt ein kontrolliertes Laufzeitfenster mit kontinuierlicher Beobachtung, "
-                "automatischem Ablauf und geschlossenem Kill-Switch nach dem Nachweis."
+                "und das designated-user Runtime-Window sind operational. Jetzt folgt die fachliche Nutzung mit "
+                "kontinuierlicher Beobachtung, automatischem Ablauf und geschlossenem Kill-Switch nach dem Nachweis."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
@@ -168,6 +168,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "productivity_pilot_admission",
                 "productivity_pilot_traffic_scope_enforcement",
                 "productivity_pilot_start_authorization",
+                "productivity_pilot_runtime_window",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
@@ -177,13 +178,14 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="active_time_bounded_start_authorization_live_monitoring_and_rollback_evidence_with_kill_switch",
+            readiness_gate="active_designated_user_runtime_window_live_monitoring_and_rollback_evidence_with_kill_switch",
             decision="must_now_to_prove_the_authorized_productivity_slice_under_live_controls_before_broader_product_work",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md",
                 "docs/operations/PRODUCTIVITY_PILOT_TRAFFIC_SCOPE.md",
                 "docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md",
+                "docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/operations/BACKUP_FAILOVER.md",

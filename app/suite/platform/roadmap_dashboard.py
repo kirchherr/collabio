@@ -139,7 +139,7 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="controlled_productivity_pilot_runtime_observation",
-        current_foundation_state="productivity_pilot_start_authorization_operational_technical_runtime_proof_complete_designated_user_observation_next",
+        current_foundation_state="productivity_pilot_runtime_window_enforcement_operational_designated_user_pilot_execution_next",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
@@ -408,6 +408,38 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "GET /v1/time-tracking/approvals",
                     ),
                     next_action="controlled_productivity_pilot_runtime_observation",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_runtime_window",
+                    title="Productivity Pilot Runtime Window",
+                    summary=(
+                        "Ein separates Runtime-Window beschraenkt die gueltige Startfreigabe auf explizit "
+                        "designierte Pilotnutzer. Jeder zugelassene Zugriff erzeugt eine tenant-sichere, "
+                        "append-only und inhaltsfreie Beobachtung."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_runtime_window.py",
+                        "app/suite/persistence/migrations/0064_productivity_pilot_runtime_window.sql",
+                        "tests/test_productivity_pilot_start_authorization.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "tenant_admin_runtime_operator_required",
+                        "four_eyes_distinct_from_security_authorizer",
+                        "designated_principal_allowlist_required",
+                        "exact_start_authorization_and_route_hash_binding",
+                        "metadata_only_authorization_observation",
+                        "deployment_kill_switch_remains_authoritative",
+                        "append_only_rls_and_restore_controls_required",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/runtime-windows",
+                        "/v1/platform/productivity-pilot/runtime-windows/current",
+                    ),
+                    next_action="run_designated_user_observation_then_close_kill_switch_and_refresh_restore_evidence",
                 ),
             ),
         ),

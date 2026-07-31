@@ -794,6 +794,13 @@ from suite.platform.productivity_pilot_admission import (
     build_default_productivity_pilot_admission_record_store,
     build_default_productivity_pilot_preflight_store,
 )
+from suite.platform.productivity_pilot_runtime_window import (
+    ProductivityPilotRuntimeWindow,
+    ProductivityPilotRuntimeWindowCommand,
+    ProductivityPilotRuntimeWindowConflict,
+    ProductivityPilotRuntimeWindowService,
+    build_default_productivity_pilot_runtime_window_store,
+)
 from suite.platform.productivity_pilot_start_authorization import (
     ProductivityPilotStartAuthorization,
     ProductivityPilotStartAuthorizationCommand,
@@ -1228,6 +1235,62 @@ def require_productivity_pilot_traffic_scope(
             status_code=decision.http_status_code,
             detail=decision.blocking_reason,
         )
+    if not decision.pilot_traffic_managed:
+        return decision
+    if decision.start_authorization_evidence_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Productivity pilot start authorization evidence is missing",
+        )
+    runtime_service: ProductivityPilotRuntimeWindowService = request.app.state.productivity_pilot_runtime_window_service
+    try:
+        runtime_decision = runtime_service.authorize_operation(
+            tenant_id=context.user_context.tenant_id,
+            principal_id=context.user_context.user_id,
+            operation=operation,
+            start_authorization_evidence_hash=decision.start_authorization_evidence_hash,
+        )
+    except ProductivityPilotRuntimeWindowConflict as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Productivity pilot runtime window evidence is invalid",
+        ) from exc
+    runtime_source_object_ids = [f"productivity_pilot_start_authorization:{decision.start_authorization_evidence_hash}"]
+    if runtime_decision.window_evidence_hash:
+        runtime_source_object_ids.append(f"productivity_pilot_runtime_window:{runtime_decision.window_evidence_hash}")
+    if not runtime_decision.authorization_allowed:
+        request.app.state.audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.runtime_access_denied",
+            source_object_ids=runtime_source_object_ids,
+            metadata={
+                "surface": "platform_api",
+                "operation": operation,
+                "blocking_reason": runtime_decision.blocking_reason,
+                "runtime_window_verified": runtime_decision.runtime_window_verified,
+                "designated_principal_verified": runtime_decision.designated_principal_verified,
+                "window_evidence_hash": runtime_decision.window_evidence_hash,
+                "content_included": runtime_decision.content_included,
+            },
+        )
+        raise HTTPException(
+            status_code=runtime_decision.http_status_code,
+            detail=runtime_decision.blocking_reason,
+        )
+    request.app.state.audit_logger.record(
+        user_context=context.user_context,
+        event_type="platform.productivity_pilot.runtime_access_observed",
+        source_object_ids=runtime_source_object_ids,
+        metadata={
+            "surface": "platform_api",
+            "operation": operation,
+            "runtime_window_verified": runtime_decision.runtime_window_verified,
+            "designated_principal_verified": runtime_decision.designated_principal_verified,
+            "window_evidence_hash": runtime_decision.window_evidence_hash,
+            "observation_evidence_hash": runtime_decision.observation_evidence_hash,
+            "content_included": runtime_decision.content_included,
+        },
+    )
     return decision
 
 
@@ -1510,6 +1573,12 @@ def build_app() -> FastAPI:
         start_authorization_store=productivity_pilot_start_authorization_store,
         runtime_enabled=productivity_pilot_runtime_enabled(),
     )
+    productivity_pilot_runtime_window_store = build_default_productivity_pilot_runtime_window_store()
+    productivity_pilot_runtime_window_service = ProductivityPilotRuntimeWindowService(
+        start_authorization_store=productivity_pilot_start_authorization_store,
+        runtime_window_store=productivity_pilot_runtime_window_store,
+        runtime_enabled=productivity_pilot_runtime_enabled(),
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1692,6 +1761,67 @@ def build_app() -> FastAPI:
             },
         )
         return response
+
+    @app.post(
+        "/v1/platform/productivity-pilot/runtime-windows",
+        response_model=ProductivityPilotRuntimeWindow,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def activate_productivity_pilot_runtime_window(
+        command: ProductivityPilotRuntimeWindowCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRuntimeWindow:
+        service: ProductivityPilotRuntimeWindowService = request.app.state.productivity_pilot_runtime_window_service
+        try:
+            response = service.activate(user_context=context.user_context, command=command)
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except ProductivityPilotRuntimeWindowConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.runtime_window_activated",
+            source_object_ids=[f"productivity_pilot_start_authorization:{response.start_authorization_evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "window_id": response.window_id,
+                "authorization_id": response.authorization_id,
+                "start_authorization_evidence_hash": response.start_authorization_evidence_hash,
+                "designated_principal_manifest_hash": response.designated_principal_manifest_hash,
+                "designated_principal_count": len(response.designated_principal_ids),
+                "allowed_api_operation_count": len(response.allowed_api_operations),
+                "route_scope_hash": response.route_scope_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "effective_at_utc": response.effective_at_utc.isoformat(),
+                "expires_at_utc": response.expires_at_utc.isoformat(),
+                "idempotent_replay": response.idempotent_replay,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/productivity-pilot/runtime-windows/current",
+        response_model=ProductivityPilotRuntimeWindow | None,
+    )
+    def get_current_productivity_pilot_runtime_window(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRuntimeWindow | None:
+        service: ProductivityPilotRuntimeWindowService = request.app.state.productivity_pilot_runtime_window_service
+        try:
+            return service.current(tenant_id=context.user_context.tenant_id)
+        except ProductivityPilotRuntimeWindowConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Productivity pilot runtime window evidence is invalid",
+            ) from exc
 
     @app.get("/workspace", response_class=FileResponse)
     def workspace_shell() -> FileResponse:
@@ -21730,6 +21860,8 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_traffic_scope_service = productivity_pilot_traffic_scope_service
     app.state.productivity_pilot_start_authorization_store = productivity_pilot_start_authorization_store
     app.state.productivity_pilot_start_authorization_service = productivity_pilot_start_authorization_service
+    app.state.productivity_pilot_runtime_window_store = productivity_pilot_runtime_window_store
+    app.state.productivity_pilot_runtime_window_service = productivity_pilot_runtime_window_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

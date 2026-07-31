@@ -32,11 +32,22 @@ from suite.platform.productivity_pilot_admission import (
     ProductivityPilotAdmissionRecord,
     ProductivityPilotAdmissionService,
 )
+from suite.platform.productivity_pilot_runtime_window import (
+    PRODUCTIVITY_PILOT_RUNTIME_WINDOW_CONFIRMATION_STATEMENT,
+    InMemoryProductivityPilotRuntimeWindowStore,
+    PgProductivityPilotRuntimeWindowStore,
+    ProductivityPilotRuntimeWindowCommand,
+    ProductivityPilotRuntimeWindowConflict,
+    ProductivityPilotRuntimeWindowService,
+    build_productivity_pilot_runtime_observation_hash,
+    build_productivity_pilot_runtime_window_hash,
+)
 from suite.platform.productivity_pilot_start_authorization import (
     PRODUCTIVITY_PILOT_START_AUTHORIZATION_CONFIRMATION_STATEMENT,
     InMemoryProductivityPilotStartAuthorizationStore,
     PgProductivityPilotStartAuthorizationStore,
     ProductivityPilotControlEvidence,
+    ProductivityPilotStartAuthorization,
     ProductivityPilotStartAuthorizationCommand,
     ProductivityPilotStartAuthorizationConflict,
     ProductivityPilotStartAuthorizationService,
@@ -236,6 +247,32 @@ def _command(
     )
 
 
+def _runtime_command(
+    *,
+    start: ProductivityPilotStartAuthorization,
+    suffix: str = "one",
+    activated_at: datetime = NOW,
+    effective_at: datetime = NOW,
+    expires_at: datetime = NOW + timedelta(hours=1),
+    designated_principal_ids: tuple[str, ...] = ("pilot-reader",),
+) -> ProductivityPilotRuntimeWindowCommand:
+    return ProductivityPilotRuntimeWindowCommand(
+        window_id=f"pilot-runtime-window-{suffix}",
+        authorization_id=start.authorization_id,
+        start_authorization_evidence_hash=start.evidence_hash,
+        designated_principal_ids=designated_principal_ids,
+        idempotency_key_ref=f"request:pilot-runtime-window-{suffix}",
+        change_request_ref=f"change:pilot-runtime-window-{suffix}",
+        human_confirmation_reference=f"approval:pilot-runtime-window-{suffix}",
+        operations_owner_ref="principal:pilot-operations-owner",
+        audit_chain_ref=f"audit:pilot-runtime-window-{suffix}",
+        human_confirmation_statement=PRODUCTIVITY_PILOT_RUNTIME_WINDOW_CONFIRMATION_STATEMENT,
+        activated_at_utc=activated_at,
+        effective_at_utc=effective_at,
+        expires_at_utc=expires_at,
+    )
+
+
 def _memory_service(
     *,
     runtime_enabled: bool = True,
@@ -392,6 +429,90 @@ def test_start_authorization_opens_only_exact_routes_until_expiry() -> None:
     assert disabled.blocking_reason == "productivity_pilot_runtime_disabled"
 
 
+def test_runtime_window_enforces_designated_principals_and_records_metadata_only_observations() -> None:
+    start_service, policy, gate, admission, traffic = _memory_service()
+    start = start_service.authorize(
+        user_context=_user(user_id="pilot-security-admin", role="security-admin"),
+        command=_command(policy=policy, gate=gate, admission=admission, traffic=traffic),
+    )
+    store = InMemoryProductivityPilotRuntimeWindowStore()
+    service = ProductivityPilotRuntimeWindowService(
+        start_authorization_store=start_service.start_authorization_store,
+        runtime_window_store=store,
+        runtime_enabled=True,
+        clock=lambda: NOW,
+    )
+    command = _runtime_command(start=start)
+
+    before_window = service.authorize_operation(
+        tenant_id="tenant-demo",
+        principal_id="pilot-reader",
+        operation="GET /v1/tasks/items",
+        start_authorization_evidence_hash=start.evidence_hash,
+    )
+    assert before_window.authorization_allowed is False
+    assert before_window.blocking_reason == "productivity_pilot_runtime_window_required"
+
+    window = service.activate(
+        user_context=_user(user_id="pilot-runtime-admin", role="tenant-admin"),
+        command=command,
+    )
+    replay = service.activate(
+        user_context=_user(user_id="pilot-runtime-admin", role="tenant-admin"),
+        command=command,
+    )
+    assert window.evidence_hash == build_productivity_pilot_runtime_window_hash(window)
+    assert replay.idempotent_replay is True
+    assert replay.evidence_hash == window.evidence_hash
+    assert window.designated_principal_ids == ("pilot-reader",)
+    assert window.content_included is False
+
+    outsider = service.authorize_operation(
+        tenant_id="tenant-demo",
+        principal_id="other-reader",
+        operation="GET /v1/tasks/items",
+        start_authorization_evidence_hash=start.evidence_hash,
+    )
+    assert outsider.authorization_allowed is False
+    assert outsider.blocking_reason == "principal_not_designated_for_productivity_pilot"
+    assert store.observations == []
+
+    allowed = service.authorize_operation(
+        tenant_id="tenant-demo",
+        principal_id="pilot-reader",
+        operation="GET /v1/tasks/items",
+        start_authorization_evidence_hash=start.evidence_hash,
+    )
+    assert allowed.authorization_allowed is True
+    assert allowed.window_evidence_hash == window.evidence_hash
+    assert len(store.observations) == 1
+    assert store.observations[0].evidence_hash == build_productivity_pilot_runtime_observation_hash(
+        store.observations[0]
+    )
+    assert "pilot-reader" not in store.observations[0].model_dump_json()
+
+    with pytest.raises(ProductivityPilotRuntimeWindowConflict, match="four-eyes"):
+        ProductivityPilotRuntimeWindowService(
+            start_authorization_store=start_service.start_authorization_store,
+            runtime_window_store=InMemoryProductivityPilotRuntimeWindowStore(),
+            runtime_enabled=True,
+            clock=lambda: NOW,
+        ).activate(
+            user_context=_user(user_id="pilot-security-admin", role="tenant-admin"),
+            command=_runtime_command(start=start, suffix="four-eyes"),
+        )
+
+    service.runtime_enabled = False
+    disabled = service.authorize_operation(
+        tenant_id="tenant-demo",
+        principal_id="pilot-reader",
+        operation="GET /v1/tasks/items",
+        start_authorization_evidence_hash=start.evidence_hash,
+    )
+    assert disabled.authorization_allowed is False
+    assert disabled.blocking_reason == "productivity_pilot_runtime_disabled"
+
+
 def test_start_authorization_api_opens_scoped_read_route_and_audits_hashes_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -481,6 +602,37 @@ def test_start_authorization_api_opens_scoped_read_route_and_audits_hashes_only(
     assert event.metadata["monitoring_control_count"] == 5
     assert event.metadata["rollback_control_count"] == 4
 
+    start = ProductivityPilotStartAuthorization.model_validate(response.json())
+    runtime_now = datetime.now(UTC)
+    runtime_command = _runtime_command(
+        start=start,
+        suffix="api",
+        activated_at=runtime_now,
+        effective_at=runtime_now,
+        expires_at=command.expires_at_utc,
+    )
+    runtime_headers = {
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "pilot-runtime-admin",
+        "X-Role-Ids": "tenant-admin",
+    }
+    runtime_response = client.post(
+        "/v1/platform/productivity-pilot/runtime-windows",
+        headers=runtime_headers,
+        json=runtime_command.model_dump(mode="json"),
+    )
+    assert runtime_response.status_code == 201
+    assert runtime_response.json()["designated_principal_ids"] == ["pilot-reader"]
+
+    outsider_headers = {
+        "X-Tenant-Id": "tenant-demo",
+        "X-User-Id": "other-reader",
+        "X-Role-Ids": "knowledge-worker",
+    }
+    outsider = client.get("/v1/tasks/items", headers=outsider_headers)
+    assert outsider.status_code == 403
+    assert outsider.json()["detail"] == "principal_not_designated_for_productivity_pilot"
+
     reader_headers = {
         "X-Tenant-Id": "tenant-demo",
         "X-User-Id": "pilot-reader",
@@ -505,6 +657,22 @@ def test_productivity_pilot_start_authorization_migration_is_append_only_and_ten
     assert "interval '8 hours'" in sql
     assert "grant select, insert on table collabio.productivity_pilot_start_authorizations" in sql
     assert "no business write is executed by this record" in sql
+
+
+def test_productivity_pilot_runtime_window_migration_is_append_only_and_tenant_scoped() -> None:
+    migration = get_migration("0064")
+    sql = " ".join(migration.sql().lower().split())
+
+    assert migration.module_id == "core"
+    assert "create table if not exists collabio.productivity_pilot_runtime_windows" in sql
+    assert "create table if not exists collabio.productivity_pilot_runtime_observations" in sql
+    assert sql.count("force row level security") == 2
+    assert "productivity_pilot_runtime_windows_append_only" in sql
+    assert "productivity_pilot_runtime_observations_append_only" in sql
+    assert "grant select, insert on table collabio.productivity_pilot_runtime_windows" in sql
+    assert "grant select, insert on table collabio.productivity_pilot_runtime_observations" in sql
+    assert "response_payload_observed" in sql
+    assert "business_payload_persisted" in sql
 
 
 def test_postgres_start_authorization_persists_authoritative_evidence_with_rls() -> None:
@@ -576,4 +744,48 @@ def test_postgres_start_authorization_persists_authoritative_evidence_with_rls()
                 WHERE tenant_id = %s AND authorization_id = %s
                 """,
                 (tenant_id, record.authorization_id),
+            )
+
+    runtime_store = PgProductivityPilotRuntimeWindowStore(database_dsn=authz_dsn)
+    runtime_service = ProductivityPilotRuntimeWindowService(
+        start_authorization_store=start_store,
+        runtime_window_store=runtime_store,
+        runtime_enabled=True,
+        clock=lambda: NOW,
+    )
+    window = runtime_service.activate(
+        user_context=_user(
+            tenant_id=tenant_id,
+            user_id="pilot-runtime-admin",
+            role="tenant-admin",
+        ),
+        command=_runtime_command(start=record, suffix=suffix),
+    )
+    decision = runtime_service.authorize_operation(
+        tenant_id=tenant_id,
+        principal_id="pilot-reader",
+        operation="GET /v1/tasks/items",
+        start_authorization_evidence_hash=record.evidence_hash,
+    )
+
+    assert runtime_store.current_window(tenant_id=tenant_id) == window
+    assert runtime_store.current_window(tenant_id="tenant-other") is None
+    assert decision.authorization_allowed is True
+    with psycopg.connect(authz_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+        observation_count = connection.execute(
+            "SELECT count(*) FROM collabio.productivity_pilot_runtime_observations WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchone()
+    assert observation_count == (1,)
+    with psycopg.connect(authz_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+        with pytest.raises(psycopg.Error):
+            connection.execute(
+                """
+                UPDATE collabio.productivity_pilot_runtime_windows
+                SET activated_by = 'tampered'
+                WHERE tenant_id = %s AND window_id = %s
+                """,
+                (tenant_id, window.window_id),
             )

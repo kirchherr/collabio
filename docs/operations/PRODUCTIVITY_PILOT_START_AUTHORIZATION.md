@@ -2,13 +2,13 @@
 
 ## Purpose
 
-`productivity_pilot_start_authorization.v1` is the final explicit control before managed productivity-pilot traffic may reach an already provisioned business slice. It binds one tenant, the authoritative preflight, human admission, traffic-scope enforcement, policy, monitoring evidence, rollback evidence, and a bounded time window.
+`productivity_pilot_start_authorization.v1` is the security approval boundary before a designated-user runtime window may admit managed productivity-pilot traffic to an already provisioned business slice. It binds one tenant, the authoritative preflight, human admission, traffic-scope enforcement, policy, monitoring evidence, rollback evidence, and a bounded time window.
 
 The authorization record is metadata-only and append-only. Creating it does not provision or activate a module, change a feature, perform a business write, run a destructive action, or call an external system.
 
 ## Default-Closed Runtime
 
-The deployment switch `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED` defaults to `0`. A start authorization can be created and used only while the switch is explicitly set to `1`. Closing the switch immediately returns `423 productivity_pilot_runtime_disabled` for managed in-scope traffic without deleting the authorization or business/audit evidence.
+The deployment switch `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED` defaults to `0`. A start authorization can be created and used only while the switch is explicitly set to `1`. Managed traffic additionally requires an active `productivity_pilot_runtime_window.v1` for the requesting principal. Closing the switch immediately returns `423 productivity_pilot_runtime_disabled` for managed in-scope traffic without deleting the authorization or business/audit evidence.
 
 The switch is independent from the database record. Restoring an authorization therefore never opens traffic by itself.
 
@@ -30,7 +30,7 @@ The confirmation body is hashed but never persisted in the authorization record 
 
 ## Exact Traffic Scope
 
-Only these operations can pass while the authorization and deployment switch are active:
+Only these operations can pass while the authorization, designated-user runtime window, and deployment switch are active:
 
 1. `POST /v1/crm/account-onboardings`
 2. `POST /v1/tasks/items`
@@ -76,11 +76,12 @@ The PostgreSQL restore drill verifies the table, policies, trigger, exact grants
 3. Provision only the approved tenant/module features through their existing admin gates.
 4. Set `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=1` for the controlled deployment window.
 5. Submit the start authorization with fresh monitoring and rollback evidence.
-6. Observe only the seven routes until expiry; do not broaden the policy during the window.
-7. Close the deployment switch after the proof or immediately on a control breach.
-8. Run backup verification, isolated PostgreSQL restore, exact-version object restore, and the backend completion gate.
+6. Activate a bounded designated-user runtime window as documented in `docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md`.
+7. Observe only the seven routes until expiry; do not broaden the policy during the window.
+8. Close the deployment switch after the proof or immediately on a control breach.
+9. Run backup verification, isolated PostgreSQL restore, exact-version object restore, and the backend completion gate.
 
-The next roadmap item is controlled runtime observation, not broader module or route expansion.
+The designated-user runtime observation boundary is implemented in `docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md`; the next operational step is a real bounded observation followed by kill-switch closure and refreshed restore evidence, not broader module or route expansion.
 
 ## Current Technical Runtime Proof
 
