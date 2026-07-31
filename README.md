@@ -75,7 +75,7 @@ docker compose up api
 
 The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
 
-The Compose stack includes PostgreSQL 18 with pgvector on configurable host port `SUITE_POSTGRES_PORT` (default `5433`). Runtime state uses `postgres18_data`; tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume.
+The Compose stack includes PostgreSQL 18 with pgvector on configurable host port `SUITE_POSTGRES_PORT` (default `5433`). Published ports bind to loopback by default; `SUITE_BIND_ADDRESS` must be set explicitly for reviewed network exposure. Runtime state uses `postgres18_data`; tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume.
 
 Local database backups are written to `./backups/`. `postgres-restore-drill` verifies the checksum and restore catalog, recreates an isolated PostgreSQL target, and compares migrations, schema, exact row counts, RLS policies, roles, and grants without emitting row content.
 
@@ -94,6 +94,8 @@ Health endpoint:
 ```text
 GET /health
 ```
+
+For a Docker runtime on a separate Linux host, use the SSH-only operating model in `docs/operations/REMOTE_DEVELOPMENT_HOST.md`.
 
 ## Security posture
 

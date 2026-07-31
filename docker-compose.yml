@@ -11,7 +11,7 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "${SUITE_POSTGRES_PORT:-5433}:5432"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres18_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
@@ -44,7 +44,7 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "${SUITE_POSTGRES_RESTORE_PORT:-55433}:5432"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_POSTGRES_RESTORE_PORT:-55433}:5432"
     volumes:
       - postgres18_restore_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
@@ -56,8 +56,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-collabio-minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
     ports:
-      - "${SUITE_MINIO_API_PORT:-29000}:9000"
-      - "${SUITE_MINIO_CONSOLE_PORT:-29001}:9001"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_API_PORT:-29000}:9000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_CONSOLE_PORT:-29001}:9001"
     volumes:
       - minio_data:/data
 
@@ -69,8 +69,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
       MINIO_ROOT_PASSWORD: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
     ports:
-      - "${SUITE_MINIO_RESTORE_API_PORT:-29100}:9000"
-      - "${SUITE_MINIO_RESTORE_CONSOLE_PORT:-29101}:9001"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_RESTORE_API_PORT:-29100}:9000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_RESTORE_CONSOLE_PORT:-29101}:9001"
     volumes:
       - minio_restore_data:/data
 
@@ -1494,7 +1494,7 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
     ports:
-      - "${SUITE_API_PORT:-8000}:8000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_API_PORT:-8000}:8000"
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
