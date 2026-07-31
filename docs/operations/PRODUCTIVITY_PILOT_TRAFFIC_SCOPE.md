@@ -41,9 +41,9 @@ Creation and denial events contain metadata and evidence hashes only. They never
 
 PostgreSQL backup and restore evidence must preserve exact row counts, forced RLS, append-only policies and trigger, foreign-key state, and exact role grants. `backend_foundation_completion_gate.v1` blocks when `productivity_pilot_traffic_scope_controls_verified=false`.
 
-The next independent control is explicit pilot start authorization. Until that record exists and is verified, all managed pilot traffic remains denied.
+The independent start control is implemented as `productivity_pilot_start_authorization.v1`. Managed in-scope traffic is allowed only while a matching, effective, unexpired record exists and the default-closed deployment runtime switch is open; out-of-scope routes remain denied. See `docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md`.
 
-## Current Runtime Proof
+## Pre-Start Runtime Proof
 
 The isolated development proof on 2026-07-30 completed with:
 
@@ -61,3 +61,7 @@ The isolated development proof on 2026-07-30 completed with:
 - pilot start and pilot business traffic still false.
 
 These hashes prove this development run only. Any policy, release, admission, tenant state, route scope, or recovery change requires fresh evidence.
+
+## Start Authorization Technical Proof
+
+On 2026-07-31, start authorization `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7` opened only the four approved read routes used by the technical proof (`200`) while `GET /v1/crm/accounts` remained denied (`403`). Business row counts stayed unchanged. Closing the runtime switch immediately returned the approved Task read to `423`. The exact authorization row was recovered on the isolated target under PostgreSQL restore report `sha256:0cec6b8bfea24eae57708ef3242b77f1866abb86666bdf67f25f45c1b3dc789f`.

@@ -65,6 +65,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "productivity_pilot_admission_rls_append_only_check" in postgres.integrity_checks
     assert "productivity_pilot_traffic_scope_hash_check" in postgres.integrity_checks
     assert "productivity_pilot_traffic_scope_rls_append_only_check" in postgres.integrity_checks
+    assert "productivity_pilot_start_authorization_hash_check" in postgres.integrity_checks
+    assert "productivity_pilot_start_authorization_rls_append_only_check" in postgres.integrity_checks
     assert postgres.restore_verification_gates == [
         "postgres_restore_drill_report.v1",
         "isolated_postgres_restore",
@@ -76,6 +78,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "productivity_pilot_preflight_gate.v1",
         "productivity_pilot_admission_record.v1",
         "productivity_pilot_traffic_scope_enforcement.v1",
+        "productivity_pilot_start_authorization.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
@@ -791,6 +794,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "business_backend_release_gate.v1" in runbook
     assert "productivity_pilot_preflight_gate.v1" in runbook
     assert "productivity_pilot_traffic_scope_enforcement.v1" in runbook
+    assert "productivity_pilot_start_authorization.v1" in runbook
     assert "Continuity Domains" in runbook
     assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook

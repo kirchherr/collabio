@@ -794,6 +794,14 @@ from suite.platform.productivity_pilot_admission import (
     build_default_productivity_pilot_admission_record_store,
     build_default_productivity_pilot_preflight_store,
 )
+from suite.platform.productivity_pilot_start_authorization import (
+    ProductivityPilotStartAuthorization,
+    ProductivityPilotStartAuthorizationCommand,
+    ProductivityPilotStartAuthorizationConflict,
+    ProductivityPilotStartAuthorizationService,
+    build_default_productivity_pilot_start_authorization_store,
+    productivity_pilot_runtime_enabled,
+)
 from suite.platform.productivity_pilot_traffic_scope import (
     ProductivityPilotTrafficDecision,
     ProductivityPilotTrafficScopeCommand,
@@ -1170,26 +1178,33 @@ def require_productivity_pilot_traffic_scope(
     route = request.scope.get("route")
     route_path = getattr(route, "path", request.url.path)
     operation = f"{request.method.upper()} {route_path}"
-    service: ProductivityPilotTrafficScopeService = request.app.state.productivity_pilot_traffic_scope_service
+    service: ProductivityPilotStartAuthorizationService = (
+        request.app.state.productivity_pilot_start_authorization_service
+    )
     try:
         decision = service.authorize_operation(
             tenant_id=context.user_context.tenant_id,
             operation=operation,
         )
-    except ProductivityPilotTrafficScopeConflict as exc:
+    except (ProductivityPilotTrafficScopeConflict, ProductivityPilotStartAuthorizationConflict) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Productivity pilot traffic scope evidence is invalid",
+            detail="Productivity pilot authorization evidence is invalid",
         ) from exc
     if not decision.authorization_allowed:
+        source_object_ids = (
+            [f"productivity_pilot_traffic_scope:{decision.enforcement_evidence_hash}"]
+            if decision.enforcement_evidence_hash
+            else []
+        )
+        if decision.start_authorization_evidence_hash:
+            source_object_ids.append(
+                f"productivity_pilot_start_authorization:{decision.start_authorization_evidence_hash}"
+            )
         request.app.state.audit_logger.record(
             user_context=context.user_context,
             event_type="platform.productivity_pilot.traffic_denied",
-            source_object_ids=(
-                [f"productivity_pilot_traffic_scope:{decision.enforcement_evidence_hash}"]
-                if decision.enforcement_evidence_hash
-                else []
-            ),
+            source_object_ids=source_object_ids,
             metadata={
                 "surface": "platform_api",
                 "schema_version": decision.schema_version,
@@ -1199,8 +1214,13 @@ def require_productivity_pilot_traffic_scope(
                 "route_scope_enforced": decision.route_scope_enforced,
                 "default_deny_enabled": decision.default_deny_enabled,
                 "pilot_start_authorized": decision.pilot_start_authorized,
+                "runtime_enablement_verified": decision.runtime_enablement_verified,
                 "blocking_reason": decision.blocking_reason,
                 "enforcement_evidence_hash": decision.enforcement_evidence_hash,
+                "start_authorization_evidence_hash": decision.start_authorization_evidence_hash,
+                "authorization_expires_at_utc": (
+                    decision.authorization_expires_at_utc.isoformat() if decision.authorization_expires_at_utc else None
+                ),
                 "content_included": decision.content_included,
             },
         )
@@ -1481,6 +1501,15 @@ def build_app() -> FastAPI:
         admission_store=productivity_pilot_admission_record_store,
         traffic_scope_store=productivity_pilot_traffic_scope_store,
     )
+    productivity_pilot_start_authorization_store = build_default_productivity_pilot_start_authorization_store()
+    productivity_pilot_start_authorization_service = ProductivityPilotStartAuthorizationService(
+        policy=productivity_pilot_policy,
+        preflight_store=productivity_pilot_preflight_store,
+        admission_store=productivity_pilot_admission_record_store,
+        traffic_scope_store=productivity_pilot_traffic_scope_store,
+        start_authorization_store=productivity_pilot_start_authorization_store,
+        runtime_enabled=productivity_pilot_runtime_enabled(),
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1596,6 +1625,65 @@ def build_app() -> FastAPI:
                 "default_deny_enabled": response.default_deny_enabled,
                 "pilot_start_authorized": response.pilot_start_authorized,
                 "pilot_business_traffic_allowed": response.pilot_business_traffic_allowed,
+                "idempotent_replay": response.idempotent_replay,
+                "business_write_executed": response.business_write_executed,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.post(
+        "/v1/platform/productivity-pilot/start-authorizations",
+        response_model=ProductivityPilotStartAuthorization,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def authorize_productivity_pilot_start(
+        command: ProductivityPilotStartAuthorizationCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductivityPilotStartAuthorization:
+        service: ProductivityPilotStartAuthorizationService = (
+            request.app.state.productivity_pilot_start_authorization_service
+        )
+        try:
+            response = service.authorize(user_context=context.user_context, command=command)
+        except ProductivityPilotPreflightNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except ProductivityPilotStartAuthorizationConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.start_authorized",
+            source_object_ids=[
+                f"productivity_pilot_traffic_scope:{response.traffic_scope_evidence_hash}",
+                f"productivity_pilot_admission:{response.admission_evidence_hash}",
+                f"productivity_pilot_preflight:{response.preflight_gate_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "authorization_id": response.authorization_id,
+                "enforcement_id": response.enforcement_id,
+                "traffic_scope_evidence_hash": response.traffic_scope_evidence_hash,
+                "route_scope_hash": response.route_scope_hash,
+                "admission_evidence_hash": response.admission_evidence_hash,
+                "preflight_gate_hash": response.preflight_gate_hash,
+                "policy_hash": response.policy_hash,
+                "monitoring_evidence_manifest_hash": response.monitoring_evidence_manifest_hash,
+                "rollback_evidence_manifest_hash": response.rollback_evidence_manifest_hash,
+                "monitoring_control_count": len(response.monitoring_evidence),
+                "rollback_control_count": len(response.rollback_evidence),
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": response.human_confirmation_statement_hash,
+                "four_eyes_verified": response.four_eyes_verified,
+                "runtime_enablement_verified": response.runtime_enablement_verified,
+                "pilot_start_authorized": response.pilot_start_authorized,
+                "pilot_business_traffic_allowed": response.pilot_business_traffic_allowed,
+                "effective_at_utc": response.effective_at_utc.isoformat(),
+                "expires_at_utc": response.expires_at_utc.isoformat(),
                 "idempotent_replay": response.idempotent_replay,
                 "business_write_executed": response.business_write_executed,
                 "content_included": response.content_included,
@@ -21640,6 +21728,8 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_admission_service = productivity_pilot_admission_service
     app.state.productivity_pilot_traffic_scope_store = productivity_pilot_traffic_scope_store
     app.state.productivity_pilot_traffic_scope_service = productivity_pilot_traffic_scope_service
+    app.state.productivity_pilot_start_authorization_store = productivity_pilot_start_authorization_store
+    app.state.productivity_pilot_start_authorization_service = productivity_pilot_start_authorization_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

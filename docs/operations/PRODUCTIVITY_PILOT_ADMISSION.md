@@ -50,7 +50,7 @@ The response always keeps these values false:
 
 PostgreSQL backup and restore evidence must preserve both tables, row counts, forced RLS, append-only policies and triggers, and the exact collabio_authz_admin grants. backend_foundation_completion_gate.v1 blocks when productivity_pilot_admission_controls_verified=false.
 
-The tenant- and route-specific traffic-scope gate is now implemented. The next independent gate is explicit pilot start authorization.
+The tenant- and route-specific traffic-scope gate and the independent time-bounded start authorization are now implemented. Admission alone never opens traffic; the start record, runtime switch, expiry, and all downstream authorization gates must also pass.
 
 ## Current Runtime Proof
 

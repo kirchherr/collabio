@@ -1487,6 +1487,8 @@ services:
       SUITE_PRODUCTIVITY_PILOT_PREFLIGHT_STORE_BACKEND: postgres
       SUITE_PRODUCTIVITY_PILOT_ADMISSION_STORE_BACKEND: postgres
       SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: ${SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED:-0}
       SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio

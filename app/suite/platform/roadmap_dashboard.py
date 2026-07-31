@@ -138,12 +138,12 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="productivity_pilot_start_authorization",
-        current_foundation_state="productivity_pilot_traffic_scope_operational_start_authorization_still_required",
+        current_focus="controlled_productivity_pilot_runtime_observation",
+        current_foundation_state="productivity_pilot_start_authorization_operational_technical_runtime_proof_complete_designated_user_observation_next",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "productivity_pilot_start_authorization",
+            "controlled_productivity_pilot_runtime_observation",
             "controlled_pilot_and_release_backlog",
         ),
         deferred_scope=(
@@ -284,7 +284,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_release_evidence",
                         "no_tenant_activation_or_business_write",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_preflight",
@@ -309,7 +309,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "traffic_scope_enforcement_still_required",
                         "pilot_start_and_tenant_mutation_forbidden",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_admission",
@@ -336,7 +336,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "pilot_start_traffic_enforcement_activation_and_business_writes_forbidden",
                     ),
                     api_routes=("/v1/platform/productivity-pilot/admissions",),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_traffic_scope_enforcement",
@@ -368,7 +368,46 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/tasks/*",
                         "/v1/time-tracking/*",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_start_authorization",
+                    title="Productivity Pilot Start Authorization",
+                    summary=(
+                        "Security-Admins koennen genau sieben Pilot-Operationen zeitlich begrenzt oeffnen. "
+                        "Vier-Augen-Prinzip, aktuelle Monitoring-/Rollback-Evidenz, automatische Ablaufzeit und "
+                        "ein standardmaessig geschlossener Deployment-Kill-Switch werden bei jedem Request geprueft."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_start_authorization.py",
+                        "app/suite/persistence/migrations/0063_productivity_pilot_start_authorization.sql",
+                        "tests/test_productivity_pilot_start_authorization.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "security_admin_role_required",
+                        "four_eyes_distinct_from_admission_and_traffic_enforcement",
+                        "exact_monitoring_and_rollback_evidence_required_for_full_window",
+                        "maximum_eight_hour_authorization",
+                        "deployment_kill_switch_default_closed",
+                        "automatic_expiry_checked_per_request",
+                        "append_only_rls_and_restore_controls_required",
+                        "no_tenant_module_business_destructive_or_external_mutation",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/start-authorizations",
+                        "POST /v1/crm/account-onboardings",
+                        "POST /v1/tasks/items",
+                        "GET /v1/tasks/items",
+                        "GET /v1/tasks/activities",
+                        "POST /v1/time-tracking/entries",
+                        "GET /v1/time-tracking/entries",
+                        "GET /v1/time-tracking/approvals",
+                    ),
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
             ),
         ),
@@ -563,7 +602,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "metadata_only_note_contract",
                         "backup_dependency_required",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="crm_atomic_account_onboarding_runtime",
@@ -594,7 +633,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "note_body_forbidden",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="tasks_activities_runtime",
@@ -628,7 +667,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="time_tracking_runtime",
@@ -664,7 +703,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "restore_control_verification_required",
                         "approval_decisions_and_payroll_exports_deferred",
                     ),
-                    next_action="productivity_pilot_start_authorization",
+                    next_action="controlled_productivity_pilot_runtime_observation",
                 ),
                 RoadmapCapability(
                     capability_id="crm_erp_first_slices",

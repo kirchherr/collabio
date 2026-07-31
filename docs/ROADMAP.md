@@ -104,9 +104,10 @@ Bereits umgesetzt:
 - [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
 - [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
 - [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
-- [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; Pilotstart und Traffic-Freigabe bleiben gesperrt.
+- [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; dieser Schritt allein startet keinen Pilot-Traffic.
 - [x] Tenant- und routenspezifische Traffic-Scope-Erzwingung append-only an Admission, Preflight und Policy binden; Default Deny blockiert alle verwalteten Pilot-Routen bis zur separaten Start-Autorisierung.
-- [ ] Explizite Start-Autorisierung an Admission, Preflight, Policy und Traffic-Scope-Evidenz binden und erst dann die sieben freigegebenen Pilot-Operationen oeffnen.
+- [x] Explizite, maximal acht Stunden gueltige Start-Autorisierung mit Vier-Augen-Prinzip, vollstaendiger Monitoring-/Rollback-Evidenz, automatischem Ablauf und default-closed Deployment-Kill-Switch an Admission, Preflight, Policy und Traffic-Scope binden.
+- [ ] Fachliches Productivity-Pilot-Laufzeitfenster mit designierten Pilotnutzern auf genau sieben Operationen beobachten, danach Kill-Switch schliessen und Backup-/Restore-Evidenz erneuern.
 
 Noch nicht umgesetzt:
 
@@ -1559,7 +1560,9 @@ Enthaelt:
 - [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
 - [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
 - [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.
-- [ ] Naechster Fokus: append-only Human-Admission fuer den ausgewaehlten Productivity-Pilot an Tenant-, Policy-, Release- und Preflight-Hash binden; automatische Aktivierung und Business-Writes weiterhin ausschliessen.
+- [x] Productivity-Pilot-Startfreigabe operational: Migration `0063`, tenant-sicheres append-only RLS-Ledger, Security-Admin-Vier-Augen-Prinzip, exakt fuenf Monitoring- und vier Rollback-Nachweise, maximal acht Stunden, per Request gepruefter Ablauf und default-closed Runtime-Kill-Switch.
+- [x] Technischer Runtime-Proof geschlossen: vier freigegebene Reads `200`, Fremdroute `403`, nach Kill-Switch `423`, Business-Row-Counts unveraendert, Start-Evidenz `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7`, 63 Migrationen, 70 Tabellen, exakter isolierter Restore und Backend-Gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c`.
+- [ ] Naechster Fokus: fachliches Runtime-Beobachtungsfenster mit designierten Pilotnutzern auf den sieben freigegebenen Operationen fahren; der Kill-Switch bleibt bis dahin geschlossen.
 
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 

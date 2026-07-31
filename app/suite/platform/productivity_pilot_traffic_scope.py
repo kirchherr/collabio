@@ -210,22 +210,42 @@ class ProductivityPilotTrafficDecision(BaseModel):
     route_scope_enforced: bool
     default_deny_enabled: bool
     pilot_start_authorized: bool = False
+    runtime_enablement_verified: bool = False
     authorization_allowed: bool
     blocking_reason: str | None = None
     enforcement_evidence_hash: str | None = None
+    start_authorization_evidence_hash: str | None = None
+    authorization_expires_at_utc: datetime | None = None
     http_status_code: int = Field(ge=200, le=599)
     content_included: bool = False
     schema_version: str = "productivity_pilot_traffic_decision.v1"
 
     @model_validator(mode="after")
     def require_consistent_decision(self) -> Self:
-        if self.content_included or self.pilot_start_authorized:
-            raise ValueError("productivity pilot traffic decision must remain metadata-only and pre-start")
+        if self.content_included:
+            raise ValueError("productivity pilot traffic decision must remain metadata-only")
         if self.pilot_traffic_managed:
-            if self.authorization_allowed or self.blocking_reason is None or self.http_status_code not in {403, 423}:
-                raise ValueError("managed productivity pilot traffic must remain denied before start authorization")
-        elif not self.authorization_allowed or self.blocking_reason is not None or self.http_status_code != 200:
-            raise ValueError("unmanaged traffic must pass through without a pilot denial")
+            if self.authorization_allowed:
+                if (
+                    not self.operation_in_scope
+                    or not self.pilot_start_authorized
+                    or not self.runtime_enablement_verified
+                    or self.blocking_reason is not None
+                    or self.start_authorization_evidence_hash is None
+                    or self.authorization_expires_at_utc is None
+                    or self.http_status_code != 200
+                ):
+                    raise ValueError("managed productivity pilot traffic requires an active start authorization")
+            elif self.blocking_reason is None or self.http_status_code not in {403, 423}:
+                raise ValueError("managed productivity pilot denial must remain fail-closed")
+        elif (
+            not self.authorization_allowed
+            or self.blocking_reason is not None
+            or self.pilot_start_authorized
+            or self.runtime_enablement_verified
+            or self.http_status_code != 200
+        ):
+            raise ValueError("unmanaged traffic must pass through without a pilot decision")
         return self
 
 

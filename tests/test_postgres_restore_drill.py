@@ -20,6 +20,9 @@ from suite.operations.postgres_restore_drill import (
     PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE,
     PRODUCTIVITY_PILOT_CONTROL_TABLES,
+    PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE,
+    PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE,
+    PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES,
     PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_APPEND_ONLY_TRIGGERS_BY_TABLE,
     PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES,
@@ -57,6 +60,7 @@ def _snapshot(
     time_controls: bool = True,
     pilot_controls: bool = True,
     traffic_scope_controls: bool = True,
+    start_authorization_controls: bool = True,
 ) -> PostgresDatabaseSnapshot:
     table_names = sorted(
         TENANT_IAM_TABLES
@@ -68,6 +72,7 @@ def _snapshot(
         | TIME_TRACKING_WRITE_TABLES
         | PRODUCTIVITY_PILOT_CONTROL_TABLES
         | PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES
+        | PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES
     )
     tables = [
         {
@@ -151,6 +156,17 @@ def _snapshot(
         for table_name, policy_names in sorted(PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_APPEND_ONLY_POLICIES_BY_TABLE.items())
         for policy_name in sorted(policy_names)
     )
+    policies.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "policy_name": policy_name,
+        }
+        for table_name, policy_names in sorted(
+            PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        for policy_name in sorted(policy_names)
+    )
     triggers = [
         {
             "schema_name": table_name.split(".", 1)[0],
@@ -167,6 +183,17 @@ def _snapshot(
             "trigger_name": trigger_name,
         }
         for table_name, trigger_names in sorted(PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_APPEND_ONLY_TRIGGERS_BY_TABLE.items())
+        for trigger_name in sorted(trigger_names)
+    )
+    triggers.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "trigger_name": trigger_name,
+        }
+        for table_name, trigger_names in sorted(
+            PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE.items()
+        )
         for trigger_name in sorted(trigger_names)
     )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
@@ -255,6 +282,16 @@ def _snapshot(
         for table_name in sorted(PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES)
         for privilege in ("INSERT", "SELECT")
     )
+    grants.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "grantee": "collabio_authz_admin",
+            "privilege_type": privilege,
+        }
+        for table_name in sorted(PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES)
+        for privilege in ("INSERT", "SELECT")
+    )
     if not pilot_controls:
         grants.append(
             {
@@ -269,6 +306,15 @@ def _snapshot(
             {
                 "schema_name": "collabio",
                 "table_name": "productivity_pilot_traffic_scope_enforcements",
+                "grantee": "collabio_app",
+                "privilege_type": "INSERT",
+            }
+        )
+    if not start_authorization_controls:
+        grants.append(
+            {
+                "schema_name": "collabio",
+                "table_name": "productivity_pilot_start_authorizations",
                 "grantee": "collabio_app",
                 "privilege_type": "INSERT",
             }
@@ -325,6 +371,7 @@ def _restore_report(
     target_time_controls: bool = True,
     target_pilot_controls: bool = True,
     target_traffic_scope_controls: bool = True,
+    target_start_authorization_controls: bool = True,
 ) -> PostgresRestoreDrillReport:
     return build_postgres_restore_drill_report(
         backup_evidence=_backup_evidence(),
@@ -336,6 +383,7 @@ def _restore_report(
             time_controls=target_time_controls,
             pilot_controls=target_pilot_controls,
             traffic_scope_controls=target_traffic_scope_controls,
+            start_authorization_controls=target_start_authorization_controls,
         ),
         target_isolation_ref_hash="sha256:" + "d" * 64,
         checked_at_utc=CHECKED_AT,
@@ -383,6 +431,7 @@ def test_postgres_restore_drill_verifies_exact_isolated_state() -> None:
     assert report.time_tracking_write_controls_verified is True
     assert report.productivity_pilot_admission_controls_verified is True
     assert report.productivity_pilot_traffic_scope_controls_verified is True
+    assert report.productivity_pilot_start_authorization_controls_verified is True
     assert report.report_hash == build_postgres_restore_drill_report_hash(report)
 
 
@@ -427,6 +476,14 @@ def test_postgres_restore_drill_blocks_unsafe_productivity_pilot_traffic_scope_g
     assert "productivity_pilot_traffic_scope_controls_not_verified" in report.blocking_reasons
 
 
+def test_postgres_restore_drill_blocks_unsafe_productivity_pilot_start_authorization_grant() -> None:
+    report = _restore_report(target_start_authorization_controls=False)
+
+    assert report.restore_ready is False
+    assert report.productivity_pilot_start_authorization_controls_verified is False
+    assert "productivity_pilot_start_authorization_controls_not_verified" in report.blocking_reasons
+
+
 def test_postgres_restore_target_must_be_independent() -> None:
     dsn = "postgresql://owner:secret@postgres:5432/collabio"
 
@@ -468,6 +525,7 @@ def test_backend_foundation_completion_gate_binds_database_and_object_recovery()
     assert gate.time_tracking_write_controls_verified is True
     assert gate.productivity_pilot_admission_controls_verified is True
     assert gate.productivity_pilot_traffic_scope_controls_verified is True
+    assert gate.productivity_pilot_start_authorization_controls_verified is True
     assert gate.productive_business_write_controls_verified is True
     assert gate.content_included is False
     assert gate.gate_hash == build_backend_foundation_completion_gate_hash(gate)

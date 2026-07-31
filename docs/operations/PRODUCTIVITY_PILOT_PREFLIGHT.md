@@ -45,7 +45,7 @@ Even when `preflight_ready=true`, the following remain false:
 - `destructive_actions_allowed`
 - `external_side_effect_allowed`
 
-Ready preflight reports are now persisted as authoritative, tenant-visible metadata for the append-only admission endpoint described in docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md. After admission, enforceable tenant and route scope remains the next separate gate. No activation may be inferred from this document, its persisted evidence, or an admission record.
+Ready preflight reports are persisted as authoritative, tenant-visible metadata for the append-only admission endpoint described in docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md. Admission, traffic-scope enforcement, and time-bounded start authorization remain separate controls. No activation may be inferred from this document or its persisted evidence; managed traffic still requires the complete evidence chain and an open deployment runtime switch.
 
 ## Current Runtime Proof
 

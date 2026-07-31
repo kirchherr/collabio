@@ -155,18 +155,19 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="productivity_pilot_start_authorization",
-            title="Productivity-Pilot-Start explizit autorisieren",
+            work_item_id="controlled_productivity_pilot_runtime_observation",
+            title="Kontrollierten Productivity Pilot beobachten",
             summary=(
-                "Preflight, Human-Admission und Default-Deny-Traffic-Scope sind operational. Als naechster separater "
-                "Schritt wird die Start-Autorisierung an genau diese Evidenz gebunden; ohne sie bleibt jeder "
-                "verwaltete Pilot-Request gesperrt."
+                "Preflight, Human-Admission, Default-Deny-Traffic-Scope und zeitlich begrenzte Start-Autorisierung "
+                "sind operational. Jetzt folgt ein kontrolliertes Laufzeitfenster mit kontinuierlicher Beobachtung, "
+                "automatischem Ablauf und geschlossenem Kill-Switch nach dem Nachweis."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
                 "productivity_pilot_preflight",
                 "productivity_pilot_admission",
                 "productivity_pilot_traffic_scope_enforcement",
+                "productivity_pilot_start_authorization",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
@@ -176,12 +177,13 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="explicit_start_authorization_bound_to_admission_preflight_policy_and_traffic_scope_hashes",
-            decision="must_now_because_default_deny_is_enforced_and_no_managed_pilot_request_can_pass_without_start_authorization",
+            readiness_gate="active_time_bounded_start_authorization_live_monitoring_and_rollback_evidence_with_kill_switch",
+            decision="must_now_to_prove_the_authorized_productivity_slice_under_live_controls_before_broader_product_work",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md",
                 "docs/operations/PRODUCTIVITY_PILOT_TRAFFIC_SCOPE.md",
+                "docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/operations/BACKUP_FAILOVER.md",
