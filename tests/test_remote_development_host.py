@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).parents[1]
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
 RUNBOOK_PATH = REPO_ROOT / "docs" / "operations" / "REMOTE_DEVELOPMENT_HOST.md"
