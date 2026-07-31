@@ -155,12 +155,13 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
-            work_item_id="productivity_pilot_closure_report",
-            title="Productivity-Pilot-Nachweis schliessen",
+            work_item_id="real_user_productivity_pilot_admission",
+            title="Realnutzer-Pilot separat aufnehmen",
             summary=(
-                "Der kontrollierte Entwicklungs-Pilot hat exakt sieben Operationen und Beobachtungen durchlaufen. "
-                "Kill-Switch, Backup und isolierter Restore sind nachgewiesen. Jetzt werden Window, Beobachtungen, "
-                "Domain-Receipts und Recovery-Hashes append-only geschlossen, bevor reale Nutzer zugelassen werden."
+                "Der Entwicklungs-Pilot ist append-only geschlossen und nach dem Closure-Write isoliert "
+                "wiederhergestellt. Vor einem Realnutzer-Pilot muessen benannte Principals, Zweck und Rollen "
+                "explizit freigegeben sowie Preflight, Admission, Monitoring, Rollback, Start und Runtime-Window "
+                "mit aktueller Evidenz neu erzeugt werden."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
@@ -169,6 +170,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "productivity_pilot_traffic_scope_enforcement",
                 "productivity_pilot_start_authorization",
                 "productivity_pilot_runtime_window",
+                "productivity_pilot_closure_report",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
@@ -178,21 +180,22 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="closed_runtime_switch_complete_observation_manifest_domain_receipts_and_refreshed_restore_evidence",
-            decision="must_now_to_close_the_development_proof_before_any_real_user_productivity_pilot",
+            readiness_gate="explicit_named_principals_purpose_roles_fresh_controls_and_new_four_eyes_approvals_required",
+            decision="must_now_but_blocked_until_real_users_and_fresh_human_control_evidence_are_explicitly_approved",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md",
                 "docs/operations/PRODUCTIVITY_PILOT_TRAFFIC_SCOPE.md",
                 "docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md",
                 "docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md",
+                "docs/operations/PRODUCTIVITY_PILOT_CLOSURE_REPORT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/operations/BACKUP_FAILOVER.md",
                 "docs/ROADMAP.md",
             ),
-            can_start_now=True,
+            can_start_now=False,
         ),
         RoadmapPlanItem(
             work_item_id="module_family_backlog_kb_lms_tickets_time_tracking",

@@ -60,4 +60,13 @@ The isolated restore contained one runtime window, all seven unique observations
 
 ## Next Boundary
 
-A tenant-scoped, append-only closure report must bind the closed switch state, runtime-window evidence, observation manifest, domain receipts, and refreshed recovery hashes before a separately approved real-user pilot. Real users must be explicitly nominated and must receive a new admission, control-evidence set, start authorization, and runtime window.
+The tenant-scoped `productivity_pilot_closure_report.v1` was persisted after the switch closed. It binds:
+
+- closure evidence `sha256:902a47ed16ab0e8a1a8de9e9a501b873da25b9a32caae38a4a021005a740d4b3`;
+- observation manifest `sha256:aa8faf8f1572dd43ac6470a047ce9c92ec64a397404e63ddeb4f2b6113db03c8` with seven exact route observations and one principal hash;
+- domain-receipt manifest `sha256:19653ce62f80ac0e16e4ca5155f62a60ac575bfb8c27a0d3e3057fcee432771a` with the three authoritative write receipts;
+- the previously refreshed recovery evidence and closed-switch state without content or record mutation.
+
+A second isolated restore after closure verified 65 migrations, 73 tables, exact row counts, and the identical closure hash in the restore target. PostgreSQL restore report `sha256:6ed338bbca4ef387975d6b9f3622040bb91a6c36d03ee1601101db7d73ae78a7`, backend foundation gate `sha256:a13ac0d300562853cf8b9b4f23bedc1102f039ccbfca601a941ffb399293ff47`, and business backend release gate `sha256:9745878212d8d443a6e8d5b51bac32c4b2241507b79366fe55d65e490fe38d2e` were green. The final verified backup hash was `sha256:be1f948bba8115ff7d8e8e1d466da796d3293b9d708f5a49790738ce623c732a`.
+
+The next boundary is a separately approved real-user pilot. Real users must be explicitly nominated and must receive a new admission, current control-evidence set, start authorization, and runtime window. No development-pilot authorization is reusable.
