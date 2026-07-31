@@ -71,6 +71,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "productivity_pilot_runtime_window_rls_append_only_check" in postgres.integrity_checks
     assert "productivity_pilot_runtime_observation_hash_check" in postgres.integrity_checks
     assert "productivity_pilot_runtime_observation_rls_append_only_check" in postgres.integrity_checks
+    assert "productivity_pilot_closure_report_hash_check" in postgres.integrity_checks
+    assert "productivity_pilot_closure_report_rls_append_only_check" in postgres.integrity_checks
     assert postgres.restore_verification_gates == [
         "postgres_restore_drill_report.v1",
         "isolated_postgres_restore",
@@ -85,6 +87,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "productivity_pilot_start_authorization.v1",
         "productivity_pilot_runtime_window.v1",
         "productivity_pilot_runtime_observation.v1",
+        "productivity_pilot_closure_report.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks
     assert "embedding_model_version_approval_check" in postgres.integrity_checks
