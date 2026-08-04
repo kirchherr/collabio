@@ -621,6 +621,36 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:productivity-pilot-real-user-runtime-window",
         ),
     ),
+    SqlMigration(
+        version="0069",
+        name="productivity_pilot_real_user_closure_report",
+        resource_name="0069_productivity_pilot_real_user_closure_report.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:productivity-pilot-real-user-closure-report",
+            "test:productivity-pilot-real-user-closure-report",
+        ),
+    ),
+    SqlMigration(
+        version="0070",
+        name="productivity_pilot_real_user_closure_owner_refs",
+        resource_name="0070_productivity_pilot_real_user_closure_owner_refs.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:productivity-pilot-real-user-closure-report",
+            "test:productivity-pilot-real-user-closure-report",
+        ),
+    ),
+    SqlMigration(
+        version="0071",
+        name="productivity_pilot_real_user_runtime_owner_ref",
+        resource_name="0071_productivity_pilot_real_user_runtime_owner_ref.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:productivity-pilot-real-user-runtime-window",
+            "test:productivity-pilot-real-user-runtime-window",
+        ),
+    ),
 )
 
 

@@ -135,13 +135,18 @@ mutation-rejecting triggers, exact `collabio_authz_admin` grants, and exact row 
 records contain participant hashes and evidence manifests only; restoring them never activates
 runtime or traffic. See `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_ADMISSION.md`.
 
-Migrations 0067 and 0068 extend the same mandatory continuity contract with hash-only
+Migrations 0067, 0068, and 0071 extend and harden the same mandatory continuity contract with hash-only
 `productivity_pilot_real_user_runtime_window.v1` and
 `productivity_pilot_real_user_runtime_observation.v1` records. The restore drill verifies both
 tables, forced tenant RLS, append-only policies and triggers, exact grants, and exact row recovery.
 Restored records contain tenant-bound principal hashes only and never reopen the deployment
-kill-switch. Until the separate real-user closure boundary is implemented and accepted, the switch
-remains closed. See `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md`.
+kill-switch. See `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md`.
+
+Migrations 0069 and 0070 add and harden the mandatory hash-only `productivity_pilot_real_user_closure_report.v1` state.
+The restore drill verifies its exact rows, forced tenant RLS, short stable no-update/no-delete policy
+names, append-only trigger, and `collabio_authz_admin` grants. A restored closure contains no raw
+principal IDs and never opens traffic. See
+`docs/operations/PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT.md`.
 
 The 2026-07-31 technical proof restored 63 migrations and 70 tables, including exactly one metadata-only start authorization row with evidence hash `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7` on both source and isolated target. PostgreSQL restore report `sha256:0cec6b8bfea24eae57708ef3242b77f1866abb86666bdf67f25f45c1b3dc789f` and backend completion gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c` were green. The deployment switch was closed after the request proof.
 

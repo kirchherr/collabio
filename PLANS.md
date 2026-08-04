@@ -105,14 +105,16 @@ Current sprint:
 95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
 96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
 97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
+98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
 
 ## Next Engineering Step
 
-Complete the real-user pilot safety chain without opening live traffic:
+Collect the accountable real-user pilot evidence without opening live traffic:
 
-- Build the hash-only real-user closure path for migration `0067` runtime windows and observations.
-- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until closure, backup, restore, and release evidence pass together.
-- Require fresh named-principal, purpose, IAM-role, privacy, preflight, recovery, and four-eyes evidence for any later live pilot.
+- Accept named principals, purpose, lawful basis, IAM roles, privacy and workforce evidence only from accountable tenant owners; do not fabricate placeholders.
+- Refresh preflight, backup, isolated restore, foundation, business-release, monitoring, rollback, admission, and start evidence as one new chain.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until the new chain and the hash-only closure path pass together.
+- Require explicit human four-eyes approvals before any later live pilot window.
 - Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.
 - Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
 

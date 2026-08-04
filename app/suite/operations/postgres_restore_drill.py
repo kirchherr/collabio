@@ -162,6 +162,7 @@ PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES = {
     "collabio.productivity_pilot_closure_reports",
     "collabio.productivity_pilot_real_user_runtime_windows",
     "collabio.productivity_pilot_real_user_runtime_observations",
+    "collabio.productivity_pilot_real_user_closure_reports",
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE = {
     "collabio.productivity_pilot_start_authorizations": {
@@ -188,6 +189,10 @@ PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE = {
         "productivity_pilot_real_user_runtime_observations_no_update",
         "productivity_pilot_real_user_runtime_obs_no_hard_delete",
     },
+    "collabio.productivity_pilot_real_user_closure_reports": {
+        "real_user_pilot_closure_no_update",
+        "real_user_pilot_closure_no_hard_delete",
+    },
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     "collabio.productivity_pilot_start_authorizations": {
@@ -207,6 +212,9 @@ PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     },
     "collabio.productivity_pilot_real_user_runtime_observations": {
         "productivity_pilot_real_user_runtime_observations_append_only",
+    },
+    "collabio.productivity_pilot_real_user_closure_reports": {
+        "real_user_pilot_closure_append_only",
     },
 }
 

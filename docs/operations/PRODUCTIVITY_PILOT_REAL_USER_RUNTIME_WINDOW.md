@@ -36,6 +36,9 @@ Migration `0067_productivity_pilot_real_user_runtime_window.sql` erstellt:
 Migration `0068_productivity_pilot_real_user_runtime_policy_name.sql` ersetzt den von PostgreSQL
 automatisch gekuerzten Delete-Policy-Namen durch einen expliziten, stabilen Identifier.
 
+Migration `0071_productivity_pilot_real_user_runtime_owner_ref.sql` verhindert zusaetzlich, dass
+Klartextidentitaeten ueber `operations_owner_ref` in das hash-only Window-Ledger gelangen.
+
 Beide Tabellen sind tenant-isoliert, erzwingen RLS, sind per Policy und Trigger append-only und
 erlauben der Runtime-Rolle nur `SELECT` und `INSERT`. Runtime-Fenster enthalten nur
 `designated_principal_hashes` und `activated_by_principal_hash`. Beobachtungen enthalten nur den
@@ -71,9 +74,11 @@ IDs sind transient und erscheinen weder im Response noch im Audit-Metadatum oder
 3. Security-Admin genehmigt nach frischem Preflight, Backup und Restore.
 4. Admission, Traffic Scope und Startfreigabe werden neu erzeugt; Entwicklungsbelege werden nicht
    wiederverwendet.
-5. Vor dem ersten Live-Oeffnen des Kill-Switches wird der separate hash-only Realnutzer-Closure-Pfad
-   implementiert und abgenommen.
-6. Erst danach kann ein zeitlich begrenztes Realnutzer-Runtime-Fenster aktiviert werden.
+5. Vor dem ersten Live-Oeffnen des Kill-Switches wird der vorhandene hash-only Realnutzer-Closure-Pfad
+   aus `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT.md` mit Backup und isoliertem
+   Restore abgenommen.
+6. Erst nach dieser technischen Abnahme und den realen Human-/Privacy-Freigaben kann ein zeitlich
+   begrenztes Realnutzer-Runtime-Fenster aktiviert werden.
 
-Bis Schritt 5 bleibt der Runtime-Schalter geschlossen. Die vorhandene API und Migration sind
+Bis Schritt 6 bleibt der Runtime-Schalter geschlossen. Die vorhandene API und Migration sind
 Vorbereitung, keine Freigabe fuer reale Produktivdaten.

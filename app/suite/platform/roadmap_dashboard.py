@@ -138,14 +138,14 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="real_user_productivity_pilot_runtime_binding",
-        current_foundation_state="real_user_admission_and_hash_only_runtime_boundaries_operational_without_live_users",
+        current_focus="real_user_productivity_pilot_evidence_collection",
+        current_foundation_state="hash_only_real_user_pilot_chain_operational_without_live_users",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
             "collect_real_user_productivity_pilot_nomination",
-            "real_user_productivity_pilot_control_evidence_refresh",
-            "implement_real_user_productivity_pilot_closure_before_opening_runtime_switch",
+            "refresh_real_user_productivity_pilot_control_evidence",
+            "keep_runtime_closed_until_named_principals_and_four_eyes_approvals_are_complete",
         ),
         deferred_scope=(
             "full_office_suite_client",
@@ -509,7 +509,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/real-user-admissions",
                         "/v1/platform/productivity-pilot/real-user-admissions/current",
                     ),
-                    next_action="bind_fresh_start_chain_to_hash_only_real_user_runtime",
+                    next_action="collect_named_principals_and_fresh_control_evidence",
                 ),
                 RoadmapCapability(
                     capability_id="productivity_pilot_real_user_runtime_boundary",
@@ -524,6 +524,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     evidence_refs=(
                         "app/suite/platform/productivity_pilot_real_user_runtime_window.py",
                         "app/suite/persistence/migrations/0067_productivity_pilot_real_user_runtime_window.sql",
+                        "app/suite/persistence/migrations/0071_productivity_pilot_real_user_runtime_owner_ref.sql",
                         "tests/test_productivity_pilot_real_user_runtime_window.py",
                         "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md",
                         "docs/operations/BACKUP_FAILOVER.md",
@@ -542,7 +543,42 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/real-user-runtime-windows",
                         "/v1/platform/productivity-pilot/real-user-runtime-windows/current",
                     ),
-                    next_action="implement_hash_only_real_user_closure_before_live_activation",
+                    next_action="keep_runtime_closed_until_real_user_admission_and_start_evidence_are_complete",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_real_user_closure_boundary",
+                    title="Real User Pilot Hash-only Closure Boundary",
+                    summary=(
+                        "Ein separates append-only Closure-Ledger bindet Realnutzer-Admission, Start, "
+                        "Runtime-Fenster, vollstaendiges Beobachtungsmanifest, zugehoerige Domain-Receipts "
+                        "und frische Recovery-Nachweise ohne Klartext-Principal-IDs."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_real_user_closure_report.py",
+                        "app/suite/persistence/migrations/0069_productivity_pilot_real_user_closure_report.sql",
+                        "app/suite/persistence/migrations/0070_productivity_pilot_real_user_closure_owner_refs.sql",
+                        "tests/test_productivity_pilot_real_user_closure_report.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "security_admin_four_eyes_closure_required",
+                        "deployment_kill_switch_must_be_closed",
+                        "closed_by_principal_is_persisted_as_tenant_bound_hash_only",
+                        "complete_hash_only_observation_manifest_required",
+                        "persisted_pilot_writes_require_observation_bound_domain_receipts",
+                        "unused_windows_can_close_without_invented_activity",
+                        "fresh_backup_restore_and_release_evidence_required",
+                        "append_only_rls_and_restore_controls_required",
+                        "no_record_mutation_deletion_content_or_external_action",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/real-user-closure-reports",
+                        "/v1/platform/productivity-pilot/real-user-closure-reports/current",
+                    ),
+                    next_action="collect_real_user_nomination_and_current_human_control_evidence",
                 ),
             ),
         ),

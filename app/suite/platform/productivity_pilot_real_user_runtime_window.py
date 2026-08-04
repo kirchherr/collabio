@@ -131,6 +131,13 @@ class ProductivityPilotRealUserRuntimeWindowCommand(BaseModel):
             raise ValueError("real-user productivity pilot runtime references must be typed")
         return value
 
+    @field_validator("operations_owner_ref")
+    @classmethod
+    def reject_raw_principal_owner_reference(cls, value: str) -> str:
+        if value.lower().startswith(("principal:", "user:", "subject:")):
+            raise ValueError("real-user productivity pilot owner reference must not contain a raw principal identifier")
+        return value
+
     @field_validator("designated_principal_ids")
     @classmethod
     def require_designated_principals(cls, value: tuple[str, ...]) -> tuple[str, ...]:

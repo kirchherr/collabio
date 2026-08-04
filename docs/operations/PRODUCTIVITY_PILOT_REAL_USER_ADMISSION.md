@@ -84,7 +84,8 @@ both tables as mandatory pilot control state and verifies exact row recovery.
    not reused.
 7. Use only the hash-only runtime contract in
    `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md`; Runtime v1 is technically blocked.
-8. Implement and verify the separate hash-only real-user closure, backup, and restore chain before
-   the deployment kill-switch is opened for real users.
+8. Use and verify the separate hash-only real-user closure in
+   `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT.md`, including backup and isolated
+   restore, before the deployment kill-switch is opened for real users.
 
 No current deployment has performed steps 3 through 8 for real users.

@@ -212,7 +212,7 @@ def _command(
         idempotency_key_ref="request:real-pilot-runtime-one",
         change_request_ref="change:real-pilot-runtime",
         human_confirmation_reference="approval:real-pilot-runtime",
-        operations_owner_ref="principal:real-pilot-operations-owner",
+        operations_owner_ref="control-owner:real-pilot-operations",
         audit_chain_ref="audit:real-pilot-runtime",
         human_confirmation_statement=PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW_CONFIRMATION_STATEMENT,
         activated_at_utc=NOW,
@@ -265,6 +265,15 @@ def _activate(
         ),
         command=_command(admission=admission, nomination=nomination, start=start),
     )
+
+
+def test_real_user_runtime_rejects_raw_principal_owner_reference() -> None:
+    _, nomination, admission, start, _ = _service()
+    payload = _command(admission=admission, nomination=nomination, start=start).model_dump(mode="python")
+    payload["operations_owner_ref"] = "principal:real-pilot-operations-owner"
+
+    with pytest.raises(ValueError, match="raw principal identifier"):
+        ProductivityPilotRealUserRuntimeWindowCommand.model_validate(payload)
 
 
 def test_real_user_runtime_persists_only_hashes_and_observes_current_authorized_principal() -> None:
@@ -505,6 +514,10 @@ def test_real_user_runtime_migration_is_hash_only_append_only_and_tenant_scoped(
     assert "force row level security" in sql
     assert "grant select, insert on table collabio.productivity_pilot_real_user_runtime_windows" in sql
     assert "position('\"designated_principal_ids\"' in lower(window_record::text)) = 0" in sql
+
+    owner_guard_sql = " ".join(get_migration("0071").sql().lower().split())
+    assert "real_user_pilot_runtime_owner_ref_no_raw_principal" in owner_guard_sql
+    assert "operations_owner_ref" in owner_guard_sql
 
     policy_name_migration = get_migration("0068")
     policy_sql = " ".join(policy_name_migration.sql().lower().split())
