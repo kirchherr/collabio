@@ -138,13 +138,14 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="real_user_productivity_pilot_admission",
-        current_foundation_state="real_user_admission_boundary_operational_without_admitted_principals",
+        current_focus="real_user_productivity_pilot_runtime_binding",
+        current_foundation_state="real_user_admission_and_hash_only_runtime_boundaries_operational_without_live_users",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
             "collect_real_user_productivity_pilot_nomination",
             "real_user_productivity_pilot_control_evidence_refresh",
+            "implement_real_user_productivity_pilot_closure_before_opening_runtime_switch",
         ),
         deferred_scope=(
             "full_office_suite_client",
@@ -508,7 +509,40 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/real-user-admissions",
                         "/v1/platform/productivity-pilot/real-user-admissions/current",
                     ),
-                    next_action="collect_named_principals_and_refresh_control_evidence",
+                    next_action="bind_fresh_start_chain_to_hash_only_real_user_runtime",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_real_user_runtime_boundary",
+                    title="Real User Pilot Hash-only Runtime Boundary",
+                    summary=(
+                        "Benannte Principals werden nur transient gegen IAM aufgeloest. Das Runtime-Ledger "
+                        "speichert tenant-gebundene Hashes, prueft Rollen erneut und ersetzt nach einer "
+                        "Realnutzer-Freigabe den Klartext-Runtime-v1-Pfad automatisch."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_real_user_runtime_window.py",
+                        "app/suite/persistence/migrations/0067_productivity_pilot_real_user_runtime_window.sql",
+                        "tests/test_productivity_pilot_real_user_runtime_window.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "raw_principal_ids_are_transient_and_never_persisted",
+                        "exact_real_user_admission_and_fresh_start_chain_required",
+                        "current_authoritative_roles_checked_at_activation_and_access",
+                        "runtime_operator_separated_from_nomination_admission_start_and_participants",
+                        "legacy_plaintext_runtime_forbidden_after_real_user_admission",
+                        "deployment_kill_switch_remains_authoritative_and_default_closed",
+                        "metadata_only_hash_observations",
+                        "append_only_rls_and_restore_controls_required",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/real-user-runtime-windows",
+                        "/v1/platform/productivity-pilot/real-user-runtime-windows/current",
+                    ),
+                    next_action="implement_hash_only_real_user_closure_before_live_activation",
                 ),
             ),
         ),

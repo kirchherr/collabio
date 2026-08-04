@@ -80,8 +80,11 @@ both tables as mandatory pilot control state and verifies exact row recovery.
 3. Nominate active principals through the API; do not place principal IDs in tickets or normal logs.
 4. Refresh preflight, backup, isolated restore, foundation, and business-release evidence.
 5. Record independent security admission.
-6. Before any real-user runtime, implement and verify a hash-only runtime-window contract bound to
-   this admission. Runtime v1 must not be used for real-user identifiers.
-7. Create a completely new traffic-scope, start, runtime, closure, backup, and restore chain.
+6. Create a completely new traffic-scope and start chain after admission. Development evidence is
+   not reused.
+7. Use only the hash-only runtime contract in
+   `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md`; Runtime v1 is technically blocked.
+8. Implement and verify the separate hash-only real-user closure, backup, and restore chain before
+   the deployment kill-switch is opened for real users.
 
-No current deployment has performed steps 3 through 7 for real users.
+No current deployment has performed steps 3 through 8 for real users.

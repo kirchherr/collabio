@@ -159,9 +159,10 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
             title="Realnutzer-Pilot separat aufnehmen",
             summary=(
                 "Der Entwicklungs-Pilot ist append-only geschlossen und nach dem Closure-Write isoliert "
-                "wiederhergestellt. Vor einem Realnutzer-Pilot muessen benannte Principals, Zweck und Rollen "
-                "explizit freigegeben sowie Preflight, Admission, Monitoring, Rollback, Start und Runtime-Window "
-                "mit aktueller Evidenz neu erzeugt werden."
+                "wiederhergestellt. Admission und hash-only Runtime sind technisch vorbereitet. Vor einem "
+                "Realnutzer-Pilot muessen benannte Principals, Zweck und Rollen explizit freigegeben sowie "
+                "Preflight, Monitoring, Rollback und Start mit aktueller Evidenz neu erzeugt werden; der "
+                "Realnutzer-Closure-Pfad bleibt vor dem Oeffnen des Kill-Switches Pflicht."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
@@ -171,6 +172,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "productivity_pilot_start_authorization",
                 "productivity_pilot_runtime_window",
                 "productivity_pilot_closure_report",
+                "productivity_pilot_real_user_admission_boundary",
+                "productivity_pilot_real_user_runtime_boundary",
                 "business_backend_release_gate",
                 "crm_atomic_account_onboarding_runtime",
                 "tasks_activities_runtime",
@@ -180,8 +183,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "audit_chain",
                 "backup_failover",
             ),
-            readiness_gate="explicit_named_principals_purpose_roles_fresh_controls_and_new_four_eyes_approvals_required",
-            decision="must_now_but_blocked_until_real_users_and_fresh_human_control_evidence_are_explicitly_approved",
+            readiness_gate="hash_only_real_user_closure_named_principals_fresh_controls_and_four_eyes_required",
+            decision="must_now_but_runtime_stays_closed_until_real_user_closure_and_human_evidence_are_ready",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
                 "docs/operations/PRODUCTIVITY_PILOT_ADMISSION.md",
@@ -189,6 +192,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "docs/operations/PRODUCTIVITY_PILOT_START_AUTHORIZATION.md",
                 "docs/operations/PRODUCTIVITY_PILOT_RUNTIME_WINDOW.md",
                 "docs/operations/PRODUCTIVITY_PILOT_CLOSURE_REPORT.md",
+                "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_ADMISSION.md",
+                "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW.md",
                 "docs/operations/PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",

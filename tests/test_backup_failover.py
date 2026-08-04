@@ -83,10 +83,14 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "business_backend_release_gate.v1",
         "productivity_pilot_preflight_gate.v1",
         "productivity_pilot_admission_record.v1",
+        "productivity_pilot_real_user_nomination.v1",
+        "productivity_pilot_real_user_admission.v1",
         "productivity_pilot_traffic_scope_enforcement.v1",
         "productivity_pilot_start_authorization.v1",
         "productivity_pilot_runtime_window.v1",
         "productivity_pilot_runtime_observation.v1",
+        "productivity_pilot_real_user_runtime_window.v1",
+        "productivity_pilot_real_user_runtime_observation.v1",
         "productivity_pilot_closure_report.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks

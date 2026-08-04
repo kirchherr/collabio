@@ -108,10 +108,12 @@ Current sprint:
 
 ## Next Engineering Step
 
-Use the proven backend foundation for the first focused productivity slice:
+Complete the real-user pilot safety chain without opening live traffic:
 
-- Stabilize CRM accounts, contacts, activities, and notes as one tenant-safe operational workflow.
-- Keep the green `backend_foundation_completion_gate.v1` in the release path and extend its continuity expectations whenever durable state changes.
+- Build the hash-only real-user closure path for migration `0067` runtime windows and observations.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until closure, backup, restore, and release evidence pass together.
+- Require fresh named-principal, purpose, IAM-role, privacy, preflight, recovery, and four-eyes evidence for any later live pilot.
+- Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.
 - Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
 
 ## Module Expansion Stance

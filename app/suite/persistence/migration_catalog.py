@@ -601,6 +601,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:productivity-pilot-real-user-admission",
         ),
     ),
+    SqlMigration(
+        version="0067",
+        name="productivity_pilot_real_user_runtime_window",
+        resource_name="0067_productivity_pilot_real_user_runtime_window.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:productivity-pilot-real-user-runtime-window",
+            "test:productivity-pilot-real-user-runtime-window",
+        ),
+    ),
 )
 
 
