@@ -802,6 +802,17 @@ from suite.platform.productivity_pilot_closure_report import (
     build_default_productivity_pilot_closure_report_store,
     build_default_productivity_pilot_domain_receipt_store,
 )
+from suite.platform.productivity_pilot_real_user_admission import (
+    ProductivityPilotRealUserAdmission,
+    ProductivityPilotRealUserAdmissionCommand,
+    ProductivityPilotRealUserAdmissionConflict,
+    ProductivityPilotRealUserAdmissionService,
+    ProductivityPilotRealUserNomination,
+    ProductivityPilotRealUserNominationCommand,
+    ProductivityPilotRealUserNominationNotFound,
+    build_default_productivity_pilot_participant_directory,
+    build_default_productivity_pilot_real_user_admission_store,
+)
 from suite.platform.productivity_pilot_runtime_window import (
     ProductivityPilotRuntimeWindow,
     ProductivityPilotRuntimeWindowCommand,
@@ -1596,6 +1607,14 @@ def build_app() -> FastAPI:
         closure_report_store=productivity_pilot_closure_report_store,
         runtime_enabled=productivity_pilot_runtime_enabled(),
     )
+    productivity_pilot_participant_directory = build_default_productivity_pilot_participant_directory()
+    productivity_pilot_real_user_admission_store = build_default_productivity_pilot_real_user_admission_store()
+    productivity_pilot_real_user_admission_service = ProductivityPilotRealUserAdmissionService(
+        participant_directory=productivity_pilot_participant_directory,
+        closure_store=productivity_pilot_closure_report_store,
+        preflight_store=productivity_pilot_preflight_store,
+        record_store=productivity_pilot_real_user_admission_store,
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1623,6 +1642,156 @@ def build_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post(
+        "/v1/platform/productivity-pilot/real-user-nominations",
+        response_model=ProductivityPilotRealUserNomination,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def nominate_productivity_pilot_real_users(
+        command: ProductivityPilotRealUserNominationCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRealUserNomination:
+        service: ProductivityPilotRealUserAdmissionService = (
+            request.app.state.productivity_pilot_real_user_admission_service
+        )
+        try:
+            response = service.nominate(
+                user_context=context.user_context,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(exc),
+            ) from exc
+        except ProductivityPilotRealUserAdmissionConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.real_user_nomination_recorded",
+            source_object_ids=[f"productivity_pilot_closure:{response.baseline_closure_evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "nomination_id": response.nomination_id,
+                "baseline_closure_evidence_hash": response.baseline_closure_evidence_hash,
+                "purpose_code": response.purpose_code,
+                "participant_manifest_hash": response.participant_manifest_hash,
+                "participant_count": response.participant_count,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": (response.human_confirmation_statement_hash),
+                "authoritative_principals_verified": (response.authoritative_principals_verified),
+                "authoritative_roles_verified": response.authoritative_roles_verified,
+                "runtime_activation_allowed": response.runtime_activation_allowed,
+                "traffic_authorization_allowed": response.traffic_authorization_allowed,
+                "idempotent_replay": response.idempotent_replay,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/productivity-pilot/real-user-nominations/current",
+        response_model=ProductivityPilotRealUserNomination | None,
+    )
+    def get_current_productivity_pilot_real_user_nomination(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRealUserNomination | None:
+        service: ProductivityPilotRealUserAdmissionService = (
+            request.app.state.productivity_pilot_real_user_admission_service
+        )
+        return service.current_nomination(tenant_id=context.user_context.tenant_id)
+
+    @app.post(
+        "/v1/platform/productivity-pilot/real-user-admissions",
+        response_model=ProductivityPilotRealUserAdmission,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def approve_productivity_pilot_real_user_admission(
+        command: ProductivityPilotRealUserAdmissionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductivityPilotRealUserAdmission:
+        service: ProductivityPilotRealUserAdmissionService = (
+            request.app.state.productivity_pilot_real_user_admission_service
+        )
+        try:
+            response = service.approve(
+                user_context=context.user_context,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(exc),
+            ) from exc
+        except (
+            ProductivityPilotRealUserNominationNotFound,
+            ProductivityPilotPreflightNotFound,
+        ) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+        except ProductivityPilotRealUserAdmissionConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.real_user_admission_recorded",
+            source_object_ids=[
+                f"productivity_pilot_real_user_nomination:{response.nomination_evidence_hash}",
+                f"productivity_pilot_preflight:{response.preflight_gate_hash}",
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "admission_id": response.admission_id,
+                "nomination_id": response.nomination_id,
+                "participant_manifest_hash": response.participant_manifest_hash,
+                "participant_count": response.participant_count,
+                "preflight_gate_hash": response.preflight_gate_hash,
+                "backup_sha256": response.backup_sha256,
+                "postgres_restore_drill_report_hash": (response.postgres_restore_drill_report_hash),
+                "backend_foundation_gate_hash": response.backend_foundation_gate_hash,
+                "command_hash": response.command_hash,
+                "idempotency_key_hash": response.idempotency_key_hash,
+                "human_confirmation_statement_hash": (response.human_confirmation_statement_hash),
+                "four_eyes_verified": response.four_eyes_verified,
+                "fresh_control_evidence_verified": (response.fresh_control_evidence_verified),
+                "runtime_activation_allowed": response.runtime_activation_allowed,
+                "traffic_authorization_allowed": response.traffic_authorization_allowed,
+                "idempotent_replay": response.idempotent_replay,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/productivity-pilot/real-user-admissions/current",
+        response_model=ProductivityPilotRealUserAdmission | None,
+    )
+    def get_current_productivity_pilot_real_user_admission(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRealUserAdmission | None:
+        service: ProductivityPilotRealUserAdmissionService = (
+            request.app.state.productivity_pilot_real_user_admission_service
+        )
+        return service.current_admission(tenant_id=context.user_context.tenant_id)
 
     @app.post(
         "/v1/platform/productivity-pilot/admissions",
@@ -21960,6 +22129,9 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_domain_receipt_store = productivity_pilot_domain_receipt_store
     app.state.productivity_pilot_closure_report_store = productivity_pilot_closure_report_store
     app.state.productivity_pilot_closure_service = productivity_pilot_closure_service
+    app.state.productivity_pilot_participant_directory = productivity_pilot_participant_directory
+    app.state.productivity_pilot_real_user_admission_store = productivity_pilot_real_user_admission_store
+    app.state.productivity_pilot_real_user_admission_service = productivity_pilot_real_user_admission_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

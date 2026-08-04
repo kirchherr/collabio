@@ -139,11 +139,11 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="real_user_productivity_pilot_admission",
-        current_foundation_state="development_pilot_append_only_closed_and_post_closure_restore_verified",
+        current_foundation_state="real_user_admission_boundary_operational_without_admitted_principals",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "real_user_productivity_pilot_admission",
+            "collect_real_user_productivity_pilot_nomination",
             "real_user_productivity_pilot_control_evidence_refresh",
         ),
         deferred_scope=(
@@ -474,6 +474,41 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/closure-reports/current",
                     ),
                     next_action="real_user_productivity_pilot_admission",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_real_user_admission_boundary",
+                    title="Real User Pilot Admission Boundary",
+                    summary=(
+                        "Tenant-Admin-Nominierung und getrennte Security-Freigabe binden Zweck, "
+                        "aktive IAM-Rollen, Datenschutz- und frische Recovery-Nachweise. Persistiert "
+                        "werden nur pseudonymisierte Teilnehmerbelege; Laufzeit und Traffic bleiben aus."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_real_user_admission.py",
+                        "app/suite/persistence/migrations/0066_productivity_pilot_real_user_admission.sql",
+                        "tests/test_productivity_pilot_real_user_admission.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_ADMISSION.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "authoritative_tenant_principal_and_role_resolution_required",
+                        "purpose_lawful_basis_privacy_and_retention_binding_required",
+                        "conditional_dpia_and_works_council_evidence_required",
+                        "tenant_admin_security_admin_four_eyes_required",
+                        "pseudonymized_participant_evidence_only",
+                        "fresh_preflight_backup_restore_and_foundation_evidence_required",
+                        "runtime_activation_and_traffic_remain_disabled",
+                        "append_only_rls_and_restore_controls_required",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/real-user-nominations",
+                        "/v1/platform/productivity-pilot/real-user-nominations/current",
+                        "/v1/platform/productivity-pilot/real-user-admissions",
+                        "/v1/platform/productivity-pilot/real-user-admissions/current",
+                    ),
+                    next_action="collect_named_principals_and_refresh_control_evidence",
                 ),
             ),
         ),

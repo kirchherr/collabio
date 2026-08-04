@@ -106,6 +106,8 @@ TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
 PRODUCTIVITY_PILOT_CONTROL_TABLES = {
     "collabio.productivity_pilot_preflight_reports",
     "collabio.productivity_pilot_admission_records",
+    "collabio.productivity_pilot_real_user_nominations",
+    "collabio.productivity_pilot_real_user_admissions",
 }
 PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE = {
     "collabio.productivity_pilot_preflight_reports": {
@@ -116,6 +118,14 @@ PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE = {
         "productivity_pilot_admission_records_no_update",
         "productivity_pilot_admission_records_no_hard_delete",
     },
+    "collabio.productivity_pilot_real_user_nominations": {
+        "productivity_pilot_real_user_nominations_no_update",
+        "productivity_pilot_real_user_nominations_no_hard_delete",
+    },
+    "collabio.productivity_pilot_real_user_admissions": {
+        "productivity_pilot_real_user_admissions_no_update",
+        "productivity_pilot_real_user_admissions_no_hard_delete",
+    },
 }
 PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     "collabio.productivity_pilot_preflight_reports": {
@@ -123,6 +133,12 @@ PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     },
     "collabio.productivity_pilot_admission_records": {
         "productivity_pilot_admission_records_append_only",
+    },
+    "collabio.productivity_pilot_real_user_nominations": {
+        "productivity_pilot_real_user_nominations_append_only",
+    },
+    "collabio.productivity_pilot_real_user_admissions": {
+        "productivity_pilot_real_user_admissions_append_only",
     },
 }
 PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES = {
