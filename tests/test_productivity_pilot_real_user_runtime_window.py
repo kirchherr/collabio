@@ -505,3 +505,8 @@ def test_real_user_runtime_migration_is_hash_only_append_only_and_tenant_scoped(
     assert "force row level security" in sql
     assert "grant select, insert on table collabio.productivity_pilot_real_user_runtime_windows" in sql
     assert "position('\"designated_principal_ids\"' in lower(window_record::text)) = 0" in sql
+
+    policy_name_migration = get_migration("0068")
+    policy_sql = " ".join(policy_name_migration.sql().lower().split())
+    assert "alter policy productivity_pilot_real_user_runtime_observations_no_hard_delet" in policy_sql
+    assert "rename to productivity_pilot_real_user_runtime_obs_no_hard_delete" in policy_sql

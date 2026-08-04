@@ -135,7 +135,7 @@ mutation-rejecting triggers, exact `collabio_authz_admin` grants, and exact row 
 records contain participant hashes and evidence manifests only; restoring them never activates
 runtime or traffic. See `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_ADMISSION.md`.
 
-Migration 0067 extends the same mandatory continuity contract with hash-only
+Migrations 0067 and 0068 extend the same mandatory continuity contract with hash-only
 `productivity_pilot_real_user_runtime_window.v1` and
 `productivity_pilot_real_user_runtime_observation.v1` records. The restore drill verifies both
 tables, forced tenant RLS, append-only policies and triggers, exact grants, and exact row recovery.

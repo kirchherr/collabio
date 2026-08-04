@@ -186,7 +186,7 @@ PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE = {
     },
     "collabio.productivity_pilot_real_user_runtime_observations": {
         "productivity_pilot_real_user_runtime_observations_no_update",
-        "productivity_pilot_real_user_runtime_observations_no_hard_delete",
+        "productivity_pilot_real_user_runtime_obs_no_hard_delete",
     },
 }
 PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE = {
