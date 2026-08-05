@@ -139,12 +139,13 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="real_user_productivity_pilot_evidence_collection",
-        current_foundation_state="real_user_pilot_and_production_continuity_gates_ready_without_live_evidence",
+        current_foundation_state="production_continuity_evidence_read_model_ready_without_live_evidence",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
             "collect_real_user_productivity_pilot_nomination",
             "refresh_real_user_productivity_pilot_control_evidence",
+            "review_production_continuity_requirements_and_gate_status",
             "collect_current_production_continuity_topology_and_drill_evidence",
             "keep_runtime_closed_until_named_principals_and_four_eyes_approvals_are_complete",
         ),
@@ -269,16 +270,24 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     summary=(
                         "PITR/WAL, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennter "
                         "PostgreSQL-/Object-Storage-/KMS-Failover besitzen einen gemeinsamen fail-closed "
-                        "Deployment-Vertrag. Reale Produktionsevidenz steht noch aus."
+                        "Deployment-Vertrag sowie einen Security-Admin-Read-Pfad fuer Anforderungen und Status. "
+                        "Reale Produktionsevidenz steht noch aus."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_deployment_control",
                     evidence_refs=(
                         "app/suite/operations/production_continuity_deployment_gate.py",
+                        "app/suite/platform/production_continuity_read_model.py",
                         "tests/test_production_continuity_deployment_gate.py",
+                        "tests/test_production_continuity_read_model.py",
                         "docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md",
+                        "docs/operations/PRODUCTION_CONTINUITY_EVIDENCE_READ_MODEL.md",
                         "docs/operations/backup_failover_policy.json",
                         "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    api_routes=(
+                        "/v1/platform/production-continuity/evidence-requirements",
+                        "/v1/platform/production-continuity/gate-status",
                     ),
                     guardrails=(
                         "fresh_hash_only_operator_evidence_required",
@@ -289,6 +298,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "object_lock_retention_legal_hold_and_tenant_isolation_required",
                         "automatic_failover_requires_separate_drill",
                         "runtime_switch_fails_closed_without_ready_gate_report",
+                        "security_admin_metadata_only_requirements_and_status",
+                        "no_evidence_upload_or_report_mutation_api",
                         "no_deployment_promotion_traffic_switch_or_business_write",
                     ),
                     next_action="collect_current_production_topology_and_drill_evidence",

@@ -939,6 +939,91 @@ def test_roadmap_shell_assets_call_metadata_only_roadmap_api() -> None:
     assert "Welcome message source" not in js_response.text
 
 
+def test_production_continuity_requirements_api_is_security_admin_only_and_metadata_only() -> None:
+    denied = client.get(
+        "/v1/platform/production-continuity/evidence-requirements",
+        headers=DEMO_HEADERS,
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == "Security admin role required"
+
+    starting_event_count = len(app.state.audit_logger.events)
+    response = client.get(
+        "/v1/platform/production-continuity/evidence-requirements",
+        headers=DEMO_SECURITY_ADMIN_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "production_continuity_evidence_requirements.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["policy_schema_version"] == "backup_failover_policy.v3"
+    assert body["required_section_ids"] == [
+        "postgres_pitr",
+        "encrypted_offsite_backup",
+        "ha_promotion",
+        "cross_site_failover",
+        "approvals",
+    ]
+    assert len(body["target_requirements"]) == 3
+    assert body["required_distinct_approval_count"] == 3
+    assert body["evidence_reference_format"] == "sha256_only"
+    assert body["evidence_submission_allowed"] is False
+    assert body["deployment_execution_allowed"] is False
+    assert body["failover_execution_allowed"] is False
+    assert body["content_included"] is False
+    assert body["secrets_included"] is False
+    event = app.state.audit_logger.events[-1]
+    assert len(app.state.audit_logger.events) == starting_event_count + 1
+    assert event.event_type == "platform.production_continuity.evidence_requirements"
+    assert event.metadata["content_included"] is False
+    assert event.metadata["secrets_included"] is False
+
+
+def test_production_continuity_gate_status_api_stays_closed_without_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    denied = client.get(
+        "/v1/platform/production-continuity/gate-status",
+        headers=DEMO_HEADERS,
+    )
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == "Security admin role required"
+
+    monkeypatch.setenv(
+        "SUITE_BACKUP_FAILOVER_POLICY_PATH",
+        str(REPO_ROOT / "docs" / "operations" / "backup_failover_policy.json"),
+    )
+    monkeypatch.delenv("SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH", raising=False)
+    monkeypatch.setenv("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "1")
+    starting_event_count = len(app.state.audit_logger.events)
+
+    response = client.get(
+        "/v1/platform/production-continuity/gate-status",
+        headers=DEMO_SECURITY_ADMIN_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["schema_version"] == "production_continuity_gate_status.v1"
+    assert body["tenant_id"] == "tenant-demo"
+    assert body["state"] == "missing"
+    assert body["report_configured"] is False
+    assert body["report_present"] is False
+    assert body["continuity_gate_ready"] is False
+    assert body["runtime_switch_requested"] is True
+    assert body["runtime_enablement_allowed"] is False
+    assert body["pilot_traffic_allowed"] is False
+    assert body["blocking_reasons"] == ["production_continuity_gate_report_not_configured"]
+    assert body["content_included"] is False
+    assert body["secrets_included"] is False
+    event = app.state.audit_logger.events[-1]
+    assert len(app.state.audit_logger.events) == starting_event_count + 1
+    assert event.event_type == "platform.production_continuity.gate_status"
+    assert event.metadata["blocking_reason_count"] == 1
+    assert "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH" not in response.text
+
+
 def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without_content() -> None:
     starting_event_count = len(app.state.audit_logger.events)
 
@@ -949,6 +1034,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["current_focus"] == "real_user_productivity_pilot_evidence_collection"
+    assert body["current_foundation_state"] == "production_continuity_evidence_read_model_ready_without_live_evidence"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -983,6 +1069,16 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "legacy_migration_registry",
         "office_mail_clients",
     }.issubset(capability_ids)
+    production_continuity = next(
+        capability
+        for capability in capabilities
+        if capability["capability_id"] == "production_continuity_deployment_gate"
+    )
+    assert production_continuity["status"] == "guarded"
+    assert "/v1/platform/production-continuity/evidence-requirements" in production_continuity["api_routes"]
+    assert "/v1/platform/production-continuity/gate-status" in production_continuity["api_routes"]
+    assert "security_admin_metadata_only_requirements_and_status" in production_continuity["guardrails"]
+    assert "no_evidence_upload_or_report_mutation_api" in production_continuity["guardrails"]
     legacy_registry = next(
         capability for capability in capabilities if capability["capability_id"] == "legacy_migration_registry"
     )

@@ -201,6 +201,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
                 "docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md",
+                "docs/operations/PRODUCTION_CONTINUITY_EVIDENCE_READ_MODEL.md",
                 "docs/operations/BACKUP_FAILOVER.md",
                 "docs/ROADMAP.md",
             ),

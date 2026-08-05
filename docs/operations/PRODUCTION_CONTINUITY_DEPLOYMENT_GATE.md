@@ -46,6 +46,20 @@ The gate itself never:
 `deployment_execution_allowed` and `failover_execution_allowed` are always `false`. Automatic failover can be admitted
 as configured readiness only after a separate automatic-failover drill hash exists; admission still executes nothing.
 
+## Operator Read Model
+
+Security administrators can inspect the current policy-derived requirements and normalized gate state through:
+
+- `GET /v1/platform/production-continuity/evidence-requirements`
+- `GET /v1/platform/production-continuity/gate-status`
+
+Both routes require tenant context and the `security-admin` role. They are metadata-only, audit logged and do not
+accept evidence. The status response returns `missing`, `invalid`, `expired`, `blocked` or `ready` without exposing the
+report path, deployment reference, evidence hashes, KMS references or principal hashes. A ready state remains
+non-executing and is separate from the explicit runtime switch.
+
+See `PRODUCTION_CONTINUITY_EVIDENCE_READ_MODEL.md` for the accountable collection workflow and response contract.
+
 ## Evidence Bundle
 
 The input schema is `production_continuity_deployment_evidence.v1`. All deployment, implementation-version, site,

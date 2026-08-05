@@ -785,6 +785,14 @@ from suite.platform.product_cockpit import (
 from suite.platform.product_cockpit import (
     build_product_cockpit_mvp_pilot_decision_capture_payload_validation_request_execution_activation_dry_run_response as build_activation_dry_run_response,  # noqa: E501
 )
+from suite.platform.production_continuity_read_model import (
+    ProductionContinuityEvidenceRequirementsResponse,
+    ProductionContinuityGateStatusResponse,
+    ProductionContinuityReadModelUnavailable,
+    build_production_continuity_evidence_requirements_response,
+    build_production_continuity_gate_status_from_environment,
+    load_production_continuity_policy_from_environment,
+)
 from suite.platform.productivity_pilot_admission import (
     ProductivityPilotAdmissionCommand,
     ProductivityPilotAdmissionConflict,
@@ -8678,6 +8686,85 @@ def build_app() -> FastAPI:
                 "persistent_task_created": response.persistent_task_created,
                 "destructive_actions_allowed": response.destructive_actions_allowed,
                 "external_side_effect_allowed": response.external_side_effect_allowed,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/production-continuity/evidence-requirements",
+        response_model=ProductionContinuityEvidenceRequirementsResponse,
+    )
+    def production_continuity_evidence_requirements(
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductionContinuityEvidenceRequirementsResponse:
+        try:
+            policy = load_production_continuity_policy_from_environment()
+        except ProductionContinuityReadModelUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Production continuity policy is unavailable",
+            ) from exc
+        response = build_production_continuity_evidence_requirements_response(
+            user_context=context.user_context,
+            policy=policy,
+        )
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.production_continuity.evidence_requirements",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "policy_schema_version": response.policy_schema_version,
+                "required_section_count": len(response.required_section_ids),
+                "required_control_count": len(response.required_control_ids),
+                "critical_continuity_domain_count": len(response.critical_continuity_domain_ids),
+                "target_requirement_count": len(response.target_requirements),
+                "evidence_submission_allowed": response.evidence_submission_allowed,
+                "deployment_execution_allowed": response.deployment_execution_allowed,
+                "failover_execution_allowed": response.failover_execution_allowed,
+                "content_included": response.content_included,
+                "secrets_included": response.secrets_included,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/production-continuity/gate-status",
+        response_model=ProductionContinuityGateStatusResponse,
+    )
+    def production_continuity_gate_status(
+        context: Annotated[TenantRequestContext, Depends(require_security_admin)],
+    ) -> ProductionContinuityGateStatusResponse:
+        try:
+            response = build_production_continuity_gate_status_from_environment(
+                user_context=context.user_context,
+            )
+        except ProductionContinuityReadModelUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Production continuity policy is unavailable",
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.production_continuity.gate_status",
+            source_object_ids=[],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "state": response.state.value,
+                "report_configured": response.report_configured,
+                "report_present": response.report_present,
+                "report_hash_verified": response.report_hash_verified,
+                "policy_binding_verified": response.policy_binding_verified,
+                "evidence_freshness_verified": response.evidence_freshness_verified,
+                "continuity_gate_ready": response.continuity_gate_ready,
+                "runtime_switch_requested": response.runtime_switch_requested,
+                "runtime_enablement_allowed": response.runtime_enablement_allowed,
+                "pilot_traffic_allowed": response.pilot_traffic_allowed,
+                "blocking_reason_count": len(response.blocking_reasons),
+                "content_included": response.content_included,
+                "secrets_included": response.secrets_included,
             },
         )
         return response
