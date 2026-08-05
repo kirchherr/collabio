@@ -118,16 +118,22 @@ Evaluate production continuity evidence without executing a deployment or failov
 ```bash
 docker compose --profile production-continuity run --rm \
   -v /secure/operator-evidence/production-continuity.json:/evidence/production-continuity.json:ro \
+  -v /secure/operator-evidence/production-continuity.dsse.json:/evidence/production-continuity.dsse.json:ro \
+  -v /secure/operator-trust/production-continuity-signers.json:/trust/production-continuity-signers.json:ro \
   production-continuity-deployment-gate
 ```
 
-The command emits `production_continuity_deployment_gate.v1`. It validates fresh hash-only evidence for PostgreSQL WAL
+The command emits `production_continuity_deployment_gate.v2`. It validates fresh hash-only evidence for PostgreSQL WAL
 continuity and isolated PITR, encrypted immutable offsite restore, HA fencing and manual promotion, cross-site
 PostgreSQL/Object Storage/KMS recovery, tenant isolation, Object Lock/retention/legal hold, RPO/RTO and three distinct
-approvals. The service has no network and cannot deploy, promote, switch traffic or write business data. See
+approvals. The evidence digest, deployment and backup policy must also be bound into one canonical in-toto Statement in
+a DSSE envelope signed by separate change, security and operations Ed25519 keys. The trust policy contains public keys
+only and is mounted independently; private keys remain in the accountable operator, HSM or KMS boundary. The service
+has no network and cannot deploy, promote, switch traffic or write business data. See
 `docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md`.
 
-The productivity-pilot runtime switch fails closed unless its configured report path contains a hash-valid ready gate.
+The productivity-pilot runtime switch fails closed unless its configured report path contains a hash-valid ready gate
+and `SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH` resolves to the same valid, non-revoked trust policy.
 
 Bind the restored foundation to the productive CRM, Tasks, and Time Tracking API package:
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": "backup_failover_policy.v3",
+  "schema_version": "backup_failover_policy.v4",
   "owner": "platform-operations",
   "default_timezone": "UTC",
   "principles": [
@@ -18,7 +18,7 @@
     "Secrets and key material are never treated as ordinary dumps; recovery must use the approved secret manager or KMS backup mechanism."
   ],
   "production_deployment_gate": {
-    "schema_version": "production_continuity_deployment_policy.v1",
+    "schema_version": "production_continuity_deployment_policy.v2",
     "maximum_evidence_age_hours": 168,
     "postgres_target_id": "postgres_primary",
     "object_storage_target_id": "object_storage_records",
@@ -48,6 +48,7 @@
       "tenant_isolation_after_recovery",
       "three_distinct_change_security_operations_approvals",
       "implementation_version_provenance_hashes",
+      "three_role_ed25519_dsse_attestation_bound_to_evidence_and_policy",
       "metadata_only_no_deployment_or_failover_execution"
     ],
     "reference_implementations": [

@@ -5,7 +5,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from production_continuity_attestation_support import (
+    build_test_production_continuity_attestation,
+)
 from suite.operations.backup_failover import BackupFailoverPolicy, load_backup_failover_policy
+from suite.operations.production_continuity_attestation import (
+    ProductionContinuityApprovalPrincipals,
+    ProductionContinuityAttestationEnvelope,
+    ProductionContinuitySignerPolicy,
+)
 from suite.operations.production_continuity_deployment_gate import (
     CrossSiteFailoverEvidence,
     EncryptedOffsiteBackupEvidence,
@@ -13,11 +21,16 @@ from suite.operations.production_continuity_deployment_gate import (
     PostgresPITREvidence,
     ProductionContinuityApprovalEvidence,
     ProductionContinuityDeploymentEvidenceBundle,
-    build_production_continuity_deployment_gate,
+    ProductionContinuityDeploymentGate,
+    build_backup_failover_policy_hash,
     build_production_continuity_deployment_gate_hash,
+    build_production_continuity_evidence_bundle_hash,
     load_production_continuity_deployment_gate,
     persist_production_continuity_deployment_gate,
     production_continuity_deployment_gate_runtime_ready,
+)
+from suite.operations.production_continuity_deployment_gate import (
+    build_production_continuity_deployment_gate as build_production_continuity_deployment_gate_impl,
 )
 from suite.operations.production_continuity_deployment_gate import (
     main as continuity_gate_main,
@@ -141,6 +154,41 @@ def _bundle(
     )
 
 
+def _attestation(
+    *,
+    policy: BackupFailoverPolicy,
+    bundle: ProductionContinuityDeploymentEvidenceBundle,
+) -> tuple[ProductionContinuitySignerPolicy, ProductionContinuityAttestationEnvelope]:
+    return build_test_production_continuity_attestation(
+        evidence_bundle_hash=build_production_continuity_evidence_bundle_hash(bundle),
+        deployment_ref_hash=bundle.deployment_ref_hash,
+        backup_policy_schema_version=policy.schema_version,
+        backup_policy_hash=build_backup_failover_policy_hash(policy),
+        approval_principals=ProductionContinuityApprovalPrincipals(
+            change=bundle.approvals.change_approver_principal_hash,
+            security=bundle.approvals.security_approver_principal_hash,
+            operations=bundle.approvals.operations_approver_principal_hash,
+        ),
+        issued_at=bundle.approvals.reviewed_at_utc,
+    )
+
+
+def build_production_continuity_deployment_gate(
+    *,
+    policy: BackupFailoverPolicy,
+    bundle: ProductionContinuityDeploymentEvidenceBundle,
+    checked_at: datetime,
+) -> ProductionContinuityDeploymentGate:
+    signer_policy, envelope = _attestation(policy=policy, bundle=bundle)
+    return build_production_continuity_deployment_gate_impl(
+        policy=policy,
+        bundle=bundle,
+        attestation_envelope=envelope,
+        signer_policy=signer_policy,
+        checked_at=checked_at,
+    )
+
+
 def test_gate_accepts_fresh_complete_metadata_only_production_continuity_evidence() -> None:
     policy = _policy()
 
@@ -150,7 +198,7 @@ def test_gate_accepts_fresh_complete_metadata_only_production_continuity_evidenc
         checked_at=CHECKED_AT,
     )
 
-    assert gate.schema_version == "production_continuity_deployment_gate.v1"
+    assert gate.schema_version == "production_continuity_deployment_gate.v2"
     assert gate.deployment_ready is True
     assert gate.blocking_reasons == ()
     assert gate.postgres_pitr_verified is True
@@ -163,6 +211,9 @@ def test_gate_accepts_fresh_complete_metadata_only_production_continuity_evidenc
     assert gate.retention_object_lock_legal_hold_verified is True
     assert gate.tenant_isolation_verified is True
     assert gate.approvals_verified is True
+    assert gate.attestation_signatures_verified is True
+    assert gate.verified_signer_roles == ("change", "operations", "security")
+    assert len(gate.verified_signer_key_ids) == 3
     assert gate.automatic_failover_enabled is False
     assert gate.automatic_failover_admitted is False
     assert gate.deployment_execution_allowed is False
@@ -316,13 +367,17 @@ def test_persisted_gate_is_hash_verified_and_tamper_evident(tmp_path: Path) -> N
 def test_runtime_switch_requires_a_hash_valid_ready_production_continuity_gate(tmp_path: Path) -> None:
     policy = _policy()
     runtime_checked_at = datetime.now(UTC)
+    bundle = _bundle(policy=policy, checked_at=runtime_checked_at)
+    signer_policy, _ = _attestation(policy=policy, bundle=bundle)
     gate = build_production_continuity_deployment_gate(
         policy=policy,
-        bundle=_bundle(policy=policy, checked_at=runtime_checked_at),
+        bundle=bundle,
         checked_at=runtime_checked_at,
     )
     report_path = tmp_path / "production-continuity-gate.json"
+    signer_policy_path = tmp_path / "production-continuity-signers.json"
     persist_production_continuity_deployment_gate(gate=gate, report_path=report_path)
+    signer_policy_path.write_text(signer_policy.model_dump_json(), encoding="utf-8")
 
     assert productivity_pilot_runtime_enabled({"SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED": "1"}) is False
     assert (
@@ -331,6 +386,7 @@ def test_runtime_switch_requires_a_hash_valid_ready_production_continuity_gate(t
                 "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED": "1",
                 "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH": str(report_path),
                 "SUITE_BACKUP_FAILOVER_POLICY_PATH": str(POLICY_PATH),
+                "SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH": str(signer_policy_path),
             }
         )
         is True
@@ -345,6 +401,7 @@ def test_runtime_switch_requires_a_hash_valid_ready_production_continuity_gate(t
                 "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED": "1",
                 "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH": str(report_path),
                 "SUITE_BACKUP_FAILOVER_POLICY_PATH": str(POLICY_PATH),
+                "SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH": str(signer_policy_path),
             }
         )
         is False
@@ -353,9 +410,11 @@ def test_runtime_switch_requires_a_hash_valid_ready_production_continuity_gate(t
 
 def test_runtime_rejects_an_expired_otherwise_hash_valid_gate() -> None:
     policy = _policy()
+    bundle = _bundle(policy=policy)
+    signer_policy, _ = _attestation(policy=policy, bundle=bundle)
     gate = build_production_continuity_deployment_gate(
         policy=policy,
-        bundle=_bundle(policy=policy),
+        bundle=bundle,
         checked_at=CHECKED_AT,
     )
 
@@ -364,6 +423,7 @@ def test_runtime_rejects_an_expired_otherwise_hash_valid_gate() -> None:
         production_continuity_deployment_gate_runtime_ready(
             gate=gate,
             policy=policy,
+            signer_policy=signer_policy,
             checked_at=CHECKED_AT + timedelta(days=8),
         )
         is False

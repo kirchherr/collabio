@@ -41,11 +41,11 @@ REQUIRED_CONTINUITY_DOMAINS = {
 def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     policy = load_backup_failover_policy(POLICY_PATH)
 
-    assert policy.schema_version == "backup_failover_policy.v3"
+    assert policy.schema_version == "backup_failover_policy.v4"
     assert policy.owner == "platform-operations"
     assert len(policy.targets) == 7
     assert backup_policy_summary(policy) == {
-        "schema_version": "backup_failover_policy.v3",
+        "schema_version": "backup_failover_policy.v4",
         "owner": "platform-operations",
         "target_count": 7,
         "continuity_domain_count": len(REQUIRED_CONTINUITY_DOMAINS),
@@ -54,7 +54,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     }
 
     deployment_gate = policy.production_deployment_gate
-    assert deployment_gate.schema_version == "production_continuity_deployment_policy.v1"
+    assert deployment_gate.schema_version == "production_continuity_deployment_policy.v2"
     assert deployment_gate.maximum_evidence_age_hours == 168
     assert deployment_gate.required_target_ids == (
         "postgres_primary",
@@ -844,7 +844,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "productivity_pilot_start_authorization.v1" in runbook
     assert "productivity_pilot_runtime_window.v1" in runbook
     assert "productivity_pilot_runtime_observation" in runbook
-    assert "production_continuity_deployment_gate.v1" in runbook
+    assert "production_continuity_deployment_gate.v2" in runbook
     assert "docker compose --profile production-continuity run --rm" in runbook
     assert "runtime switch fails closed" in runbook
     assert "Continuity Domains" in runbook
@@ -1010,6 +1010,8 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "python -m suite.operations.production_continuity_deployment_gate" in compose
     assert "SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json" in compose
+    assert "SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH: /evidence/production-continuity.dsse.json" in compose
+    assert "SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: /trust/production-continuity-signers.json" in compose
     assert (
         "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: /backups/production-continuity-deployment-gate.json" in compose
     )

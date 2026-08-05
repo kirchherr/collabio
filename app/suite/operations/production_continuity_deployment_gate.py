@@ -11,6 +11,17 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.operations.backup_failover import BackupFailoverPolicy, load_backup_failover_policy
+from suite.operations.production_continuity_attestation import (
+    DSSE_PAYLOAD_TYPE,
+    ProductionContinuityApprovalPrincipals,
+    ProductionContinuityAttestationEnvelope,
+    ProductionContinuitySignerPolicy,
+    SignerRole,
+    build_production_continuity_signer_policy_hash,
+    load_production_continuity_attestation_envelope,
+    load_production_continuity_signer_policy,
+    verify_production_continuity_attestation,
+)
 from suite.storage.source_objects import sha256_bytes
 
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
@@ -233,6 +244,14 @@ class ProductionContinuityDeploymentGate(StrictEvidenceModel):
     backup_policy_schema_version: str
     backup_policy_hash: str
     evidence_bundle_hash: str
+    evidence_schema_version: Literal["production_continuity_deployment_evidence.v1"] = (
+        "production_continuity_deployment_evidence.v1"
+    )
+    signer_policy_schema_version: Literal["production_continuity_signer_policy.v1"]
+    signer_policy_hash: str
+    attestation_envelope_hash: str
+    attestation_payload_type: Literal["application/vnd.in-toto+json"] = DSSE_PAYLOAD_TYPE
+    attestation_envelope: ProductionContinuityAttestationEnvelope
     required_target_ids: tuple[str, ...]
     critical_continuity_domain_count: int = Field(ge=1)
     continuity_domain_coverage_verified: bool
@@ -247,6 +266,9 @@ class ProductionContinuityDeploymentGate(StrictEvidenceModel):
     retention_object_lock_legal_hold_verified: bool
     tenant_isolation_verified: bool
     approvals_verified: bool
+    attestation_signatures_verified: bool
+    verified_signer_roles: tuple[SignerRole, ...]
+    verified_signer_key_ids: tuple[str, ...]
     automatic_failover_enabled: bool
     automatic_failover_admitted: bool
     metadata_only_evidence_verified: bool
@@ -258,12 +280,14 @@ class ProductionContinuityDeploymentGate(StrictEvidenceModel):
     blocking_reasons: tuple[str, ...] = ()
     deployment_ready: bool
     gate_hash: str
-    schema_version: Literal["production_continuity_deployment_gate.v1"] = "production_continuity_deployment_gate.v1"
+    schema_version: Literal["production_continuity_deployment_gate.v2"] = "production_continuity_deployment_gate.v2"
 
     _validate_hashes = field_validator(
         "deployment_ref_hash",
         "backup_policy_hash",
         "evidence_bundle_hash",
+        "signer_policy_hash",
+        "attestation_envelope_hash",
         "gate_hash",
     )(_require_sha256)
 
@@ -312,6 +336,8 @@ def build_production_continuity_deployment_gate(
     *,
     policy: BackupFailoverPolicy,
     bundle: ProductionContinuityDeploymentEvidenceBundle,
+    attestation_envelope: ProductionContinuityAttestationEnvelope,
+    signer_policy: ProductionContinuitySignerPolicy,
     checked_at: datetime | None = None,
 ) -> ProductionContinuityDeploymentGate:
     gate_policy = policy.production_deployment_gate
@@ -319,6 +345,24 @@ def build_production_continuity_deployment_gate(
     postgres_target = policy.target(gate_policy.postgres_target_id)
     object_target = policy.target(gate_policy.object_storage_target_id)
     kms_target = policy.target(gate_policy.kms_target_id)
+    policy_hash = build_backup_failover_policy_hash(policy)
+    evidence_bundle_hash = build_production_continuity_evidence_bundle_hash(bundle)
+    approval_principals = ProductionContinuityApprovalPrincipals(
+        change=bundle.approvals.change_approver_principal_hash,
+        security=bundle.approvals.security_approver_principal_hash,
+        operations=bundle.approvals.operations_approver_principal_hash,
+    )
+    attestation = verify_production_continuity_attestation(
+        envelope=attestation_envelope,
+        signer_policy=signer_policy,
+        expected_evidence_bundle_hash=evidence_bundle_hash,
+        expected_deployment_ref_hash=bundle.deployment_ref_hash,
+        expected_backup_policy_schema_version=policy.schema_version,
+        expected_backup_policy_hash=policy_hash,
+        checked_at=checked,
+        maximum_age_hours=gate_policy.maximum_evidence_age_hours,
+        expected_approval_principals=approval_principals,
+    )
     critical_domains = {domain.domain_id for domain in policy.continuity_domains if domain.criticality == "critical"}
     supplied_domains = set(bundle.continuity_domain_ids)
     required_targets = set(gate_policy.required_target_ids)
@@ -483,6 +527,7 @@ def build_production_continuity_deployment_gate(
         ),
         "tenant_isolation_not_verified": bundle.cross_site_failover.tenant_isolation_verified,
         "three_party_approval_not_verified": approvals_verified,
+        "operator_attestation_signatures_not_verified": attestation.verified,
         "evidence_is_not_metadata_only": metadata_only,
     }
     blocking_reasons = tuple(sorted(reason for reason, passed in checks.items() if not passed))
@@ -491,8 +536,12 @@ def build_production_continuity_deployment_gate(
         valid_until_utc=(min(observed_at) + timedelta(hours=gate_policy.maximum_evidence_age_hours)).isoformat(),
         deployment_ref_hash=bundle.deployment_ref_hash,
         backup_policy_schema_version=policy.schema_version,
-        backup_policy_hash=build_backup_failover_policy_hash(policy),
-        evidence_bundle_hash=build_production_continuity_evidence_bundle_hash(bundle),
+        backup_policy_hash=policy_hash,
+        evidence_bundle_hash=evidence_bundle_hash,
+        signer_policy_schema_version=signer_policy.schema_version,
+        signer_policy_hash=attestation.signer_policy_hash,
+        attestation_envelope_hash=attestation.envelope_hash,
+        attestation_envelope=attestation_envelope,
         required_target_ids=gate_policy.required_target_ids,
         critical_continuity_domain_count=len(critical_domains),
         continuity_domain_coverage_verified=domain_coverage_verified,
@@ -510,6 +559,9 @@ def build_production_continuity_deployment_gate(
         ),
         tenant_isolation_verified=bundle.cross_site_failover.tenant_isolation_verified,
         approvals_verified=approvals_verified,
+        attestation_signatures_verified=attestation.verified,
+        verified_signer_roles=attestation.verified_roles,
+        verified_signer_key_ids=attestation.verified_key_ids,
         automatic_failover_enabled=bundle.ha_promotion.automatic_failover_enabled,
         automatic_failover_admitted=automatic_failover_admitted,
         metadata_only_evidence_verified=metadata_only,
@@ -524,6 +576,7 @@ def production_continuity_deployment_gate_runtime_ready(
     *,
     gate: ProductionContinuityDeploymentGate,
     policy: BackupFailoverPolicy,
+    signer_policy: ProductionContinuitySignerPolicy,
     checked_at: datetime | None = None,
 ) -> bool:
     try:
@@ -532,6 +585,16 @@ def production_continuity_deployment_gate_runtime_ready(
         valid_until = _require_aware_utc(datetime.fromisoformat(gate.valid_until_utc))
     except ValueError:
         return False
+    attestation = verify_production_continuity_attestation(
+        envelope=gate.attestation_envelope,
+        signer_policy=signer_policy,
+        expected_evidence_bundle_hash=gate.evidence_bundle_hash,
+        expected_deployment_ref_hash=gate.deployment_ref_hash,
+        expected_backup_policy_schema_version=policy.schema_version,
+        expected_backup_policy_hash=build_backup_failover_policy_hash(policy),
+        checked_at=checked,
+        maximum_age_hours=policy.production_deployment_gate.maximum_evidence_age_hours,
+    )
     return all(
         (
             build_production_continuity_deployment_gate_hash(gate) == gate.gate_hash,
@@ -541,6 +604,13 @@ def production_continuity_deployment_gate_runtime_ready(
             not gate.failover_execution_allowed,
             gate.backup_policy_schema_version == policy.schema_version,
             gate.backup_policy_hash == build_backup_failover_policy_hash(policy),
+            gate.signer_policy_schema_version == signer_policy.schema_version,
+            gate.signer_policy_hash == build_production_continuity_signer_policy_hash(signer_policy),
+            gate.attestation_signatures_verified,
+            attestation.verified,
+            gate.attestation_envelope_hash == attestation.envelope_hash,
+            gate.verified_signer_roles == attestation.verified_roles,
+            gate.verified_signer_key_ids == attestation.verified_key_ids,
             gate_checked_at <= checked <= valid_until,
         )
     )
@@ -583,10 +653,24 @@ def run_production_continuity_deployment_gate_from_environment(
     evidence_path_value = env.get("SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH", "").strip()
     if not evidence_path_value:
         raise ValueError("SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH is required and must be mounted read-only")
+    attestation_path_value = env.get("SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH", "").strip()
+    if not attestation_path_value:
+        raise ValueError("SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH is required and must be mounted read-only")
+    signer_policy_path_value = env.get("SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH", "").strip()
+    if not signer_policy_path_value:
+        raise ValueError("SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH is required and must be mounted read-only")
+
     evidence_path = Path(evidence_path_value)
     policy = load_backup_failover_policy(policy_path)
     bundle = ProductionContinuityDeploymentEvidenceBundle.model_validate_json(evidence_path.read_text(encoding="utf-8"))
-    return build_production_continuity_deployment_gate(policy=policy, bundle=bundle)
+    envelope = load_production_continuity_attestation_envelope(Path(attestation_path_value))
+    signer_policy = load_production_continuity_signer_policy(Path(signer_policy_path_value))
+    return build_production_continuity_deployment_gate(
+        policy=policy,
+        bundle=bundle,
+        attestation_envelope=envelope,
+        signer_policy=signer_policy,
+    )
 
 
 def main() -> None:

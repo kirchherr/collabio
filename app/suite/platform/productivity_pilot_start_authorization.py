@@ -14,6 +14,9 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.models import UserContext
 from suite.operations.backup_failover import load_backup_failover_policy
+from suite.operations.production_continuity_attestation import (
+    load_production_continuity_signer_policy,
+)
 from suite.operations.production_continuity_deployment_gate import (
     load_production_continuity_deployment_gate,
     production_continuity_deployment_gate_runtime_ready,
@@ -831,6 +834,9 @@ def productivity_pilot_runtime_enabled(environ: Mapping[str, str] | None = None)
     report_path = env.get("SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH", "").strip()
     if not report_path:
         return False
+    signer_policy_path = env.get("SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH", "").strip()
+    if not signer_policy_path:
+        return False
     policy_path = env.get(
         "SUITE_BACKUP_FAILOVER_POLICY_PATH",
         "/workspace/docs/operations/backup_failover_policy.json",
@@ -838,6 +844,7 @@ def productivity_pilot_runtime_enabled(environ: Mapping[str, str] | None = None)
     try:
         gate = load_production_continuity_deployment_gate(Path(report_path))
         policy = load_backup_failover_policy(Path(policy_path))
+        signer_policy = load_production_continuity_signer_policy(Path(signer_policy_path))
     except (OSError, ValueError):
         return False
-    return production_continuity_deployment_gate_runtime_ready(gate=gate, policy=policy)
+    return production_continuity_deployment_gate_runtime_ready(gate=gate, policy=policy, signer_policy=signer_policy)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from contextlib import suppress
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -11,17 +12,25 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from suite.ai_control_plane.models import UserContext
 from suite.operations.backup_failover import BackupFailoverPolicy, load_backup_failover_policy
+from suite.operations.production_continuity_attestation import (
+    DSSE_PAYLOAD_TYPE,
+    PRODUCTION_CONTINUITY_PREDICATE_TYPE,
+    REQUIRED_SIGNER_ROLES,
+    ProductionContinuitySignerPolicy,
+    build_production_continuity_signer_policy_hash,
+    load_production_continuity_signer_policy,
+)
 from suite.operations.production_continuity_deployment_gate import (
     build_backup_failover_policy_hash,
     load_production_continuity_deployment_gate,
     production_continuity_deployment_gate_runtime_ready,
 )
 
-PRODUCTION_CONTINUITY_REQUIREMENTS_SCHEMA_VERSION: Literal["production_continuity_evidence_requirements.v1"] = (
-    "production_continuity_evidence_requirements.v1"
+PRODUCTION_CONTINUITY_REQUIREMENTS_SCHEMA_VERSION: Literal["production_continuity_evidence_requirements.v2"] = (
+    "production_continuity_evidence_requirements.v2"
 )
-PRODUCTION_CONTINUITY_GATE_STATUS_SCHEMA_VERSION: Literal["production_continuity_gate_status.v1"] = (
-    "production_continuity_gate_status.v1"
+PRODUCTION_CONTINUITY_GATE_STATUS_SCHEMA_VERSION: Literal["production_continuity_gate_status.v2"] = (
+    "production_continuity_gate_status.v2"
 )
 PRODUCTION_CONTINUITY_EVIDENCE_SCHEMA_VERSION: Literal["production_continuity_deployment_evidence.v1"] = (
     "production_continuity_deployment_evidence.v1"
@@ -81,6 +90,15 @@ class ProductionContinuityEvidenceRequirementsResponse(StrictReadModel):
     maximum_kms_rto_minutes: int = Field(ge=1)
     required_distinct_approval_count: Literal[3] = 3
     evidence_reference_format: Literal["sha256_only"] = "sha256_only"
+    attestation_standard: Literal["in_toto_statement_v1_dsse_v1"] = "in_toto_statement_v1_dsse_v1"
+    attestation_payload_type: Literal["application/vnd.in-toto+json"] = DSSE_PAYLOAD_TYPE
+    attestation_predicate_type: Literal["https://collabio.eu/attestation/production-continuity/v1"] = (
+        PRODUCTION_CONTINUITY_PREDICATE_TYPE
+    )
+    signature_algorithm: Literal["ed25519"] = "ed25519"
+    required_signer_roles: tuple[Literal["change", "security", "operations"], ...] = REQUIRED_SIGNER_ROLES
+    minimum_distinct_signatures: Literal[3] = 3
+    private_key_ingestion_allowed: Literal[False] = False
     automatic_failover_requires_separate_drill: Literal[True] = True
     manual_promotion_evidence_required: Literal[True] = True
     evidence_submission_allowed: Literal[False] = False
@@ -88,7 +106,7 @@ class ProductionContinuityEvidenceRequirementsResponse(StrictReadModel):
     failover_execution_allowed: Literal[False] = False
     content_included: Literal[False] = False
     secrets_included: Literal[False] = False
-    schema_version: Literal["production_continuity_evidence_requirements.v1"] = (
+    schema_version: Literal["production_continuity_evidence_requirements.v2"] = (
         PRODUCTION_CONTINUITY_REQUIREMENTS_SCHEMA_VERSION
     )
 
@@ -117,6 +135,9 @@ class ProductionContinuityGateStatusResponse(StrictReadModel):
     report_present: bool
     report_hash_verified: bool
     policy_binding_verified: bool
+    signer_policy_binding_verified: bool
+    attestation_signatures_verified: bool
+    verified_signer_count: int = Field(ge=0, le=3)
     evidence_freshness_verified: bool
     continuity_gate_ready: bool
     runtime_switch_requested: bool
@@ -131,7 +152,7 @@ class ProductionContinuityGateStatusResponse(StrictReadModel):
     business_write_allowed: Literal[False] = False
     content_included: Literal[False] = False
     secrets_included: Literal[False] = False
-    schema_version: Literal["production_continuity_gate_status.v1"] = PRODUCTION_CONTINUITY_GATE_STATUS_SCHEMA_VERSION
+    schema_version: Literal["production_continuity_gate_status.v2"] = PRODUCTION_CONTINUITY_GATE_STATUS_SCHEMA_VERSION
 
     @model_validator(mode="after")
     def require_fail_closed_status(self) -> Self:
@@ -141,6 +162,12 @@ class ProductionContinuityGateStatusResponse(StrictReadModel):
             and self.state == ProductionContinuityGateState.READY
         ):
             raise ValueError("runtime enablement requires a ready gate and an explicit switch request")
+        if self.state == ProductionContinuityGateState.READY and not (
+            self.signer_policy_binding_verified
+            and self.attestation_signatures_verified
+            and self.verified_signer_count == 3
+        ):
+            raise ValueError("ready production continuity status requires three trusted signatures")
         if self.state == ProductionContinuityGateState.READY and self.blocking_reasons:
             raise ValueError("ready production continuity status must not contain blockers")
         if self.state != ProductionContinuityGateState.READY and not self.blocking_reasons:
@@ -234,6 +261,9 @@ def _status_response(
     report_present: bool,
     report_hash_verified: bool = False,
     policy_binding_verified: bool = False,
+    signer_policy_binding_verified: bool = False,
+    attestation_signatures_verified: bool = False,
+    verified_signer_count: int = 0,
     evidence_freshness_verified: bool = False,
     continuity_gate_ready: bool = False,
     runtime_enablement_allowed: bool = False,
@@ -247,6 +277,9 @@ def _status_response(
         report_present=report_present,
         report_hash_verified=report_hash_verified,
         policy_binding_verified=policy_binding_verified,
+        signer_policy_binding_verified=signer_policy_binding_verified,
+        attestation_signatures_verified=attestation_signatures_verified,
+        verified_signer_count=verified_signer_count,
         evidence_freshness_verified=evidence_freshness_verified,
         continuity_gate_ready=continuity_gate_ready,
         runtime_switch_requested=runtime_switch_requested,
@@ -262,6 +295,8 @@ def build_production_continuity_gate_status_response(
     *,
     user_context: UserContext,
     policy: BackupFailoverPolicy,
+    signer_policy: ProductionContinuitySignerPolicy | None = None,
+    signer_policy_configured: bool = False,
     report_path: Path | None,
     runtime_switch_requested: bool,
     checked_at: datetime | None = None,
@@ -306,11 +341,13 @@ def build_production_continuity_gate_status_response(
         gate.backup_policy_schema_version == policy.schema_version
         and gate.backup_policy_hash == build_backup_failover_policy_hash(policy)
     )
+    signer_policy_binding_verified = signer_policy is not None and (
+        gate.signer_policy_schema_version == signer_policy.schema_version
+        and gate.signer_policy_hash == build_production_continuity_signer_policy_hash(signer_policy)
+    )
     freshness_verified = report_checked_at <= checked <= valid_until
-    runtime_gate_ready = production_continuity_deployment_gate_runtime_ready(
-        gate=gate,
-        policy=policy,
-        checked_at=checked,
+    runtime_gate_ready = signer_policy is not None and production_continuity_deployment_gate_runtime_ready(
+        gate=gate, policy=policy, signer_policy=signer_policy, checked_at=checked
     )
 
     def loaded_status(
@@ -330,6 +367,9 @@ def build_production_continuity_gate_status_response(
             report_present=True,
             report_hash_verified=True,
             policy_binding_verified=policy_binding_verified,
+            signer_policy_binding_verified=signer_policy_binding_verified,
+            attestation_signatures_verified=gate.attestation_signatures_verified,
+            verified_signer_count=len(gate.verified_signer_key_ids),
             evidence_freshness_verified=freshness_verified,
             continuity_gate_ready=continuity_gate_ready,
             runtime_enablement_allowed=runtime_enablement_allowed,
@@ -341,6 +381,18 @@ def build_production_continuity_gate_status_response(
         return loaded_status(
             state=ProductionContinuityGateState.INVALID,
             blocking_reasons=("production_continuity_gate_policy_binding_invalid",),
+        )
+    if signer_policy is None:
+        reason = (
+            "production_continuity_signer_policy_invalid"
+            if signer_policy_configured
+            else "production_continuity_signer_policy_not_configured"
+        )
+        return loaded_status(state=ProductionContinuityGateState.INVALID, blocking_reasons=(reason,))
+    if not signer_policy_binding_verified:
+        return loaded_status(
+            state=ProductionContinuityGateState.INVALID,
+            blocking_reasons=("production_continuity_gate_signer_policy_binding_invalid",),
         )
     if report_checked_at > checked:
         return loaded_status(
@@ -390,9 +442,16 @@ def build_production_continuity_gate_status_from_environment(
     env = os.environ if environ is None else environ
     policy = load_production_continuity_policy_from_environment(env)
     report_path_value = env.get("SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH", "").strip()
+    signer_policy_path_value = env.get("SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH", "").strip()
+    signer_policy = None
+    if signer_policy_path_value:
+        with suppress(OSError, ValueError):
+            signer_policy = load_production_continuity_signer_policy(Path(signer_policy_path_value))
     return build_production_continuity_gate_status_response(
         user_context=user_context,
         policy=policy,
+        signer_policy=signer_policy,
+        signer_policy_configured=bool(signer_policy_path_value),
         report_path=Path(report_path_value) if report_path_value else None,
         runtime_switch_requested=_runtime_switch_requested(env),
         checked_at=checked_at,

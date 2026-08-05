@@ -955,9 +955,9 @@ def test_production_continuity_requirements_api_is_security_admin_only_and_metad
 
     assert response.status_code == 200
     body = response.json()
-    assert body["schema_version"] == "production_continuity_evidence_requirements.v1"
+    assert body["schema_version"] == "production_continuity_evidence_requirements.v2"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["policy_schema_version"] == "backup_failover_policy.v3"
+    assert body["policy_schema_version"] == "backup_failover_policy.v4"
     assert body["required_section_ids"] == [
         "postgres_pitr",
         "encrypted_offsite_backup",
@@ -968,6 +968,10 @@ def test_production_continuity_requirements_api_is_security_admin_only_and_metad
     assert len(body["target_requirements"]) == 3
     assert body["required_distinct_approval_count"] == 3
     assert body["evidence_reference_format"] == "sha256_only"
+    assert body["attestation_standard"] == "in_toto_statement_v1_dsse_v1"
+    assert body["signature_algorithm"] == "ed25519"
+    assert body["required_signer_roles"] == ["change", "security", "operations"]
+    assert body["private_key_ingestion_allowed"] is False
     assert body["evidence_submission_allowed"] is False
     assert body["deployment_execution_allowed"] is False
     assert body["failover_execution_allowed"] is False
@@ -976,6 +980,8 @@ def test_production_continuity_requirements_api_is_security_admin_only_and_metad
     event = app.state.audit_logger.events[-1]
     assert len(app.state.audit_logger.events) == starting_event_count + 1
     assert event.event_type == "platform.production_continuity.evidence_requirements"
+    assert event.metadata["minimum_distinct_signatures"] == 3
+    assert event.metadata["private_key_ingestion_allowed"] is False
     assert event.metadata["content_included"] is False
     assert event.metadata["secrets_included"] is False
 
@@ -1005,7 +1011,7 @@ def test_production_continuity_gate_status_api_stays_closed_without_report(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["schema_version"] == "production_continuity_gate_status.v1"
+    assert body["schema_version"] == "production_continuity_gate_status.v2"
     assert body["tenant_id"] == "tenant-demo"
     assert body["state"] == "missing"
     assert body["report_configured"] is False
@@ -1013,6 +1019,9 @@ def test_production_continuity_gate_status_api_stays_closed_without_report(
     assert body["continuity_gate_ready"] is False
     assert body["runtime_switch_requested"] is True
     assert body["runtime_enablement_allowed"] is False
+    assert body["signer_policy_binding_verified"] is False
+    assert body["attestation_signatures_verified"] is False
+    assert body["verified_signer_count"] == 0
     assert body["pilot_traffic_allowed"] is False
     assert body["blocking_reasons"] == ["production_continuity_gate_report_not_configured"]
     assert body["content_included"] is False
@@ -1020,6 +1029,9 @@ def test_production_continuity_gate_status_api_stays_closed_without_report(
     event = app.state.audit_logger.events[-1]
     assert len(app.state.audit_logger.events) == starting_event_count + 1
     assert event.event_type == "platform.production_continuity.gate_status"
+    assert event.metadata["signer_policy_binding_verified"] is False
+    assert event.metadata["attestation_signatures_verified"] is False
+    assert event.metadata["verified_signer_count"] == 0
     assert event.metadata["blocking_reason_count"] == 1
     assert "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH" not in response.text
 

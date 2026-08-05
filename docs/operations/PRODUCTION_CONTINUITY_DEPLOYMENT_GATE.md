@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`production_continuity_deployment_gate.v1` closes the production admission boundary that is intentionally outside the
+`production_continuity_deployment_gate.v2` closes the production admission boundary that is intentionally outside the
 development restore drill. It evaluates current, hash-bound operator evidence for:
 
 - PostgreSQL physical base backup, complete WAL archive and isolated point-in-time recovery;
@@ -75,7 +75,7 @@ Required sections:
 5. `approvals`
 
 The continuity-domain manifest must contain every domain marked `critical` in
-`backup_failover_policy.v3`. RPO and RTO measurements are evaluated against the existing target policy rather than
+`backup_failover_policy.v4`. RPO and RTO measurements are evaluated against the existing target policy rather than
 duplicated in the evidence bundle.
 
 ## Docker Execution
@@ -85,11 +85,16 @@ Keep the evidence outside the repository and mount it read-only:
 ```bash
 docker compose --profile production-continuity run --rm \
   -v /secure/operator-evidence/production-continuity.json:/evidence/production-continuity.json:ro \
+  -v /secure/operator-evidence/production-continuity.dsse.json:/evidence/production-continuity.dsse.json:ro \
+  -v /secure/operator-trust/production-continuity-signers.json:/trust/production-continuity-signers.json:ro \
   production-continuity-deployment-gate
 ```
 
 The service has no network, a read-only root filesystem, no Linux capabilities and `no-new-privileges`. A ready report
 is written to `backups/production-continuity-deployment-gate.json`; a blocked report exits with status `2`.
+
+The signed in-toto/DSSE contract, public-key trust boundary, runtime re-verification, rotation and revocation process
+are defined in `PRODUCTION_CONTINUITY_ATTESTATIONS.md`.
 
 Never commit a production evidence bundle. The persisted report is metadata-only and may enter release evidence after
 operator review.

@@ -444,6 +444,8 @@ services:
       PYTHONPATH: /workspace/app
       SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
       SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json
+      SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH: /evidence/production-continuity.dsse.json
+      SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: /trust/production-continuity-signers.json
       SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: /backups/production-continuity-deployment-gate.json
     volumes:
       - ./app:/workspace/app:ro
@@ -1522,6 +1524,7 @@ services:
       SUITE_PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT_STORE_BACKEND: postgres
       SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: ${SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED:-0}
       SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: ${SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH:-/workspace/backups/production-continuity-deployment-gate.json}
+      SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: ${SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH:-}
       SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
       SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
