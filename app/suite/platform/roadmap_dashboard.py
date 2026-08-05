@@ -139,12 +139,13 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="real_user_productivity_pilot_evidence_collection",
-        current_foundation_state="hash_only_real_user_pilot_chain_operational_without_live_users",
+        current_foundation_state="real_user_pilot_and_production_continuity_gates_ready_without_live_evidence",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
             "collect_real_user_productivity_pilot_nomination",
             "refresh_real_user_productivity_pilot_control_evidence",
+            "collect_current_production_continuity_topology_and_drill_evidence",
             "keep_runtime_closed_until_named_principals_and_four_eyes_approvals_are_complete",
         ),
         deferred_scope=(
@@ -261,6 +262,36 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "backend_foundation_completion_gate_required",
                         "future_modules_must_extend_policy",
                     ),
+                ),
+                RoadmapCapability(
+                    capability_id="production_continuity_deployment_gate",
+                    title="Production Continuity Deployment Gate",
+                    summary=(
+                        "PITR/WAL, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennter "
+                        "PostgreSQL-/Object-Storage-/KMS-Failover besitzen einen gemeinsamen fail-closed "
+                        "Deployment-Vertrag. Reale Produktionsevidenz steht noch aus."
+                    ),
+                    status=RoadmapCapabilityStatus.GUARDED,
+                    capability_type="operations_deployment_control",
+                    evidence_refs=(
+                        "app/suite/operations/production_continuity_deployment_gate.py",
+                        "tests/test_production_continuity_deployment_gate.py",
+                        "docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md",
+                        "docs/operations/backup_failover_policy.json",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "fresh_hash_only_operator_evidence_required",
+                        "postgres_complete_wal_chain_and_isolated_pitr_required",
+                        "encrypted_immutable_offsite_restore_required",
+                        "ha_fencing_split_brain_prevention_and_manual_promotion_drill_required",
+                        "cross_site_postgres_object_storage_and_kms_recovery_required",
+                        "object_lock_retention_legal_hold_and_tenant_isolation_required",
+                        "automatic_failover_requires_separate_drill",
+                        "runtime_switch_fails_closed_without_ready_gate_report",
+                        "no_deployment_promotion_traffic_switch_or_business_write",
+                    ),
+                    next_action="collect_current_production_topology_and_drill_evidence",
                 ),
                 RoadmapCapability(
                     capability_id="business_backend_release_gate",

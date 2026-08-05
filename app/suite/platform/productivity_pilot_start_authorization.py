@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Protocol, Self
 
 import psycopg
@@ -12,6 +13,11 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.models import UserContext
+from suite.operations.backup_failover import load_backup_failover_policy
+from suite.operations.production_continuity_deployment_gate import (
+    load_production_continuity_deployment_gate,
+    production_continuity_deployment_gate_runtime_ready,
+)
 from suite.operations.productivity_pilot_preflight import (
     API_OPERATION_PATTERN,
     ProductivityPilotPolicy,
@@ -814,4 +820,24 @@ def build_default_productivity_pilot_start_authorization_store(
 
 def productivity_pilot_runtime_enabled(environ: Mapping[str, str] | None = None) -> bool:
     env = os.environ if environ is None else environ
-    return env.get("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    requested = env.get("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if not requested:
+        return False
+    report_path = env.get("SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH", "").strip()
+    if not report_path:
+        return False
+    policy_path = env.get(
+        "SUITE_BACKUP_FAILOVER_POLICY_PATH",
+        "/workspace/docs/operations/backup_failover_policy.json",
+    ).strip()
+    try:
+        gate = load_production_continuity_deployment_gate(Path(report_path))
+        policy = load_backup_failover_policy(Path(policy_path))
+    except (OSError, ValueError):
+        return False
+    return production_continuity_deployment_gate_runtime_ready(gate=gate, policy=policy)

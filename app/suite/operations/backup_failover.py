@@ -49,6 +49,66 @@ class ContinuityDomain(BaseModel):
         return self
 
 
+class ProductionContinuityReferenceImplementations(BaseModel):
+    capability_id: str
+    implementation_ids: list[str] = Field(min_length=1)
+
+
+class ProductionContinuityDeploymentPolicy(BaseModel):
+    schema_version: str
+    maximum_evidence_age_hours: int = Field(ge=1, le=720)
+    postgres_target_id: str
+    object_storage_target_id: str
+    kms_target_id: str
+    required_target_ids: tuple[str, ...] = Field(min_length=3)
+    minimum_postgres_instances: int = Field(ge=2)
+    minimum_failure_domains: int = Field(ge=2)
+    maximum_wal_archive_backlog_bytes: int = Field(ge=0)
+    maximum_manual_promotion_minutes: int = Field(ge=1)
+    maximum_cross_site_failover_minutes: int = Field(ge=1)
+    maximum_kms_rpo_minutes: int = Field(ge=0)
+    maximum_kms_rto_minutes: int = Field(ge=1)
+    required_control_ids: tuple[str, ...] = Field(min_length=4)
+    reference_implementations: tuple[ProductionContinuityReferenceImplementations, ...] = Field(min_length=4)
+    automatic_failover_requires_separate_drill: bool
+    deployment_execution_allowed: bool = False
+
+    @model_validator(mode="after")
+    def require_unique_fail_closed_contract(self) -> ProductionContinuityDeploymentPolicy:
+        if len(set(self.required_target_ids)) != len(self.required_target_ids):
+            raise ValueError("production continuity required target ids must be unique")
+        if len(set(self.required_control_ids)) != len(self.required_control_ids):
+            raise ValueError("production continuity required control ids must be unique")
+        capability_ids = [item.capability_id for item in self.reference_implementations]
+        if len(set(capability_ids)) != len(capability_ids):
+            raise ValueError("production continuity reference capability ids must be unique")
+        required_capabilities = {
+            "postgres_pitr",
+            "encrypted_offsite_backup",
+            "ha_orchestration",
+            "cross_site_failover",
+        }
+        missing_capabilities = sorted(required_capabilities - set(capability_ids))
+        if missing_capabilities:
+            raise ValueError(
+                "production continuity reference implementations are missing: " + ", ".join(missing_capabilities)
+            )
+        selected_targets = {self.postgres_target_id, self.object_storage_target_id, self.kms_target_id}
+        if not selected_targets.issubset(set(self.required_target_ids)):
+            raise ValueError("production continuity selected targets must be required targets")
+        if not self.automatic_failover_requires_separate_drill:
+            raise ValueError("automatic failover must require a separate drill")
+        if self.deployment_execution_allowed:
+            raise ValueError("production continuity evidence gate must not execute deployments")
+        return self
+
+    def reference_implementation_ids(self, capability_id: str) -> set[str]:
+        for item in self.reference_implementations:
+            if item.capability_id == capability_id:
+                return set(item.implementation_ids)
+        raise LookupError(f"Unknown production continuity capability: {capability_id}")
+
+
 class BackupFailoverPolicy(BaseModel):
     schema_version: str
     owner: str
@@ -59,6 +119,7 @@ class BackupFailoverPolicy(BaseModel):
     targets: list[BackupTarget] = Field(min_length=1)
     incident_triggers: list[str] = Field(min_length=1)
     restore_drill_evidence: list[str] = Field(min_length=1)
+    production_deployment_gate: ProductionContinuityDeploymentPolicy
 
     @model_validator(mode="after")
     def require_unique_targets_and_domain_coverage(self) -> BackupFailoverPolicy:
@@ -89,6 +150,13 @@ class BackupFailoverPolicy(BaseModel):
         unknown_covered_domains = sorted(covered_domain_ids - set(domain_ids))
         if unknown_covered_domains:
             raise ValueError(f"targets reference unknown continuity domains: {', '.join(unknown_covered_domains)}")
+
+        required_deployment_targets = set(self.production_deployment_gate.required_target_ids)
+        missing_deployment_targets = sorted(required_deployment_targets - target_id_set)
+        if missing_deployment_targets:
+            raise ValueError(
+                "production continuity gate references unknown targets: " + ", ".join(missing_deployment_targets)
+            )
         return self
 
     def target(self, target_id: str) -> BackupTarget:

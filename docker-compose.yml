@@ -425,6 +425,31 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./backups:/backups
+
+  production-continuity-deployment-gate:
+    profiles: ["production-continuity"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.production_continuity_deployment_gate
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
+      SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json
+      SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: /backups/production-continuity-deployment-gate.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+
   productivity-pilot-preflight-gate:
     profiles: ["restore-drill"]
     build:
@@ -1496,6 +1521,8 @@ services:
       SUITE_PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW_STORE_BACKEND: postgres
       SUITE_PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT_STORE_BACKEND: postgres
       SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: ${SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED:-0}
+      SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: ${SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH:-/workspace/backups/production-continuity-deployment-gate.json}
+      SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
       SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
@@ -1507,6 +1534,7 @@ services:
       - ./tests:/workspace/tests
       - ./data:/workspace/data
       - ./docs:/workspace/docs:ro
+      - ./backups:/workspace/backups:ro
 
   test:
     build:

@@ -1,5 +1,5 @@
 {
-  "schema_version": "backup_failover_policy.v2",
+  "schema_version": "backup_failover_policy.v3",
   "owner": "platform-operations",
   "default_timezone": "UTC",
   "principles": [
@@ -17,6 +17,60 @@
     "Rebuildable indexes still need recovery strategy, rebuild order, freshness target, and integrity checks.",
     "Secrets and key material are never treated as ordinary dumps; recovery must use the approved secret manager or KMS backup mechanism."
   ],
+  "production_deployment_gate": {
+    "schema_version": "production_continuity_deployment_policy.v1",
+    "maximum_evidence_age_hours": 168,
+    "postgres_target_id": "postgres_primary",
+    "object_storage_target_id": "object_storage_records",
+    "kms_target_id": "kms_and_secrets",
+    "required_target_ids": [
+      "postgres_primary",
+      "object_storage_records",
+      "kms_and_secrets"
+    ],
+    "minimum_postgres_instances": 3,
+    "minimum_failure_domains": 3,
+    "maximum_wal_archive_backlog_bytes": 0,
+    "maximum_manual_promotion_minutes": 15,
+    "maximum_cross_site_failover_minutes": 240,
+    "maximum_kms_rpo_minutes": 15,
+    "maximum_kms_rto_minutes": 240,
+    "required_control_ids": [
+      "postgres_complete_wal_chain_and_timeline_history",
+      "isolated_point_in_time_restore_with_measured_rpo_rto",
+      "encrypted_immutable_offsite_repository_with_independent_credentials",
+      "offsite_restore_drill",
+      "replication_tls_and_synchronous_durability",
+      "promotion_fencing_and_split_brain_prevention",
+      "manual_promotion_drill_and_separate_failback_runbook",
+      "cross_site_postgres_object_storage_and_kms_recovery",
+      "object_version_lock_retention_and_legal_hold_preservation",
+      "tenant_isolation_after_recovery",
+      "three_distinct_change_security_operations_approvals",
+      "implementation_version_provenance_hashes",
+      "metadata_only_no_deployment_or_failover_execution"
+    ],
+    "reference_implementations": [
+      {
+        "capability_id": "postgres_pitr",
+        "implementation_ids": ["postgresql_native", "pgbackrest", "cloudnativepg_barman_plugin"]
+      },
+      {
+        "capability_id": "encrypted_offsite_backup",
+        "implementation_ids": ["pgbackrest", "barman_cloud", "provider_encrypted_backup"]
+      },
+      {
+        "capability_id": "ha_orchestration",
+        "implementation_ids": ["patroni", "cloudnativepg", "managed_postgresql_provider"]
+      },
+      {
+        "capability_id": "cross_site_failover",
+        "implementation_ids": ["minio_bucket_replication", "s3_compatible_versioned_replication", "provider_cross_region_replication"]
+      }
+    ],
+    "automatic_failover_requires_separate_drill": true,
+    "deployment_execution_allowed": false
+  },
   "continuity_domains": [
     {
       "domain_id": "tenant_iam_authz",

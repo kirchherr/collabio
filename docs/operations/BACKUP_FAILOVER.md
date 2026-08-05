@@ -18,7 +18,9 @@ This model covers the whole suite trajectory:
 - AI control-plane registries, model artifacts, prompt/tool policy, and approval policy.
 - Voice transcripts, e-discovery exports, observability evidence, release artifacts, background jobs, and outbox state.
 
-It is intentionally lightweight. The current repository implements development backup commands and a machine-readable policy. Production PITR, object-store replication, and automated failover remain later deployment work.
+It is intentionally lightweight. The repository implements development backup commands, a machine-readable policy and
+a fail-closed production continuity deployment gate. Actual production topology, PITR repositories, object-store
+replication and current drill evidence remain deployment-owned infrastructure work and must not be inferred from code.
 
 ## Culture
 
@@ -109,7 +111,23 @@ Run the complete backend release proof:
 docker compose run --rm backend-foundation-completion-gate
 ```
 
-The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, productivity pilot preflight, admission, traffic-scope, and start-authorization controls, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain separate deployment gates.
+The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, productivity pilot preflight, admission, traffic-scope, and start-authorization controls, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain a separate deployment gate with independently supplied evidence.
+
+Evaluate production continuity evidence without executing a deployment or failover:
+
+```bash
+docker compose --profile production-continuity run --rm \
+  -v /secure/operator-evidence/production-continuity.json:/evidence/production-continuity.json:ro \
+  production-continuity-deployment-gate
+```
+
+The command emits `production_continuity_deployment_gate.v1`. It validates fresh hash-only evidence for PostgreSQL WAL
+continuity and isolated PITR, encrypted immutable offsite restore, HA fencing and manual promotion, cross-site
+PostgreSQL/Object Storage/KMS recovery, tenant isolation, Object Lock/retention/legal hold, RPO/RTO and three distinct
+approvals. The service has no network and cannot deploy, promote, switch traffic or write business data. See
+`docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md`.
+
+The productivity-pilot runtime switch fails closed unless its configured report path contains a hash-valid ready gate.
 
 Bind the restored foundation to the productive CRM, Tasks, and Time Tracking API package:
 
@@ -699,6 +717,7 @@ Current development:
 - no automatic failover
 - manual restart/recreate of local services
 - logical dumps for recovery rehearsal
+- production continuity gate remains blocked without externally supplied current production evidence
 
 Production target:
 
@@ -712,6 +731,7 @@ Production target:
 - documented manual promotion first
 - automated failover only after restore and promotion drills are passing
 - failback is a separate runbook step, never an implicit side effect
+- a green gate is admission evidence only and never authorizes or performs deployment, promotion, traffic switch, or failback
 
 ## Pull-Forward Rule
 

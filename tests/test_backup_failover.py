@@ -41,17 +41,48 @@ REQUIRED_CONTINUITY_DOMAINS = {
 def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     policy = load_backup_failover_policy(POLICY_PATH)
 
-    assert policy.schema_version == "backup_failover_policy.v2"
+    assert policy.schema_version == "backup_failover_policy.v3"
     assert policy.owner == "platform-operations"
     assert len(policy.targets) == 7
     assert backup_policy_summary(policy) == {
-        "schema_version": "backup_failover_policy.v2",
+        "schema_version": "backup_failover_policy.v3",
         "owner": "platform-operations",
         "target_count": 7,
         "continuity_domain_count": len(REQUIRED_CONTINUITY_DOMAINS),
         "strictest_rpo_minutes": 15,
         "strictest_rto_hours": 4,
     }
+
+    deployment_gate = policy.production_deployment_gate
+    assert deployment_gate.schema_version == "production_continuity_deployment_policy.v1"
+    assert deployment_gate.maximum_evidence_age_hours == 168
+    assert deployment_gate.required_target_ids == (
+        "postgres_primary",
+        "object_storage_records",
+        "kms_and_secrets",
+    )
+    assert deployment_gate.minimum_postgres_instances == 3
+    assert deployment_gate.minimum_failure_domains == 3
+    assert deployment_gate.maximum_wal_archive_backlog_bytes == 0
+    assert deployment_gate.maximum_manual_promotion_minutes == 15
+    assert deployment_gate.maximum_cross_site_failover_minutes == 240
+    assert deployment_gate.automatic_failover_requires_separate_drill is True
+    assert deployment_gate.deployment_execution_allowed is False
+    assert deployment_gate.reference_implementation_ids("postgres_pitr") == {
+        "postgresql_native",
+        "pgbackrest",
+        "cloudnativepg_barman_plugin",
+    }
+    assert deployment_gate.reference_implementation_ids("ha_orchestration") == {
+        "patroni",
+        "cloudnativepg",
+        "managed_postgresql_provider",
+    }
+    assert {
+        "promotion_fencing_and_split_brain_prevention",
+        "cross_site_postgres_object_storage_and_kms_recovery",
+        "metadata_only_no_deployment_or_failover_execution",
+    }.issubset(deployment_gate.required_control_ids)
 
     postgres = policy.target("postgres_primary")
     assert postgres.rpo_minutes <= 15
@@ -813,6 +844,9 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "productivity_pilot_start_authorization.v1" in runbook
     assert "productivity_pilot_runtime_window.v1" in runbook
     assert "productivity_pilot_runtime_observation" in runbook
+    assert "production_continuity_deployment_gate.v1" in runbook
+    assert "docker compose --profile production-continuity run --rm" in runbook
+    assert "runtime switch fails closed" in runbook
     assert "Continuity Domains" in runbook
     assert "Pull-Forward Rule" in runbook
     assert "RPO" in runbook
@@ -920,6 +954,7 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
 
     assert "\n  backup:\n" in compose
     assert "\n  backup-verify:\n" in compose
+    assert "\n  production-continuity-deployment-gate:\n" in compose
     assert "\n  kb-runtime-reconciler:\n" in compose
     assert "\n  module-registry-drill:\n" in compose
     assert "\n  legacy-sql-discovery-intake:\n" in compose
@@ -973,6 +1008,12 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_metadata_connection_probe_skeleton --once" in compose
     assert "python -m suite.platform.legacy_sql_connector_metadata_connection_probe_live_adapter --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
+    assert "python -m suite.operations.production_continuity_deployment_gate" in compose
+    assert "SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json" in compose
+    assert (
+        "SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: /backups/production-continuity-deployment-gate.json" in compose
+    )
+    assert "./backups:/workspace/backups:ro" in compose
     assert "SUITE_MODULE_REGISTRY_BACKEND: postgres" in compose
     assert "SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
     assert (

@@ -161,7 +161,8 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "Der Entwicklungs-Pilot ist append-only geschlossen und nach dem Closure-Write isoliert "
                 "wiederhergestellt. Admission, hash-only Runtime und der separate Realnutzer-Closure-Pfad sind "
                 "technisch vorbereitet. Nun muessen benannte Principals, Zweck und Rollen explizit freigegeben "
-                "sowie Preflight, Monitoring, Rollback und Start mit aktueller Evidenz neu erzeugt werden."
+                "sowie Preflight, Monitoring, Rollback, Production Continuity und Start mit aktueller Evidenz neu "
+                "erzeugt werden."
             ),
             priority=RoadmapPlanPriority.NOW,
             capability_ids=(
@@ -182,8 +183,9 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "tenant_authz",
                 "audit_chain",
                 "backup_failover",
+                "production_continuity_deployment_gate",
             ),
-            readiness_gate="named_principals_fresh_controls_and_four_eyes_required_before_runtime",
+            readiness_gate="named_principals_fresh_controls_production_continuity_and_four_eyes_required_before_runtime",
             decision="can_start_evidence_collection_but_runtime_stays_closed_until_human_evidence_is_ready",
             evidence_refs=(
                 "docs/operations/PRODUCTIVITY_PILOT_PREFLIGHT.md",
@@ -198,6 +200,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "docs/operations/PRODUCTIVITY_PILOT_DEVELOPMENT_PROOF_20260731.md",
                 "docs/operations/productivity_pilot_policy.json",
                 "docs/operations/BUSINESS_BACKEND_RELEASE_GATE.md",
+                "docs/operations/PRODUCTION_CONTINUITY_DEPLOYMENT_GATE.md",
                 "docs/operations/BACKUP_FAILOVER.md",
                 "docs/ROADMAP.md",
             ),

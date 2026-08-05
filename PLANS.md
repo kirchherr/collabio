@@ -106,13 +106,15 @@ Current sprint:
 96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
 97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
 98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
+99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
 
 ## Next Engineering Step
 
 Collect the accountable real-user pilot evidence without opening live traffic:
 
 - Accept named principals, purpose, lawful basis, IAM roles, privacy and workforce evidence only from accountable tenant owners; do not fabricate placeholders.
-- Refresh preflight, backup, isolated restore, foundation, business-release, monitoring, rollback, admission, and start evidence as one new chain.
+- Refresh preflight, backup, isolated restore, foundation, business-release, production-continuity, monitoring, rollback, admission, and start evidence as one new chain.
+- Collect actual production topology, PITR, offsite, promotion and cross-site drill evidence from accountable operations owners; the gate must remain blocked without it.
 - Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until the new chain and the hash-only closure path pass together.
 - Require explicit human four-eyes approvals before any later live pilot window.
 - Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.

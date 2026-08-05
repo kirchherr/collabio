@@ -516,7 +516,7 @@ def test_runtime_window_enforces_designated_principals_and_records_metadata_only
 def test_start_authorization_api_opens_scoped_read_route_and_audits_hashes_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "1")
+    monkeypatch.setattr("main.productivity_pilot_runtime_enabled", lambda: True)
     policy = _policy()
     gate = _gate(policy)
     test_app = build_app()
