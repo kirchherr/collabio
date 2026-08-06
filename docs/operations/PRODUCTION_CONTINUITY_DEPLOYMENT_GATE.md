@@ -94,7 +94,8 @@ The service has no network, a read-only root filesystem, no Linux capabilities a
 is written to `backups/production-continuity-deployment-gate.json`; a blocked report exits with status `2`.
 
 The signed in-toto/DSSE contract, public-key trust boundary, runtime re-verification, rotation and revocation process
-are defined in `PRODUCTION_CONTINUITY_ATTESTATIONS.md`.
+are defined in `PRODUCTION_CONTINUITY_ATTESTATIONS.md`; the executable private-key-free workflow is defined in
+`PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md`.
 
 Never commit a production evidence bundle. The persisted report is metadata-only and may enter release evidence after
 operator review.

@@ -1091,6 +1091,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/v1/platform/production-continuity/gate-status" in production_continuity["api_routes"]
     assert "security_admin_metadata_only_requirements_and_status" in production_continuity["guardrails"]
     assert "no_evidence_upload_or_report_mutation_api" in production_continuity["guardrails"]
+    assert "three_external_role_signatures_required" in production_continuity["guardrails"]
+    assert "offline_ceremony_has_no_private_key_or_provider_credential_path" in production_continuity["guardrails"]
+    assert "docs/operations/PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md" in production_continuity["evidence_refs"]
     legacy_registry = next(
         capability for capability in capabilities if capability["capability_id"] == "legacy_migration_registry"
     )

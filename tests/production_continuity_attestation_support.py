@@ -27,6 +27,10 @@ def _private_key(role: str) -> Ed25519PrivateKey:
     return Ed25519PrivateKey.from_private_bytes(seed)
 
 
+def sign_test_production_continuity_message(*, role: SignerRole, message: bytes) -> str:
+    return base64.b64encode(_private_key(role).sign(message)).decode("ascii")
+
+
 def build_test_production_continuity_attestation(
     *,
     evidence_bundle_hash: str,

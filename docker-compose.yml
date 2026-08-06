@@ -426,6 +426,27 @@ services:
       - ./app:/workspace/app:ro
       - ./backups:/backups
 
+  production-continuity-attestation-ceremony:
+    profiles: ["production-continuity"]
+    build:
+      context: .
+      target: dev
+    entrypoint: ["python", "-m", "suite.operations.production_continuity_attestation_ceremony"]
+    command: ["--help"]
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
   production-continuity-deployment-gate:
     profiles: ["production-continuity"]
     build:

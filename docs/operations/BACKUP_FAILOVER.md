@@ -113,6 +113,9 @@ docker compose run --rm backend-foundation-completion-gate
 
 The command emits `backend_foundation_completion_gate.v1`. It is green only when Tenant/IAM, append-only Audit, Module Registry, productivity pilot preflight, admission, traffic-scope, and start-authorization controls, the migration catalog, isolated PostgreSQL restore, persistent SourceObjects, tenant scope, and independent exact-version MinIO restore all pass with metadata-only evidence. Production PITR, encrypted off-host backups, HA promotion, and cross-site failover remain a separate deployment gate with independently supplied evidence.
 
+Prepare the three external signatures through the private-key-free no-network workflow in
+`docs/operations/PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md`.
+
 Evaluate production continuity evidence without executing a deployment or failover:
 
 ```bash

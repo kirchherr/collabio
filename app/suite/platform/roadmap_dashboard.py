@@ -270,13 +270,17 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     summary=(
                         "PITR/WAL, verschluesselte Offsite-Backups, HA-Promotion und standortgetrennter "
                         "PostgreSQL-/Object-Storage-/KMS-Failover besitzen einen gemeinsamen fail-closed "
-                        "Deployment-Vertrag sowie einen Security-Admin-Read-Pfad fuer Anforderungen und Status. "
-                        "Reale Produktionsevidenz steht noch aus."
+                        "Deployment-Vertrag, einen Security-Admin-Read-Pfad fuer Anforderungen und Status sowie eine "
+                        "private-key-freie Offline-Signaturzeremonie. Reale Produktionsevidenz steht noch aus."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_deployment_control",
                     evidence_refs=(
                         "app/suite/operations/production_continuity_deployment_gate.py",
+                        "app/suite/operations/production_continuity_attestation.py",
+                        "app/suite/operations/production_continuity_attestation_ceremony.py",
+                        "tests/test_production_continuity_attestation_ceremony.py",
+                        "docs/operations/PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md",
                         "app/suite/platform/production_continuity_read_model.py",
                         "tests/test_production_continuity_deployment_gate.py",
                         "tests/test_production_continuity_read_model.py",
@@ -297,6 +301,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "cross_site_postgres_object_storage_and_kms_recovery_required",
                         "object_lock_retention_legal_hold_and_tenant_isolation_required",
                         "automatic_failover_requires_separate_drill",
+                        "three_external_role_signatures_required",
+                        "offline_ceremony_has_no_private_key_or_provider_credential_path",
                         "runtime_switch_fails_closed_without_ready_gate_report",
                         "security_admin_metadata_only_requirements_and_status",
                         "no_evidence_upload_or_report_mutation_api",

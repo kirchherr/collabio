@@ -845,6 +845,7 @@ def test_backup_failover_runbook_names_restore_culture_and_commands() -> None:
     assert "productivity_pilot_runtime_window.v1" in runbook
     assert "productivity_pilot_runtime_observation" in runbook
     assert "production_continuity_deployment_gate.v2" in runbook
+    assert "PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md" in runbook
     assert "docker compose --profile production-continuity run --rm" in runbook
     assert "runtime switch fails closed" in runbook
     assert "Continuity Domains" in runbook
@@ -1009,6 +1010,18 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
     assert "python -m suite.platform.legacy_sql_connector_metadata_connection_probe_live_adapter --once" in compose
     assert "python -m suite.platform.knowledge_base_runtime_reconciliation_service --once" in compose
     assert "python -m suite.operations.production_continuity_deployment_gate" in compose
+    ceremony_service = compose.split("\n  production-continuity-attestation-ceremony:\n", 1)[1].split(
+        "\n  production-continuity-deployment-gate:\n", 1
+    )[0]
+    assert "suite.operations.production_continuity_attestation_ceremony" in ceremony_service
+    assert 'command: ["--help"]' in ceremony_service
+    assert 'network_mode: "none"' in ceremony_service
+    assert "read_only: true" in ceremony_service
+    assert "cap_drop:\n      - ALL" in ceremony_service
+    assert "no-new-privileges:true" in ceremony_service
+    assert "./app:/workspace/app:ro" in ceremony_service
+    assert "./docs:/workspace/docs:ro" in ceremony_service
+    assert "private_key" not in ceremony_service.lower()
     assert "SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json" in compose
     assert "SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH: /evidence/production-continuity.dsse.json" in compose
     assert "SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: /trust/production-continuity-signers.json" in compose

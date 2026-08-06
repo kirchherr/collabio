@@ -72,6 +72,9 @@ runtime.
 7. Publish a ready report only when the container exits successfully; retain all external approval and signing audit
    evidence according to policy.
 
+The executable private-key-free `prepare` and `assemble` ceremony is defined in
+`PRODUCTION_CONTINUITY_SIGNING_CEREMONY.md`.
+
 ```bash
 docker compose --profile production-continuity run --rm \
   -v /secure/operator-evidence/production-continuity.json:/evidence/production-continuity.json:ro \
