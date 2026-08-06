@@ -77,6 +77,7 @@ Bereits umgesetzt:
 - [x] Initiale API- und Policy-Tests.
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
+- [x] Supply-Chain-Gate fuer Repository und gebautes Runtime-Image: Vulnerability-, Secret-, IaC-/Misconfiguration- und Lizenzpruefung, CycloneDX-SBOM sowie OIDC/Sigstore-basierte Provenance- und SBOM-Attestierungen fuer getaggte Releases.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung.
 - [x] Statischer OIDC/JWKS Verifier mit RS256, `kid`-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting.
@@ -448,12 +449,12 @@ Aufgaben:
 - [x] `pyproject.toml` mit Ruff, MyPy/Pyright und Pytest anlegen.
 - [ ] TypeScript-/Frontend-Tooling vorbereiten.
 - [x] CI fuer Tests, Lint, Typpruefung und Docker Build anlegen.
-- [ ] Secret Scan integrieren.
-- [ ] Dependency Scan integrieren.
-- [ ] License Scan integrieren.
+- [x] Secret Scan integrieren.
+- [x] Dependency Scan integrieren.
+- [x] License Scan integrieren.
 - [ ] SAST/DAST/IaC Scan einplanen.
-- [ ] CycloneDX SBOM generieren.
-- [ ] Build Provenance und signierte Artefakte vorbereiten.
+- [x] CycloneDX SBOM generieren.
+- [x] Build Provenance und signierte Artefakte vorbereiten.
 - [ ] ADR-Template anlegen.
 - [ ] Compliance-Matrix als YAML/Markdown-Quelle versionieren.
 - [ ] Test-Fixtures fuer Tenants, Rollen, Dokumente, Mails, Holds und AI Policies anlegen.
@@ -1554,6 +1555,7 @@ Enthaelt:
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
 - [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.
+- [x] Lieferkettennachweis als Release-Fundament geschlossen: unveraenderlich gepinnte Actions, Runtime-Image-Scans, verbotene Lizenz-Gates, CycloneDX-SBOM, SHA-256-Checksummen und schluessellose Provenance-/SBOM-Attestierungen fuer versionierte Release-Artefakte.
 - [x] Runtime-Proof am 2026-07-30 nach produktivem Tasks-Slice erneut gruen: Task, initiale Activity, zwei Objekt-ACLs, ein append-only Receipt, idempotenter Replay, exakter unabhaengiger Restore (`1|1|2|1`), 59 Migrationen, 63 Tabellen und Backend-Gate-Hash `sha256:66d6b7d91ce2d2fdb8f9d21f90a38797e3c637d59ffc0ec2eff25fe6b2f25836`.
 - [x] Runtime-Proof am 2026-07-30 nach produktivem Time-Tracking-Slice gruen: Entry, initiales Approval `not_submitted`, zwei Objekt-ACLs, ein metadata-only Receipt, autorisierte Reads (`1|1`) und atomare PostgreSQL-Zaehlung (`1|1|2|1`); isolierter Restore mit Time-Tracking-Schreibkontrollen, 60 Migrationen, 66 Tabellen und Backend-Gate-Hash `sha256:690d59e7515854c3a6dc79bb6f817b739a249cbcd6a7a43abc74732d08f3071d`.
 - [x] Fail-closed Deployment-Gate fuer produktives PITR/WAL-Archiv, verschluesselte immutable Offsite-Backups, gefencete HA-Promotion und standortgetrennte PostgreSQL-/Object-Storage-/KMS-Recovery umgesetzt; Policy `backup_failover_policy.v4`, frische hash-only Operator-Evidenz, RPO/RTO, drei getrennte Ed25519-signierte in-toto/DSSE-Attestierungen und Runtime-Reverifikation gegen eine separate Signer-Policy werden geprueft, ohne Deployment, Promotion, Traffic-Switch oder Business-Write auszufuehren. Reale Produktionsevidenz bleibt bewusst offen.

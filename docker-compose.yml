@@ -1582,12 +1582,16 @@ services:
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./.github:/workspace/.github:ro
+      - ./Dockerfile:/workspace/Dockerfile:ro
+      - ./security:/workspace/security:ro
       - ./docs:/workspace/docs
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -1608,6 +1612,7 @@ services:
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -1624,6 +1629,7 @@ services:
       - ./tests:/workspace/tests
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
 
   quality:
@@ -1645,12 +1651,16 @@ services:
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./.github:/workspace/.github:ro
+      - ./Dockerfile:/workspace/Dockerfile:ro
+      - ./security:/workspace/security:ro
       - ./docs:/workspace/docs
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 

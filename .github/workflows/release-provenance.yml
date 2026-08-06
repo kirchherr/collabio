@@ -1,50 +1,32 @@
-name: CI
+name: Release provenance
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  quality:
-    name: quality
+  release-evidence:
+    name: release-evidence
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-
-      - name: Validate Docker Compose config
-        run: docker compose config --quiet
-
-      - name: Build development image
-        run: docker compose build
-
-      - name: Run quality gate
-        run: docker compose run --rm quality
-
-  supply-chain:
-    name: supply-chain
-    needs: quality
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     env:
-      RUNTIME_IMAGE: collabio-runtime:${{ github.sha }}
+      RUNTIME_IMAGE: collabio-runtime:${{ github.ref_name }}
+      RELEASE_ARCHIVE: artifacts/collabio-runtime-${{ github.ref_name }}.tar
 
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Validate release quality
+        run: docker compose run --rm quality
 
       - name: Build runtime image
         run: docker build --provenance=false --target runtime --tag "${RUNTIME_IMAGE}" .
@@ -55,23 +37,7 @@ jobs:
       - name: Create evidence directory
         run: mkdir -p artifacts
 
-      - name: Scan repository dependencies, secrets, and configuration
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
-        env:
-          TRIVY_VEX: ${{ github.workspace }}/security/vex/collabio.openvex.json
-          TRIVY_SHOW_SUPPRESSED: "true"
-        with:
-          version: v0.73.0
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,misconfig
-          format: json
-          output: artifacts/repository-security.json
-          severity: HIGH,CRITICAL
-          ignore-unfixed: false
-          exit-code: 1
-
-      - name: Scan runtime image
+      - name: Gate runtime vulnerabilities and secrets
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         env:
           TRIVY_VEX: ${{ github.workspace }}/security/vex/collabio.openvex.json
@@ -82,26 +48,10 @@ jobs:
           image-ref: ${{ env.RUNTIME_IMAGE }}
           skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
           scanners: vuln,secret,misconfig
-          format: json
-          output: artifacts/runtime-security.json
+          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: false
           exit-code: 1
-          skip-setup-trivy: true
-
-      - name: Capture runtime license evidence
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
-        with:
-          version: v0.73.0
-          scan-type: image
-          image-ref: ${{ env.RUNTIME_IMAGE }}
-          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
-          scanners: license
-          format: json
-          output: artifacts/runtime-licenses.json
-          severity: UNKNOWN,HIGH,CRITICAL
-          exit-code: 0
-          skip-setup-trivy: true
 
       - name: Gate forbidden runtime licenses
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
@@ -128,15 +78,28 @@ jobs:
           exit-code: 0
           skip-setup-trivy: true
 
-      - name: Hash supply-chain evidence
-        working-directory: artifacts
-        run: sha256sum ./*.json > SHA256SUMS
+      - name: Export runtime image
+        run: docker save --output "${RELEASE_ARCHIVE}" "${RUNTIME_IMAGE}"
 
-      - name: Upload supply-chain evidence
-        if: always()
+      - name: Create release checksums
+        working-directory: artifacts
+        run: sha256sum collabio-runtime-*.tar collabio-runtime.cdx.json > SHA256SUMS
+
+      - name: Attest release provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ env.RELEASE_ARCHIVE }}
+
+      - name: Attest release SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ env.RELEASE_ARCHIVE }}
+          sbom-path: artifacts/collabio-runtime.cdx.json
+
+      - name: Upload release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: collabio-supply-chain-${{ github.sha }}
+          name: collabio-release-${{ github.ref_name }}
           path: artifacts/
-          if-no-files-found: warn
-          retention-days: 30
+          if-no-files-found: error
+          retention-days: 90

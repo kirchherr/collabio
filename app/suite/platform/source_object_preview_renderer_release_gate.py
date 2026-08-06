@@ -19,7 +19,7 @@ from suite.platform.source_object_preview_renderer_operations import (
     SourceObjectPreviewRendererRecoveryTenantStatus,
     build_source_object_preview_renderer_recovery_drill_report_hash,
 )
-from suite.platform.source_object_preview_renderer_smoke import (
+from suite.platform.source_object_preview_renderer_smoke_contract import (
     SourceObjectPreviewRendererApiSmokeReport,
     build_source_object_preview_renderer_api_smoke_report_hash,
 )
