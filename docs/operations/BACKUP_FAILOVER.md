@@ -724,7 +724,10 @@ Search and vector restore evidence must include the source checkpoint, ACL check
 Current development:
 
 - no automatic failover
-- manual restart/recreate of local services
+- the long-lived `postgres`, `minio`, and `api` services use `restart: unless-stopped` and recover after a Docker host reboot
+- one-shot migrations, backup jobs, restore drills, gates, and maintenance workers never restart automatically
+- after a host reboot, verify `docker compose ps`, PostgreSQL health, the MinIO ready endpoint, and API `/health`
+- manual restart/recreate remains the recovery path when a service was explicitly stopped or fails readiness
 - logical dumps for recovery rehearsal
 - production continuity gate remains blocked without externally supplied current production evidence
 

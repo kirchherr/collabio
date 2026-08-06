@@ -1045,3 +1045,28 @@ def test_compose_exposes_backup_and_verification_commands() -> None:
         "postgresql://collabio_worker:collabio_worker@postgres:5432/collabio" in compose
     )
     assert "./backups:/backups" in compose
+
+
+def test_compose_restarts_only_long_lived_services_after_host_reboot() -> None:
+    compose = COMPOSE_PATH.read_text(encoding="utf-8")
+
+    def service_block(service_name: str) -> str:
+        lines = compose.splitlines()
+        start = lines.index(f"  {service_name}:") + 1
+        block: list[str] = []
+        for line in lines[start:]:
+            if line and not line.startswith("    "):
+                break
+            block.append(line)
+        return "\n".join(block)
+
+    for service_name in ("postgres", "minio", "api"):
+        assert "\n    restart: unless-stopped\n" in service_block(service_name)
+
+    assert compose.count("\n    restart: unless-stopped\n") == 3
+    for service_name in (
+        "migrate",
+        "backup",
+        "production-continuity-deployment-gate",
+    ):
+        assert "\n    restart:" not in service_block(service_name)
