@@ -32,6 +32,7 @@ PREVIEW_CONVERSION_PREFLIGHT_SCHEMA_VERSION = "source_object_preview_conversion_
 PREVIEW_CONVERSION_COMMAND_SCHEMA_VERSION = "source_object_preview_conversion_command.v1"
 PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION = "source_object_preview_conversion_result.v1"
 DERIVED_PREVIEW_RECEIPT_SCHEMA_VERSION = "source_object_derived_preview_receipt.v1"
+PREVIEW_CONVERSION_JOB_EVIDENCE_SCHEMA_VERSION = "source_object_preview_conversion_job_evidence.v1"
 PREVIEW_CONVERSION_GATE_MAX_CLOCK_SKEW = timedelta(minutes=5)
 ZERO_HASH = "sha256:" + ("0" * 64)
 SHA256_REF_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
@@ -419,6 +420,91 @@ class PreviewConversionWorkerEnvelope(BaseModel):
     source_preflight: PreviewConversionSourcePreflightEvidence
 
 
+class PreviewConversionJobEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: str = PREVIEW_CONVERSION_JOB_EVIDENCE_SCHEMA_VERSION
+    tenant_id: str
+    source_object_id: str
+    source_version_id: str
+    derived_object_id: str
+    derived_version_id: str
+    derived_preview_receipt_hash: str
+    source_object_write_receipt_hash: str
+    command_hash: str
+    source_preflight_evidence_hash: str
+    result_hash: str
+    execution_gate_evidence_hash: str
+    worker_image_ref: str
+    command: PreviewConversionCommand
+    source_preflight: PreviewConversionSourcePreflightEvidence
+    result: PreviewConversionWorkerResult
+    completed_at_utc: datetime
+    source_content_in_evidence: bool = False
+    output_content_in_evidence: bool = False
+    job_evidence_hash: str
+
+    @field_validator(
+        "derived_preview_receipt_hash",
+        "source_object_write_receipt_hash",
+        "command_hash",
+        "source_preflight_evidence_hash",
+        "result_hash",
+        "execution_gate_evidence_hash",
+        "job_evidence_hash",
+    )
+    @classmethod
+    def require_sha256_ref(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("preview conversion job evidence hashes must be sha256 references")
+        return value
+
+    @field_validator("worker_image_ref")
+    @classmethod
+    def require_digest_pinned_image(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not IMAGE_DIGEST_REF_PATTERN.fullmatch(normalized):
+            raise ValueError("preview conversion job image must be digest pinned")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_consistent_job_evidence(self) -> PreviewConversionJobEvidence:
+        bindings = (
+            self.command.tenant_id == self.tenant_id,
+            self.source_preflight.tenant_id == self.tenant_id,
+            self.result.tenant_id == self.tenant_id,
+            self.command.source_object_id == self.source_object_id,
+            self.source_preflight.source_object_id == self.source_object_id,
+            self.result.source_object_id == self.source_object_id,
+            self.command.source_version_id == self.source_version_id,
+            self.source_preflight.source_version_id == self.source_version_id,
+            self.result.source_version_id == self.source_version_id,
+            self.command.command_hash == self.command_hash,
+            self.source_preflight.evidence_hash == self.source_preflight_evidence_hash,
+            self.result.result_hash == self.result_hash,
+            self.command.execution_gate_evidence_hash == self.execution_gate_evidence_hash,
+            self.result.execution_gate_evidence_hash == self.execution_gate_evidence_hash,
+            self.command.source_preflight_evidence_hash == self.source_preflight_evidence_hash,
+            self.result.source_preflight_evidence_hash == self.source_preflight_evidence_hash,
+            self.command.worker_image_ref == self.worker_image_ref,
+            self.result.worker_image_ref == self.worker_image_ref,
+            self.result.command_hash == self.command_hash,
+        )
+        if not all(bindings):
+            raise ValueError("preview conversion job evidence lineage is inconsistent")
+        if self.result.completed_at_utc != self.completed_at_utc:
+            raise ValueError("preview conversion job completion timestamp mismatch")
+        if self.source_content_in_evidence or self.output_content_in_evidence:
+            raise ValueError("preview conversion job evidence must not contain source or output content")
+        if build_preview_conversion_command_hash(self.command) != self.command_hash:
+            raise ValueError("preview conversion job command hash is invalid")
+        if build_preview_conversion_source_preflight_hash(self.source_preflight) != self.source_preflight_evidence_hash:
+            raise ValueError("preview conversion job preflight hash is invalid")
+        if build_preview_conversion_result_hash(self.result) != self.result_hash:
+            raise ValueError("preview conversion job result hash is invalid")
+        return self
+
+
 class DerivedPreviewReceipt(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -494,6 +580,7 @@ class DerivedPreviewArtifact(BaseModel):
     record: SourceObjectRecord
     source_object_write_receipt: SourceObjectWriteReceipt
     derived_preview_receipt: DerivedPreviewReceipt
+    job_evidence: PreviewConversionJobEvidence
 
 
 class PreviewConversionExecutionGateStore(Protocol):
@@ -513,6 +600,14 @@ class DerivedPreviewReceiptStore(Protocol):
     def get(self, *, tenant_id: str, receipt_hash: str) -> DerivedPreviewReceipt: ...
 
     def list_receipts(self, *, tenant_id: str) -> Sequence[DerivedPreviewReceipt]: ...
+
+
+class PreviewConversionJobEvidenceStore(Protocol):
+    def append(self, evidence: PreviewConversionJobEvidence) -> PreviewConversionJobEvidence: ...
+
+    def get(self, *, tenant_id: str, job_evidence_hash: str) -> PreviewConversionJobEvidence: ...
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[PreviewConversionJobEvidence]: ...
 
 
 class InMemoryPreviewConversionExecutionGateStore:
@@ -567,6 +662,38 @@ class InMemoryDerivedPreviewReceiptStore:
     def list_receipts(self, *, tenant_id: str) -> Sequence[DerivedPreviewReceipt]:
         return tuple(
             receipt for (stored_tenant_id, _), receipt in self._receipts.items() if stored_tenant_id == tenant_id
+        )
+
+
+class InMemoryPreviewConversionJobEvidenceStore:
+    def __init__(self, evidences: Sequence[PreviewConversionJobEvidence] = ()) -> None:
+        self._evidences: dict[tuple[str, str], PreviewConversionJobEvidence] = {}
+        for evidence in evidences:
+            self.append(evidence)
+
+    def append(self, evidence: PreviewConversionJobEvidence) -> PreviewConversionJobEvidence:
+        _require_job_evidence_hash(evidence)
+        key = (evidence.tenant_id, evidence.job_evidence_hash)
+        if key in self._evidences:
+            raise ValueError("preview conversion job evidence already exists")
+        if any(
+            existing.derived_preview_receipt_hash == evidence.derived_preview_receipt_hash
+            for (tenant_id, _), existing in self._evidences.items()
+            if tenant_id == evidence.tenant_id
+        ):
+            raise ValueError("derived preview receipt already has job evidence")
+        self._evidences[key] = evidence
+        return evidence
+
+    def get(self, *, tenant_id: str, job_evidence_hash: str) -> PreviewConversionJobEvidence:
+        try:
+            return self._evidences[(tenant_id, job_evidence_hash)]
+        except KeyError as exc:
+            raise KeyError("preview conversion job evidence not found") from exc
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[PreviewConversionJobEvidence]:
+        return tuple(
+            evidence for (stored_tenant_id, _), evidence in self._evidences.items() if stored_tenant_id == tenant_id
         )
 
 
@@ -726,6 +853,92 @@ class PgDerivedPreviewReceiptStore:
         return receipts
 
 
+class PgPreviewConversionJobEvidenceStore:
+    def __init__(self, *, database_dsn: str) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        self.database_dsn = database_dsn
+
+    def append(self, evidence: PreviewConversionJobEvidence) -> PreviewConversionJobEvidence:
+        try:
+            with psycopg.connect(self.database_dsn) as connection:
+                _set_tenant(connection, evidence.tenant_id)
+                self.append_in_transaction(connection, evidence)
+                connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("preview conversion job evidence already exists") from exc
+        return evidence
+
+    def append_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        evidence: PreviewConversionJobEvidence,
+    ) -> PreviewConversionJobEvidence:
+        _require_job_evidence_hash(evidence)
+        connection.execute(
+            """
+            INSERT INTO collabio.source_object_preview_conversion_job_evidence (
+                tenant_id, job_evidence_hash, derived_preview_receipt_hash,
+                source_object_write_receipt_hash, source_object_id, source_version_id,
+                derived_object_id, derived_version_id, command_hash,
+                source_preflight_evidence_hash, result_hash, execution_gate_evidence_hash,
+                completed_at_utc, evidence
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                evidence.tenant_id,
+                evidence.job_evidence_hash,
+                evidence.derived_preview_receipt_hash,
+                evidence.source_object_write_receipt_hash,
+                evidence.source_object_id,
+                evidence.source_version_id,
+                evidence.derived_object_id,
+                evidence.derived_version_id,
+                evidence.command_hash,
+                evidence.source_preflight_evidence_hash,
+                evidence.result_hash,
+                evidence.execution_gate_evidence_hash,
+                evidence.completed_at_utc,
+                Jsonb(evidence.model_dump(mode="json")),
+            ),
+        )
+        return evidence
+
+    def get(self, *, tenant_id: str, job_evidence_hash: str) -> PreviewConversionJobEvidence:
+        with psycopg.connect(self.database_dsn) as connection:
+            _set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT evidence
+                FROM collabio.source_object_preview_conversion_job_evidence
+                WHERE tenant_id = %s AND job_evidence_hash = %s
+                """,
+                (tenant_id, job_evidence_hash),
+            ).fetchone()
+        if row is None:
+            raise KeyError("preview conversion job evidence not found")
+        evidence = PreviewConversionJobEvidence.model_validate(row[0])
+        _require_job_evidence_hash(evidence)
+        return evidence
+
+    def list_evidence(self, *, tenant_id: str) -> Sequence[PreviewConversionJobEvidence]:
+        with psycopg.connect(self.database_dsn) as connection:
+            _set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT evidence
+                FROM collabio.source_object_preview_conversion_job_evidence
+                WHERE tenant_id = %s
+                ORDER BY completed_at_utc, job_evidence_hash
+                """,
+                (tenant_id,),
+            ).fetchall()
+        evidences = tuple(PreviewConversionJobEvidence.model_validate(row[0]) for row in rows)
+        for evidence in evidences:
+            _require_job_evidence_hash(evidence)
+        return evidences
+
+
 class DerivedPreviewWriteUnitOfWork:
     def __init__(
         self,
@@ -733,10 +946,12 @@ class DerivedPreviewWriteUnitOfWork:
         source_repository: SourceObjectRepository,
         source_object_write_receipt_store: SourceObjectWriteReceiptStore,
         derived_preview_receipt_store: DerivedPreviewReceiptStore,
+        job_evidence_store: PreviewConversionJobEvidenceStore,
     ) -> None:
         self.source_repository = source_repository
         self.source_object_write_receipt_store = source_object_write_receipt_store
         self.derived_preview_receipt_store = derived_preview_receipt_store
+        self.job_evidence_store = job_evidence_store
 
     def commit(self, artifact: DerivedPreviewArtifact) -> DerivedPreviewArtifact:
         self.source_object_write_receipt_store.append(artifact.source_object_write_receipt)
@@ -749,6 +964,7 @@ class DerivedPreviewWriteUnitOfWork:
         else:
             self.source_repository.add(artifact.record)
         self.derived_preview_receipt_store.append(artifact.derived_preview_receipt)
+        self.job_evidence_store.append(artifact.job_evidence)
         return artifact
 
 
@@ -760,6 +976,7 @@ class PostgresDerivedPreviewWriteUnitOfWork:
         source_repository: Any,
         source_object_write_receipt_store: PgSourceObjectWriteReceiptStore,
         derived_preview_receipt_store: PgDerivedPreviewReceiptStore,
+        job_evidence_store: PgPreviewConversionJobEvidenceStore,
     ) -> None:
         if not database_dsn.strip():
             raise ValueError("database_dsn must not be empty")
@@ -767,6 +984,7 @@ class PostgresDerivedPreviewWriteUnitOfWork:
         self.source_repository = source_repository
         self.source_object_write_receipt_store = source_object_write_receipt_store
         self.derived_preview_receipt_store = derived_preview_receipt_store
+        self.job_evidence_store = job_evidence_store
 
     def commit(self, artifact: DerivedPreviewArtifact) -> DerivedPreviewArtifact:
         try:
@@ -785,6 +1003,7 @@ class PostgresDerivedPreviewWriteUnitOfWork:
                     connection,
                     artifact.derived_preview_receipt,
                 )
+                self.job_evidence_store.append_in_transaction(connection, artifact.job_evidence)
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("derived preview write conflicts with existing evidence") from exc
         return artifact
@@ -1176,10 +1395,33 @@ def build_derived_preview_artifact(
         receipt_hash=ZERO_HASH,
     )
     receipt = receipt_draft.model_copy(update={"receipt_hash": build_derived_preview_receipt_hash(receipt_draft)})
+    job_evidence_draft = PreviewConversionJobEvidence(
+        tenant_id=source.tenant_id,
+        source_object_id=source.object_id,
+        source_version_id=source.version_id,
+        derived_object_id=metadata.object_id,
+        derived_version_id=metadata.version_id,
+        derived_preview_receipt_hash=receipt.receipt_hash,
+        source_object_write_receipt_hash=source_write_receipt.receipt_hash,
+        command_hash=command.command_hash,
+        source_preflight_evidence_hash=source_preflight.evidence_hash,
+        result_hash=result.result_hash,
+        execution_gate_evidence_hash=execution_gate.evidence_hash,
+        worker_image_ref=result.worker_image_ref,
+        command=command,
+        source_preflight=source_preflight,
+        result=result,
+        completed_at_utc=result.completed_at_utc,
+        job_evidence_hash=ZERO_HASH,
+    )
+    job_evidence = job_evidence_draft.model_copy(
+        update={"job_evidence_hash": build_preview_conversion_job_evidence_hash(job_evidence_draft)}
+    )
     return DerivedPreviewArtifact(
         record=record,
         source_object_write_receipt=source_write_receipt,
         derived_preview_receipt=receipt,
+        job_evidence=job_evidence,
     )
 
 
@@ -1226,6 +1468,10 @@ def build_derived_preview_receipt_hash(receipt: DerivedPreviewReceipt) -> str:
     return stable_hash(canonical_json(receipt.model_dump(mode="json", exclude={"receipt_hash"})))
 
 
+def build_preview_conversion_job_evidence_hash(evidence: PreviewConversionJobEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"job_evidence_hash"})))
+
+
 def build_default_preview_conversion_execution_gate_store(
     environ: Mapping[str, str] | None = None,
 ) -> PreviewConversionExecutionGateStore:
@@ -1256,6 +1502,21 @@ def build_default_derived_preview_receipt_store(
     raise ValueError(f"Unsupported derived preview receipt store backend: {backend}")
 
 
+def build_default_preview_conversion_job_evidence_store(
+    environ: Mapping[str, str] | None = None,
+) -> PreviewConversionJobEvidenceStore:
+    env = os.environ if environ is None else environ
+    backend = env.get("SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_BACKEND", "memory").strip().lower()
+    if backend in {"memory", "inmemory", "in-memory"}:
+        return InMemoryPreviewConversionJobEvidenceStore()
+    if backend in {"postgres", "postgresql", "pg"}:
+        dsn = env.get("SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_DSN") or env.get("SUITE_DATABASE_DSN")
+        if not dsn:
+            raise ValueError("PostgreSQL preview conversion job evidence store requires a database DSN")
+        return PgPreviewConversionJobEvidenceStore(database_dsn=dsn)
+    raise ValueError(f"Unsupported preview conversion job evidence store backend: {backend}")
+
+
 def build_in_memory_derived_preview_write_unit_of_work(
     *,
     source_repository: SourceObjectRepository,
@@ -1264,6 +1525,7 @@ def build_in_memory_derived_preview_write_unit_of_work(
         source_repository=source_repository,
         source_object_write_receipt_store=InMemorySourceObjectWriteReceiptStore(),
         derived_preview_receipt_store=InMemoryDerivedPreviewReceiptStore(),
+        job_evidence_store=InMemoryPreviewConversionJobEvidenceStore(),
     )
 
 
@@ -1391,6 +1653,11 @@ def _require_result_hash(result: PreviewConversionWorkerResult) -> None:
 def _require_derived_preview_receipt_hash(receipt: DerivedPreviewReceipt) -> None:
     if receipt.receipt_hash != build_derived_preview_receipt_hash(receipt):
         raise PreviewConversionBlocked("derived preview receipt hash is invalid")
+
+
+def _require_job_evidence_hash(evidence: PreviewConversionJobEvidence) -> None:
+    if evidence.job_evidence_hash != build_preview_conversion_job_evidence_hash(evidence):
+        raise PreviewConversionBlocked("preview conversion job evidence hash is invalid")
 
 
 def _set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:

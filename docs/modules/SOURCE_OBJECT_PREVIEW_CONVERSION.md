@@ -46,6 +46,10 @@ Viewer authorization must always re-check the authoritative source ACL. A copied
 integrity binding, not permission to bypass the parent check. Regeneration creates a new deterministic derived version;
 it never overwrites an existing object version.
 
+Every completed conversion also persists metadata-only job evidence containing the validated command, preflight, and
+worker result. The evidence links their hashes to the SourceObject write receipt and derived-preview lineage receipt in
+the same PostgreSQL transaction. It contains neither input nor output bytes and is protected by forced RLS.
+
 ## Docker Profiles
 
 `docker compose run --rm preview-conversion-engine-smoke` performs a development-only synthetic RTF conversion with
@@ -74,9 +78,15 @@ The PDF uses the existing SourceObject and S3-compatible backup/restore path. Re
 4. Keep dispatch and viewer access blocked until a fresh execution gate and a successful restore reconciliation exist.
 5. Rebuild only previews whose source version still exists and whose tenant policy permits regeneration.
 
+`docker compose --profile restore-drill run --rm derived-preview-recovery-drill` reconciles the restored PostgreSQL
+records with the restored exact object versions. It verifies source and derived manifests, PDF bytes, write receipts,
+execution gates, command/preflight/result hashes, timestamps, inherited ACL/classification/KMS/retention/Legal-Hold
+controls, and one-to-one receipt bindings. Its report is metadata-only and never enables dispatch or content serving.
+
 ## Remaining Production Admission
 
 The code and real conversion engine are present, but productive dispatch remains intentionally closed until dev001 or
 the later orchestrator supplies independently verifiable runsc/Kata/Firecracker evidence, a current malware signature
-set and CDR service, a published worker image digest with provenance/SBOM, a derived-preview restore drill, and the
-separate-origin PDF.js viewer CSP evidence. These are deployment facts and must not be simulated by application flags.
+set and CDR service, a published worker image digest with provenance/SBOM, a successful non-empty derived-preview
+recovery report, and the separate-origin PDF.js viewer CSP evidence. These are deployment facts and must not be
+simulated by application flags.

@@ -620,8 +620,10 @@ report. A blocked release gate keeps renderer, viewer, and content-release wirin
 exists.
 ### Derived preview conversion recovery
 
-Migration `0072` adds the append-only, forced-RLS execution-gate and derived-preview lineage receipt tables. Their
-backup and restore are mandatory whenever preview conversion state exists. The generated canonical PDF is not worker
+Migrations `0072` and `0073` add the append-only, forced-RLS execution-gate, derived-preview lineage receipt, and
+metadata-only conversion-job evidence tables. Command, source-preflight, worker-result, SourceObject write-receipt,
+lineage-receipt, and execution-gate hashes therefore remain independently re-verifiable after recovery. Their backup
+and restore are mandatory whenever preview conversion state exists. The generated canonical PDF is not worker
 scratch data: it is a normal versioned SourceObject in object storage and inherits classification, ACL version, KMS
 reference, retention policy, Legal Hold, lifecycle, and parent-source binding.
 
@@ -631,6 +633,21 @@ content hashes match; lineage receipt hashes bind the exact command, preflight, 
 version; RLS and append-only checks pass; and retention, Legal Hold, and ACL inheritance match the source. A missing
 derived PDF may be rebuilt only from the exact retained source version under a fresh execution gate and must receive a
 new derived version and lineage receipt.
+
+Run the cross-store reconciliation only against the isolated PostgreSQL and object-storage restore targets:
+
+```bash
+docker compose --profile restore-drill run --rm derived-preview-recovery-drill
+```
+
+The service consumes the hash-verified `backend_foundation_completion_gate.v1`, reads restored state through the
+tenant-scoped application role, and writes `source_object_derived_preview_recovery_drill_report.v1` to the backup
+evidence directory. Each report contains only tenant IDs, hashes, counts, booleans, and blocking reasons. It never
+contains source IDs, titles, source bytes, PDF bytes, reasons, stdout, stderr, or credentials.
+
+A verified empty state is recoverable but does not satisfy production admission. Only a successful non-empty report
+can satisfy the derived-preview recovery prerequisite, and even that report keeps conversion dispatch and preview
+serving disabled until the separate current runtime, malware/CDR, image-provenance, and viewer-origin gates pass.
 
 `docker compose run --rm preview-conversion-engine-smoke` verifies the pinned conversion engine without tenant content,
 credentials, or network access. It is an engine check, not a substitute for the production restore drill.

@@ -661,6 +661,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:source-object-preview-conversion",
         ),
     ),
+    SqlMigration(
+        version="0073",
+        name="source_object_preview_conversion_job_evidence",
+        resource_name="0073_source_object_preview_conversion_job_evidence.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:source-object-preview-conversion",
+            "test:source-object-preview-conversion-recovery",
+        ),
+    ),
 )
 
 

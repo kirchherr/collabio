@@ -8,11 +8,20 @@ import pytest
 from pydantic import ValidationError
 
 from suite.ai_control_plane.models import DataClass
+from suite.operations.backend_foundation_completion_gate import (
+    BackendFoundationCompletionGate,
+    build_backend_foundation_completion_gate_hash,
+)
+from suite.operations.derived_preview_recovery_drill import (
+    build_derived_preview_recovery_drill_report_hash,
+    run_derived_preview_recovery_drill,
+)
 from suite.persistence.migration_catalog import get_migration
 from suite.platform.source_object_preview_conversion import (
     DerivedPreviewWriteUnitOfWork,
     InMemoryDerivedPreviewReceiptStore,
     InMemoryPreviewConversionExecutionGateStore,
+    InMemoryPreviewConversionJobEvidenceStore,
     PreviewConversionBlocked,
     PreviewConversionCommand,
     PreviewConversionExecutionGateEvidence,
@@ -248,10 +257,12 @@ def test_derived_preview_write_unit_of_work_persists_source_receipt_and_lineage(
     repository = InMemorySourceObjectRepository(records=(source,))
     source_receipts = InMemorySourceObjectWriteReceiptStore()
     derived_receipts = InMemoryDerivedPreviewReceiptStore()
+    job_evidences = InMemoryPreviewConversionJobEvidenceStore()
     unit_of_work = DerivedPreviewWriteUnitOfWork(
         source_repository=repository,
         source_object_write_receipt_store=source_receipts,
         derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidences,
     )
 
     unit_of_work.commit(artifact)
@@ -275,6 +286,13 @@ def test_derived_preview_write_unit_of_work_persists_source_receipt_and_lineage(
             receipt_hash=artifact.derived_preview_receipt.receipt_hash,
         )
         == artifact.derived_preview_receipt
+    )
+    assert (
+        job_evidences.get(
+            tenant_id="tenant-demo",
+            job_evidence_hash=artifact.job_evidence.job_evidence_hash,
+        )
+        == artifact.job_evidence
     )
 
 
@@ -330,6 +348,28 @@ def test_conversion_migration_is_append_only_tenant_scoped_and_content_free() ->
     assert "not (receipt ? 'content')" in sql
     assert "not (receipt ? 'source_bytes')" in sql
     assert "not (receipt ? 'output_bytes')" in sql
+
+
+def test_conversion_job_evidence_migration_is_append_only_tenant_scoped_and_content_free() -> None:
+    sql = " ".join(get_migration("0073").sql().lower().split())
+
+    assert "source_object_preview_conversion_job_evidence" in sql
+    assert "force row level security" in sql
+    assert "source_object_preview_conversion_job_tenant_select" in sql
+    assert "source_object_preview_conversion_job_tenant_insert" in sql
+    assert "source_object_preview_conversion_job_no_update" in sql
+    assert "source_object_preview_conversion_job_no_hard_delete" in sql
+    assert "source_object_preview_conversion_job_evidence.v1" in sql
+    assert "derived_preview_receipt_hash" in sql
+    assert "source_object_write_receipt_hash" in sql
+    assert "source_preflight_evidence_hash" in sql
+    assert "jsonb_typeof(evidence -> 'command') = 'object'" in sql
+    assert "jsonb_typeof(evidence -> 'source_preflight') = 'object'" in sql
+    assert "jsonb_typeof(evidence -> 'result') = 'object'" in sql
+    assert "not (evidence ? 'content')" in sql
+    assert "not (evidence ? 'source_bytes')" in sql
+    assert "not (evidence ? 'output_bytes')" in sql
+    assert "not (evidence ? 'credentials')" in sql
 
 
 def test_qpdf_object_inspection_detects_canonicalized_active_names() -> None:
@@ -518,3 +558,141 @@ def _result(
         result_hash="sha256:" + ("0" * 64),
     )
     return draft.model_copy(update={"result_hash": build_preview_conversion_result_hash(draft)})
+
+
+def test_derived_preview_recovery_reconciles_complete_metadata_and_content_lineage() -> None:
+    source = _source_record()
+    gate = _gate()
+    preflight = _preflight(source)
+    command = _command(source=source, gate=gate, preflight=preflight)
+    artifact = build_derived_preview_artifact(
+        source_record=source,
+        pdf_bytes=PDF_BYTES,
+        command=command,
+        result=_result(command=command, gate=gate),
+        execution_gate=gate,
+        source_preflight=preflight,
+        audit_event_id="audit-event-preview-recovery",
+        created_at_utc=NOW,
+    )
+    repository = InMemorySourceObjectRepository(records=(source,))
+    source_receipts = InMemorySourceObjectWriteReceiptStore()
+    derived_receipts = InMemoryDerivedPreviewReceiptStore()
+    job_evidences = InMemoryPreviewConversionJobEvidenceStore()
+    execution_gates = InMemoryPreviewConversionExecutionGateStore((gate,))
+    DerivedPreviewWriteUnitOfWork(
+        source_repository=repository,
+        source_object_write_receipt_store=source_receipts,
+        derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidences,
+    ).commit(artifact)
+
+    report = run_derived_preview_recovery_drill(
+        foundation_gate=_foundation_gate(),
+        source_repository=repository,
+        source_object_write_receipt_store=source_receipts,
+        execution_gate_store=execution_gates,
+        derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidences,
+        checked_at_utc="2026-08-07T10:30:00Z",
+    )
+
+    assert report.recovery_ready is True
+    assert report.production_admission_evidence_ready is True
+    assert report.non_empty_recovery_verified is True
+    assert report.reconciled_item_count == 1
+    assert report.report_hash == build_derived_preview_recovery_drill_report_hash(report)
+    assert report.conversion_dispatch_allowed is False
+    assert report.preview_serving_allowed is False
+    serialized = report.model_dump_json()
+    assert "Quarterly board source" not in serialized
+    assert "doc-1" not in serialized
+    assert "preview.pdf" not in serialized
+
+
+def test_derived_preview_recovery_fails_closed_when_restored_pdf_is_missing() -> None:
+    source = _source_record()
+    gate = _gate()
+    preflight = _preflight(source)
+    command = _command(source=source, gate=gate, preflight=preflight)
+    artifact = build_derived_preview_artifact(
+        source_record=source,
+        pdf_bytes=PDF_BYTES,
+        command=command,
+        result=_result(command=command, gate=gate),
+        execution_gate=gate,
+        source_preflight=preflight,
+        audit_event_id="audit-event-preview-missing",
+        created_at_utc=NOW,
+    )
+    source_receipts = InMemorySourceObjectWriteReceiptStore((artifact.source_object_write_receipt,))
+    derived_receipts = InMemoryDerivedPreviewReceiptStore((artifact.derived_preview_receipt,))
+    job_evidences = InMemoryPreviewConversionJobEvidenceStore((artifact.job_evidence,))
+
+    report = run_derived_preview_recovery_drill(
+        foundation_gate=_foundation_gate(),
+        source_repository=InMemorySourceObjectRepository(records=(source,)),
+        source_object_write_receipt_store=source_receipts,
+        execution_gate_store=InMemoryPreviewConversionExecutionGateStore((gate,)),
+        derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidences,
+        checked_at_utc="2026-08-07T10:30:00Z",
+    )
+
+    assert report.recovery_ready is False
+    assert report.production_admission_evidence_ready is False
+    assert report.failed_job_evidence_hashes == (artifact.job_evidence.job_evidence_hash,)
+    assert "derived_preview_items_failed_reconciliation" in report.blocking_reasons
+
+
+def test_derived_preview_recovery_accepts_empty_state_without_claiming_production_evidence() -> None:
+    report = run_derived_preview_recovery_drill(
+        foundation_gate=_foundation_gate(),
+        source_repository=InMemorySourceObjectRepository(),
+        source_object_write_receipt_store=InMemorySourceObjectWriteReceiptStore(),
+        execution_gate_store=InMemoryPreviewConversionExecutionGateStore(),
+        derived_preview_receipt_store=InMemoryDerivedPreviewReceiptStore(),
+        job_evidence_store=InMemoryPreviewConversionJobEvidenceStore(),
+        checked_at_utc="2026-08-07T10:30:00Z",
+    )
+
+    assert report.recovery_ready is True
+    assert report.empty_state_verified is True
+    assert report.non_empty_recovery_verified is False
+    assert report.production_admission_evidence_ready is False
+    assert report.conversion_dispatch_allowed is False
+    assert report.preview_serving_allowed is False
+
+
+def _foundation_gate() -> BackendFoundationCompletionGate:
+    draft = BackendFoundationCompletionGate(
+        checked_at_utc="2026-08-07T10:15:00Z",
+        runtime_environment="dev",
+        tenant_ids=("tenant-demo",),
+        postgres_restore_drill_report_hash="sha256:" + ("a" * 64),
+        backend_storage_foundation_gate_hash="sha256:" + ("b" * 64),
+        backup_sha256="sha256:" + ("c" * 64),
+        migration_count=73,
+        database_table_count=80,
+        restored_object_count=2,
+        tenant_iam_verified=True,
+        append_only_audit_verified=True,
+        module_registry_verified=True,
+        crm_atomic_write_controls_verified=True,
+        tasks_activities_write_controls_verified=True,
+        time_tracking_write_controls_verified=True,
+        productivity_pilot_admission_controls_verified=True,
+        productivity_pilot_traffic_scope_controls_verified=True,
+        productivity_pilot_start_authorization_controls_verified=True,
+        productive_business_write_controls_verified=True,
+        migration_catalog_verified=True,
+        postgres_backup_restore_verified=True,
+        persistent_source_objects_verified=True,
+        exact_version_object_restore_verified=True,
+        independent_recovery_targets_verified=True,
+        tenant_scope_verified=True,
+        metadata_only_evidence_verified=True,
+        api_start_allowed=True,
+        backend_foundation_complete=True,
+        gate_hash="sha256:" + ("0" * 64),
+    )

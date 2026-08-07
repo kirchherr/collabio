@@ -888,6 +888,7 @@ from suite.platform.source_object_preview_content_release import (
 from suite.platform.source_object_preview_conversion import (
     build_default_derived_preview_receipt_store,
     build_default_preview_conversion_execution_gate_store,
+    build_default_preview_conversion_job_evidence_store,
 )
 from suite.platform.source_object_preview_decisions import (
     SourceObjectPreviewDecisionAccessDenied,
@@ -1482,6 +1483,7 @@ def build_app() -> FastAPI:
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
     preview_conversion_execution_gate_store = build_default_preview_conversion_execution_gate_store()
     derived_preview_receipt_store = build_default_derived_preview_receipt_store()
+    preview_conversion_job_evidence_store = build_default_preview_conversion_job_evidence_store()
     source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
         data_dir
     )
@@ -22475,6 +22477,7 @@ def build_app() -> FastAPI:
     app.state.tickets_incidents_controlled_pilot_receipt_store = tickets_incidents_controlled_pilot_receipt_store
     app.state.preview_conversion_execution_gate_store = preview_conversion_execution_gate_store
     app.state.derived_preview_receipt_store = derived_preview_receipt_store
+    app.state.preview_conversion_job_evidence_store = preview_conversion_job_evidence_store
     app.state.ticket_repository = ticket_repository
     app.state.ticket_service = ticket_service
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store

@@ -104,6 +104,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0070",
         "0071",
         "0072",
+        "0073",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"

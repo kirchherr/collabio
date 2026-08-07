@@ -441,6 +441,39 @@ services:
       - ./docs:/workspace/docs:ro
       - ./backups:/backups
 
+  derived-preview-recovery-drill:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.derived_preview_recovery_drill
+    depends_on:
+      backend-foundation-completion-gate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_DERIVED_PREVIEW_RECOVERY_REPORT_PATH: /backups/derived-preview-recovery-drill.json
+      SUITE_DERIVED_PREVIEW_RESTORE_TARGET_DSN: postgresql://collabio_app:collabio_app@postgres-restore:5432/collabio_restore
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+
   business-backend-release-gate:
     profiles: ["restore-drill"]
     build:
@@ -1631,6 +1664,8 @@ services:
       SUITE_PREVIEW_CONVERSION_EXECUTION_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_DERIVED_PREVIEW_RECEIPT_STORE_BACKEND: postgres
       SUITE_DERIVED_PREVIEW_RECEIPT_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio

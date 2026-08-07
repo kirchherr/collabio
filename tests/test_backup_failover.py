@@ -126,8 +126,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "productivity_pilot_real_user_runtime_observation.v1",
         "productivity_pilot_closure_report.v1",
         "preview_conversion_execution_gate_hash_check",
+        "preview_conversion_job_evidence_hash_check",
         "derived_preview_lineage_receipt_hash_check",
         "derived_preview_source_object_recovery_check",
+        "derived_preview_recovery_drill_report_hash_check",
         "productivity_pilot_real_user_closure_report.v1",
     ]
     assert "vector_metadata_schema_check" in postgres.integrity_checks
@@ -143,12 +145,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "preview_renderer_api_smoke_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_recovery_drill_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_release_gate_evidence_hash_check" in postgres.integrity_checks
+    assert "preview_conversion_job_evidence_hash_check" in postgres.integrity_checks
+    assert "derived_preview_recovery_drill_report_hash_check" in postgres.integrity_checks
     assert "preview_conversion_execution_gate_hash_check" in postgres.restore_verification_gates
+    assert "preview_conversion_job_evidence_hash_check" in postgres.restore_verification_gates
     assert "derived_preview_lineage_receipt_hash_check" in postgres.restore_verification_gates
     assert "derived_preview_source_object_recovery_check" in postgres.restore_verification_gates
+    assert "derived_preview_recovery_drill_report_hash_check" in postgres.restore_verification_gates
     postgres_metadata = policy.domain("postgres_metadata")
     assert "source object preview conversion execution gate evidence" in postgres_metadata.state_artifacts
+    assert "source object preview conversion job evidence" in postgres_metadata.state_artifacts
     assert "source object derived preview lineage receipts" in postgres_metadata.state_artifacts
+    assert "source object derived preview recovery drill reports" in postgres_metadata.state_artifacts
     object_storage_domain = policy.domain("object_storage_records")
     assert "derived preview PDF source objects" in object_storage_domain.state_artifacts
     assert "derived preview source-to-output lineage" in object_storage_domain.state_artifacts
@@ -200,6 +208,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm backup-verify" in postgres.current_dev_commands
     assert "docker compose run --rm preview-renderer-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm preview-renderer-drill" in postgres.current_dev_commands
+    assert (
+        "docker compose --profile restore-drill run --rm derived-preview-recovery-drill" in postgres.current_dev_commands
+    )
     assert "docker compose run --rm legacy-sql-discovery-intake" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-readiness-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-import-dry-run-worker" in postgres.current_dev_commands
@@ -348,7 +359,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     runbook = RUNBOOK_PATH.read_text(encoding="utf-8")
     assert "Derived preview conversion recovery" in runbook
     assert "docker compose run --rm preview-conversion-engine-smoke" in runbook
+    assert "docker compose --profile restore-drill run --rm derived-preview-recovery-drill" in runbook
     assert "derived-preview lineage receipt" in runbook
+    assert "source_object_derived_preview_recovery_drill_report.v1" in runbook
 
 
 def test_backup_failover_policy_covers_future_suite_domains() -> None:
