@@ -393,12 +393,19 @@ def test_compose_exposes_isolated_restore_target_and_foundation_gate() -> None:
     compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 
     assert "\n  minio-restore:\n" in compose
-    assert compose.count('profiles: ["restore-drill"]') == 9
+    assert compose.count('profiles: ["restore-drill"]') == 10
     assert "\n  object-storage-restore-profile-check:\n" in compose
     assert "\n  business-backend-release-gate:\n" in compose
     assert "\n  productivity-pilot-preflight-gate:\n" in compose
     assert "\n  backend-storage-foundation-gate:\n" in compose
     assert "command: python -m suite.storage.backend_storage_foundation_gate" in compose
+    assert "\n  derived-preview-recovery-drill:\n" in compose
+    derived_preview_service = compose.split("\n  derived-preview-recovery-drill:\n", 1)[1].split(
+        "\n  business-backend-release-gate:\n", 1
+    )[0]
+    assert "command: python -m suite.operations.derived_preview_recovery_drill" in derived_preview_service
+    assert "backend-foundation-completion-gate:" in derived_preview_service
+    assert "condition: service_completed_successfully" in derived_preview_service
     assert "SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000" in compose
     assert "SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS:" in compose
     assert "minio_restore_data:/data" in compose
