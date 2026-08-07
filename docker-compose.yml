@@ -461,6 +461,7 @@ services:
       PYTHONPATH: /workspace/app
       SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
       SUITE_DERIVED_PREVIEW_RECOVERY_REPORT_PATH: /backups/derived-preview-recovery-drill.json
+      SUITE_DERIVED_PREVIEW_PRODUCTION_ADMISSION_EVALUATION_ENABLED: "0"
       SUITE_DERIVED_PREVIEW_RESTORE_TARGET_DSN: postgresql://collabio_app:collabio_app@postgres-restore:5432/collabio_restore
       SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
       SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
@@ -1562,6 +1563,165 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-conversion-proof-stager:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["stage"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_PROOF_RUNSC_EVIDENCE_HASH: ${SUITE_PREVIEW_PROOF_RUNSC_EVIDENCE_HASH:-invalid}
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH: /backups/preview-conversion-non-empty-stage.json
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+    volumes:
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+
+  preview-conversion-proof-worker:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --once
+      - --request
+      - /job/proof-input/request.json
+      - --input-dir
+      - /job/proof-input
+      - --output-dir
+      - /job/proof-output
+    depends_on:
+      preview-conversion-proof-stager:
+        condition: service_completed_successfully
+    runtime: runsc
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: runsc
+    volumes:
+      - preview_conversion_proof_input:/job/proof-input:ro
+      - preview_conversion_proof_output:/job/proof-output
+
+  preview-conversion-proof-importer:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["import"]
+    depends_on:
+      preview-conversion-proof-worker:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
+      SUITE_PREVIEW_PROOF_REPORT_PATH: /backups/preview-conversion-non-empty-proof.json
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+    volumes:
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+
+  preview-conversion-proof-cleanup:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["cleanup"]
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+    volumes:
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+
   preview-conversion-engine-smoke:
     build:
       context: .
@@ -1809,3 +1969,5 @@ volumes:
   minio_restore_data:
   preview_conversion_input:
   preview_conversion_output:
+  preview_conversion_proof_input:
+  preview_conversion_proof_output:

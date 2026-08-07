@@ -707,31 +707,39 @@ class PgPreviewConversionExecutionGateStore:
         self,
         evidence: PreviewConversionExecutionGateEvidence,
     ) -> PreviewConversionExecutionGateEvidence:
-        _require_execution_gate_hash(evidence)
         try:
             with psycopg.connect(self.database_dsn) as connection:
                 _set_tenant(connection, evidence.tenant_id)
-                connection.execute(
-                    """
-                    INSERT INTO collabio.source_object_preview_conversion_execution_gates (
-                        tenant_id, evidence_hash, gate_status, worker_image_ref,
-                        sandbox_runtime_class, evaluated_at_utc, expires_at_utc, evidence
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (
-                        evidence.tenant_id,
-                        evidence.evidence_hash,
-                        evidence.gate_status.value,
-                        evidence.worker_image_ref,
-                        evidence.sandbox_runtime_class,
-                        evidence.evaluated_at_utc,
-                        evidence.expires_at_utc,
-                        Jsonb(evidence.model_dump(mode="json")),
-                    ),
-                )
+                self.append_in_transaction(connection, evidence)
                 connection.commit()
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("preview conversion execution gate already exists") from exc
+        return evidence
+
+    def append_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        evidence: PreviewConversionExecutionGateEvidence,
+    ) -> PreviewConversionExecutionGateEvidence:
+        _require_execution_gate_hash(evidence)
+        connection.execute(
+            """
+            INSERT INTO collabio.source_object_preview_conversion_execution_gates (
+                tenant_id, evidence_hash, gate_status, worker_image_ref,
+                sandbox_runtime_class, evaluated_at_utc, expires_at_utc, evidence
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                evidence.tenant_id,
+                evidence.evidence_hash,
+                evidence.gate_status.value,
+                evidence.worker_image_ref,
+                evidence.sandbox_runtime_class,
+                evidence.evaluated_at_utc,
+                evidence.expires_at_utc,
+                Jsonb(evidence.model_dump(mode="json")),
+            ),
+        )
         return evidence
 
     def get(self, *, tenant_id: str, evidence_hash: str) -> PreviewConversionExecutionGateEvidence:

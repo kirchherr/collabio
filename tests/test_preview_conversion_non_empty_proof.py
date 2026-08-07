@@ -1,0 +1,235 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+from suite.operations.preview_conversion_non_empty_proof import (
+    PROOF_TENANT_ID,
+    PreviewConversionProofStageBundle,
+    PreviewConversionNonEmptyProofReport,
+    build_preview_conversion_non_empty_proof_report_hash,
+    build_preview_conversion_proof_stage_bundle,
+    build_preview_conversion_stage_report_hash,
+    import_preview_conversion_non_empty_proof,
+    stage_preview_conversion_proof_workspaces,
+)
+from suite.platform.source_object_preview_conversion import (
+    DerivedPreviewWriteUnitOfWork,
+    InMemoryDerivedPreviewReceiptStore,
+    InMemoryPreviewConversionJobEvidenceStore,
+    PreviewConversionWorkerResult,
+    build_preview_conversion_result_hash,
+)
+from suite.storage.source_objects import (
+    InMemorySourceObjectRepository,
+    InMemorySourceObjectWriteReceiptStore,
+    sha256_bytes,
+)
+
+NOW = datetime(2026, 8, 7, 13, 0, tzinfo=UTC)
+PROOF_RUN_ID = "preview-proof-20260807-130000"
+WORKER_IMAGE_REF = "collabio/preview-renderer@sha256:" + ("1" * 64)
+PDF_BYTES = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\nstartxref\n0\n%%EOF\n"
+
+
+def test_stage_bundle_is_hash_bound_synthetic_and_dedicated_to_proof_tenant() -> None:
+    bundle = _bundle()
+
+    assert bundle.source_record.metadata.tenant_id == PROOF_TENANT_ID
+    assert bundle.execution_gate.sandbox_runtime_class == "runsc"
+    assert bundle.execution_gate.worker_image_ref == WORKER_IMAGE_REF
+    assert bundle.envelope.command.preview_policy_id == "synthetic-preview-proof.v1"
+    assert bundle.report.development_only is True
+    assert bundle.report.synthetic_fixture is True
+    assert bundle.report.production_admission_requested is False
+    assert bundle.report.report_hash == build_preview_conversion_stage_report_hash(bundle.report)
+    serialized = bundle.report.model_dump_json()
+    assert "synthetic non-empty preview recovery proof" not in serialized.lower()
+    assert "content_bytes" not in serialized
+
+
+def test_stage_and_import_persist_non_empty_lineage_then_destroy_transient_content(tmp_path: Path) -> None:
+    bundle = _bundle()
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    stage_preview_conversion_proof_workspaces(bundle=bundle, input_dir=input_dir, output_dir=output_dir)
+    result = _result(bundle)
+    (output_dir / "preview.pdf").write_bytes(PDF_BYTES)
+    (output_dir / "result.json").write_text(result.model_dump_json(), encoding="utf-8")
+
+    repository = InMemorySourceObjectRepository(records=(bundle.source_record,))
+    source_receipts = InMemorySourceObjectWriteReceiptStore((bundle.source_write_receipt,))
+    derived_receipts = InMemoryDerivedPreviewReceiptStore()
+    job_evidence = InMemoryPreviewConversionJobEvidenceStore()
+    committer = DerivedPreviewWriteUnitOfWork(
+        source_repository=repository,
+        source_object_write_receipt_store=source_receipts,
+        derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidence,
+    )
+
+    report = import_preview_conversion_non_empty_proof(
+        proof_run_id=PROOF_RUN_ID,
+        source_repository=repository,
+        committer=committer,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        completed_at_utc=NOW + timedelta(minutes=2),
+    )
+
+    assert report.technical_conversion_verified is True
+    assert report.persistent_lineage_verified is True
+    assert report.transient_input_destroyed is True
+    assert report.transient_output_destroyed is True
+    assert report.production_admission_evidence_ready is False
+    assert report.conversion_dispatch_allowed is False
+    assert report.preview_serving_allowed is False
+    assert report.report_hash == build_preview_conversion_non_empty_proof_report_hash(report)
+    assert tuple(input_dir.iterdir()) == ()
+    assert tuple(output_dir.iterdir()) == ()
+    assert job_evidence.get(tenant_id=PROOF_TENANT_ID, job_evidence_hash=report.job_evidence_hash)
+    assert derived_receipts.get(tenant_id=PROOF_TENANT_ID, receipt_hash=report.derived_preview_receipt_hash)
+    serialized = report.model_dump_json()
+    assert "synthetic non-empty preview recovery proof" not in serialized.lower()
+    assert "content_bytes" not in serialized
+
+
+def test_import_failure_still_destroys_transient_workspaces(tmp_path: Path) -> None:
+    bundle = _bundle()
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    stage_preview_conversion_proof_workspaces(bundle=bundle, input_dir=input_dir, output_dir=output_dir)
+    result = _result(bundle)
+    (output_dir / "preview.pdf").write_bytes(b"not-a-pdf")
+    (output_dir / "result.json").write_text(result.model_dump_json(), encoding="utf-8")
+    repository = InMemorySourceObjectRepository(records=(bundle.source_record,))
+    committer = DerivedPreviewWriteUnitOfWork(
+        source_repository=repository,
+        source_object_write_receipt_store=InMemorySourceObjectWriteReceiptStore((bundle.source_write_receipt,)),
+        derived_preview_receipt_store=InMemoryDerivedPreviewReceiptStore(),
+        job_evidence_store=InMemoryPreviewConversionJobEvidenceStore(),
+    )
+
+    with pytest.raises(ValueError, match="output length|content hash|not a PDF"):
+        import_preview_conversion_non_empty_proof(
+            proof_run_id=PROOF_RUN_ID,
+            source_repository=repository,
+            committer=committer,
+            input_dir=input_dir,
+            output_dir=output_dir,
+            completed_at_utc=NOW + timedelta(minutes=2),
+        )
+
+    assert tuple(input_dir.iterdir()) == ()
+    assert tuple(output_dir.iterdir()) == ()
+
+
+def test_proof_report_rejects_any_production_or_serving_claim() -> None:
+    bundle = _bundle()
+    result = _result(bundle)
+    valid = {
+        "proof_run_id": PROOF_RUN_ID,
+        "tenant_id": PROOF_TENANT_ID,
+        "source_object_ref_hash": "sha256:" + ("1" * 64),
+        "derived_object_ref_hash": "sha256:" + ("2" * 64),
+        "execution_gate_evidence_hash": bundle.execution_gate.evidence_hash,
+        "command_hash": bundle.envelope.command.command_hash,
+        "result_hash": result.result_hash,
+        "source_write_receipt_hash": bundle.source_write_receipt.receipt_hash,
+        "derived_write_receipt_hash": "sha256:" + ("3" * 64),
+        "derived_preview_receipt_hash": "sha256:" + ("4" * 64),
+        "job_evidence_hash": "sha256:" + ("5" * 64),
+        "worker_image_ref": WORKER_IMAGE_REF,
+        "sandbox_runtime_class": "runsc",
+        "output_content_hash": result.output_content_hash,
+        "output_content_byte_length": result.output_content_byte_length,
+        "page_count": result.page_count,
+        "technical_conversion_verified": True,
+        "persistent_lineage_verified": True,
+        "transient_input_destroyed": True,
+        "transient_output_destroyed": True,
+        "external_network_used_by_worker": False,
+        "completed_at_utc": NOW,
+        "report_hash": "sha256:" + ("0" * 64),
+    }
+
+    with pytest.raises(ValueError, match="fail closed"):
+        PreviewConversionNonEmptyProofReport.model_validate({**valid, "preview_serving_allowed": True})
+    with pytest.raises(ValueError, match="fail closed"):
+        PreviewConversionNonEmptyProofReport.model_validate(
+            {**valid, "production_admission_evidence_ready": True}
+        )
+
+
+def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() -> None:
+    compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+    stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-worker")
+    worker = _service(compose, "preview-conversion-proof-worker", "preview-conversion-proof-importer")
+    importer = _service(compose, "preview-conversion-proof-importer", "preview-conversion-proof-cleanup")
+    cleanup = _service(compose, "preview-conversion-proof-cleanup", "preview-conversion-engine-smoke")
+
+    assert 'profiles: ["preview-proof"]' in stager
+    assert "SUITE_DATABASE_DSN:" in stager
+    assert "SUITE_S3_SECRET_ACCESS_KEY:" in stager
+    assert "preview-conversion-proof-stager:" in worker
+    assert "condition: service_completed_successfully" in worker
+    assert "runtime: runsc" in worker
+    assert 'network_mode: "none"' in worker
+    assert "SUITE_DATABASE_DSN:" not in worker
+    assert "SUITE_S3_SECRET_ACCESS_KEY:" not in worker
+    assert "preview_conversion_proof_input:/job/proof-input:ro" in worker
+    assert "preview-conversion-proof-worker:" in importer
+    assert "SUITE_DATABASE_DSN:" in importer
+    assert 'command: ["cleanup"]' in cleanup
+    assert 'network_mode: "none"' in cleanup
+    assert "preview_conversion_proof_input:" in compose
+    assert "preview_conversion_proof_output:" in compose
+
+
+def _bundle() -> PreviewConversionProofStageBundle:
+    return build_preview_conversion_proof_stage_bundle(
+        proof_run_id=PROOF_RUN_ID,
+        worker_image_ref=WORKER_IMAGE_REF,
+        sandbox_runtime_evidence_hash="sha256:" + ("2" * 64),
+        font_baseline_hash="sha256:" + ("3" * 64),
+        backup_restore_evidence_hash="sha256:" + ("4" * 64),
+        staged_at_utc=NOW,
+    )
+
+
+def _result(bundle: PreviewConversionProofStageBundle) -> PreviewConversionWorkerResult:
+    command = bundle.envelope.command
+    gate = bundle.execution_gate
+    draft = PreviewConversionWorkerResult(
+        tenant_id=command.tenant_id,
+        source_object_id=command.source_object_id,
+        source_version_id=command.source_version_id,
+        source_manifest_hash=command.source_manifest_hash,
+        source_content_hash=command.source_content_hash,
+        command_hash=command.command_hash,
+        execution_gate_evidence_hash=command.execution_gate_evidence_hash,
+        source_preflight_evidence_hash=command.source_preflight_evidence_hash,
+        worker_image_ref=command.worker_image_ref,
+        sandbox_runtime_class=gate.sandbox_runtime_class,
+        converter_version="LibreOffice 25.8.7.3",
+        pdf_validator_version="qpdf version 12.3.2",
+        font_baseline_hash=gate.font_baseline_hash,
+        output_content_hash=sha256_bytes(PDF_BYTES),
+        output_content_byte_length=len(PDF_BYTES),
+        page_count=1,
+        source_hash_verified=True,
+        output_hash_verified=True,
+        qpdf_validation_passed=True,
+        pdfinfo_validation_passed=True,
+        active_pdf_content_absent=True,
+        temporary_workspace_destroyed=True,
+        completed_at_utc=NOW + timedelta(minutes=1),
+        result_hash="sha256:" + ("0" * 64),
+    )
+    return draft.model_copy(update={"result_hash": build_preview_conversion_result_hash(draft)})
+
+
+def _service(compose: str, service_name: str, next_service_name: str) -> str:
+    return compose.split(f"\n  {service_name}:\n", 1)[1].split(f"\n  {next_service_name}:\n", 1)[0]

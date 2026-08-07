@@ -177,6 +177,7 @@ def run_derived_preview_recovery_drill(
     derived_preview_receipt_store: DerivedPreviewReceiptStore,
     job_evidence_store: PreviewConversionJobEvidenceStore,
     checked_at_utc: str | None = None,
+    production_admission_evaluation_enabled: bool = True,
 ) -> DerivedPreviewRecoveryDrillReport:
     foundation_hash_verified = (
         build_backend_foundation_completion_gate_hash(foundation_gate) == foundation_gate.gate_hash
@@ -241,7 +242,7 @@ def run_derived_preview_recovery_drill(
         non_empty_recovery_verified=non_empty_recovery,
         metadata_only_evidence_verified=all(not item.content_included for item in items),
         recovery_ready=recovery_ready,
-        production_admission_evidence_ready=recovery_ready and non_empty_recovery,
+        production_admission_evidence_ready=production_admission_evaluation_enabled and recovery_ready and non_empty_recovery,
         blocking_reasons=tuple(sorted(set(blocking_reasons))),
         report_hash=ZERO_HASH,
     )
@@ -576,6 +577,10 @@ def run_derived_preview_recovery_drill_from_environment(
         execution_gate_store=PgPreviewConversionExecutionGateStore(database_dsn=target_dsn),
         derived_preview_receipt_store=PgDerivedPreviewReceiptStore(database_dsn=target_dsn),
         job_evidence_store=PgPreviewConversionJobEvidenceStore(database_dsn=target_dsn),
+        production_admission_evaluation_enabled=_env_bool(
+            env.get("SUITE_DERIVED_PREVIEW_PRODUCTION_ADMISSION_EVALUATION_ENABLED"),
+            default=False,
+        ),
     )
 
 
@@ -584,6 +589,17 @@ def _required_env(env: Mapping[str, str], name: str) -> str:
     if not value:
         raise ValueError(f"Required environment variable missing: {name}")
     return value
+
+
+def _env_bool(value: str | None, *, default: bool) -> bool:
+    if value is None or not value.strip():
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError("Boolean environment value must use true/false, 1/0, yes/no, or on/off")
 
 
 def main() -> None:

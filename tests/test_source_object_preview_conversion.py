@@ -607,6 +607,21 @@ def test_derived_preview_recovery_reconciles_complete_metadata_and_content_linea
     serialized = report.model_dump_json()
     assert "Quarterly board source" not in serialized
     assert "doc-1" not in serialized
+
+    technical_proof_report = run_derived_preview_recovery_drill(
+        foundation_gate=_foundation_gate(),
+        source_repository=repository,
+        source_object_write_receipt_store=source_receipts,
+        execution_gate_store=execution_gates,
+        derived_preview_receipt_store=derived_receipts,
+        job_evidence_store=job_evidences,
+        checked_at_utc="2026-08-07T10:30:00Z",
+        production_admission_evaluation_enabled=False,
+    )
+
+    assert technical_proof_report.recovery_ready is True
+    assert technical_proof_report.non_empty_recovery_verified is True
+    assert technical_proof_report.production_admission_evidence_ready is False
     assert "preview.pdf" not in serialized
 
 
