@@ -242,7 +242,9 @@ def run_derived_preview_recovery_drill(
         non_empty_recovery_verified=non_empty_recovery,
         metadata_only_evidence_verified=all(not item.content_included for item in items),
         recovery_ready=recovery_ready,
-        production_admission_evidence_ready=production_admission_evaluation_enabled and recovery_ready and non_empty_recovery,
+        production_admission_evidence_ready=(
+            production_admission_evaluation_enabled and recovery_ready and non_empty_recovery
+        ),
         blocking_reasons=tuple(sorted(set(blocking_reasons))),
         report_hash=ZERO_HASH,
     )

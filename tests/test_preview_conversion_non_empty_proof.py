@@ -7,8 +7,8 @@ import pytest
 
 from suite.operations.preview_conversion_non_empty_proof import (
     PROOF_TENANT_ID,
-    PreviewConversionProofStageBundle,
     PreviewConversionNonEmptyProofReport,
+    PreviewConversionProofStageBundle,
     build_preview_conversion_non_empty_proof_report_hash,
     build_preview_conversion_proof_stage_bundle,
     build_preview_conversion_stage_report_hash,
@@ -112,7 +112,7 @@ def test_import_failure_still_destroys_transient_workspaces(tmp_path: Path) -> N
         job_evidence_store=InMemoryPreviewConversionJobEvidenceStore(),
     )
 
-    with pytest.raises(ValueError, match="output length|content hash|not a PDF"):
+    with pytest.raises(ValueError, match=r"output length|content hash|not a PDF"):
         import_preview_conversion_non_empty_proof(
             proof_run_id=PROOF_RUN_ID,
             source_repository=repository,
