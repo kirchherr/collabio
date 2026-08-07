@@ -3,16 +3,18 @@ FROM python:3.12-alpine@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed3356887313
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /workspace
 
-COPY requirements.txt .
-RUN python -m pip install --requirement requirements.txt
+COPY requirements.lock .
+RUN python -m pip install --require-hashes --requirement requirements.lock
 
 FROM base AS dev
 
-COPY requirements-dev.txt .
-RUN python -m pip install --requirement requirements-dev.txt
+COPY requirements-dev.lock .
+RUN python -m pip install --require-hashes --requirement requirements-dev.lock
 
 COPY app ./app
 COPY tests ./tests

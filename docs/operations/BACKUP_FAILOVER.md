@@ -741,9 +741,13 @@ Production target:
 - mail journal consistency checks
 - office record/WORM integrity checks
 - documented manual promotion first
+- deployment manifests reference only an admitted immutable runtime OCI digest
+- release provenance, SBOM and signed staging/production promotion evidence are verified before deployment admission
 - automated failover only after restore and promotion drills are passing
 - failback is a separate runbook step, never an implicit side effect
 - a green gate is admission evidence only and never authorizes or performs deployment, promotion, traffic switch, or failback
+- registry image promotion is supply-chain admission only and never replaces the independently signed production
+  continuity gate, deployment approval, traffic switch, fencing decision, or failover runbook
 
 ## Pull-Forward Rule
 

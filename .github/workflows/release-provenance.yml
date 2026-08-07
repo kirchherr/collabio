@@ -17,7 +17,10 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      packages: write
     env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
       RUNTIME_IMAGE: collabio-runtime:${{ github.ref_name }}
       RELEASE_ARCHIVE: artifacts/collabio-runtime-${{ github.ref_name }}.tar
 
@@ -25,11 +28,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
+      - name: Verify dependency locks are current
+        run: |
+          docker compose --profile tooling run --rm dependency-lock-runtime
+          docker compose --profile tooling run --rm dependency-lock-dev
+          git diff --exit-code -- requirements.lock requirements-dev.lock
+
       - name: Validate release quality
         run: docker compose run --rm quality
 
       - name: Build runtime image
-        run: docker build --provenance=false --target runtime --tag "${RUNTIME_IMAGE}" .
+        run: |
+          docker build --provenance=false --target runtime --tag "${RUNTIME_IMAGE}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${GITHUB_REF_NAME}" .
 
       - name: Smoke-test non-root runtime
         run: docker run --rm "${RUNTIME_IMAGE}" python -W error -c "import os; import main; assert os.geteuid() == 10001"
@@ -81,20 +94,43 @@ jobs:
       - name: Export runtime image
         run: docker save --output "${RELEASE_ARCHIVE}" "${RUNTIME_IMAGE}"
 
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" --username "${GITHUB_ACTOR}" --password-stdin
+
+      - name: Publish tested runtime image
+        id: publish
+        run: |
+          docker tag "${RUNTIME_IMAGE}" "${IMAGE_NAME}:${GITHUB_REF_NAME}"
+          docker tag "${RUNTIME_IMAGE}" "${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          docker push "${IMAGE_NAME}:${GITHUB_REF_NAME}"
+          docker push "${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          docker pull "${IMAGE_NAME}:${GITHUB_REF_NAME}"
+          IMAGE_REFERENCE="$(docker image inspect "${IMAGE_NAME}:${GITHUB_REF_NAME}" --format '{{index .RepoDigests 0}}')"
+          IMAGE_DIGEST="${IMAGE_REFERENCE##*@}"
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s@%s\n' "${IMAGE_NAME}" "${IMAGE_DIGEST}" > artifacts/image-digest.txt
+          echo "digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
+
       - name: Create release checksums
         working-directory: artifacts
-        run: sha256sum collabio-runtime-*.tar collabio-runtime.cdx.json > SHA256SUMS
+        run: sha256sum collabio-runtime-*.tar collabio-runtime.cdx.json image-digest.txt > SHA256SUMS
 
-      - name: Attest release provenance
+      - name: Attest OCI release provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-path: ${{ env.RELEASE_ARCHIVE }}
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
 
-      - name: Attest release SBOM
+      - name: Attest OCI release SBOM
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-path: ${{ env.RELEASE_ARCHIVE }}
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
           sbom-path: artifacts/collabio-runtime.cdx.json
+          push-to-registry: true
 
       - name: Upload release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

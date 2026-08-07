@@ -1,4 +1,49 @@
 services:
+  dependency-lock-runtime:
+    profiles: ["tooling"]
+    image: ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:2f78017b6eb469a2f838c7dd77cc3018a9f86489f68af399526b5721a23d6d78
+    entrypoint: ["/bin/sh", "-eu", "-c"]
+    command:
+      - |-
+        /usr/local/bin/uv --quiet pip compile requirements.txt --universal --python-version 3.12 --generate-hashes --custom-compile-command "docker compose --profile tooling run --rm dependency-lock-runtime" --output-file /tmp/requirements.lock
+        cat /tmp/requirements.lock > /workspace/requirements.lock
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements.lock:/workspace/requirements.lock
+
+  dependency-lock-dev:
+    profiles: ["tooling"]
+    image: ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:2f78017b6eb469a2f838c7dd77cc3018a9f86489f68af399526b5721a23d6d78
+    entrypoint: ["/bin/sh", "-eu", "-c"]
+    command:
+      - |-
+        /usr/local/bin/uv --quiet pip compile requirements-dev.txt --universal --python-version 3.12 --generate-hashes --custom-compile-command "docker compose --profile tooling run --rm dependency-lock-dev" --output-file /tmp/requirements-dev.lock
+        cat /tmp/requirements-dev.lock > /workspace/requirements-dev.lock
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+      - ./requirements-dev.lock:/workspace/requirements-dev.lock
+
   postgres:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
     restart: unless-stopped

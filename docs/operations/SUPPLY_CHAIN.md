@@ -5,6 +5,10 @@ the runtime container image, CI actions, SBOMs, and tagged release artifacts.
 
 ## Non-negotiable Rules
 
+- **requirements.txt** and **requirements-dev.txt** declare direct constraints; **requirements.lock** and
+  **requirements-dev.lock** pin the complete transitive graphs and every accepted distribution hash.
+- Docker builds install only lockfiles with **pip --require-hashes**. A declaration change without a regenerated lock
+  fails CI before the development image is built.
 - Every third-party GitHub Action uses an immutable commit SHA. The readable version comment is informational only.
 - No scan may silently continue after a policy failure.
 - Runtime base images use an immutable manifest digest; Dependabot proposes digest updates for review.
@@ -16,8 +20,28 @@ the runtime container image, CI actions, SBOMs, and tagged release artifacts.
 - Embedded third-party build SBOMs are excluded from runtime evaluation; installed package metadata and the complete
   image filesystem remain authoritative scan inputs.
 - The CycloneDX SBOM is generated from the built runtime image, not only from the input requirement file.
-- A tagged release is not complete without its runtime archive, SBOM, checksums, provenance attestation, and SBOM attestation.
+- A tagged release is not complete without its GHCR OCI digest, runtime archive, SBOM, checksums, provenance
+  attestation, and SBOM attestation.
+- Deployment admission and promotion use OCI digests. Mutable registry tags are discovery aliases, never trust anchors.
 - Scan output and SBOMs contain component metadata only. Secrets, credentials, source content, or tenant data must never be added.
+
+## Dependency Locks
+
+The lock generator is uv 0.12.2 in an official Python 3.12 Alpine image pinned by manifest digest. It is available
+only through the **tooling** Compose profile and is not copied into development or runtime images.
+
+Regenerate both locks after changing a direct declaration:
+
+~~~bash
+docker compose --profile tooling run --rm dependency-lock-runtime
+docker compose --profile tooling run --rm dependency-lock-dev
+docker compose build
+docker compose run --rm quality
+~~~
+
+Review the direct and transitive version changes before commit. Lock regeneration is intentionally networked;
+application, test, and release containers consume the resulting committed files without resolving a new dependency
+graph. CI runs the same two generators and rejects any lock drift with **git diff --exit-code**.
 
 ## Pull Request And Main Gate
 
@@ -40,25 +64,61 @@ pattern requires the same review and tests as a vulnerability exception.
 
 ## Tagged Releases
 
-Pushing a `v*` tag starts `.github/workflows/release-provenance.yml`. The workflow reruns the complete Docker Compose
-quality gate, builds and scans the runtime image, exports the exact image archive, creates the CycloneDX SBOM and
-`SHA256SUMS`, then creates two GitHub artifact attestations:
+Pushing a **v*** tag starts **.github/workflows/release-provenance.yml**. The workflow rejects dependency-lock drift,
+reruns the complete Docker Compose quality gate, builds and scans the runtime image, and only then authenticates to
+GHCR. The exact tested image is pushed as the release tag and **sha-commit**. The workflow records its immutable OCI
+digest, exports the same local image as an archive, creates the CycloneDX SBOM and **SHA256SUMS**, then creates two OCI
+attestations:
 
-- SLSA-compatible build provenance for the runtime archive.
-- A CycloneDX SBOM attestation bound to the same archive.
+- SLSA-compatible build provenance bound to the GHCR image digest.
+- A CycloneDX SBOM attestation bound to the same GHCR image digest.
 
 GitHub artifact attestations use OIDC-backed Sigstore signing. No long-lived signing key is stored in the repository or
 workflow. Release evidence is retained for 90 days; production release storage must copy it into the release evidence
 retention domain before expiry.
 
-Verify a downloaded runtime archive against this repository:
+Verify a registry image by digest against this repository and release workflow:
 
-```bash
-gh attestation verify collabio-runtime-vX.Y.Z.tar -R kirchherr/collabio
+~~~bash
+gh attestation verify oci://ghcr.io/kirchherr/collabio@sha256:<digest> \
+  --repo kirchherr/collabio \
+  --signer-workflow github.com/kirchherr/collabio/.github/workflows/release-provenance.yml \
+  --source-ref refs/tags/vX.Y.Z \
+  --deny-self-hosted-runners
 sha256sum --check SHA256SUMS
-```
+~~~
 
 The verifier must confirm the expected repository, workflow identity, tag, and digest before deployment admission.
+
+## Staging And Production Promotion
+
+**.github/workflows/promote-release.yml** is a manual registry-promotion boundary. It never builds an image and never
+accepts a tag as the artifact identity. Its required inputs are the release OCI digest, the matching **v*** tag, a
+target environment, and a reviewed change reference.
+
+Repository administrators must create protected GitHub Environments named **staging** and **production**:
+
+1. Configure required reviewers and prevent self-review where the repository plan supports it.
+2. Restrict deployment branches to **main** and disable administrator bypass where supported.
+3. Add the environment variable **PROMOTION_POLICY_CONFIGURED=true** only after those controls are active.
+4. Keep registry credentials environment-scoped; the current GHCR path uses the short-lived workflow GITHUB_TOKEN.
+
+The workflow fails closed unless it runs from **main** and the environment variable confirms that the external
+protection was configured. After the environment approval, it:
+
+1. proves that the release tag currently resolves to the requested digest;
+2. verifies release provenance and the CycloneDX attestation against the exact release signer workflow and tag;
+3. requires a signed staging-promotion attestation before any production promotion;
+4. creates a metadata-only promotion admission and signs it through GitHub OIDC;
+5. pushes an environment-and-release tag plus the mutable environment discovery alias;
+6. retains the admission record, promoted references, optional staging-verification result, and checksums.
+
+Consumers and deployment manifests must still pull **ghcr.io/kirchherr/collabio@sha256:digest**. Staging, production,
+and environment-release tags are operator conveniences and cannot replace digest verification.
+
+Promotion is software-release admission only. It does not deploy infrastructure, open the productivity runtime switch,
+change DNS or traffic, authorize failover, satisfy production-continuity evidence, or write tenant/business data. A
+production deployment needs both an admitted image digest and the independently green production continuity gate.
 
 ## Exceptions
 
