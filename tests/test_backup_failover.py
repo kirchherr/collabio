@@ -209,7 +209,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm preview-renderer-smoke" in postgres.current_dev_commands
     assert "docker compose run --rm preview-renderer-drill" in postgres.current_dev_commands
     assert (
-        "docker compose --profile restore-drill run --rm derived-preview-recovery-drill" in postgres.current_dev_commands
+        "docker compose --profile restore-drill run --rm derived-preview-recovery-drill"
+        in postgres.current_dev_commands
     )
     assert "docker compose run --rm legacy-sql-discovery-intake" in postgres.current_dev_commands
     assert "docker compose run --rm legacy-sql-readiness-smoke" in postgres.current_dev_commands
