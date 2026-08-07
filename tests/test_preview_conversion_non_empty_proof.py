@@ -183,9 +183,7 @@ def test_runtime_preflight_report_must_be_hash_valid_and_isolated(tmp_path: Path
         completed_at_utc=NOW,
         report_hash="sha256:" + ("0" * 64),
     )
-    report = draft.model_copy(
-        update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)}
-    )
+    report = draft.model_copy(update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)})
     report_path = tmp_path / "runtime-report.json"
     report_path.write_text(report.model_dump_json(), encoding="utf-8")
 

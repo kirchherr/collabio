@@ -260,9 +260,7 @@ def run_engine_self_test() -> PreviewConversionEngineSelfTestReport:
             completed_at_utc=result.completed_at_utc,
             report_hash=ZERO_HASH,
         )
-        return draft.model_copy(
-            update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)}
-        )
+        return draft.model_copy(update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)})
 
 
 def build_preview_conversion_engine_self_test_report_hash(report: PreviewConversionEngineSelfTestReport) -> str:
