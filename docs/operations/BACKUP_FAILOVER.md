@@ -672,10 +672,7 @@ docker compose --profile preview-proof build \
   preview-conversion-proof-cleanup
 export SUITE_PREVIEW_CONVERTER_IMAGE_REF="collabio/preview-renderer@$(docker image inspect --format '{{.Id}}' collabio/preview-renderer:dev)"
 export SUITE_PREVIEW_PROOF_RUN_ID="preview-proof-$(date -u +%Y%m%d-%H%M%S)"
-docker compose --profile preview-proof up \
-  --abort-on-container-exit \
-  --exit-code-from preview-conversion-proof-importer \
-  preview-conversion-proof-importer
+docker compose --profile preview-proof run --rm preview-conversion-proof-importer
 ```
 
 The runtime preflight executes before the trusted stager and has no database, object-store, or network access. The

@@ -231,6 +231,10 @@ class DerivedPreviewCommitter(Protocol):
     def commit(self, artifact: DerivedPreviewArtifact) -> DerivedPreviewArtifact: ...
 
 
+class PreviewConversionProofStageCommitter(Protocol):
+    def commit(self, bundle: PreviewConversionProofStageBundle) -> PreviewConversionProofStageBundle: ...
+
+
 class PostgresPreviewConversionProofStageUnitOfWork:
     def __init__(
         self,
@@ -497,6 +501,38 @@ def persist_preview_conversion_proof_report(
     _write_json_atomically(report_path, report.model_dump(mode="json"))
 
 
+def prepare_and_commit_preview_conversion_proof_stage(
+    *,
+    bundle: PreviewConversionProofStageBundle,
+    committer: PreviewConversionProofStageCommitter,
+    input_dir: Path,
+    output_dir: Path,
+    report_path: Path,
+) -> PreviewConversionProofStageReport:
+    pending_report_path = report_path.with_suffix(report_path.suffix + ".pending")
+    database_committed = False
+    try:
+        stage_preview_conversion_proof_workspaces(
+            bundle=bundle,
+            input_dir=input_dir,
+            output_dir=output_dir,
+        )
+        persist_preview_conversion_proof_report(
+            report=bundle.report,
+            report_path=pending_report_path,
+        )
+        committer.commit(bundle)
+        database_committed = True
+        pending_report_path.replace(report_path)
+    except Exception:
+        if not database_committed:
+            _clear_workspace(input_dir)
+            _clear_workspace(output_dir)
+            pending_report_path.unlink(missing_ok=True)
+        raise
+    return bundle.report
+
+
 def run_preview_conversion_proof_stage_from_environment(
     env: Mapping[str, str],
 ) -> PreviewConversionProofStageReport:
@@ -529,11 +565,13 @@ def run_preview_conversion_proof_stage_from_environment(
         source_write_receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=database_dsn),
         execution_gate_store=PgPreviewConversionExecutionGateStore(database_dsn=database_dsn),
     )
-    stage_uow.commit(bundle)
-    stage_preview_conversion_proof_workspaces(bundle=bundle, input_dir=input_dir, output_dir=output_dir)
-    report_path = Path(_required_env(env, "SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH"))
-    persist_preview_conversion_proof_report(report=bundle.report, report_path=report_path)
-    return bundle.report
+    return prepare_and_commit_preview_conversion_proof_stage(
+        bundle=bundle,
+        committer=stage_uow,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        report_path=Path(_required_env(env, "SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH")),
+    )
 
 
 def run_preview_conversion_proof_import_from_environment(

@@ -14,6 +14,7 @@ from suite.operations.preview_conversion_non_empty_proof import (
     build_preview_conversion_stage_report_hash,
     import_preview_conversion_non_empty_proof,
     load_preview_conversion_runtime_engine_report,
+    prepare_and_commit_preview_conversion_proof_stage,
     stage_preview_conversion_proof_workspaces,
 )
 from suite.platform.source_object_preview_conversion import (
@@ -204,6 +205,67 @@ def test_runtime_preflight_report_must_be_hash_valid_and_isolated(tmp_path: Path
         load_preview_conversion_runtime_engine_report(report_path)
 
 
+def test_stage_prepares_workspaces_and_pending_report_before_database_commit(tmp_path: Path) -> None:
+    bundle = _bundle()
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    report_path = tmp_path / "stage-report.json"
+
+    class InspectingCommitter:
+        committed = False
+
+        def commit(self, candidate: PreviewConversionProofStageBundle) -> PreviewConversionProofStageBundle:
+            assert (input_dir / "request.json").is_file()
+            assert (input_dir / candidate.envelope.command.input_filename).is_file()
+            assert report_path.with_suffix(".json.pending").is_file()
+            assert not report_path.exists()
+            self.committed = True
+            return candidate
+
+    committer = InspectingCommitter()
+
+    report = prepare_and_commit_preview_conversion_proof_stage(
+        bundle=bundle,
+        committer=committer,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        report_path=report_path,
+    )
+
+    assert committer.committed is True
+    assert report == bundle.report
+    assert report_path.is_file()
+    assert not report_path.with_suffix(".json.pending").exists()
+
+
+def test_stage_commit_failure_clears_workspaces_and_preserves_prior_report(tmp_path: Path) -> None:
+    bundle = _bundle()
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    report_path = tmp_path / "stage-report.json"
+    report_path.write_text("prior-valid-report\n", encoding="utf-8")
+
+    class FailingCommitter:
+        def commit(self, candidate: PreviewConversionProofStageBundle) -> PreviewConversionProofStageBundle:
+            assert (input_dir / "request.json").is_file()
+            assert report_path.with_suffix(".json.pending").is_file()
+            raise RuntimeError("synthetic database failure")
+
+    with pytest.raises(RuntimeError, match="synthetic database failure"):
+        prepare_and_commit_preview_conversion_proof_stage(
+            bundle=bundle,
+            committer=FailingCommitter(),
+            input_dir=input_dir,
+            output_dir=output_dir,
+            report_path=report_path,
+        )
+
+    assert tuple(input_dir.iterdir()) == ()
+    assert tuple(output_dir.iterdir()) == ()
+    assert report_path.read_text(encoding="utf-8") == "prior-valid-report\n"
+    assert not report_path.with_suffix(".json.pending").exists()
+
+
 def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() -> None:
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
     preflight = _service(
@@ -224,6 +286,8 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert "SUITE_DATABASE_DSN:" not in preflight
     assert "SUITE_S3_SECRET_ACCESS_KEY:" not in preflight
     assert "preview-conversion-proof-runtime-preflight:" in stager
+    assert "- CHOWN" in stager
+    assert "- DAC_OVERRIDE" in stager
     assert "SUITE_DATABASE_DSN:" in stager
     assert "SUITE_S3_SECRET_ACCESS_KEY:" in stager
     assert "preview-conversion-proof-stager:" in worker
@@ -232,11 +296,14 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert 'network_mode: "none"' in worker
     assert "SUITE_DATABASE_DSN:" not in worker
     assert "SUITE_S3_SECRET_ACCESS_KEY:" not in worker
+    assert "cap_add:" not in worker
     assert "preview_conversion_proof_input:/job/proof-input:ro" in worker
     assert "preview-conversion-proof-worker:" in importer
+    assert "- DAC_OVERRIDE" in importer
     assert "SUITE_DATABASE_DSN:" in importer
     assert 'command: ["cleanup"]' in cleanup
     assert 'network_mode: "none"' in cleanup
+    assert "- DAC_OVERRIDE" in cleanup
     assert "preview_conversion_proof_input:" in compose
     assert "preview_conversion_proof_output:" in compose
 
