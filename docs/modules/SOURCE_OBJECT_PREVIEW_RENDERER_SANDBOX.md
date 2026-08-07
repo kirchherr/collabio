@@ -102,8 +102,14 @@ The dry-run always records `content_accessed=false`, `renderer_invoked=false`, `
 `output_generated=false`, `output_persisted=false`, `external_network_allowed=false`, and
 `wopi_session_created=false`.
 
-## Next Boundary
+## Conversion Boundary
 
-Build the digest-pinned isolated conversion worker and derived-preview SourceObject lifecycle only after its gVisor or
-microVM profile, resource limits, malware/CDR preflight, PDF output validation, font baseline, backup/restore contract,
-and separate-origin viewer access have their own release evidence. No engine execution is enabled by the adapter dry-run.
+The digest-pinned LibreOffice/QPDF worker, immutable execution command, trusted result importer, and derived-preview
+SourceObject lifecycle are implemented in `SOURCE_OBJECT_PREVIEW_CONVERSION.md`. The one-shot worker has no database,
+object-store, KMS, network, Docker-socket, or viewer credentials. A real engine smoke converts a synthetic RTF and
+validates the resulting PDF while Compose disables networking and applies the container restrictions.
+
+Production dispatch remains closed until the deployed host independently proves the configured gVisor or microVM
+runtime, the malware/CDR service issues trustworthy source preflight evidence, the exact image digest has SBOM and
+provenance, the derived-preview restore drill passes, and a separate-origin PDF.js viewer is admitted. The adapter
+dry-run still never invokes the engine or releases content.

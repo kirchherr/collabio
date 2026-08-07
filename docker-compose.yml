@@ -1529,6 +1529,59 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-conversion-engine-smoke:
+    build:
+      context: .
+      target: preview-renderer
+    command: --engine-self-test
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=256m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+
+  preview-conversion-worker:
+    profiles:
+      - preview-execution
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --once
+      - --request
+      - /job/input/request.json
+      - --input-dir
+      - /job/input
+      - --output-dir
+      - /job/output
+    runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: ${SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS:-runsc}
+    volumes:
+      - preview_conversion_input:/job/input:ro
+      - preview_conversion_output:/job/output
+
   api:
     build:
       context: .
@@ -1574,6 +1627,10 @@ services:
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_EXECUTION_GATE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_EXECUTION_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_DERIVED_PREVIEW_RECEIPT_STORE_BACKEND: postgres
+      SUITE_DERIVED_PREVIEW_RECEIPT_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_BACKEND: postgres
       SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
@@ -1715,3 +1772,5 @@ volumes:
   postgres18_restore_data:
   minio_data:
   minio_restore_data:
+  preview_conversion_input:
+  preview_conversion_output:

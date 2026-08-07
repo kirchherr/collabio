@@ -618,6 +618,22 @@ Before any production renderer, viewer, or content release workflow is connected
 `source_object_preview_renderer_release_gate.v1` evidence from a fresh API smoke report and its bound recovery drill
 report. A blocked release gate keeps renderer, viewer, and content-release wiring disabled even if lower-level evidence
 exists.
+### Derived preview conversion recovery
+
+Migration `0072` adds the append-only, forced-RLS execution-gate and derived-preview lineage receipt tables. Their
+backup and restore are mandatory whenever preview conversion state exists. The generated canonical PDF is not worker
+scratch data: it is a normal versioned SourceObject in object storage and inherits classification, ACL version, KMS
+reference, retention policy, Legal Hold, lifecycle, and parent-source binding.
+
+After recovery, keep production conversion and preview serving closed until all of the following are true: execution
+gate hashes validate; source and derived SourceObject versions are readable under the same tenant; storage-manifest and
+content hashes match; lineage receipt hashes bind the exact command, preflight, worker result, image digest, and source
+version; RLS and append-only checks pass; and retention, Legal Hold, and ACL inheritance match the source. A missing
+derived PDF may be rebuilt only from the exact retained source version under a fresh execution gate and must receive a
+new derived version and lineage receipt.
+
+`docker compose run --rm preview-conversion-engine-smoke` verifies the pinned conversion engine without tenant content,
+credentials, or network access. It is an engine check, not a substitute for the production restore drill.
 
 Migrations `0055` and `0056` add append-only, tenant-scoped receipt storage plus the non-empty released-representation
 invariant for `collabio.source_object_preview_content_release_receipts`. This supports the guarded plain-text preview

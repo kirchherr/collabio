@@ -11,13 +11,15 @@ from suite.platform.knowledge_base import (
     KB_ARTICLES_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
     KnowledgeBaseArticleService,
+    build_source_version_evidence_stub,
 )
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, PlatformModuleView
 from suite.platform.source_object_preview import SourceObjectPreviewSlot, build_source_object_preview_slots
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
-    SourceObjectRecord,
+    SourceObjectMetadata,
+    SourceObjectMetadataRepository,
     SourceObjectRepository,
     SourceObjectType,
 )
@@ -71,6 +73,7 @@ class SourceObjectMetadataDetailResponse(BaseModel):
     evidence_refs: tuple[str, ...]
     preview_slots: tuple[SourceObjectPreviewSlot, ...]
     access_checked: bool = True
+    content_accessed: bool = False
     content_included: bool = False
     audit_event_id: str
 
@@ -95,16 +98,17 @@ def build_source_object_metadata_detail_response(
         )
         raise SourceObjectDetailAccessDenied("User cannot read requested source object metadata")
 
-    workspace_record = _get_source_record_or_none(
+    workspace_source = _get_source_metadata_or_none(
         repository=workspace_source_repository,
         tenant_id=user_context.tenant_id,
         source_object_id=source_object_id,
         source_version_id=source_version_id,
     )
-    if workspace_record is not None:
+    if workspace_source is not None:
+        workspace_metadata, content_accessed = workspace_source
         origin = (
             SourceObjectDetailOrigin.MAIL
-            if workspace_record.metadata.object_type == SourceObjectType.MAIL
+            if workspace_metadata.object_type == SourceObjectType.MAIL
             else SourceObjectDetailOrigin.DOCUMENT
         )
         downstream_surfaces = (
@@ -113,12 +117,13 @@ def build_source_object_metadata_detail_response(
             else ("office.document.preview", "source_object.indexing_candidate")
         )
         return _detail_response(
-            record=workspace_record,
+            metadata=workspace_metadata,
             origin=origin,
             module_id=None,
             module_status=None,
             downstream_surfaces=downstream_surfaces,
-            evidence_refs=(workspace_record.metadata.manifest_hash, workspace_record.metadata.content_hash),
+            evidence_refs=(workspace_metadata.manifest_hash, workspace_metadata.content_hash),
+            content_accessed=content_accessed,
             audit_logger=audit_logger,
             user_context=user_context,
         )
@@ -135,7 +140,7 @@ def build_source_object_metadata_detail_response(
         raise SourceObjectDetailNotFound("Source object metadata was not found")
     assert kb_module is not None
 
-    kb_source = _knowledge_base_source_record(
+    kb_source = _knowledge_base_source_metadata(
         user_context=user_context,
         knowledge_base_article_service=knowledge_base_article_service,
         source_object_id=source_object_id,
@@ -152,27 +157,28 @@ def build_source_object_metadata_detail_response(
         )
         raise SourceObjectDetailNotFound("Source object metadata was not found")
 
-    record, evidence_refs = kb_source
+    metadata, evidence_refs, content_accessed = kb_source
     return _detail_response(
-        record=record,
+        metadata=metadata,
         origin=SourceObjectDetailOrigin.KNOWLEDGE_BASE,
         module_id=KNOWLEDGE_BASE_MODULE_ID,
         module_status=kb_module.status,
         downstream_surfaces=("knowledge_base.article.read", "source_object.restore_evidence"),
         evidence_refs=evidence_refs,
         audit_logger=audit_logger,
+        content_accessed=content_accessed,
         user_context=user_context,
     )
 
 
-def _knowledge_base_source_record(
+def _knowledge_base_source_metadata(
     *,
     user_context: UserContext,
     knowledge_base_article_service: KnowledgeBaseArticleService,
     source_object_id: str,
     source_version_id: str,
     audit_logger: InMemoryAuditLogger,
-) -> tuple[SourceObjectRecord, tuple[str, ...]] | None:
+) -> tuple[SourceObjectMetadata, tuple[str, ...], bool] | None:
     for article in knowledge_base_article_service.repository.list_articles(tenant_id=user_context.tenant_id):
         if (
             article.current_source_object_id != source_object_id
@@ -193,17 +199,18 @@ def _knowledge_base_source_record(
                 denial_reason="kb_article_acl_not_readable",
             )
             raise SourceObjectDetailAccessDenied("User cannot read requested knowledge base source metadata")
-        try:
-            source_record = knowledge_base_article_service.source_repository.get(
-                tenant_id=user_context.tenant_id,
-                object_id=source_object_id,
-                version_id=source_version_id,
-            )
-        except KeyError:
+        source = _get_source_metadata_or_none(
+            repository=knowledge_base_article_service.source_repository,
+            tenant_id=user_context.tenant_id,
+            source_object_id=source_object_id,
+            source_version_id=source_version_id,
+        )
+        if source is None:
             return None
-        source_evidence = knowledge_base_article_service.source_version_evidence(article)
+        source_metadata, content_accessed = source
+        source_evidence = build_source_version_evidence_stub(article)
         return (
-            source_record,
+            source_metadata,
             (
                 source_evidence.evidence_hash,
                 source_evidence.source_manifest_hash,
@@ -211,13 +218,14 @@ def _knowledge_base_source_record(
                 f"article:{article.object_id}",
                 f"object_type:{KB_ARTICLE_OBJECT_TYPE}",
             ),
+            content_accessed,
         )
     return None
 
 
 def _detail_response(
     *,
-    record: SourceObjectRecord,
+    metadata: SourceObjectMetadata,
     origin: SourceObjectDetailOrigin,
     module_id: str | None,
     module_status: ModuleStatus | None,
@@ -225,8 +233,8 @@ def _detail_response(
     evidence_refs: tuple[str, ...],
     audit_logger: InMemoryAuditLogger,
     user_context: UserContext,
+    content_accessed: bool,
 ) -> SourceObjectMetadataDetailResponse:
-    metadata = record.metadata
     event = audit_logger.record(
         user_context=user_context,
         event_type="source_object.metadata_detail.read",
@@ -240,6 +248,7 @@ def _detail_response(
             "source_object_type": metadata.object_type.value,
             "result_contract": "metadata_only",
             "content_included": False,
+            "content_accessed": content_accessed,
             "access_checked": True,
             "acl_version": metadata.acl_version,
             "retention_policy_id": metadata.retention_policy_id,
@@ -273,22 +282,31 @@ def _detail_response(
         evidence_refs=evidence_refs,
         preview_slots=build_source_object_preview_slots(metadata.object_type),
         audit_event_id=event.event_id,
+        content_accessed=content_accessed,
     )
 
 
-def _get_source_record_or_none(
+def _get_source_metadata_or_none(
     *,
     repository: SourceObjectRepository,
     tenant_id: str,
     source_object_id: str,
     source_version_id: str,
-) -> SourceObjectRecord | None:
+) -> tuple[SourceObjectMetadata, bool] | None:
     try:
-        return repository.get(
+        if isinstance(repository, SourceObjectMetadataRepository):
+            metadata = repository.get_metadata(
+                tenant_id=tenant_id,
+                object_id=source_object_id,
+                version_id=source_version_id,
+            )
+            return metadata, False
+        record = repository.get(
             tenant_id=tenant_id,
             object_id=source_object_id,
             version_id=source_version_id,
         )
+        return record.metadata, True
     except KeyError:
         return None
 

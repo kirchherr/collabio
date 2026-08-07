@@ -885,6 +885,10 @@ from suite.platform.source_object_preview_content_release import (
     build_default_source_object_preview_content_release_receipt_store,
     build_source_object_preview_content_release,
 )
+from suite.platform.source_object_preview_conversion import (
+    build_default_derived_preview_receipt_store,
+    build_default_preview_conversion_execution_gate_store,
+)
 from suite.platform.source_object_preview_decisions import (
     SourceObjectPreviewDecisionAccessDenied,
     SourceObjectPreviewDecisionInvalidRequest,
@@ -1476,6 +1480,8 @@ def build_app() -> FastAPI:
     workspace_source_object_catalog = build_default_workspace_source_object_catalog()
     source_object_preview_adapter_registry = build_default_source_object_preview_adapter_registry()
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
+    preview_conversion_execution_gate_store = build_default_preview_conversion_execution_gate_store()
+    derived_preview_receipt_store = build_default_derived_preview_receipt_store()
     source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
         data_dir
     )
@@ -22467,6 +22473,8 @@ def build_app() -> FastAPI:
         tickets_incidents_dry_run_execution_approval_record_store
     )
     app.state.tickets_incidents_controlled_pilot_receipt_store = tickets_incidents_controlled_pilot_receipt_store
+    app.state.preview_conversion_execution_gate_store = preview_conversion_execution_gate_store
+    app.state.derived_preview_receipt_store = derived_preview_receipt_store
     app.state.ticket_repository = ticket_repository
     app.state.ticket_service = ticket_service
     app.state.legacy_sql_migration_run_registry_store = legacy_sql_migration_run_registry_store

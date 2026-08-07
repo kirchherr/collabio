@@ -177,6 +177,7 @@ def test_preview_adapter_endpoint_requires_fresh_release_gate_and_returns_no_con
         "source_object.metadata_detail.read",
         "source_object.preview_adapter_dry_run.recorded",
     ]
+    assert new_events[0].metadata["content_accessed"] is False
     assert new_events[-1].metadata["plan_hash"] == body["plan"]["plan_hash"]
     assert new_events[-1].metadata["content_included"] is False
     assert new_events[-1].metadata["reason_hash"] == body["reason_hash"]

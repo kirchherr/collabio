@@ -5,7 +5,7 @@ import os
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Protocol, Self
+from typing import Any, Protocol, Self, runtime_checkable
 
 import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -670,6 +670,11 @@ class SourceObjectRepository(Protocol):
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord: ...
 
 
+@runtime_checkable
+class SourceObjectMetadataRepository(Protocol):
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata: ...
+
+
 class SourceObjectWriteGuard:
     required_metadata_fields: tuple[str, ...] = (*PERSISTENT_OBJECT_REQUIRED_FIELDS, "manifest_hash", "content_hash")
     source_object_required_metadata_fields: tuple[str, ...] = ("manifest_hash", "content_hash")
@@ -743,6 +748,9 @@ class InMemorySourceObjectRepository:
 
     def get(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectRecord:
         return self._records[(tenant_id, object_id, version_id)]
+
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata:
+        return self._records[(tenant_id, object_id, version_id)].metadata
 
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord:
         return self._records[self._latest_keys[(tenant_id, object_id)]]

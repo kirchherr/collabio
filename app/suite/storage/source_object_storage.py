@@ -344,6 +344,49 @@ class PgSourceObjectRepository:
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("source object version already exists") from exc
 
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    object_id,
+                    object_type,
+                    version_id,
+                    title,
+                    owner_principal_id,
+                    created_by,
+                    created_at_utc,
+                    updated_at_utc,
+                    classification,
+                    retention_policy_id,
+                    legal_hold_state,
+                    kms_key_ref,
+                    manifest_hash,
+                    audit_chain_ref,
+                    source_system,
+                    source_schema_version,
+                    mime_type,
+                    acl_hash,
+                    acl_version,
+                    content_hash,
+                    content_byte_length,
+                    lifecycle_state,
+                    parent_object_id,
+                    thread_id,
+                    parser_profile_id
+                FROM collabio.source_object_metadata
+                WHERE tenant_id = %s
+                  AND object_id = %s
+                  AND version_id = %s
+                """,
+                (tenant_id, object_id, version_id),
+            ).fetchone()
+        if row is None:
+            raise KeyError("source object version not found")
+        return self._metadata_from_row(row)
+
     def get(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectRecord:
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, tenant_id)

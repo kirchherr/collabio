@@ -1468,9 +1468,13 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 - [x] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: providerneutraler Adapter-Port mit ausgewaehlter
   Canonical-PDF-/LibreOffice-/PDF.js-Strategie, statischer Registry, frischem tenant-gebundenem Wiring-Guard und
   metadata-only Dry-Run; kein Renderer, Viewer, WOPI, Inhaltszugriff oder Output ist aktiviert.
-- [ ] Digest-gepinnten isolierten Conversion-Worker und Derived-Preview-SourceObject-Lifecycle hinter ein separates
-  Execution-Gate setzen; erst nach gVisor-/MicroVM-Profil, Malware/CDR, Ressourcenlimits, PDF-Revalidierung,
-  Font-Baseline, Restore-Nachweis und separatem Viewer-Origin.
+- [x] Digest-gepinnten, credential-losen LibreOffice-/QPDF-Conversion-Worker und Derived-Preview-SourceObject-Lifecycle
+  hinter ein separates Execution-Gate gesetzt: staerkere Runtime wird erzwungen, Malware/CDR-Preflight,
+  Ressourcenlimits, PDF-Revalidierung, Font-Baseline und Restore-/Viewer-Bindungen sind Teil des unveraenderlichen
+  Auftrags; abgeleitete PDFs erben ACL, Klassifikation, Retention, Legal Hold, KMS- und Source-Version-Lineage.
+- [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
+  Malware-/CDR-Dienst, publiziertem Image-Digest samt SBOM/Provenance, Derived-Preview-Restore-Drill und separatem
+  PDF.js-Origin freigeben. Bis dahin bleibt die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
 
 ## Release-Strategie
 

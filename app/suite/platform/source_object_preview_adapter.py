@@ -362,6 +362,19 @@ def build_source_object_preview_adapter_dry_run(
         source_object_id=source_object_id,
         source_version_id=source_version_id,
     )
+    if detail.content_accessed:
+        _audit_adapter_dry_run_rejection(
+            audit_logger=audit_logger,
+            user_context=user_context,
+            source_object_id=detail.source_object_id,
+            source_version_id=detail.source_version_id,
+            request=request,
+            rejection_reason="metadata_only_repository_required",
+            source_detail_audit_event_id=detail.audit_event_id,
+        )
+        raise SourceObjectPreviewAdapterDryRunBlocked(
+            "preview adapter dry-run requires a metadata-only source repository"
+        )
     slot = next((candidate for candidate in detail.preview_slots if candidate.slot_id == request.preview_slot_id), None)
     if slot is None or slot.gate.policy_id != request.preview_policy_id:
         _audit_adapter_dry_run_rejection(

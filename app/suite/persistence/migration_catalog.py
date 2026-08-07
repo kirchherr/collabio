@@ -651,6 +651,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:productivity-pilot-real-user-runtime-window",
         ),
     ),
+    SqlMigration(
+        version="0072",
+        name="source_object_preview_conversion_lifecycle",
+        resource_name="0072_source_object_preview_conversion_lifecycle.sql",
+        module_id="core",
+        evidence_refs=(
+            "adr:renderer-viewer-adapter",
+            "test:source-object-preview-conversion",
+        ),
+    ),
 )
 
 

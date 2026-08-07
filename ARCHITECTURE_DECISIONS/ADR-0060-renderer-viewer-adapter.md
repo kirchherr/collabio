@@ -57,7 +57,7 @@ The implementation in this change is intentionally a metadata-only dry-run:
 
 ## Required Production Controls
 
-Real engine execution remains blocked until a later gate proves all of the following:
+Productive engine dispatch remains blocked until the execution gate proves all of the following:
 
 - Digest-pinned and attested renderer and viewer artifacts.
 - A per-job gVisor sandbox or microVM, not only a default container boundary.
@@ -69,6 +69,25 @@ Real engine execution remains blocked until a later gate proves all of the follo
 - PDF output revalidation, source/version/content-hash binding, and derived-object retention and Legal Hold policy.
 - Separate viewer origin with strict CSP, no direct object-store URL, fresh ACL validation, and short-lived range access.
 - Restore evidence for derived previews and explicit deletion propagation when the source becomes inaccessible.
+
+## Implemented Execution Boundary
+
+The first conversion engine now exists as a separate Docker target with exact LibreOffice, QPDF, Poppler, and font
+package versions. The production-shaped service is a credential-less one-shot job with no network, read-only root,
+non-root UID, dropped capabilities, `no-new-privileges`, PID/CPU/memory limits, read-only input, and isolated output. It
+does not contain database, S3, KMS, viewer, or Docker-socket credentials and defaults to the `runsc` runtime.
+
+Control-plane commands bind a digest-pinned image, stronger-runtime evidence, resource limits, scanner/CDR evidence,
+font baseline, PDF validator, restore evidence, viewer origin, source manifest/content hashes, ACL version, and exact
+SourceObject version. The worker accepts fixed basenames only, runs LibreOffice without a shell and with a new profile,
+then requires QPDF structural and object-level JSON inspection, PDFInfo, page/size limits, an output hash, and a
+second raw-token check for active PDF content.
+
+The trusted importer repeats the output checks and persists the PDF through the normal SourceObject storage bridge. The
+derived attachment inherits classification, ACL, KMS reference, retention policy, Legal Hold, and lifecycle. An
+append-only RLS receipt binds source version, derived version, command, result, gate, preflight, and worker digest.
+Metadata-only preview paths now use a dedicated repository `get_metadata()` operation; they fail closed instead of
+silently loading source bytes through the content-store bridge.
 
 ## Self-Review
 
@@ -103,7 +122,10 @@ Harder:
 ## Verification
 
 - Unit tests validate descriptor invariants, MIME routing, macro/mail rejection, and the absence of content fields.
-- API tests prove authoritative ACL lookup, fresh release-gate binding, metadata-only output, and hash-only audit logging.
+- API tests prove authoritative ACL lookup, a true metadata-only repository read, fresh release-gate binding,
+  metadata-only output, and hash-only audit logging.
+- The engine smoke converts a synthetic RTF with networking disabled and validates the PDF with QPDF and PDFInfo.
+- Migration tests verify forced RLS, append-only gate/lineage evidence, and content-free JSON constraints.
 - Architecture tests reject content-store, network-client, and process-execution imports in the adapter module.
 - Docker Compose quality gates must pass before merge.
 
