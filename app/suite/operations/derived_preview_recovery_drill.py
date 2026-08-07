@@ -570,6 +570,7 @@ def run_derived_preview_recovery_drill_from_environment(
             "SUITE_S3_SECRET_ACCESS_KEY": _required_env(env, "SUITE_RESTORE_S3_SECRET_ACCESS_KEY"),
             "SUITE_S3_REGION": env.get("SUITE_RESTORE_S3_REGION", "us-east-1"),
             "SUITE_S3_STORAGE_PROVIDER": env.get("SUITE_RESTORE_S3_STORAGE_PROVIDER", "s3-compatible-restore"),
+            "SUITE_S3_RESTORE_REFERENCE_RESOLUTION_ENABLED": "1",
         }
     )
     return run_derived_preview_recovery_drill(

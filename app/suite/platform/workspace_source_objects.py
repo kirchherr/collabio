@@ -111,7 +111,14 @@ def build_default_workspace_source_object_repository(
             region_name=env.get("SUITE_S3_REGION", "us-east-1"),
             storage_provider=env.get("SUITE_S3_STORAGE_PROVIDER", "s3-compatible"),
         )
-        content_store = S3CompatibleSourceObjectContentStore(client=client, storage_policy=storage_policy)
+        content_store = S3CompatibleSourceObjectContentStore(
+            client=client,
+            storage_policy=storage_policy,
+            restore_reference_resolution_enabled=_env_bool(
+                env.get("SUITE_S3_RESTORE_REFERENCE_RESOLUTION_ENABLED"),
+                default=False,
+            ),
+        )
     else:
         raise ValueError(f"Unsupported SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: {content_store_backend}")
 
@@ -178,6 +185,17 @@ def _required_env(env: Mapping[str, str], name: str) -> str:
     if value and value.strip():
         return value
     raise ValueError(f"Required environment variable missing: {name}")
+
+
+def _env_bool(value: str | None, *, default: bool) -> bool:
+    if value is None or not value.strip():
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError("Boolean environment value must use true/false, 1/0, yes/no, or on/off")
 
 
 def _source_object_record(

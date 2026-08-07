@@ -19,6 +19,7 @@ from suite.storage.s3_compatible_content_store import (
     S3CompatibleSourceObjectContentStore,
     build_s3_compatible_provider_profile_evidence,
     build_s3_compatible_provider_profile_evidence_hash,
+    build_s3_restore_binding_metadata,
 )
 from suite.storage.s3_sdk_client import (
     build_boto3_s3_compatible_client,
@@ -321,21 +322,7 @@ def _verify_target_controls(
 
 
 def _target_object_metadata(manifest: StorageObjectManifest) -> dict[str, str]:
-    return {
-        "tenant_id": manifest.tenant_id,
-        "object_id": manifest.object_id,
-        "version_id": manifest.source_version_id,
-        "object_type": manifest.object_type.value,
-        "classification": manifest.classification.value,
-        "retention_policy_id": manifest.retention_policy_id,
-        "legal_hold_state": manifest.legal_hold_state.value,
-        "kms_key_ref_hash": sha256_bytes(manifest.kms_key_ref.encode("utf-8")),
-        "source_manifest_hash": manifest.source_manifest_hash,
-        "storage_manifest_hash": manifest.manifest_hash,
-        "content_hash": manifest.content_hash,
-        "content_byte_length": str(manifest.content_byte_length),
-        "audit_chain_ref": manifest.audit_chain_ref,
-    }
+    return build_s3_restore_binding_metadata(manifest)
 
 
 def build_exact_version_restore_item_evidence_hash(evidence: ExactVersionRestoreItemEvidence) -> str:

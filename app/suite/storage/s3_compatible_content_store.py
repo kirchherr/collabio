@@ -188,16 +188,36 @@ def build_s3_compatible_provider_profile_evidence_hash(
     return _canonical_sha256(evidence.model_dump(mode="json", exclude={"evidence_hash"}))
 
 
+def build_s3_restore_binding_metadata(manifest: StorageObjectManifest) -> dict[str, str]:
+    return {
+        "tenant_id": manifest.tenant_id,
+        "object_id": manifest.object_id,
+        "version_id": manifest.source_version_id,
+        "object_type": manifest.object_type.value,
+        "classification": manifest.classification.value,
+        "retention_policy_id": manifest.retention_policy_id,
+        "legal_hold_state": manifest.legal_hold_state.value,
+        "kms_key_ref_hash": sha256_bytes(manifest.kms_key_ref.encode("utf-8")),
+        "source_manifest_hash": manifest.source_manifest_hash,
+        "storage_manifest_hash": manifest.manifest_hash,
+        "content_hash": manifest.content_hash,
+        "content_byte_length": str(manifest.content_byte_length),
+        "audit_chain_ref": manifest.audit_chain_ref,
+    }
+
+
 class S3CompatibleSourceObjectContentStore:
     def __init__(
         self,
         *,
         client: S3CompatibleObjectStoreClient,
         storage_policy: StorageAdapterPolicy,
+        restore_reference_resolution_enabled: bool = False,
     ) -> None:
         self.client = client
         self.storage_policy = storage_policy
         self.storage_provider = "s3-compatible"
+        self.restore_reference_resolution_enabled = restore_reference_resolution_enabled
 
     def put(
         self,
@@ -247,10 +267,13 @@ class S3CompatibleSourceObjectContentStore:
         )
 
     def get(self, *, manifest: StorageObjectManifest) -> bytes:
+        object_version_id = manifest.object_version_id
+        if self.restore_reference_resolution_enabled:
+            object_version_id = self._resolve_restored_object_version_id(manifest)
         content = self.client.get_object(
             bucket_id=manifest.bucket_id,
             object_key=manifest.object_key,
-            object_version_id=manifest.object_version_id,
+            object_version_id=object_version_id,
         )
         try:
             verify_content_hash(
@@ -263,6 +286,24 @@ class S3CompatibleSourceObjectContentStore:
         if len(content) != manifest.content_byte_length:
             raise SourceObjectStorageError("content_byte_length does not match storage manifest")
         return content
+
+    def _resolve_restored_object_version_id(self, manifest: StorageObjectManifest) -> str:
+        expected_metadata = build_s3_restore_binding_metadata(manifest)
+        candidates = tuple(
+            version
+            for version in self.client.list_object_versions(
+                bucket_id=manifest.bucket_id,
+                prefix=manifest.object_key,
+            )
+            if version.object_key == manifest.object_key
+            and all(version.metadata.get(key) == value for key, value in expected_metadata.items())
+        )
+        if not candidates:
+            raise SourceObjectStorageError("exact restored object version binding not found")
+        return max(
+            candidates,
+            key=lambda version: (version.stored_at_utc, version.object_version_id),
+        ).object_version_id
 
     def list_stored_objects(self, *, tenant_id: str) -> tuple[StoredSourceObjectContent, ...]:
         stored_objects: list[StoredSourceObjectContent] = []

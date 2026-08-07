@@ -1081,6 +1081,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "legacy_migration_registry",
         "office_mail_clients",
     }.issubset(capability_ids)
+    backup_failover = next(
+        capability for capability in capabilities if capability["capability_id"] == "backup_failover"
+    )
+    assert "non_empty_derived_preview_recovery_verified_on_development_host" in backup_failover["guardrails"]
+    assert "app/suite/operations/derived_preview_recovery_drill.py" in backup_failover["evidence_refs"]
     production_continuity = next(
         capability
         for capability in capabilities

@@ -243,7 +243,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="Backup- und Failover-Kultur",
                     summary=(
                         "PostgreSQL und Object Storage sind auf unabhaengige Ziele restauriert und im "
-                        "Backend-Completion-Gate gemeinsam abgenommen."
+                        "Backend-Completion-Gate gemeinsam abgenommen. Ein kontrollierter nicht-leerer runsc-Proof "
+                        "wurde ueber frisches Backup, isolierten Restore und Derived-Preview-Reconciliation "
+                        "geschlossen; produktiver Dispatch bleibt separat gesperrt."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_control",
@@ -253,6 +255,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/storage/backend_storage_foundation_gate.py",
                         "app/suite/operations/postgres_restore_drill.py",
                         "app/suite/operations/backend_foundation_completion_gate.py",
+                        "app/suite/operations/derived_preview_recovery_drill.py",
+                        "tests/test_preview_conversion_non_empty_proof.py",
                         "tests/test_postgres_restore_drill.py",
                         "docs/operations/BACKUP_FAILOVER.md",
                     ),
@@ -261,6 +265,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "independent_exact_version_restore_required",
                         "isolated_postgres_restore_required",
                         "backend_foundation_completion_gate_required",
+                        "non_empty_derived_preview_recovery_verified_on_development_host",
                         "future_modules_must_extend_policy",
                     ),
                 ),

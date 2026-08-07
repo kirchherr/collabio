@@ -1480,9 +1480,12 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `runsc`-Engine-Preflight blockiert vor jedem Write; danach folgen atomarer synthetischer Source-/Gate-Write,
   isolierter Conversion-Worker, unabhaengig revalidierter Derived-Preview-Commit und sichere Vernichtung beider
   transienten Workspaces. Frei gesetzte Runtime-Evidence wird nicht akzeptiert.
-- [ ] Proof-Kette auf `dev001` nach registrierter `runsc`-Runtime ausfuehren und den Proof-Tenant anschliessend ueber
+- [x] Proof-Kette auf `dev001` mit registrierter `runsc`-Runtime ausgefuehrt und den Proof-Tenant anschliessend ueber
   frisches PostgreSQL-Backup, isolierten Restore, unabhaengigen Exact-Version-Object-Restore und nicht-leere
-  Derived-Preview-Reconciliation nachweisen; die Production-Admission-Auswertung bleibt dabei deaktiviert.
+  Derived-Preview-Reconciliation nachgewiesen: Proof-Report
+  `sha256:25a26caf230ed6588877db2d6332a0d42fb4128a74254d62c2cac272c45c5cc8`, Backend-Gate
+  `sha256:ce2438da232f71d20e710aee7e53c497ed51ac212450e29edca4f6e0a91f71c1` und Recovery-Report
+  `sha256:df53b16d2cb5093025bc7d362fb4aa63458e0307a28d1c436f3641c21b2a5d5f`; Production-Admission blieb deaktiviert.
 - [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
   Malware-/CDR-Dienst, publiziertem Image-Digest samt SBOM/Provenance, erfolgreichem nicht-leerem Recovery-Report und
   separatem PDF.js-Origin freigeben. Bis dahin bleibt die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.

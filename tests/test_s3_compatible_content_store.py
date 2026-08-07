@@ -13,6 +13,7 @@ from suite.storage.s3_compatible_content_store import (
     S3CompatibleStoredObjectVersion,
     build_s3_compatible_provider_profile_evidence,
     build_s3_compatible_provider_profile_evidence_hash,
+    build_s3_restore_binding_metadata,
 )
 from suite.storage.source_object_storage import SourceObjectStorageError, StoredSourceObjectContent
 from suite.storage.source_objects import (
@@ -224,6 +225,73 @@ def test_s3_compatible_content_store_put_get_and_inventory_are_metadata_only() -
     assert store.list_stored_objects(tenant_id=record.metadata.tenant_id) == (stored,)
     assert "S3-compatible source bytes" not in stored.model_dump_json()
     assert client.stored_object(stored).version.metadata["kms_key_ref_hash"].startswith("sha256:")
+
+
+def test_s3_compatible_content_store_resolves_exact_restored_version_from_bound_metadata() -> None:
+    policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    source_client = FakeS3CompatibleClient(s3_capabilities())
+    source_store = S3CompatibleSourceObjectContentStore(client=source_client, storage_policy=policy)
+    record = source_record_for_s3_content_store(
+        tenant_id="tenant-restore",
+        object_id="kb-article-version-restore-v1",
+        text="Restore resolution must remain bound to the authoritative source manifest.",
+    )
+    source_content = source_store.put(
+        record=record,
+        bucket_id="working-objects",
+        object_key=f"{record.metadata.tenant_id}/wiki/{record.metadata.object_id}/v1/content",
+    )
+    manifest = storage_manifest_for_s3_content(record=record, content=source_content)
+    target_client = FakeS3CompatibleClient(s3_capabilities())
+    target_client.put_object(
+        bucket_id=manifest.bucket_id,
+        object_key=manifest.object_key,
+        body=record.text.encode("utf-8"),
+        metadata=build_s3_restore_binding_metadata(manifest),
+        object_lock_mode=manifest.object_lock_mode,
+        legal_hold=manifest.object_lock_legal_hold,
+    )
+    target_store = S3CompatibleSourceObjectContentStore(
+        client=target_client,
+        storage_policy=policy,
+        restore_reference_resolution_enabled=True,
+    )
+
+    assert target_store.get(manifest=manifest) == record.text.encode("utf-8")
+
+
+def test_s3_compatible_restore_resolution_rejects_unbound_target_version() -> None:
+    policy = load_storage_adapter_policy(STORAGE_POLICY_PATH)
+    source_client = FakeS3CompatibleClient(s3_capabilities())
+    source_store = S3CompatibleSourceObjectContentStore(client=source_client, storage_policy=policy)
+    record = source_record_for_s3_content_store(
+        tenant_id="tenant-restore-blocked",
+        object_id="kb-article-version-restore-blocked-v1",
+        text="An unbound restore object must not be accepted.",
+    )
+    source_content = source_store.put(
+        record=record,
+        bucket_id="working-objects",
+        object_key=f"{record.metadata.tenant_id}/wiki/{record.metadata.object_id}/v1/content",
+    )
+    manifest = storage_manifest_for_s3_content(record=record, content=source_content)
+    target_client = FakeS3CompatibleClient(s3_capabilities())
+    target_client.put_object(
+        bucket_id=manifest.bucket_id,
+        object_key=manifest.object_key,
+        body=record.text.encode("utf-8"),
+        metadata={"storage_manifest_hash": "sha256:" + "f" * 64},
+        object_lock_mode=manifest.object_lock_mode,
+        legal_hold=manifest.object_lock_legal_hold,
+    )
+    target_store = S3CompatibleSourceObjectContentStore(
+        client=target_client,
+        storage_policy=policy,
+        restore_reference_resolution_enabled=True,
+    )
+
+    with pytest.raises(SourceObjectStorageError, match="exact restored object version binding not found"):
+        target_store.get(manifest=manifest)
 
 
 def test_s3_compatible_content_store_requires_object_lock_for_worm_bucket() -> None:
