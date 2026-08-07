@@ -869,6 +869,13 @@ from suite.platform.source_object_details import (
     SourceObjectMetadataDetailResponse,
     build_source_object_metadata_detail_response,
 )
+from suite.platform.source_object_preview_adapter import (
+    SourceObjectPreviewAdapterDryRunBlocked,
+    SourceObjectPreviewAdapterDryRunRequest,
+    SourceObjectPreviewAdapterDryRunResponse,
+    build_default_source_object_preview_adapter_registry,
+    build_source_object_preview_adapter_dry_run,
+)
 from suite.platform.source_object_preview_content_release import (
     SourceObjectPreviewContentReleaseAccessDenied,
     SourceObjectPreviewContentReleaseInvalidRequest,
@@ -1467,6 +1474,7 @@ def build_app() -> FastAPI:
     )
     workspace_source_object_repository = build_default_workspace_source_object_repository()
     workspace_source_object_catalog = build_default_workspace_source_object_catalog()
+    source_object_preview_adapter_registry = build_default_source_object_preview_adapter_registry()
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
     source_object_preview_renderer_evidence_store = build_default_source_object_preview_renderer_evidence_store(
         data_dir
@@ -20328,6 +20336,40 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     @app.post(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-adapter-dry-runs",
+        response_model=SourceObjectPreviewAdapterDryRunResponse,
+    )
+    def source_object_preview_adapter_dry_run(
+        source_object_id: str,
+        source_version_id: str,
+        adapter_request: SourceObjectPreviewAdapterDryRunRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> SourceObjectPreviewAdapterDryRunResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_source_object_preview_adapter_dry_run(
+                user_context=context.user_context,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                renderer_release_gate_store=request.app.state.source_object_preview_renderer_release_gate_store,
+                adapter_registry=request.app.state.source_object_preview_adapter_registry,
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+                request=adapter_request,
+            )
+        except SourceObjectPreviewAdapterDryRunBlocked as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post(
         "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-decisions",
         response_model=SourceObjectPreviewDecisionResponse,
     )
@@ -22420,6 +22462,7 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
+    app.state.source_object_preview_adapter_registry = source_object_preview_adapter_registry
     app.state.tickets_incidents_dry_run_execution_approval_record_store = (
         tickets_incidents_dry_run_execution_approval_record_store
     )

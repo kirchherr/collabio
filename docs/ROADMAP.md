@@ -1463,9 +1463,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 
-Spaeter / nicht jetzt, bis ein echter Content-Preview-Produktpfad es verlangt:
+Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 
-- [ ] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: Adapter-Port, Wiring-Guard und metadata-only Dry-Run anbinden, ohne gerenderten Content oder Dateiinhalte auszugeben.
+- [x] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: providerneutraler Adapter-Port mit ausgewaehlter
+  Canonical-PDF-/LibreOffice-/PDF.js-Strategie, statischer Registry, frischem tenant-gebundenem Wiring-Guard und
+  metadata-only Dry-Run; kein Renderer, Viewer, WOPI, Inhaltszugriff oder Output ist aktiviert.
+- [ ] Digest-gepinnten isolierten Conversion-Worker und Derived-Preview-SourceObject-Lifecycle hinter ein separates
+  Execution-Gate setzen; erst nach gVisor-/MicroVM-Profil, Malware/CDR, Ressourcenlimits, PDF-Revalidierung,
+  Font-Baseline, Restore-Nachweis und separatem Viewer-Origin.
 
 ## Release-Strategie
 

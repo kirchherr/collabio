@@ -84,7 +84,26 @@ uses `PgSourceObjectPreviewRendererReleaseGateEvidenceStore` with
 content-bearing columns. JSONL remains available for local diagnostics; use `--api-only` when only the lower-level API
 smoke report is needed.
 
+## Adapter Boundary
+
+ADR-0060 binds the first concrete provider-neutral adapter behind
+`require_source_object_preview_renderer_release_gate_for_wiring`. The selected architecture is
+`canonical-pdf-libreoffice-pdfjs.v1`: a future isolated LibreOffice conversion worker produces canonical PDF and a
+separate-origin PDF.js viewer displays only authorized output. Collaborative editing remains a separate future WOPI
+adapter for Collabora Online or ONLYOFFICE Docs.
+
+`POST /v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-adapter-dry-runs` currently performs
+only the wiring dry-run. It resolves authoritative ACL-checked SourceObject metadata, verifies the exact tenant release
+gate and its freshness, selects an allowlisted adapter, chooses `isolated_office_to_pdf`, `direct_pdf_viewer`, or
+`unsupported`, and writes a hash-only audit event. Its input model has no content field and the adapter module has no
+content-store, network-client, process-runner, or renderer-SDK dependency.
+
+The dry-run always records `content_accessed=false`, `renderer_invoked=false`, `viewer_session_created=false`,
+`output_generated=false`, `output_persisted=false`, `external_network_allowed=false`, and
+`wopi_session_created=false`.
+
 ## Next Boundary
 
-Bind the first real renderer or viewer adapter behind `require_source_object_preview_renderer_release_gate_for_wiring`,
-with the adapter still unable to return rendered content until a separate content-release workflow is approved.
+Build the digest-pinned isolated conversion worker and derived-preview SourceObject lifecycle only after its gVisor or
+microVM profile, resource limits, malware/CDR preflight, PDF output validation, font baseline, backup/restore contract,
+and separate-origin viewer access have their own release evidence. No engine execution is enabled by the adapter dry-run.
