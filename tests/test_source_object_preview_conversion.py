@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -39,6 +40,7 @@ from suite.platform.source_object_preview_conversion import (
 )
 from suite.platform.source_object_preview_conversion_worker import (
     PreviewConversionWorkerError,
+    _create_preview_conversion_workspace,
     _qpdf_json_contains_active_content,
     run_preview_conversion,
 )
@@ -399,10 +401,23 @@ def test_worker_image_and_compose_service_preserve_credential_less_sandbox_bound
     assert "no-new-privileges:true" in worker
     assert "preview_conversion_input:/job/input:ro" in worker
     assert "preview_conversion_output:/job/output" in worker
+    assert "/job/tmp:size=512m" in worker
     assert "DATABASE_DSN" not in worker
     assert "S3_" not in worker
     assert "ACCESS_KEY" not in worker
     assert "SECRET" not in worker
+
+
+def test_worker_uses_configured_temporary_root_for_private_workspace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
+    workspace = _create_preview_conversion_workspace()
+
+    assert workspace.parent == tmp_path.resolve()
+    workspace.rmdir()
 
 
 def test_worker_rejects_non_empty_output_workspace_before_engine_execution(tmp_path: Path) -> None:

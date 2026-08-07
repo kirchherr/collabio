@@ -111,7 +111,7 @@ def run_preview_conversion(
     if sha256_bytes(source_bytes) != command.source_content_hash:
         raise PreviewConversionWorkerError("preview conversion input content hash mismatch")
 
-    workspace = Path(tempfile.mkdtemp(prefix="preview-conversion-", dir=output_dir.parent))
+    workspace = _create_preview_conversion_workspace()
     generated_pdf = output_dir / f"{input_path.stem}.pdf"
     try:
         if command.conversion_route == "direct_pdf_viewer":
@@ -210,6 +210,18 @@ def run_worker_once(
     )
     _write_json_atomically(output_dir / "result.json", result.model_dump(mode="json"))
     return result
+
+
+def _create_preview_conversion_workspace() -> Path:
+    temporary_root = Path(tempfile.gettempdir())
+    if temporary_root.is_symlink() or not temporary_root.is_dir():
+        raise PreviewConversionWorkerError("preview conversion temporary root is invalid")
+    resolved_root = temporary_root.resolve()
+    workspace = Path(tempfile.mkdtemp(prefix="preview-conversion-", dir=resolved_root))
+    if workspace.parent != resolved_root:
+        shutil.rmtree(workspace, ignore_errors=True)
+        raise PreviewConversionWorkerError("preview conversion temporary workspace escaped its root")
+    return workspace
 
 
 def build_installed_font_baseline_hash() -> str:
