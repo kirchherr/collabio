@@ -158,9 +158,7 @@ def test_proof_report_rejects_any_production_or_serving_claim() -> None:
     with pytest.raises(ValueError, match="fail closed"):
         PreviewConversionNonEmptyProofReport.model_validate({**valid, "preview_serving_allowed": True})
     with pytest.raises(ValueError, match="fail closed"):
-        PreviewConversionNonEmptyProofReport.model_validate(
-            {**valid, "production_admission_evidence_ready": True}
-        )
+        PreviewConversionNonEmptyProofReport.model_validate({**valid, "production_admission_evidence_ready": True})
 
 
 def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() -> None:
