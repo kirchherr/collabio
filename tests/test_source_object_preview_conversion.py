@@ -696,3 +696,4 @@ def _foundation_gate() -> BackendFoundationCompletionGate:
         backend_foundation_complete=True,
         gate_hash="sha256:" + ("0" * 64),
     )
+    return draft.model_copy(update={"gate_hash": build_backend_foundation_completion_gate_hash(draft)})
