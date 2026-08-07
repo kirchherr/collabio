@@ -289,6 +289,7 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert "preview-conversion-proof-runtime-preflight:" in stager
     assert "- CHOWN" in stager
     assert "- DAC_OVERRIDE" in stager
+    assert "- FOWNER" in stager
     assert "SUITE_DATABASE_DSN:" in stager
     assert "SUITE_S3_SECRET_ACCESS_KEY:" in stager
     assert "preview-conversion-proof-stager:" in worker
