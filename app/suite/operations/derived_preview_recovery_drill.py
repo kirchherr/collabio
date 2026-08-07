@@ -163,9 +163,7 @@ class DerivedPreviewRecoveryDrillReport(BaseModel):
             raise ValueError("recovery report cannot describe both empty and non-empty state")
         if self.recovery_ready and not (self.empty_state_verified or self.non_empty_recovery_verified):
             raise ValueError("ready recovery requires verified empty or non-empty state")
-        if self.production_admission_evidence_ready and not (
-            self.recovery_ready and self.non_empty_recovery_verified
-        ):
+        if self.production_admission_evidence_ready and not (self.recovery_ready and self.non_empty_recovery_verified):
             raise ValueError("production admission requires a successful non-empty recovery")
         return self
 
@@ -568,9 +566,7 @@ def run_derived_preview_recovery_drill_from_environment(
             "SUITE_S3_ACCESS_KEY_ID": _required_env(env, "SUITE_RESTORE_S3_ACCESS_KEY_ID"),
             "SUITE_S3_SECRET_ACCESS_KEY": _required_env(env, "SUITE_RESTORE_S3_SECRET_ACCESS_KEY"),
             "SUITE_S3_REGION": env.get("SUITE_RESTORE_S3_REGION", "us-east-1"),
-            "SUITE_S3_STORAGE_PROVIDER": env.get(
-                "SUITE_RESTORE_S3_STORAGE_PROVIDER", "s3-compatible-restore"
-            ),
+            "SUITE_S3_STORAGE_PROVIDER": env.get("SUITE_RESTORE_S3_STORAGE_PROVIDER", "s3-compatible-restore"),
         }
     )
     return run_derived_preview_recovery_drill(
