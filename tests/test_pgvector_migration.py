@@ -158,7 +158,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     assert [migration.version for migration in time_tracking_migrations] == ["0060"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "core"
-    assert manifest[-1].name == "source_object_preview_conversion_lifecycle"
+    assert manifest[-1].name == "source_object_preview_conversion_job_evidence"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
