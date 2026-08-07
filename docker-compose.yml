@@ -1579,6 +1579,8 @@ services:
     read_only: true
     cap_drop:
       - ALL
+    cap_add:
+      - DAC_OVERRIDE
     security_opt:
       - no-new-privileges:true
     pids_limit: 128

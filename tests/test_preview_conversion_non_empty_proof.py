@@ -285,6 +285,7 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert "runtime-engine-self-test.json" in preflight
     assert "SUITE_DATABASE_DSN:" not in preflight
     assert "SUITE_S3_SECRET_ACCESS_KEY:" not in preflight
+    assert "- DAC_OVERRIDE" in preflight
     assert "preview-conversion-proof-runtime-preflight:" in stager
     assert "- CHOWN" in stager
     assert "- DAC_OVERRIDE" in stager
