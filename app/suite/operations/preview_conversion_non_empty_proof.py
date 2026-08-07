@@ -31,7 +31,11 @@ from suite.platform.source_object_preview_conversion import (
     build_preview_conversion_execution_gate,
     build_preview_conversion_source_preflight,
 )
-from suite.platform.source_object_preview_conversion_worker import build_installed_font_baseline_hash
+from suite.platform.source_object_preview_conversion_worker import (
+    PreviewConversionEngineSelfTestReport,
+    build_installed_font_baseline_hash,
+    build_preview_conversion_engine_self_test_report_hash,
+)
 from suite.platform.workspace_source_objects import build_default_workspace_source_object_repository
 from suite.storage.source_object_storage import PgSourceObjectRepository
 from suite.storage.source_objects import (
@@ -76,6 +80,7 @@ class PreviewConversionProofStageReport(BaseModel):
     worker_image_ref: str
     sandbox_runtime_class: str
     backup_restore_evidence_hash: str
+    runtime_engine_self_test_report_hash: str
     input_workspace_ready: bool
     output_workspace_ready: bool
     content_included: bool = False
@@ -90,6 +95,7 @@ class PreviewConversionProofStageReport(BaseModel):
         "command_hash",
         "source_content_hash",
         "backup_restore_evidence_hash",
+        "runtime_engine_self_test_report_hash",
         "report_hash",
     )
     @classmethod
@@ -259,7 +265,7 @@ def build_preview_conversion_proof_stage_bundle(
     *,
     proof_run_id: str,
     worker_image_ref: str,
-    sandbox_runtime_evidence_hash: str,
+    runtime_engine_self_test_report_hash: str,
     font_baseline_hash: str,
     backup_restore_evidence_hash: str,
     staged_at_utc: datetime | None = None,
@@ -270,6 +276,16 @@ def build_preview_conversion_proof_stage_bundle(
     staged_at = staged_at_utc or datetime.now(UTC)
     timestamp = staged_at.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     source_record = _build_synthetic_source_record(proof_run_id=normalized_run_id, timestamp=timestamp)
+    sandbox_runtime_evidence_hash = stable_hash(
+        canonical_json(
+            {
+                "compose_service": "preview-conversion-proof-runtime-preflight",
+                "engine_self_test_report_hash": runtime_engine_self_test_report_hash,
+                "sandbox_runtime_class": PROOF_RUNTIME_CLASS,
+                "worker_image_ref": worker_image_ref,
+            }
+        )
+    )
     fixture_evidence_hash = stable_hash(
         canonical_json(
             {
@@ -342,6 +358,7 @@ def build_preview_conversion_proof_stage_bundle(
         worker_image_ref=worker_image_ref,
         sandbox_runtime_class=PROOF_RUNTIME_CLASS,
         backup_restore_evidence_hash=backup_restore_evidence_hash,
+        runtime_engine_self_test_report_hash=runtime_engine_self_test_report_hash,
         input_workspace_ready=True,
         output_workspace_ready=True,
         staged_at_utc=staged_at,
@@ -441,6 +458,30 @@ def build_preview_conversion_non_empty_proof_report_hash(report: PreviewConversi
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"report_hash"})))
 
 
+def load_preview_conversion_runtime_engine_report(report_path: Path) -> PreviewConversionEngineSelfTestReport:
+    report = PreviewConversionEngineSelfTestReport.model_validate_json(report_path.read_text(encoding="utf-8"))
+    expected_hash = build_preview_conversion_engine_self_test_report_hash(report)
+    if report.report_hash != expected_hash:
+        raise ValueError("preview conversion runtime engine self-test report hash is invalid")
+    if (
+        not report.development_only
+        or report.production_execution_gate_evaluated
+        or report.external_network_used
+        or report.source_fixture_included
+        or report.output_included
+    ):
+        raise ValueError("preview conversion runtime engine self-test report violates proof isolation")
+    if not (
+        report.qpdf_validation_passed
+        and report.pdfinfo_validation_passed
+        and report.active_pdf_content_absent
+        and report.output_content_byte_length > 0
+        and report.page_count > 0
+    ):
+        raise ValueError("preview conversion runtime engine self-test did not pass")
+    return report
+
+
 def persist_preview_conversion_proof_report(
     *,
     report: PreviewConversionProofStageReport | PreviewConversionNonEmptyProofReport,
@@ -468,6 +509,9 @@ def run_preview_conversion_proof_stage_from_environment(
     )
     if not foundation_gate.backend_foundation_complete:
         raise ValueError("preview conversion proof requires a successful prior backend restore gate")
+    runtime_engine_report = load_preview_conversion_runtime_engine_report(
+        Path(_required_env(env, "SUITE_PREVIEW_PROOF_RUNTIME_REPORT_PATH"))
+    )
     database_dsn = _required_env(env, "SUITE_DATABASE_DSN")
     source_repository = build_default_workspace_source_object_repository(env)
     if not isinstance(source_repository, PgSourceObjectRepository):
@@ -475,7 +519,7 @@ def run_preview_conversion_proof_stage_from_environment(
     bundle = build_preview_conversion_proof_stage_bundle(
         proof_run_id=_required_env(env, "SUITE_PREVIEW_PROOF_RUN_ID"),
         worker_image_ref=_required_env(env, "SUITE_PREVIEW_CONVERTER_IMAGE_REF"),
-        sandbox_runtime_evidence_hash=_required_env(env, "SUITE_PREVIEW_PROOF_RUNSC_EVIDENCE_HASH"),
+        runtime_engine_self_test_report_hash=runtime_engine_report.report_hash,
         font_baseline_hash=build_installed_font_baseline_hash(),
         backup_restore_evidence_hash=foundation_gate.gate_hash,
     )

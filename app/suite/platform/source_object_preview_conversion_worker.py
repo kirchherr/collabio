@@ -260,8 +260,13 @@ def run_engine_self_test() -> PreviewConversionEngineSelfTestReport:
             completed_at_utc=result.completed_at_utc,
             report_hash=ZERO_HASH,
         )
-        report_hash = stable_hash(canonical_json(draft.model_dump(mode="json", exclude={"report_hash"})))
-        return draft.model_copy(update={"report_hash": report_hash})
+        return draft.model_copy(
+            update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)}
+        )
+
+
+def build_preview_conversion_engine_self_test_report_hash(report: PreviewConversionEngineSelfTestReport) -> str:
+    return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"report_hash"})))
 
 
 def _build_engine_self_test_command(*, source_bytes: bytes) -> PreviewConversionCommand:
@@ -469,6 +474,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--request", type=Path, default=Path("/job/input/request.json"))
     parser.add_argument("--input-dir", type=Path, default=Path("/job/input"))
     parser.add_argument("--output-dir", type=Path, default=Path("/job/output"))
+    parser.add_argument("--report", type=Path)
     return parser.parse_args(argv)
 
 
@@ -477,6 +483,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.engine_self_test:
         report = run_engine_self_test()
         print(json.dumps(report.model_dump(mode="json"), sort_keys=True, separators=(",", ":")))
+        if args.report is not None:
+            _write_json_atomically(args.report, report.model_dump(mode="json"))
         return 0
     worker_image_ref = os.getenv("SUITE_PREVIEW_CONVERTER_IMAGE_REF", "").strip().lower()
     runtime_class = os.getenv("SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS", "").strip()

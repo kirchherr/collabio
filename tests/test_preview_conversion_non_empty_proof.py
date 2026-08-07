@@ -13,6 +13,7 @@ from suite.operations.preview_conversion_non_empty_proof import (
     build_preview_conversion_proof_stage_bundle,
     build_preview_conversion_stage_report_hash,
     import_preview_conversion_non_empty_proof,
+    load_preview_conversion_runtime_engine_report,
     stage_preview_conversion_proof_workspaces,
 )
 from suite.platform.source_object_preview_conversion import (
@@ -21,6 +22,10 @@ from suite.platform.source_object_preview_conversion import (
     InMemoryPreviewConversionJobEvidenceStore,
     PreviewConversionWorkerResult,
     build_preview_conversion_result_hash,
+)
+from suite.platform.source_object_preview_conversion_worker import (
+    PreviewConversionEngineSelfTestReport,
+    build_preview_conversion_engine_self_test_report_hash,
 )
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
@@ -40,6 +45,7 @@ def test_stage_bundle_is_hash_bound_synthetic_and_dedicated_to_proof_tenant() ->
     assert bundle.source_record.metadata.tenant_id == PROOF_TENANT_ID
     assert bundle.execution_gate.sandbox_runtime_class == "runsc"
     assert bundle.execution_gate.worker_image_ref == WORKER_IMAGE_REF
+    assert bundle.report.runtime_engine_self_test_report_hash == "sha256:" + ("2" * 64)
     assert bundle.envelope.command.preview_policy_id == "synthetic-preview-proof.v1"
     assert bundle.report.development_only is True
     assert bundle.report.synthetic_fixture is True
@@ -161,14 +167,65 @@ def test_proof_report_rejects_any_production_or_serving_claim() -> None:
         PreviewConversionNonEmptyProofReport.model_validate({**valid, "production_admission_evidence_ready": True})
 
 
+def test_runtime_preflight_report_must_be_hash_valid_and_isolated(tmp_path: Path) -> None:
+    draft = PreviewConversionEngineSelfTestReport(
+        converter_engine="LibreOffice",
+        converter_version="LibreOffice 25.8.7.3",
+        pdf_validator_engine="qpdf+pdfinfo",
+        pdf_validator_version="qpdf 12.3.2; pdfinfo 25.12.0",
+        font_baseline_hash="sha256:" + ("1" * 64),
+        output_content_hash="sha256:" + ("2" * 64),
+        output_content_byte_length=128,
+        page_count=1,
+        qpdf_validation_passed=True,
+        pdfinfo_validation_passed=True,
+        active_pdf_content_absent=True,
+        completed_at_utc=NOW,
+        report_hash="sha256:" + ("0" * 64),
+    )
+    report = draft.model_copy(
+        update={"report_hash": build_preview_conversion_engine_self_test_report_hash(draft)}
+    )
+    report_path = tmp_path / "runtime-report.json"
+    report_path.write_text(report.model_dump_json(), encoding="utf-8")
+
+    loaded = load_preview_conversion_runtime_engine_report(report_path)
+
+    assert loaded.report_hash == report.report_hash
+
+    tampered = report.model_copy(update={"external_network_used": True})
+    report_path.write_text(tampered.model_dump_json(), encoding="utf-8")
+    with pytest.raises(ValueError, match="hash is invalid"):
+        load_preview_conversion_runtime_engine_report(report_path)
+
+    isolated_but_false = tampered.model_copy(
+        update={"report_hash": build_preview_conversion_engine_self_test_report_hash(tampered)}
+    )
+    report_path.write_text(isolated_but_false.model_dump_json(), encoding="utf-8")
+    with pytest.raises(ValueError, match="violates proof isolation"):
+        load_preview_conversion_runtime_engine_report(report_path)
+
+
 def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() -> None:
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+    preflight = _service(
+        compose,
+        "preview-conversion-proof-runtime-preflight",
+        "preview-conversion-proof-stager",
+    )
     stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-worker")
     worker = _service(compose, "preview-conversion-proof-worker", "preview-conversion-proof-importer")
     importer = _service(compose, "preview-conversion-proof-importer", "preview-conversion-proof-cleanup")
     cleanup = _service(compose, "preview-conversion-proof-cleanup", "preview-conversion-engine-smoke")
 
     assert 'profiles: ["preview-proof"]' in stager
+    assert "runtime: runsc" in preflight
+    assert 'network_mode: "none"' in preflight
+    assert "--engine-self-test" in preflight
+    assert "runtime-engine-self-test.json" in preflight
+    assert "SUITE_DATABASE_DSN:" not in preflight
+    assert "SUITE_S3_SECRET_ACCESS_KEY:" not in preflight
+    assert "preview-conversion-proof-runtime-preflight:" in stager
     assert "SUITE_DATABASE_DSN:" in stager
     assert "SUITE_S3_SECRET_ACCESS_KEY:" in stager
     assert "preview-conversion-proof-stager:" in worker
@@ -190,7 +247,7 @@ def _bundle() -> PreviewConversionProofStageBundle:
     return build_preview_conversion_proof_stage_bundle(
         proof_run_id=PROOF_RUN_ID,
         worker_image_ref=WORKER_IMAGE_REF,
-        sandbox_runtime_evidence_hash="sha256:" + ("2" * 64),
+        runtime_engine_self_test_report_hash="sha256:" + ("2" * 64),
         font_baseline_hash="sha256:" + ("3" * 64),
         backup_restore_evidence_hash="sha256:" + ("4" * 64),
         staged_at_utc=NOW,

@@ -652,6 +652,57 @@ serving disabled until the separate current runtime, malware/CDR, image-provenan
 `docker compose run --rm preview-conversion-engine-smoke` verifies the pinned conversion engine without tenant content,
 credentials, or network access. It is an engine check, not a substitute for the production restore drill.
 
+#### Controlled non-empty development proof
+
+Run this proof only on a development host whose Docker daemon registers `runsc`. Verify the daemon first:
+
+```bash
+docker info --format '{{json .Runtimes}}'
+```
+
+The output must contain `runsc`. Do not substitute `runc`, inject a hand-written runtime evidence hash, or start the
+stager separately. Build the exact proof image, bind its local immutable image ID, and run the dependency chain:
+
+```bash
+docker compose --profile preview-proof build \
+  preview-conversion-proof-runtime-preflight \
+  preview-conversion-proof-stager \
+  preview-conversion-proof-worker \
+  preview-conversion-proof-importer \
+  preview-conversion-proof-cleanup
+export SUITE_PREVIEW_CONVERTER_IMAGE_REF="collabio/preview-renderer@$(docker image inspect --format '{{.Id}}' collabio/preview-renderer:dev)"
+export SUITE_PREVIEW_PROOF_RUN_ID="preview-proof-$(date -u +%Y%m%d-%H%M%S)"
+docker compose --profile preview-proof up \
+  --abort-on-container-exit \
+  --exit-code-from preview-conversion-proof-importer \
+  preview-conversion-proof-importer
+```
+
+The runtime preflight executes before the trusted stager and has no database, object-store, or network access. The
+worker has the same credential-less/no-egress boundary. On any interrupted run, clear both transient volumes:
+
+```bash
+docker compose --profile preview-proof run --rm preview-conversion-proof-cleanup
+```
+
+After a successful import, create a new backup, restore PostgreSQL into the isolated target, restore exact object
+versions into the independent object-store target, and reconcile the non-empty lineage:
+
+```bash
+export SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS="tenant-demo,tenant-other,tenant-preview-proof"
+docker compose run --rm backup
+docker compose --profile restore-drill run --rm postgres-backup-restore-loader
+docker compose --profile restore-drill run --rm backend-foundation-completion-gate
+docker compose --profile restore-drill run --rm derived-preview-recovery-drill
+```
+
+Retain and hash-verify `backups/preview-conversion-non-empty-stage.json`,
+`backups/preview-conversion-non-empty-proof.json`, `backups/backend-foundation-completion-gate.json`, and
+`backups/derived-preview-recovery-drill.json`. The final recovery report must have
+`non_empty_recovery_verified=true`, positive receipt/job/reconciliation counts, `recovery_ready=true`, and
+`production_admission_evidence_ready=false`. Dispatch and serving must remain false. This proves development recovery;
+it does not replace malware/CDR, signed image provenance/SBOM, viewer-origin CSP, or production continuity evidence.
+
 Migrations `0055` and `0056` add append-only, tenant-scoped receipt storage plus the non-empty released-representation
 invariant for `collabio.source_object_preview_content_release_receipts`. This supports the guarded plain-text preview
 release. The receipt contains

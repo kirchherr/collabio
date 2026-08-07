@@ -67,6 +67,19 @@ contract. It defaults to `runsc`, reads a staged request and source from the rea
 output volume, and refuses unpinned or mismatched runtime evidence. A trusted stager and importer own those volumes;
 the worker owns no durable queue, database connection, storage SDK, or Docker socket.
 
+The `preview-proof` profile is the controlled non-empty development proof. Its first service runs the real conversion
+engine inside the configured `runsc` runtime, without network or credentials, and writes a metadata-only hash-bound
+self-test report. The trusted stager cannot start before that service succeeds. Only then does it atomically persist a
+synthetic source receipt, SourceObject, and execution gate for the dedicated `tenant-preview-proof` tenant and stage
+the source into a transient volume. A second credential-less, offline `runsc` worker creates the PDF. The trusted
+importer independently revalidates and atomically persists the derived SourceObject, write receipt, lineage receipt,
+and conversion-job evidence before both transient volumes are cleared.
+
+A missing or unregistered `runsc` runtime therefore fails before PostgreSQL or object-storage writes. Runtime evidence
+cannot be supplied through a free-form environment hash. The proof reports contain hashes and counts only, remain
+development-only, and explicitly prohibit production admission, conversion dispatch, and preview serving. The exact
+execution and recovery sequence is maintained in `docs/operations/BACKUP_FAILOVER.md`.
+
 ## Backup And Recovery
 
 Execution-gate evidence and derived-preview receipts are tenant-scoped append-only PostgreSQL records with forced RLS.

@@ -1563,6 +1563,33 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-conversion-proof-runtime-preflight:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --engine-self-test
+      - --report
+      - /job/proof-output/runtime-engine-self-test.json
+    runtime: runsc
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,mode=0700
+    volumes:
+      - preview_conversion_proof_output:/job/proof-output
+
   preview-conversion-proof-stager:
     profiles: ["preview-proof"]
     image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
@@ -1575,6 +1602,8 @@ services:
       postgres:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      preview-conversion-proof-runtime-preflight:
         condition: service_completed_successfully
       object-storage-profile-check:
         condition: service_completed_successfully
@@ -1590,7 +1619,7 @@ services:
       PYTHONPATH: /workspace/app
       SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
       SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
-      SUITE_PREVIEW_PROOF_RUNSC_EVIDENCE_HASH: ${SUITE_PREVIEW_PROOF_RUNSC_EVIDENCE_HASH:-invalid}
+      SUITE_PREVIEW_PROOF_RUNTIME_REPORT_PATH: /job/proof-output/runtime-engine-self-test.json
       SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
       SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH: /backups/preview-conversion-non-empty-stage.json
       SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input

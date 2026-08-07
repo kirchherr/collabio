@@ -1476,6 +1476,13 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Preflight, Worker-Result, SourceObject-Write-Receipt, Lineage-Receipt und Execution-Gate werden atomar gebunden und auf
   isolierten PostgreSQL-/Object-Storage-Zielen hashgenau abgeglichen; leere Restores erzeugen keine
   Produktionsfreigabe und der Drill aktiviert weder Dispatch noch Preview-Serving.
+- [x] Kontrollierte nicht-leere Entwicklungs-Proof-Kette implementiert: ein credential-loser/no-egress
+  `runsc`-Engine-Preflight blockiert vor jedem Write; danach folgen atomarer synthetischer Source-/Gate-Write,
+  isolierter Conversion-Worker, unabhaengig revalidierter Derived-Preview-Commit und sichere Vernichtung beider
+  transienten Workspaces. Frei gesetzte Runtime-Evidence wird nicht akzeptiert.
+- [ ] Proof-Kette auf `dev001` nach registrierter `runsc`-Runtime ausfuehren und den Proof-Tenant anschliessend ueber
+  frisches PostgreSQL-Backup, isolierten Restore, unabhaengigen Exact-Version-Object-Restore und nicht-leere
+  Derived-Preview-Reconciliation nachweisen; die Production-Admission-Auswertung bleibt dabei deaktiviert.
 - [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
   Malware-/CDR-Dienst, publiziertem Image-Digest samt SBOM/Provenance, erfolgreichem nicht-leerem Recovery-Report und
   separatem PDF.js-Origin freigeben. Bis dahin bleibt die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
