@@ -285,7 +285,7 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
 
     assert 'entrypoint: ["freshclam"]' in updater
     assert "preview_malware_updates" in updater
-    assert "preview_malware" not in updater
+    assert "      - preview_malware\n" not in updater
     assert "SUITE_DATABASE_DSN:" not in updater
     assert "SUITE_S3_SECRET_ACCESS_KEY:" not in updater
     assert "preview-malware-signature-updater:" in scanner
