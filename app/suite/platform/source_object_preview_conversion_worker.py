@@ -293,8 +293,7 @@ def rebuild_preview_from_cdr_bundle(
         sandbox_runtime_class=sandbox_runtime_class,
         converter_engine="libreoffice+pdftoppm+pillow",
         converter_version=(
-            f"{manifest.document_converter_version} / "
-            f"{manifest.rasterizer_version} / Pillow {pillow_version}"
+            f"{manifest.document_converter_version} / {manifest.rasterizer_version} / Pillow {pillow_version}"
         ),
         pdf_validator_version=qpdf_version,
         font_baseline_hash=manifest.font_baseline_hash,
@@ -396,9 +395,7 @@ def run_cdr_rebuilder_once(
         configured_runtime_class=configured_runtime_class,
         **admission_paths,
     )
-    manifest = PreviewCdrBundleManifest.model_validate_json(
-        (cdr_dir / "manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = PreviewCdrBundleManifest.model_validate_json((cdr_dir / "manifest.json").read_text(encoding="utf-8"))
     if manifest.font_baseline_hash != envelope.execution_gate.font_baseline_hash:
         raise PreviewConversionWorkerError("preview CDR manifest font baseline does not match the execution gate")
     if manifest.cdr_profile_ref != envelope.execution_gate.cdr_profile_ref:
@@ -862,9 +859,7 @@ def _validate_pdf_bytes(
 
 def _safe_tool_version(command: tuple[str, ...], expected_name: str) -> str:
     completed = _run_command(command, timeout_seconds=15)
-    version_lines = [
-        line.strip() for line in (completed.stdout + "\n" + completed.stderr).splitlines() if line.strip()
-    ]
+    version_lines = [line.strip() for line in (completed.stdout + "\n" + completed.stderr).splitlines() if line.strip()]
     value = version_lines[0] if version_lines else ""
     if completed.returncode != 0 or expected_name.lower() not in value.lower():
         raise PreviewConversionWorkerError(f"{expected_name} version attestation failed")

@@ -436,6 +436,7 @@ class PreviewConversionWorkerResult(BaseModel):
         if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion result production admission hash must be a sha256 reference")
         return value
+
     @field_validator("cdr_profile_ref")
     @classmethod
     def require_namespaced_cdr_profile(cls, value: str) -> str:
@@ -443,7 +444,6 @@ class PreviewConversionWorkerResult(BaseModel):
         if not NAMESPACED_REF_PATTERN.fullmatch(normalized):
             raise ValueError("preview conversion CDR profile must be namespaced")
         return normalized
-
 
     @model_validator(mode="after")
     def require_safe_result(self) -> PreviewConversionWorkerResult:
@@ -477,6 +477,7 @@ class PreviewConversionWorkerResult(BaseModel):
             if not all(cdr_checks):
                 raise ValueError("preview conversion result did not preserve the CDR trust boundary")
         return self
+
 
 class PreviewConversionWorkerEnvelope(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)

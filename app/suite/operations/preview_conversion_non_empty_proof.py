@@ -541,6 +541,7 @@ def import_preview_conversion_non_empty_proof(
             if cdr_dir is not None:
                 _clear_workspace(cdr_dir)
 
+
 def build_preview_conversion_stage_report_hash(report: PreviewConversionProofStageReport) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"report_hash"})))
 
