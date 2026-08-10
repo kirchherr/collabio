@@ -1051,8 +1051,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["summary"]["foundation_ready_count"] == 33
-    assert body["summary"]["total_count"] == 35
+    assert body["summary"]["foundation_ready_count"] == 34
+    assert body["summary"]["total_count"] == 36
     assert body["summary"]["total_count"] == sum(len(group["capabilities"]) for group in body["groups"])
     capabilities = [capability for group in body["groups"] for capability in group["capabilities"]]
     capability_ids = {capability["capability_id"] for capability in capabilities}
@@ -1079,6 +1079,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "time_tracking_runtime",
         "crm_erp_acl_first_search",
         "legacy_migration_registry",
+        "office_edit_source_admission",
         "office_mail_clients",
     }.issubset(capability_ids)
     backup_failover = next(
@@ -1096,6 +1097,13 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "app/suite/platform/preview_cdr.py" in preview_renderer["evidence_refs"]
     assert "tests/test_preview_cdr.py" in preview_renderer["evidence_refs"]
     assert "docs/operations/PREVIEW_CDR.md" in preview_renderer["evidence_refs"]
+    office_source_admission = next(
+        capability for capability in capabilities if capability["capability_id"] == "office_edit_source_admission"
+    )
+    assert office_source_admission["status"] == "guarded"
+    assert "exact_upstream_archive_sha256" in office_source_admission["guardrails"]
+    assert "source_import_and_production_use_blocked" in office_source_admission["guardrails"]
+    assert "app/suite/operations/genoffice_docx_source_admission.py" in office_source_admission["evidence_refs"]
     production_continuity = next(
         capability
         for capability in capabilities
@@ -1489,7 +1497,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 1,
         "later_count": 4,
         "total_count": 6,
-        "foundation_ready_count": 33,
+        "foundation_ready_count": 34,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {

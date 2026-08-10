@@ -14,6 +14,7 @@ from suite.platform.office_edit_adapter import (
     DOCX_MIME_TYPE,
     GENOFFICE_DOCX_EVALUATION_ADAPTER_ID,
     GENOFFICE_UPSTREAM_COMMIT,
+    GENOFFICE_UPSTREAM_SOURCE_ARCHIVE_SHA256,
     GenOfficeDocxQuickEditEvaluationAdapter,
     GenOfficeEvaluationPolicy,
     OfficeEditAdapterEvaluationInput,
@@ -40,6 +41,7 @@ def test_genoffice_policy_pins_narrow_source_scope_and_keeps_import_closed() -> 
     assert policy.status == "evaluation_only"
     assert policy.adapter_id == GENOFFICE_DOCX_EVALUATION_ADAPTER_ID
     assert policy.upstream.commit == GENOFFICE_UPSTREAM_COMMIT
+    assert policy.upstream.source_archive_sha256 == GENOFFICE_UPSTREAM_SOURCE_ARCHIVE_SHA256
     assert policy.upstream.root_license_spdx == "Apache-2.0"
     assert policy.upstream.enterprise_tree == "ee/**"
     assert policy.upstream.enterprise_tree_included is False
@@ -60,6 +62,7 @@ def test_genoffice_policy_pins_narrow_source_scope_and_keeps_import_closed() -> 
     ("mutation", "message"),
     [
         (("upstream", "commit", "main"), "exact reviewed commit"),
+        (("upstream", "source_archive_sha256", "sha256:" + "0" * 64), "source archive SHA-256"),
         (("upstream", "enterprise_tree_included", True), "enterprise source tree"),
         (("source_scope", "source_import_allowed", True), "source import remains blocked"),
         (("execution", "content_access_allowed", True), "opened an unreviewed boundary"),

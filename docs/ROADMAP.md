@@ -1517,9 +1517,15 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `fd33934dab1fdf8666af3f88b9794e7b4e19474a`; ausschliesslich `packages/docx-engine/**` als spaeterer Importkandidat;
   Tabellen-/Praesentationsengines nur als Referenz; `ee/**`, Shell und Cloud-AI-Quellpfade verboten. Die
   maschinenlesbare Evaluation-Policy blockiert Import und Produktion bis alle Gates erfuellt sind.
-- [ ] GenOffice-Source-Admission abschliessen: Legal/NOTICE/Trademark, transitive Lizenzen, universeller Lock, SBOM,
-  Vulnerability Review, reproduzierbarer Build/Provenance und exaktes Source-Scope-Manifest. Erst danach darf ein
-  gepruefter Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
+- [x] Reproduzierbare GenOffice-Source-Evidence fuer den DOCX-Kandidaten geschlossen: Codeload-Archiv des exakten
+  Commits mit SHA-256 gebunden, ohne Extraktion geprueft, ausgewaehlte Dateien einzeln gehasht, verbotene Scopes aus dem
+  Manifest ausgeschlossen, npm-v3-Lock rekursiv auf 21 Runtime-Pakete samt Registry-Integritaet und Lizenzmetadaten
+  aufgeloest sowie vendored EMF-Converter und Root-`postinstall` sichtbar gemacht. Der no-network/read-only Verifier
+  fuehrt weder npm/Node noch Upstream-Code aus und oeffnet weiterhin keinen Import.
+- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License- und Vendor-
+  Provenance-Pruefung, universeller Collabio-Build-Lock, CycloneDX-SBOM, Vulnerability Review sowie reproduzierbarer,
+  signierter Build. Erst danach darf der gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image
+  gelangen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

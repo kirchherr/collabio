@@ -23,6 +23,7 @@ GENOFFICE_EVALUATION_POLICY_SCHEMA_VERSION = "genoffice_evaluation_policy.v1"
 GENOFFICE_DOCX_EVALUATION_ADAPTER_ID = "genoffice-docx-quick-edit-evaluation.v1"
 GENOFFICE_UPSTREAM_REPOSITORY = "https://github.com/genspark-ai/genoffice"
 GENOFFICE_UPSTREAM_COMMIT = "fd33934dab1fdf8666af3f88b9794e7b4e19474a"
+GENOFFICE_UPSTREAM_SOURCE_ARCHIVE_SHA256 = "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040"
 DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 DEFAULT_GENOFFICE_EVALUATION_POLICY_PATH = (
     Path(__file__).resolve().parents[3] / "docs" / "operations" / "genoffice_evaluation_policy.json"
@@ -81,6 +82,7 @@ class GenOfficeUpstreamPolicy(BaseModel):
 
     repository_url: str
     commit: str
+    source_archive_sha256: str
     root_license_spdx: str
     enterprise_tree: str
     enterprise_tree_included: bool
@@ -93,6 +95,8 @@ class GenOfficeUpstreamPolicy(BaseModel):
             raise ValueError("GenOffice repository URL is not the reviewed upstream")
         if self.commit != GENOFFICE_UPSTREAM_COMMIT or not COMMIT_PATTERN.fullmatch(self.commit):
             raise ValueError("GenOffice upstream must use the exact reviewed commit")
+        if self.source_archive_sha256 != GENOFFICE_UPSTREAM_SOURCE_ARCHIVE_SHA256:
+            raise ValueError("GenOffice upstream source archive SHA-256 is not reviewed")
         if self.root_license_spdx != "Apache-2.0":
             raise ValueError("GenOffice root source scope must remain Apache-2.0")
         if self.enterprise_tree != "ee/**" or self.enterprise_tree_included:

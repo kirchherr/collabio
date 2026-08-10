@@ -753,6 +753,36 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "content_excluded_from_audit_and_release_receipts",
                     ),
                 ),
+                RoadmapCapability(
+                    capability_id="office_edit_source_admission",
+                    title="Office Quick Edit Source Admission",
+                    summary=(
+                        "Der GenOffice-DOCX-Kandidat ist auf exakte Archivbytes, ausgewaehlte Quelldateien, "
+                        "Runtime-Abhaengigkeiten und vendored Lizenzdateien inventarisiert. Import, Engine, "
+                        "Content und Produktion bleiben bis Legal-, SBOM-, Build-, Security-, Fidelity- und "
+                        "Recovery-Evidence geschlossen."
+                    ),
+                    status=RoadmapCapabilityStatus.GUARDED,
+                    capability_type="office_edit_boundary",
+                    evidence_refs=(
+                        "app/suite/operations/genoffice_docx_source_admission.py",
+                        "tests/test_genoffice_docx_source_admission.py",
+                        "docs/operations/GENOFFICE_SOURCE_ADMISSION.md",
+                        "docs/operations/genoffice_docx_source_admission_report.json",
+                        "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
+                    ),
+                    api_routes=(
+                        "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
+                    ),
+                    guardrails=(
+                        "exact_upstream_archive_sha256",
+                        "archive_never_extracted",
+                        "no_network_or_upstream_execution",
+                        "prohibited_scopes_excluded_from_source_manifest",
+                        "runtime_dependency_and_vendored_license_inventory",
+                        "source_import_and_production_use_blocked",
+                    ),
+                ),
             ),
         ),
         RoadmapCapabilityGroup(

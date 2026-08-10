@@ -103,9 +103,17 @@ adapter descriptor, source manifest, content hash, ACL version, and exact upstre
 bytes, import upstream code, invoke an engine, start an editor or WOPI session, access a network, or write a draft or
 candidate version.
 
+ADR-0062 adds the first real source-admission evidence without opening that boundary. The exact codeload archive is
+bound by SHA-256, read directly without extraction, and reduced to a deterministic manifest for root evidence plus the
+selected DOCX package. The offline verifier records the complete locked runtime dependency closure and vendored source
+licenses, rejects links and unsafe paths, and cannot invoke npm, Node.js, a network, or the engine. This closes source-
+byte and dependency inventory only; legal approval, SBOM, vulnerability review, build provenance, malicious-file and
+fidelity proof, content access, and production use remain blocked.
+
 Before Quick Edit may process content, a separate admission change must prove:
 
-- legal, license, notice, trademark, dependency, SBOM, vulnerability, and provenance review;
+- final legal, license, notice, trademark, SBOM, vulnerability, and provenance review of the now hash-bound source and
+  dependency inventory;
 - malicious OOXML, macro, OLE, external relationship, ZIP expansion, and resource-exhaustion resistance;
 - Word/LibreOffice/GenOffice/Collabio fidelity corpora plus explicit safe-export and high-fidelity modes;
 - immutable preservation of signed originals and explicit signature-invalidated state on derived edits;

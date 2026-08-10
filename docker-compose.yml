@@ -2084,6 +2084,37 @@ services:
       - ./backups:/evidence:ro
       - ./security:/trust:ro
 
+  genoffice-docx-source-admission:
+    profiles: ["office-source-admission"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_source_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-source-admission-report.json
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_EVIDENCE_HOST_DIR:-./backups/genoffice-source-admission}
+        target: /evidence
+
   api:
     build:
       context: .

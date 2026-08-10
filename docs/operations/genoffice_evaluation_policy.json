@@ -6,6 +6,7 @@
   "upstream": {
     "repository_url": "https://github.com/genspark-ai/genoffice",
     "commit": "fd33934dab1fdf8666af3f88b9794e7b4e19474a",
+    "source_archive_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040",
     "root_license_spdx": "Apache-2.0",
     "enterprise_tree": "ee/**",
     "enterprise_tree_included": false,

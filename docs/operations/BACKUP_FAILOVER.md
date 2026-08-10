@@ -86,8 +86,14 @@ When a future feature introduces a new stateful subsystem, one of these domains 
 ### Office edit future-state contract
 
 The `office_edit_adapter.v1` GenOffice evaluation is metadata-only. It adds no editor database, draft store, session
-store, source import, candidate object, or worker artifact. Its only durable output is an event in the existing
-append-only audit domain. Therefore this evaluation does not claim an editor backup or failover proof.
+store, source import, candidate object, or worker artifact. Its application output is an event in the existing append-
+only audit domain. ADR-0062 additionally creates a tenant-free supply-chain report for the exact source archive,
+selected-source manifest, dependency manifest, and remaining admission gates. Therefore this evaluation does not claim
+an editor backup or failover proof.
+
+The exact source archive and its admission report are retained in the immutable supply-chain artifact store with later
+SBOM, vulnerability decision, build digest, and signed provenance. They are rebuild and release-recovery inputs, not
+tenant backup payloads. A restore must verify their digests before an Office worker can be rebuilt or promoted.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:
