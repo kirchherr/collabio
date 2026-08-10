@@ -27,7 +27,8 @@ jobs:
         run: |
           docker compose --profile tooling run --rm dependency-lock-runtime
           docker compose --profile tooling run --rm dependency-lock-dev
-          git diff --exit-code -- requirements.lock requirements-dev.lock
+          docker compose --profile tooling run --rm dependency-lock-preview
+          git diff --exit-code -- requirements.lock requirements-dev.lock requirements-preview.lock
 
       - name: Validate Docker Compose config
         run: docker compose config --quiet

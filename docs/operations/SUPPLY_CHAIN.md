@@ -5,8 +5,9 @@ the runtime container image, CI actions, SBOMs, and tagged release artifacts.
 
 ## Non-negotiable Rules
 
-- **requirements.txt** and **requirements-dev.txt** declare direct constraints; **requirements.lock** and
-  **requirements-dev.lock** pin the complete transitive graphs and every accepted distribution hash.
+- **requirements.txt**, **requirements-dev.txt**, and **requirements-preview.txt** declare direct constraints;
+  **requirements.lock**, **requirements-dev.lock**, and **requirements-preview.lock** pin the complete transitive
+  graphs and every accepted distribution hash.
 - Docker builds install only lockfiles with **pip --require-hashes**. A declaration change without a regenerated lock
   fails CI before the development image is built.
 - Every third-party GitHub Action uses an immutable commit SHA. The readable version comment is informational only.
@@ -30,18 +31,19 @@ the runtime container image, CI actions, SBOMs, and tagged release artifacts.
 The lock generator is uv 0.12.2 in an official Python 3.12 Alpine image pinned by manifest digest. It is available
 only through the **tooling** Compose profile and is not copied into development or runtime images.
 
-Regenerate both locks after changing a direct declaration:
+Regenerate all locks after changing a direct declaration:
 
 ~~~bash
 docker compose --profile tooling run --rm dependency-lock-runtime
 docker compose --profile tooling run --rm dependency-lock-dev
+docker compose --profile tooling run --rm dependency-lock-preview
 docker compose build
 docker compose run --rm quality
 ~~~
 
 Review the direct and transitive version changes before commit. Lock regeneration is intentionally networked;
 application, test, and release containers consume the resulting committed files without resolving a new dependency
-graph. CI runs the same two generators and rejects any lock drift with **git diff --exit-code**.
+graph. CI runs the same three generators and rejects any lock drift with **git diff --exit-code**.
 
 ## Pull Request And Main Gate
 

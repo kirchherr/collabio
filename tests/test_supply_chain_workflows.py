@@ -16,8 +16,10 @@ VEX_PATH = REPO_ROOT / "security" / "vex" / "collabio.openvex.json"
 VEX_REGISTER_PATH = REPO_ROOT / "security" / "vex" / "decision-register.json"
 REQUIREMENTS_PATH = REPO_ROOT / "requirements.txt"
 DEV_REQUIREMENTS_PATH = REPO_ROOT / "requirements-dev.txt"
+PREVIEW_REQUIREMENTS_PATH = REPO_ROOT / "requirements-preview.txt"
 RUNTIME_LOCK_PATH = REPO_ROOT / "requirements.lock"
 DEV_LOCK_PATH = REPO_ROOT / "requirements-dev.lock"
+PREVIEW_LOCK_PATH = REPO_ROOT / "requirements-preview.lock"
 APP_PATH = REPO_ROOT / "app"
 PREVIEW_RELEASE_GATE_PATH = APP_PATH / "suite" / "platform" / "source_object_preview_renderer_release_gate.py"
 IMMUTABLE_ACTION_REF = re.compile(r"^[^\s@]+@[a-f0-9]{40}$")
@@ -43,6 +45,7 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     dependabot = DEPENDABOT_PATH.read_text(encoding="utf-8")
     requirements = REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
     dev_requirements = DEV_REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
+    preview_requirements = PREVIEW_REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
 
     assert re.fullmatch(r"FROM python:3\.12-alpine@sha256:[a-f0-9]{64} AS base", base_image)
     assert 'package-ecosystem: "docker"' in dependabot
@@ -55,13 +58,15 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     assert "httpx==0.28.1" in requirements
     assert "httpx==0.28.1" not in dev_requirements
     assert "httpx2==2.9.1" in dev_requirements
+    assert "Pillow==12.3.0" in preview_requirements
 
-    assert dockerfile.count("pip install --require-hashes --requirement") == 2
+    assert dockerfile.count("pip install --require-hashes --requirement") == 3
     assert "COPY requirements.lock ." in dockerfile
     assert "COPY requirements-dev.lock ." in dockerfile
+    assert "COPY requirements-preview.lock ." in dockerfile
     assert "pip install --requirement requirements.txt" not in dockerfile
-    assert compose.count("ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:") == 2
-    assert compose.count('profiles: ["tooling"]') == 2
+    assert compose.count("ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:") == 3
+    assert compose.count('profiles: ["tooling"]') == 3
 
     preview_release_gate = PREVIEW_RELEASE_GATE_PATH.read_text(encoding="utf-8")
     assert "source_object_preview_renderer_smoke import" not in preview_release_gate
@@ -84,14 +89,18 @@ def assert_hash_locked(lock_path: Path, minimum_packages: int) -> None:
 def test_runtime_and_development_dependency_graphs_are_transitively_hash_locked() -> None:
     assert_hash_locked(RUNTIME_LOCK_PATH, minimum_packages=30)
     assert_hash_locked(DEV_LOCK_PATH, minimum_packages=45)
+    assert_hash_locked(PREVIEW_LOCK_PATH, minimum_packages=1)
 
     runtime_lock = RUNTIME_LOCK_PATH.read_text(encoding="utf-8")
     dev_lock = DEV_LOCK_PATH.read_text(encoding="utf-8")
+    preview_lock = PREVIEW_LOCK_PATH.read_text(encoding="utf-8")
     assert "docker compose --profile tooling run --rm dependency-lock-runtime" in runtime_lock
     assert "docker compose --profile tooling run --rm dependency-lock-dev" in dev_lock
+    assert "docker compose --profile tooling run --rm dependency-lock-preview" in preview_lock
     assert "fastapi==0.141.1" in runtime_lock
     assert "cryptography==49.0.0" in runtime_lock
     assert "pytest==9.0.3" in dev_lock
+    assert "pillow==12.3.0" in preview_lock
 
 
 def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
@@ -100,7 +109,8 @@ def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
     assert "supply-chain:" in workflow
     assert "Verify dependency locks are current" in workflow
     assert "docker compose --profile tooling run --rm dependency-lock-runtime" in workflow
-    assert "git diff --exit-code -- requirements.lock requirements-dev.lock" in workflow
+    assert "docker compose --profile tooling run --rm dependency-lock-preview" in workflow
+    assert "git diff --exit-code -- requirements.lock requirements-dev.lock requirements-preview.lock" in workflow
     assert "needs: quality" in workflow
     assert "docker build --provenance=false --target runtime" in workflow
     assert "Smoke-test non-root runtime" in workflow

@@ -44,24 +44,15 @@ USER 10001:10001
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM python:3.12-alpine3.23@sha256:601d3d3797e90e2534782e69c85fafb7971b43f24c7b1b079b7e48dd435e458d AS preview-renderer
+FROM base AS preview-renderer
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV PIP_ROOT_USER_ACTION=ignore
-
-WORKDIR /workspace
-
-COPY requirements.lock .
-RUN python -m pip install --require-hashes --requirement requirements.lock
+COPY requirements-preview.lock .
+RUN python -m pip install --require-hashes --requirement requirements-preview.lock
 
 ARG LIBREOFFICE_VERSION=25.8.7.3-r0
 ARG QPDF_VERSION=12.3.2-r0
 ARG POPPLER_UTILS_VERSION=25.12.0-r1
 ARG FONTCONFIG_VERSION=2.17.1-r1
-ARG PY3_PILLOW_VERSION=11.3.0-r2
 ARG DEJAVU_FONT_VERSION=2.37-r6
 ARG LIBERATION_FONT_VERSION=2.1.5-r2
 
@@ -72,7 +63,6 @@ RUN apk add --no-cache \
         "libreoffice-impress=${LIBREOFFICE_VERSION}" \
         "qpdf=${QPDF_VERSION}" \
         "poppler-utils=${POPPLER_UTILS_VERSION}" \
-        "py3-pillow=${PY3_PILLOW_VERSION}" \
         "fontconfig=${FONTCONFIG_VERSION}" \
         "font-dejavu=${DEJAVU_FONT_VERSION}" \
         "ttf-liberation=${LIBERATION_FONT_VERSION}" \
@@ -83,7 +73,7 @@ RUN apk add --no-cache \
 
 COPY --chown=10002:10002 app ./app
 
-ENV PYTHONPATH=/usr/lib/python3.12/site-packages:/workspace/app
+ENV PYTHONPATH=/workspace/app
 ENV HOME=/job/tmp/home
 ENV TMPDIR=/job/tmp
 
