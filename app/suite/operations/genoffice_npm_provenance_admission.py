@@ -302,10 +302,19 @@ def _rekor_entry(bundle: Mapping[str, Any], *, predicate_type: str) -> RekorEntr
         PUBLISH_PREDICATE_TYPE: (2256827554, 1785122374),
         SLSA_PREDICATE_TYPE: (2256827526, 1785122372),
     }[predicate_type]
+    raw_log_index = entry.get("logIndex")
+    raw_integrated_time = entry.get("integratedTime")
+    if (
+        isinstance(raw_log_index, bool)
+        or not isinstance(raw_log_index, (str, int))
+        or isinstance(raw_integrated_time, bool)
+        or not isinstance(raw_integrated_time, (str, int))
+    ):
+        raise GenOfficeNpmProvenanceAdmissionError("Sigstore log position is malformed")
     try:
-        log_index = int(entry.get("logIndex"))
-        integrated_time = int(entry.get("integratedTime"))
-    except (TypeError, ValueError) as exc:
+        log_index = int(raw_log_index)
+        integrated_time = int(raw_integrated_time)
+    except ValueError as exc:
         raise GenOfficeNpmProvenanceAdmissionError("Sigstore log position is malformed") from exc
     if (log_index, integrated_time) != expected or log_id != REKOR_LOG_ID:
         raise GenOfficeNpmProvenanceAdmissionError("Sigstore transparency log identity changed")
@@ -358,13 +367,21 @@ def _certificate_identity(bundle: Mapping[str, Any]) -> tuple[str, str, str, str
     certificate_hash = f"sha256:{hashlib.sha256(certificate_der).hexdigest()}"
     if certificate_hash != FULCIO_CERTIFICATE_SHA256:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate is not the reviewed certificate")
-    san = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
+    try:
+        san = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
+    except x509.ExtensionNotFound as exc:
+        raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate SAN is missing") from exc
     if not isinstance(san, x509.SubjectAlternativeName):
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate SAN is malformed")
     if san.get_values_for_type(x509.UniformResourceIdentifier) != [WORKFLOW_URI]:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate workflow identity changed")
     for oid, expected in _CERTIFICATE_EXTENSIONS.items():
-        extension = certificate.extensions.get_extension_for_oid(ObjectIdentifier(oid)).value
+        try:
+            extension = certificate.extensions.get_extension_for_oid(ObjectIdentifier(oid)).value
+        except x509.ExtensionNotFound as exc:
+            raise GenOfficeNpmProvenanceAdmissionError(
+                f"Fulcio certificate identity extension {oid} is missing"
+            ) from exc
         if not isinstance(extension, x509.UnrecognizedExtension) or _der_utf8(extension.value) != expected:
             raise GenOfficeNpmProvenanceAdmissionError(f"Fulcio certificate identity extension {oid} changed")
     organizations = certificate.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
