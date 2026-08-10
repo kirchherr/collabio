@@ -1496,6 +1496,12 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   tenant-/SourceObject-/Versions-/Content-Hash-gebundene metadata-only Evidence, frischer Clean-/EICAR-Smoke und
   Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; CDR,
   signierte Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
+- [x] Realen ClamAV-/`runsc`-Pfad samt Schemaevolution und Recovery auf `dev001` nachgewiesen: Clean/EICAR-Smoke
+  `sha256:e5d6c5b200ef04259c16622e9b2cc7ea1129721deaea2515571a0efeaf3d34c1`, aktueller nicht-leerer Proof
+  `sha256:77c6105833ff427fc0d28e846c41871b97508bb634150aa70f75f516e13be723`, frisches Backup
+  `sha256:aeacc5f9cc4c14898d395bbb8eca4a50779c6a4e776a3c5c5a601c298bcdb405` und Recovery
+  `sha256:5dbcaeafc177e0c5f658e31f0082291e04025f1d7e84b0114db1b5d722fb6faa` mit `3/3/3` Evidence-/Receipt-/Item-
+  Reconciliation. Historische Command-/Result-`v1`-Hashes bleiben lesbar; neue Evidenz wird eindeutig als `v2` erzeugt.
 - [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
   Malware-/CDR-Dienst, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance, erneut erfolgreichem
   nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin und realer Drei-Rollen-Signaturzeremonie
