@@ -266,9 +266,7 @@ def _recovery_report() -> DerivedPreviewRecoveryDrillReport:
     return draft.model_copy(update={"report_hash": build_derived_preview_recovery_drill_report_hash(draft)})
 
 
-def _execution_gate(
-    *, recovery_report: DerivedPreviewRecoveryDrillReport
-) -> PreviewConversionExecutionGateEvidence:
+def _execution_gate(*, recovery_report: DerivedPreviewRecoveryDrillReport) -> PreviewConversionExecutionGateEvidence:
     return build_preview_conversion_execution_gate(
         tenant_id="tenant-demo",
         worker_image_ref=IMAGE_REF,
