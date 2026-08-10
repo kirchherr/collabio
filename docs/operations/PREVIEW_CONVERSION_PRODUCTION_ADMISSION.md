@@ -52,10 +52,16 @@ Die Gate ist provider-neutral. Der erste produktive Adapter soll ClamAV/`clamd` 
 Signaturen muessen durch `freshclam` aktualisiert und ihre Frische nachgewiesen werden. Der Collabio-eigene
 ClamAV-`INSTREAM`-Adapter, interne Compose-Dienst und Clean-/EICAR-Smoke sind inzwischen als
 development-only Eingang implementiert. Sie erfuellen die produktive Evidence noch nicht, weil signierte
-Signaturdatenbank-Provenance, HA-/Failover-Nachweis und produktive Netzwerkpolicy weiterhin fehlen. Als CDR-Kandidat
-wird [Dangerzone](https://github.com/freedomofpress/dangerzone) evaluiert, weil es Dokumente ohne Netz in einer
-gVisor-Sandbox in Pixel und anschliessend in ein neues PDF umwandelt. Dangerzone ist AGPL-3.0; Architektur-, Lizenz-,
-Wartungs- und Performance-Review sind vor Einbindung zwingend. Bis dahin bleibt auch dieser Adapter gesperrt.
+Signaturdatenbank-Provenance, HA-/Failover-Nachweis und produktive Netzwerkpolicy weiterhin fehlen.
+
+Der Collabio-eigene Pixel-CDR-Pfad ist development-only real implementiert und auf `dev001` nachgewiesen. Ein erster
+`runsc`-Prozess rendert das nicht vertrauenswuerdige Dokument in exakt validierte rohe RGB-Seiten; ein zweiter
+`runsc`-Prozess rekonstruiert daraus das PDF, ohne Source-Volume, Netzwerk, Credentials oder Bilddatei-Parser. Manifest,
+Seitenreihenfolge, Dimensionen, Byte-Laengen und Hashes sind fail-closed gebunden. Die Architektur folgt dem bewaehrten
+[Dangerzone-Modell](https://dangerzone.rocks/about/), ohne Dangerzone selbst einzubetten. Damit bleiben verschachtelte
+Container-Runtimes und die AGPL-3.0-Integrationsfrage ausserhalb des Collabio-Runtime-Kerns. Fuer Produktion fehlen
+weiterhin unabhaengige Active-Content-Fixtures, CDR-HA-/Failover-Evidence, Engine-Provenance und die signierte
+Drei-Rollen-Zulassung. Details: `docs/operations/PREVIEW_CDR.md`.
 
 Ein kommerzieller CDR-Dienst kann denselben Vertrag implementieren. Anbieterwechsel veraendern weder Gate noch
 Worker-Protokoll, sondern nur Deployment-, Profil-, Test- und Versionsnachweise.

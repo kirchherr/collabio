@@ -1085,7 +1085,17 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         capability for capability in capabilities if capability["capability_id"] == "backup_failover"
     )
     assert "non_empty_derived_preview_recovery_verified_on_development_host" in backup_failover["guardrails"]
+    assert "transient_cdr_bundles_excluded_from_backup" in backup_failover["guardrails"]
     assert "app/suite/operations/derived_preview_recovery_drill.py" in backup_failover["evidence_refs"]
+    assert "docs/operations/PREVIEW_CDR.md" in backup_failover["evidence_refs"]
+    preview_renderer = next(
+        capability for capability in capabilities if capability["capability_id"] == "preview_renderer"
+    )
+    assert "cdr_rebuilder_has_no_source_mount" in preview_renderer["guardrails"]
+    assert "raw_rgb_cdr_bundle_is_hash_bound_and_transient" in preview_renderer["guardrails"]
+    assert "app/suite/platform/preview_cdr.py" in preview_renderer["evidence_refs"]
+    assert "tests/test_preview_cdr.py" in preview_renderer["evidence_refs"]
+    assert "docs/operations/PREVIEW_CDR.md" in preview_renderer["evidence_refs"]
     production_continuity = next(
         capability
         for capability in capabilities

@@ -244,8 +244,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     summary=(
                         "PostgreSQL und Object Storage sind auf unabhaengige Ziele restauriert und im "
                         "Backend-Completion-Gate gemeinsam abgenommen. Ein kontrollierter nicht-leerer runsc-Proof "
-                        "wurde ueber frisches Backup, isolierten Restore und Derived-Preview-Reconciliation "
-                        "geschlossen; produktiver Dispatch bleibt separat gesperrt."
+                        "mit getrennter Pixel-CDR-Grenze wurde ueber frisches Backup, isolierten Restore und "
+                        "Derived-Preview-Reconciliation geschlossen; RGB-Scratch bleibt ausgeschlossen und "
+                        "produktiver Dispatch separat gesperrt."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="operations_control",
@@ -259,6 +260,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_preview_conversion_non_empty_proof.py",
                         "tests/test_postgres_restore_drill.py",
                         "docs/operations/BACKUP_FAILOVER.md",
+                        "docs/operations/PREVIEW_CDR.md",
                     ),
                     guardrails=(
                         "continuity_domain_required",
@@ -266,6 +268,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "isolated_postgres_restore_required",
                         "backend_foundation_completion_gate_required",
                         "non_empty_derived_preview_recovery_verified_on_development_host",
+                        "transient_cdr_bundles_excluded_from_backup",
                         "future_modules_must_extend_policy",
                     ),
                 ),
@@ -705,9 +708,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     summary=(
                         "Preview-Evidence und Decisions bleiben metadata-only; ein evidence-gebundener, "
                         "ACL-gepruefter Klartext-Release ist guarded produktiv. Der Conversion-Worker besitzt eine "
-                        "kryptografisch signierte Production-Admission-Grenze; reale Production-Evidence, Rich "
-                        "Content und Mail bleiben blockiert. Der reale ClamAV-Pfad ist intern angebunden; CDR und "
-                        "die signierte produktive Evidence-Zeremonie fehlen noch."
+                        "kryptografisch signierte Production-Admission-Grenze. ClamAV und die getrennte raw-RGB "
+                        "Pixel-CDR-Grenze sind real im runsc-Entwicklungsproof samt Recovery nachgewiesen; Rich "
+                        "Content, Mail, produktive CDR-/Malware-HA-Evidence und die signierte Evidence-Zeremonie "
+                        "bleiben blockiert."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="content_boundary",
@@ -722,6 +726,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/preview_malware_scanner.py",
                         "tests/test_preview_malware_scanner.py",
                         "docs/operations/PREVIEW_MALWARE_SCANNER.md",
+                        "app/suite/platform/preview_cdr.py",
+                        "tests/test_preview_cdr.py",
+                        "docs/operations/PREVIEW_CDR.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/preview-renderer-runs",
@@ -738,6 +745,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "production_dispatch_requires_three_role_dsse_attestation",
                         "real_malware_and_cdr_service_evidence_required",
                         "clamav_scan_errors_and_stale_smoke_reports_quarantine",
+                        "cdr_rebuilder_has_no_source_mount",
+                        "raw_rgb_cdr_bundle_is_hash_bound_and_transient",
                         "worker_digest_sbom_and_provenance_verification_required",
                         "non_empty_recovery_and_separate_pdfjs_origin_required",
                         "preview_serving_remains_a_separate_gate",

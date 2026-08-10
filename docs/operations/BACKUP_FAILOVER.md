@@ -654,6 +654,11 @@ and restore are mandatory whenever preview conversion state exists. The generate
 scratch data: it is a normal versioned SourceObject in object storage and inherits classification, ACL version, KMS
 reference, retention policy, Legal Hold, lifecycle, and parent-source binding.
 
+Raw RGB CDR pages, their transient manifest, intermediate PDFs, and process workspaces are never backup or replication
+inputs. They must be empty after success or failure. Durable `source_object_preview_conversion_result.v3` evidence
+retains only the CDR profile, manifest hash, page count and fail-closed boundary flags. Recovery verifies those bindings
+through conversion-job evidence and lineage; it never restores or reuses a prior CDR bundle.
+
 After recovery, keep production conversion and preview serving closed until all of the following are true: execution
 gate hashes validate; source and derived SourceObject versions are readable under the same tenant; storage-manifest and
 content hashes match; lineage receipt hashes bind the exact command, preflight, worker result, image digest, and source
@@ -694,6 +699,7 @@ stager separately. Build the exact proof image, bind its local immutable image I
 docker compose --profile preview-proof build \
   preview-conversion-proof-runtime-preflight \
   preview-conversion-proof-stager \
+  preview-conversion-proof-cdr-renderer \
   preview-conversion-proof-worker \
   preview-conversion-proof-importer \
   preview-conversion-proof-cleanup
@@ -703,7 +709,8 @@ docker compose --profile preview-proof run --rm preview-conversion-proof-importe
 ```
 
 The runtime preflight executes before the trusted stager and has no database, object-store, or network access. The
-worker has the same credential-less/no-egress boundary. On any interrupted run, clear both transient volumes:
+CDR renderer and rebuilder have the same credential-less/no-egress boundary, while only the renderer has a source
+mount. On any interrupted run, clear the input, control, CDR and output volumes:
 
 ```bash
 docker compose --profile preview-proof run --rm preview-conversion-proof-cleanup
@@ -725,7 +732,13 @@ Retain and hash-verify `backups/preview-conversion-non-empty-stage.json`,
 `backups/derived-preview-recovery-drill.json`. The final recovery report must have
 `non_empty_recovery_verified=true`, positive receipt/job/reconciliation counts, `recovery_ready=true`, and
 `production_admission_evidence_ready=false`. Dispatch and serving must remain false. This proves development recovery;
-it does not replace malware/CDR, signed image provenance/SBOM, viewer-origin CSP, or production continuity evidence.
+it does not replace production malware/CDR HA and failover evidence, signed image provenance/SBOM, viewer-origin CSP,
+or production continuity evidence.
+
+The separated CDR proof on 2026-08-10 produced manifest
+`sha256:5e70931345ebc3b7d003f568bbd351e2986d7f8036f8659404159df44a2ba7dd`, proof report
+`sha256:e4df54a791145737fb4ea3fc72ab8f6948aed03faa6a5a0ce2a461094a44fe71`, and recovery report
+`sha256:e4d725bf14596cb49884ad97abe03bdd46df4bd0609bc3a1653a8059a4e5cfae` with `4/4/4` reconciliation.
 
 Migrations `0055` and `0056` add append-only, tenant-scoped receipt storage plus the non-empty released-representation
 invariant for `collabio.source_object_preview_content_release_receipts`. This supports the guarded plain-text preview

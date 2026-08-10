@@ -2,18 +2,23 @@
 
 Status: implemented conversion engine and fail-closed lifecycle; production dispatch remains disabled until deployment
 evidence is admitted.
-A real Collabio-owned ClamAV adapter now feeds the development proof; CDR and signed production evidence remain open.
+A real Collabio-owned ClamAV adapter and a separated raw-RGB pixel CDR path now feed the development proof; signed
+production deployment evidence remains open.
 
 ## Security Architecture
 
-Preview conversion is split into three trust zones:
+Preview conversion is split into four trust zones:
 
 1. The trusted control plane resolves authoritative metadata through `get_metadata()`, performs ACL checks, verifies the
    renderer release gate, and binds a source-specific malware/CDR preflight to an immutable command.
-2. A credential-less one-shot worker receives only `request.json` and one source file. It has no database or object-store
+2. A credential-less CDR renderer receives only `request.json` and one source file. It has no database or object-store
    configuration, no network, a read-only root filesystem, dropped capabilities, `no-new-privileges`, resource limits,
-   and an ephemeral LibreOffice profile.
-3. The trusted importer reads the candidate PDF and worker result, revalidates the content hash, PDF framing, size,
+   and an ephemeral LibreOffice profile. It validates the intermediate PDF and emits only exact raw RGB pages plus a
+   hash-bound metadata manifest.
+3. A separate credential-less CDR rebuilder receives the request and read-only RGB bundle but has no source-volume
+   mount. It validates the complete directory inventory, dimensions, lengths and hashes, reconstructs a new PDF from
+   raw pixels without invoking an image parser, and reruns QPDF, PDFInfo and active-content checks.
+4. The trusted importer reads the candidate PDF and worker result, revalidates the content hash, PDF framing, size,
    page count, and raw active-content indicators, then verifies the hash-bound QPDF object-inspection result, gate,
    preflight, image digest, font baseline, and exact source version before it writes a derived SourceObject and
    append-only lineage receipt.
@@ -31,8 +36,9 @@ tags, stale evidence, missing controls, tenant drift, ACL drift, source-version 
   tenant, SourceObject, version, manifest hash, and content hash.
 - `source_object_preview_conversion_command.v2` adds the optional Production-Admission-Gate binding to the metadata-
   and hash-only command. Historical `v1` records remain verifiable only in their exact pre-admission field shape.
-- `source_object_preview_conversion_result.v2` carries the same optional binding through the worker result. Historical
-  `v1` records remain readable without weakening current `v2` hash validation.
+- `source_object_preview_conversion_result.v3` additionally binds the CDR profile, manifest hash, page count, pixel
+  reconstruction, fail-closed checks, separated trust boundary and absent source access in the rebuilder. Historical
+  `v1` and `v2` records remain readable only through their exact legacy hash shapes.
 - `source_object_preview_conversion_job_evidence.v1` binds the versioned command and result plus lineage hashes in an
   append-only PostgreSQL/RLS ledger without source or output bytes.
 Commands retain fixed basenames and contain no source bytes, reason text, credentials, or arbitrary command arguments.
@@ -68,18 +74,20 @@ rejected even when the original PDF encoded a name to evade raw byte matching. T
 workspace, has a hard size limit, is never logged, and is removed with the job. A raw-token scan remains as a second
 layer.
 
-`docker compose --profile preview-execution run --rm preview-conversion-worker` is the production-shaped one-shot
-contract. It defaults to `runsc`, reads a staged request and source from the read-only input volume, writes only to the
-output volume, and refuses unpinned or mismatched runtime evidence. A trusted stager and importer own those volumes;
-the worker owns no durable queue, database connection, storage SDK, or Docker socket.
+`preview-conversion-cdr-renderer` and `preview-conversion-worker` form the production-shaped one-shot contract. Both
+default to `runsc` and refuse unpinned or mismatched runtime evidence. Only the renderer can read the source; only the
+rebuilder can write the candidate output; the intermediate CDR volume crosses the boundary read-only into the
+rebuilder. A trusted stager and importer own the durable transition. Neither isolated process owns a durable queue,
+database connection, storage SDK, credential, network route, or Docker socket.
 
 The `preview-proof` profile is the controlled non-empty development proof. Its first service runs the real conversion
 engine inside the configured `runsc` runtime, without network or credentials, and writes a metadata-only hash-bound
 self-test report. The trusted stager cannot start before that service succeeds. Only then does it atomically persist a
 synthetic source receipt, SourceObject, and execution gate for the dedicated `tenant-preview-proof` tenant and stage
-the source into a transient volume. A second credential-less, offline `runsc` worker creates the PDF. The trusted
-importer independently revalidates and atomically persists the derived SourceObject, write receipt, lineage receipt,
-and conversion-job evidence before both transient volumes are cleared.
+the source into a transient volume. A credential-less offline `runsc` renderer creates the raw RGB CDR bundle; a
+second offline `runsc` rebuilder without a source mount creates the PDF. The trusted importer independently revalidates
+and atomically persists the derived SourceObject, write receipt, lineage receipt, and conversion-job evidence before
+the input, control, CDR and output workspaces are cleared.
 
 A missing or unregistered `runsc` runtime therefore fails before PostgreSQL or object-storage writes. Runtime evidence
 cannot be supplied through a free-form environment hash. The proof reports contain hashes and counts only, remain
@@ -100,19 +108,24 @@ The PDF uses the existing SourceObject and S3-compatible backup/restore path. Re
 `docker compose --profile restore-drill run --rm derived-preview-recovery-drill` reconciles the restored PostgreSQL
 records with the restored exact object versions. It verifies source and derived manifests, PDF bytes, write receipts,
 execution gates, command/preflight/result hashes, timestamps, inherited ACL/classification/KMS/retention/Legal-Hold
-controls, and one-to-one receipt bindings. Its report is metadata-only and never enables dispatch or content serving.
+controls, and one-to-one receipt bindings. Raw RGB pages, intermediate PDFs and CDR manifests are transient and are
+never backup inputs. Durable `v3` job evidence retains only the CDR profile and manifest hash, allowing recovery to
+revalidate lineage without restoring or trusting scratch data. Its report is metadata-only and never enables dispatch
+or content serving.
 
 ## Remaining Production Admission
 
 The first real external input is implemented: `preview-malware-scanner` uses the official digest-pinned ClamAV 1.5
 image, an internal-only Compose network, bounded `INSTREAM`, metadata-only evidence, and a fresh Clean/EICAR smoke.
 The controlled proof stager scans the exact source bytes and binds both scan and smoke hashes before writing the
-conversion command. This proves the adapter and fail-closed disposition, but it does not claim CDR, signed signature
-database provenance, production HA, or production network-policy evidence. Operational details are in
-`docs/operations/PREVIEW_MALWARE_SCANNER.md`.
+conversion command. The separated pixel CDR path is also implemented and proven under `runsc`: the renderer emits
+only hash-bound raw RGB and the rebuilder has no source mount. These development proofs do not claim signed signature
+database provenance, production CDR/malware HA, or production network-policy evidence. Operational details are in
+`docs/operations/PREVIEW_MALWARE_SCANNER.md` and `docs/operations/PREVIEW_CDR.md`.
 
 The code and real conversion engine are present, but productive dispatch remains intentionally closed until dev001 or
 the later orchestrator supplies independently verifiable runsc/Kata/Firecracker evidence, a current malware signature
-set and CDR service, a published worker image digest with provenance/SBOM, a successful non-empty derived-preview
-recovery report, and the separate-origin PDF.js viewer CSP evidence. These are deployment facts and must not be
+set, independently verified CDR/malware deployment and failover evidence, a published worker image digest with
+provenance/SBOM, a successful non-empty derived-preview recovery report, and the separate-origin PDF.js viewer CSP
+evidence. These are deployment facts and must not be
 simulated by application flags.

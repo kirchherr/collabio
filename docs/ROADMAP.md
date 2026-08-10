@@ -1494,18 +1494,32 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 - [x] Collabio-eigenen realen ClamAV-Scanpfad als ersten externen Production-Admission-Eingang operationalisiert:
   digest-gepinnter unprivilegierter Dienst ohne Host-Port im internen Compose-Netz, begrenztes `INSTREAM`-Protokoll,
   tenant-/SourceObject-/Versions-/Content-Hash-gebundene metadata-only Evidence, frischer Clean-/EICAR-Smoke und
-  Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; CDR,
-  signierte Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
+  Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; signierte
+  Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
 - [x] Realen ClamAV-/`runsc`-Pfad samt Schemaevolution und Recovery auf `dev001` nachgewiesen: Clean/EICAR-Smoke
   `sha256:e5d6c5b200ef04259c16622e9b2cc7ea1129721deaea2515571a0efeaf3d34c1`, aktueller nicht-leerer Proof
   `sha256:77c6105833ff427fc0d28e846c41871b97508bb634150aa70f75f516e13be723`, frisches Backup
   `sha256:aeacc5f9cc4c14898d395bbb8eca4a50779c6a4e776a3c5c5a601c298bcdb405` und Recovery
   `sha256:5dbcaeafc177e0c5f658e31f0082291e04025f1d7e84b0114db1b5d722fb6faa` mit `3/3/3` Evidence-/Receipt-/Item-
-  Reconciliation. Historische Command-/Result-`v1`-Hashes bleiben lesbar; neue Evidenz wird eindeutig als `v2` erzeugt.
-- [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
-  Malware-/CDR-Dienst, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance, erneut erfolgreichem
-  nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin und realer Drei-Rollen-Signaturzeremonie
-  ausfuehren. Keine dieser externen Production-Evidenzen wird im Repository simuliert; bis zu ihrem Vorliegen bleibt
+  Reconciliation. Historische Command-/Result-`v1`- und `v2`-Hashes bleiben lesbar; aktuelle Evidence verwendet den
+  separaten CDR-Vertrag in Result `v3`.
+- [x] Fail-closed Pixel-CDR als getrennte Vertrauensgrenze implementiert: ein credential-loser/no-egress
+  `runsc`-Renderer verarbeitet die Source und emittiert ausschliesslich exakt validierte rohe RGB-Seiten samt
+  hashgebundenem Manifest; ein zweiter `runsc`-Rebuilder ohne Source-Mount rekonstruiert das PDF und durchlaeuft QPDF,
+  PDFInfo sowie aktive Objektpruefungen erneut. Fehlende, zusaetzliche, manipulierte oder ungebundene CDR-Dateien
+  blockieren den Job. Pillow 12.3.0 ist in einem eigenen universellen SHA-256-Lock isoliert und wird in CI/Release auf
+  Drift geprueft.
+- [x] Getrennten CDR-Pfad auf `dev001` samt Backup und Failover nachgewiesen: Image
+  `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`, CDR-Manifest
+  `sha256:5e70931345ebc3b7d003f568bbd351e2986d7f8036f8659404159df44a2ba7dd`, Proof
+  `sha256:e4df54a791145737fb4ea3fc72ab8f6948aed03faa6a5a0ce2a461094a44fe71` und Recovery
+  `sha256:e4d725bf14596cb49884ad97abe03bdd46df4bd0609bc3a1653a8059a4e5cfae` mit `4/4/4`-Reconciliation. RGB-,
+  Control-, Input- und Output-Scratch waren anschliessend leer; Production-Admission, Dispatch und Serving blieben aus.
+- [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, produktiver
+  Malware-/CDR-HA- und Failover-Evidence, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance,
+  erneut erfolgreichem nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin, unabhaengigen boesartigen
+  Active-Content-Fixtures und realer Drei-Rollen-Signaturzeremonie ausfuehren. Keine dieser externen
+  Production-Evidenzen wird im Repository simuliert; bis zu ihrem Vorliegen bleibt
   die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
 
 ## Release-Strategie

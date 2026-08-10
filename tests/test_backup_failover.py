@@ -127,6 +127,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "productivity_pilot_closure_report.v1",
         "preview_conversion_execution_gate_hash_check",
         "preview_conversion_job_evidence_hash_check",
+        "preview_cdr_manifest_hash_check",
         "derived_preview_lineage_receipt_hash_check",
         "derived_preview_source_object_recovery_check",
         "derived_preview_recovery_drill_report_hash_check",
@@ -146,15 +147,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "preview_renderer_recovery_drill_report_hash_check" in postgres.integrity_checks
     assert "preview_renderer_release_gate_evidence_hash_check" in postgres.integrity_checks
     assert "preview_conversion_job_evidence_hash_check" in postgres.integrity_checks
+    assert "preview_cdr_manifest_hash_check" in postgres.integrity_checks
     assert "derived_preview_recovery_drill_report_hash_check" in postgres.integrity_checks
     assert "preview_conversion_execution_gate_hash_check" in postgres.restore_verification_gates
     assert "preview_conversion_job_evidence_hash_check" in postgres.restore_verification_gates
+    assert "preview_cdr_manifest_hash_check" in postgres.restore_verification_gates
     assert "derived_preview_lineage_receipt_hash_check" in postgres.restore_verification_gates
     assert "derived_preview_source_object_recovery_check" in postgres.restore_verification_gates
     assert "derived_preview_recovery_drill_report_hash_check" in postgres.restore_verification_gates
     postgres_metadata = policy.domain("postgres_metadata")
     assert "source object preview conversion execution gate evidence" in postgres_metadata.state_artifacts
     assert "source object preview conversion job evidence" in postgres_metadata.state_artifacts
+    assert "preview CDR profile and manifest hashes" in postgres_metadata.state_artifacts
     assert "source object derived preview lineage receipts" in postgres_metadata.state_artifacts
     assert "source object derived preview recovery drill reports" in postgres_metadata.state_artifacts
     object_storage_domain = policy.domain("object_storage_records")
@@ -163,6 +167,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     parser_artifacts = policy.domain("parser_worker_artifacts").state_artifacts
     assert "preview malware scan evidence hashes" in parser_artifacts
     assert "preview malware scanner smoke report hashes" in parser_artifacts
+    assert "preview CDR profile and manifest hashes" in parser_artifacts
     assert "legacy_sql_evidence_ledger_hash_check" in postgres.integrity_checks
     assert "legacy_sql_evidence_ledger_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_staging_metadata_profile_hash_check" in postgres.integrity_checks
@@ -366,6 +371,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose --profile restore-drill run --rm derived-preview-recovery-drill" in runbook
     assert "derived-preview lineage receipt" in runbook
     assert "source_object_derived_preview_recovery_drill_report.v1" in runbook
+    assert "Raw RGB CDR pages" in runbook
+    assert "preview-conversion-proof-cdr-renderer" in runbook
 
 
 def test_backup_failover_policy_covers_future_suite_domains() -> None:
