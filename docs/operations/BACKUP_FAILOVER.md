@@ -83,6 +83,32 @@ The Time Tracking runtime is part of that release gate from its first productive
 
 When a future feature introduces a new stateful subsystem, one of these domains must be updated or a new domain must be added in the same change.
 
+### Office edit future-state contract
+
+The `office_edit_adapter.v1` GenOffice evaluation is metadata-only. It adds no editor database, draft store, session
+store, source import, candidate object, or worker artifact. Its only durable output is an event in the existing
+append-only audit domain. Therefore this evaluation does not claim an editor backup or failover proof.
+
+The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
+`office_documents` domain already reserves these future durable artifacts:
+
+- draft journals and explicit draft checkpoints;
+- immutable source versions and saved candidate versions;
+- collaboration manifests without reusable session credentials;
+- append-only edit receipts bound to tenant, source version, candidate version, ACL version, policy hash, engine source
+  commit, worker image digest, and content hashes;
+- signed-original preservation and derived-version signature state;
+- Office edit policy/engine manifests and non-empty recovery drill reports.
+
+Worker scratch, decrypted copies, browser session tokens, WOPI access tokens, and transient locks are prohibited backup
+artifacts. After failover, editing remains closed until SourceObject metadata and exact content versions reconcile,
+retention/Legal Hold/KMS bindings pass, draft-to-candidate lineage and receipts verify, stale sessions are abandoned,
+and a fresh Office edit admission gate succeeds. Recovered drafts never become saved versions, business records, or WORM
+records implicitly.
+
+A future WOPI adapter must additionally define lock expiry, callback replay, unsaved-change recovery, proof-key
+rotation, and split-brain behavior. These controls remain separate from Quick Edit and canonical PDF preview.
+
 ## Current Dev Commands
 
 Create a PostgreSQL logical backup:

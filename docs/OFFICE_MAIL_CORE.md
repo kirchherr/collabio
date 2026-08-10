@@ -81,6 +81,42 @@ This does not open RFC mail bodies, attachments, HTML, PDF, DOCX, ODT, spreadshe
 content, external resources, or mail sending. Those surfaces retain their dedicated hardened worker and action gates.
 See `docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md`.
 
+## Office Editing Boundaries
+
+Office editing follows a hybrid architecture rather than one embedded vendor suite:
+
+- **Quick Edit** is a Collabio-native surface for constrained DOCX and Markdown changes. A future save creates a
+  candidate SourceObject version; it never mutates the authoritative version in place.
+- **Full Collaboration** is a separate provider-neutral WOPI adapter, with Collabora Online preferred for the first
+  evaluation and ONLYOFFICE retained as an alternative.
+- **Preview** remains the independent canonical PDF/LibreOffice/PDF.js boundary from ADR-0060.
+- **Office AI** remains draft-only behind the Local LLM Gateway and may not commit or perform external actions without
+  explicit human confirmation.
+
+ADR-0061 introduces `office_edit_adapter.v1` and a selective GenOffice evaluation. The complete GenOffice application
+is not forked or embedded. The evaluation pins commit `fd33934dab1fdf8666af3f88b9794e7b4e19474a`, treats only
+`packages/docx-engine/**` as a future import candidate, keeps spreadsheet and presentation engines reference-only, and
+prohibits `ee/**`, shell, cloud-AI provider, and AI-search source scopes.
+
+The current API is metadata-only. It performs authoritative tenant and ACL lookup and binds its plan to the policy,
+adapter descriptor, source manifest, content hash, ACL version, and exact upstream commit. It does not read source
+bytes, import upstream code, invoke an engine, start an editor or WOPI session, access a network, or write a draft or
+candidate version.
+
+Before Quick Edit may process content, a separate admission change must prove:
+
+- legal, license, notice, trademark, dependency, SBOM, vulnerability, and provenance review;
+- malicious OOXML, macro, OLE, external relationship, ZIP expansion, and resource-exhaustion resistance;
+- Word/LibreOffice/GenOffice/Collabio fidelity corpora plus explicit safe-export and high-fidelity modes;
+- immutable preservation of signed originals and explicit signature-invalidated state on derived edits;
+- no-egress stronger isolation, source-blind candidate revalidation, canonical PDF preview, fresh ACL checks, human
+  confirmation, and an append-only edit receipt;
+- restore and failover drills for durable draft journals, candidate versions, collaboration manifests, receipts, and
+  policy/engine hashes. Transient plaintext worker files and session tokens are never backup artifacts.
+
+This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
+storage, authorization, compliance, recovery, or AI control plane.
+
 ## Indexing Flow
 
 ```text

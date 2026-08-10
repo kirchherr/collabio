@@ -431,6 +431,13 @@ from suite.platform.modules import (
     build_default_module_registry,
     tenant_module_admin_view,
 )
+from suite.platform.office_edit_adapter import (
+    OfficeEditAdapterEvaluationBlocked,
+    OfficeEditAdapterEvaluationRequest,
+    OfficeEditAdapterEvaluationResponse,
+    build_default_office_edit_adapter_registry,
+    build_office_edit_adapter_evaluation,
+)
 from suite.platform.product_cockpit import (
     ProductCockpitMvpPilotApprovalReadinessResponse,
     ProductCockpitMvpPilotApprovalWorkflowBoundaryResponse,
@@ -1479,6 +1486,7 @@ def build_app() -> FastAPI:
     )
     workspace_source_object_repository = build_default_workspace_source_object_repository()
     workspace_source_object_catalog = build_default_workspace_source_object_catalog()
+    office_edit_adapter_registry = build_default_office_edit_adapter_registry()
     source_object_preview_adapter_registry = build_default_source_object_preview_adapter_registry()
     source_object_preview_decision_ledger = build_default_source_object_preview_decision_ledger(data_dir)
     preview_conversion_execution_gate_store = build_default_preview_conversion_execution_gate_store()
@@ -20344,6 +20352,39 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     @app.post(
+        "/v1/source-objects/{source_object_id}/versions/{source_version_id}/office-edit-adapter-evaluations",
+        response_model=OfficeEditAdapterEvaluationResponse,
+    )
+    def office_edit_adapter_evaluation(
+        source_object_id: str,
+        source_version_id: str,
+        evaluation_request: OfficeEditAdapterEvaluationRequest,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+    ) -> OfficeEditAdapterEvaluationResponse:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        try:
+            return build_office_edit_adapter_evaluation(
+                user_context=context.user_context,
+                workspace_source_repository=workspace_sources,
+                module_registry=module_registry,
+                knowledge_base_article_service=knowledge_base_articles,
+                audit_logger=audit_logger,
+                adapter_registry=request.app.state.office_edit_adapter_registry,
+                source_object_id=source_object_id,
+                source_version_id=source_version_id,
+                request=evaluation_request,
+            )
+        except OfficeEditAdapterEvaluationBlocked as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except SourceObjectDetailAccessDenied as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except SourceObjectDetailNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post(
         "/v1/source-objects/{source_object_id}/versions/{source_version_id}/preview-adapter-dry-runs",
         response_model=SourceObjectPreviewAdapterDryRunResponse,
     )
@@ -22470,6 +22511,7 @@ def build_app() -> FastAPI:
     app.state.knowledge_base_runtime_reconciliation_worker = knowledge_base_runtime_reconciliation_worker
     app.state.legacy_sql_import_write_approval_gate_store = legacy_sql_import_write_approval_gate_store
     app.state.legacy_sql_import_write_approval_record_store = legacy_sql_import_write_approval_record_store
+    app.state.office_edit_adapter_registry = office_edit_adapter_registry
     app.state.source_object_preview_adapter_registry = source_object_preview_adapter_registry
     app.state.tickets_incidents_dry_run_execution_approval_record_store = (
         tickets_incidents_dry_run_execution_approval_record_store

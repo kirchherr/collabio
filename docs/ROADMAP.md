@@ -1509,6 +1509,28 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   PDFInfo sowie aktive Objektpruefungen erneut. Fehlende, zusaetzliche, manipulierte oder ungebundene CDR-Dateien
   blockieren den Job. Pillow 12.3.0 ist in einem eigenen universellen SHA-256-Lock isoliert und wird in CI/Release auf
   Drift geprueft.
+- [x] Office-Edit-Architektur als dritten, von Preview und WOPI getrennten Port festgelegt: `OfficeEditAdapter.v1`,
+  Collabio-native Quick-Edit-Kandidatenversion, separater WOPI-Pfad fuer Vollkollaboration und Local-LLM-Gateway fuer
+  ausschliesslich bestaetigungspflichtige AI-Drafts. Ein metadata-only API-Gate bindet Tenant, ACL, SourceObject-Version,
+  Policy-Hash, Adapter-Hash und Upstream-Commit, ohne Content, Import, Engine, Session, Netzwerk oder Write zu oeffnen.
+- [x] GenOffice selektiv und fail-closed in die Roadmap aufgenommen: kein Fork; exakter Upstream-Commit
+  `fd33934dab1fdf8666af3f88b9794e7b4e19474a`; ausschliesslich `packages/docx-engine/**` als spaeterer Importkandidat;
+  Tabellen-/Praesentationsengines nur als Referenz; `ee/**`, Shell und Cloud-AI-Quellpfade verboten. Die
+  maschinenlesbare Evaluation-Policy blockiert Import und Produktion bis alle Gates erfuellt sind.
+- [ ] GenOffice-Source-Admission abschliessen: Legal/NOTICE/Trademark, transitive Lizenzen, universeller Lock, SBOM,
+  Vulnerability Review, reproduzierbarer Build/Provenance und exaktes Source-Scope-Manifest. Erst danach darf ein
+  gepruefter Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
+- [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
+  Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
+  oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
+  Tenant-Versionen.
+- [ ] Produktiven Quick-Edit-Save erst nach atomarem Kandidatenversions-Write, frischer ACL-/Tenant-Pruefung,
+  expliziter Nutzerbestaetigung, append-only Edit-Receipt sowie nicht-leerem Backup-/Restore-/Failover-Drill oeffnen.
+  Draft-Journal, Kandidatenversion, Engine-/Policy-Hashes und Receipt muessen wiederherstellbar sein; Scratch und Tokens
+  duerfen nicht im Backup landen.
+- [ ] WOPI-Vollkollaboration als eigenen Architektur- und Releasepfad evaluieren. Collabora Online ist der bevorzugte
+  erste Kandidat, ONLYOFFICE die Alternative; Proof Keys, Locks, Token-Laufzeit, Callback-Validierung, Save-As,
+  Co-Authoring-Recovery und Write-Receipts werden nicht in Quick Edit oder Preview versteckt.
 - [x] Getrennten CDR-Pfad auf `dev001` samt Backup und Failover nachgewiesen: Image
   `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`, CDR-Manifest
   `sha256:5e70931345ebc3b7d003f568bbd351e2986d7f8036f8659404159df44a2ba7dd`, Proof

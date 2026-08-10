@@ -34,6 +34,7 @@ RUN addgroup -S -g 10001 collabio \
     && chown 10001:10001 /workspace/data
 
 COPY --chown=10001:10001 app ./app
+COPY --chown=10001:10001 docs/operations/genoffice_evaluation_policy.json ./docs/operations/genoffice_evaluation_policy.json
 COPY --chown=10001:10001 docs/operations/productivity_pilot_policy.json ./docs/operations/productivity_pilot_policy.json
 
 ENV PYTHONPATH=/workspace/app

@@ -118,7 +118,7 @@ def test_dependency_lock_regeneration_is_atomic_and_host_portable() -> None:
     assert script.count("mktemp") == 3
     assert script.count("test -s") == 3
     assert script.count("mv -f --") == 3
-    assert 'compose_project=${COMPOSE_PROJECT_NAME:-collabio}' in script
+    assert "compose_project=${COMPOSE_PROJECT_NAME:-collabio}" in script
     assert '> "$runtime_tmp"' in script
     assert '> "$dev_tmp"' in script
     assert '> "$preview_tmp"' in script
