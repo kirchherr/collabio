@@ -624,7 +624,8 @@ exists.
 The ClamAV signature volume is a rebuildable security derivative, not an authoritative business backup. Restoring an
 old signature database and trusting it would create a stale-security failure. After service loss, host failover, image
 change, or signature-volume recreation, keep preview staging and conversion dispatch blocked while the pinned ClamAV
-image starts, `freshclam` refreshes the database, and the real Clean/EICAR smoke succeeds again.
+signature updater refreshes the database on its isolated egress-only network, the no-egress scanner restarts, and the
+real Clean/EICAR smoke succeeds again.
 
 ```bash
 docker compose -p collabio --profile preview-malware pull preview-malware-scanner

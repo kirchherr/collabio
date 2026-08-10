@@ -1563,9 +1563,31 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-malware-signature-updater:
+    profiles: ["preview-malware", "preview-proof"]
+    image: ${SUITE_CLAMAV_IMAGE:-clamav/clamav:1.5@sha256:78810772a92b4a9168115bc6b2e0ffd702640893b9577f8c3d0432762d2655c4}
+    user: "clamav"
+    entrypoint: ["freshclam"]
+    command: ["--verbose"]
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /var/log/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+    volumes:
+      - clamav_database:/var/lib/clamav
+    networks:
+      - preview_malware_updates
+
   preview-malware-scanner:
     profiles: ["preview-malware", "preview-proof"]
     image: ${SUITE_CLAMAV_IMAGE:-clamav/clamav:1.5@sha256:78810772a92b4a9168115bc6b2e0ffd702640893b9577f8c3d0432762d2655c4}
+    depends_on:
+      preview-malware-signature-updater:
+        condition: service_completed_successfully
     user: "clamav"
     entrypoint: ["/init-unprivileged"]
     read_only: true
@@ -1579,7 +1601,7 @@ services:
       - /var/log/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
     environment:
       CLAMD_STARTUP_TIMEOUT: "300"
-      FRESHCLAM_CHECKS: "24"
+      CLAMAV_NO_FRESHCLAMD: "true"
     volumes:
       - clamav_database:/var/lib/clamav
     networks:
@@ -2107,6 +2129,8 @@ services:
 networks:
   preview_malware:
     internal: true
+  preview_malware_updates:
+    internal: false
 
 volumes:
   postgres18_data:

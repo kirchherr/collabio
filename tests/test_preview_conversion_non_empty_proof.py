@@ -275,6 +275,7 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
         "preview-conversion-proof-runtime-preflight",
         "preview-conversion-proof-stager",
     )
+    updater = _service(compose, "preview-malware-signature-updater", "preview-malware-scanner")
     scanner = _service(compose, "preview-malware-scanner", "preview-malware-scanner-smoke")
     scanner_smoke = _service(compose, "preview-malware-scanner-smoke", "preview-conversion-proof-runtime-preflight")
     stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-worker")
@@ -282,6 +283,14 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     importer = _service(compose, "preview-conversion-proof-importer", "preview-conversion-proof-cleanup")
     cleanup = _service(compose, "preview-conversion-proof-cleanup", "preview-conversion-engine-smoke")
 
+    assert 'entrypoint: ["freshclam"]' in updater
+    assert "preview_malware_updates" in updater
+    assert "preview_malware" not in updater
+    assert "SUITE_DATABASE_DSN:" not in updater
+    assert "SUITE_S3_SECRET_ACCESS_KEY:" not in updater
+    assert "preview-malware-signature-updater:" in scanner
+    assert "condition: service_completed_successfully" in scanner
+    assert 'CLAMAV_NO_FRESHCLAMD: "true"' in scanner
     assert "clamav/clamav:1.5@sha256:" in scanner
     assert 'user: "clamav"' in scanner
     assert 'entrypoint: ["/init-unprivileged"]' in scanner
