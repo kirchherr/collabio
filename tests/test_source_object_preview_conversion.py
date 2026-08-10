@@ -38,8 +38,8 @@ from suite.platform.source_object_preview_conversion import (
     build_preview_conversion_result_hash,
     build_preview_conversion_source_preflight,
     preview_conversion_command_hash_matches,
-    preview_conversion_result_hash_matches,
     preview_conversion_job_evidence_hash_matches,
+    preview_conversion_result_hash_matches,
     require_preview_conversion_execution_gate,
     require_preview_conversion_worker_envelope,
 )

@@ -9,10 +9,11 @@ import subprocess
 import sys
 import tempfile
 from datetime import UTC, datetime
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.platform.preview_cdr import (
     PREVIEW_CDR_PROFILE_REF,
     PreviewCdrBundleManifest,
@@ -20,8 +21,6 @@ from suite.platform.preview_cdr import (
     build_preview_cdr_manifest_hash,
     require_preview_cdr_bundle,
 )
-
-from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.platform.source_object_preview_conversion import (
     ZERO_HASH,
     PreviewConversionBlocked,
@@ -292,7 +291,10 @@ def rebuild_preview_from_cdr_bundle(
         worker_image_ref=command.worker_image_ref,
         sandbox_runtime_class=sandbox_runtime_class,
         converter_engine="libreoffice+pdftoppm+pillow",
-        converter_version=f"{manifest.document_converter_version} / {manifest.rasterizer_version} / Pillow {pillow_version}",
+        converter_version=(
+            f"{manifest.document_converter_version} / "
+            f"{manifest.rasterizer_version} / Pillow {pillow_version}"
+        ),
         pdf_validator_version=qpdf_version,
         font_baseline_hash=manifest.font_baseline_hash,
         cdr_profile_ref=PREVIEW_CDR_PROFILE_REF,
@@ -578,7 +580,6 @@ def _build_engine_self_test_command(*, source_bytes: bytes) -> PreviewConversion
     return draft.model_copy(update={"command_hash": build_preview_conversion_command_hash(draft)})
 
 
-def _run_libreoffice(
 def _render_intermediate_pdf(
     *,
     command: PreviewConversionCommand,
@@ -744,6 +745,7 @@ def _clear_directory(path: Path) -> None:
             shutil.rmtree(child, ignore_errors=True)
 
 
+def _run_libreoffice(
     *,
     input_path: Path,
     output_dir: Path,
