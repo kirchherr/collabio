@@ -2189,6 +2189,34 @@ services:
     networks:
       - genoffice_provenance_verification
 
+  genoffice-npm-provenance-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_npm_provenance_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_NPM_VERIFICATION_PATH: /evidence/genoffice-emf-converter-npm-verification.json
+      SUITE_GENOFFICE_NPM_VERIFICATION_RECEIPT_PATH: /evidence/genoffice-emf-converter-npm-verification-receipt.txt
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
   genoffice-docx-prebuild-sbom:
     profiles: ["office-supply-chain"]
     build:
