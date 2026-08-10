@@ -52,9 +52,7 @@ SOURCE_REPOSITORY_OWNER_ID = "28136629"
 SOURCE_COMMIT = "9aca5abf16662f93a453a07378768ddd87a8541d"
 SOURCE_REF = "refs/heads/main"
 WORKFLOW_PATH = ".github/workflows/publish.yml"
-WORKFLOW_URI = (
-    "https://github.com/ChristopherVR/emf-converter/.github/workflows/publish.yml@refs/heads/main"
-)
+WORKFLOW_URI = "https://github.com/ChristopherVR/emf-converter/.github/workflows/publish.yml@refs/heads/main"
 INVOCATION_URI = "https://github.com/ChristopherVR/emf-converter/actions/runs/30234322001/attempts/1"
 REKOR_LOG_ID = "wNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0="
 MAX_EVIDENCE_SIZE_BYTES = 1024 * 1024
@@ -314,9 +312,7 @@ def _rekor_entry(bundle: Mapping[str, Any], *, predicate_type: str) -> RekorEntr
     promise_present = isinstance(inclusion_promise.get("signedEntryTimestamp"), str) and bool(
         inclusion_promise["signedEntryTimestamp"]
     )
-    proof_present = isinstance(inclusion_proof.get("rootHash"), str) and isinstance(
-        inclusion_proof.get("hashes"), list
-    )
+    proof_present = isinstance(inclusion_proof.get("rootHash"), str) and isinstance(inclusion_proof.get("hashes"), list)
     if not promise_present or not proof_present:
         raise GenOfficeNpmProvenanceAdmissionError("Sigstore transparency log proof is incomplete")
     return RekorEntryEvidence(
@@ -505,10 +501,7 @@ def build_genoffice_npm_provenance_admission_report(
         },
         "runDetails": {"builder": {"id": SLSA_BUILDER_ID}, "metadata": {"invocationId": INVOCATION_URI}},
     }
-    if (
-        slsa.get("_type") != "https://in-toto.io/Statement/v1"
-        or slsa.get("predicate") != expected_slsa_predicate
-    ):
+    if slsa.get("_type") != "https://in-toto.io/Statement/v1" or slsa.get("predicate") != expected_slsa_predicate:
         raise GenOfficeNpmProvenanceAdmissionError("SLSA provenance identity changed")
     certificate_hash, issuer_org, issuer_cn, serial_hex, not_before, not_after = _certificate_identity(
         bundles[SLSA_PREDICATE_TYPE]
