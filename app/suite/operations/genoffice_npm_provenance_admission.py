@@ -388,10 +388,14 @@ def _certificate_identity(bundle: Mapping[str, Any]) -> tuple[str, str, str, str
     common_names = certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
     if len(organizations) != 1 or len(common_names) != 1:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate issuer is incomplete")
+    issuer_organization = organizations[0].value
+    issuer_common_name = common_names[0].value
+    if not isinstance(issuer_organization, str) or not isinstance(issuer_common_name, str):
+        raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate issuer is not textual")
     return (
         certificate_hash,
-        organizations[0].value,
-        common_names[0].value,
+        issuer_organization,
+        issuer_common_name,
         f"{certificate.serial_number:X}",
         certificate.not_valid_before_utc.astimezone(UTC),
         certificate.not_valid_after_utc.astimezone(UTC),
