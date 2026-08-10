@@ -1576,6 +1576,7 @@ services:
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
       - /run/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /var/log/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
     environment:
       CLAMD_STARTUP_TIMEOUT: "300"
       FRESHCLAM_CHECKS: "24"
