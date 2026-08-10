@@ -267,9 +267,7 @@ class PreviewConversionProductionEvidenceBundle(StrictEvidenceModel):
     content_included: Literal[False] = False
     secrets_included: Literal[False] = False
     destructive_action_requested: Literal[False] = False
-    schema_version: Literal["preview_conversion_production_evidence.v1"] = (
-        "preview_conversion_production_evidence.v1"
-    )
+    schema_version: Literal["preview_conversion_production_evidence.v1"] = "preview_conversion_production_evidence.v1"
 
     _validate_hashes = field_validator(
         "deployment_ref_hash",
@@ -658,9 +656,7 @@ def build_preview_conversion_production_admission_gate(
         checked_at_utc=checked_at,
         maximum_age_hours=maximum_evidence_age_hours,
     )
-    execution_hash_valid = (
-        build_preview_conversion_execution_gate_hash(execution_gate) == execution_gate.evidence_hash
-    )
+    execution_hash_valid = build_preview_conversion_execution_gate_hash(execution_gate) == execution_gate.evidence_hash
     recovery_hash_valid = (
         build_derived_preview_recovery_drill_report_hash(recovery_report) == recovery_report.report_hash
     )

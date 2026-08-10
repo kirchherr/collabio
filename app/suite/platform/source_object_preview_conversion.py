@@ -397,13 +397,13 @@ class PreviewConversionWorkerResult(BaseModel):
         if not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion result hashes must be sha256 references")
         return value
+
     @field_validator("production_admission_gate_hash")
     @classmethod
     def require_optional_production_admission_hash(cls, value: str | None) -> str | None:
         if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion result production admission hash must be a sha256 reference")
         return value
-
 
     @model_validator(mode="after")
     def require_safe_result(self) -> PreviewConversionWorkerResult:

@@ -123,9 +123,7 @@ def test_production_admission_requires_fresh_bound_three_role_signed_evidence(
     invalid_signature = envelope.signatures[0].model_copy(
         update={"sig": base64.b64encode(b"\x00" * 64).decode("ascii")}
     )
-    tampered_envelope = envelope.model_copy(
-        update={"signatures": (invalid_signature, *envelope.signatures[1:])}
-    )
+    tampered_envelope = envelope.model_copy(update={"signatures": (invalid_signature, *envelope.signatures[1:])})
     _write_model(attestation_path, tampered_envelope, by_alias=True)
     with pytest.raises(PreviewConversionBlocked, match="could not be reproduced"):
         load_and_require_preview_conversion_production_admission(
@@ -148,9 +146,7 @@ def test_production_admission_blocks_invalid_signature_without_trusting_boolean_
     invalid_signature = envelope.signatures[0].model_copy(
         update={"sig": base64.b64encode(b"\x00" * 64).decode("ascii")}
     )
-    tampered_envelope = envelope.model_copy(
-        update={"signatures": (invalid_signature, *envelope.signatures[1:])}
-    )
+    tampered_envelope = envelope.model_copy(update={"signatures": (invalid_signature, *envelope.signatures[1:])})
 
     gate = build_preview_conversion_production_admission_gate(
         bundle=bundle,
