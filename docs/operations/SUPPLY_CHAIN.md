@@ -34,12 +34,14 @@ only through the **tooling** Compose profile and is not copied into development 
 Regenerate all locks after changing a direct declaration:
 
 ~~~bash
-docker compose --profile tooling run --rm dependency-lock-runtime
-docker compose --profile tooling run --rm dependency-lock-dev
-docker compose --profile tooling run --rm dependency-lock-preview
+sh docker/regenerate-dependency-locks.sh
 docker compose build
 docker compose run --rm quality
 ~~~
+
+The host-side script captures the three container outputs in temporary files and replaces the committed locks only
+after every generator succeeds. The locked-down generators need only read-only declaration mounts; they never write
+through bind mounts and therefore do not depend on host UID, root capabilities, or workspace permissions.
 
 Review the direct and transitive version changes before commit. Lock regeneration is intentionally networked;
 application, test, and release containers consume the resulting committed files without resolving a new dependency

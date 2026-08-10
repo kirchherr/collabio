@@ -58,7 +58,7 @@ Pillow is isolated in `requirements-preview.txt` and `requirements-preview.lock`
 or development dependency graph. The lock contains every accepted SHA-256 distribution hash and is regenerated with:
 
 ```bash
-docker compose --profile tooling run --rm dependency-lock-preview
+sh docker/regenerate-dependency-locks.sh
 ```
 
 CI and release workflows regenerate all three dependency locks and reject drift before image build. The preview image

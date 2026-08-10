@@ -34,9 +34,7 @@ jobs:
 
       - name: Verify dependency locks are current
         run: |
-          docker compose --profile tooling run --rm dependency-lock-runtime
-          docker compose --profile tooling run --rm dependency-lock-dev
-          docker compose --profile tooling run --rm dependency-lock-preview
+          sh docker/regenerate-dependency-locks.sh
           git diff --exit-code -- requirements.lock requirements-dev.lock requirements-preview.lock
 
       - name: Validate release quality

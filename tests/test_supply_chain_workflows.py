@@ -11,6 +11,7 @@ PROMOTION_PATH = WORKFLOW_DIR / "promote-release.yml"
 RUNBOOK_PATH = REPO_ROOT / "docs" / "operations" / "SUPPLY_CHAIN.md"
 DOCKERFILE_PATH = REPO_ROOT / "Dockerfile"
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
+LOCK_SCRIPT_PATH = REPO_ROOT / "docker" / "regenerate-dependency-locks.sh"
 DEPENDABOT_PATH = REPO_ROOT / ".github" / "dependabot.yml"
 VEX_PATH = REPO_ROOT / "security" / "vex" / "collabio.openvex.json"
 VEX_REGISTER_PATH = REPO_ROOT / "security" / "vex" / "decision-register.json"
@@ -67,6 +68,12 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     assert "pip install --requirement requirements.txt" not in dockerfile
     assert compose.count("ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:") == 3
     assert compose.count('profiles: ["tooling"]') == 3
+    assert compose.count('entrypoint: ["/usr/local/bin/uv"]') == 3
+    assert compose.count('"sh docker/regenerate-dependency-locks.sh"') == 3
+    assert "cat /tmp/requirements" not in compose
+    assert "./requirements.lock:/workspace/requirements.lock" not in compose
+    assert "./requirements-dev.lock:/workspace/requirements-dev.lock" not in compose
+    assert "./requirements-preview.lock:/workspace/requirements-preview.lock" not in compose
 
     preview_release_gate = PREVIEW_RELEASE_GATE_PATH.read_text(encoding="utf-8")
     assert "source_object_preview_renderer_smoke import" not in preview_release_gate
@@ -94,13 +101,27 @@ def test_runtime_and_development_dependency_graphs_are_transitively_hash_locked(
     runtime_lock = RUNTIME_LOCK_PATH.read_text(encoding="utf-8")
     dev_lock = DEV_LOCK_PATH.read_text(encoding="utf-8")
     preview_lock = PREVIEW_LOCK_PATH.read_text(encoding="utf-8")
-    assert "docker compose --profile tooling run --rm dependency-lock-runtime" in runtime_lock
-    assert "docker compose --profile tooling run --rm dependency-lock-dev" in dev_lock
-    assert "docker compose --profile tooling run --rm dependency-lock-preview" in preview_lock
+    assert "sh docker/regenerate-dependency-locks.sh" in runtime_lock
+    assert "sh docker/regenerate-dependency-locks.sh" in dev_lock
+    assert "sh docker/regenerate-dependency-locks.sh" in preview_lock
     assert "fastapi==0.141.1" in runtime_lock
     assert "cryptography==49.0.0" in runtime_lock
     assert "pytest==9.0.3" in dev_lock
     assert "pillow==12.3.0" in preview_lock
+
+
+def test_dependency_lock_regeneration_is_atomic_and_host_portable() -> None:
+    script = LOCK_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert script.count("docker compose -p") == 3
+    assert script.count("--profile tooling run -T --rm dependency-lock-") == 3
+    assert script.count("mktemp") == 3
+    assert script.count("test -s") == 3
+    assert script.count("mv -f --") == 3
+    assert 'compose_project=${COMPOSE_PROJECT_NAME:-collabio}' in script
+    assert '> "$runtime_tmp"' in script
+    assert '> "$dev_tmp"' in script
+    assert '> "$preview_tmp"' in script
 
 
 def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
@@ -108,8 +129,7 @@ def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
 
     assert "supply-chain:" in workflow
     assert "Verify dependency locks are current" in workflow
-    assert "docker compose --profile tooling run --rm dependency-lock-runtime" in workflow
-    assert "docker compose --profile tooling run --rm dependency-lock-preview" in workflow
+    assert "sh docker/regenerate-dependency-locks.sh" in workflow
     assert "git diff --exit-code -- requirements.lock requirements-dev.lock requirements-preview.lock" in workflow
     assert "needs: quality" in workflow
     assert "docker build --provenance=false --target runtime" in workflow
