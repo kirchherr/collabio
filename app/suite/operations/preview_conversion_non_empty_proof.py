@@ -17,6 +17,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass
 from suite.operations.backend_foundation_completion_gate import load_backend_foundation_completion_gate
+from suite.operations.preview_malware_scanner_smoke import load_preview_malware_scanner_smoke_report
+from suite.platform.preview_malware_scanner import (
+    PreviewMalwareScanEvidence,
+    PreviewMalwareScanSubject,
+    build_default_preview_malware_scanner,
+    build_preview_conversion_source_preflight_from_malware_scan,
+)
 from suite.platform.source_object_preview_conversion import (
     DerivedPreviewArtifact,
     PgDerivedPreviewReceiptStore,
@@ -81,12 +88,15 @@ class PreviewConversionProofStageReport(BaseModel):
     sandbox_runtime_class: str
     backup_restore_evidence_hash: str
     runtime_engine_self_test_report_hash: str
+    malware_scanner_smoke_report_hash: str
+    malware_scan_evidence_hash: str
+    real_malware_scanner_invoked: bool
     input_workspace_ready: bool
     output_workspace_ready: bool
     content_included: bool = False
     staged_at_utc: datetime
     report_hash: str
-    schema_version: str = "source_object_preview_conversion_non_empty_stage.v1"
+    schema_version: str = "source_object_preview_conversion_non_empty_stage.v2"
 
     @field_validator(
         "source_object_ref_hash",
@@ -96,6 +106,8 @@ class PreviewConversionProofStageReport(BaseModel):
         "source_content_hash",
         "backup_restore_evidence_hash",
         "runtime_engine_self_test_report_hash",
+        "malware_scanner_smoke_report_hash",
+        "malware_scan_evidence_hash",
         "report_hash",
     )
     @classmethod
@@ -272,6 +284,8 @@ def build_preview_conversion_proof_stage_bundle(
     runtime_engine_self_test_report_hash: str,
     font_baseline_hash: str,
     backup_restore_evidence_hash: str,
+    malware_scan_evidence: PreviewMalwareScanEvidence | None = None,
+    malware_scanner_smoke_report_hash: str | None = None,
     staged_at_utc: datetime | None = None,
 ) -> PreviewConversionProofStageBundle:
     normalized_run_id = proof_run_id.strip().lower()
@@ -299,13 +313,35 @@ def build_preview_conversion_proof_stage_bundle(
             }
         )
     )
+    scanner_profile_ref = "synthetic-fixture:trusted-generator.v1"
+    scanner_signature_set_hash = fixture_evidence_hash
+    scanner_smoke_report_hash = fixture_evidence_hash
+    malware_scanner_evidence_hash = fixture_evidence_hash
+    real_malware_scanner_invoked = False
+    if malware_scan_evidence is not None:
+        if malware_scanner_smoke_report_hash is None or not SHA256_REF_PATTERN.fullmatch(
+            malware_scanner_smoke_report_hash
+        ):
+            raise ValueError("real preview malware scan requires a hash-bound scanner smoke report")
+        scanner_profile_ref = malware_scan_evidence.scanner_profile_ref
+        scanner_signature_set_hash = malware_scan_evidence.scanner_signature_set_hash
+        scanner_smoke_report_hash = malware_scanner_smoke_report_hash
+        malware_scanner_evidence_hash = stable_hash(
+            canonical_json(
+                {
+                    "scan_evidence_hash": malware_scan_evidence.evidence_hash,
+                    "scanner_smoke_report_hash": scanner_smoke_report_hash,
+                }
+            )
+        )
+        real_malware_scanner_invoked = True
     execution_gate = build_preview_conversion_execution_gate(
         tenant_id=PROOF_TENANT_ID,
         worker_image_ref=worker_image_ref,
         sandbox_runtime_class=PROOF_RUNTIME_CLASS,
         sandbox_runtime_evidence_hash=sandbox_runtime_evidence_hash,
-        malware_scanner_profile_ref="synthetic-fixture:trusted-generator.v1",
-        malware_scanner_evidence_hash=fixture_evidence_hash,
+        malware_scanner_profile_ref=scanner_profile_ref,
+        malware_scanner_evidence_hash=malware_scanner_evidence_hash,
         cdr_profile_ref="synthetic-fixture:no-active-content.v1",
         cdr_evidence_hash=stable_hash(f"{fixture_evidence_hash}:cdr"),
         pdf_validator_profile_ref="qpdf-pdfinfo:preview-proof.v1",
@@ -317,13 +353,23 @@ def build_preview_conversion_proof_stage_bundle(
         evaluated_at_utc=staged_at,
         validity_hours=1,
     )
-    source_preflight = build_preview_conversion_source_preflight(
-        source_metadata=source_record.metadata,
-        scanner_profile_ref="synthetic-fixture:trusted-generator.v1",
-        scanner_signature_set_hash=fixture_evidence_hash,
-        cdr_profile_ref="synthetic-fixture:no-active-content.v1",
-        checked_at_utc=staged_at,
-        validity_hours=1,
+    source_preflight = (
+        build_preview_conversion_source_preflight(
+            source_metadata=source_record.metadata,
+            scanner_profile_ref=scanner_profile_ref,
+            scanner_signature_set_hash=scanner_signature_set_hash,
+            cdr_profile_ref="synthetic-fixture:no-active-content.v1",
+            checked_at_utc=staged_at,
+            validity_hours=1,
+        )
+        if malware_scan_evidence is None
+        else build_preview_conversion_source_preflight_from_malware_scan(
+            source_metadata=source_record.metadata,
+            malware_scan=malware_scan_evidence,
+            cdr_profile_ref="synthetic-fixture:no-active-content.v1",
+            checked_at_utc=staged_at,
+            validity_hours=1,
+        )
     )
     command = build_preview_conversion_command(
         source_metadata=source_record.metadata,
@@ -363,6 +409,11 @@ def build_preview_conversion_proof_stage_bundle(
         sandbox_runtime_class=PROOF_RUNTIME_CLASS,
         backup_restore_evidence_hash=backup_restore_evidence_hash,
         runtime_engine_self_test_report_hash=runtime_engine_self_test_report_hash,
+        malware_scanner_smoke_report_hash=scanner_smoke_report_hash,
+        malware_scan_evidence_hash=(
+            malware_scan_evidence.evidence_hash if malware_scan_evidence is not None else fixture_evidence_hash
+        ),
+        real_malware_scanner_invoked=real_malware_scanner_invoked,
         input_workspace_ready=True,
         output_workspace_ready=True,
         staged_at_utc=staged_at,
@@ -548,16 +599,33 @@ def run_preview_conversion_proof_stage_from_environment(
     runtime_engine_report = load_preview_conversion_runtime_engine_report(
         Path(_required_env(env, "SUITE_PREVIEW_PROOF_RUNTIME_REPORT_PATH"))
     )
+    malware_smoke_report = load_preview_malware_scanner_smoke_report(
+        Path(_required_env(env, "SUITE_PREVIEW_MALWARE_SMOKE_REPORT_PATH"))
+    )
+    staged_at = datetime.now(UTC)
+    proof_run_id = _required_env(env, "SUITE_PREVIEW_PROOF_RUN_ID").strip().lower()
+    timestamp = staged_at.isoformat(timespec="seconds").replace("+00:00", "Z")
+    source_record = _build_synthetic_source_record(proof_run_id=proof_run_id, timestamp=timestamp)
+    malware_scan_evidence = build_default_preview_malware_scanner(env).scan(
+        subject=PreviewMalwareScanSubject.from_source_metadata(source_record.metadata),
+        content_bytes=SYNTHETIC_RTF_BYTES,
+        checked_at_utc=staged_at,
+    )
+    if not malware_scan_evidence.scan_allowed:
+        raise ValueError("preview conversion proof malware scan failed closed")
     database_dsn = _required_env(env, "SUITE_DATABASE_DSN")
     source_repository = build_default_workspace_source_object_repository(env)
     if not isinstance(source_repository, PgSourceObjectRepository):
         raise ValueError("preview conversion proof requires the PostgreSQL SourceObject repository")
     bundle = build_preview_conversion_proof_stage_bundle(
-        proof_run_id=_required_env(env, "SUITE_PREVIEW_PROOF_RUN_ID"),
+        proof_run_id=proof_run_id,
         worker_image_ref=_required_env(env, "SUITE_PREVIEW_CONVERTER_IMAGE_REF"),
         runtime_engine_self_test_report_hash=runtime_engine_report.report_hash,
         font_baseline_hash=build_installed_font_baseline_hash(),
         backup_restore_evidence_hash=foundation_gate.gate_hash,
+        malware_scan_evidence=malware_scan_evidence,
+        malware_scanner_smoke_report_hash=malware_smoke_report.report_hash,
+        staged_at_utc=staged_at,
     )
     stage_uow = PostgresPreviewConversionProofStageUnitOfWork(
         database_dsn=database_dsn,

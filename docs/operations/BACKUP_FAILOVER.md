@@ -618,6 +618,32 @@ Before any production renderer, viewer, or content release workflow is connected
 `source_object_preview_renderer_release_gate.v1` evidence from a fresh API smoke report and its bound recovery drill
 report. A blocked release gate keeps renderer, viewer, and content-release wiring disabled even if lower-level evidence
 exists.
+
+### Preview malware scanner recovery
+
+The ClamAV signature volume is a rebuildable security derivative, not an authoritative business backup. Restoring an
+old signature database and trusting it would create a stale-security failure. After service loss, host failover, image
+change, or signature-volume recreation, keep preview staging and conversion dispatch blocked while the pinned ClamAV
+image starts, `freshclam` refreshes the database, and the real Clean/EICAR smoke succeeds again.
+
+```bash
+docker compose -p collabio --profile preview-malware pull preview-malware-scanner
+docker compose -p collabio --profile preview-malware run --rm preview-malware-scanner-smoke
+```
+
+Retain the hash of `backups/preview-malware-scanner-smoke.json` with preview proof and release evidence. The report is
+metadata-only and expires after 30 minutes for proof-stage admission. Source bytes, EICAR bytes, raw scanner replies,
+and threat names are never backup evidence. Preview SourceObject metadata, scan-evidence hashes, execution gates,
+commands, job evidence, and derived lineage remain covered by the normal PostgreSQL and object-storage recovery path.
+
+The non-empty development proof now depends on the scanner smoke and then scans its exact staged source bytes before
+the trusted database write. A scanner outage, stale report, hash mismatch, unknown response, or malware verdict stops
+the stage. The offline `runsc` conversion worker remains isolated from ClamAV and receives no network route.
+
+Production recovery additionally requires independently signed signature-database identity/freshness, service
+deployment and HA evidence, EICAR evidence from the recovered environment, and the separate CDR recovery test. This
+development smoke cannot satisfy those controls and never enables conversion dispatch or preview serving.
+
 ### Derived preview conversion recovery
 
 Migrations `0072` and `0073` add the append-only, forced-RLS execution-gate, derived-preview lineage receipt, and

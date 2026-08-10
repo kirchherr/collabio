@@ -1491,6 +1491,11 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Ed25519-Rollen in DSSE/in-toto, erneute Worker-Pruefung und unveraenderliche Vererbung des Gate-Hashs in Command und
   Result. Das Release publiziert und attestiert Runtime und Preview-Renderer mit jeweils eigener SBOM und Provenance.
   Die Gate schaltet ausschliesslich Conversion-Dispatch; Preview-Serving bleibt separat gesperrt.
+- [x] Collabio-eigenen realen ClamAV-Scanpfad als ersten externen Production-Admission-Eingang operationalisiert:
+  digest-gepinnter unprivilegierter Dienst ohne Host-Port im internen Compose-Netz, begrenztes `INSTREAM`-Protokoll,
+  tenant-/SourceObject-/Versions-/Content-Hash-gebundene metadata-only Evidence, frischer Clean-/EICAR-Smoke und
+  Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; CDR,
+  signierte Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
 - [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
   Malware-/CDR-Dienst, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance, erneut erfolgreichem
   nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin und realer Drei-Rollen-Signaturzeremonie

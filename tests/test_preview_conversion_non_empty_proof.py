@@ -47,6 +47,8 @@ def test_stage_bundle_is_hash_bound_synthetic_and_dedicated_to_proof_tenant() ->
     assert bundle.execution_gate.sandbox_runtime_class == "runsc"
     assert bundle.execution_gate.worker_image_ref == WORKER_IMAGE_REF
     assert bundle.report.runtime_engine_self_test_report_hash == "sha256:" + ("2" * 64)
+    assert bundle.report.real_malware_scanner_invoked is False
+    assert bundle.report.schema_version == "source_object_preview_conversion_non_empty_stage.v2"
     assert bundle.envelope.command.preview_policy_id == "synthetic-preview-proof.v1"
     assert bundle.report.development_only is True
     assert bundle.report.synthetic_fixture is True
@@ -273,10 +275,26 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
         "preview-conversion-proof-runtime-preflight",
         "preview-conversion-proof-stager",
     )
+    scanner = _service(compose, "preview-malware-scanner", "preview-malware-scanner-smoke")
+    scanner_smoke = _service(compose, "preview-malware-scanner-smoke", "preview-conversion-proof-runtime-preflight")
     stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-worker")
     worker = _service(compose, "preview-conversion-proof-worker", "preview-conversion-proof-importer")
     importer = _service(compose, "preview-conversion-proof-importer", "preview-conversion-proof-cleanup")
     cleanup = _service(compose, "preview-conversion-proof-cleanup", "preview-conversion-engine-smoke")
+
+    assert "clamav/clamav:1.5@sha256:" in scanner
+    assert 'user: "clamav"' in scanner
+    assert 'entrypoint: ["/init-unprivileged"]' in scanner
+    assert "read_only: true" in scanner
+    assert "- ALL" in scanner
+    assert "ports:" not in scanner
+    assert "preview_malware" in scanner
+    assert "suite.operations.preview_malware_scanner_smoke" in scanner_smoke
+    assert "preview-malware-scanner:" in scanner_smoke
+    assert "SUITE_DATABASE_DSN:" not in scanner_smoke
+    assert "SUITE_S3_SECRET_ACCESS_KEY:" not in scanner_smoke
+    assert "preview-malware-scanner-smoke:" in stager
+    assert "SUITE_PREVIEW_MALWARE_SCANNER_BACKEND: clamd" in stager
 
     assert 'profiles: ["preview-proof"]' in stager
     assert "runtime: runsc" in preflight

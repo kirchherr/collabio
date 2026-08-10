@@ -2,6 +2,7 @@
 
 Status: implemented conversion engine and fail-closed lifecycle; production dispatch remains disabled until deployment
 evidence is admitted.
+A real Collabio-owned ClamAV adapter now feeds the development proof; CDR and signed production evidence remain open.
 
 ## Security Architecture
 
@@ -97,6 +98,13 @@ execution gates, command/preflight/result hashes, timestamps, inherited ACL/clas
 controls, and one-to-one receipt bindings. Its report is metadata-only and never enables dispatch or content serving.
 
 ## Remaining Production Admission
+
+The first real external input is implemented: `preview-malware-scanner` uses the official digest-pinned ClamAV 1.5
+image, an internal-only Compose network, bounded `INSTREAM`, metadata-only evidence, and a fresh Clean/EICAR smoke.
+The controlled proof stager scans the exact source bytes and binds both scan and smoke hashes before writing the
+conversion command. This proves the adapter and fail-closed disposition, but it does not claim CDR, signed signature
+database provenance, production HA, or production network-policy evidence. Operational details are in
+`docs/operations/PREVIEW_MALWARE_SCANNER.md`.
 
 The code and real conversion engine are present, but productive dispatch remains intentionally closed until dev001 or
 the later orchestrator supplies independently verifiable runsc/Kata/Firecracker evidence, a current malware signature

@@ -160,6 +160,9 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     object_storage_domain = policy.domain("object_storage_records")
     assert "derived preview PDF source objects" in object_storage_domain.state_artifacts
     assert "derived preview source-to-output lineage" in object_storage_domain.state_artifacts
+    parser_artifacts = policy.domain("parser_worker_artifacts").state_artifacts
+    assert "preview malware scan evidence hashes" in parser_artifacts
+    assert "preview malware scanner smoke report hashes" in parser_artifacts
     assert "legacy_sql_evidence_ledger_hash_check" in postgres.integrity_checks
     assert "legacy_sql_evidence_ledger_operations_report_hash_check" in postgres.integrity_checks
     assert "legacy_sql_staging_metadata_profile_hash_check" in postgres.integrity_checks

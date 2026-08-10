@@ -1563,6 +1563,56 @@ services:
     volumes:
       - ./app:/workspace/app:ro
 
+  preview-malware-scanner:
+    profiles: ["preview-malware", "preview-proof"]
+    image: ${SUITE_CLAMAV_IMAGE:-clamav/clamav:1.5@sha256:78810772a92b4a9168115bc6b2e0ffd702640893b9577f8c3d0432762d2655c4}
+    user: "clamav"
+    entrypoint: ["/init-unprivileged"]
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /run/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+    environment:
+      CLAMD_STARTUP_TIMEOUT: "300"
+      FRESHCLAM_CHECKS: "24"
+    volumes:
+      - clamav_database:/var/lib/clamav
+    networks:
+      - preview_malware
+
+  preview-malware-scanner-smoke:
+    profiles: ["preview-malware", "preview-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.preview_malware_scanner_smoke
+    depends_on:
+      preview-malware-scanner:
+        condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_MALWARE_SCANNER_BACKEND: clamd
+      SUITE_PREVIEW_CLAMD_HOST: preview-malware-scanner
+      SUITE_PREVIEW_CLAMD_PORT: "3310"
+      SUITE_PREVIEW_MALWARE_SCANNER_PROFILE_REF: clamav:1.5-instream.v1
+      SUITE_PREVIEW_MALWARE_SMOKE_REPORT_PATH: /backups/preview-malware-scanner-smoke.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups
+    networks:
+      - preview_malware
+
   preview-conversion-proof-runtime-preflight:
     profiles: ["preview-proof"]
     image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
@@ -1607,6 +1657,8 @@ services:
         condition: service_completed_successfully
       preview-conversion-proof-runtime-preflight:
         condition: service_completed_successfully
+      preview-malware-scanner-smoke:
+        condition: service_completed_successfully
       object-storage-profile-check:
         condition: service_completed_successfully
     user: "0:0"
@@ -1626,6 +1678,11 @@ services:
       SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
       SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
       SUITE_PREVIEW_PROOF_RUNTIME_REPORT_PATH: /job/proof-output/runtime-engine-self-test.json
+      SUITE_PREVIEW_MALWARE_SCANNER_BACKEND: clamd
+      SUITE_PREVIEW_CLAMD_HOST: preview-malware-scanner
+      SUITE_PREVIEW_CLAMD_PORT: "3310"
+      SUITE_PREVIEW_MALWARE_SCANNER_PROFILE_REF: clamav:1.5-instream.v1
+      SUITE_PREVIEW_MALWARE_SMOKE_REPORT_PATH: /backups/preview-malware-scanner-smoke.json
       SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
       SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH: /backups/preview-conversion-non-empty-stage.json
       SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
@@ -1641,6 +1698,9 @@ services:
       SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
       SUITE_S3_REGION: us-east-1
       SUITE_S3_STORAGE_PROVIDER: minio
+    networks:
+      - default
+      - preview_malware
     volumes:
       - ./docs:/workspace/docs:ro
       - ./backups:/backups
@@ -2043,12 +2103,17 @@ services:
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
+networks:
+  preview_malware:
+    internal: true
+
 volumes:
   postgres18_data:
   postgres18_test_data:
   postgres18_restore_data:
   minio_data:
   minio_restore_data:
+  clamav_database:
   preview_conversion_input:
   preview_conversion_output:
   preview_conversion_proof_input:
