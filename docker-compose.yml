@@ -2148,6 +2148,47 @@ services:
       - ${SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_HOST_PATH:-./backups/upstream/emf-converter-2.0.2.tgz}:/source/emf-converter-2.0.2.tgz:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-npm-provenance-verifier:
+    profiles: ["office-supply-chain"]
+    image: node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        test "$$(node --version)" = "v24.18.0"
+        test "$$(npm --version)" = "11.15.0"
+        cp /fixture/package.json /fixture/package-lock.json /work/
+        npm ci --ignore-scripts --no-audit --no-fund --cache /tmp/npm-cache
+        npm audit signatures --json --include-attestations > /evidence/genoffice-emf-converter-npm-verification.json.tmp
+        node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' /evidence/genoffice-emf-converter-npm-verification.json.tmp
+        mv /evidence/genoffice-emf-converter-npm-verification.json.tmp /evidence/genoffice-emf-converter-npm-verification.json
+        printf 'image=node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d\nnode_version=v24.18.0\nnpm_version=11.15.0\nstatus=verified\n' > /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp
+        mv /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp /evidence/genoffice-emf-converter-npm-verification-receipt.txt
+    working_dir: /work
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+      - /work:size=32m,noexec,nosuid,nodev
+    environment:
+      HOME: /tmp/home
+      NPM_CONFIG_CACHE: /tmp/npm-cache
+      NPM_CONFIG_FUND: "false"
+      NPM_CONFIG_IGNORE_SCRIPTS: "true"
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      NPM_CONFIG_USERCONFIG: /dev/null
+    volumes:
+      - ./security/genoffice/npm-verification:/fixture:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+    networks:
+      - genoffice_provenance_verification
+
   genoffice-docx-prebuild-sbom:
     profiles: ["office-supply-chain"]
     build:
@@ -2507,6 +2548,8 @@ services:
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 networks:
+  genoffice_provenance_verification:
+    internal: false
   genoffice_supply_chain_updates:
     internal: false
   preview_malware:
