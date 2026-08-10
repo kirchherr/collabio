@@ -91,9 +91,12 @@ only audit domain. ADR-0062 additionally creates a tenant-free supply-chain repo
 selected-source manifest, dependency manifest, and remaining admission gates. Therefore this evaluation does not claim
 an editor backup or failover proof.
 
-The exact source archive and its admission report are retained in the immutable supply-chain artifact store with later
-SBOM, vulnerability decision, build digest, and signed provenance. They are rebuild and release-recovery inputs, not
-tenant backup payloads. A restore must verify their digests before an Office worker can be rebuilt or promoted.
+The exact source archive and its admission report are retained in the immutable supply-chain artifact store together
+with vendored registry metadata and exact package archives, byte-provenance reports, pre-build and runtime-image SBOMs,
+schema receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance. They are rebuild
+and release-recovery inputs, not tenant backup payloads. A restore must verify their digests before an Office worker can
+be rebuilt or promoted. Advertised registry signatures and attestations require retained verification receipts;
+metadata presence alone is not proof.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:

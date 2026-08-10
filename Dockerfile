@@ -14,6 +14,7 @@ RUN python -m pip install --require-hashes --requirement requirements.lock
 FROM base AS dev
 
 COPY requirements-dev.lock .
+COPY requirements-preview.lock .
 RUN python -m pip install --require-hashes --requirement requirements-dev.lock
 
 COPY app ./app

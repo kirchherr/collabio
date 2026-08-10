@@ -1522,10 +1522,15 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Manifest ausgeschlossen, npm-v3-Lock rekursiv auf 21 Runtime-Pakete samt Registry-Integritaet und Lizenzmetadaten
   aufgeloest sowie vendored EMF-Converter und Root-`postinstall` sichtbar gemacht. Der no-network/read-only Verifier
   fuehrt weder npm/Node noch Upstream-Code aus und oeffnet weiterhin keinen Import.
-- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License- und Vendor-
-  Provenance-Pruefung, universeller Collabio-Build-Lock, CycloneDX-SBOM, Vulnerability Review sowie reproduzierbarer,
-  signierter Build. Erst danach darf der gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image
-  gelangen.
+- [x] Automatisierte GenOffice-Pre-Build-Supply-Chain geschlossen: vendorten `emf-converter@2.0.2` gegen das gepinnte
+  npm-Tarball bytegenau verifiziert, 23 Komponenten als deterministisches CycloneDX-1.6-SBOM inventarisiert, mit
+  digest-gepinntem CycloneDX CLI validiert und mit Trivy 0.73.0 gegen eine frisch und getrennt geladene DB vollstaendig
+  netzlos gescannt. Exakter 23-PURL-Abgleich, null Findings und ein hashgebundener Admission-Report sind nachgewiesen;
+  Import, Engine und Produktion bleiben geschlossen.
+- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License-Pruefung,
+  kryptografische Verifikation der npm-Signatur/SLSA-Attestierung, universeller Collabio-Build-Lock sowie
+  reproduzierbarer, signierter Worker-Build mit autoritativem Image-SBOM und Vulnerability Review. Erst danach darf der
+  gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

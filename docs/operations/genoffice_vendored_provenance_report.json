@@ -1,0 +1,74 @@
+{
+  "byte_provenance_verified": true,
+  "engine_execution_allowed": false,
+  "file_comparisons": [
+    {
+      "exact_match": true,
+      "package_path": "package/LICENSE",
+      "package_sha256": "sha256:2c27550900d2cabf83527a04600ba8042e3ba89e70ec077ff220afa48c8230a7",
+      "source_path": "packages/docx-engine/src/vendor/emf-converter/LICENSE",
+      "source_sha256": "sha256:2c27550900d2cabf83527a04600ba8042e3ba89e70ec077ff220afa48c8230a7"
+    },
+    {
+      "exact_match": true,
+      "package_path": "package/dist/index.d.mts",
+      "package_sha256": "sha256:efd275a358536126169900442fcec9557a9b8a0c4ce6bd6e428723289625f0e0",
+      "source_path": "packages/docx-engine/src/vendor/emf-converter/index.d.mts",
+      "source_sha256": "sha256:efd275a358536126169900442fcec9557a9b8a0c4ce6bd6e428723289625f0e0"
+    },
+    {
+      "exact_match": true,
+      "package_path": "package/dist/index.mjs",
+      "package_sha256": "sha256:808f0cfb3ca51615b44e3d801a1f402a6eca60418d960318b7516bd10146b3c5",
+      "source_path": "packages/docx-engine/src/vendor/emf-converter/index.mjs",
+      "source_sha256": "sha256:808f0cfb3ca51615b44e3d801a1f402a6eca60418d960318b7516bd10146b3c5"
+    }
+  ],
+  "legal_review_complete": false,
+  "package_archive_files": [
+    "package/LICENSE",
+    "package/README.md",
+    "package/dist/index.d.mts",
+    "package/dist/index.d.ts",
+    "package/dist/index.js",
+    "package/dist/index.mjs",
+    "package/package.json"
+  ],
+  "package_archive_member_count": 7,
+  "package_license_spdx": "Apache-2.0",
+  "package_lifecycle_scripts": [],
+  "package_metadata_verified": true,
+  "package_name": "emf-converter",
+  "package_purl": "pkg:npm/emf-converter@2.0.2",
+  "package_repository_url": "git+https://github.com/ChristopherVR/emf-converter.git",
+  "package_tarball_integrity_verified": true,
+  "package_tarball_sha256": "sha256:acf0927871d783efe2defe4fdf4e66d09915776570aa81c23781199e58424e9b",
+  "package_tarball_sha512": "sha512:40b52e7dbe393f72e53ae742a22cc1b49a4ef1c070f0b6b21f49a4be446f223bcc95bea3ba7c0fd045e0524743c9950417641211950f57cacef034b9aec26690",
+  "package_tarball_sri": "sha512-QLUufb45P3LlOudCoizBtJpO8cBw8LayH0mkvkRvIjvMlb6junwP0EXgUkdDyZUEF2QSEZUPV8rO8DS5rsJmkA==",
+  "package_tarball_url": "https://registry.npmjs.org/emf-converter/-/emf-converter-2.0.2.tgz",
+  "package_version": "2.0.2",
+  "production_use_allowed": false,
+  "registry_attestation_metadata_present": true,
+  "registry_attestation_predicate_type": "https://slsa.dev/provenance/v1",
+  "registry_attestation_url": "https://registry.npmjs.org/-/npm/v1/attestations/emf-converter@2.0.2",
+  "registry_attestation_verified": false,
+  "registry_metadata_sha256": "sha256:d22c8e7f00dc18814c06a77518ba070245056addb50a56606cd76058dbc9ea57",
+  "registry_signature_key_ids": [
+    "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+  ],
+  "registry_signature_metadata_present": true,
+  "registry_signature_verified": false,
+  "remaining_gates": [
+    "human_legal_notice_trademark_and_compound_license_review",
+    "npm_registry_signature_and_slsa_attestation_verification",
+    "reproducible_isolated_build_and_signed_provenance"
+  ],
+  "report_hash": "sha256:5ac1fdfa83034db3a8da06985b5f96e87a8eb0acfe3614f05b4fb3afe8e3dd04",
+  "schema_version": "genoffice_vendored_provenance_admission_report.v1",
+  "source_archive_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040",
+  "source_archive_verified": true,
+  "source_import_allowed": false,
+  "source_report_hash": "sha256:7a4eb66cfeefbf6defad574f33b07c904b62c7f076ecb21277e99ae87e2b951d",
+  "vendored_files_exact_match": true,
+  "vendored_root": "packages/docx-engine/src/vendor/emf-converter"
+}

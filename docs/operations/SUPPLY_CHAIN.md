@@ -66,6 +66,19 @@ environments and can contain components that are not installed in the image. The
 `*.dist-info/METADATA` record, operating-system package, application file, and image configuration. Any new skip
 pattern requires the same review and tests as a vulnerability exception.
 
+## GenOffice Evaluation Candidate
+
+The unimported GenOffice DOCX candidate has its own `office-supply-chain` profile. It does not weaken or replace the
+runtime-image rules above. The profile verifies vendored `emf-converter@2.0.2` bytes against a pinned npm tarball,
+generates a deterministic CycloneDX 1.6 **pre-build** SBOM, validates it with digest-pinned CycloneDX CLI, updates the
+Trivy DB in the only networked service, and scans the exact 23-PURL inventory in a separate no-network container with a
+read-only cache. The final admission step rejects component drift, a stale DB, scanner drift, malformed reports, and
+HIGH/CRITICAL findings.
+
+The retained 2026-08-10 evidence passes the automated pre-build SBOM/vulnerability gate with zero findings. It does
+not approve licenses, verify the advertised npm signature/SLSA attestation, admit source, execute the engine, or replace
+the mandatory SBOM and scan of a future built worker image. See `docs/operations/GENOFFICE_SOURCE_ADMISSION.md`.
+
 ## Tagged Releases
 
 Pushing a **v*** tag starts **.github/workflows/release-provenance.yml**. The workflow rejects dependency-lock drift,

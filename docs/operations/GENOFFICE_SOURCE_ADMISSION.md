@@ -62,6 +62,34 @@ Exit code `0` means only that the exact source snapshot, selected manifest, depe
 metadata, license metadata, lifecycle state, and vendored license-file presence were verified. Engine import,
 execution, content access, and production use remain false in the report. Exit code `2` is fail-closed.
 
+## Pre-Build Supply Chain
+
+The `office-supply-chain` profile extends source inventory without installing npm packages or executing GenOffice
+code. Its trust boundaries are deliberately separate:
+
+1. A networked acquisition step retains the exact `emf-converter@2.0.2` npm metadata and tarball outside tracked
+   source. The offline provenance verifier binds the tarball to SHA-256
+   `acf0927871d783efe2defe4fdf4e66d09915776570aa81c23781199e58424e9b` and its published SHA-512 SRI, rejects
+   unsafe archive members, and proves that the vendored license, `index.mjs`, and `index.d.mts` are byte-identical.
+2. The offline generator creates a deterministic CycloneDX 1.6 pre-build SBOM for the DOCX engine, 21 locked npm
+   dependencies, and the now versioned vendored package. The accepted SBOM has 23 components and SHA-256
+   `c5e8678efe9b0dc3f8e64a978eacfe43fd9fae6a9e63c8bb74d94b0c1a8b43f0`.
+3. Digest-pinned CycloneDX CLI 0.32.0 validates the document with no network. Its receipt is bound to the exact SBOM
+   hash.
+4. Only `genoffice-trivy-db-update` has network access. Digest-pinned Trivy 0.73.0 then scans the SBOM with
+   `network_mode: none`, `--offline-scan`, every update disabled, and a read-only DB cache.
+5. The offline admission verifier requires an exact 23-PURL match, a fresh DB, the pinned scanner identity, a valid
+   schema receipt, and no HIGH or CRITICAL finding. The 2026-08-10 evidence contains zero findings and passes the
+   automated SBOM/vulnerability gate.
+
+This is a **pre-build** SBOM. Trivy explicitly treats third-party SBOM input as less authoritative than its own image
+analysis. The future isolated worker must therefore produce and pass a separate SBOM and vulnerability scan from the
+built image before any execution or import boundary can open.
+
+The npm registry response advertises a package signature and SLSA provenance attestation. Their presence is recorded,
+but neither is called verified yet. A later verifier must validate them against reviewed npm/Sigstore trust roots;
+metadata presence is not a cryptographic conclusion.
+
 ## Evidence And Retention
 
 Retain the following together in the immutable supply-chain artifact store:
@@ -69,7 +97,9 @@ Retain the following together in the immutable supply-chain artifact store:
 - exact source archive and SHA-256;
 - `genoffice_docx_source_admission_report.v1` and its report hash;
 - selected-source and runtime-dependency manifest hashes;
-- subsequent legal decision, CycloneDX SBOM, vulnerability decision, build digest, and signed provenance.
+- vendored npm metadata/tarball, byte-provenance report, CycloneDX SBOM, schema receipt, Trivy DB metadata,
+  vulnerability report, and `genoffice_docx_supply_chain_admission_report.v1`;
+- subsequent legal decision, registry-signature verification, build digest, runtime-image SBOM, and signed provenance.
 
 The report contains no tenant data or Office document content. It is nevertheless release evidence and must be
 available for rebuild, audit, rollback, and disaster recovery. Never place source archives or dependency tarballs in
@@ -77,10 +107,20 @@ normal application logs.
 
 ## Still Blocked
 
-- final legal, NOTICE, trademark, compound-license, and vendored-code provenance approval;
-- CycloneDX SBOM and vulnerability review of the exact runtime closure;
-- reproducible, signed, isolated worker build;
+- final legal, NOTICE, trademark, and compound-license approval;
+- cryptographic verification of the advertised npm registry signature and SLSA attestation;
+- reproducible, signed, isolated worker build with an authoritative runtime-image SBOM and vulnerability decision;
 - malicious OOXML/archive and cross-engine fidelity corpora;
 - resource-limited no-egress engine execution;
 - candidate revalidation, canonical preview, fresh ACL checks, human confirmation, and append-only edit receipt;
 - non-empty backup, restore, reconciliation, and failover drill for durable editing state.
+
+## References
+
+- CycloneDX 1.6 JSON schema: https://cyclonedx.org/schema/bom-1.6.schema.json
+- CycloneDX lifecycle guidance: https://cyclonedx.org/guides/sbom/lifecycle_phases
+- CycloneDX CLI: https://github.com/CycloneDX/cyclonedx-cli
+- Trivy SBOM scanning: https://trivy.dev/docs/latest/guide/target/sbom/
+- Trivy database management: https://trivy.dev/docs/latest/configuration/db/
+- Trivy air-gap guidance: https://trivy.dev/docs/latest/guide/advanced/air-gap/
+- emf-converter 2.0.2: https://www.npmjs.com/package/emf-converter/v/2.0.2

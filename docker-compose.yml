@@ -2115,6 +2115,207 @@ services:
         source: ${SUITE_GENOFFICE_SOURCE_EVIDENCE_HOST_DIR:-./backups/genoffice-source-admission}
         target: /evidence
 
+  genoffice-vendored-provenance-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_vendored_provenance_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_EMF_CONVERTER_REGISTRY_METADATA_PATH: /source/emf-converter-2.0.2-metadata.json
+      SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_PATH: /source/emf-converter-2.0.2.tgz
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - ${SUITE_EMF_CONVERTER_REGISTRY_METADATA_HOST_PATH:-./backups/upstream/emf-converter-2.0.2-metadata.json}:/source/emf-converter-2.0.2-metadata.json:ro
+      - ${SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_HOST_PATH:-./backups/upstream/emf-converter-2.0.2.tgz}:/source/emf-converter-2.0.2.tgz:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-docx-prebuild-sbom:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_prebuild_sbom
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /evidence/genoffice-docx-prebuild.cdx.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ./docs/operations/genoffice_docx_source_admission_report.json
+        target: /source/genoffice-docx-source-admission-report.json
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-docx-sbom-validator:
+    profiles: ["office-supply-chain"]
+    image: cyclonedx/cyclonedx-cli@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        /cyclonedx validate --input-file /evidence/genoffice-docx-prebuild.cdx.json --input-format json --input-version v1_6 --fail-on-errors
+        digest=$$(sha256sum /evidence/genoffice-docx-prebuild.cdx.json | cut -d ' ' -f 1)
+        printf 'schema=cyclonedx-1.6\nvalidator=cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e\nsbom_sha256=%s\nstatus=valid\n' "$${digest}" > /evidence/genoffice-docx-prebuild-schema-validation.txt.tmp
+        mv /evidence/genoffice-docx-prebuild-schema-validation.txt.tmp /evidence/genoffice-docx-prebuild-schema-validation.txt
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-trivy-db-update:
+    profiles: ["office-supply-chain"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    command:
+      - image
+      - --download-db-only
+      - --cache-dir
+      - /trivy-cache
+      - --no-progress
+      - --skip-version-check
+      - --disable-telemetry
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=256m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+    networks:
+      - genoffice_supply_chain_updates
+
+  genoffice-docx-sbom-vulnerability-scan:
+    profiles: ["office-supply-chain"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - sbom
+      - --cache-dir
+      - /trivy-cache
+      - --skip-db-update
+      - --skip-java-db-update
+      - --skip-vex-repo-update
+      - --offline-scan
+      - --skip-version-check
+      - --disable-telemetry
+      - --scanners
+      - vuln
+      - --format
+      - json
+      - --output
+      - /evidence/genoffice-docx-prebuild-vulnerability-report.json
+      - /evidence/genoffice-docx-prebuild.cdx.json
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-docx-supply-chain-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_supply_chain_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /evidence/genoffice-docx-prebuild.cdx.json
+      SUITE_GENOFFICE_SBOM_SCHEMA_VALIDATION_RECEIPT_PATH: /evidence/genoffice-docx-prebuild-schema-validation.txt
+      SUITE_GENOFFICE_VULNERABILITY_REPORT_PATH: /evidence/genoffice-docx-prebuild-vulnerability-report.json
+      SUITE_GENOFFICE_TRIVY_DB_METADATA_PATH: /trivy-cache/db/metadata.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
   api:
     build:
       context: .
@@ -2229,6 +2430,8 @@ services:
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
       - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+      - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
+      - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -2298,10 +2501,14 @@ services:
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
       - ./requirements.txt:/workspace/requirements.txt:ro
       - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+      - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
+      - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 networks:
+  genoffice_supply_chain_updates:
+    internal: false
   preview_malware:
     internal: true
   preview_malware_updates:

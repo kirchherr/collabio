@@ -758,9 +758,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="Office Quick Edit Source Admission",
                     summary=(
                         "Der GenOffice-DOCX-Kandidat ist auf exakte Archivbytes, ausgewaehlte Quelldateien, "
-                        "Runtime-Abhaengigkeiten und vendored Lizenzdateien inventarisiert. Import, Engine, "
-                        "Content und Produktion bleiben bis Legal-, SBOM-, Build-, Security-, Fidelity- und "
-                        "Recovery-Evidence geschlossen."
+                        "Runtime-Abhaengigkeiten und byteverifizierten Vendorcode inventarisiert. Das validierte "
+                        "CycloneDX-Pre-Build-SBOM und der netzlose Trivy-Scan decken exakt 23 Komponenten ohne "
+                        "Finding ab. Import, Engine, Content und Produktion bleiben bis Legal-, Signatur-, Build-, "
+                        "Security-, Fidelity- und Recovery-Evidence geschlossen."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="office_edit_boundary",
@@ -769,7 +770,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_genoffice_docx_source_admission.py",
                         "docs/operations/GENOFFICE_SOURCE_ADMISSION.md",
                         "docs/operations/genoffice_docx_source_admission_report.json",
+                        "app/suite/operations/genoffice_vendored_provenance_admission.py",
+                        "docs/operations/genoffice_vendored_provenance_report.json",
+                        "app/suite/operations/genoffice_docx_prebuild_sbom.py",
+                        "docs/operations/genoffice_docx_prebuild.cdx.json",
+                        "app/suite/operations/genoffice_docx_supply_chain_admission.py",
+                        "docs/operations/genoffice_docx_supply_chain_admission_report.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -780,6 +788,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "no_network_or_upstream_execution",
                         "prohibited_scopes_excluded_from_source_manifest",
                         "runtime_dependency_and_vendored_license_inventory",
+                        "vendored_npm_tarball_byte_provenance",
+                        "deterministic_cyclonedx_prebuild_sbom",
+                        "network_separated_trivy_db_update_and_scan",
+                        "exact_23_purl_inventory_and_fresh_db_gate",
+                        "high_and_critical_findings_blocked",
                         "source_import_and_production_use_blocked",
                     ),
                 ),

@@ -101,7 +101,7 @@ search/vector candidate ids -> authoritative ACL -> source fetch -> redaction ->
 | Rich Text Core | ProseMirror | candidate | Bewaehrt, tief kontrollierbar. |
 | Product Editor Layer | Tiptap | candidate | Schnellere Produktentwicklung, ProseMirror-basiert; Lizenz/Pro Features pruefen. |
 | CRDT | Yjs | candidate | Bewaehrte CRDT-Basis, Editor-Bindings, netzwerkagnostisch. |
-| DOCX Quick Edit Engine | Selektiv evaluierter GenOffice `docx-engine` hinter `OfficeEditAdapter.v1` | evaluation-only | Interessante byte-erhaltende Patch-Architektur; exakt gepinnt, noch nicht importiert und erst nach Legal-, Supply-Chain-, Malicious-File-, Fidelity- und Recovery-Gate. |
+| DOCX Quick Edit Engine | Selektiv evaluierter GenOffice `docx-engine` hinter `OfficeEditAdapter.v1` | pre-build supply-chain passed; import blocked | Interessante byte-erhaltende Patch-Architektur; 23 Komponenten exakt inventarisiert und ohne Findings gescannt, aber erst nach Legal-, Signatur-, reproduzierbarem Image-Build-, Malicious-File-, Fidelity- und Recovery-Gate importierbar. |
 | Full Collaboration | Collabora Online ueber separaten WOPI-Adapter | candidate | Self-hosted und LibreOffice-basiert; Sessions, Locks, Tokens, Callbacks und Writes bleiben ausserhalb von Preview und Quick Edit. |
 | Full Collaboration Alternative | ONLYOFFICE Docs ueber separaten WOPI-Adapter | defer | Gute OOXML-Ausrichtung; Lizenz, Edition, Einbettung und Betriebsgrenzen vor Auswahl gesondert pruefen. |
 | Spreadsheet Engine | Noch offen | research | Formeltreue ist ein eigenes Risiko. |

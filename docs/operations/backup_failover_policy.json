@@ -127,7 +127,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
-      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "engine SBOM, vulnerability decision, build digest, and signed provenance", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
+      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, and advertised signature/attestation references", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
     },
     {
       "domain_id": "mail_messages_threads",
