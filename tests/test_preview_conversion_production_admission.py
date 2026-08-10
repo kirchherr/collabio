@@ -4,6 +4,7 @@ import base64
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -37,6 +38,7 @@ from suite.operations.preview_conversion_production_admission import (
 from suite.platform.source_object_preview_conversion import (
     PreviewConversionBlocked,
     PreviewConversionCommand,
+    PreviewConversionExecutionGateEvidence,
     PreviewConversionGateStatus,
     PreviewConversionResourceLimits,
     build_preview_conversion_command_hash,
@@ -49,6 +51,7 @@ HASHES = tuple("sha256:" + character * 64 for character in "123456789abcdef")
 IMAGE_REF = "ghcr.io/kirchherr/collabio-preview-renderer@sha256:" + "a" * 64
 VIEWER_ORIGIN = "https://preview.example.com"
 APPLICATION_ORIGIN = "https://app.example.com"
+SIGNER_ROLES: tuple[Literal["release", "security", "operations"], ...] = ("release", "security", "operations")
 
 
 def test_production_admission_requires_fresh_bound_three_role_signed_evidence(
@@ -263,7 +266,9 @@ def _recovery_report() -> DerivedPreviewRecoveryDrillReport:
     return draft.model_copy(update={"report_hash": build_derived_preview_recovery_drill_report_hash(draft)})
 
 
-def _execution_gate(*, recovery_report: DerivedPreviewRecoveryDrillReport):
+def _execution_gate(
+    *, recovery_report: DerivedPreviewRecoveryDrillReport
+) -> PreviewConversionExecutionGateEvidence:
     return build_preview_conversion_execution_gate(
         tenant_id="tenant-demo",
         worker_image_ref=IMAGE_REF,
@@ -283,7 +288,11 @@ def _execution_gate(*, recovery_report: DerivedPreviewRecoveryDrillReport):
     )
 
 
-def _bundle(*, execution_gate, recovery_report) -> PreviewConversionProductionEvidenceBundle:
+def _bundle(
+    *,
+    execution_gate: PreviewConversionExecutionGateEvidence,
+    recovery_report: DerivedPreviewRecoveryDrillReport,
+) -> PreviewConversionProductionEvidenceBundle:
     return PreviewConversionProductionEvidenceBundle(
         tenant_id="tenant-demo",
         deployment_ref_hash=HASHES[10],
@@ -396,7 +405,7 @@ def _sign_bundle(
 ) -> tuple[PreviewConversionSignerPolicy, PreviewConversionAttestationEnvelope]:
     private_keys: dict[str, Ed25519PrivateKey] = {}
     signers: list[PreviewConversionTrustedSigner] = []
-    for index, role in enumerate(("release", "security", "operations"), start=1):
+    for index, role in enumerate(SIGNER_ROLES, start=1):
         private_key = Ed25519PrivateKey.from_private_bytes(bytes([index]) * 32)
         public_key = private_key.public_key().public_bytes(
             encoding=serialization.Encoding.Raw,
@@ -430,7 +439,7 @@ def _sign_bundle(
     )
 
 
-def _command(*, execution_gate) -> PreviewConversionCommand:
+def _command(*, execution_gate: PreviewConversionExecutionGateEvidence) -> PreviewConversionCommand:
     draft = PreviewConversionCommand(
         tenant_id="tenant-demo",
         source_object_id="document-1",

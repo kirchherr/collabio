@@ -673,7 +673,7 @@ def _reconstruct_pdf_from_rgb(
 ) -> str:
     try:
         from PIL import Image  # type: ignore[import-not-found]
-        from PIL import __version__ as pillow_version  # type: ignore[import-not-found]
+        from PIL import __version__ as pillow_version
     except ImportError as exc:
         raise PreviewConversionWorkerError("preview CDR PDF reconstruction engine is unavailable") from exc
     images: list[Any] = []
