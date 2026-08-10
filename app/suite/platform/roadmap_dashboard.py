@@ -706,7 +706,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Preview-Evidence und Decisions bleiben metadata-only; ein evidence-gebundener, "
                         "ACL-gepruefter Klartext-Release ist guarded produktiv. Der Conversion-Worker besitzt eine "
                         "kryptografisch signierte Production-Admission-Grenze; reale Production-Evidence, Rich "
-                        "Content und Mail bleiben blockiert."
+                        "Content und Mail bleiben blockiert. Der reale ClamAV-Pfad ist intern angebunden; CDR und "
+                        "die signierte produktive Evidence-Zeremonie fehlen noch."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="content_boundary",
@@ -718,6 +719,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/preview_conversion_production_admission.py",
                         "tests/test_preview_conversion_production_admission.py",
                         "docs/operations/PREVIEW_CONVERSION_PRODUCTION_ADMISSION.md",
+                        "app/suite/platform/preview_malware_scanner.py",
+                        "tests/test_preview_malware_scanner.py",
+                        "docs/operations/PREVIEW_MALWARE_SCANNER.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/preview-renderer-runs",
@@ -733,6 +737,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "mail_attachments_html_and_binary_content_blocked",
                         "production_dispatch_requires_three_role_dsse_attestation",
                         "real_malware_and_cdr_service_evidence_required",
+                        "clamav_scan_errors_and_stale_smoke_reports_quarantine",
                         "worker_digest_sbom_and_provenance_verification_required",
                         "non_empty_recovery_and_separate_pdfjs_origin_required",
                         "preview_serving_remains_a_separate_gate",

@@ -49,7 +49,10 @@ und [OWASP CSP](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_
 ## Provider-Strategie
 
 Die Gate ist provider-neutral. Der erste produktive Adapter soll ClamAV/`clamd` fuer Malware-Erkennung verwenden;
-Signaturen muessen durch `freshclam` aktualisiert und ihre Frische nachgewiesen werden. Als Open-Source-CDR-Kandidat
+Signaturen muessen durch `freshclam` aktualisiert und ihre Frische nachgewiesen werden. Der Collabio-eigene
+ClamAV-`INSTREAM`-Adapter, interne Compose-Dienst und Clean-/EICAR-Smoke sind inzwischen als
+development-only Eingang implementiert. Sie erfuellen die produktive Evidence noch nicht, weil signierte
+Signaturdatenbank-Provenance, HA-/Failover-Nachweis und produktive Netzwerkpolicy weiterhin fehlen. Als CDR-Kandidat
 wird [Dangerzone](https://github.com/freedomofpress/dangerzone) evaluiert, weil es Dokumente ohne Netz in einer
 gVisor-Sandbox in Pixel und anschliessend in ein neues PDF umwandelt. Dangerzone ist AGPL-3.0; Architektur-, Lizenz-,
 Wartungs- und Performance-Review sind vor Einbindung zwingend. Bis dahin bleibt auch dieser Adapter gesperrt.
