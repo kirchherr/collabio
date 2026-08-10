@@ -1710,6 +1710,8 @@ services:
       SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH: /backups/preview-conversion-non-empty-stage.json
       SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
       SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
@@ -1729,21 +1731,23 @@ services:
       - ./backups:/backups
       - preview_conversion_proof_input:/job/proof-input
       - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
 
-  preview-conversion-proof-worker:
+  preview-conversion-proof-cdr-renderer:
     profiles: ["preview-proof"]
     image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
     build:
       context: .
       target: preview-renderer
     command:
-      - --once
+      - --render-cdr-bundle
       - --request
-      - /job/proof-input/request.json
+      - /job/proof-control/request.json
       - --input-dir
       - /job/proof-input
-      - --output-dir
-      - /job/proof-output
+      - --cdr-dir
+      - /job/proof-cdr
     depends_on:
       preview-conversion-proof-stager:
         condition: service_completed_successfully
@@ -1764,7 +1768,46 @@ services:
       SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
       SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: runsc
     volumes:
+      - preview_conversion_proof_control:/job/proof-control:ro
       - preview_conversion_proof_input:/job/proof-input:ro
+      - preview_conversion_proof_cdr:/job/proof-cdr
+
+  preview-conversion-proof-worker:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --rebuild-cdr-bundle
+      - --request
+      - /job/proof-control/request.json
+      - --cdr-dir
+      - /job/proof-cdr
+      - --output-dir
+      - /job/proof-output
+    depends_on:
+      preview-conversion-proof-cdr-renderer:
+        condition: service_completed_successfully
+    runtime: runsc
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: runsc
+    volumes:
+      - preview_conversion_proof_control:/job/proof-control:ro
+      - preview_conversion_proof_cdr:/job/proof-cdr:ro
       - preview_conversion_proof_output:/job/proof-output
 
   preview-conversion-proof-importer:
@@ -1800,6 +1843,8 @@ services:
       SUITE_PREVIEW_PROOF_REPORT_PATH: /backups/preview-conversion-non-empty-proof.json
       SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
       SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
       SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
@@ -1816,6 +1861,8 @@ services:
       - ./backups:/backups
       - preview_conversion_proof_input:/job/proof-input
       - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
 
   preview-conversion-proof-cleanup:
     profiles: ["preview-proof"]
@@ -1840,9 +1887,13 @@ services:
       PYTHONPATH: /workspace/app
       SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
       SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
     volumes:
       - preview_conversion_proof_input:/job/proof-input
       - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
 
   preview-conversion-production-admission-gate:
     profiles:
@@ -1892,7 +1943,7 @@ services:
       - /job/tmp:size=256m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
       - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
 
-  preview-conversion-worker:
+  preview-conversion-cdr-renderer:
     profiles:
       - preview-execution
     image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
@@ -1900,9 +1951,9 @@ services:
       context: .
       target: preview-renderer
     command:
-      - --once
+      - --render-cdr-bundle
       - --request
-      - /job/input/request.json
+      - /job/control/request.json
       - --input-dir
       - /job/input
       - --production-admission-required
@@ -1916,8 +1967,8 @@ services:
       - /evidence/preview-conversion-production-attestation.dsse.json
       - --production-signer-policy
       - /trust/preview-conversion-signers.json
-      - --output-dir
-      - /job/output
+      - --cdr-dir
+      - /job/cdr
     runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
     network_mode: "none"
     read_only: true
@@ -1935,7 +1986,60 @@ services:
       SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
       SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: ${SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS:-runsc}
     volumes:
+      - preview_conversion_control:/job/control:ro
       - preview_conversion_input:/job/input:ro
+      - preview_conversion_cdr:/job/cdr
+      - ./backups:/evidence:ro
+      - ./security:/trust:ro
+
+  preview-conversion-worker:
+    profiles:
+      - preview-execution
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --rebuild-cdr-bundle
+      - --request
+      - /job/control/request.json
+      - --cdr-dir
+      - /job/cdr
+      - --production-admission-required
+      - --production-admission
+      - /evidence/preview-conversion-production-admission-gate.json
+      - --production-evidence
+      - /evidence/preview-conversion-production-evidence.json
+      - --production-recovery-report
+      - /evidence/derived-preview-recovery-drill.json
+      - --production-attestation
+      - /evidence/preview-conversion-production-attestation.dsse.json
+      - --production-signer-policy
+      - /trust/preview-conversion-signers.json
+      - --output-dir
+      - /job/output
+    depends_on:
+      preview-conversion-cdr-renderer:
+        condition: service_completed_successfully
+    runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: ${SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS:-runsc}
+    volumes:
+      - preview_conversion_control:/job/control:ro
+      - preview_conversion_cdr:/job/cdr:ro
       - preview_conversion_output:/job/output
       - ./backups:/evidence:ro
       - ./security:/trust:ro
@@ -2143,3 +2247,7 @@ volumes:
   preview_conversion_output:
   preview_conversion_proof_input:
   preview_conversion_proof_output:
+  preview_conversion_proof_control:
+  preview_conversion_proof_cdr:
+  preview_conversion_control:
+  preview_conversion_cdr:

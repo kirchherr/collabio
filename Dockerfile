@@ -50,6 +50,7 @@ ARG LIBREOFFICE_VERSION=25.8.7.3-r0
 ARG QPDF_VERSION=12.3.2-r0
 ARG POPPLER_UTILS_VERSION=25.12.0-r1
 ARG FONTCONFIG_VERSION=2.17.1-r1
+ARG PY3_PILLOW_VERSION=11.3.0-r2
 ARG DEJAVU_FONT_VERSION=2.37-r6
 ARG LIBERATION_FONT_VERSION=2.1.5-r2
 
@@ -60,17 +61,18 @@ RUN apk add --no-cache \
         "libreoffice-impress=${LIBREOFFICE_VERSION}" \
         "qpdf=${QPDF_VERSION}" \
         "poppler-utils=${POPPLER_UTILS_VERSION}" \
+        "py3-pillow=${PY3_PILLOW_VERSION}" \
         "fontconfig=${FONTCONFIG_VERSION}" \
         "font-dejavu=${DEJAVU_FONT_VERSION}" \
         "ttf-liberation=${LIBERATION_FONT_VERSION}" \
     && addgroup -S -g 10002 preview \
     && adduser -S -D -H -u 10002 -G preview preview \
-    && mkdir --parents /job/input /job/output /job/tmp \
+    && mkdir --parents /job/control /job/input /job/cdr /job/output /job/tmp \
     && chown -R 10002:10002 /job
 
 COPY --chown=10002:10002 app ./app
 
-ENV PYTHONPATH=/workspace/app
+ENV PYTHONPATH=/usr/lib/python3.12/site-packages:/workspace/app
 ENV HOME=/job/tmp/home
 ENV TMPDIR=/job/tmp
 

@@ -48,7 +48,7 @@ def test_stage_bundle_is_hash_bound_synthetic_and_dedicated_to_proof_tenant() ->
     assert bundle.execution_gate.worker_image_ref == WORKER_IMAGE_REF
     assert bundle.report.runtime_engine_self_test_report_hash == "sha256:" + ("2" * 64)
     assert bundle.report.real_malware_scanner_invoked is False
-    assert bundle.report.schema_version == "source_object_preview_conversion_non_empty_stage.v2"
+    assert bundle.report.schema_version == "source_object_preview_conversion_non_empty_stage.v3"
     assert bundle.envelope.command.preview_policy_id == "synthetic-preview-proof.v1"
     assert bundle.report.development_only is True
     assert bundle.report.synthetic_fixture is True
@@ -155,6 +155,9 @@ def test_proof_report_rejects_any_production_or_serving_claim() -> None:
         "output_content_hash": result.output_content_hash,
         "output_content_byte_length": result.output_content_byte_length,
         "page_count": result.page_count,
+        "cdr_manifest_hash": result.cdr_manifest_hash,
+        "pixel_reconstruction_verified": True,
+        "cdr_trust_boundary_separated": True,
         "technical_conversion_verified": True,
         "persistent_lineage_verified": True,
         "transient_input_destroyed": True,
@@ -180,6 +183,11 @@ def test_runtime_preflight_report_must_be_hash_valid_and_isolated(tmp_path: Path
         output_content_hash="sha256:" + ("2" * 64),
         output_content_byte_length=128,
         page_count=1,
+        cdr_profile_ref="collabio-pixel-cdr:raw-rgb.v1",
+        cdr_manifest_hash="sha256:" + ("3" * 64),
+        cdr_page_count=1,
+        pixel_reconstruction_passed=True,
+        cdr_trust_boundary_separated=False,
         qpdf_validation_passed=True,
         pdfinfo_validation_passed=True,
         active_pdf_content_absent=True,
@@ -278,7 +286,8 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     updater = _service(compose, "preview-malware-signature-updater", "preview-malware-scanner")
     scanner = _service(compose, "preview-malware-scanner", "preview-malware-scanner-smoke")
     scanner_smoke = _service(compose, "preview-malware-scanner-smoke", "preview-conversion-proof-runtime-preflight")
-    stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-worker")
+    stager = _service(compose, "preview-conversion-proof-stager", "preview-conversion-proof-cdr-renderer")
+    renderer = _service(compose, "preview-conversion-proof-cdr-renderer", "preview-conversion-proof-worker")
     worker = _service(compose, "preview-conversion-proof-worker", "preview-conversion-proof-importer")
     importer = _service(compose, "preview-conversion-proof-importer", "preview-conversion-proof-cleanup")
     cleanup = _service(compose, "preview-conversion-proof-cleanup", "preview-conversion-engine-smoke")
@@ -319,14 +328,26 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert "- FOWNER" in stager
     assert "SUITE_DATABASE_DSN:" in stager
     assert "SUITE_S3_SECRET_ACCESS_KEY:" in stager
-    assert "preview-conversion-proof-stager:" in worker
+    assert "preview-conversion-proof-stager:" in renderer
+    assert "--render-cdr-bundle" in renderer
+    assert "runtime: runsc" in renderer
+    assert 'network_mode: "none"' in renderer
+    assert "preview_conversion_proof_input:/job/proof-input:ro" in renderer
+    assert "preview_conversion_proof_control:/job/proof-control:ro" in renderer
+    assert "preview_conversion_proof_cdr:/job/proof-cdr" in renderer
+    assert "preview_conversion_proof_output:/job/proof-output" not in renderer
+    assert "SUITE_DATABASE_DSN:" not in renderer
+    assert "preview-conversion-proof-cdr-renderer:" in worker
+    assert "--rebuild-cdr-bundle" in worker
     assert "condition: service_completed_successfully" in worker
     assert "runtime: runsc" in worker
     assert 'network_mode: "none"' in worker
     assert "SUITE_DATABASE_DSN:" not in worker
     assert "SUITE_S3_SECRET_ACCESS_KEY:" not in worker
     assert "cap_add:" not in worker
-    assert "preview_conversion_proof_input:/job/proof-input:ro" in worker
+    assert "preview_conversion_proof_input:/job/proof-input:ro" not in worker
+    assert "preview_conversion_proof_control:/job/proof-control:ro" in worker
+    assert "preview_conversion_proof_cdr:/job/proof-cdr:ro" in worker
     assert "preview-conversion-proof-worker:" in importer
     assert "- DAC_OVERRIDE" in importer
     assert "SUITE_DATABASE_DSN:" in importer
@@ -335,6 +356,8 @@ def test_compose_proof_chain_keeps_worker_credentialless_offline_and_on_runsc() 
     assert "- DAC_OVERRIDE" in cleanup
     assert "preview_conversion_proof_input:" in compose
     assert "preview_conversion_proof_output:" in compose
+    assert "preview_conversion_proof_control:" in compose
+    assert "preview_conversion_proof_cdr:" in compose
 
 
 def _bundle() -> PreviewConversionProofStageBundle:
@@ -365,6 +388,13 @@ def _result(bundle: PreviewConversionProofStageBundle) -> PreviewConversionWorke
         converter_version="LibreOffice 25.8.7.3",
         pdf_validator_version="qpdf version 12.3.2",
         font_baseline_hash=gate.font_baseline_hash,
+        cdr_profile_ref="collabio-pixel-cdr:raw-rgb.v1",
+        cdr_manifest_hash="sha256:" + ("e" * 64),
+        cdr_page_count=1,
+        pixel_reconstruction_passed=True,
+        cdr_fail_closed_verified=True,
+        cdr_trust_boundary_separated=True,
+        source_bytes_accessible_to_cdr_rebuilder=False,
         output_content_hash=sha256_bytes(PDF_BYTES),
         output_content_byte_length=len(PDF_BYTES),
         page_count=1,

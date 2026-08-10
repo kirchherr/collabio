@@ -18,6 +18,7 @@ from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass
 from suite.operations.backend_foundation_completion_gate import load_backend_foundation_completion_gate
 from suite.operations.preview_malware_scanner_smoke import load_preview_malware_scanner_smoke_report
+from suite.platform.preview_cdr import PREVIEW_CDR_PROFILE_REF
 from suite.platform.preview_malware_scanner import (
     PreviewMalwareScanEvidence,
     PreviewMalwareScanSubject,
@@ -88,6 +89,8 @@ class PreviewConversionProofStageReport(BaseModel):
     sandbox_runtime_class: str
     backup_restore_evidence_hash: str
     runtime_engine_self_test_report_hash: str
+    cdr_engine_self_test_report_hash: str
+    real_cdr_reconstruction_required: bool = True
     malware_scanner_smoke_report_hash: str
     malware_scan_evidence_hash: str
     real_malware_scanner_invoked: bool
@@ -96,7 +99,7 @@ class PreviewConversionProofStageReport(BaseModel):
     content_included: bool = False
     staged_at_utc: datetime
     report_hash: str
-    schema_version: str = "source_object_preview_conversion_non_empty_stage.v2"
+    schema_version: str = "source_object_preview_conversion_non_empty_stage.v3"
 
     @field_validator(
         "source_object_ref_hash",
@@ -106,6 +109,7 @@ class PreviewConversionProofStageReport(BaseModel):
         "source_content_hash",
         "backup_restore_evidence_hash",
         "runtime_engine_self_test_report_hash",
+        "cdr_engine_self_test_report_hash",
         "malware_scanner_smoke_report_hash",
         "malware_scan_evidence_hash",
         "report_hash",
@@ -138,6 +142,8 @@ class PreviewConversionProofStageReport(BaseModel):
             raise ValueError("preview conversion proof stage cannot request production admission or include content")
         if not self.input_workspace_ready or not self.output_workspace_ready:
             raise ValueError("preview conversion proof workspaces must be ready before execution")
+        if not self.real_cdr_reconstruction_required:
+            raise ValueError("preview conversion proof must require real CDR reconstruction")
         return self
 
 
@@ -163,6 +169,9 @@ class PreviewConversionNonEmptyProofReport(BaseModel):
     output_content_hash: str
     output_content_byte_length: int = Field(ge=1)
     page_count: int = Field(ge=1)
+    cdr_manifest_hash: str
+    pixel_reconstruction_verified: bool
+    cdr_trust_boundary_separated: bool
     technical_conversion_verified: bool
     persistent_lineage_verified: bool
     transient_input_destroyed: bool
@@ -174,7 +183,7 @@ class PreviewConversionNonEmptyProofReport(BaseModel):
     content_included: bool = False
     completed_at_utc: datetime
     report_hash: str
-    schema_version: str = "source_object_preview_conversion_non_empty_proof.v1"
+    schema_version: str = "source_object_preview_conversion_non_empty_proof.v2"
 
     @field_validator(
         "source_object_ref_hash",
@@ -187,6 +196,7 @@ class PreviewConversionNonEmptyProofReport(BaseModel):
         "derived_preview_receipt_hash",
         "job_evidence_hash",
         "output_content_hash",
+        "cdr_manifest_hash",
         "report_hash",
     )
     @classmethod
@@ -216,6 +226,8 @@ class PreviewConversionNonEmptyProofReport(BaseModel):
             self.persistent_lineage_verified,
             self.transient_input_destroyed,
             self.transient_output_destroyed,
+            self.pixel_reconstruction_verified,
+            self.cdr_trust_boundary_separated,
         )
         forbidden = (
             self.production_admission_requested,
@@ -342,8 +354,8 @@ def build_preview_conversion_proof_stage_bundle(
         sandbox_runtime_evidence_hash=sandbox_runtime_evidence_hash,
         malware_scanner_profile_ref=scanner_profile_ref,
         malware_scanner_evidence_hash=malware_scanner_evidence_hash,
-        cdr_profile_ref="synthetic-fixture:no-active-content.v1",
-        cdr_evidence_hash=stable_hash(f"{fixture_evidence_hash}:cdr"),
+        cdr_profile_ref=PREVIEW_CDR_PROFILE_REF,
+        cdr_evidence_hash=runtime_engine_self_test_report_hash,
         pdf_validator_profile_ref="qpdf-pdfinfo:preview-proof.v1",
         pdf_validator_evidence_hash=stable_hash("qpdf-pdfinfo:preview-proof.v1"),
         font_baseline_hash=font_baseline_hash,
@@ -358,7 +370,7 @@ def build_preview_conversion_proof_stage_bundle(
             source_metadata=source_record.metadata,
             scanner_profile_ref=scanner_profile_ref,
             scanner_signature_set_hash=scanner_signature_set_hash,
-            cdr_profile_ref="synthetic-fixture:no-active-content.v1",
+            cdr_profile_ref=PREVIEW_CDR_PROFILE_REF,
             checked_at_utc=staged_at,
             validity_hours=1,
         )
@@ -366,7 +378,7 @@ def build_preview_conversion_proof_stage_bundle(
         else build_preview_conversion_source_preflight_from_malware_scan(
             source_metadata=source_record.metadata,
             malware_scan=malware_scan_evidence,
-            cdr_profile_ref="synthetic-fixture:no-active-content.v1",
+            cdr_profile_ref=PREVIEW_CDR_PROFILE_REF,
             checked_at_utc=staged_at,
             validity_hours=1,
         )
@@ -410,6 +422,7 @@ def build_preview_conversion_proof_stage_bundle(
         backup_restore_evidence_hash=backup_restore_evidence_hash,
         runtime_engine_self_test_report_hash=runtime_engine_self_test_report_hash,
         malware_scanner_smoke_report_hash=scanner_smoke_report_hash,
+        cdr_engine_self_test_report_hash=runtime_engine_self_test_report_hash,
         malware_scan_evidence_hash=(
             malware_scan_evidence.evidence_hash if malware_scan_evidence is not None else fixture_evidence_hash
         ),
@@ -434,12 +447,24 @@ def stage_preview_conversion_proof_workspaces(
     bundle: PreviewConversionProofStageBundle,
     input_dir: Path,
     output_dir: Path,
+    control_dir: Path | None = None,
+    cdr_dir: Path | None = None,
 ) -> None:
+    control_workspace = control_dir or input_dir
     _clear_workspace(input_dir)
     _clear_workspace(output_dir)
+    if control_workspace != input_dir:
+        _clear_workspace(control_workspace)
+    if cdr_dir is not None:
+        _clear_workspace(cdr_dir)
     _write_bytes_atomically(input_dir / bundle.envelope.command.input_filename, SYNTHETIC_RTF_BYTES)
-    _write_json_atomically(input_dir / "request.json", bundle.envelope.model_dump(mode="json"))
-    _prepare_worker_ownership(input_dir=input_dir, output_dir=output_dir)
+    _write_json_atomically(control_workspace / "request.json", bundle.envelope.model_dump(mode="json"))
+    _prepare_worker_ownership(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        control_dir=control_workspace,
+        cdr_dir=cdr_dir,
+    )
 
 
 def import_preview_conversion_non_empty_proof(
@@ -449,15 +474,18 @@ def import_preview_conversion_non_empty_proof(
     committer: DerivedPreviewCommitter,
     input_dir: Path,
     output_dir: Path,
+    control_dir: Path | None = None,
+    cdr_dir: Path | None = None,
     completed_at_utc: datetime | None = None,
 ) -> PreviewConversionNonEmptyProofReport:
+    control_workspace = control_dir or input_dir
     normalized_run_id = proof_run_id.strip().lower()
     if not PROOF_RUN_ID_PATTERN.fullmatch(normalized_run_id):
         raise ValueError("preview conversion proof run ID is invalid")
     report: PreviewConversionNonEmptyProofReport | None = None
     try:
         envelope = PreviewConversionWorkerEnvelope.model_validate_json(
-            (input_dir / "request.json").read_text(encoding="utf-8")
+            (control_workspace / "request.json").read_text(encoding="utf-8")
         )
         _require_expected_proof_envelope(envelope=envelope, proof_run_id=normalized_run_id)
         result = PreviewConversionWorkerResult.model_validate_json(
@@ -489,6 +517,10 @@ def import_preview_conversion_non_empty_proof(
             raise ValueError("persisted preview proof manifest does not match imported artifact")
         _clear_workspace(input_dir)
         _clear_workspace(output_dir)
+        if control_workspace != input_dir:
+            _clear_workspace(control_workspace)
+        if cdr_dir is not None:
+            _clear_workspace(cdr_dir)
         report = _build_final_report(
             proof_run_id=normalized_run_id,
             source=source,
@@ -504,6 +536,10 @@ def import_preview_conversion_non_empty_proof(
             _clear_workspace(input_dir)
             _clear_workspace(output_dir)
 
+            if control_workspace != input_dir:
+                _clear_workspace(control_workspace)
+            if cdr_dir is not None:
+                _clear_workspace(cdr_dir)
 
 def build_preview_conversion_stage_report_hash(report: PreviewConversionProofStageReport) -> str:
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"report_hash"})))
@@ -530,6 +566,11 @@ def load_preview_conversion_runtime_engine_report(report_path: Path) -> PreviewC
         report.qpdf_validation_passed
         and report.pdfinfo_validation_passed
         and report.active_pdf_content_absent
+        and report.cdr_profile_ref == PREVIEW_CDR_PROFILE_REF
+        and report.cdr_manifest_hash != ZERO_HASH
+        and report.cdr_page_count == report.page_count
+        and report.pixel_reconstruction_passed
+        and not report.cdr_trust_boundary_separated
         and report.output_content_byte_length > 0
         and report.page_count > 0
     ):
@@ -556,6 +597,8 @@ def prepare_and_commit_preview_conversion_proof_stage(
     *,
     bundle: PreviewConversionProofStageBundle,
     committer: PreviewConversionProofStageCommitter,
+    control_dir: Path | None = None,
+    cdr_dir: Path | None = None,
     input_dir: Path,
     output_dir: Path,
     report_path: Path,
@@ -564,6 +607,8 @@ def prepare_and_commit_preview_conversion_proof_stage(
     database_committed = False
     try:
         stage_preview_conversion_proof_workspaces(
+            control_dir=control_dir,
+            cdr_dir=cdr_dir,
             bundle=bundle,
             input_dir=input_dir,
             output_dir=output_dir,
@@ -578,6 +623,10 @@ def prepare_and_commit_preview_conversion_proof_stage(
     except Exception:
         if not database_committed:
             _clear_workspace(input_dir)
+            if control_dir is not None and control_dir != input_dir:
+                _clear_workspace(control_dir)
+            if cdr_dir is not None:
+                _clear_workspace(cdr_dir)
             _clear_workspace(output_dir)
             pending_report_path.unlink(missing_ok=True)
         raise
@@ -589,8 +638,12 @@ def run_preview_conversion_proof_stage_from_environment(
 ) -> PreviewConversionProofStageReport:
     input_dir = Path(env.get("SUITE_PREVIEW_PROOF_INPUT_DIR", "/job/proof-input"))
     output_dir = Path(env.get("SUITE_PREVIEW_PROOF_OUTPUT_DIR", "/job/proof-output"))
+    control_dir = Path(env.get("SUITE_PREVIEW_PROOF_CONTROL_DIR", "/job/proof-control"))
+    cdr_dir = Path(env.get("SUITE_PREVIEW_PROOF_CDR_DIR", "/job/proof-cdr"))
     _require_job_workspace(input_dir)
     _require_job_workspace(output_dir)
+    _require_job_workspace(control_dir)
+    _require_job_workspace(cdr_dir)
     foundation_gate = load_backend_foundation_completion_gate(
         Path(_required_env(env, "SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH"))
     )
@@ -638,6 +691,8 @@ def run_preview_conversion_proof_stage_from_environment(
         committer=stage_uow,
         input_dir=input_dir,
         output_dir=output_dir,
+        control_dir=control_dir,
+        cdr_dir=cdr_dir,
         report_path=Path(_required_env(env, "SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH")),
     )
 
@@ -647,8 +702,12 @@ def run_preview_conversion_proof_import_from_environment(
 ) -> PreviewConversionNonEmptyProofReport:
     input_dir = Path(env.get("SUITE_PREVIEW_PROOF_INPUT_DIR", "/job/proof-input"))
     output_dir = Path(env.get("SUITE_PREVIEW_PROOF_OUTPUT_DIR", "/job/proof-output"))
+    control_dir = Path(env.get("SUITE_PREVIEW_PROOF_CONTROL_DIR", "/job/proof-control"))
+    cdr_dir = Path(env.get("SUITE_PREVIEW_PROOF_CDR_DIR", "/job/proof-cdr"))
     _require_job_workspace(input_dir)
     _require_job_workspace(output_dir)
+    _require_job_workspace(control_dir)
+    _require_job_workspace(cdr_dir)
     database_dsn = _required_env(env, "SUITE_DATABASE_DSN")
     source_repository = build_default_workspace_source_object_repository(env)
     if not isinstance(source_repository, PgSourceObjectRepository):
@@ -666,6 +725,8 @@ def run_preview_conversion_proof_import_from_environment(
         committer=committer,
         input_dir=input_dir,
         output_dir=output_dir,
+        control_dir=control_dir,
+        cdr_dir=cdr_dir,
     )
     persist_preview_conversion_proof_report(
         report=report,
@@ -677,14 +738,22 @@ def run_preview_conversion_proof_import_from_environment(
 def cleanup_preview_conversion_proof_workspaces(env: Mapping[str, str]) -> dict[str, object]:
     input_dir = Path(env.get("SUITE_PREVIEW_PROOF_INPUT_DIR", "/job/proof-input"))
     output_dir = Path(env.get("SUITE_PREVIEW_PROOF_OUTPUT_DIR", "/job/proof-output"))
+    control_dir = Path(env.get("SUITE_PREVIEW_PROOF_CONTROL_DIR", "/job/proof-control"))
+    cdr_dir = Path(env.get("SUITE_PREVIEW_PROOF_CDR_DIR", "/job/proof-cdr"))
     _require_job_workspace(input_dir)
     _require_job_workspace(output_dir)
+    _require_job_workspace(control_dir)
+    _require_job_workspace(cdr_dir)
     _clear_workspace(input_dir)
     _clear_workspace(output_dir)
+    _clear_workspace(control_dir)
+    _clear_workspace(cdr_dir)
     return {
-        "schema_version": "source_object_preview_conversion_proof_cleanup.v1",
+        "schema_version": "source_object_preview_conversion_proof_cleanup.v2",
         "input_workspace_empty": not any(input_dir.iterdir()),
         "output_workspace_empty": not any(output_dir.iterdir()),
+        "control_workspace_empty": not any(control_dir.iterdir()),
+        "cdr_workspace_empty": not any(cdr_dir.iterdir()),
         "content_included": False,
     }
 
@@ -753,6 +822,9 @@ def _build_final_report(
         output_content_hash=result.output_content_hash,
         output_content_byte_length=result.output_content_byte_length,
         page_count=result.page_count,
+        cdr_manifest_hash=result.cdr_manifest_hash,
+        pixel_reconstruction_verified=result.pixel_reconstruction_passed,
+        cdr_trust_boundary_separated=result.cdr_trust_boundary_separated,
         technical_conversion_verified=True,
         persistent_lineage_verified=True,
         transient_input_destroyed=input_destroyed,
@@ -803,12 +875,19 @@ def _clear_workspace(path: Path) -> None:
             raise ValueError("preview conversion proof workspace contains an unsupported entry")
 
 
-def _prepare_worker_ownership(*, input_dir: Path, output_dir: Path) -> None:
-    for directory in (input_dir, output_dir):
+def _prepare_worker_ownership(
+    *,
+    input_dir: Path,
+    output_dir: Path,
+    control_dir: Path,
+    cdr_dir: Path | None,
+) -> None:
+    writable_directories = (output_dir,) if cdr_dir is None else (output_dir, cdr_dir)
+    for directory in (input_dir, control_dir, *writable_directories):
         directory.chmod(0o700)
         if os.geteuid() == 0:
             os.chown(directory, 10002, 10002)
-    for path in input_dir.iterdir():
+    for path in (*input_dir.iterdir(), *control_dir.iterdir()):
         path.chmod(0o440)
         if os.geteuid() == 0:
             os.chown(path, 10002, 10002)

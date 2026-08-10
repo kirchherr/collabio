@@ -32,7 +32,8 @@ PREVIEW_CONVERSION_PREFLIGHT_SCHEMA_VERSION = "source_object_preview_conversion_
 PREVIEW_CONVERSION_COMMAND_LEGACY_SCHEMA_VERSION = "source_object_preview_conversion_command.v1"
 PREVIEW_CONVERSION_COMMAND_SCHEMA_VERSION = "source_object_preview_conversion_command.v2"
 PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION = "source_object_preview_conversion_result.v1"
-PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION = "source_object_preview_conversion_result.v2"
+PREVIEW_CONVERSION_RESULT_PRE_CDR_SCHEMA_VERSION = "source_object_preview_conversion_result.v2"
+PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION = "source_object_preview_conversion_result.v3"
 DERIVED_PREVIEW_RECEIPT_SCHEMA_VERSION = "source_object_derived_preview_receipt.v1"
 PREVIEW_CONVERSION_JOB_EVIDENCE_SCHEMA_VERSION = "source_object_preview_conversion_job_evidence.v1"
 PREVIEW_CONVERSION_GATE_MAX_CLOCK_SKEW = timedelta(minutes=5)
@@ -377,6 +378,13 @@ class PreviewConversionWorkerResult(BaseModel):
     pdf_validator_engine: str = "qpdf+pdfinfo"
     pdf_validator_version: str
     font_baseline_hash: str
+    cdr_profile_ref: str = "legacy:no-cdr-evidence.v1"
+    cdr_manifest_hash: str = ZERO_HASH
+    cdr_page_count: int = Field(default=0, ge=0, le=10000)
+    pixel_reconstruction_passed: bool = False
+    cdr_fail_closed_verified: bool = False
+    cdr_trust_boundary_separated: bool = False
+    source_bytes_accessible_to_cdr_rebuilder: bool = True
     output_mime_type: str = "application/pdf"
     output_content_hash: str
     output_content_byte_length: int = Field(ge=1)
@@ -399,6 +407,7 @@ class PreviewConversionWorkerResult(BaseModel):
     def require_supported_schema(cls, value: str) -> str:
         if value not in {
             PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION,
+            PREVIEW_CONVERSION_RESULT_PRE_CDR_SCHEMA_VERSION,
             PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION,
         }:
             raise ValueError("preview conversion result schema is unsupported")
@@ -413,6 +422,7 @@ class PreviewConversionWorkerResult(BaseModel):
         "font_baseline_hash",
         "output_content_hash",
         "result_hash",
+        "cdr_manifest_hash",
     )
     @classmethod
     def require_sha256_ref(cls, value: str) -> str:
@@ -426,6 +436,14 @@ class PreviewConversionWorkerResult(BaseModel):
         if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion result production admission hash must be a sha256 reference")
         return value
+    @field_validator("cdr_profile_ref")
+    @classmethod
+    def require_namespaced_cdr_profile(cls, value: str) -> str:
+        normalized = value.strip()
+        if not NAMESPACED_REF_PATTERN.fullmatch(normalized):
+            raise ValueError("preview conversion CDR profile must be namespaced")
+        return normalized
+
 
     @model_validator(mode="after")
     def require_safe_result(self) -> PreviewConversionWorkerResult:
@@ -447,8 +465,18 @@ class PreviewConversionWorkerResult(BaseModel):
             raise ValueError("preview conversion result did not preserve the sandbox contract")
         if self.output_mime_type != "application/pdf":
             raise ValueError("preview conversion output must be PDF")
+        if self.schema_version == PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION:
+            cdr_checks = (
+                self.cdr_manifest_hash != ZERO_HASH,
+                self.cdr_page_count == self.page_count,
+                self.pixel_reconstruction_passed,
+                self.cdr_fail_closed_verified,
+                self.cdr_trust_boundary_separated,
+                not self.source_bytes_accessible_to_cdr_rebuilder,
+            )
+            if not all(cdr_checks):
+                raise ValueError("preview conversion result did not preserve the CDR trust boundary")
         return self
-
 
 class PreviewConversionWorkerEnvelope(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -1535,13 +1563,30 @@ def preview_conversion_command_hash_matches(command: PreviewConversionCommand) -
 def preview_conversion_result_hash_matches(result: PreviewConversionWorkerResult) -> bool:
     if result.result_hash == build_preview_conversion_result_hash(result):
         return True
-    if (
-        result.schema_version != PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION
-        or "production_admission_gate_hash" in result.model_fields_set
-    ):
+    historical_versions = {
+        PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION,
+        PREVIEW_CONVERSION_RESULT_PRE_CDR_SCHEMA_VERSION,
+    }
+    if result.schema_version not in historical_versions:
         return False
     payload = result.model_dump(mode="json", exclude={"result_hash"})
-    payload.pop("production_admission_gate_hash", None)
+    if (
+        result.schema_version == PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION
+        and "production_admission_gate_hash" not in result.model_fields_set
+    ):
+        payload.pop("production_admission_gate_hash", None)
+    cdr_fields = {
+        "cdr_profile_ref",
+        "cdr_manifest_hash",
+        "cdr_page_count",
+        "pixel_reconstruction_passed",
+        "cdr_fail_closed_verified",
+        "cdr_trust_boundary_separated",
+        "source_bytes_accessible_to_cdr_rebuilder",
+    }
+    if cdr_fields.isdisjoint(result.model_fields_set):
+        for field_name in cdr_fields:
+            payload.pop(field_name, None)
     return result.result_hash == stable_hash(canonical_json(payload))
 
 
@@ -1555,7 +1600,20 @@ def preview_conversion_job_evidence_hash_matches(evidence: PreviewConversionJobE
     result_missing_admission = evidence.result.schema_version == PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION and (
         "production_admission_gate_hash" not in evidence.result.model_fields_set
     )
-    if not command_missing_admission and not result_missing_admission:
+    cdr_fields = {
+        "cdr_profile_ref",
+        "cdr_manifest_hash",
+        "cdr_page_count",
+        "pixel_reconstruction_passed",
+        "cdr_fail_closed_verified",
+        "cdr_trust_boundary_separated",
+        "source_bytes_accessible_to_cdr_rebuilder",
+    }
+    result_missing_cdr = evidence.result.schema_version in {
+        PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION,
+        PREVIEW_CONVERSION_RESULT_PRE_CDR_SCHEMA_VERSION,
+    } and cdr_fields.isdisjoint(evidence.result.model_fields_set)
+    if not command_missing_admission and not result_missing_admission and not result_missing_cdr:
         return False
     payload = evidence.model_dump(mode="json", exclude={"job_evidence_hash"})
     if command_missing_admission:
@@ -1568,6 +1626,13 @@ def preview_conversion_job_evidence_hash_matches(evidence: PreviewConversionJobE
         if not isinstance(result_payload, dict):
             return False
         result_payload.pop("production_admission_gate_hash", None)
+    if result_missing_cdr:
+        result_payload = payload["result"]
+        if not isinstance(result_payload, dict):
+            return False
+        for field_name in cdr_fields:
+            result_payload.pop(field_name, None)
+
     return evidence.job_evidence_hash == stable_hash(canonical_json(payload))
 
 

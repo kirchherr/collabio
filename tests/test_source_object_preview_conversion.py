@@ -38,6 +38,7 @@ from suite.platform.source_object_preview_conversion import (
     build_preview_conversion_result_hash,
     build_preview_conversion_source_preflight,
     preview_conversion_command_hash_matches,
+    preview_conversion_result_hash_matches,
     preview_conversion_job_evidence_hash_matches,
     require_preview_conversion_execution_gate,
     require_preview_conversion_worker_envelope,
@@ -331,6 +332,16 @@ def test_historical_job_evidence_without_production_admission_fields_remains_ver
     command_payload["command_hash"] = legacy_command_hash
 
     result_payload.pop("production_admission_gate_hash")
+    for field_name in (
+        "cdr_profile_ref",
+        "cdr_manifest_hash",
+        "cdr_page_count",
+        "pixel_reconstruction_passed",
+        "cdr_fail_closed_verified",
+        "cdr_trust_boundary_separated",
+        "source_bytes_accessible_to_cdr_rebuilder",
+    ):
+        result_payload.pop(field_name)
     result_payload["command_hash"] = legacy_command_hash
     result_payload["result_hash"] = "sha256:" + ("0" * 64)
     legacy_result_hash = stable_hash(canonical_json({k: v for k, v in result_payload.items() if k != "result_hash"}))
@@ -362,7 +373,7 @@ def test_current_preview_hash_schemas_reject_unversioned_legacy_shape() -> None:
     result = _result(command=command, gate=gate)
 
     assert command.schema_version == "source_object_preview_conversion_command.v2"
-    assert result.schema_version == "source_object_preview_conversion_result.v2"
+    assert result.schema_version == "source_object_preview_conversion_result.v3"
 
     command_payload = command.model_dump(mode="json")
     command_payload.pop("production_admission_gate_hash")
@@ -373,6 +384,39 @@ def test_current_preview_hash_schemas_reject_unversioned_legacy_shape() -> None:
     current_schema_legacy_shape = PreviewConversionCommand.model_validate(command_payload)
 
     assert preview_conversion_command_hash_matches(current_schema_legacy_shape) is False
+
+
+def test_current_result_requires_separated_fail_closed_cdr_and_v2_hashes_remain_valid() -> None:
+    source = _source_record()
+    gate = _gate()
+    command = _command(source=source, gate=gate, preflight=_preflight(source))
+    current = _result(command=command, gate=gate)
+    blocked = current.model_dump(mode="json")
+    blocked["cdr_trust_boundary_separated"] = False
+    blocked["source_bytes_accessible_to_cdr_rebuilder"] = True
+
+    with pytest.raises(ValidationError, match="CDR trust boundary"):
+        PreviewConversionWorkerResult.model_validate(blocked)
+
+    historical = current.model_dump(mode="json")
+    historical["schema_version"] = "source_object_preview_conversion_result.v2"
+    for field_name in (
+        "cdr_profile_ref",
+        "cdr_manifest_hash",
+        "cdr_page_count",
+        "pixel_reconstruction_passed",
+        "cdr_fail_closed_verified",
+        "cdr_trust_boundary_separated",
+        "source_bytes_accessible_to_cdr_rebuilder",
+    ):
+        historical.pop(field_name)
+    historical["result_hash"] = "sha256:" + ("0" * 64)
+    historical["result_hash"] = stable_hash(
+        canonical_json({key: value for key, value in historical.items() if key != "result_hash"})
+    )
+    loaded = PreviewConversionWorkerResult.model_validate(historical)
+
+    assert preview_conversion_result_hash_matches(loaded) is True
 
 
 NOT_PDF_BYTES = b"X" + PDF_BYTES[1:]
@@ -469,15 +513,24 @@ def test_worker_image_and_compose_service_preserve_credential_less_sandbox_bound
     assert '"libreoffice-calc=${LIBREOFFICE_VERSION}"' in dockerfile
     assert '"libreoffice-impress=${LIBREOFFICE_VERSION}"' in dockerfile
     assert '"qpdf=${QPDF_VERSION}"' in dockerfile
+    assert '"py3-pillow=${PY3_PILLOW_VERSION}"' in dockerfile
     assert "USER 10002:10002" in dockerfile
+    renderer = compose.split("  preview-conversion-cdr-renderer:", maxsplit=1)[1].split(
+        "\n  preview-conversion-worker:", maxsplit=1
+    )[0]
     worker = compose.split("  preview-conversion-worker:", maxsplit=1)[1].split("\n  api:", maxsplit=1)[0]
+    assert "preview_conversion_input:/job/input:ro" in renderer
+    assert "preview_conversion_output:/job/output" not in renderer
     assert "runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}" in worker
     assert 'network_mode: "none"' in worker
     assert "read_only: true" in worker
     assert "- ALL" in worker
     assert "no-new-privileges:true" in worker
-    assert "preview_conversion_input:/job/input:ro" in worker
+    assert "preview_conversion_input:/job/input:ro" not in worker
+    assert "preview_conversion_control:/job/control:ro" in worker
+    assert "preview_conversion_cdr:/job/cdr:ro" in worker
     assert "preview_conversion_output:/job/output" in worker
+    assert "--rebuild-cdr-bundle" in worker
     assert "/job/tmp:size=512m" in worker
     assert "DATABASE_DSN" not in worker
     assert "S3_" not in worker
@@ -637,6 +690,13 @@ def _result(
         converter_version="LibreOffice 25.8.7.3",
         pdf_validator_version="qpdf version 12.3.2",
         font_baseline_hash=gate.font_baseline_hash,
+        cdr_profile_ref="collabio-pixel-cdr:raw-rgb.v1",
+        cdr_manifest_hash="sha256:" + ("e" * 64),
+        cdr_page_count=1,
+        pixel_reconstruction_passed=True,
+        cdr_fail_closed_verified=True,
+        cdr_trust_boundary_separated=True,
+        source_bytes_accessible_to_cdr_rebuilder=False,
         output_content_hash=sha256_bytes(pdf_bytes),
         output_content_byte_length=len(pdf_bytes),
         page_count=1,
