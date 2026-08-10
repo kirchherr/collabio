@@ -29,10 +29,15 @@ tags, stale evidence, missing controls, tenant drift, ACL drift, source-version 
   CSP evidence.
 - `source_object_preview_conversion_source_preflight.v1` binds scanner signatures and CDR disposition to the exact
   tenant, SourceObject, version, manifest hash, and content hash.
-- `source_object_preview_conversion_command.v1` contains metadata and hashes only. It has fixed basenames and no source
-  bytes, reason text, credentials, or arbitrary command arguments.
-- `source_object_preview_conversion_result.v1` contains output hash, byte length, page count, versions, and validation
-  booleans. It excludes source bytes, PDF bytes, stdout, and stderr.
+- `source_object_preview_conversion_command.v2` adds the optional Production-Admission-Gate binding to the metadata-
+  and hash-only command. Historical `v1` records remain verifiable only in their exact pre-admission field shape.
+- `source_object_preview_conversion_result.v2` carries the same optional binding through the worker result. Historical
+  `v1` records remain readable without weakening current `v2` hash validation.
+- `source_object_preview_conversion_job_evidence.v1` binds the versioned command and result plus lineage hashes in an
+  append-only PostgreSQL/RLS ledger without source or output bytes.
+Commands retain fixed basenames and contain no source bytes, reason text, credentials, or arbitrary command arguments.
+Results retain output hash, byte length, page count, versions, and validation flags, but exclude source bytes, PDF
+bytes, stdout, and stderr.
 - `source_object_derived_preview_receipt.v1` binds the source version to the derived PDF SourceObject and proves that
   classification, ACL, KMS reference, retention, legal hold, and lifecycle were inherited.
 

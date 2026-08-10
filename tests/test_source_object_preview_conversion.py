@@ -37,6 +37,7 @@ from suite.platform.source_object_preview_conversion import (
     build_preview_conversion_execution_gate,
     build_preview_conversion_result_hash,
     build_preview_conversion_source_preflight,
+    preview_conversion_command_hash_matches,
     preview_conversion_job_evidence_hash_matches,
     require_preview_conversion_execution_gate,
     require_preview_conversion_worker_envelope,
@@ -322,6 +323,8 @@ def test_historical_job_evidence_without_production_admission_fields_remains_ver
     assert isinstance(command_payload, dict)
     assert isinstance(result_payload, dict)
 
+    command_payload["schema_version"] = "source_object_preview_conversion_command.v1"
+    result_payload["schema_version"] = "source_object_preview_conversion_result.v1"
     command_payload.pop("production_admission_gate_hash")
     command_payload["command_hash"] = "sha256:" + ("0" * 64)
     legacy_command_hash = stable_hash(canonical_json({k: v for k, v in command_payload.items() if k != "command_hash"}))
@@ -349,6 +352,27 @@ def test_historical_job_evidence_without_production_admission_fields_remains_ver
     assert preview_conversion_job_evidence_hash_matches(tampered) is False
     with pytest.raises(PreviewConversionBlocked, match="hash"):
         InMemoryPreviewConversionJobEvidenceStore((tampered,))
+
+
+def test_current_preview_hash_schemas_reject_unversioned_legacy_shape() -> None:
+    source = _source_record()
+    gate = _gate()
+    preflight = _preflight(source)
+    command = _command(source=source, gate=gate, preflight=preflight)
+    result = _result(command=command, gate=gate)
+
+    assert command.schema_version == "source_object_preview_conversion_command.v2"
+    assert result.schema_version == "source_object_preview_conversion_result.v2"
+
+    command_payload = command.model_dump(mode="json")
+    command_payload.pop("production_admission_gate_hash")
+    command_payload["command_hash"] = "sha256:" + ("0" * 64)
+    command_payload["command_hash"] = stable_hash(
+        canonical_json({k: v for k, v in command_payload.items() if k != "command_hash"})
+    )
+    current_schema_legacy_shape = PreviewConversionCommand.model_validate(command_payload)
+
+    assert preview_conversion_command_hash_matches(current_schema_legacy_shape) is False
 
 
 NOT_PDF_BYTES = b"X" + PDF_BYTES[1:]

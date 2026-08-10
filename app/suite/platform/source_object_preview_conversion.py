@@ -29,8 +29,10 @@ from suite.storage.source_objects import (
 
 PREVIEW_CONVERSION_EXECUTION_GATE_SCHEMA_VERSION = "source_object_preview_conversion_execution_gate.v1"
 PREVIEW_CONVERSION_PREFLIGHT_SCHEMA_VERSION = "source_object_preview_conversion_source_preflight.v1"
-PREVIEW_CONVERSION_COMMAND_SCHEMA_VERSION = "source_object_preview_conversion_command.v1"
-PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION = "source_object_preview_conversion_result.v1"
+PREVIEW_CONVERSION_COMMAND_LEGACY_SCHEMA_VERSION = "source_object_preview_conversion_command.v1"
+PREVIEW_CONVERSION_COMMAND_SCHEMA_VERSION = "source_object_preview_conversion_command.v2"
+PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION = "source_object_preview_conversion_result.v1"
+PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION = "source_object_preview_conversion_result.v2"
 DERIVED_PREVIEW_RECEIPT_SCHEMA_VERSION = "source_object_derived_preview_receipt.v1"
 PREVIEW_CONVERSION_JOB_EVIDENCE_SCHEMA_VERSION = "source_object_preview_conversion_job_evidence.v1"
 PREVIEW_CONVERSION_GATE_MAX_CLOCK_SKEW = timedelta(minutes=5)
@@ -291,6 +293,16 @@ class PreviewConversionCommand(BaseModel):
     idempotency_key_hash: str
     command_hash: str
 
+    @field_validator("schema_version")
+    @classmethod
+    def require_supported_schema(cls, value: str) -> str:
+        if value not in {
+            PREVIEW_CONVERSION_COMMAND_LEGACY_SCHEMA_VERSION,
+            PREVIEW_CONVERSION_COMMAND_SCHEMA_VERSION,
+        }:
+            raise ValueError("preview conversion command schema is unsupported")
+        return value
+
     @field_validator(
         "source_manifest_hash",
         "source_content_hash",
@@ -381,6 +393,16 @@ class PreviewConversionWorkerResult(BaseModel):
     temporary_workspace_destroyed: bool
     completed_at_utc: datetime
     result_hash: str
+
+    @field_validator("schema_version")
+    @classmethod
+    def require_supported_schema(cls, value: str) -> str:
+        if value not in {
+            PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION,
+            PREVIEW_CONVERSION_RESULT_SCHEMA_VERSION,
+        }:
+            raise ValueError("preview conversion result schema is unsupported")
+        return value
 
     @field_validator(
         "source_manifest_hash",
@@ -1500,7 +1522,10 @@ def build_preview_conversion_job_evidence_hash(evidence: PreviewConversionJobEvi
 def preview_conversion_command_hash_matches(command: PreviewConversionCommand) -> bool:
     if command.command_hash == build_preview_conversion_command_hash(command):
         return True
-    if "production_admission_gate_hash" in command.model_fields_set:
+    if (
+        command.schema_version != PREVIEW_CONVERSION_COMMAND_LEGACY_SCHEMA_VERSION
+        or "production_admission_gate_hash" in command.model_fields_set
+    ):
         return False
     payload = command.model_dump(mode="json", exclude={"command_hash"})
     payload.pop("production_admission_gate_hash", None)
@@ -1510,7 +1535,10 @@ def preview_conversion_command_hash_matches(command: PreviewConversionCommand) -
 def preview_conversion_result_hash_matches(result: PreviewConversionWorkerResult) -> bool:
     if result.result_hash == build_preview_conversion_result_hash(result):
         return True
-    if "production_admission_gate_hash" in result.model_fields_set:
+    if (
+        result.schema_version != PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION
+        or "production_admission_gate_hash" in result.model_fields_set
+    ):
         return False
     payload = result.model_dump(mode="json", exclude={"result_hash"})
     payload.pop("production_admission_gate_hash", None)
@@ -1520,8 +1548,13 @@ def preview_conversion_result_hash_matches(result: PreviewConversionWorkerResult
 def preview_conversion_job_evidence_hash_matches(evidence: PreviewConversionJobEvidence) -> bool:
     if evidence.job_evidence_hash == build_preview_conversion_job_evidence_hash(evidence):
         return True
-    command_missing_admission = "production_admission_gate_hash" not in evidence.command.model_fields_set
-    result_missing_admission = "production_admission_gate_hash" not in evidence.result.model_fields_set
+    command_missing_admission = (
+        evidence.command.schema_version == PREVIEW_CONVERSION_COMMAND_LEGACY_SCHEMA_VERSION
+        and "production_admission_gate_hash" not in evidence.command.model_fields_set
+    )
+    result_missing_admission = evidence.result.schema_version == PREVIEW_CONVERSION_RESULT_LEGACY_SCHEMA_VERSION and (
+        "production_admission_gate_hash" not in evidence.result.model_fields_set
+    )
     if not command_missing_admission and not result_missing_admission:
         return False
     payload = evidence.model_dump(mode="json", exclude={"job_evidence_hash"})
