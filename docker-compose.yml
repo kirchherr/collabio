@@ -2155,13 +2155,13 @@ services:
     command:
       - |
         test "$$(node --version)" = "v24.18.0"
-        test "$$(npm --version)" = "11.15.0"
+        test "$$(npm --version)" = "11.16.0"
         cp /fixture/package.json /fixture/package-lock.json /work/
         npm ci --ignore-scripts --no-audit --no-fund --cache /tmp/npm-cache
         npm audit signatures --json --include-attestations > /evidence/genoffice-emf-converter-npm-verification.json.tmp
         node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' /evidence/genoffice-emf-converter-npm-verification.json.tmp
         mv /evidence/genoffice-emf-converter-npm-verification.json.tmp /evidence/genoffice-emf-converter-npm-verification.json
-        printf 'image=node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d\nnode_version=v24.18.0\nnpm_version=11.15.0\nstatus=verified\n' > /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp
+        printf 'image=node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d\nnode_version=v24.18.0\nnpm_version=11.16.0\nstatus=verified\n' > /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp
         mv /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp /evidence/genoffice-emf-converter-npm-verification-receipt.txt
     working_dir: /work
     user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
@@ -2175,7 +2175,7 @@ services:
     mem_limit: 512m
     tmpfs:
       - /tmp:size=128m,noexec,nosuid,nodev
-      - /work:size=32m,noexec,nosuid,nodev
+      - /work:size=32m,mode=1777,noexec,nosuid,nodev
     environment:
       HOME: /tmp/home
       NPM_CONFIG_CACHE: /tmp/npm-cache
