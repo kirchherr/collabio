@@ -29,7 +29,7 @@ from suite.platform.source_object_preview_conversion import (
     PreviewConversionJobEvidenceStore,
     build_derived_preview_receipt_hash,
     build_preview_conversion_execution_gate_hash,
-    build_preview_conversion_job_evidence_hash,
+    preview_conversion_job_evidence_hash_matches,
     validate_derived_preview_pdf_bytes,
 )
 from suite.platform.workspace_source_objects import build_default_workspace_source_object_repository
@@ -275,7 +275,7 @@ def _reconcile_item(
     write_receipt = _get_write_receipt(source_object_write_receipt_store, job)
     execution_gate = _get_execution_gate(execution_gate_store, job)
 
-    job_verified = build_preview_conversion_job_evidence_hash(job) == job.job_evidence_hash
+    job_verified = preview_conversion_job_evidence_hash_matches(job)
     receipt_verified = receipt is not None and build_derived_preview_receipt_hash(receipt) == receipt.receipt_hash
     write_receipt_verified = (
         write_receipt is not None

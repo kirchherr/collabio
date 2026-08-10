@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass
 from suite.operations.backend_foundation_completion_gate import (
     BackendFoundationCompletionGate,
@@ -25,6 +26,7 @@ from suite.platform.source_object_preview_conversion import (
     InMemoryPreviewConversionJobEvidenceStore,
     PreviewConversionBlocked,
     PreviewConversionCommand,
+    PreviewConversionJobEvidence,
     PreviewConversionExecutionGateEvidence,
     PreviewConversionGateStatus,
     PreviewConversionSourcePreflightEvidence,
@@ -35,6 +37,7 @@ from suite.platform.source_object_preview_conversion import (
     build_preview_conversion_execution_gate,
     build_preview_conversion_result_hash,
     build_preview_conversion_source_preflight,
+    preview_conversion_job_evidence_hash_matches,
     require_preview_conversion_execution_gate,
     require_preview_conversion_worker_envelope,
 )
@@ -296,6 +299,56 @@ def test_derived_preview_write_unit_of_work_persists_source_receipt_and_lineage(
         )
         == artifact.job_evidence
     )
+
+
+def test_historical_job_evidence_without_production_admission_fields_remains_verifiable() -> None:
+    source = _source_record()
+    gate = _gate()
+    preflight = _preflight(source)
+    command = _command(source=source, gate=gate, preflight=preflight)
+    artifact = build_derived_preview_artifact(
+        source_record=source,
+        pdf_bytes=PDF_BYTES,
+        command=command,
+        result=_result(command=command, gate=gate),
+        execution_gate=gate,
+        source_preflight=preflight,
+        audit_event_id="audit-event-preview-legacy",
+        created_at_utc=NOW,
+    )
+    payload = artifact.job_evidence.model_dump(mode="json")
+    command_payload = payload["command"]
+    result_payload = payload["result"]
+    assert isinstance(command_payload, dict)
+    assert isinstance(result_payload, dict)
+
+    command_payload.pop("production_admission_gate_hash")
+    command_payload["command_hash"] = "sha256:" + ("0" * 64)
+    legacy_command_hash = stable_hash(canonical_json({k: v for k, v in command_payload.items() if k != "command_hash"}))
+    command_payload["command_hash"] = legacy_command_hash
+
+    result_payload.pop("production_admission_gate_hash")
+    result_payload["command_hash"] = legacy_command_hash
+    result_payload["result_hash"] = "sha256:" + ("0" * 64)
+    legacy_result_hash = stable_hash(canonical_json({k: v for k, v in result_payload.items() if k != "result_hash"}))
+    result_payload["result_hash"] = legacy_result_hash
+
+    payload["command_hash"] = legacy_command_hash
+    payload["result_hash"] = legacy_result_hash
+    payload["job_evidence_hash"] = "sha256:" + ("0" * 64)
+    legacy_job_hash = stable_hash(canonical_json({k: v for k, v in payload.items() if k != "job_evidence_hash"}))
+    payload["job_evidence_hash"] = legacy_job_hash
+
+    legacy_evidence = PreviewConversionJobEvidence.model_validate(payload)
+    store = InMemoryPreviewConversionJobEvidenceStore((legacy_evidence,))
+
+    assert preview_conversion_job_evidence_hash_matches(legacy_evidence) is True
+    assert store.get(tenant_id=legacy_evidence.tenant_id, job_evidence_hash=legacy_job_hash) == legacy_evidence
+
+    tampered = legacy_evidence.model_copy(update={"derived_version_id": "pv-tampered"})
+    assert preview_conversion_job_evidence_hash_matches(tampered) is False
+    with pytest.raises(PreviewConversionBlocked, match="hash"):
+        InMemoryPreviewConversionJobEvidenceStore((tampered,))
 
 
 NOT_PDF_BYTES = b"X" + PDF_BYTES[1:]

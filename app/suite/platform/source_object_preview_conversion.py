@@ -513,11 +513,11 @@ class PreviewConversionJobEvidence(BaseModel):
             raise ValueError("preview conversion job completion timestamp mismatch")
         if self.source_content_in_evidence or self.output_content_in_evidence:
             raise ValueError("preview conversion job evidence must not contain source or output content")
-        if build_preview_conversion_command_hash(self.command) != self.command_hash:
+        if not preview_conversion_command_hash_matches(self.command):
             raise ValueError("preview conversion job command hash is invalid")
         if build_preview_conversion_source_preflight_hash(self.source_preflight) != self.source_preflight_evidence_hash:
             raise ValueError("preview conversion job preflight hash is invalid")
-        if build_preview_conversion_result_hash(self.result) != self.result_hash:
+        if not preview_conversion_result_hash_matches(self.result):
             raise ValueError("preview conversion job result hash is invalid")
         return self
 
@@ -1497,6 +1497,47 @@ def build_preview_conversion_job_evidence_hash(evidence: PreviewConversionJobEvi
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"job_evidence_hash"})))
 
 
+def preview_conversion_command_hash_matches(command: PreviewConversionCommand) -> bool:
+    if command.command_hash == build_preview_conversion_command_hash(command):
+        return True
+    if "production_admission_gate_hash" in command.model_fields_set:
+        return False
+    payload = command.model_dump(mode="json", exclude={"command_hash"})
+    payload.pop("production_admission_gate_hash", None)
+    return command.command_hash == stable_hash(canonical_json(payload))
+
+
+def preview_conversion_result_hash_matches(result: PreviewConversionWorkerResult) -> bool:
+    if result.result_hash == build_preview_conversion_result_hash(result):
+        return True
+    if "production_admission_gate_hash" in result.model_fields_set:
+        return False
+    payload = result.model_dump(mode="json", exclude={"result_hash"})
+    payload.pop("production_admission_gate_hash", None)
+    return result.result_hash == stable_hash(canonical_json(payload))
+
+
+def preview_conversion_job_evidence_hash_matches(evidence: PreviewConversionJobEvidence) -> bool:
+    if evidence.job_evidence_hash == build_preview_conversion_job_evidence_hash(evidence):
+        return True
+    command_missing_admission = "production_admission_gate_hash" not in evidence.command.model_fields_set
+    result_missing_admission = "production_admission_gate_hash" not in evidence.result.model_fields_set
+    if not command_missing_admission and not result_missing_admission:
+        return False
+    payload = evidence.model_dump(mode="json", exclude={"job_evidence_hash"})
+    if command_missing_admission:
+        command_payload = payload["command"]
+        if not isinstance(command_payload, dict):
+            return False
+        command_payload.pop("production_admission_gate_hash", None)
+    if result_missing_admission:
+        result_payload = payload["result"]
+        if not isinstance(result_payload, dict):
+            return False
+        result_payload.pop("production_admission_gate_hash", None)
+    return evidence.job_evidence_hash == stable_hash(canonical_json(payload))
+
+
 def build_default_preview_conversion_execution_gate_store(
     environ: Mapping[str, str] | None = None,
 ) -> PreviewConversionExecutionGateStore:
@@ -1682,7 +1723,7 @@ def _require_derived_preview_receipt_hash(receipt: DerivedPreviewReceipt) -> Non
 
 
 def _require_job_evidence_hash(evidence: PreviewConversionJobEvidence) -> None:
-    if evidence.job_evidence_hash != build_preview_conversion_job_evidence_hash(evidence):
+    if not preview_conversion_job_evidence_hash_matches(evidence):
         raise PreviewConversionBlocked("preview conversion job evidence hash is invalid")
 
 
