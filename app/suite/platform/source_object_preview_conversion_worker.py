@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.platform.preview_cdr import (
     PREVIEW_CDR_PROFILE_REF,
@@ -674,7 +675,8 @@ def _reconstruct_pdf_from_rgb(
     output_path: Path,
 ) -> str:
     try:
-        from PIL import Image, __version__ as pillow_version  # type: ignore[import-not-found]
+        from PIL import Image  # type: ignore[import-not-found]
+        from PIL import __version__ as pillow_version  # type: ignore[import-not-found]
     except ImportError as exc:
         raise PreviewConversionWorkerError("preview CDR PDF reconstruction engine is unavailable") from exc
     images: list[Any] = []
