@@ -778,6 +778,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_docx_supply_chain_admission.py",
                         "docs/operations/genoffice_docx_supply_chain_admission_report.json",
                         "app/suite/operations/genoffice_npm_provenance_admission.py",
+                        "app/suite/kms/x509_evidence.py",
                         "docs/operations/genoffice_npm_provenance_admission_report.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",

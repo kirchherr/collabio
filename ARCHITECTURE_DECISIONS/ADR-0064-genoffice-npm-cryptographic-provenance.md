@@ -22,6 +22,8 @@ admission must remain reproducible, inspectable, and independent from that netwo
 - Evaluate the result in a separate no-network Python admission container. Require exactly one verified package, no
   missing or invalid package, both npm publish and SLSA v1 predicates, the exact package PURL and SHA-512 subject, and
   two complete Rekor inclusion records.
+- Normalize X.509 evidence behind the Suite KMS adapter boundary. Office and operations modules consume only typed
+  certificate metadata and may not import a cryptography provider directly.
 - Pin the Fulcio leaf certificate fingerprint and validate its SAN plus standard Sigstore OIDs for GitHub-hosted
   runner, public repository, immutable repository/owner IDs, source commit, source ref, workflow, invocation, trigger,
   and npm deployment environment.

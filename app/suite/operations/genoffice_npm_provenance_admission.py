@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
