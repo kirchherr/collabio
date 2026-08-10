@@ -44,7 +44,18 @@ USER 10001:10001
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM base AS preview-renderer
+FROM python:3.12-alpine3.23@sha256:601d3d3797e90e2534782e69c85fafb7971b43f24c7b1b079b7e48dd435e458d AS preview-renderer
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /workspace
+
+COPY requirements.lock .
+RUN python -m pip install --require-hashes --requirement requirements.lock
 
 ARG LIBREOFFICE_VERSION=25.8.7.3-r0
 ARG QPDF_VERSION=12.3.2-r0

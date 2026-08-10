@@ -508,7 +508,11 @@ def test_worker_image_and_compose_service_preserve_credential_less_sandbox_bound
     dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
 
-    assert "FROM base AS preview-renderer" in dockerfile
+    expected_preview_base = (
+        "FROM python:3.12-alpine3.23@sha256:"
+        "601d3d3797e90e2534782e69c85fafb7971b43f24c7b1b079b7e48dd435e458d AS preview-renderer"
+    )
+    assert expected_preview_base in dockerfile
     assert '"libreoffice-writer=${LIBREOFFICE_VERSION}"' in dockerfile
     assert '"libreoffice-calc=${LIBREOFFICE_VERSION}"' in dockerfile
     assert '"libreoffice-impress=${LIBREOFFICE_VERSION}"' in dockerfile
