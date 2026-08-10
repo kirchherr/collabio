@@ -64,6 +64,18 @@ def test_persist_and_load_round_trip(tmp_path: Path) -> None:
     assert load_genoffice_npm_provenance_admission_report(output) == report
 
 
+def test_committed_admission_report_is_valid_and_keeps_import_closed() -> None:
+    report = load_genoffice_npm_provenance_admission_report(
+        ROOT / "docs/operations/genoffice_npm_provenance_admission_report.json"
+    )
+
+    assert report.report_hash == "sha256:c85feac5fa9788ef10a4076034d2443c230e8536ee5c02de61b8cfe9ea114aa3"
+    assert report.cryptographic_provenance_gate_passed is True
+    assert report.source_import_allowed is False
+    assert report.engine_execution_allowed is False
+    assert report.production_use_allowed is False
+
+
 def test_rejects_tampered_npm_verification(tmp_path: Path) -> None:
     tampered = tmp_path / "npm-verification.json"
     payload = json.loads(NPM_VERIFICATION.read_text(encoding="utf-8"))
@@ -101,3 +113,35 @@ def test_report_cannot_open_execution_boundary() -> None:
 def test_environment_runner_requires_all_paths() -> None:
     with pytest.raises(GenOfficeNpmProvenanceAdmissionError, match="paths are missing"):
         run_genoffice_npm_provenance_admission_from_environment({})
+
+
+def test_compose_separates_networked_verification_from_offline_admission() -> None:
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    verifier = compose.split("  genoffice-npm-provenance-verifier:", maxsplit=1)[1].split(
+        "\n  genoffice-npm-provenance-admission:", maxsplit=1
+    )[0]
+    admission = compose.split("  genoffice-npm-provenance-admission:", maxsplit=1)[1].split(
+        "\n  genoffice-docx-prebuild-sbom:", maxsplit=1
+    )[0]
+
+    assert NPM_VERIFIER_IMAGE_REF in verifier
+    assert "npm ci --ignore-scripts" in verifier
+    assert "npm audit signatures --json --include-attestations" in verifier
+    assert "read_only: true" in verifier
+    assert "no-new-privileges:true" in verifier
+    assert "genoffice_provenance_verification" in verifier
+    assert 'network_mode: "none"' in admission
+    assert "read_only: true" in admission
+    assert "no-new-privileges:true" in admission
+
+
+def test_backup_policy_retains_cryptographic_provenance_evidence() -> None:
+    policy = json.loads((ROOT / "docs/operations/backup_failover_policy.json").read_text(encoding="utf-8"))
+    office = next(domain for domain in policy["continuity_domains"] if domain["domain_id"] == "office_documents")
+    evidence = " ".join(office["state_artifacts"])
+    office_restore = next(target for target in policy["targets"] if target["target_id"] == "object_storage_records")
+
+    assert "raw npm signature/Sigstore bundles" in evidence
+    assert "Fulcio certificates" in evidence
+    assert "Rekor inclusion material" in evidence
+    assert "genoffice_npm_provenance_admission_report_hash_check" in office_restore["integrity_checks"]

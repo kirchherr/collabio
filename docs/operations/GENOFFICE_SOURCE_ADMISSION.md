@@ -76,19 +76,28 @@ code. Its trust boundaries are deliberately separate:
    `c5e8678efe9b0dc3f8e64a978eacfe43fd9fae6a9e63c8bb74d94b0c1a8b43f0`.
 3. Digest-pinned CycloneDX CLI 0.32.0 validates the document with no network. Its receipt is bound to the exact SBOM
    hash.
-4. Only `genoffice-trivy-db-update` has network access. Digest-pinned Trivy 0.73.0 then scans the SBOM with
-   `network_mode: none`, `--offline-scan`, every update disabled, and a read-only DB cache.
+4. Vulnerability database acquisition is confined to `genoffice-trivy-db-update`. Digest-pinned Trivy 0.73.0 then
+   scans the SBOM with `network_mode: none`, `--offline-scan`, every update disabled, and a read-only DB cache.
 5. The offline admission verifier requires an exact 23-PURL match, a fresh DB, the pinned scanner identity, a valid
    schema receipt, and no HIGH or CRITICAL finding. The 2026-08-10 evidence contains zero findings and passes the
    automated SBOM/vulnerability gate.
+6. A separate credential-less service uses digest-pinned Node.js 24.18.0 LTS and npm 11.16.0 to install only the exact
+   locked `emf-converter@2.0.2` package with lifecycle scripts disabled. `npm audit signatures --json
+   --include-attestations` verifies its ECDSA registry signature, npm publish attestation, SLSA v1 provenance, Fulcio
+   chain, and Rekor transparency records. This is the only provenance-verification service with network access.
+7. The no-network admission service pins the verifier output and receipt hashes, exact package SHA-512 subject,
+   GitHub-hosted source workflow, source commit `9aca5abf16662f93a453a07378768ddd87a8541d`, immutable repository and
+   owner IDs, Fulcio certificate SHA-256, and both Rekor inclusion records. Admission report
+   `sha256:c85feac5fa9788ef10a4076034d2443c230e8536ee5c02de61b8cfe9ea114aa3` passes while every source-import and
+   execution flag remains false.
 
 This is a **pre-build** SBOM. Trivy explicitly treats third-party SBOM input as less authoritative than its own image
 analysis. The future isolated worker must therefore produce and pass a separate SBOM and vulnerability scan from the
 built image before any execution or import boundary can open.
 
-The npm registry response advertises a package signature and SLSA provenance attestation. Their presence is recorded,
-but neither is called verified yet. A later verifier must validate them against reviewed npm/Sigstore trust roots;
-metadata presence is not a cryptographic conclusion.
+The npm cryptographic result proves that the reviewed tarball was accepted by npm and is linked to the signed build
+identity above. It does not prove that the source is benign, that the package is reproducible from that source, or that
+GenOffice is legally or operationally admissible. Those remain separate gates.
 
 ## Evidence And Retention
 
@@ -99,7 +108,9 @@ Retain the following together in the immutable supply-chain artifact store:
 - selected-source and runtime-dependency manifest hashes;
 - vendored npm metadata/tarball, byte-provenance report, CycloneDX SBOM, schema receipt, Trivy DB metadata,
   vulnerability report, and `genoffice_docx_supply_chain_admission_report.v1`;
-- subsequent legal decision, registry-signature verification, build digest, runtime-image SBOM, and signed provenance.
+- raw npm signature/Sigstore bundle output, pinned verifier receipt, Fulcio/Rekor identity evidence, and
+  `genoffice_npm_provenance_admission_report.v1`;
+- subsequent legal decision, build digest, runtime-image SBOM, and signed Collabio worker provenance.
 
 The report contains no tenant data or Office document content. It is nevertheless release evidence and must be
 available for rebuild, audit, rollback, and disaster recovery. Never place source archives or dependency tarballs in
@@ -108,7 +119,6 @@ normal application logs.
 ## Still Blocked
 
 - final legal, NOTICE, trademark, and compound-license approval;
-- cryptographic verification of the advertised npm registry signature and SLSA attestation;
 - reproducible, signed, isolated worker build with an authoritative runtime-image SBOM and vulnerability decision;
 - malicious OOXML/archive and cross-engine fidelity corpora;
 - resource-limited no-egress engine execution;
@@ -124,3 +134,7 @@ normal application logs.
 - Trivy database management: https://trivy.dev/docs/latest/configuration/db/
 - Trivy air-gap guidance: https://trivy.dev/docs/latest/guide/advanced/air-gap/
 - emf-converter 2.0.2: https://www.npmjs.com/package/emf-converter/v/2.0.2
+- npm audit signatures: https://docs.npmjs.com/cli/v11/commands/npm-audit/
+- npm provenance: https://docs.npmjs.com/generating-provenance-statements/
+- npm provenance verification design: https://github.com/npm/provenance
+- Sigstore certificate OIDs: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md

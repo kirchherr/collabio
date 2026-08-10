@@ -109,14 +109,15 @@ selected DOCX package. The offline verifier records the complete locked runtime 
 licenses, rejects links and unsafe paths, and cannot invoke npm, Node.js, a network, or the engine. This closes source-
 byte and dependency inventory first. The follow-up pre-build supply-chain gate now proves byte-identical
 `emf-converter@2.0.2` provenance, a schema-valid deterministic 23-component CycloneDX 1.6 SBOM, an exact netzloser
-Trivy-PURL-Abgleich und zero findings against a fresh DB. Legal approval, registry-signature/SLSA verification,
-reproducible worker build and image SBOM, malicious-file and fidelity proof, content access, and production use remain
-blocked.
+Trivy-PURL-Abgleich und zero findings against a fresh DB. A separated npm/Sigstore gate additionally verifies the
+registry signature, npm publish attestation, SLSA v1 package subject, GitHub-hosted workflow identity, Fulcio
+certificate and Rekor inclusion proofs. Legal approval, reproducible worker build and image SBOM, malicious-file and
+fidelity proof, content access, and production use remain blocked.
 
 Before Quick Edit may process content, a separate admission change must prove:
 
-- final legal, license, notice, trademark, registry-signature/SLSA, reproducible-build, image-SBOM, and runtime-
-  vulnerability review of the now hash-bound source and dependency inventory;
+- final legal, license, notice, trademark, reproducible-build, image-SBOM, and runtime-vulnerability review of the now
+  hash-bound and cryptographically provenance-verified source and dependency inventory;
 - malicious OOXML, macro, OLE, external relationship, ZIP expansion, and resource-exhaustion resistance;
 - Word/LibreOffice/GenOffice/Collabio fidelity corpora plus explicit safe-export and high-fidelity modes;
 - immutable preservation of signed originals and explicit signature-invalidated state on derived edits;

@@ -94,9 +94,11 @@ an editor backup or failover proof.
 The exact source archive and its admission report are retained in the immutable supply-chain artifact store together
 with vendored registry metadata and exact package archives, byte-provenance reports, pre-build and runtime-image SBOMs,
 schema receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance. They are rebuild
-and release-recovery inputs, not tenant backup payloads. A restore must verify their digests before an Office worker can
-be rebuilt or promoted. Advertised registry signatures and attestations require retained verification receipts;
-metadata presence alone is not proof.
+and release-recovery inputs, not tenant backup payloads. The retained supply-chain set now includes raw npm
+signature/Sigstore bundles, the exact Node/npm/image receipt, the Fulcio certificate and Rekor inclusion material, and
+the hash-bound no-network admission report. A restore must verify all evidence digests and rerun admission before an
+Office worker can be rebuilt or promoted. Registry metadata presence without the retained cryptographic result remains
+insufficient.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:

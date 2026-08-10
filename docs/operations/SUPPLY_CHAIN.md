@@ -71,13 +71,17 @@ pattern requires the same review and tests as a vulnerability exception.
 The unimported GenOffice DOCX candidate has its own `office-supply-chain` profile. It does not weaken or replace the
 runtime-image rules above. The profile verifies vendored `emf-converter@2.0.2` bytes against a pinned npm tarball,
 generates a deterministic CycloneDX 1.6 **pre-build** SBOM, validates it with digest-pinned CycloneDX CLI, updates the
-Trivy DB in the only networked service, and scans the exact 23-PURL inventory in a separate no-network container with a
-read-only cache. The final admission step rejects component drift, a stale DB, scanner drift, malformed reports, and
-HIGH/CRITICAL findings.
+Trivy DB in a dedicated networked service, and scans the exact 23-PURL inventory in a separate no-network container
+with a read-only cache. The final admission step rejects component drift, a stale DB, scanner drift, malformed reports,
+and HIGH/CRITICAL findings.
 
-The retained 2026-08-10 evidence passes the automated pre-build SBOM/vulnerability gate with zero findings. It does
-not approve licenses, verify the advertised npm signature/SLSA attestation, admit source, execute the engine, or replace
-the mandatory SBOM and scan of a future built worker image. See `docs/operations/GENOFFICE_SOURCE_ADMISSION.md`.
+The same profile now separates cryptographic provenance acquisition from policy admission. A credential-less,
+digest-pinned Node 24.18.0/npm 11.16.0 service runs `npm audit signatures` with scripts disabled on a one-package lock;
+a second no-network service pins and validates the package subject, publish and SLSA predicates, Fulcio identity OIDs,
+and Rekor inclusion records. The retained 2026-08-10 evidence passes both this gate and the pre-build
+SBOM/vulnerability gate with zero findings. It does not approve licenses, prove a reproducible worker build, admit
+source, execute the engine, or replace the mandatory SBOM and scan of a future built worker image. See
+`docs/operations/GENOFFICE_SOURCE_ADMISSION.md`.
 
 ## Tagged Releases
 

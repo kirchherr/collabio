@@ -1102,8 +1102,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert office_source_admission["status"] == "guarded"
     assert "exact_upstream_archive_sha256" in office_source_admission["guardrails"]
+    assert "npm_registry_signature_and_publish_attestation_verified" in office_source_admission["guardrails"]
+    assert "slsa_fulcio_identity_and_rekor_inclusion_verified" in office_source_admission["guardrails"]
     assert "source_import_and_production_use_blocked" in office_source_admission["guardrails"]
     assert "app/suite/operations/genoffice_docx_source_admission.py" in office_source_admission["evidence_refs"]
+    assert "app/suite/operations/genoffice_npm_provenance_admission.py" in office_source_admission["evidence_refs"]
     production_continuity = next(
         capability
         for capability in capabilities

@@ -760,8 +760,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Der GenOffice-DOCX-Kandidat ist auf exakte Archivbytes, ausgewaehlte Quelldateien, "
                         "Runtime-Abhaengigkeiten und byteverifizierten Vendorcode inventarisiert. Das validierte "
                         "CycloneDX-Pre-Build-SBOM und der netzlose Trivy-Scan decken exakt 23 Komponenten ohne "
-                        "Finding ab. Import, Engine, Content und Produktion bleiben bis Legal-, Signatur-, Build-, "
-                        "Security-, Fidelity- und Recovery-Evidence geschlossen."
+                        "Finding ab. npm-Signatur, Publish-/SLSA-Attestierung, Fulcio-Identitaet und Rekor-Inclusion "
+                        "sind kryptografisch verifiziert. Import, Engine, Content und Produktion bleiben bis Legal-, "
+                        "Build-, Security-, Fidelity- und Recovery-Evidence geschlossen."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="office_edit_boundary",
@@ -776,8 +777,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice_docx_prebuild.cdx.json",
                         "app/suite/operations/genoffice_docx_supply_chain_admission.py",
                         "docs/operations/genoffice_docx_supply_chain_admission_report.json",
+                        "app/suite/operations/genoffice_npm_provenance_admission.py",
+                        "docs/operations/genoffice_npm_provenance_admission_report.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -793,6 +797,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "network_separated_trivy_db_update_and_scan",
                         "exact_23_purl_inventory_and_fresh_db_gate",
                         "high_and_critical_findings_blocked",
+                        "npm_registry_signature_and_publish_attestation_verified",
+                        "slsa_fulcio_identity_and_rekor_inclusion_verified",
                         "source_import_and_production_use_blocked",
                     ),
                 ),

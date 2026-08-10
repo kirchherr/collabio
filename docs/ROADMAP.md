@@ -1527,8 +1527,11 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   digest-gepinntem CycloneDX CLI validiert und mit Trivy 0.73.0 gegen eine frisch und getrennt geladene DB vollstaendig
   netzlos gescannt. Exakter 23-PURL-Abgleich, null Findings und ein hashgebundener Admission-Report sind nachgewiesen;
   Import, Engine und Produktion bleiben geschlossen.
-- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License-Pruefung,
-  kryptografische Verifikation der npm-Signatur/SLSA-Attestierung, universeller Collabio-Build-Lock sowie
+- [x] Kryptografische npm-Provenance des vendorten EMF-Konverters geschlossen: digest-gepinntes Node 24.18.0/npm
+  11.16.0 verifiziert credential-los Registrysignatur, npm-Publish-Attestierung und SLSA v1; der getrennte netzlose
+  Admission-Gate bindet exakten SHA-512-Subject, GitHub-hosted Workflow, Source-Commit `9aca5abf...`, Fulcio-Zertifikat
+  und zwei Rekor-Inclusion-Proofs. Import, Engine und Produktion bleiben geschlossen.
+- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License-Pruefung und
   reproduzierbarer, signierter Worker-Build mit autoritativem Image-SBOM und Vulnerability Review. Erst danach darf der
   gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
