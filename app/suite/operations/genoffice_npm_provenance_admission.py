@@ -10,11 +10,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from cryptography import x509
-from cryptography.x509.oid import ExtensionOID, NameOID, ObjectIdentifier
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
+from suite.kms.x509_evidence import X509EvidenceError, inspect_der_x509_certificate
 from suite.operations.genoffice_vendored_provenance_admission import (
     EMF_CONVERTER_NAME,
     EMF_CONVERTER_PURL,
@@ -361,44 +360,29 @@ def _certificate_identity(bundle: Mapping[str, Any]) -> tuple[str, str, str, str
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate is missing")
     try:
         certificate_der = base64.b64decode(certificate_value, validate=True)
-        certificate = x509.load_der_x509_certificate(certificate_der)
-    except (binascii.Error, ValueError) as exc:
+        evidence = inspect_der_x509_certificate(certificate_der)
+    except (binascii.Error, X509EvidenceError) as exc:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate is malformed") from exc
-    certificate_hash = f"sha256:{hashlib.sha256(certificate_der).hexdigest()}"
+    certificate_hash = evidence.der_sha256
     if certificate_hash != FULCIO_CERTIFICATE_SHA256:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate is not the reviewed certificate")
-    try:
-        san = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
-    except x509.ExtensionNotFound as exc:
-        raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate SAN is missing") from exc
-    if not isinstance(san, x509.SubjectAlternativeName):
-        raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate SAN is malformed")
-    if san.get_values_for_type(x509.UniformResourceIdentifier) != [WORKFLOW_URI]:
+    if evidence.uri_subject_alternative_names != (WORKFLOW_URI,):
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate workflow identity changed")
     for oid, expected in _CERTIFICATE_EXTENSIONS.items():
-        try:
-            extension = certificate.extensions.get_extension_for_oid(ObjectIdentifier(oid)).value
-        except x509.ExtensionNotFound as exc:
-            raise GenOfficeNpmProvenanceAdmissionError(
-                f"Fulcio certificate identity extension {oid} is missing"
-            ) from exc
-        if not isinstance(extension, x509.UnrecognizedExtension) or _der_utf8(extension.value) != expected:
+        extension = evidence.unrecognized_extension(oid)
+        if extension is None:
+            raise GenOfficeNpmProvenanceAdmissionError(f"Fulcio certificate identity extension {oid} is missing")
+        if _der_utf8(extension) != expected:
             raise GenOfficeNpmProvenanceAdmissionError(f"Fulcio certificate identity extension {oid} changed")
-    organizations = certificate.issuer.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)
-    common_names = certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)
-    if len(organizations) != 1 or len(common_names) != 1:
+    if len(evidence.issuer_organizations) != 1 or len(evidence.issuer_common_names) != 1:
         raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate issuer is incomplete")
-    issuer_organization = organizations[0].value
-    issuer_common_name = common_names[0].value
-    if not isinstance(issuer_organization, str) or not isinstance(issuer_common_name, str):
-        raise GenOfficeNpmProvenanceAdmissionError("Fulcio certificate issuer is not textual")
     return (
         certificate_hash,
-        issuer_organization,
-        issuer_common_name,
-        f"{certificate.serial_number:X}",
-        certificate.not_valid_before_utc.astimezone(UTC),
-        certificate.not_valid_after_utc.astimezone(UTC),
+        evidence.issuer_organizations[0],
+        evidence.issuer_common_names[0],
+        evidence.serial_hex,
+        evidence.not_before_utc,
+        evidence.not_after_utc,
     )
 
 
