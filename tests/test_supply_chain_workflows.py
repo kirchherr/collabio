@@ -119,12 +119,13 @@ def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
     assert workflow.count("version: v0.73.0") == 5
 
 
-def test_release_tags_require_quality_scans_sbom_and_two_attestations() -> None:
+def test_release_tags_require_quality_scans_sboms_and_attestations_for_both_images() -> None:
     workflow = RELEASE_PATH.read_text(encoding="utf-8")
 
     assert 'tags:\n      - "v*"' in workflow
     assert "id-token: write" in workflow
     assert "attestations: write" in workflow
+    assert "artifact-metadata: write" in workflow
     assert "packages: write" in workflow
     assert "Verify dependency locks are current" in workflow
     assert "docker compose run --rm quality" in workflow
@@ -136,18 +137,24 @@ def test_release_tags_require_quality_scans_sbom_and_two_attestations() -> None:
     assert "python -W error -c" in workflow
     assert "docker save --output" in workflow
     assert "format: cyclonedx" in workflow
-    assert workflow.count("actions/attest@") == 2
+    assert "docker build --provenance=false --target preview-renderer" in workflow
+    assert "Smoke-test isolated preview renderer" in workflow
+    assert "artifacts/preview-image-digest.txt" in workflow
+    assert "collabio-preview-renderer.cdx.json" in workflow
+    assert "steps.preview-publish.outputs.digest" in workflow
+    assert workflow.count("actions/attest@") == 4
     assert "sbom-path: artifacts/collabio-runtime.cdx.json" in workflow
-    assert workflow.count("subject-name:") == 2
-    assert workflow.count("subject-digest:") == 2
-    assert workflow.count("push-to-registry: true") == 2
+    assert "sbom-path: artifacts/collabio-preview-renderer.cdx.json" in workflow
+    assert workflow.count("subject-name:") == 4
+    assert workflow.count("subject-digest:") == 4
+    assert workflow.count("push-to-registry: true") == 4
     assert "subject-path:" not in workflow
     assert "sha256sum" in workflow
     assert "retention-days: 90" in workflow
-    assert workflow.count("TRIVY_VEX:") == 1
-    assert workflow.count("TRIVY_SHOW_SUPPRESSED:") == 1
-    assert workflow.count("skip-files:") == 3
-    assert workflow.count("version: v0.73.0") == 3
+    assert workflow.count("TRIVY_VEX:") == 2
+    assert workflow.count("TRIVY_SHOW_SUPPRESSED:") == 2
+    assert workflow.count("skip-files:") == 6
+    assert workflow.count("version: v0.73.0") == 6
 
 
 def test_promotion_is_digest_bound_attested_and_environment_protected() -> None:

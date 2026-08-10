@@ -162,6 +162,7 @@ def run_preview_conversion(
         command_hash=command.command_hash,
         execution_gate_evidence_hash=command.execution_gate_evidence_hash,
         source_preflight_evidence_hash=command.source_preflight_evidence_hash,
+        production_admission_gate_hash=command.production_admission_gate_hash,
         worker_image_ref=command.worker_image_ref,
         sandbox_runtime_class=sandbox_runtime_class,
         converter_version=converter_version,
@@ -189,6 +190,12 @@ def run_worker_once(
     output_dir: Path,
     configured_worker_image_ref: str,
     configured_runtime_class: str,
+    production_admission_required: bool = False,
+    production_admission_path: Path | None = None,
+    production_evidence_path: Path | None = None,
+    production_recovery_report_path: Path | None = None,
+    production_attestation_path: Path | None = None,
+    production_signer_policy_path: Path | None = None,
 ) -> PreviewConversionWorkerResult:
     envelope = PreviewConversionWorkerEnvelope.model_validate_json(request_path.read_text(encoding="utf-8"))
     font_baseline_hash = build_installed_font_baseline_hash()
@@ -201,6 +208,32 @@ def run_worker_once(
         )
     except PreviewConversionBlocked as exc:
         raise PreviewConversionWorkerError("preview conversion envelope was not admitted") from exc
+    try:
+        if production_admission_required:
+            if (
+                production_admission_path is None
+                or production_evidence_path is None
+                or production_recovery_report_path is None
+                or production_attestation_path is None
+                or production_signer_policy_path is None
+            ):
+                raise PreviewConversionWorkerError("preview conversion production admission evidence is missing")
+            from suite.operations.preview_conversion_production_admission import (
+                load_and_require_preview_conversion_production_admission,
+            )
+
+            load_and_require_preview_conversion_production_admission(
+                command=envelope.command,
+                execution_gate=envelope.execution_gate,
+                production_gate_path=production_admission_path,
+                evidence_bundle_path=production_evidence_path,
+                recovery_report_path=production_recovery_report_path,
+                attestation_path=production_attestation_path,
+                signer_policy_path=production_signer_policy_path,
+            )
+    except (OSError, ValueError) as exc:
+        raise PreviewConversionWorkerError("preview conversion production admission failed closed") from exc
+
     result = run_preview_conversion(
         command=envelope.command,
         input_dir=input_dir,
@@ -485,6 +518,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input-dir", type=Path, default=Path("/job/input"))
     parser.add_argument("--output-dir", type=Path, default=Path("/job/output"))
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--production-admission-required", action="store_true")
+    parser.add_argument("--production-admission", type=Path)
+    parser.add_argument("--production-evidence", type=Path)
+    parser.add_argument("--production-recovery-report", type=Path)
+    parser.add_argument("--production-attestation", type=Path)
+    parser.add_argument("--production-signer-policy", type=Path)
     return parser.parse_args(argv)
 
 
@@ -506,6 +545,12 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=args.output_dir,
         configured_worker_image_ref=worker_image_ref,
         configured_runtime_class=runtime_class,
+        production_admission_required=args.production_admission_required,
+        production_admission_path=args.production_admission,
+        production_evidence_path=args.production_evidence,
+        production_recovery_report_path=args.production_recovery_report,
+        production_attestation_path=args.production_attestation,
+        production_signer_policy_path=args.production_signer_policy,
     )
     return 0
 

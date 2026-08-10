@@ -1486,9 +1486,16 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `sha256:25a26caf230ed6588877db2d6332a0d42fb4128a74254d62c2cac272c45c5cc8`, Backend-Gate
   `sha256:ce2438da232f71d20e710aee7e53c497ed51ac212450e29edca4f6e0a91f71c1` und Recovery-Report
   `sha256:df53b16d2cb5093025bc7d362fb4aa63458e0307a28d1c436f3641c21b2a5d5f`; Production-Admission blieb deaktiviert.
+- [x] Fail-closed Production-Admission-Grenze implementiert: tenant-, Execution-Gate-, Recovery- und Image-Digest-
+  Bindung, maximal 24 Stunden frische Runtime-/Malware-/CDR-/Supply-Chain-/Viewer-Evidence, drei getrennte
+  Ed25519-Rollen in DSSE/in-toto, erneute Worker-Pruefung und unveraenderliche Vererbung des Gate-Hashs in Command und
+  Result. Das Release publiziert und attestiert Runtime und Preview-Renderer mit jeweils eigener SBOM und Provenance.
+  Die Gate schaltet ausschliesslich Conversion-Dispatch; Preview-Serving bleibt separat gesperrt.
 - [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, realem
-  Malware-/CDR-Dienst, publiziertem Image-Digest samt SBOM/Provenance, erfolgreichem nicht-leerem Recovery-Report und
-  separatem PDF.js-Origin freigeben. Bis dahin bleibt die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
+  Malware-/CDR-Dienst, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance, erneut erfolgreichem
+  nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin und realer Drei-Rollen-Signaturzeremonie
+  ausfuehren. Keine dieser externen Production-Evidenzen wird im Repository simuliert; bis zu ihrem Vorliegen bleibt
+  die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
 
 ## Release-Strategie
 

@@ -704,8 +704,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="Preview Renderer, Decision Ledger und Safe-Text-Release",
                     summary=(
                         "Preview-Evidence und Decisions bleiben metadata-only; ein evidence-gebundener, "
-                        "ACL-gepruefter Klartext-Release ist guarded produktiv. Rich Content und Mail "
-                        "bleiben blockiert."
+                        "ACL-gepruefter Klartext-Release ist guarded produktiv. Der Conversion-Worker besitzt eine "
+                        "kryptografisch signierte Production-Admission-Grenze; reale Production-Evidence, Rich "
+                        "Content und Mail bleiben blockiert."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="content_boundary",
@@ -714,6 +715,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_source_object_preview_decision_ledger.py",
                         "tests/test_source_object_preview_content_release.py",
                         "docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md",
+                        "app/suite/operations/preview_conversion_production_admission.py",
+                        "tests/test_preview_conversion_production_admission.py",
+                        "docs/operations/PREVIEW_CONVERSION_PRODUCTION_ADMISSION.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/preview-renderer-runs",
@@ -727,6 +731,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "manifest_content_hash_and_acl_version_binding",
                         "plain_text_and_markdown_allowlist",
                         "mail_attachments_html_and_binary_content_blocked",
+                        "production_dispatch_requires_three_role_dsse_attestation",
+                        "real_malware_and_cdr_service_evidence_required",
+                        "worker_digest_sbom_and_provenance_verification_required",
+                        "non_empty_recovery_and_separate_pdfjs_origin_required",
+                        "preview_serving_remains_a_separate_gate",
                         "content_excluded_from_audit_and_release_receipts",
                     ),
                 ),

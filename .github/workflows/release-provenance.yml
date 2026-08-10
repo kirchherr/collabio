@@ -17,12 +17,16 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      artifact-metadata: write
       packages: write
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ghcr.io/${{ github.repository }}
+      PREVIEW_IMAGE_NAME: ghcr.io/${{ github.repository }}-preview-renderer
       RUNTIME_IMAGE: collabio-runtime:${{ github.ref_name }}
+      PREVIEW_IMAGE: collabio-preview-renderer:${{ github.ref_name }}
       RELEASE_ARCHIVE: artifacts/collabio-runtime-${{ github.ref_name }}.tar
+      PREVIEW_RELEASE_ARCHIVE: artifacts/collabio-preview-renderer-${{ github.ref_name }}.tar
 
     steps:
       - name: Checkout
@@ -44,8 +48,18 @@ jobs:
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --label "org.opencontainers.image.version=${GITHUB_REF_NAME}" .
 
+      - name: Build preview renderer image
+        run: |
+          docker build --provenance=false --target preview-renderer --tag "${PREVIEW_IMAGE}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${GITHUB_REF_NAME}" .
+
       - name: Smoke-test non-root runtime
         run: docker run --rm "${RUNTIME_IMAGE}" python -W error -c "import os; import main; assert os.geteuid() == 10001"
+
+      - name: Smoke-test isolated preview renderer
+        run: docker run --rm "${PREVIEW_IMAGE}" --engine-self-test
 
       - name: Create evidence directory
         run: mkdir -p artifacts
@@ -66,12 +80,41 @@ jobs:
           ignore-unfixed: false
           exit-code: 1
 
+      - name: Gate preview renderer vulnerabilities and secrets
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        env:
+          TRIVY_VEX: ${{ github.workspace }}/security/vex/collabio.openvex.json
+          TRIVY_SHOW_SUPPRESSED: "true"
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.PREVIEW_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          scanners: vuln,secret,misconfig
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 1
+
       - name: Gate forbidden runtime licenses
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           version: v0.73.0
           scan-type: image
           image-ref: ${{ env.RUNTIME_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          scanners: license
+          format: table
+          severity: CRITICAL
+          exit-code: 1
+          skip-setup-trivy: true
+
+      - name: Gate forbidden preview renderer licenses
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.PREVIEW_IMAGE }}
           skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
           scanners: license
           format: table
@@ -91,8 +134,23 @@ jobs:
           exit-code: 0
           skip-setup-trivy: true
 
+      - name: Generate CycloneDX preview renderer SBOM
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.PREVIEW_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          format: cyclonedx
+          output: artifacts/collabio-preview-renderer.cdx.json
+          exit-code: 0
+          skip-setup-trivy: true
+
       - name: Export runtime image
         run: docker save --output "${RELEASE_ARCHIVE}" "${RUNTIME_IMAGE}"
+
+      - name: Export preview renderer image
+        run: docker save --output "${PREVIEW_RELEASE_ARCHIVE}" "${PREVIEW_IMAGE}"
 
       - name: Log in to GitHub Container Registry
         env:
@@ -113,9 +171,23 @@ jobs:
           printf '%s@%s\n' "${IMAGE_NAME}" "${IMAGE_DIGEST}" > artifacts/image-digest.txt
           echo "digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
 
+      - name: Publish tested preview renderer image
+        id: preview-publish
+        run: |
+          docker tag "${PREVIEW_IMAGE}" "${PREVIEW_IMAGE_NAME}:${GITHUB_REF_NAME}"
+          docker tag "${PREVIEW_IMAGE}" "${PREVIEW_IMAGE_NAME}:sha-${GITHUB_SHA}"
+          docker push "${PREVIEW_IMAGE_NAME}:${GITHUB_REF_NAME}"
+          docker push "${PREVIEW_IMAGE_NAME}:sha-${GITHUB_SHA}"
+          docker pull "${PREVIEW_IMAGE_NAME}:${GITHUB_REF_NAME}"
+          IMAGE_REFERENCE="$(docker image inspect "${PREVIEW_IMAGE_NAME}:${GITHUB_REF_NAME}" --format '{{index .RepoDigests 0}}')"
+          IMAGE_DIGEST="${IMAGE_REFERENCE##*@}"
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf '%s@%s\n' "${PREVIEW_IMAGE_NAME}" "${IMAGE_DIGEST}" > artifacts/preview-image-digest.txt
+          echo "digest=${IMAGE_DIGEST}" >> "${GITHUB_OUTPUT}"
+
       - name: Create release checksums
         working-directory: artifacts
-        run: sha256sum collabio-runtime-*.tar collabio-runtime.cdx.json image-digest.txt > SHA256SUMS
+        run: sha256sum collabio-runtime-*.tar collabio-preview-renderer-*.tar *.cdx.json *image-digest.txt > SHA256SUMS
 
       - name: Attest OCI release provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
@@ -130,6 +202,21 @@ jobs:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.publish.outputs.digest }}
           sbom-path: artifacts/collabio-runtime.cdx.json
+          push-to-registry: true
+
+      - name: Attest preview renderer provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ env.PREVIEW_IMAGE_NAME }}
+          subject-digest: ${{ steps.preview-publish.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest preview renderer SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ env.PREVIEW_IMAGE_NAME }}
+          subject-digest: ${{ steps.preview-publish.outputs.digest }}
+          sbom-path: artifacts/collabio-preview-renderer.cdx.json
           push-to-registry: true
 
       - name: Upload release evidence

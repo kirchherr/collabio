@@ -277,6 +277,7 @@ class PreviewConversionCommand(BaseModel):
     adapter_descriptor_hash: str
     adapter_plan_hash: str
     conversion_route: str
+    production_admission_gate_hash: str | None = None
     renderer_release_gate_evidence_hash: str
     execution_gate_evidence_hash: str
     source_preflight_evidence_hash: str
@@ -306,6 +307,13 @@ class PreviewConversionCommand(BaseModel):
     def require_sha256_ref(cls, value: str) -> str:
         if not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion command hashes must be sha256 references")
+        return value
+
+    @field_validator("production_admission_gate_hash")
+    @classmethod
+    def require_optional_production_admission_hash(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("preview conversion production admission hash must be a sha256 reference")
         return value
 
     @field_validator("worker_image_ref")
@@ -349,6 +357,7 @@ class PreviewConversionWorkerResult(BaseModel):
     command_hash: str
     execution_gate_evidence_hash: str
     source_preflight_evidence_hash: str
+    production_admission_gate_hash: str | None = None
     worker_image_ref: str
     sandbox_runtime_class: str
     converter_engine: str = "libreoffice"
@@ -388,6 +397,13 @@ class PreviewConversionWorkerResult(BaseModel):
         if not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("preview conversion result hashes must be sha256 references")
         return value
+    @field_validator("production_admission_gate_hash")
+    @classmethod
+    def require_optional_production_admission_hash(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("preview conversion result production admission hash must be a sha256 reference")
+        return value
+
 
     @model_validator(mode="after")
     def require_safe_result(self) -> PreviewConversionWorkerResult:
@@ -489,6 +505,7 @@ class PreviewConversionJobEvidence(BaseModel):
             self.command.worker_image_ref == self.worker_image_ref,
             self.result.worker_image_ref == self.worker_image_ref,
             self.result.command_hash == self.command_hash,
+            self.command.production_admission_gate_hash == self.result.production_admission_gate_hash,
         )
         if not all(bindings):
             raise ValueError("preview conversion job evidence lineage is inconsistent")
@@ -1582,6 +1599,7 @@ def _require_derived_preview_inputs(
         and command.source_preflight_evidence_hash == source_preflight.evidence_hash
         and result.source_preflight_evidence_hash == source_preflight.evidence_hash
         and result.worker_image_ref == execution_gate.worker_image_ref
+        and result.production_admission_gate_hash == command.production_admission_gate_hash
         and result.font_baseline_hash == execution_gate.font_baseline_hash
     )
     if not evidence_binding:

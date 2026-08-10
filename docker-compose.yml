@@ -1761,6 +1761,36 @@ services:
       - preview_conversion_proof_input:/job/proof-input
       - preview_conversion_proof_output:/job/proof-output
 
+  preview-conversion-production-admission-gate:
+    profiles:
+      - preview-production-admission
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.preview_conversion_production_admission
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PRODUCTION_EVIDENCE_PATH: /evidence/preview-conversion-production-evidence.json
+      SUITE_PREVIEW_PRODUCTION_EXECUTION_GATE_PATH: /evidence/preview-conversion-execution-gate.json
+      SUITE_PREVIEW_PRODUCTION_RECOVERY_REPORT_PATH: /evidence/derived-preview-recovery-drill.json
+      SUITE_PREVIEW_PRODUCTION_ATTESTATION_PATH: /evidence/preview-conversion-production-attestation.dsse.json
+      SUITE_PREVIEW_PRODUCTION_SIGNER_POLICY_PATH: /trust/preview-conversion-signers.json
+      SUITE_PREVIEW_PRODUCTION_GATE_REPORT_PATH: /backups/preview-conversion-production-admission-gate.json
+      SUITE_PREVIEW_PRODUCTION_MAX_EVIDENCE_AGE_HOURS: ${SUITE_PREVIEW_PRODUCTION_MAX_EVIDENCE_AGE_HOURS:-24}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/evidence:ro
+      - ./backups:/backups
+      - ./security:/trust:ro
+
   preview-conversion-engine-smoke:
     build:
       context: .
@@ -1792,6 +1822,17 @@ services:
       - /job/input/request.json
       - --input-dir
       - /job/input
+      - --production-admission-required
+      - --production-admission
+      - /evidence/preview-conversion-production-admission-gate.json
+      - --production-evidence
+      - /evidence/preview-conversion-production-evidence.json
+      - --production-recovery-report
+      - /evidence/derived-preview-recovery-drill.json
+      - --production-attestation
+      - /evidence/preview-conversion-production-attestation.dsse.json
+      - --production-signer-policy
+      - /trust/preview-conversion-signers.json
       - --output-dir
       - /job/output
     runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
@@ -1813,6 +1854,8 @@ services:
     volumes:
       - preview_conversion_input:/job/input:ro
       - preview_conversion_output:/job/output
+      - ./backups:/evidence:ro
+      - ./security:/trust:ro
 
   api:
     build:
