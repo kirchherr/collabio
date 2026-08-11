@@ -28,12 +28,9 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && tar --extract --file /tmp/genoffice-context.tar --directory /opt/genoffice \
     && rm /tmp/genoffice-context.tar \
     && node /opt/collabio/prepare-runtime-manifest.mjs \
-    && for archive in /tmp/npm-artifacts/*.tgz; do \
-         npm cache add "${archive}" --cache /tmp/npm-cache; \
-       done \
     && cd /opt/genoffice/packages/docx-engine \
-    && npm install --offline --ignore-scripts --omit=dev --no-audit --no-fund \
-         --package-lock=false --cache /tmp/npm-cache \
+    && npm install --offline --ignore-scripts --omit=dev --no-audit --no-fund --no-save \
+         --package-lock=false --cache /tmp/npm-cache /tmp/npm-artifacts/*.tgz \
     && node /opt/collabio/verify-runtime-inventory.mjs \
     && rm -rf /tmp/npm-artifacts /tmp/npm-cache /tmp/home /tmp/dependency-report.json \
     && rm -rf /opt/genoffice/packages/docx-engine/scripts \

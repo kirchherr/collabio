@@ -32,10 +32,7 @@ if (
   throw new Error("GenOffice DOCX package manifest does not match the reviewed runtime boundary");
 }
 
-manifest.dependencies = {
-  "fast-xml-parser": "5.10.1",
-  jszip: "3.10.1",
-};
+manifest.dependencies = {};
 delete manifest.devDependencies;
 delete manifest.scripts;
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, {
