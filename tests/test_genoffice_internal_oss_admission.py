@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -10,7 +11,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from suite.ai_control_plane.audit import canonical_json
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.operations.genoffice_internal_oss_admission import (
     GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES,
     GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES,
@@ -246,6 +247,25 @@ def test_internal_oss_admission_rejects_notice_tampering() -> None:
 def test_internal_oss_environment_runner_requires_all_paths() -> None:
     with pytest.raises(GenOfficeInternalOssAdmissionError, match="paths are missing"):
         run_genoffice_internal_oss_admission_from_environment({})
+
+
+def test_committed_internal_oss_schemas_are_hash_bound_without_fake_approvals() -> None:
+    decision_schema = json.loads(
+        (EVIDENCE / "genoffice_internal_oss_decision.schema.json").read_text(encoding="utf-8")
+    )
+    signer_schema = json.loads(
+        (EVIDENCE / "genoffice_internal_oss_signer_policy.schema.json").read_text(encoding="utf-8")
+    )
+
+    assert stable_hash(canonical_json(decision_schema)) == (
+        "sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698"
+    )
+    assert stable_hash(canonical_json(signer_schema)) == (
+        "sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3"
+    )
+    assert not (EVIDENCE / "genoffice_internal_oss_decision.json").exists()
+    assert not (EVIDENCE / "genoffice_internal_oss_signer_policy.json").exists()
+    assert not (EVIDENCE / "genoffice_internal_oss_admission_report.json").exists()
 
 
 def test_internal_oss_admission_uses_kms_adapter_and_has_no_network_or_process_path() -> None:

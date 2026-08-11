@@ -1544,7 +1544,9 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   ersetzt: deterministisches `THIRD_PARTY_NOTICES`, exakte Apache-/NOTICE-/Trademark-/Enterprise- und Dependency-
   Entscheidungen, zwei verschiedene interne Rollen, Ed25519-Pruefung hinter dem KMS-Adapter, hashgebundene Signer-Policy
   und automatische Neubewertung bei jeder relevanten Aenderung. Das Gate kann ausschliesslich
-  `development_evaluation` oeffnen; Hosted Service, On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
+  `development_evaluation` oeffnen. Das reale 23-Komponenten-/27-Dateien-NOTICE wurde zweimal bytegleich als
+  `sha256:e6dada57...` reproduziert; Report `sha256:878e93a1...` und beide Schema-Hashes sind versioniert. Hosted Service,
+  On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
 - [ ] Internen GenOffice-Development-Entscheid abschliessen: zwei benannte interne Verantwortliche als `product_owner`
   und `security_compliance_owner` in der Signer-Policy aufnehmen, den exakten Payload unabhaengig signieren und den
   Admission-Report reproduzieren. Keine Identitaeten, Schluessel oder Freigaben simulieren.

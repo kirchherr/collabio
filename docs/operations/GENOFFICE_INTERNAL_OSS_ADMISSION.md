@@ -71,6 +71,20 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
 The admission exits `2` for missing, malformed, stale, same-person, unauthorized or invalidly signed evidence. A green
 report opens only the development worker-build gate.
 
+## Verified Evidence Snapshot
+
+The reproducible 2026-08-11 run on `dev001` produced:
+
+- 23-component, 27-file `GENOFFICE_THIRD_PARTY_NOTICES.txt`:
+  `sha256:e6dada57493fc5161dc4c5364f36feab11298fc887f5253eb1f03b3920239162`;
+- notice report: `sha256:878e93a174a9deeae9c137a0229210c45dd636c9763cda9d430d42e6ad07fdc7`;
+- decision-envelope schema: `sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698`;
+- signer-policy schema: `sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`.
+
+A second independent builder execution produced the identical notice bytes. No decision envelope, signer policy or
+admission report is committed because no human identity, public key or approval has been supplied. The development
+worker build therefore remains correctly blocked.
+
 ## Alternatives
 
 Collabora remains the preferred later WOPI candidate for full collaboration, but its official terms distinguish source

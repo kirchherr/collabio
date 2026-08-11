@@ -45,6 +45,15 @@ development risk without silently opening production or distribution.
 - A successful admission permits building an isolated development candidate, not serving or distributing it.
 - The Office adapter remains replaceable. ECMA-376 and independently licensed engines remain viable alternatives.
 
+## Accepted Automated Evidence
+
+The first two offline builder runs produced identical 97,493-byte notice artifacts with
+`sha256:e6dada57493fc5161dc4c5364f36feab11298fc887f5253eb1f03b3920239162`. The 23-component,
+27-file report is `sha256:878e93a174a9deeae9c137a0229210c45dd636c9763cda9d430d42e6ad07fdc7`.
+Decision and signer-policy schema hashes are `sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698`
+and `sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`. No human
+decision or signer policy was fabricated; development admission remains pending.
+
 ## References
 
 - https://www.apache.org/licenses/LICENSE-2.0
