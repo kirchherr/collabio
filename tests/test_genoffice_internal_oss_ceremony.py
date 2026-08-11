@@ -53,9 +53,7 @@ def _ceremony_fixture() -> tuple[
     )
     request, message = build_genoffice_internal_oss_signing_request(
         dossier=load_genoffice_legal_review_dossier(EVIDENCE / "genoffice_legal_review_dossier_report.json"),
-        notice_report=load_genoffice_third_party_notice_report(
-            EVIDENCE / "genoffice_third_party_notice_report.json"
-        ),
+        notice_report=load_genoffice_third_party_notice_report(EVIDENCE / "genoffice_third_party_notice_report.json"),
         notice_artifact=(EVIDENCE / "GENOFFICE_THIRD_PARTY_NOTICES.txt").read_bytes(),
         signer_policy=policy,
         decision_id="genoffice-development-evaluation-20260811-01",
@@ -71,9 +69,7 @@ def test_signing_request_is_deterministic_non_effective_and_policy_bound() -> No
     request, message, policy, _, _ = _ceremony_fixture()
     duplicate, duplicate_message = build_genoffice_internal_oss_signing_request(
         dossier=load_genoffice_legal_review_dossier(EVIDENCE / "genoffice_legal_review_dossier_report.json"),
-        notice_report=load_genoffice_third_party_notice_report(
-            EVIDENCE / "genoffice_third_party_notice_report.json"
-        ),
+        notice_report=load_genoffice_third_party_notice_report(EVIDENCE / "genoffice_third_party_notice_report.json"),
         notice_artifact=(EVIDENCE / "GENOFFICE_THIRD_PARTY_NOTICES.txt").read_bytes(),
         signer_policy=policy,
         decision_id="genoffice-development-evaluation-20260811-01",

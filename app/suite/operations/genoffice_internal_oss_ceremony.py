@@ -61,9 +61,7 @@ class GenOfficeInternalOssCeremonyError(ValueError):
 class GenOfficeInternalOssSigningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_internal_oss_signing_request.v1"] = (
-        "genoffice_internal_oss_signing_request.v1"
-    )
+    schema_version: Literal["genoffice_internal_oss_signing_request.v1"] = "genoffice_internal_oss_signing_request.v1"
     prepared_at_utc: datetime
     payload: GenOfficeInternalOssDecisionPayload
     signature_message_sha256: str
