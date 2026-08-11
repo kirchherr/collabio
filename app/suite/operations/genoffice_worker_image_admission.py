@@ -50,7 +50,9 @@ GENOFFICE_WORKER_SIGNATURE_RESPONSE_SCHEMA_VERSION = "genoffice_worker_build_sig
 GENOFFICE_WORKER_ADMISSION_REPORT_SCHEMA_VERSION = "genoffice_worker_image_admission_report.v1"
 GENOFFICE_WORKER_ATTESTATION_PAYLOAD_SCHEMA_VERSION = "genoffice_worker_build_attestation_payload.v1"
 GENOFFICE_WORKER_IMAGE_SBOM_SCHEMA_VERSION = "genoffice_worker_image_sbom.v1"
-GENOFFICE_WORKER_BASE_IMAGE_REF = (
+GENOFFICE_WORKER_BASE_IMAGE_REF: Literal[
+    "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
+] = (
     "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
 )
 GENOFFICE_WORKER_TRIVY_IMAGE_REF = (
@@ -60,8 +62,8 @@ GENOFFICE_WORKER_TRIVY_VERSION = "0.73.0"
 GENOFFICE_WORKER_CYCLONEDX_VALIDATOR_REF = (
     "cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e"
 )
-GENOFFICE_WORKER_IMAGE_NAME = "collabio/genoffice-docx-worker"
-GENOFFICE_WORKER_PLATFORM = "linux/amd64"
+GENOFFICE_WORKER_IMAGE_NAME: Literal["collabio/genoffice-docx-worker"] = "collabio/genoffice-docx-worker"
+GENOFFICE_WORKER_PLATFORM: Literal["linux/amd64"] = "linux/amd64"
 GENOFFICE_WORKER_USER = "10003:10003"
 GENOFFICE_WORKER_WORKDIR = "/opt/genoffice/packages/docx-engine"
 GENOFFICE_WORKER_ENTRYPOINT = ("node", "/opt/collabio/worker-entrypoint.mjs")
@@ -729,7 +731,7 @@ def _component_purl(component: Mapping[str, Any]) -> str | None:
 
 
 def _normalized_component(component: Mapping[str, Any]) -> dict[str, Any]:
-    normalized = json.loads(json.dumps(component))
+    normalized: dict[str, Any] = json.loads(json.dumps(component))
     purl = _component_purl(normalized)
     if purl is not None:
         normalized["bom-ref"] = purl

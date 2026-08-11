@@ -7,6 +7,7 @@ import json
 import tarfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -129,7 +130,7 @@ def _npm_purl(name: str, version: str) -> str:
     return f"pkg:npm/{normalized}@{version}"
 
 
-def _authoritative_sbom(build_evidence: GenOfficeWorkerImageBuildEvidence) -> dict[str, object]:
+def _authoritative_sbom(build_evidence: GenOfficeWorkerImageBuildEvidence) -> dict[str, Any]:
     source_report = load_genoffice_docx_source_admission_report(
         EVIDENCE / "genoffice_docx_source_admission_report.json"
     )
@@ -165,7 +166,7 @@ def _authoritative_sbom(build_evidence: GenOfficeWorkerImageBuildEvidence) -> di
     )
 
 
-def _scan_evidence(tmp_path: Path, sbom: dict[str, object], issued_at: datetime) -> tuple[Path, Path, Path, Path]:
+def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) -> tuple[Path, Path, Path, Path]:
     sbom_path = tmp_path / "genoffice-worker-image.cdx.json"
     sbom_path.write_text(json.dumps(sbom, sort_keys=True) + "\n", encoding="utf-8")
     sbom_hash = hashlib.sha256(sbom_path.read_bytes()).hexdigest()
