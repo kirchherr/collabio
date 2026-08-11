@@ -104,7 +104,7 @@ def test_supplemental_source_rejects_registry_git_head_drift(tmp_path: Path) -> 
         }
     ).encode()
 
-    def registry_fetcher(url: str, maximum_size: int) -> bytes:
+    def metadata_fetcher(url: str, maximum_size: int) -> bytes:
         assert url == NODABLE_ENTITIES_REGISTRY_METADATA_URL
         assert len(metadata) <= maximum_size
         return metadata
@@ -113,7 +113,7 @@ def test_supplemental_source_rejects_registry_git_head_drift(tmp_path: Path) -> 
         _collect_nodable_license_source(
             artifact_directory=tmp_path,
             package_artifact=package,
-            registry_fetcher=registry_fetcher,
+            metadata_fetcher=metadata_fetcher,
             source_fetcher=lambda _url, _limit: pytest.fail("source download must not occur"),
         )
 

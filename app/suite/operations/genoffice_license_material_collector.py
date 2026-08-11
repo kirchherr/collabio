@@ -231,6 +231,43 @@ def _fetch_registry_package(url: str, maximum_size: int) -> bytes:
     return content
 
 
+def _fetch_registry_metadata(url: str, maximum_size: int) -> bytes:
+    host, target = _validated_registry_target(url)
+    connection = http.client.HTTPSConnection(
+        host,
+        port=443,
+        timeout=30,
+        context=ssl.create_default_context(),
+    )
+    try:
+        connection.request(
+            "GET",
+            target,
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+                "User-Agent": "collabio-license-material-collector/1",
+            },
+        )
+        response = connection.getresponse()
+        if response.status != 200:
+            raise GenOfficeLicenseMaterialCollectionError(
+                f"npm registry returned an unexpected metadata status: {response.status}"
+            )
+        content_encoding = response.getheader("Content-Encoding")
+        content_type = response.getheader("Content-Type", "")
+        if content_encoding not in {None, "identity"} or "json" not in content_type.lower():
+            raise GenOfficeLicenseMaterialCollectionError("npm registry metadata response format is not accepted")
+        content = response.read(maximum_size + 1)
+    except (OSError, http.client.HTTPException) as exc:
+        raise GenOfficeLicenseMaterialCollectionError("npm registry metadata download failed") from exc
+    finally:
+        connection.close()
+    if not content or len(content) > maximum_size:
+        raise GenOfficeLicenseMaterialCollectionError("npm registry metadata is empty or exceeds its size limit")
+    return content
+
+
 def _fetch_supplemental_source_archive(url: str, maximum_size: int) -> bytes:
     parsed = urlsplit(url)
     if (
@@ -309,10 +346,10 @@ def _collect_nodable_license_source(
     *,
     artifact_directory: Path,
     package_artifact: GenOfficeLicenseMaterialArtifact,
-    registry_fetcher: PackageFetcher,
+    metadata_fetcher: PackageFetcher,
     source_fetcher: PackageFetcher,
 ) -> GenOfficeSupplementalLicenseSourceArtifact:
-    raw_metadata = registry_fetcher(NODABLE_ENTITIES_REGISTRY_METADATA_URL, MAX_REGISTRY_METADATA_SIZE_BYTES)
+    raw_metadata = metadata_fetcher(NODABLE_ENTITIES_REGISTRY_METADATA_URL, MAX_REGISTRY_METADATA_SIZE_BYTES)
     try:
         metadata = json.loads(raw_metadata.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -386,6 +423,7 @@ def collect_genoffice_license_materials(
     source_report: GenOfficeDocxSourceAdmissionReport,
     artifact_directory: Path,
     fetcher: PackageFetcher = _fetch_registry_package,
+    metadata_fetcher: PackageFetcher = _fetch_registry_metadata,
     supplemental_source_fetcher: PackageFetcher = _fetch_supplemental_source_archive,
 ) -> GenOfficeLicenseMaterialCollectionReport:
     if build_genoffice_docx_source_admission_report_hash(source_report) != source_report.report_hash:
@@ -426,7 +464,7 @@ def collect_genoffice_license_materials(
     supplemental = _collect_nodable_license_source(
         artifact_directory=artifact_directory,
         package_artifact=nodable_artifact,
-        registry_fetcher=fetcher,
+        metadata_fetcher=metadata_fetcher,
         source_fetcher=supplemental_source_fetcher,
     )
     draft = GenOfficeLicenseMaterialCollectionReport(
