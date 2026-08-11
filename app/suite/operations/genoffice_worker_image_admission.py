@@ -544,9 +544,24 @@ def _inspect_boundary(
     *,
     context_report: GenOfficeDevelopmentBuildContextReport,
 ) -> tuple[str, int, tuple[str, ...]]:
-    image_id = str(image.get("Id", ""))
-    if not _SHA256_PATTERN.fullmatch(image_id):
-        raise GenOfficeWorkerImageAdmissionError("GenOffice worker image ID is not a SHA-256 digest")
+    manifest_digest = str(image.get("Id", ""))
+    if not _SHA256_PATTERN.fullmatch(manifest_digest):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker manifest ID is not a SHA-256 digest")
+    descriptor = image.get("Descriptor")
+    if not isinstance(descriptor, dict):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker OCI descriptor is missing")
+    descriptor_digest = str(descriptor.get("digest", ""))
+    descriptor_media_type = descriptor.get("mediaType")
+    annotations = descriptor.get("annotations")
+    if (
+        descriptor_digest != manifest_digest
+        or descriptor_media_type != "application/vnd.oci.image.manifest.v1+json"
+        or not isinstance(annotations, dict)
+    ):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker OCI descriptor is invalid")
+    image_config_digest = str(annotations.get("config.digest", ""))
+    if not _SHA256_PATTERN.fullmatch(image_config_digest):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker config digest is missing")
     if (image.get("Os"), image.get("Architecture")) != ("linux", "amd64"):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker image platform is not linux/amd64")
     size = image.get("Size")
@@ -585,7 +600,7 @@ def _inspect_boundary(
     layers = tuple(rootfs.get("Layers") or ())
     if rootfs.get("Type") != "layers" or not layers or not all(_SHA256_PATTERN.fullmatch(item) for item in layers):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker rootfs evidence is invalid")
-    return image_id, size, layers
+    return image_config_digest, size, layers
 
 
 def _verify_docker_archive(path: Path, *, image_id: str, image_ref: str) -> tuple[str, int]:

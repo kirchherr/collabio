@@ -37,6 +37,7 @@ from suite.operations.genoffice_worker_image_admission import (
     GenOfficeWorkerBuildSignatureResponse,
     GenOfficeWorkerImageAdmissionError,
     GenOfficeWorkerImageBuildEvidence,
+    _inspect_boundary,
     _verify_docker_archive,
     build_genoffice_worker_build_evidence_report_hash,
     build_genoffice_worker_image_sbom,
@@ -338,6 +339,56 @@ def test_worker_docker_archive_is_bound_to_config_digest_and_tag(tmp_path: Path)
         )
 
 
+def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
+    config_digest = _hash("image-config")
+    manifest_digest = _hash("image-manifest")
+    context_report = GenOfficeDevelopmentBuildContextReport.model_construct(
+        context_tar_sha256=_hash("context-tar"),
+        development_authorization_report_hash=_hash("authorization"),
+        report_hash=_hash("context-report"),
+    )
+    image = {
+        "Id": manifest_digest,
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": manifest_digest,
+            "annotations": {"config.digest": config_digest},
+        },
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Size": 4096,
+        "Config": {
+            "Labels": {
+                "io.collabio.genoffice.authorization-report-sha256": (
+                    context_report.development_authorization_report_hash
+                ),
+                "io.collabio.genoffice.build-context-report-sha256": context_report.report_hash,
+                "io.collabio.genoffice.build-context-sha256": context_report.context_tar_sha256,
+                "io.collabio.genoffice.execution-state": "blocked",
+                "io.collabio.genoffice.production-use-allowed": "false",
+                "io.collabio.genoffice.scope": "development_evaluation",
+                "io.collabio.genoffice.source-import-allowed": "false",
+                "io.collabio.genoffice.tenant-content-allowed": "false",
+            },
+            "User": "10003:10003",
+            "WorkingDir": "/opt/genoffice/packages/docx-engine",
+            "Entrypoint": ["node", "/opt/collabio/worker-entrypoint.mjs"],
+            "Cmd": ["--status"],
+            "Env": ["NODE_ENV=production"],
+        },
+        "RootFS": {"Type": "layers", "Layers": [_hash("layer")]},
+    }
+
+    observed_digest, size, layers = _inspect_boundary(image, context_report=context_report)
+
+    assert observed_digest == config_digest
+    assert size == 4096
+    assert layers == (_hash("layer"),)
+    image["Descriptor"]["annotations"]["config.digest"] = "invalid"
+    with pytest.raises(GenOfficeWorkerImageAdmissionError, match="config digest"):
+        _inspect_boundary(image, context_report=context_report)
+
+
 def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -> None:
     module = Path("app/suite/operations/genoffice_worker_image_admission.py").read_text(encoding="utf-8")
     dockerfile = Path("docker/genoffice-worker/Dockerfile").read_text(encoding="utf-8")
@@ -357,6 +408,7 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "--sort=name" in dockerfile
     assert "--numeric-owner" in dockerfile
     assert "source=/opt/collabio,target=/mnt,ro" in dockerfile
+    assert "COPY --chown" not in dockerfile
     assert "USER 10003:10003" in dockerfile
     assert "provenance: false" in compose
     assert "worker_execution_allowed: false" in entrypoint

@@ -21,6 +21,7 @@ COPY docker/genoffice-worker/verify-dependency-artifacts.mjs /opt/collabio/verif
 COPY docker/genoffice-worker/prepare-runtime-manifest.mjs /opt/collabio/prepare-runtime-manifest.mjs
 COPY docker/genoffice-worker/verify-runtime-inventory.mjs /opt/collabio/verify-runtime-inventory.mjs
 COPY docker/genoffice-worker/build-runtime-file-inventory.mjs /opt/collabio/build-runtime-file-inventory.mjs
+COPY docker/genoffice-worker/worker-entrypoint.mjs /opt/collabio/worker-entrypoint.mjs
 
 RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && test -n "${GENOFFICE_CONTEXT_REPORT_SHA256}" \
@@ -46,6 +47,7 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
          --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
          --numeric-owner --hard-dereference -C / \
          opt/genoffice opt/collabio/runtime-inventory.json opt/collabio/runtime-file-inventory.json \
+         opt/collabio/worker-entrypoint.mjs \
     && sha256sum /opt/collabio/genoffice-runtime.tar \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
@@ -65,7 +67,6 @@ RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
     && tar --extract --file /tmp/genoffice-runtime.tar --directory / --numeric-owner \
     && rm /tmp/genoffice-runtime.tar \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /tmp /opt /opt/collabio /opt/genoffice
-COPY --chown=10003:10003 docker/genoffice-worker/worker-entrypoint.mjs /opt/collabio/worker-entrypoint.mjs
 
 LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker candidate" \
       org.opencontainers.image.description="Non-runtime development candidate for the admitted GenOffice DOCX engine scope" \

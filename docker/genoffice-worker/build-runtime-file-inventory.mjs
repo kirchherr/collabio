@@ -34,6 +34,7 @@ const visit = (path) => {
 
 visit("/opt/genoffice");
 visit("/opt/collabio/runtime-inventory.json");
+visit("/opt/collabio/worker-entrypoint.mjs");
 writeFileSync(
   "/opt/collabio/runtime-file-inventory.json",
   `${JSON.stringify({ entries, schema_version: "genoffice_worker_runtime_file_inventory.v1" })}\n`,
