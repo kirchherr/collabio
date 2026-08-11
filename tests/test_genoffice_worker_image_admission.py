@@ -206,9 +206,7 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
                 },
                 "Results": [
                     {
-                        "Packages": [
-                            {"Identifier": {"PURL": component["purl"]}} for component in physical_components
-                        ],
+                        "Packages": [{"Identifier": {"PURL": component["purl"]}} for component in physical_components],
                         "Vulnerabilities": [],
                     }
                 ],
@@ -451,8 +449,7 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
                     context_report.development_authorization_report_hash
                 ),
                 "io.collabio.genoffice.build-base-image": (
-                    "node:24.18.0-bookworm-slim@sha256:"
-                    "6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
+                    "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
                 ),
                 "io.collabio.genoffice.build-context-report-sha256": context_report.report_hash,
                 "io.collabio.genoffice.build-context-sha256": context_report.context_tar_sha256,
@@ -462,8 +459,7 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
                 "io.collabio.genoffice.source-import-allowed": "false",
                 "io.collabio.genoffice.tenant-content-allowed": "false",
                 "io.collabio.genoffice.runtime-base-image": (
-                    "node:24-alpine3.23@sha256:"
-                    "5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+                    "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
                 ),
             },
             "User": "10003:10003",
