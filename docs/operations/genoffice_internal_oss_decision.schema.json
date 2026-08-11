@@ -103,9 +103,13 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "genoffice_internal_oss_decision_payload.v1",
-          "default": "genoffice_internal_oss_decision_payload.v1",
+          "const": "genoffice_internal_oss_decision_payload.v2",
+          "default": "genoffice_internal_oss_decision_payload.v2",
           "title": "Schema Version",
+          "type": "string"
+        },
+        "signer_policy_hash": {
+          "title": "Signer Policy Hash",
           "type": "string"
         },
         "third_party_notice_artifact_sha256": {
@@ -127,6 +131,7 @@
         "decided_at_utc",
         "risk_acceptance_ref",
         "change_control_ref",
+        "signer_policy_hash",
         "legal_dossier_report_hash",
         "third_party_notice_report_hash",
         "third_party_notice_artifact_sha256",
@@ -236,8 +241,8 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "genoffice_internal_oss_decision_envelope.v1",
-      "default": "genoffice_internal_oss_decision_envelope.v1",
+      "const": "genoffice_internal_oss_decision_envelope.v2",
+      "default": "genoffice_internal_oss_decision_envelope.v2",
       "title": "Schema Version",
       "type": "string"
     }

@@ -258,7 +258,7 @@ def test_committed_internal_oss_schemas_are_hash_bound_without_fake_approvals() 
     )
 
     assert stable_hash(canonical_json(decision_schema)) == (
-        "sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698"
+        "sha256:e81f267d3e1eb5f06da724c59346cb4cbb06a8ace5dd6a6c46e16195568904fe"
     )
     assert stable_hash(canonical_json(signer_schema)) == (
         "sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3"

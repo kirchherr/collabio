@@ -58,8 +58,9 @@ The first two offline builder runs produced identical 97,493-byte notice artifac
 The earlier v1 decision and signer-policy schema hashes were
 `sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698` and
 `sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`. No decision
-used v1. The v2 decision contract adds mandatory signer-policy binding before the first real ceremony. No human decision
-or signer policy was fabricated; development admission remains pending.
+used v1. The v2 decision contract adds mandatory signer-policy binding before the first real ceremony and has schema
+hash `sha256:e81f267d3e1eb5f06da724c59346cb4cbb06a8ace5dd6a6c46e16195568904fe`. The signer-policy
+schema is unchanged. No human decision or signer policy was fabricated; development admission remains pending.
 
 ## References
 
