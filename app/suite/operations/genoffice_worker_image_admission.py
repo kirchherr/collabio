@@ -51,8 +51,7 @@ GENOFFICE_WORKER_ADMISSION_REPORT_SCHEMA_VERSION = "genoffice_worker_image_admis
 GENOFFICE_WORKER_ATTESTATION_PAYLOAD_SCHEMA_VERSION = "genoffice_worker_build_attestation_payload.v1"
 GENOFFICE_WORKER_IMAGE_SBOM_SCHEMA_VERSION = "genoffice_worker_image_sbom.v1"
 GENOFFICE_WORKER_BASE_IMAGE_REF = (
-    "node:24.18.0-bookworm-slim@"
-    "sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
+    "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
 )
 GENOFFICE_WORKER_TRIVY_IMAGE_REF = (
     "aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
@@ -96,9 +95,7 @@ class GenOfficeWorkerVulnerabilityFinding(BaseModel):
 class GenOfficeWorkerImageBuildEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_worker_image_build_evidence.v1"] = (
-        "genoffice_worker_image_build_evidence.v1"
-    )
+    schema_version: Literal["genoffice_worker_image_build_evidence.v1"] = "genoffice_worker_image_build_evidence.v1"
     observed_at_utc: datetime
     image_name: Literal["collabio/genoffice-docx-worker"] = GENOFFICE_WORKER_IMAGE_NAME
     image_ref_a: str
@@ -294,9 +291,7 @@ class GenOfficeWorkerBuildSigningAssignment(BaseModel):
 class GenOfficeWorkerBuildSigningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_worker_build_signing_request.v1"] = (
-        "genoffice_worker_build_signing_request.v1"
-    )
+    schema_version: Literal["genoffice_worker_build_signing_request.v1"] = "genoffice_worker_build_signing_request.v1"
     prepared_at_utc: datetime
     payload: GenOfficeWorkerBuildAttestationPayload
     signing_assignment: GenOfficeWorkerBuildSigningAssignment
@@ -363,9 +358,7 @@ class GenOfficeWorkerBuildSignatureResponse(BaseModel):
 class GenOfficeWorkerImageAdmissionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_worker_image_admission_report.v1"] = (
-        "genoffice_worker_image_admission_report.v1"
-    )
+    schema_version: Literal["genoffice_worker_image_admission_report.v1"] = "genoffice_worker_image_admission_report.v1"
     attestation_id: str
     issued_at_utc: datetime
     valid_until_utc: datetime

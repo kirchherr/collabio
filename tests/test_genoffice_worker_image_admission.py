@@ -194,9 +194,7 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, object], issued_at: datetime)
                 "Trivy": {"Version": "0.73.0"},
                 "Results": [
                     {
-                        "Packages": [
-                            {"Identifier": {"PURL": component["purl"]}} for component in npm_components
-                        ],
+                        "Packages": [{"Identifier": {"PURL": component["purl"]}} for component in npm_components],
                         "Vulnerabilities": [],
                     }
                 ],
@@ -311,9 +309,7 @@ def test_worker_docker_archive_is_bound_to_config_digest_and_tag(tmp_path: Path)
     image_id = f"sha256:{hashlib.sha256(config).hexdigest()}"
     config_name = f"{image_id.removeprefix('sha256:')}.json"
     image_ref = "collabio/genoffice-docx-worker:verification-a"
-    manifest = json.dumps(
-        [{"Config": config_name, "RepoTags": [image_ref], "Layers": ["layer/layer.tar"]}]
-    ).encode()
+    manifest = json.dumps([{"Config": config_name, "RepoTags": [image_ref], "Layers": ["layer/layer.tar"]}]).encode()
     archive_path = tmp_path / "worker.tar"
     with tarfile.open(archive_path, "w") as archive:
         for name, content in (
