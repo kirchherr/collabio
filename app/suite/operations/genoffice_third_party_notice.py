@@ -58,9 +58,7 @@ class GenOfficeThirdPartyNoticeComponent(BaseModel):
 class GenOfficeThirdPartyNoticeReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_third_party_notice_report.v1"] = (
-        "genoffice_third_party_notice_report.v1"
-    )
+    schema_version: Literal["genoffice_third_party_notice_report.v1"] = "genoffice_third_party_notice_report.v1"
     legal_dossier_report_hash: str
     license_material_collection_report_hash: str
     source_archive_sha256: str

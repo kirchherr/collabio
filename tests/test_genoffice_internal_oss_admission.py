@@ -133,7 +133,9 @@ def _signed_fixture(
             signer_role=roles[index],
             key_id=f"key-{index}",
             ed25519_public_key_base64=base64.b64encode(
-                private_keys[index].public_key().public_bytes(
+                private_keys[index]
+                .public_key()
+                .public_bytes(
                     encoding=serialization.Encoding.Raw,
                     format=serialization.PublicFormat.Raw,
                 )

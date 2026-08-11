@@ -168,9 +168,7 @@ class GenOfficeInternalOssSignerPolicy(BaseModel):
 class GenOfficeInternalOssAdmissionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_internal_oss_admission_report.v1"] = (
-        "genoffice_internal_oss_admission_report.v1"
-    )
+    schema_version: Literal["genoffice_internal_oss_admission_report.v1"] = "genoffice_internal_oss_admission_report.v1"
     legal_dossier_report_hash: str
     third_party_notice_report_hash: str
     third_party_notice_artifact_sha256: str
