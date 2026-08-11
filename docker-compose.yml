@@ -3338,6 +3338,7 @@ services:
       - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
       - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
+      - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
