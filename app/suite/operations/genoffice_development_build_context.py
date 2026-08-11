@@ -269,7 +269,9 @@ def _verify_input_evidence(
             internal_oss_admission_report.reproducible_worker_build_allowed,
         )
     ):
-        raise GenOfficeDevelopmentBuildContextError("GenOffice internal OSS admission does not authorize materialization")
+        raise GenOfficeDevelopmentBuildContextError(
+            "GenOffice internal OSS admission does not authorize materialization"
+        )
     if _sha256_bytes(notice_artifact) != internal_oss_admission_report.third_party_notice_artifact_sha256:
         raise GenOfficeDevelopmentBuildContextError("GenOffice third-party notice does not match internal admission")
 
@@ -294,10 +296,14 @@ def _read_selected_source_files(
                 relative = _archive_relative_path(member.name, archive_root=source_report.archive_root)
                 if relative is None:
                     if not member.isdir():
-                        raise GenOfficeDevelopmentBuildContextError("GenOffice development archive root is not a directory")
+                        raise GenOfficeDevelopmentBuildContextError(
+                            "GenOffice development archive root is not a directory"
+                        )
                     continue
                 if relative in observed:
-                    raise GenOfficeDevelopmentBuildContextError("GenOffice development archive contains duplicate paths")
+                    raise GenOfficeDevelopmentBuildContextError(
+                        "GenOffice development archive contains duplicate paths"
+                    )
                 observed.add(relative)
                 if not member.isfile() and not member.isdir():
                     raise GenOfficeDevelopmentBuildContextError(
@@ -306,7 +312,11 @@ def _read_selected_source_files(
                 evidence = expected.get(relative)
                 if evidence is None:
                     continue
-                if not member.isfile() or member.size != evidence.size_bytes or member.size > MAX_SELECTED_MEMBER_SIZE_BYTES:
+                if (
+                    not member.isfile()
+                    or member.size != evidence.size_bytes
+                    or member.size > MAX_SELECTED_MEMBER_SIZE_BYTES
+                ):
                     raise GenOfficeDevelopmentBuildContextError("GenOffice selected source file metadata drifted")
                 source = archive.extractfile(member)
                 if source is None:
@@ -374,7 +384,9 @@ def build_genoffice_development_build_context(
         notice_artifact=notice_artifact,
     )
     selected = _read_selected_source_files(archive_path=archive_path, source_report=source_report)
-    source_evidence = tuple(_context_file(item) for item in sorted(source_report.source_files, key=lambda item: item.path))
+    source_evidence = tuple(
+        _context_file(item) for item in sorted(source_report.source_files, key=lambda item: item.path)
+    )
     notice_evidence = GenOfficeDevelopmentBuildContextFile(
         source_path=GENOFFICE_NOTICE_CONTEXT_PATH,
         context_path=GENOFFICE_NOTICE_CONTEXT_PATH,
@@ -382,7 +394,7 @@ def build_genoffice_development_build_context(
         size_bytes=len(notice_artifact),
         sha256=_sha256_bytes(notice_artifact),
     )
-    payload_evidence = source_evidence + (notice_evidence,)
+    payload_evidence = (*source_evidence, notice_evidence)
     manifest = GenOfficeDevelopmentBuildContextManifest(
         source_report_hash=source_report.report_hash,
         source_archive_sha256=source_report.archive_sha256,
@@ -475,7 +487,9 @@ def run_genoffice_development_build_context_from_environment(
     values = {name: env.get(key, "").strip() for name, key in keys.items()}
     missing = tuple(sorted(name for name, value in values.items() if not value))
     if missing:
-        raise GenOfficeDevelopmentBuildContextError(f"GenOffice development build context values are missing: {missing}")
+        raise GenOfficeDevelopmentBuildContextError(
+            f"GenOffice development build context values are missing: {missing}"
+        )
     try:
         source_date_epoch = int(values["source_date_epoch"])
     except ValueError as exc:
@@ -505,7 +519,11 @@ def main() -> None:
         report = run_genoffice_development_build_context_from_environment(os.environ)
         print(json.dumps(report.model_dump(mode="json"), sort_keys=True))
     except (GenOfficeDevelopmentBuildContextError, ValueError) as exc:
-        print(json.dumps({"error": str(exc), "schema_version": GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION}))
+        print(
+            json.dumps(
+                {"error": str(exc), "schema_version": GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION}
+            )
+        )
         raise SystemExit(2) from exc
 
 
