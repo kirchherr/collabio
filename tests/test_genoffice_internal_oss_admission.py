@@ -250,9 +250,7 @@ def test_internal_oss_environment_runner_requires_all_paths() -> None:
 
 
 def test_committed_internal_oss_schemas_are_hash_bound_without_fake_approvals() -> None:
-    decision_schema = json.loads(
-        (EVIDENCE / "genoffice_internal_oss_decision.schema.json").read_text(encoding="utf-8")
-    )
+    decision_schema = json.loads((EVIDENCE / "genoffice_internal_oss_decision.schema.json").read_text(encoding="utf-8"))
     signer_schema = json.loads(
         (EVIDENCE / "genoffice_internal_oss_signer_policy.schema.json").read_text(encoding="utf-8")
     )
