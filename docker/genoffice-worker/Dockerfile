@@ -60,9 +60,11 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /usr/local/lib/node_modules /usr/local/bin
 
-COPY --from=dependencies /opt/collabio/genoffice-runtime.tar /tmp/genoffice-runtime.tar
-RUN tar --extract --file /tmp/genoffice-runtime.tar --directory / --numeric-owner \
-    && rm /tmp/genoffice-runtime.tar
+RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
+    cp --no-preserve=all /mnt/genoffice-runtime.tar /tmp/genoffice-runtime.tar \
+    && tar --extract --file /tmp/genoffice-runtime.tar --directory / --numeric-owner \
+    && rm /tmp/genoffice-runtime.tar \
+    && touch -h -d "@${SOURCE_DATE_EPOCH}" /tmp /opt /opt/collabio /opt/genoffice
 COPY --chown=10003:10003 docker/genoffice-worker/worker-entrypoint.mjs /opt/collabio/worker-entrypoint.mjs
 
 LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker candidate" \
