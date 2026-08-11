@@ -86,10 +86,13 @@ def test_supplemental_source_reader_binds_root_license_to_commit(tmp_path: Path)
         source_archive_integrity_verified=True,
     )
 
-    assert _read_supplemental_source_license(
-        archive_path=archive_path,
-        supplemental=supplemental,
-    ) == license_text
+    assert (
+        _read_supplemental_source_license(
+            archive_path=archive_path,
+            supplemental=supplemental,
+        )
+        == license_text
+    )
 
 
 def test_compound_license_semantics_are_explicit() -> None:

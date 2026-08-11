@@ -719,9 +719,7 @@ def build_genoffice_legal_review_dossier(
         package_version=supplemental.package_version,
     )
     supplemental_verified = "mit_grant_text" in supplemental_evidence.detected_markers
-    supplemental_by_identity = {
-        (supplemental.package_name, supplemental.package_version): (supplemental_evidence,)
-    }
+    supplemental_by_identity = {(supplemental.package_name, supplemental.package_version): (supplemental_evidence,)}
     artifact_by_identity = {(item.package_name, item.package_version): item for item in collection_report.artifacts}
     dependency_licenses: list[GenOfficeDependencyLicenseEvidence] = []
     dependency_files: list[GenOfficeLegalFileEvidence] = []

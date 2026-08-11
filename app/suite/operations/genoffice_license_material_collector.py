@@ -37,9 +37,7 @@ NODABLE_ENTITIES_REGISTRY_METADATA_URL = "https://registry.npmjs.org/@nodable%2F
 NODABLE_ENTITIES_SOURCE_ARCHIVE_URL = (
     "https://codeload.github.com/nodable/val-parsers/tar.gz/d2070d76a8ba07e6c7fa142caeb51ffd756e47eb"
 )
-NODABLE_ENTITIES_SOURCE_ARCHIVE_SHA256 = (
-    "sha256:2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44"
-)
+NODABLE_ENTITIES_SOURCE_ARCHIVE_SHA256 = "sha256:2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44"
 MAX_PACKAGE_ARCHIVE_SIZE_BYTES = 8 * 1024 * 1024
 MAX_COLLECTION_SIZE_BYTES = 64 * 1024 * 1024
 MAX_REGISTRY_METADATA_SIZE_BYTES = 1024 * 1024
@@ -269,9 +267,7 @@ def _fetch_supplemental_source_archive(url: str, maximum_size: int) -> bytes:
     finally:
         connection.close()
     if not content or len(content) > maximum_size:
-        raise GenOfficeLicenseMaterialCollectionError(
-            "supplemental source archive is empty or exceeds its size limit"
-        )
+        raise GenOfficeLicenseMaterialCollectionError("supplemental source archive is empty or exceeds its size limit")
     return content
 
 
