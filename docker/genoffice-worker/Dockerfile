@@ -20,6 +20,7 @@ COPY --from=genoffice_dependencies /genoffice-license-material-collection-report
 COPY docker/genoffice-worker/verify-dependency-artifacts.mjs /opt/collabio/verify-dependency-artifacts.mjs
 COPY docker/genoffice-worker/prepare-runtime-manifest.mjs /opt/collabio/prepare-runtime-manifest.mjs
 COPY docker/genoffice-worker/verify-runtime-inventory.mjs /opt/collabio/verify-runtime-inventory.mjs
+COPY docker/genoffice-worker/build-runtime-file-inventory.mjs /opt/collabio/build-runtime-file-inventory.mjs
 
 RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && test -n "${GENOFFICE_CONTEXT_REPORT_SHA256}" \
@@ -39,11 +40,12 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
               /opt/genoffice/packages/docx-engine/tsconfig.json \
               /opt/genoffice/packages/docx-engine/vitest.config.ts \
               /opt/genoffice/.collabio/upstream \
+    && node /opt/collabio/build-runtime-file-inventory.mjs \
     && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} + \
     && tar --create --file /opt/collabio/genoffice-runtime.tar --format=gnu \
          --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
          --numeric-owner -C / \
-         opt/genoffice opt/collabio/runtime-inventory.json \
+         opt/genoffice opt/collabio/runtime-inventory.json opt/collabio/runtime-file-inventory.json \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
