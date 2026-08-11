@@ -32,9 +32,10 @@ from suite.operations.genoffice_third_party_notice import (
 GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_VERSION = "genoffice_internal_oss_decision_envelope.v2"
 GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_VERSION = "genoffice_internal_oss_signer_policy.v1"
 GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_SCHEMA_VERSION = "genoffice_internal_oss_admission_report.v1"
-GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES: tuple[
-    Literal["product_owner", "security_compliance_owner"], ...
-] = ("product_owner", "security_compliance_owner")
+GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES: tuple[Literal["product_owner", "security_compliance_owner"], ...] = (
+    "product_owner",
+    "security_compliance_owner",
+)
 GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES = ("hosted_service", "on_prem_distribution", "production")
 GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES = tuple(f"{prefix}**" for prefix in GENOFFICE_PROHIBITED_SCOPE_PREFIXES)
 GENOFFICE_INTERNAL_OSS_REEVALUATION_TRIGGERS = (
