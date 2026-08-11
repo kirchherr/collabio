@@ -141,9 +141,7 @@ def test_envelope_assembler_rejects_signature_tampering_and_wrong_size() -> None
     responses = _signature_responses(request, message, product_owner_key, security_owner_key)
     tampered = bytearray(base64.b64decode(responses[0].signature_base64))
     tampered[0] ^= 1
-    short_response = responses[0].model_copy(
-        update={"signature_base64": base64.b64encode(b"short").decode("ascii")}
-    )
+    short_response = responses[0].model_copy(update={"signature_base64": base64.b64encode(b"short").decode("ascii")})
     tampered_response = responses[0].model_copy(
         update={"signature_base64": base64.b64encode(bytes(tampered)).decode("ascii")}
     )

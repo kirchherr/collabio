@@ -112,7 +112,8 @@ class GenOfficeInternalOssSigningRequest(BaseModel):
         if self.required_signer_roles != GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES:
             raise ValueError("GenOffice internal OSS signing request roles are not exact")
         if not (
-            self.prepared_at_utc < self.valid_until_utc
+            self.prepared_at_utc
+            < self.valid_until_utc
             <= self.prepared_at_utc + GENOFFICE_INTERNAL_OSS_MAX_SIGNING_REQUEST_VALIDITY
         ):
             raise ValueError("GenOffice internal OSS signing request validity window is invalid")
@@ -121,9 +122,10 @@ class GenOfficeInternalOssSigningRequest(BaseModel):
         roles = tuple(item.signer_role for item in self.signing_assignments)
         if roles != GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES:
             raise ValueError("GenOffice internal OSS signing assignments are not in canonical role order")
-        if len({item.signer_id for item in self.signing_assignments}) != 2 or len(
-            {item.key_id for item in self.signing_assignments}
-        ) != 2:
+        if (
+            len({item.signer_id for item in self.signing_assignments}) != 2
+            or len({item.key_id for item in self.signing_assignments}) != 2
+        ):
             raise ValueError("GenOffice internal OSS signing assignments violate two-person separation")
         return self
 
@@ -464,10 +466,7 @@ def assemble_genoffice_internal_oss_decision_envelope(
     signers = _active_signers_by_role(signer_policy)
     assignments = {item.signer_role: item for item in request.signing_assignments}
     if any(
-        (
-            assignments[role].signer_id != signers[role].signer_id
-            or assignments[role].key_id != signers[role].key_id
-        )
+        (assignments[role].signer_id != signers[role].signer_id or assignments[role].key_id != signers[role].key_id)
         for role in GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES
     ):
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signing assignment drifted from signer policy")
