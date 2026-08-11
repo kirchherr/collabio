@@ -7,6 +7,10 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from suite.operations.genoffice_internal_oss_admission import (
+    GenOfficeInternalOssSignerPolicy,
+    build_genoffice_internal_oss_signer_policy_hash,
+)
 from suite.operations.genoffice_internal_oss_ceremony import (
     GenOfficeInternalOssCeremonyError,
     GenOfficeInternalOssSigningRequest,
@@ -14,10 +18,6 @@ from suite.operations.genoffice_internal_oss_ceremony import (
     build_genoffice_internal_oss_signer_policy,
     build_genoffice_internal_oss_signing_request,
     verify_genoffice_internal_oss_signing_request,
-)
-from suite.operations.genoffice_internal_oss_admission import (
-    GenOfficeInternalOssSignerPolicy,
-    build_genoffice_internal_oss_signer_policy_hash,
 )
 from suite.operations.genoffice_legal_review_dossier import load_genoffice_legal_review_dossier
 from suite.operations.genoffice_third_party_notice import load_genoffice_third_party_notice_report

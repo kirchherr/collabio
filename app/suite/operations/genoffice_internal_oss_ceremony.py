@@ -278,7 +278,10 @@ def verify_genoffice_internal_oss_signing_request(request: GenOfficeInternalOssS
     if build_genoffice_internal_oss_signing_request_hash(request) != request.request_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signing request hash is invalid")
     message = build_genoffice_internal_oss_signature_message(request.payload)
-    if _sha256_bytes(message) != request.signature_message_sha256 or len(message) != request.signature_message_size_bytes:
+    if (
+        _sha256_bytes(message) != request.signature_message_sha256
+        or len(message) != request.signature_message_size_bytes
+    ):
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signature message binding is invalid")
     return message
 
@@ -306,7 +309,9 @@ def load_genoffice_internal_oss_signing_request(path: Path) -> GenOfficeInternal
 def _active_signers_by_role(policy: GenOfficeInternalOssSignerPolicy) -> dict[SignerRole, GenOfficeInternalOssSigner]:
     active = tuple(item for item in policy.signers if item.active)
     if len(active) != 2 or {item.signer_role for item in active} != set(GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES):
-        raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy requires exactly one active signer per role")
+        raise GenOfficeInternalOssCeremonyError(
+            "GenOffice internal OSS signer policy requires exactly one active signer per role"
+        )
     if len({item.signer_id for item in active}) != 2 or len({item.key_id for item in active}) != 2:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy violates two-person separation")
     return {item.signer_role: item for item in active}
@@ -458,7 +463,9 @@ def run_genoffice_internal_oss_request_from_environment(env: Mapping[str, str]) 
     return request
 
 
-def run_genoffice_internal_oss_assembly_from_environment(env: Mapping[str, str]) -> GenOfficeInternalOssDecisionEnvelope:
+def run_genoffice_internal_oss_assembly_from_environment(
+    env: Mapping[str, str],
+) -> GenOfficeInternalOssDecisionEnvelope:
     values = _require_environment(
         env,
         (
