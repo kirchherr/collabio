@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import io
+import json
 import tarfile
 from pathlib import Path
 
 import pytest
 
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.operations.genoffice_legal_review_dossier import (
     GENOFFICE_APPROVABLE_SOURCE_SCOPES,
     GENOFFICE_LEGAL_DECISION_RECORD_SCHEMA_VERSION,
@@ -17,9 +19,12 @@ from suite.operations.genoffice_legal_review_dossier import (
     _read_supplemental_source_license,
     _required_markers,
     _text_markers,
+    load_genoffice_legal_review_dossier,
     run_genoffice_legal_review_dossier_from_environment,
 )
 from suite.operations.genoffice_license_material_collector import GenOfficeSupplementalLicenseSourceArtifact
+
+EVIDENCE = Path("docs/operations")
 
 
 def _package_archive(path: Path, *, unsafe_link: bool = False) -> None:
@@ -127,6 +132,31 @@ def test_human_decision_schema_requires_separate_signed_record() -> None:
         "detached_signature_verification_evidence_hash",
         "record_hash",
     }.issubset(required)
+
+
+def test_committed_legal_dossier_is_review_ready_hash_valid_and_closed() -> None:
+    report = load_genoffice_legal_review_dossier(EVIDENCE / "genoffice_legal_review_dossier_report.json")
+    decision_schema = json.loads(
+        (EVIDENCE / "genoffice_legal_decision_record.schema.json").read_text(encoding="utf-8")
+    )
+
+    assert report.report_hash == "sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a"
+    assert report.license_material_collection_report_hash == (
+        "sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195"
+    )
+    assert report.runtime_dependency_count == 21
+    assert report.runtime_dependency_license_file_count == 42
+    assert report.compound_license_packages == ("jszip", "pako")
+    assert report.all_runtime_license_text_evidence_complete is True
+    assert report.automated_legal_evidence_complete is True
+    assert report.human_review_ready is True
+    assert report.human_decision_record_created is False
+    assert report.legal_review_complete is False
+    assert report.source_import_allowed is False
+    assert report.reproducible_worker_build_allowed is False
+    assert report.authoritative_image_sbom_allowed is False
+    assert report.production_use_allowed is False
+    assert stable_hash(canonical_json(decision_schema)) == report.legal_decision_record_schema_hash
 
 
 def test_environment_runner_requires_every_evidence_path() -> None:

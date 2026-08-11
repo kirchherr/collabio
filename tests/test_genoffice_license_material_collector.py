@@ -17,8 +17,11 @@ from suite.operations.genoffice_license_material_collector import (
     _package_filename,
     _validated_registry_target,
     _verified_artifact,
+    load_genoffice_license_material_collection_report,
     run_genoffice_license_material_collection_from_environment,
 )
+
+EVIDENCE = Path("docs/operations")
 
 
 def _dependency(*, content: bytes = b"reviewed package bytes") -> GenOfficeRuntimeDependencyEvidence:
@@ -79,6 +82,25 @@ def test_registry_target_accepts_exact_https_registry() -> None:
 def test_environment_runner_requires_source_and_artifact_paths() -> None:
     with pytest.raises(GenOfficeLicenseMaterialCollectionError, match="paths are missing"):
         run_genoffice_license_material_collection_from_environment({})
+
+
+def test_committed_license_material_report_is_complete_hash_valid_and_closed() -> None:
+    report = load_genoffice_license_material_collection_report(
+        EVIDENCE / "genoffice_license_material_collection_report.json"
+    )
+
+    assert report.report_hash == "sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195"
+    assert report.artifact_count == 21
+    assert report.total_size_bytes == 997_020
+    assert report.all_artifact_integrities_verified is True
+    assert len(report.supplemental_source_artifacts) == 1
+    assert report.supplemental_source_artifacts[0].source_archive_sha256 == (
+        "sha256:2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44"
+    )
+    assert report.legal_review_complete is False
+    assert report.source_import_allowed is False
+    assert report.worker_build_allowed is False
+    assert report.production_use_allowed is False
 
 
 def test_supplemental_source_rejects_registry_git_head_drift(tmp_path: Path) -> None:

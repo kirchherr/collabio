@@ -1536,9 +1536,10 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `sha512`-Bytes; ein zweiter no-network/read-only Gate hasht Root-LICENSE/NOTICE, Markenhinweis, ausgeschlossene
   Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. Der im npm-Paket fehlende MIT-Volltext von
   `@nodable/entities@3.0.0` ist ueber npm-`gitHead`, exakten Source-Commit und Codeload-SHA-256 nachgezogen.
-  `OR`-/`AND`-Semantik, sechs verpflichtende
+  Der reproduzierte Lauf bindet 21/21 Archive, 42 Rechtsdateien, Collection-Report `sha256:2a75877f...`, Offline-
+  Dossier `sha256:eb523d13...` und Decision-Schema `sha256:f4e8c757...`. `OR`-/`AND`-Semantik, sechs verpflichtende
   Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
-  erzeugt bewusst keine menschliche Freigabe; Import, Build und Ausfuehrung bleiben geschlossen.
+  erzeugt bewusst keine menschliche Freigabe; Import, Build, Image-SBOM und Ausfuehrung bleiben geschlossen.
 - [ ] GenOffice-Source-Admission abschliessen: qualifizierte menschliche Legal-/NOTICE-/Trademark-/Compound-License-
   Entscheidung als signierten Record gegen das exakte Dossier pruefen; danach reproduzierbaren, signierten Worker-
   Build mit autoritativem Image-SBOM und Vulnerability Review erstellen. Erst wenn beide getrennten Gates bestanden

@@ -761,8 +761,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Runtime-Abhaengigkeiten und byteverifizierten Vendorcode inventarisiert. Das validierte "
                         "CycloneDX-Pre-Build-SBOM und der netzlose Trivy-Scan decken exakt 23 Komponenten ohne "
                         "Finding ab. npm-Signatur, Publish-/SLSA-Attestierung, Fulcio-Identitaet und Rekor-Inclusion "
-                        "sind kryptografisch verifiziert. Exakte Lizenzarchive und das no-network Legal-/NOTICE-/"
-                        "Trademark-Dossier sind fuer die menschliche Entscheidung vorbereitet. Import, Engine, "
+                        "sind kryptografisch verifiziert. Alle 21 Runtime-Archive und 42 Rechtsdateien sind im "
+                        "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden und menschlich pruefbereit. "
+                        "Import, Engine, "
                         "Content und Produktion bleiben bis signierter Legal-, Build-, Security-, Fidelity- und "
                         "Recovery-Evidence geschlossen."
                     ),

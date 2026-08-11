@@ -45,6 +45,14 @@ assumption.
 - The reproducible worker build remains correctly blocked until the signed human decision is verified. Image-derived
   SBOM, vulnerability, malicious-file, fidelity, sandbox, and recovery evidence remain separate gates afterward.
 
+## Accepted Evidence
+
+The first reproducible run on 2026-08-11 accepted 21 integrity-verified runtime archives and 42 legal files. Its
+collection report is `sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195`; the offline
+dossier is `sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a`; and the
+decision-record schema is `sha256:f4e8c757268f3d3b6e0b93b730252129e3988888fed07ccadb1199292b3225df`.
+The accepted state is `human_review_ready`, not `legal_review_complete`.
+
 ## References
 
 - https://www.apache.org/licenses/LICENSE-2.0

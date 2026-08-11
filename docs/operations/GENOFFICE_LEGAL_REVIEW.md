@@ -62,6 +62,20 @@ The collection output is deterministic for unchanged registry bytes. The legal d
 deterministic for unchanged input evidence. Exit code `0` from the dossier means that the automated materials are ready
 for human review. It does not mean that the review has been approved. Exit code `2` is fail-closed.
 
+## Verified Evidence Snapshot
+
+The 2026-08-11 execution on `dev001` produced and committed these exact review inputs:
+
+- collection report: `sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195`;
+- supplemental `@nodable/entities` source archive: `sha256:2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44`;
+- legal dossier: `sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a`;
+- legal decision-record schema: `sha256:f4e8c757268f3d3b6e0b93b730252129e3988888fed07ccadb1199292b3225df`.
+
+All 21 package archives passed their exact npm integrity check. The offline dossier retained 42 legal files, completed
+all automated evidence checks, and set `human_review_ready=true`. It kept `human_decision_record_created`,
+`legal_review_complete`, source import, worker build, engine execution, authoritative image SBOM, and production use
+false.
+
 ## Human Decision Boundary
 
 The generated `genoffice_legal_decision_record.v1` schema requires a separate record with:
