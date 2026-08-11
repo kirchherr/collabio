@@ -52,9 +52,7 @@ GENOFFICE_WORKER_ATTESTATION_PAYLOAD_SCHEMA_VERSION = "genoffice_worker_build_at
 GENOFFICE_WORKER_IMAGE_SBOM_SCHEMA_VERSION = "genoffice_worker_image_sbom.v1"
 GENOFFICE_WORKER_BASE_IMAGE_REF: Literal[
     "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
-] = (
-    "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
-)
+] = "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
 GENOFFICE_WORKER_TRIVY_IMAGE_REF = (
     "aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
 )
