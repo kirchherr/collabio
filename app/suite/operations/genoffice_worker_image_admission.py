@@ -642,12 +642,8 @@ def _verify_oci_archive(
 ) -> None:
     if manifest_digest is None or not _SHA256_PATTERN.fullmatch(manifest_digest):
         raise GenOfficeWorkerImageAdmissionError("GenOffice OCI archive lacks its inspected manifest digest")
-    layout = json.loads(
-        _read_archive_member(archive, members, "oci-layout", maximum_size=1024).decode("utf-8")
-    )
-    index = json.loads(
-        _read_archive_member(archive, members, "index.json", maximum_size=1024 * 1024).decode("utf-8")
-    )
+    layout = json.loads(_read_archive_member(archive, members, "oci-layout", maximum_size=1024).decode("utf-8"))
+    index = json.loads(_read_archive_member(archive, members, "index.json", maximum_size=1024 * 1024).decode("utf-8"))
     descriptors = index.get("manifests") if isinstance(index, dict) else None
     if (
         layout != {"imageLayoutVersion": "1.0.0"}
@@ -731,11 +727,7 @@ def _verify_docker_archive(
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive member inventory is invalid")
             for member in archive_members:
                 member_path = PurePosixPath(member.name)
-                if (
-                    member_path.is_absolute()
-                    or ".." in member_path.parts
-                    or not (member.isfile() or member.isdir())
-                ):
+                if member_path.is_absolute() or ".." in member_path.parts or not (member.isfile() or member.isdir()):
                     raise GenOfficeWorkerImageAdmissionError("GenOffice image archive contains an unsafe member")
             manifest = json.loads(
                 _read_archive_member(
