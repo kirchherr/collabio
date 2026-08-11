@@ -761,8 +761,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Runtime-Abhaengigkeiten und byteverifizierten Vendorcode inventarisiert. Das validierte "
                         "CycloneDX-Pre-Build-SBOM und der netzlose Trivy-Scan decken exakt 23 Komponenten ohne "
                         "Finding ab. npm-Signatur, Publish-/SLSA-Attestierung, Fulcio-Identitaet und Rekor-Inclusion "
-                        "sind kryptografisch verifiziert. Import, Engine, Content und Produktion bleiben bis Legal-, "
-                        "Build-, Security-, Fidelity- und Recovery-Evidence geschlossen."
+                        "sind kryptografisch verifiziert. Exakte Lizenzarchive und das no-network Legal-/NOTICE-/"
+                        "Trademark-Dossier sind fuer die menschliche Entscheidung vorbereitet. Import, Engine, "
+                        "Content und Produktion bleiben bis signierter Legal-, Build-, Security-, Fidelity- und "
+                        "Recovery-Evidence geschlossen."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="office_edit_boundary",
@@ -780,9 +782,18 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_npm_provenance_admission.py",
                         "app/suite/kms/x509_evidence.py",
                         "docs/operations/genoffice_npm_provenance_admission_report.json",
+                        "app/suite/operations/genoffice_license_material_collector.py",
+                        "app/suite/operations/genoffice_legal_review_dossier.py",
+                        "tests/test_genoffice_license_material_collector.py",
+                        "tests/test_genoffice_legal_review_dossier.py",
+                        "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
+                        "docs/operations/genoffice_license_material_collection_report.json",
+                        "docs/operations/genoffice_legal_review_dossier_report.json",
+                        "docs/operations/genoffice_legal_decision_record.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0065-genoffice-legal-review-dossier.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -800,6 +811,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "high_and_critical_findings_blocked",
                         "npm_registry_signature_and_publish_attestation_verified",
                         "slsa_fulcio_identity_and_rekor_inclusion_verified",
+                        "exact_runtime_license_archives_integrity_verified",
+                        "offline_notice_trademark_and_enterprise_scope_dossier",
+                        "human_legal_decision_record_required",
+                        "worker_build_blocked_until_signed_legal_decision",
                         "source_import_and_production_use_blocked",
                     ),
                 ),

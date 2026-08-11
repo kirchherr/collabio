@@ -1531,9 +1531,16 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   11.16.0 verifiziert credential-los Registrysignatur, npm-Publish-Attestierung und SLSA v1; der getrennte netzlose
   Admission-Gate bindet exakten SHA-512-Subject, GitHub-hosted Workflow, Source-Commit `9aca5abf...`, Fulcio-Zertifikat
   und zwei Rekor-Inclusion-Proofs. Import, Engine und Produktion bleiben geschlossen.
-- [ ] GenOffice-Source-Admission abschliessen: menschliche Legal-/NOTICE-/Trademark-/Compound-License-Pruefung und
-  reproduzierbarer, signierter Worker-Build mit autoritativem Image-SBOM und Vulnerability Review. Erst danach darf der
-  gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
+- [x] Reproduzierbares GenOffice-Legal-Dossier technisch geschlossen: separater credential-loser Collector laedt alle
+  21 exakten Runtime-Paketarchive ausschliesslich von den bereits gepinnten npm-URLs und akzeptiert nur die Lockfile-
+  `sha512`-Bytes; ein zweiter no-network/read-only Gate hasht Root-LICENSE/NOTICE, Markenhinweis, ausgeschlossene
+  Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. `OR`-/`AND`-Semantik, sechs verpflichtende
+  Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
+  erzeugt bewusst keine menschliche Freigabe; Import, Build und Ausfuehrung bleiben geschlossen.
+- [ ] GenOffice-Source-Admission abschliessen: qualifizierte menschliche Legal-/NOTICE-/Trademark-/Compound-License-
+  Entscheidung als signierten Record gegen das exakte Dossier pruefen; danach reproduzierbaren, signierten Worker-
+  Build mit autoritativem Image-SBOM und Vulnerability Review erstellen. Erst wenn beide getrennten Gates bestanden
+  sind, darf der gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

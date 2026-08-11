@@ -90,6 +90,12 @@ code. Its trust boundaries are deliberately separate:
    owner IDs, Fulcio certificate SHA-256, and both Rekor inclusion records. Admission report
    `sha256:c85feac5fa9788ef10a4076034d2443c230e8536ee5c02de61b8cfe9ea114aa3` passes while every source-import and
    execution flag remains false.
+8. A credential-less legal-material collector downloads the 21 exact runtime package archives from their reviewed
+   lockfile URLs and rejects any bytes that fail the pinned npm SHA-512 integrity. It performs no install, archive
+   extraction, lifecycle execution, npm, Node, or upstream-code execution.
+9. The separate no-network legal-dossier gate binds root LICENSE/NOTICE/trademark statements, the excluded enterprise
+   license, vendored license, and every package legal file. It makes SPDX `OR` and `AND` review questions explicit and
+   emits a separately signable human-decision schema while keeping `legal_review_complete` false.
 
 This is a **pre-build** SBOM. Trivy explicitly treats third-party SBOM input as less authoritative than its own image
 analysis. The future isolated worker must therefore produce and pass a separate SBOM and vulnerability scan from the
@@ -110,7 +116,8 @@ Retain the following together in the immutable supply-chain artifact store:
   vulnerability report, and `genoffice_docx_supply_chain_admission_report.v1`;
 - raw npm signature/Sigstore bundle output, pinned verifier receipt, Fulcio/Rekor identity evidence, and
   `genoffice_npm_provenance_admission_report.v1`;
-- subsequent legal decision, build digest, runtime-image SBOM, and signed Collabio worker provenance.
+- exact runtime license-material archives, collection report, offline legal dossier, and legal decision JSON Schema;
+- subsequent signed human legal decision, build digest, runtime-image SBOM, and signed Collabio worker provenance.
 
 The report contains no tenant data or Office document content. It is nevertheless release evidence and must be
 available for rebuild, audit, rollback, and disaster recovery. Never place source archives or dependency tarballs in

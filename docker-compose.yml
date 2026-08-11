@@ -2217,6 +2217,70 @@ services:
       - ./app:/workspace/app:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-license-material-collector:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_license_material_collector
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+    networks:
+      - genoffice_license_material_download
+
+  genoffice-legal-review-dossier:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_legal_review_dossier
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_LEGAL_DECISION_SCHEMA_PATH: /evidence/genoffice-legal-decision-record.schema.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
   genoffice-docx-prebuild-sbom:
     profiles: ["office-supply-chain"]
     build:
@@ -2576,6 +2640,8 @@ services:
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 networks:
+  genoffice_license_material_download:
+    internal: false
   genoffice_provenance_verification:
     internal: false
   genoffice_supply_chain_updates:

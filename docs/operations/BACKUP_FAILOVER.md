@@ -96,9 +96,11 @@ with vendored registry metadata and exact package archives, byte-provenance repo
 schema receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance. They are rebuild
 and release-recovery inputs, not tenant backup payloads. The retained supply-chain set now includes raw npm
 signature/Sigstore bundles, the exact Node/npm/image receipt, the Fulcio certificate and Rekor inclusion material, and
-the hash-bound no-network admission report. A restore must verify all evidence digests and rerun admission before an
-Office worker can be rebuilt or promoted. Registry metadata presence without the retained cryptographic result remains
-insufficient.
+the hash-bound no-network admission report. It also includes the 21 exact lock-integrity-verified runtime package
+archives, their collection manifest, the offline LICENSE/NOTICE/trademark/enterprise-scope dossier, the human legal
+decision JSON Schema, and any future detached-signature-verified legal record. A restore must verify all evidence
+digests and rerun collection plus offline admission before an Office worker can be rebuilt or promoted. Registry or
+license metadata presence without the retained cryptographic bytes and dossier remains insufficient.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:
