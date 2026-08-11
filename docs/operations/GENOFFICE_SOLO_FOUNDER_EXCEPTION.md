@@ -114,3 +114,15 @@ only accepted mode.
 Back up the public policy, request, exact message, response and final report as one versioned evidence set. Verify file
 mode, report hash, request/message/response binding and expiration on restore. Public keys and signatures are evidence;
 private keys, package caches, tenant content and scratch data are excluded.
+
+## Committed Schema Snapshot
+
+The isolated 2026-08-11 schema run produced:
+
+- policy: `sha256:cdf92f45582075b0f8243ddaba901fa5b7764bd8a00c8936539a473fc6cd0dc5`;
+- request: `sha256:c0c60ea6ca9373b7386c80b02f4a8ba1022067e648c4c1de7f0d18cd8364289d`;
+- response: `sha256:ecc383929958ab0d30c4c494ad43b571436ae337c9161e090872b25109c6e561`;
+- report: `sha256:ee312047b6a3f20a88caa2a1be37864518f05db59988a6ff3add9bc2ae46921a`.
+
+No real policy, request, response or exception report is committed. Those artifacts require the founder's real public
+key, identifiers, references and detached signature.

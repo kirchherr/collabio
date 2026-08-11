@@ -11,6 +11,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.operations.genoffice_legal_review_dossier import (
     GenOfficeLegalReviewDossierReport,
     load_genoffice_legal_review_dossier,
@@ -241,3 +242,27 @@ def test_solo_founder_compose_services_are_offline_read_only_and_fail_closed_on_
     assert "solo-founder.ed25519.pub" in block
     assert "solo-founder.signature-response.json" in block
     assert block.count("create_host_path: false") == 2
+
+
+def test_committed_solo_founder_schemas_are_hash_bound_without_fake_exception() -> None:
+    expected = {
+        "genoffice-solo-founder-policy.schema.json": (
+            "sha256:cdf92f45582075b0f8243ddaba901fa5b7764bd8a00c8936539a473fc6cd0dc5"
+        ),
+        "genoffice-solo-founder-exception-request.schema.json": (
+            "sha256:c0c60ea6ca9373b7386c80b02f4a8ba1022067e648c4c1de7f0d18cd8364289d"
+        ),
+        "genoffice-solo-founder-signature-response.schema.json": (
+            "sha256:ecc383929958ab0d30c4c494ad43b571436ae337c9161e090872b25109c6e561"
+        ),
+        "genoffice-solo-founder-exception-report.schema.json": (
+            "sha256:ee312047b6a3f20a88caa2a1be37864518f05db59988a6ff3add9bc2ae46921a"
+        ),
+    }
+
+    for filename, expected_hash in expected.items():
+        schema = json.loads((EVIDENCE / filename).read_text(encoding="utf-8"))
+        assert stable_hash(canonical_json(schema)) == expected_hash
+    assert not (EVIDENCE / "genoffice-solo-founder-policy.json").exists()
+    assert not (EVIDENCE / "genoffice-solo-founder-exception-request.json").exists()
+    assert not (EVIDENCE / "genoffice-solo-founder-exception-report.json").exists()
