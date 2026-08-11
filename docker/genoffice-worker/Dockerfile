@@ -58,8 +58,9 @@ ARG GENOFFICE_CONTEXT_SHA256
 ARG GENOFFICE_CONTEXT_REPORT_SHA256
 ARG GENOFFICE_AUTHORIZATION_REPORT_SHA256
 
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+             /usr/local/bin/yarn /usr/local/bin/yarnpkg \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /usr/local/lib/node_modules /usr/local/bin
 
 RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
