@@ -336,9 +336,7 @@ def test_build_context_accepts_only_active_solo_founder_exception(
         )
 
 
-def test_build_context_rejects_ambiguous_authorization_modes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_context_rejects_ambiguous_authorization_modes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     archive, source, supply, npm_provenance, admission, notice = _fixture(tmp_path, monkeypatch)
 
     with pytest.raises(GenOfficeDevelopmentBuildContextError, match="exactly one authorization mode"):

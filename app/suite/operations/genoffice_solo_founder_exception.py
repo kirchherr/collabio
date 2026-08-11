@@ -149,15 +149,9 @@ class GenOfficeSoloFounderExceptionPayload(BaseModel):
 
     @model_validator(mode="after")
     def require_exact_development_exception(self) -> GenOfficeSoloFounderExceptionPayload:
-        if not all(
-            value.strip() for value in (self.exception_id, self.risk_acceptance_ref, self.change_control_ref)
-        ):
+        if not all(value.strip() for value in (self.exception_id, self.risk_acceptance_ref, self.change_control_ref)):
             raise ValueError("GenOffice solo-founder exception identity or control reference is empty")
-        if not (
-            self.issued_at_utc
-            < self.valid_until_utc
-            <= self.issued_at_utc + GENOFFICE_SOLO_FOUNDER_MAX_VALIDITY
-        ):
+        if not (self.issued_at_utc < self.valid_until_utc <= self.issued_at_utc + GENOFFICE_SOLO_FOUNDER_MAX_VALIDITY):
             raise ValueError("GenOffice solo-founder exception validity window is invalid")
         _require_sha256(self.signer_policy_hash, field="solo-founder policy hash")
         _require_sha256(self.payload_hash, field="solo-founder payload hash")
@@ -257,9 +251,7 @@ class GenOfficeSoloFounderSignatureResponse(BaseModel):
 class GenOfficeSoloFounderExceptionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_solo_founder_exception_report.v1"] = (
-        "genoffice_solo_founder_exception_report.v1"
-    )
+    schema_version: Literal["genoffice_solo_founder_exception_report.v1"] = "genoffice_solo_founder_exception_report.v1"
     exception_id: str
     issued_at_utc: datetime
     valid_until_utc: datetime
@@ -298,11 +290,7 @@ class GenOfficeSoloFounderExceptionReport(BaseModel):
     def require_exact_boundary(self) -> GenOfficeSoloFounderExceptionReport:
         if not self.exception_id.strip() or not self.signer_id.strip() or not self.key_id.strip():
             raise ValueError("GenOffice solo-founder report identity is empty")
-        if not (
-            self.issued_at_utc
-            < self.valid_until_utc
-            <= self.issued_at_utc + GENOFFICE_SOLO_FOUNDER_MAX_VALIDITY
-        ):
+        if not (self.issued_at_utc < self.valid_until_utc <= self.issued_at_utc + GENOFFICE_SOLO_FOUNDER_MAX_VALIDITY):
             raise ValueError("GenOffice solo-founder report validity window is invalid")
         for field, value in (
             ("solo-founder policy hash", self.signer_policy_hash),

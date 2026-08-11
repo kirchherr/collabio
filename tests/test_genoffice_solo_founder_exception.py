@@ -155,9 +155,7 @@ def test_solo_founder_exception_rejects_replay_assignment_and_signature_tamperin
         (response.model_copy(update={"request_hash": "sha256:" + "f" * 64}), "another request"),
         (response.model_copy(update={"signer_id": "other-founder"}), "violates its assignment"),
         (
-            response.model_copy(
-                update={"signature_base64": base64.b64encode(b"x" * 64).decode("ascii")}
-            ),
+            response.model_copy(update={"signature_base64": base64.b64encode(b"x" * 64).decode("ascii")}),
             "detached signature is invalid",
         ),
     ):

@@ -338,16 +338,19 @@ def _verify_input_evidence(
         now = authorization_verified_at_utc.astimezone(UTC)
         if not solo_founder_exception_report.issued_at_utc <= now <= solo_founder_exception_report.valid_until_utc:
             raise GenOfficeDevelopmentBuildContextError("GenOffice solo-founder exception is expired or not active")
-        if not all(
-            (
-                solo_founder_exception_report.solo_founder_risk_acceptance_verified,
-                solo_founder_exception_report.detached_signature_verified,
-                solo_founder_exception_report.compensating_controls_verified,
-                solo_founder_exception_report.write_once_evidence_required,
-                solo_founder_exception_report.development_build_context_materialization_allowed,
-                solo_founder_exception_report.reproducible_worker_build_allowed,
+        if (
+            not all(
+                (
+                    solo_founder_exception_report.solo_founder_risk_acceptance_verified,
+                    solo_founder_exception_report.detached_signature_verified,
+                    solo_founder_exception_report.compensating_controls_verified,
+                    solo_founder_exception_report.write_once_evidence_required,
+                    solo_founder_exception_report.development_build_context_materialization_allowed,
+                    solo_founder_exception_report.reproducible_worker_build_allowed,
+                )
             )
-        ) or solo_founder_exception_report.two_person_control_verified:
+            or solo_founder_exception_report.two_person_control_verified
+        ):
             raise GenOfficeDevelopmentBuildContextError(
                 "GenOffice solo-founder exception does not authorize materialization"
             )
