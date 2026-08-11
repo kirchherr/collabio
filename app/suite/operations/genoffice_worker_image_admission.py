@@ -65,6 +65,7 @@ GENOFFICE_WORKER_CYCLONEDX_VALIDATOR_REF = (
     "cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e"
 )
 GENOFFICE_WORKER_IMAGE_NAME: Literal["collabio/genoffice-docx-worker"] = "collabio/genoffice-docx-worker"
+GENOFFICE_WORKER_SCAN_ARTIFACT_NAME = "/evidence/genoffice-worker-image.tar"
 GENOFFICE_WORKER_PLATFORM: Literal["linux/amd64"] = "linux/amd64"
 GENOFFICE_WORKER_USER = "10003:10003"
 GENOFFICE_WORKER_WORKDIR = "/opt/genoffice/packages/docx-engine"
@@ -1106,7 +1107,7 @@ def _trivy_review(
         or report.get("ArtifactType") != "container_image"
         or not isinstance(trivy, dict)
         or trivy.get("Version") != GENOFFICE_WORKER_TRIVY_VERSION
-        or not str(report.get("ArtifactName", "")).startswith(f"{GENOFFICE_WORKER_IMAGE_NAME}:")
+        or report.get("ArtifactName") != GENOFFICE_WORKER_SCAN_ARTIFACT_NAME
     ):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker Trivy report identity is invalid")
     metadata = report.get("Metadata")

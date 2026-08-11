@@ -197,7 +197,7 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
             {
                 "SchemaVersion": 2,
                 "CreatedAt": scan_time.isoformat(),
-                "ArtifactName": "collabio/genoffice-docx-worker:verification-a",
+                "ArtifactName": "/evidence/genoffice-worker-image.tar",
                 "ArtifactType": "container_image",
                 "Trivy": {"Version": "0.73.0"},
                 "Metadata": {
@@ -249,6 +249,23 @@ def test_worker_image_admission_binds_reproducible_image_sbom_scan_and_signature
         issued_at_utc=issued_at + timedelta(minutes=30),
         valid_until_utc=issued_at + timedelta(days=6),
     )
+    vulnerability_report = json.loads(vulnerability_path.read_text(encoding="utf-8"))
+    vulnerability_report["ArtifactName"] = "/evidence/another-image.tar"
+    vulnerability_path.write_text(json.dumps(vulnerability_report), encoding="utf-8")
+    with pytest.raises(GenOfficeWorkerImageAdmissionError, match="Trivy report identity"):
+        build_genoffice_worker_signing_request(
+            build_evidence=build_evidence,
+            sbom=sbom,
+            sbom_path=sbom_path,
+            schema_receipt_path=receipt_path,
+            vulnerability_report_path=vulnerability_path,
+            trivy_db_metadata_path=db_path,
+            policy=policy,
+            exception_report=exception,
+            attestation_id="worker-attestation-test",
+            issued_at_utc=issued_at + timedelta(minutes=30),
+            valid_until_utc=issued_at + timedelta(days=6),
+        )
     response = GenOfficeWorkerBuildSignatureResponse(
         request_hash=request.request_hash,
         signature_message_sha256=request.signature_message_sha256,
