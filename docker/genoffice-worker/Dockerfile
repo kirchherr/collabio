@@ -40,9 +40,9 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
               /opt/genoffice/packages/docx-engine/vitest.config.ts \
               /opt/genoffice/.collabio/upstream \
     && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} + \
-    && tar --create --file /opt/collabio/genoffice-runtime.tar --format=posix \
+    && tar --create --file /opt/collabio/genoffice-runtime.tar --format=gnu \
          --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
-         --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime -C / \
+         --numeric-owner -C / \
          opt/genoffice opt/collabio/runtime-inventory.json \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
