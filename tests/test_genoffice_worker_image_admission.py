@@ -423,7 +423,7 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
         development_authorization_report_hash=_hash("authorization"),
         report_hash=_hash("context-report"),
     )
-    image = {
+    image: dict[str, Any] = {
         "Id": manifest_digest,
         "Descriptor": {
             "mediaType": "application/vnd.oci.image.manifest.v1+json",

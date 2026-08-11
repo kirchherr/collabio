@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, BinaryIO, Literal
+from typing import IO, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -457,7 +457,7 @@ def _hash_file(path: Path, *, maximum_size: int) -> tuple[str, int]:
     return f"sha256:{digest.hexdigest()}", size
 
 
-def _hash_stream(source: BinaryIO, *, maximum_size: int) -> tuple[str, int]:
+def _hash_stream(source: IO[bytes], *, maximum_size: int) -> tuple[str, int]:
     digest = hashlib.sha256()
     size = 0
     while chunk := source.read(1024 * 1024):
