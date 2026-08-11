@@ -764,7 +764,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "sind kryptografisch verifiziert. Alle 21 Runtime-Archive und 42 Rechtsdateien sind im "
                         "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden. Ein deterministisches Drittanbieter-"
                         "NOTICE und die policy-gebundene Ed25519-Signier-Ceremony koennen nur den Development-Build "
-                        "oeffnen. Private Schluessel bleiben ausserhalb von Repository und zentralem Assembler. "
+                        "oeffnen. Request v2 ist maximal 72 Stunden gueltig, bindet Personen, Rollen und Key-IDs und "
+                        "akzeptiert nur request-/message-hashgebundene externe Antworten. Ceremony-Ausgaben sind "
+                        "privat und write-once; fehlende Datei-Binds werden nicht als Verzeichnisse erzeugt. Private "
+                        "Schluessel bleiben ausserhalb von Repository und zentralem Assembler. "
                         "Der vorbereitete no-network Materializer erzeugt daraus erst nach realer Admission ein "
                         "normalisiertes, manifestgebundenes TAR und fuehrt dabei keinen Upstream-Code aus. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
@@ -838,6 +841,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "public_input_only_envelope_assembler",
                         "signing_keys_remain_outside_collabio",
                         "ed25519_verification_behind_kms_adapter",
+                        "signing_request_maximum_72_hour_validity",
+                        "signer_role_identity_and_key_assignments_bound",
+                        "external_signature_responses_bind_request_and_message_hashes",
+                        "ceremony_outputs_private_and_write_once",
+                        "missing_file_binds_never_auto_create_directories",
                         "development_worker_build_blocked_until_signed_internal_decision",
                         "deterministic_tar_context_after_internal_admission_only",
                         "all_selected_source_files_rehashed_without_extraction",

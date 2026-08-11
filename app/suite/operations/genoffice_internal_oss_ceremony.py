@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -46,9 +46,13 @@ from suite.operations.genoffice_third_party_notice import (
     load_genoffice_third_party_notice_report,
 )
 
-GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_SCHEMA_VERSION = "genoffice_internal_oss_signing_request.v1"
+GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_SCHEMA_VERSION = "genoffice_internal_oss_signing_request.v2"
+GENOFFICE_INTERNAL_OSS_EXTERNAL_SIGNATURE_RESPONSE_SCHEMA_VERSION = (
+    "genoffice_internal_oss_external_signature_response.v1"
+)
 GENOFFICE_INTERNAL_OSS_PUBLIC_KEY_SIZE_BYTES = 32
 GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES = 64
+GENOFFICE_INTERNAL_OSS_MAX_SIGNING_REQUEST_VALIDITY = timedelta(hours=72)
 _ZERO_HASH = "sha256:" + "0" * 64
 
 SignerRole = Literal["product_owner", "security_compliance_owner"]
@@ -58,24 +62,45 @@ class GenOfficeInternalOssCeremonyError(ValueError):
     pass
 
 
+class GenOfficeInternalOssSigningAssignment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signer_id: str
+    signer_role: SignerRole
+    key_id: str
+    algorithm: Literal["ed25519"] = "ed25519"
+
+    @model_validator(mode="after")
+    def require_identity(self) -> GenOfficeInternalOssSigningAssignment:
+        if not self.signer_id.strip() or not self.key_id.strip():
+            raise ValueError("GenOffice internal OSS signing assignment identity is empty")
+        return self
+
+
 class GenOfficeInternalOssSigningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_internal_oss_signing_request.v1"] = "genoffice_internal_oss_signing_request.v1"
+    schema_version: Literal["genoffice_internal_oss_signing_request.v2"] = "genoffice_internal_oss_signing_request.v2"
     prepared_at_utc: datetime
+    valid_until_utc: datetime
     payload: GenOfficeInternalOssDecisionPayload
     signature_message_sha256: str
     signature_message_size_bytes: int
     required_signer_roles: tuple[SignerRole, ...]
+    signing_assignments: tuple[GenOfficeInternalOssSigningAssignment, ...]
     admission_effective: Literal[False] = False
+    content_included: Literal[False] = False
+    secrets_included: Literal[False] = False
+    private_key_ingestion_allowed: Literal[False] = False
+    signature_creation_performed: Literal[False] = False
     request_hash: str
 
-    @field_validator("prepared_at_utc")
+    @field_validator("prepared_at_utc", "valid_until_utc")
     @classmethod
     def require_timezone(cls, value: datetime) -> datetime:
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("GenOffice internal OSS signing request time must include a timezone")
-        return value
+        return value.astimezone(UTC)
 
     @model_validator(mode="after")
     def require_non_effective_exact_request(self) -> GenOfficeInternalOssSigningRequest:
@@ -85,6 +110,51 @@ class GenOfficeInternalOssSigningRequest(BaseModel):
             raise ValueError("GenOffice internal OSS signature message is empty")
         if self.required_signer_roles != GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES:
             raise ValueError("GenOffice internal OSS signing request roles are not exact")
+        if not (
+            self.prepared_at_utc < self.valid_until_utc
+            <= self.prepared_at_utc + GENOFFICE_INTERNAL_OSS_MAX_SIGNING_REQUEST_VALIDITY
+        ):
+            raise ValueError("GenOffice internal OSS signing request validity window is invalid")
+        if not self.prepared_at_utc <= self.payload.decided_at_utc <= self.valid_until_utc:
+            raise ValueError("GenOffice internal OSS proposed decision time is outside the request validity window")
+        roles = tuple(item.signer_role for item in self.signing_assignments)
+        if roles != GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES:
+            raise ValueError("GenOffice internal OSS signing assignments are not in canonical role order")
+        if len({item.signer_id for item in self.signing_assignments}) != 2 or len(
+            {item.key_id for item in self.signing_assignments}
+        ) != 2:
+            raise ValueError("GenOffice internal OSS signing assignments violate two-person separation")
+        return self
+
+
+class GenOfficeInternalOssExternalSignatureResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["genoffice_internal_oss_external_signature_response.v1"] = (
+        "genoffice_internal_oss_external_signature_response.v1"
+    )
+    request_hash: str
+    signature_message_sha256: str
+    signer_id: str
+    signer_role: SignerRole
+    key_id: str
+    algorithm: Literal["ed25519"] = "ed25519"
+    signature_base64: str
+    content_included: Literal[False] = False
+    secrets_included: Literal[False] = False
+    private_key_included: Literal[False] = False
+
+    @model_validator(mode="after")
+    def require_bound_external_response(self) -> GenOfficeInternalOssExternalSignatureResponse:
+        _require_sha256(self.request_hash, field="internal OSS signing request hash")
+        _require_sha256(self.signature_message_sha256, field="internal OSS signature message hash")
+        if not self.signer_id.strip() or not self.key_id.strip():
+            raise ValueError("GenOffice internal OSS external signature identity is empty")
+        _decode_canonical_base64(
+            self.signature_base64,
+            label="external detached signature",
+            expected_size=GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES,
+        )
         return self
 
 
@@ -101,6 +171,16 @@ def _sha256_bytes(content: bytes) -> str:
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
+def _decode_canonical_base64(value: str, *, label: str, expected_size: int) -> bytes:
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise GenOfficeInternalOssCeremonyError(f"GenOffice internal OSS {label} is not canonical base64") from exc
+    if len(decoded) != expected_size or base64.b64encode(decoded).decode("ascii") != value:
+        raise GenOfficeInternalOssCeremonyError(f"GenOffice internal OSS {label} has an invalid size or encoding")
+    return decoded
+
+
 def _read_limited(path: Path, *, label: str, expected_size: int | None = None) -> bytes:
     try:
         content = path.read_bytes()
@@ -113,11 +193,36 @@ def _read_limited(path: Path, *, label: str, expected_size: int | None = None) -
     return content
 
 
-def _atomic_write(path: Path, content: bytes) -> None:
+def _write_new_private(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(content)
-    temporary.replace(path)
+    if path.exists():
+        raise GenOfficeInternalOssCeremonyError(f"GenOffice internal OSS output already exists: {path.name}")
+    temporary = path.with_name(f".{path.name}.tmp")
+    descriptor: int | None = None
+    temporary_created = False
+    try:
+        descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        temporary_created = True
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(temporary, path)
+    except FileExistsError as exc:
+        raise GenOfficeInternalOssCeremonyError(
+            f"GenOffice internal OSS output or temporary file already exists: {path.name}"
+        ) from exc
+    except OSError as exc:
+        raise GenOfficeInternalOssCeremonyError(f"GenOffice internal OSS output cannot be persisted: {path.name}") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if temporary_created:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
 
 
 def _parse_datetime(value: str, *, field: str) -> datetime:
@@ -180,7 +285,7 @@ def persist_genoffice_internal_oss_signer_policy(
     if build_genoffice_internal_oss_signer_policy_hash(policy) != policy.policy_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy hash is invalid")
     _active_signers_by_role(policy)
-    _atomic_write(
+    _write_new_private(
         policy_path,
         (json.dumps(policy.model_dump(mode="json"), indent=2, sort_keys=True) + "\n").encode("utf-8"),
     )
@@ -214,13 +319,14 @@ def build_genoffice_internal_oss_signing_request(
     decision_id: str,
     decided_at_utc: datetime,
     prepared_at_utc: datetime,
+    valid_until_utc: datetime,
     risk_acceptance_ref: str,
     change_control_ref: str,
 ) -> tuple[GenOfficeInternalOssSigningRequest, bytes]:
     _verify_evidence_chain(dossier=dossier, notice_report=notice_report, notice_artifact=notice_artifact)
     if build_genoffice_internal_oss_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy hash is invalid")
-    _active_signers_by_role(signer_policy)
+    signers = _active_signers_by_role(signer_policy)
     if signer_policy.effective_at_utc > decided_at_utc:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy is not yet effective")
     payload_draft = GenOfficeInternalOssDecisionPayload(
@@ -254,10 +360,19 @@ def build_genoffice_internal_oss_signing_request(
     message = build_genoffice_internal_oss_signature_message(payload)
     request_draft = GenOfficeInternalOssSigningRequest(
         prepared_at_utc=prepared_at_utc,
+        valid_until_utc=valid_until_utc,
         payload=payload,
         signature_message_sha256=_sha256_bytes(message),
         signature_message_size_bytes=len(message),
         required_signer_roles=GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES,
+        signing_assignments=tuple(
+            GenOfficeInternalOssSigningAssignment(
+                signer_id=signers[role].signer_id,
+                signer_role=role,
+                key_id=signers[role].key_id,
+            )
+            for role in GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES
+        ),
         request_hash=_ZERO_HASH,
     )
     request = request_draft.model_copy(
@@ -288,11 +403,11 @@ def persist_genoffice_internal_oss_signing_request(
     *, request: GenOfficeInternalOssSigningRequest, request_path: Path, message_path: Path
 ) -> None:
     message = verify_genoffice_internal_oss_signing_request(request)
-    _atomic_write(
+    _write_new_private(
         request_path,
         (json.dumps(request.model_dump(mode="json"), indent=2, sort_keys=True) + "\n").encode("utf-8"),
     )
-    _atomic_write(message_path, message)
+    _write_new_private(message_path, message)
 
 
 def load_genoffice_internal_oss_signing_request(path: Path) -> GenOfficeInternalOssSigningRequest:
@@ -302,6 +417,19 @@ def load_genoffice_internal_oss_signing_request(path: Path) -> GenOfficeInternal
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signing request is not readable") from exc
     verify_genoffice_internal_oss_signing_request(request)
     return request
+
+
+def load_genoffice_internal_oss_external_signature_response(
+    path: Path,
+) -> GenOfficeInternalOssExternalSignatureResponse:
+    try:
+        return GenOfficeInternalOssExternalSignatureResponse.model_validate_json(
+            _read_limited(path, label="external signature response")
+        )
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise GenOfficeInternalOssCeremonyError(
+            "GenOffice internal OSS external signature response is not readable"
+        ) from exc
 
 
 def _active_signers_by_role(policy: GenOfficeInternalOssSignerPolicy) -> dict[SignerRole, GenOfficeInternalOssSigner]:
@@ -319,22 +447,58 @@ def assemble_genoffice_internal_oss_decision_envelope(
     *,
     request: GenOfficeInternalOssSigningRequest,
     signer_policy: GenOfficeInternalOssSignerPolicy,
-    product_owner_signature: bytes,
-    security_compliance_owner_signature: bytes,
+    signature_responses: tuple[GenOfficeInternalOssExternalSignatureResponse, ...],
+    assembled_at_utc: datetime,
 ) -> GenOfficeInternalOssDecisionEnvelope:
-    verify_genoffice_internal_oss_signing_request(request)
+    message = verify_genoffice_internal_oss_signing_request(request)
+    if assembled_at_utc.tzinfo is None or assembled_at_utc.utcoffset() is None:
+        raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS assembly time lacks a timezone")
+    assembled_at = assembled_at_utc.astimezone(UTC)
+    if not request.prepared_at_utc <= assembled_at <= request.valid_until_utc:
+        raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signing request is not currently valid")
     if build_genoffice_internal_oss_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy hash is invalid")
     if request.payload.signer_policy_hash != signer_policy.policy_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signer policy drifted after request creation")
-    signatures = (product_owner_signature, security_compliance_owner_signature)
-    if any(len(item) != GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES for item in signatures):
-        raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS detached signature has an invalid size")
     signers = _active_signers_by_role(signer_policy)
-    approvals = (
-        _approval(signers["product_owner"], product_owner_signature),
-        _approval(signers["security_compliance_owner"], security_compliance_owner_signature),
-    )
+    assignments = {item.signer_role: item for item in request.signing_assignments}
+    if any(
+        (
+            assignments[role].signer_id != signers[role].signer_id
+            or assignments[role].key_id != signers[role].key_id
+        )
+        for role in GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES
+    ):
+        raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS signing assignment drifted from signer policy")
+    if len(signature_responses) != 2 or {item.signer_role for item in signature_responses} != set(
+        GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES
+    ):
+        raise GenOfficeInternalOssCeremonyError(
+            "GenOffice internal OSS assembly requires one external response per role"
+        )
+    responses = {item.signer_role: item for item in signature_responses}
+    approvals_list: list[GenOfficeInternalOssDetachedApproval] = []
+    for role in GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES:
+        response = responses[role]
+        assignment = assignments[role]
+        if (
+            response.request_hash != request.request_hash
+            or response.signature_message_sha256 != request.signature_message_sha256
+        ):
+            raise GenOfficeInternalOssCeremonyError(
+                "GenOffice internal OSS external signature response is bound to another request"
+            )
+        if response.signer_id != assignment.signer_id or response.key_id != assignment.key_id:
+            raise GenOfficeInternalOssCeremonyError(
+                "GenOffice internal OSS external signature response violates its signing assignment"
+            )
+        signature = _decode_canonical_base64(
+            response.signature_base64,
+            label="external detached signature",
+            expected_size=GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES,
+        )
+        approvals_list.append(_approval(signers[role], signature))
+    approvals = tuple(approvals_list)
     draft = GenOfficeInternalOssDecisionEnvelope(
         payload=request.payload,
         approvals=approvals,
@@ -359,7 +523,7 @@ def persist_genoffice_internal_oss_decision_envelope(
 ) -> None:
     if build_genoffice_internal_oss_record_hash(envelope) != envelope.record_hash:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS decision record hash is invalid")
-    _atomic_write(
+    _write_new_private(
         envelope_path,
         (json.dumps(envelope.model_dump(mode="json"), indent=2, sort_keys=True) + "\n").encode("utf-8"),
     )
@@ -426,6 +590,7 @@ def run_genoffice_internal_oss_request_from_environment(env: Mapping[str, str]) 
             "SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID",
             "SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC",
             "SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC",
+            "SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC",
             "SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF",
             "SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF",
             "SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH",
@@ -448,6 +613,9 @@ def run_genoffice_internal_oss_request_from_environment(env: Mapping[str, str]) 
         prepared_at_utc=_parse_datetime(
             values["SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC"], field="request preparation time"
         ),
+        valid_until_utc=_parse_datetime(
+            values["SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC"], field="request expiration time"
+        ),
         risk_acceptance_ref=values["SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF"],
         change_control_ref=values["SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF"],
     )
@@ -469,8 +637,8 @@ def run_genoffice_internal_oss_assembly_from_environment(
         (
             "SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH",
             "SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH",
-            "SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_PATH",
-            "SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_PATH",
+            "SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH",
+            "SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH",
             "SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH",
         ),
     )
@@ -481,16 +649,15 @@ def run_genoffice_internal_oss_assembly_from_environment(
         signer_policy=load_genoffice_internal_oss_signer_policy(
             Path(values["SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH"])
         ),
-        product_owner_signature=_read_limited(
-            Path(values["SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_PATH"]),
-            label="product owner signature",
-            expected_size=GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES,
+        signature_responses=(
+            load_genoffice_internal_oss_external_signature_response(
+                Path(values["SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH"])
+            ),
+            load_genoffice_internal_oss_external_signature_response(
+                Path(values["SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH"])
+            ),
         ),
-        security_compliance_owner_signature=_read_limited(
-            Path(values["SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_PATH"]),
-            label="security compliance owner signature",
-            expected_size=GENOFFICE_INTERNAL_OSS_SIGNATURE_SIZE_BYTES,
-        ),
+        assembled_at_utc=datetime.now(UTC),
     )
     persist_genoffice_internal_oss_decision_envelope(
         envelope=envelope,

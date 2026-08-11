@@ -2111,6 +2111,8 @@ services:
         source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
         target: /source/genoffice.tar.gz
         read_only: true
+        bind:
+          create_host_path: false
       - type: bind
         source: ${SUITE_GENOFFICE_SOURCE_EVIDENCE_HOST_DIR:-./backups/genoffice-source-admission}
         target: /evidence
@@ -2143,7 +2145,12 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
-      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_EMF_CONVERTER_REGISTRY_METADATA_HOST_PATH:-./backups/upstream/emf-converter-2.0.2-metadata.json}:/source/emf-converter-2.0.2-metadata.json:ro
       - ${SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_HOST_PATH:-./backups/upstream/emf-converter-2.0.2.tgz}:/source/emf-converter-2.0.2.tgz:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
@@ -2278,7 +2285,12 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
-      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
   genoffice-third-party-notice-builder:
@@ -2309,7 +2321,12 @@ services:
       SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
     volumes:
       - ./app:/workspace/app:ro
-      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
   genoffice-internal-oss-schema:
@@ -2371,8 +2388,18 @@ services:
       SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
     volumes:
       - ./app:/workspace/app:ro
-      - ${SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.pub}:/keys/product-owner.ed25519.pub:ro
-      - ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.pub}:/keys/security-compliance-owner.ed25519.pub:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.pub}
+        target: /keys/product-owner.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.pub}
+        target: /keys/security-compliance-owner.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
   genoffice-internal-oss-signing-request:
@@ -2403,6 +2430,7 @@ services:
       SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID: "${SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID:-}"
       SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC:-}"
       SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC:-}"
       SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF:-}"
       SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF:-}"
       SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
@@ -2434,13 +2462,23 @@ services:
       SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: assemble
       SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
       SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
-      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_PATH: /approvals/product-owner.ed25519.sig
-      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_PATH: /approvals/security-compliance-owner.ed25519.sig
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/product-owner.signature-response.json
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/security-compliance-owner.signature-response.json
       SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH: /evidence/genoffice-internal-oss-decision.json
     volumes:
       - ./app:/workspace/app:ro
-      - ${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.sig}:/approvals/product-owner.ed25519.sig:ro
-      - ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.sig}:/approvals/security-compliance-owner.ed25519.sig:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.signature-response.json}
+        target: /approvals/product-owner.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.signature-response.json}
+        target: /approvals/security-compliance-owner.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
   genoffice-internal-oss-admission:
@@ -2508,7 +2546,12 @@ services:
     volumes:
       - ./app:/workspace/app:ro
       - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
-      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence:ro
       - ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}:/output
 

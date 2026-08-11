@@ -276,3 +276,4 @@ def test_source_admission_compose_profile_is_read_only_and_offline() -> None:
     assert "SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz" in service
     assert "target: /source/genoffice.tar.gz" in service
     assert "SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH" in service
+    assert "create_host_path: false" in service

@@ -87,6 +87,7 @@ def test_vendored_provenance_compose_service_is_offline_and_inputs_are_read_only
     assert 'network_mode: "none"' in service
     assert "read_only: true" in service
     assert "no-new-privileges:true" in service
-    assert "/source/genoffice.tar.gz:ro" in service
+    assert "target: /source/genoffice.tar.gz" in service
+    assert "create_host_path: false" in service
     assert "/source/emf-converter-2.0.2-metadata.json:ro" in service
     assert "/source/emf-converter-2.0.2.tgz:ro" in service

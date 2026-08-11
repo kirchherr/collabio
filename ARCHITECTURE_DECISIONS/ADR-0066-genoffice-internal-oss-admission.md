@@ -26,6 +26,9 @@ development risk without silently opening production or distribution.
 - Use a separated ceremony: a public-key-only policy builder, a non-effective canonical signing request, signer-local
   detached signing, and a public-input-only envelope assembler. No central component receives or generates a signing
   key.
+- Bind request v2 to exact signer assignments and a maximum 72-hour validity window. Signers return strict JSON
+  responses bound to request hash, signature-message hash, signer ID, role and key ID. Ceremony outputs are private
+  (`0600`) and write-once; missing bind-mounted files must fail instead of being auto-created as directories.
 - The internal decision is a documented risk acceptance, not a legal opinion. It must bind the exact dossier, generated
   third-party notice, source and prohibited scopes, trademark policy, all dependency resolutions and reevaluation
   triggers.
@@ -47,6 +50,8 @@ development risk without silently opening production or distribution.
 - No person, automation or AI is represented as providing legal advice.
 - The exact accountable people, policy, signatures, choices and risk reference remain auditable.
 - A changed signer policy invalidates the signing request and requires a new two-person decision.
+- An expired request, copied response, role reassignment or attempted output overwrite fails closed before an envelope
+  exists.
 - A successful admission permits building an isolated development candidate, not serving or distributing it.
 - The Office adapter remains replaceable. ECMA-376 and independently licensed engines remain viable alternatives.
 

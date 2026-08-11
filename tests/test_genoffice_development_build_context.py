@@ -360,3 +360,4 @@ def test_build_context_compose_service_is_offline_read_only_and_admission_bound(
     assert "genoffice-internal-oss-admission-report.json" in service
     assert "genoffice-development-build-context.tar" in service
     assert "SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH" in service
+    assert "create_host_path: false" in service

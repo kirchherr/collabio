@@ -102,7 +102,9 @@ decision JSON Schema, the npm-gitHead-bound supplemental source license where a 
 future detached-signature-verified legal record. ADR-0066 additionally retains the deterministic
 `GENOFFICE_THIRD_PARTY_NOTICES.txt`, its report, the internal OSS decision and signer-policy schemas, any installed public
 signer policy, the policy-bound non-effective signing request, its exact canonical signature-message bytes, both public
-detached signatures, the assembled two-person decision envelope, and its development-only admission report. Signing
+structured external signature responses, the assembled two-person decision envelope, and its development-only
+admission report. The request validity window, signer assignments, request/message hashes and write-once output modes
+are part of restore verification. Signing
 keys are KMS/secret-manager state and never Collabio backup payloads. After admission, ADR-0067 additionally retains the
 normalized development build-context TAR, its embedded manifest and its external report. A restore must verify every
 evidence digest, request/message binding, signer-policy hash in the signed payload, decision signature, usage-profile

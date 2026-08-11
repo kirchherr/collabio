@@ -181,5 +181,6 @@ def test_legal_dossier_compose_service_is_offline_and_read_only() -> None:
     assert 'network_mode: "none"' in service
     assert "read_only: true" in service
     assert "no-new-privileges:true" in service
-    assert "/source/genoffice.tar.gz:ro" in service
+    assert "target: /source/genoffice.tar.gz" in service
+    assert "create_host_path: false" in service
     assert "genoffice-legal-decision-record.schema.json" in service

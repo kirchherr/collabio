@@ -336,6 +336,12 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "knowledge_base_source_version_evidence_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_restore_evidence_hash_check" in object_storage.integrity_checks
     assert "knowledge_base_runtime_reconciliation_restore_drill_binding_check" in object_storage.integrity_checks
+    assert "genoffice_internal_oss_signing_request_validity_check" in object_storage.integrity_checks
+    assert "genoffice_internal_oss_signing_assignment_check" in object_storage.integrity_checks
+    assert "genoffice_internal_oss_external_signature_response_binding_check" in object_storage.integrity_checks
+    assert "genoffice_internal_oss_write_once_mode_check" in object_storage.integrity_checks
+    assert "genoffice_source_archive_sha256_check" in object_storage.integrity_checks
+    assert "genoffice_source_archive_regular_file_check" in object_storage.integrity_checks
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks

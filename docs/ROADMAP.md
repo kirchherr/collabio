@@ -1549,7 +1549,10 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
 - [ ] Internen GenOffice-Development-Entscheid abschliessen: zwei benannte interne Verantwortliche als `product_owner`
   und `security_compliance_owner` in der Signer-Policy aufnehmen, den exakten Payload unabhaengig signieren und den
-  Admission-Report reproduzieren. Keine Identitaeten, Schluessel oder Freigaben simulieren.
+  Admission-Report reproduzieren. Der operative Handoff ist mit maximal 72 Stunden gueltigem Request v2, exakter
+  Personen-/Rollen-/Key-Zuordnung, request- und message-hashgebundenen JSON-Antworten sowie privaten Write-once-
+  Ausgaben vorbereitet. Fehlende Bind-Dateien werden nicht mehr als Verzeichnisse auto-erstellt. Keine Identitaeten,
+  Schluessel oder Freigaben simulieren.
 - [x] Deterministischen Development-Build-Context hinter dieser Admission vorbereitet: der no-network/read-only
   Materializer liest das Archiv ohne Extraktion, prueft alle 93 ausgewaehlten Dateien erneut gegen Pfad, Groesse und
   SHA-256 und erzeugt ein nach UID/GID, Modus, Reihenfolge und `SOURCE_DATE_EPOCH` normalisiertes TAR mit NOTICE und

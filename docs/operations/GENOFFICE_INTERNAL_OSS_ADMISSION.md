@@ -57,11 +57,18 @@ The ceremony has four fail-closed stages:
 1. Two real internal people supply their identities, key IDs and raw 32-byte Ed25519 public keys. The policy builder
    requires one `product_owner` and one `security_compliance_owner`, distinct people and distinct keys.
 2. The request builder binds that policy hash, the immutable dossier and NOTICE evidence, all accepted obligations and
-   blocked profiles into one canonical message. Its request explicitly records `admission_effective=false`.
+   blocked profiles into one canonical message. Request v2 assigns the exact signer ID, role and key ID, expires after
+   at most 72 hours and explicitly records `admission_effective=false`, `private_key_ingestion_allowed=false` and
+   `signature_creation_performed=false`.
 3. Each signer reviews and signs the exact `genoffice-internal-oss-signature-message.json` bytes on a separate approved
-   workstation or KMS. Only the raw 64-byte detached signature leaves that signer boundary.
-4. The no-network assembler reads the request, public policy and two signatures, verifies both through the Suite KMS
-   adapter and writes the decision envelope. It cannot read or generate a signing key.
+   workstation or KMS. The signer returns a strict metadata-only JSON response containing the request hash, message
+   hash, assigned identity, role, key ID and the base64-encoded raw 64-byte detached signature.
+4. The no-network assembler reads the request, public policy and two structured responses, rejects expired, replayed,
+   cross-request or reassigned responses, verifies both signatures through the Suite KMS adapter and writes the
+   decision envelope. It cannot read or generate a signing key.
+
+Policy, request, canonical message and envelope outputs use mode `0600` and are write-once. Existing outputs or stale
+temporary files stop the ceremony instead of being overwritten.
 
 The resulting envelope is still not a production approval. The separate admission verifier must validate the complete
 legal-evidence chain before the development worker-build permission can become effective.
@@ -86,16 +93,37 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
   genoffice-internal-oss-signer-policy-builder
 ```
 
-Set the decision ID, UTC timestamps, risk-acceptance reference and immutable Git change-control reference, then create
-the policy-bound request:
+Set the decision ID, UTC preparation, proposed-decision and expiration timestamps, risk-acceptance reference and
+immutable Git change-control reference, then create the policy-bound request. The expiration must be after preparation
+and no more than 72 hours later:
 
 ```bash
 docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
   genoffice-internal-oss-signing-request
 ```
 
-Distribute only the canonical signature-message file to the two signers. After their two raw detached signatures have
-been installed at the configured read-only host paths, assemble and verify the envelope, then run admission:
+Distribute the request and canonical signature-message file to both signers. Each external signer must return this
+strict response shape without content, secrets or private key material:
+
+```json
+{
+  "algorithm": "ed25519",
+  "content_included": false,
+  "key_id": "ASSIGNED_KEY_ID",
+  "private_key_included": false,
+  "request_hash": "sha256:REQUEST_HASH",
+  "schema_version": "genoffice_internal_oss_external_signature_response.v1",
+  "secrets_included": false,
+  "signature_base64": "BASE64_RAW_64_BYTE_ED25519_SIGNATURE",
+  "signature_message_sha256": "sha256:SIGNATURE_MESSAGE_HASH",
+  "signer_id": "ASSIGNED_SIGNER_ID",
+  "signer_role": "product_owner"
+}
+```
+
+The second response uses role `security_compliance_owner` and its independently assigned identity and key. After both
+response files have been installed at the configured read-only host paths, assemble and verify the envelope, then run
+admission:
 
 ```bash
 docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
@@ -105,16 +133,18 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
   genoffice-internal-oss-admission
 ```
 
-Every stage exits `2` for missing, malformed, stale, same-person, unauthorized, drifted or invalidly signed evidence.
+Every stage exits `2` for missing, malformed, expired, same-person, unauthorized, replayed, cross-request, drifted or
+invalidly signed evidence.
 A green admission report opens only the development worker-build gate.
 
 The next boundary is `genoffice-development-build-context`. It revalidates this report together with source,
 supply-chain, npm-provenance and NOTICE evidence before producing the normalized TAR described in ADR-0067. It still
 does not install dependencies or build an image.
 
-The evidence set to back up together is the signer policy, signing request, exact signature-message bytes, both detached
-signatures, assembled decision envelope and admission report. Public keys and signatures are evidence; signing keys are
-never copied into Collabio backup storage.
+The evidence set to back up together is the signer policy, signing request, exact signature-message bytes, both
+structured external signature responses, assembled decision envelope and admission report. Public keys and signatures
+are evidence; signing keys are never copied into Collabio backup storage. Source archive and public-key/signature file
+mounts use `create_host_path: false`, so a missing file cannot silently become a root-owned directory.
 
 ## Verified Evidence Snapshot
 

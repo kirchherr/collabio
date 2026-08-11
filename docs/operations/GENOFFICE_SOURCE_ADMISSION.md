@@ -39,6 +39,10 @@ curl -fsSL \
 sha256sum backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz
 ```
 
+Verify that the destination is a regular file before every run. All Compose mounts of this archive use long bind
+syntax with `create_host_path: false`; a missing archive therefore fails immediately instead of being silently created
+as a root-owned directory.
+
 Stop if the digest differs. Do not run `npm install`, `npm ci`, package scripts, or binaries from this archive.
 
 ## Offline Admission
