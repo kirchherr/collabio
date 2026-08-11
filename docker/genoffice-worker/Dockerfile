@@ -1,5 +1,6 @@
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS dependencies
 
+ARG SOURCE_DATE_EPOCH=0
 ARG GENOFFICE_CONTEXT_SHA256
 ARG GENOFFICE_CONTEXT_REPORT_SHA256
 ARG GENOFFICE_AUTHORIZATION_REPORT_SHA256
@@ -37,19 +38,19 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
               /opt/genoffice/packages/docx-engine/tests \
               /opt/genoffice/packages/docx-engine/tsconfig.json \
               /opt/genoffice/packages/docx-engine/vitest.config.ts \
-              /opt/genoffice/.collabio/upstream
+              /opt/genoffice/.collabio/upstream \
+    && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
 
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
 
+ARG SOURCE_DATE_EPOCH=0
 ARG GENOFFICE_CONTEXT_SHA256
 ARG GENOFFICE_CONTEXT_REPORT_SHA256
 ARG GENOFFICE_AUTHORIZATION_REPORT_SHA256
 
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
-    && groupadd --gid 10003 genoffice \
-    && useradd --uid 10003 --gid 10003 --no-create-home --home-dir /nonexistent \
-         --shell /usr/sbin/nologin genoffice
+    && touch -h -d "@${SOURCE_DATE_EPOCH}" /usr/local/lib/node_modules /usr/local/bin
 
 COPY --from=dependencies --chown=10003:10003 /opt/genoffice/LICENSE /opt/genoffice/LICENSE
 COPY --from=dependencies --chown=10003:10003 /opt/genoffice/THIRD_PARTY_NOTICES.txt /opt/genoffice/THIRD_PARTY_NOTICES.txt

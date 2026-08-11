@@ -341,6 +341,7 @@ def test_worker_docker_archive_is_bound_to_config_digest_and_tag(tmp_path: Path)
 def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -> None:
     module = Path("app/suite/operations/genoffice_worker_image_admission.py").read_text(encoding="utf-8")
     dockerfile = Path("docker/genoffice-worker/Dockerfile").read_text(encoding="utf-8")
+    compose = Path("docker-compose.yml").read_text(encoding="utf-8")
     entrypoint = Path("docker/genoffice-worker/worker-entrypoint.mjs").read_text(encoding="utf-8")
 
     for forbidden in ("subprocess", "socket", "httpx", "requests", "urllib", "cryptography"):
@@ -350,7 +351,10 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "worker_execution_allowed: Literal[False]" in module
     assert "npm install --offline --ignore-scripts" in dockerfile
     assert "prepare-runtime-manifest.mjs" in dockerfile
+    assert "ARG SOURCE_DATE_EPOCH=0" in dockerfile
+    assert 'touch -h -d "@${SOURCE_DATE_EPOCH}"' in dockerfile
     assert "USER 10003:10003" in dockerfile
+    assert "provenance: false" in compose
     assert "worker_execution_allowed: false" in entrypoint
 
 
