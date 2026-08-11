@@ -44,7 +44,7 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} + \
     && tar --create --file /opt/collabio/genoffice-runtime.tar --format=gnu \
          --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
-         --numeric-owner -C / \
+         --numeric-owner --hard-dereference -C / \
          opt/genoffice opt/collabio/runtime-inventory.json opt/collabio/runtime-file-inventory.json \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
