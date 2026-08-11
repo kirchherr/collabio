@@ -35,12 +35,14 @@ from suite.operations.genoffice_internal_oss_admission import (
     GenOfficeInternalOssAdmissionReport,
     build_genoffice_internal_oss_admission_report_hash,
 )
-from suite.operations.genoffice_legal_review_dossier import GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH
 from suite.operations.genoffice_npm_provenance_admission import (
     GenOfficeNpmProvenanceAdmissionReport,
     load_genoffice_npm_provenance_admission_report,
 )
-from suite.operations.genoffice_third_party_notice import GENOFFICE_SELECTED_SOURCE_SCOPE
+from suite.operations.genoffice_third_party_notice import (
+    GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH,
+    GENOFFICE_SELECTED_SOURCE_SCOPE,
+)
 
 EVIDENCE = Path("docs/operations")
 
