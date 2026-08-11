@@ -43,9 +43,7 @@ GENOFFICE_LEGAL_REVIEW_DOSSIER_SCHEMA_VERSION = "genoffice_legal_review_dossier_
 GENOFFICE_LEGAL_DECISION_RECORD_SCHEMA_VERSION = "genoffice_legal_decision_record.v1"
 GENOFFICE_REVIEWED_SOURCE_REPORT_HASH = "sha256:7a4eb66cfeefbf6defad574f33b07c904b62c7f076ecb21277e99ae87e2b951d"
 GENOFFICE_REVIEWED_VENDORED_REPORT_HASH = "sha256:5ac1fdfa83034db3a8da06985b5f96e87a8eb0acfe3614f05b4fb3afe8e3dd04"
-GENOFFICE_REVIEWED_SUPPLY_CHAIN_REPORT_HASH = (
-    "sha256:580bd646106d79b712d42ecef490a8165435525a1feaeb52c10999274584767f"
-)
+GENOFFICE_REVIEWED_SUPPLY_CHAIN_REPORT_HASH = "sha256:580bd646106d79b712d42ecef490a8165435525a1feaeb52c10999274584767f"
 GENOFFICE_REVIEWED_NPM_PROVENANCE_REPORT_HASH = (
     "sha256:c85feac5fa9788ef10a4076034d2443c230e8536ee5c02de61b8cfe9ea114aa3"
 )
@@ -181,9 +179,7 @@ class GenOfficeLegalDecisionRecord(BaseModel):
 class GenOfficeLegalReviewDossierReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_legal_review_dossier_report.v1"] = (
-        "genoffice_legal_review_dossier_report.v1"
-    )
+    schema_version: Literal["genoffice_legal_review_dossier_report.v1"] = "genoffice_legal_review_dossier_report.v1"
     source_report_hash: str
     source_archive_sha256: str
     vendored_provenance_report_hash: str
@@ -637,9 +633,7 @@ def build_genoffice_legal_review_dossier(
         for path, content in sorted(selected_source.items())
     )
     source_by_path = {item.path: item for item in source_files}
-    artifact_by_identity = {
-        (item.package_name, item.package_version): item for item in collection_report.artifacts
-    }
+    artifact_by_identity = {(item.package_name, item.package_version): item for item in collection_report.artifacts}
     dependency_licenses: list[GenOfficeDependencyLicenseEvidence] = []
     dependency_files: list[GenOfficeLegalFileEvidence] = []
     for dependency in sorted(source_report.runtime_dependencies, key=lambda item: (item.name, item.version or "")):
@@ -734,9 +728,7 @@ def build_genoffice_legal_decision_record_hash(record: GenOfficeLegalDecisionRec
     return stable_hash(canonical_json(record.model_dump(mode="json", exclude={"record_hash"})))
 
 
-def persist_genoffice_legal_review_dossier(
-    *, report: GenOfficeLegalReviewDossierReport, report_path: Path
-) -> None:
+def persist_genoffice_legal_review_dossier(*, report: GenOfficeLegalReviewDossierReport, report_path: Path) -> None:
     if build_genoffice_legal_review_dossier_hash(report) != report.report_hash:
         raise GenOfficeLegalReviewDossierError("GenOffice legal dossier report hash is invalid")
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -788,9 +780,7 @@ def run_genoffice_legal_review_dossier_from_environment(
         source_archive_path=Path(values["source_archive"]),
         vendored_report=load_genoffice_vendored_provenance_report(Path(values["vendored_report"])),
         supply_chain_report=load_genoffice_docx_supply_chain_admission_report(Path(values["supply_chain_report"])),
-        npm_provenance_report=load_genoffice_npm_provenance_admission_report(
-            Path(values["npm_provenance_report"])
-        ),
+        npm_provenance_report=load_genoffice_npm_provenance_admission_report(Path(values["npm_provenance_report"])),
         collection_report=load_genoffice_license_material_collection_report(Path(values["collection_report"])),
         artifact_directory=Path(values["artifact_directory"]),
     )

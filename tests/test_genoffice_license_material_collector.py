@@ -65,9 +65,7 @@ def test_registry_target_rejects_unpinned_network_boundaries(url: str) -> None:
 
 
 def test_registry_target_accepts_exact_https_registry() -> None:
-    host, target = _validated_registry_target(
-        "https://registry.npmjs.org/example/-/example-1.0.0.tgz"
-    )
+    host, target = _validated_registry_target("https://registry.npmjs.org/example/-/example-1.0.0.tgz")
 
     assert host == GENOFFICE_NPM_REGISTRY_HOST
     assert target == "/example/-/example-1.0.0.tgz"

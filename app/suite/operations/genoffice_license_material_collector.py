@@ -328,9 +328,7 @@ def main() -> None:
         report = run_genoffice_license_material_collection_from_environment(os.environ)
         report_path_value = os.environ.get("SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH", "").strip()
         if not report_path_value:
-            raise GenOfficeLicenseMaterialCollectionError(
-                "SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH is required"
-            )
+            raise GenOfficeLicenseMaterialCollectionError("SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH is required")
         report_path = Path(report_path_value)
         persist_genoffice_license_material_collection_report(report=report, report_path=report_path)
         _remove_unreferenced_temporary_files(report_path.parent)
