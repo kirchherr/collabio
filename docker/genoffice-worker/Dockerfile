@@ -63,11 +63,12 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
              /usr/local/bin/yarn /usr/local/bin/yarnpkg \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt /usr/local/lib/node_modules /usr/local/bin
 
-RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
-    cat /mnt/genoffice-runtime.tar > /tmp/genoffice-runtime.tar \
-    && tar --extract --file /tmp/genoffice-runtime.tar --directory / \
-    && rm /tmp/genoffice-runtime.tar \
-    && touch -h -d "@${SOURCE_DATE_EPOCH}" /tmp /opt /opt/collabio /opt/genoffice
+COPY --from=dependencies --chown=10003:10003 /opt/genoffice/ /opt/genoffice/
+COPY --from=dependencies --chown=10003:10003 \
+    /opt/collabio/runtime-inventory.json \
+    /opt/collabio/runtime-file-inventory.json \
+    /opt/collabio/worker-entrypoint.mjs \
+    /opt/collabio/
 
 LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker candidate" \
       org.opencontainers.image.description="Non-runtime development candidate for the admitted GenOffice DOCX engine scope" \
