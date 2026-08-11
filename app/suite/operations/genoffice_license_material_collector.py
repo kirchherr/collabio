@@ -169,7 +169,9 @@ def _fetch_registry_package(url: str, maximum_size: int) -> bytes:
             try:
                 declared_size = int(content_length)
             except ValueError as exc:
-                raise GenOfficeLicenseMaterialCollectionError("npm registry returned an invalid content length") from exc
+                raise GenOfficeLicenseMaterialCollectionError(
+                    "npm registry returned an invalid content length"
+                ) from exc
             if declared_size < 0 or declared_size > maximum_size:
                 raise GenOfficeLicenseMaterialCollectionError("npm package exceeds the collection size limit")
         content = response.read(maximum_size + 1)
@@ -229,7 +231,9 @@ def collect_genoffice_license_materials(
         artifact = _verified_artifact(dependency=dependency, content=content)
         total_size += artifact.size_bytes
         if total_size > MAX_COLLECTION_SIZE_BYTES:
-            raise GenOfficeLicenseMaterialCollectionError("npm license material collection exceeds its total size limit")
+            raise GenOfficeLicenseMaterialCollectionError(
+                "npm license material collection exceeds its total size limit"
+            )
         target = artifact_directory / artifact.artifact_filename
         temporary = target.with_suffix(target.suffix + ".tmp")
         try:

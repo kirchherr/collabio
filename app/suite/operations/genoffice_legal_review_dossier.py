@@ -514,7 +514,9 @@ def _dependency_license_evidence(
 
 
 def _review_questions(
-    *, source_files: tuple[GenOfficeLegalFileEvidence, ...], dependencies: tuple[GenOfficeDependencyLicenseEvidence, ...]
+    *,
+    source_files: tuple[GenOfficeLegalFileEvidence, ...],
+    dependencies: tuple[GenOfficeDependencyLicenseEvidence, ...],
 ) -> tuple[GenOfficeLegalReviewQuestion, ...]:
     by_path = {item.path: item.evidence_id for item in source_files}
     dependency_refs = tuple(
@@ -543,7 +545,8 @@ def _review_questions(
             category="trademark",
             evidence_refs=(by_path["README.md"],),
             required_decision=(
-                "Confirm Collabio-only branding and prohibit GenOffice, Genspark and upstream logos in product identity."
+                "Confirm Collabio-only branding and prohibit GenOffice, Genspark and upstream logos in product "
+                "identity."
             ),
         ),
         GenOfficeLegalReviewQuestion(
@@ -566,7 +569,8 @@ def _review_questions(
             category="license",
             evidence_refs=(by_path[f"{EMF_CONVERTER_VENDOR_ROOT}/LICENSE"],),
             required_decision=(
-                "Confirm the vendored emf-converter Apache-2.0 obligations against byte, npm and SLSA provenance evidence."
+                "Confirm the vendored emf-converter Apache-2.0 obligations against byte, npm and SLSA provenance "
+                "evidence."
             ),
         ),
     )
