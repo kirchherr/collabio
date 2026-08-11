@@ -4,6 +4,7 @@ import base64
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -126,7 +127,10 @@ def _signed_fixture(
     )
     private_keys = (Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate())
     signer_ids = ("person-a", "person-a" if same_signer else "person-b")
-    roles = ("product_owner", "security_compliance_owner")
+    roles: tuple[Literal["product_owner"], Literal["security_compliance_owner"]] = (
+        "product_owner",
+        "security_compliance_owner",
+    )
     signers = tuple(
         GenOfficeInternalOssSigner(
             signer_id=signer_ids[index],

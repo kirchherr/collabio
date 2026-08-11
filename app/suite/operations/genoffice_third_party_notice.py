@@ -270,9 +270,10 @@ def build_genoffice_third_party_notice(
             if evidence.scope == "supplemental_dependency_source":
                 content = supplemental_content
             else:
-                content = package_contents.get(evidence.path)
-                if content is None:
+                package_content = package_contents.get(evidence.path)
+                if package_content is None:
                     raise GenOfficeThirdPartyNoticeError("GenOffice dependency legal file is absent from its archive")
+                content = package_content
             if _sha256_bytes(content) != evidence.sha256:
                 raise GenOfficeThirdPartyNoticeError("GenOffice dependency legal file hash is inconsistent")
             content_by_hash[evidence.sha256] = content
