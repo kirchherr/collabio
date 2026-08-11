@@ -520,9 +520,7 @@ def main() -> None:
         print(json.dumps(report.model_dump(mode="json"), sort_keys=True))
     except (GenOfficeDevelopmentBuildContextError, ValueError) as exc:
         print(
-            json.dumps(
-                {"error": str(exc), "schema_version": GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION}
-            )
+            json.dumps({"error": str(exc), "schema_version": GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION})
         )
         raise SystemExit(2) from exc
 

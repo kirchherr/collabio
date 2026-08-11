@@ -161,9 +161,7 @@ def _internal_admission(notice: bytes) -> GenOfficeInternalOssAdmissionReport:
         reproducible_worker_build_allowed=True,
         report_hash="sha256:" + "0" * 64,
     )
-    return draft.model_copy(
-        update={"report_hash": build_genoffice_internal_oss_admission_report_hash(draft)}
-    )
+    return draft.model_copy(update={"report_hash": build_genoffice_internal_oss_admission_report_hash(draft)})
 
 
 def _fixture(
@@ -267,9 +265,7 @@ def test_build_context_rejects_missing_or_closed_internal_admission(
         run_genoffice_development_build_context_from_environment({})
 
 
-def test_build_context_rejects_archive_and_selected_file_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_context_rejects_archive_and_selected_file_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     archive, source, supply, npm_provenance, admission, notice = _fixture(tmp_path, monkeypatch)
     archive.write_bytes(archive.read_bytes() + b"tampered")
 
@@ -311,9 +307,7 @@ def test_build_context_rejects_archive_and_selected_file_drift(
         )
 
 
-def test_build_context_rejects_supply_chain_and_notice_drift(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_context_rejects_supply_chain_and_notice_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     archive, source, supply, npm_provenance, admission, notice = _fixture(tmp_path, monkeypatch)
     failed_supply = supply.model_copy(update={"automated_sbom_and_vulnerability_gate_passed": False})
     failed_supply = failed_supply.model_copy(
