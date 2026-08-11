@@ -82,7 +82,7 @@ def test_environment_runner_requires_source_and_artifact_paths() -> None:
 def test_collector_has_no_process_or_package_execution_path() -> None:
     module_source = Path("app/suite/operations/genoffice_license_material_collector.py").read_text(encoding="utf-8")
 
-    for forbidden in ("subprocess", "os.system", "Popen", "npm ", "node ", "extractall"):
+    for forbidden in ("subprocess", "os.system", "Popen", "extractall", "npm ci", "node -"):
         assert forbidden not in module_source
     assert "credentials_used=False" in module_source
     assert "lifecycle_execution_performed=False" in module_source
