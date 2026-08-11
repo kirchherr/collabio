@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from collections.abc import Mapping
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
@@ -214,15 +215,15 @@ def _write_new_private(path: Path, content: bytes) -> None:
             f"GenOffice internal OSS output or temporary file already exists: {path.name}"
         ) from exc
     except OSError as exc:
-        raise GenOfficeInternalOssCeremonyError(f"GenOffice internal OSS output cannot be persisted: {path.name}") from exc
+        raise GenOfficeInternalOssCeremonyError(
+            f"GenOffice internal OSS output cannot be persisted: {path.name}"
+        ) from exc
     finally:
         if descriptor is not None:
             os.close(descriptor)
         if temporary_created:
-            try:
+            with suppress(FileNotFoundError):
                 temporary.unlink()
-            except FileNotFoundError:
-                pass
 
 
 def _parse_datetime(value: str, *, field: str) -> datetime:
@@ -450,7 +451,7 @@ def assemble_genoffice_internal_oss_decision_envelope(
     signature_responses: tuple[GenOfficeInternalOssExternalSignatureResponse, ...],
     assembled_at_utc: datetime,
 ) -> GenOfficeInternalOssDecisionEnvelope:
-    message = verify_genoffice_internal_oss_signing_request(request)
+    verify_genoffice_internal_oss_signing_request(request)
     if assembled_at_utc.tzinfo is None or assembled_at_utc.utcoffset() is None:
         raise GenOfficeInternalOssCeremonyError("GenOffice internal OSS assembly time lacks a timezone")
     assembled_at = assembled_at_utc.astimezone(UTC)
