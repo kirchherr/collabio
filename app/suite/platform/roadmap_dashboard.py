@@ -762,10 +762,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "CycloneDX-Pre-Build-SBOM und der netzlose Trivy-Scan decken exakt 23 Komponenten ohne "
                         "Finding ab. npm-Signatur, Publish-/SLSA-Attestierung, Fulcio-Identitaet und Rekor-Inclusion "
                         "sind kryptografisch verifiziert. Alle 21 Runtime-Archive und 42 Rechtsdateien sind im "
-                        "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden und menschlich pruefbereit. "
-                        "Import, Engine, "
-                        "Content und Produktion bleiben bis signierter Legal-, Build-, Security-, Fidelity- und "
-                        "Recovery-Evidence geschlossen."
+                        "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden. Ein deterministisches Drittanbieter-"
+                        "NOTICE und das interne Ed25519-Vier-Augen-Gate koennen nur den Development-Build oeffnen. "
+                        "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
+                        "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="office_edit_boundary",
@@ -785,9 +785,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice_npm_provenance_admission_report.json",
                         "app/suite/operations/genoffice_license_material_collector.py",
                         "app/suite/operations/genoffice_legal_review_dossier.py",
+                        "app/suite/operations/genoffice_third_party_notice.py",
+                        "app/suite/operations/genoffice_internal_oss_admission.py",
                         "tests/test_genoffice_license_material_collector.py",
                         "tests/test_genoffice_legal_review_dossier.py",
+                        "tests/test_genoffice_third_party_notice.py",
+                        "tests/test_genoffice_internal_oss_admission.py",
                         "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
+                        "docs/operations/GENOFFICE_INTERNAL_OSS_ADMISSION.md",
                         "docs/operations/genoffice_license_material_collection_report.json",
                         "docs/operations/genoffice_legal_review_dossier_report.json",
                         "docs/operations/genoffice_legal_decision_record.schema.json",
@@ -795,6 +800,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
                         "ARCHITECTURE_DECISIONS/ADR-0065-genoffice-legal-review-dossier.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0066-genoffice-internal-oss-admission.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -814,8 +820,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "slsa_fulcio_identity_and_rekor_inclusion_verified",
                         "exact_runtime_license_archives_integrity_verified",
                         "offline_notice_trademark_and_enterprise_scope_dossier",
-                        "human_legal_decision_record_required",
-                        "worker_build_blocked_until_signed_legal_decision",
+                        "two_distinct_internal_oss_signers_required",
+                        "ed25519_verification_behind_kms_adapter",
+                        "development_worker_build_blocked_until_signed_internal_decision",
+                        "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",
                     ),
                 ),

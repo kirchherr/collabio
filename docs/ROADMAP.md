@@ -1540,10 +1540,17 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Dossier `sha256:eb523d13...` und Decision-Schema `sha256:f4e8c757...`. `OR`-/`AND`-Semantik, sechs verpflichtende
   Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
   erzeugt bewusst keine menschliche Freigabe; Import, Build, Image-SBOM und Ausfuehrung bleiben geschlossen.
-- [ ] GenOffice-Source-Admission abschliessen: qualifizierte menschliche Legal-/NOTICE-/Trademark-/Compound-License-
-  Entscheidung als signierten Record gegen das exakte Dossier pruefen; danach reproduzierbaren, signierten Worker-
-  Build mit autoritativem Image-SBOM und Vulnerability Review erstellen. Erst wenn beide getrennten Gates bestanden
-  sind, darf der gepruefte Quellstand in einen isolierten Spike-Branch oder ein Worker-Image gelangen.
+- [x] Nicht verfuegbare externe Rechtspruefung durch eine ehrliche interne OSS-Admission fuer den Development-Kandidaten
+  ersetzt: deterministisches `THIRD_PARTY_NOTICES`, exakte Apache-/NOTICE-/Trademark-/Enterprise- und Dependency-
+  Entscheidungen, zwei verschiedene interne Rollen, Ed25519-Pruefung hinter dem KMS-Adapter, hashgebundene Signer-Policy
+  und automatische Neubewertung bei jeder relevanten Aenderung. Das Gate kann ausschliesslich
+  `development_evaluation` oeffnen; Hosted Service, On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
+- [ ] Internen GenOffice-Development-Entscheid abschliessen: zwei benannte interne Verantwortliche als `product_owner`
+  und `security_compliance_owner` in der Signer-Policy aufnehmen, den exakten Payload unabhaengig signieren und den
+  Admission-Report reproduzieren. Keine Identitaeten, Schluessel oder Freigaben simulieren.
+- [ ] Danach reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellen.
+  Erst wenn interne Development-Admission und Build-Gate bestanden sind, darf der gepruefte Quellstand in einen
+  isolierten Spike-Branch oder ein Worker-Image gelangen; produktive Nutzung bleibt weiterhin gesperrt.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

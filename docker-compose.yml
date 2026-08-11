@@ -2281,6 +2281,97 @@ services:
       - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-third-party-notice-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_third_party_notice
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-schema:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_MODE: schema
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_PATH: /evidence/genoffice-internal-oss-decision.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_PATH: /evidence/genoffice-internal-oss-signer-policy.schema.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_MODE: verify
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH: /evidence/genoffice-internal-oss-decision.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_PATH: /evidence/genoffice-internal-oss-decision.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_PATH: /evidence/genoffice-internal-oss-signer-policy.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH: /evidence/genoffice-internal-oss-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
   genoffice-docx-prebuild-sbom:
     profiles: ["office-supply-chain"]
     build:

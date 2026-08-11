@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-08-11
 
+Development-decision boundary amended by ADR-0066. This ADR remains the immutable factual evidence contract.
+
 ## Context
 
 ADR-0062 through ADR-0064 prove the pinned source snapshot, selected source scope, runtime dependency inventory,

@@ -76,7 +76,15 @@ all automated evidence checks, and set `human_review_ready=true`. It kept `human
 `legal_review_complete`, source import, worker build, engine execution, authoritative image SBOM, and production use
 false.
 
-## Human Decision Boundary
+## Development Decision Amendment
+
+ADR-0066 leaves this dossier and its original external-review schema unchanged as historical factual evidence. Because
+an external legal reviewer is unavailable, the development candidate now uses the separate internal OSS risk-admission
+contract in `GENOFFICE_INTERNAL_OSS_ADMISSION.md`. That contract cannot set this report's `legal_review_complete`; it can
+open only a signed, two-person `development_evaluation` worker build while every product, tenant, hosted, On-Prem and
+production boundary stays closed.
+
+## Original External Decision Boundary
 
 The generated `genoffice_legal_decision_record.v1` schema requires a separate record with:
 
