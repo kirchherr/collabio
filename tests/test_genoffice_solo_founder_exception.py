@@ -18,10 +18,13 @@ from suite.operations.genoffice_legal_review_dossier import (
 from suite.operations.genoffice_solo_founder_exception import (
     GENOFFICE_SOLO_FOUNDER_COMPENSATING_CONTROLS,
     GenOfficeSoloFounderExceptionError,
+    GenOfficeSoloFounderExceptionRequest,
+    GenOfficeSoloFounderPolicy,
     GenOfficeSoloFounderSignatureResponse,
     build_genoffice_solo_founder_policy,
     build_genoffice_solo_founder_request,
     build_genoffice_solo_founder_response_hash,
+    build_genoffice_solo_founder_signature_message,
     persist_genoffice_solo_founder_request,
     verify_genoffice_solo_founder_exception,
 )
@@ -65,7 +68,17 @@ def _notice_report(*, dossier: GenOfficeLegalReviewDossierReport, notice: bytes)
     return draft.model_copy(update={"report_hash": build_genoffice_third_party_notice_report_hash(draft)})
 
 
-def _signed_fixture(*, valid_for: timedelta = timedelta(days=7)) -> tuple[object, ...]:
+def _signed_fixture(
+    *, valid_for: timedelta = timedelta(days=7)
+) -> tuple[
+    GenOfficeLegalReviewDossierReport,
+    GenOfficeThirdPartyNoticeReport,
+    bytes,
+    GenOfficeSoloFounderPolicy,
+    GenOfficeSoloFounderExceptionRequest,
+    GenOfficeSoloFounderSignatureResponse,
+    datetime,
+]:
     dossier = load_genoffice_legal_review_dossier(EVIDENCE / "genoffice_legal_review_dossier_report.json")
     notice = b"Collabio deterministic third-party notice\n"
     notice_report = _notice_report(dossier=dossier, notice=notice)
@@ -175,8 +188,6 @@ def test_solo_founder_request_persistence_is_private_and_write_once(tmp_path: Pa
     _, _, _, _, request, _, _ = _signed_fixture()
     request_path = tmp_path / "request.json"
     message_path = tmp_path / "message.json"
-    from suite.operations.genoffice_solo_founder_exception import build_genoffice_solo_founder_signature_message
-
     message = build_genoffice_solo_founder_signature_message(request.payload)
     persist_genoffice_solo_founder_request(
         request=request,
