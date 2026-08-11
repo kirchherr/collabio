@@ -5,7 +5,9 @@ Date: 2026-08-11
 
 ## Context
 
-ADR-0066 permits exact build-context materialization only after the two-person internal OSS admission succeeds. Copying
+ADR-0066 permits exact build-context materialization after the preferred two-person internal OSS admission succeeds.
+ADR-0068 adds a narrow, expiring solo-founder compensating control for organizations that cannot yet perform honest
+personnel separation. Copying
 the complete upstream repository or extracting it into a long-lived checkout would weaken the reviewed source boundary,
 make prohibited scopes easier to include accidentally, and create an ambiguous recovery artifact. Starting npm or a
 compiler during materialization would also combine source selection with execution before the worker-build gate exists.
@@ -17,9 +19,12 @@ layer metadata. CycloneDX distinguishes the current pre-build inventory from the
 
 ## Decision
 
-- Introduce `genoffice_development_build_context_report.v1` and a deterministic uncompressed TAR context.
+- Introduce `genoffice_development_build_context_report.v2`, its v2 embedded manifest and a deterministic uncompressed
+  TAR context.
 - Require the pinned source admission, automated pre-build SBOM/vulnerability admission, npm cryptographic provenance,
-  internal OSS admission and exact third-party NOTICE before reading selected source bytes.
+  exactly one explicit development authorization and exact third-party NOTICE before reading selected source bytes.
+- Accept either the ADR-0066 two-person admission or an active ADR-0068 solo-founder exception. Reject missing, mixed,
+  future or expired authorization evidence.
 - Reopen the pinned source archive without extraction, reject non-canonical paths, duplicates, links and special files,
   and verify every selected file against its admitted path, size and SHA-256.
 - Materialize exactly the 93 admitted files, `THIRD_PARTY_NOTICES.txt` and a Collabio context manifest. Never include
@@ -32,8 +37,8 @@ layer metadata. CycloneDX distinguishes the current pre-build inventory from the
   false. The context authorizes only a later isolated worker-image build.
 - Run the materializer as a no-network, read-only, non-root Compose service with the archive and evidence mounted
   read-only and a dedicated output mount.
-- Do not create a real context before the two named signers and their detached approvals produce a valid internal OSS
-  admission report.
+- Do not create a real context before either the two named signers produce a valid internal OSS admission or the named
+  founder produces a valid, signed, maximum-30-day exception. Neither path authorizes runtime.
 
 ## Consequences
 

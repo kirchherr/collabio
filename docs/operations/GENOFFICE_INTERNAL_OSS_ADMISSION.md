@@ -50,6 +50,11 @@ payload, so replacing the policy after request creation invalidates the ceremony
 only through the Suite KMS adapter. The repository contains schemas, never private keys and never invented human
 approvals.
 
+When the organization has only one accountable person, this two-person control is not weakened or simulated. The
+separate `GENOFFICE_SOLO_FOUNDER_EXCEPTION.md` workflow may temporarily authorize only development build-context
+materialization through a signed, maximum-30-day compensating control. Runtime, pilot, distribution and production
+still require this two-person ceremony.
+
 ## Signing Ceremony
 
 The ceremony has four fail-closed stages:
@@ -135,7 +140,8 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
 
 Every stage exits `2` for missing, malformed, expired, same-person, unauthorized, replayed, cross-request, drifted or
 invalidly signed evidence.
-A green admission report opens only the development worker-build gate.
+A green admission report opens only the development worker-build gate. The alternative solo-founder exception report
+opens the same narrow build boundary but always records `two_person_control_verified=false` and expires automatically.
 
 The next boundary is `genoffice-development-build-context`. It revalidates this report together with source,
 supply-chain, npm-provenance and NOTICE evidence before producing the normalized TAR described in ADR-0067. It still

@@ -767,8 +767,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "oeffnen. Request v2 ist maximal 72 Stunden gueltig, bindet Personen, Rollen und Key-IDs und "
                         "akzeptiert nur request-/message-hashgebundene externe Antworten. Ceremony-Ausgaben sind "
                         "privat und write-once; fehlende Datei-Binds werden nicht als Verzeichnisse erzeugt. Private "
-                        "Schluessel bleiben ausserhalb von Repository und zentralem Assembler. "
-                        "Der vorbereitete no-network Materializer erzeugt daraus erst nach realer Admission ein "
+                        "Schluessel bleiben ausserhalb von Repository und zentralem Assembler. Fuer die aktuelle "
+                        "Ein-Personen-Organisation existiert daneben eine signierte, hoechstens 30 Tage gueltige "
+                        "Solo-Founder-Ausnahme mit explizit ungueltigem Zwei-Personen-Nachweis. Sie oeffnet nur den "
+                        "Development-Build-Context und verlangt vor jeder Runtime die regulaere Zwei-Personen-Freigabe. "
+                        "Der vorbereitete no-network Materializer erzeugt daraus erst nach realer Autorisierung ein "
                         "normalisiertes, manifestgebundenes TAR und fuehrt dabei keinen Upstream-Code aus. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
@@ -794,15 +797,18 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_third_party_notice.py",
                         "app/suite/operations/genoffice_internal_oss_ceremony.py",
                         "app/suite/operations/genoffice_internal_oss_admission.py",
+                        "app/suite/operations/genoffice_solo_founder_exception.py",
                         "app/suite/operations/genoffice_development_build_context.py",
                         "tests/test_genoffice_license_material_collector.py",
                         "tests/test_genoffice_legal_review_dossier.py",
                         "tests/test_genoffice_third_party_notice.py",
                         "tests/test_genoffice_internal_oss_ceremony.py",
                         "tests/test_genoffice_internal_oss_admission.py",
+                        "tests/test_genoffice_solo_founder_exception.py",
                         "tests/test_genoffice_development_build_context.py",
                         "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
                         "docs/operations/GENOFFICE_INTERNAL_OSS_ADMISSION.md",
+                        "docs/operations/GENOFFICE_SOLO_FOUNDER_EXCEPTION.md",
                         "docs/operations/GENOFFICE_DEVELOPMENT_BUILD_CONTEXT.md",
                         "docs/operations/genoffice_license_material_collection_report.json",
                         "docs/operations/genoffice_legal_review_dossier_report.json",
@@ -811,12 +817,17 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice_third_party_notice_report.json",
                         "docs/operations/genoffice_internal_oss_decision.schema.json",
                         "docs/operations/genoffice_internal_oss_signer_policy.schema.json",
+                        "docs/operations/genoffice-solo-founder-policy.schema.json",
+                        "docs/operations/genoffice-solo-founder-exception-request.schema.json",
+                        "docs/operations/genoffice-solo-founder-signature-response.schema.json",
+                        "docs/operations/genoffice-solo-founder-exception-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
                         "ARCHITECTURE_DECISIONS/ADR-0065-genoffice-legal-review-dossier.md",
                         "ARCHITECTURE_DECISIONS/ADR-0066-genoffice-internal-oss-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0067-genoffice-development-build-context.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0068-genoffice-solo-founder-development-exception.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -846,8 +857,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "external_signature_responses_bind_request_and_message_hashes",
                         "ceremony_outputs_private_and_write_once",
                         "missing_file_binds_never_auto_create_directories",
-                        "development_worker_build_blocked_until_signed_internal_decision",
-                        "deterministic_tar_context_after_internal_admission_only",
+                        "solo_founder_exception_maximum_30_day_validity",
+                        "solo_founder_exception_records_two_person_control_false",
+                        "solo_founder_exception_allows_build_context_only",
+                        "two_person_reauthorization_required_before_runtime",
+                        "development_worker_build_blocked_until_signed_authorization",
+                        "deterministic_tar_context_after_exactly_one_authorization",
                         "all_selected_source_files_rehashed_without_extraction",
                         "normalized_uid_gid_mode_order_and_source_date_epoch",
                         "materializer_performs_no_dependency_install_or_upstream_execution",

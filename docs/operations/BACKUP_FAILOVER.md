@@ -104,11 +104,15 @@ future detached-signature-verified legal record. ADR-0066 additionally retains t
 signer policy, the policy-bound non-effective signing request, its exact canonical signature-message bytes, both public
 structured external signature responses, the assembled two-person decision envelope, and its development-only
 admission report. The request validity window, signer assignments, request/message hashes and write-once output modes
-are part of restore verification. Signing
-keys are KMS/secret-manager state and never Collabio backup payloads. After admission, ADR-0067 additionally retains the
+are part of restore verification. ADR-0068 adds the solo-founder public policy and schemas, maximum-30-day request,
+exact message, one structured response and final exception report as a distinct evidence set. Restore verification
+must confirm that `two_person_control_verified=false`, every runtime flag is false and the exception is still active;
+an expired report remains audit evidence but cannot authorize a rebuild. Signing keys are KMS/secret-manager state and
+never Collabio backup payloads. After authorization, ADR-0067 additionally retains the
 normalized development build-context TAR, its embedded manifest and its external report. A restore must verify every
-evidence digest, request/message binding, signer-policy hash in the signed payload, decision signature, usage-profile
-boundary, context TAR and embedded manifest before an Office worker can be rebuilt. Registry or license metadata
+evidence digest, request/message binding, signer-policy hash in the signed payload, decision or exception signature,
+authorization mode, usage-profile boundary, context TAR and embedded manifest before an Office worker can be rebuilt.
+Registry or license metadata
 presence without the retained cryptographic bytes, dossier and exact notice remains insufficient.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The

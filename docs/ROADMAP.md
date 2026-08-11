@@ -1547,19 +1547,28 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `development_evaluation` oeffnen. Das reale 23-Komponenten-/27-Dateien-NOTICE wurde zweimal bytegleich als
   `sha256:e6dada57...` reproduziert; Report `sha256:878e93a1...` und beide Schema-Hashes sind versioniert. Hosted Service,
   On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
-- [ ] Internen GenOffice-Development-Entscheid abschliessen: zwei benannte interne Verantwortliche als `product_owner`
-  und `security_compliance_owner` in der Signer-Policy aufnehmen, den exakten Payload unabhaengig signieren und den
-  Admission-Report reproduzieren. Der operative Handoff ist mit maximal 72 Stunden gueltigem Request v2, exakter
-  Personen-/Rollen-/Key-Zuordnung, request- und message-hashgebundenen JSON-Antworten sowie privaten Write-once-
-  Ausgaben vorbereitet. Fehlende Bind-Dateien werden nicht mehr als Verzeichnisse auto-erstellt. Keine Identitaeten,
-  Schluessel oder Freigaben simulieren.
-- [x] Deterministischen Development-Build-Context hinter dieser Admission vorbereitet: der no-network/read-only
+- [x] Ehrlichen Solo-Founder-Ausnahmepfad als kompensierende Kontrolle vorbereitet: eine benannte
+  `founder_risk_owner`-Identitaet signiert extern einen an Public-Evidence, Scope, Risikoreferenz, Change-Control und
+  alle geschlossenen Grenzen gebundenen Request. Die Ausnahme gilt hoechstens 30 Tage, wird bei jeder Materialisierung
+  erneut auf Aktivitaet geprueft und meldet ausdruecklich `two_person_control_verified=false`. Sie oeffnet nur den
+  no-network Development-Build-Context; Import, Engine, Tenant-Content, Hosted Service, On-Prem und Produktion bleiben
+  geschlossen. Policy, Request, Message und Report sind privat und write-once; Private-Key-Ingestion bleibt verboten.
+- [ ] Reale Solo-Founder-Ausnahme abschliessen: dedizierten extern verwahrten Ed25519-Schluessel erzeugen, nur den
+  rohen 32-Byte-Public-Key einbringen, Policy und maximal 30 Tage gueltigen Request mit echten IDs/Referenzen erzeugen,
+  die exakten Message-Bytes extern signieren und den Ausnahmebericht reproduzieren. Keine Identitaet, Signatur oder
+  Risikoentscheidung simulieren.
+- [ ] Zwei-Personen-GenOffice-Entscheid vor jeder Runtime-, Pilot-, Distributions- oder Produktionsgrenze abschliessen:
+  zwei benannte Verantwortliche als `product_owner` und `security_compliance_owner` aufnehmen und den exakten Payload
+  unabhaengig signieren. Der vorbereitete Request v2 bleibt maximal 72 Stunden gueltig und bindet Personen, Rollen,
+  Keys, Request und Message. Die Solo-Ausnahme ersetzt diese spaetere Trennung nicht.
+- [x] Deterministischen Development-Build-Context hinter exakt einer Autorisierung vorbereitet: der no-network/read-only
   Materializer liest das Archiv ohne Extraktion, prueft alle 93 ausgewaehlten Dateien erneut gegen Pfad, Groesse und
   SHA-256 und erzeugt ein nach UID/GID, Modus, Reihenfolge und `SOURCE_DATE_EPOCH` normalisiertes TAR mit NOTICE und
-  eingebettetem Evidence-Manifest. Ohne reale interne Admission entsteht kein Context; npm, Build, Engine und Import
-  bleiben geschlossen.
+  eingebettetem Evidence-Manifest. Report und Manifest v2 akzeptieren entweder eine regulaere Zwei-Personen-Admission
+  oder eine aktive Solo-Founder-Ausnahme, niemals beide. Ohne reale Signatur entsteht kein Context; npm, Build, Engine
+  und Import bleiben geschlossen.
 - [ ] Danach reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellen.
-  Erst wenn interne Development-Admission und Build-Gate bestanden sind, darf der gepruefte Quellstand in einen
+  Erst wenn eine reale Development-Autorisierung und das Build-Gate bestanden sind, darf der gepruefte Quellstand in einen
   isolierten Spike-Branch oder ein Worker-Image gelangen; produktive Nutzung bleibt weiterhin gesperrt.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`

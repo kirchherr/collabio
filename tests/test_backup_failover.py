@@ -342,6 +342,11 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_internal_oss_write_once_mode_check" in object_storage.integrity_checks
     assert "genoffice_source_archive_sha256_check" in object_storage.integrity_checks
     assert "genoffice_source_archive_regular_file_check" in object_storage.integrity_checks
+    assert "genoffice_solo_founder_detached_signature_check" in object_storage.restore_verification_gates
+    assert "genoffice_solo_founder_maximum_30_day_validity_check" in object_storage.restore_verification_gates
+    assert "genoffice_solo_founder_two_person_false_check" in object_storage.restore_verification_gates
+    assert "genoffice_solo_founder_runtime_boundaries_closed_check" in object_storage.restore_verification_gates
+    assert "genoffice_development_authorization_mode_exclusivity_check" in object_storage.restore_verification_gates
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks

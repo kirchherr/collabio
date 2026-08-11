@@ -286,6 +286,13 @@ class GenOfficeSoloFounderExceptionReport(BaseModel):
     tenant_content_allowed: Literal[False] = False
     report_hash: str
 
+    @field_validator("issued_at_utc", "valid_until_utc")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("GenOffice solo-founder report time must include a timezone")
+        return value.astimezone(UTC)
+
     @model_validator(mode="after")
     def require_exact_boundary(self) -> GenOfficeSoloFounderExceptionReport:
         if not self.exception_id.strip() or not self.signer_id.strip() or not self.key_id.strip():

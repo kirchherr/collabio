@@ -102,6 +102,21 @@ class GenOfficeDevelopmentBuildContextManifest(BaseModel):
     payload_total_size_bytes: int
     files: tuple[GenOfficeDevelopmentBuildContextFile, ...]
 
+    @model_validator(mode="after")
+    def require_exact_authorization_binding(self) -> GenOfficeDevelopmentBuildContextManifest:
+        if self.authorization_mode == "two_person_internal_oss_admission":
+            if (
+                self.internal_oss_admission_report_hash != self.development_authorization_report_hash
+                or self.solo_founder_exception_report_hash is not None
+            ):
+                raise ValueError("GenOffice two-person manifest authorization binding is invalid")
+        elif (
+            self.solo_founder_exception_report_hash != self.development_authorization_report_hash
+            or self.internal_oss_admission_report_hash is not None
+        ):
+            raise ValueError("GenOffice solo-founder manifest authorization binding is invalid")
+        return self
+
 
 class GenOfficeDevelopmentBuildContextReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
