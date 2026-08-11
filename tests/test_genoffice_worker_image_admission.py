@@ -488,6 +488,7 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "COPY --chown" not in dockerfile
     assert "/opt/yarn-v1.22.22" in dockerfile
     assert "/usr/local/bin/yarnpkg" in dockerfile
+    assert '"@${SOURCE_DATE_EPOCH}" /opt /usr/local/lib/node_modules' in dockerfile
     assert "USER 10003:10003" in dockerfile
     assert "provenance: false" in compose
     assert "genoffice-worker-image-raw-sbom:" in compose

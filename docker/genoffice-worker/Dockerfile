@@ -61,7 +61,7 @@ ARG GENOFFICE_AUTHORIZATION_REPORT_SHA256
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-v1.22.22 \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
              /usr/local/bin/yarn /usr/local/bin/yarnpkg \
-    && touch -h -d "@${SOURCE_DATE_EPOCH}" /usr/local/lib/node_modules /usr/local/bin
+    && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt /usr/local/lib/node_modules /usr/local/bin
 
 RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
     cp --no-preserve=all /mnt/genoffice-runtime.tar /tmp/genoffice-runtime.tar \
