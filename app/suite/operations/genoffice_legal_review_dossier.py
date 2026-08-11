@@ -24,9 +24,6 @@ from suite.operations.genoffice_docx_supply_chain_admission import (
     load_genoffice_docx_supply_chain_admission_report,
 )
 from suite.operations.genoffice_license_material_collector import (
-    NODABLE_ENTITIES_NAME,
-    NODABLE_ENTITIES_SOURCE_COMMIT,
-    NODABLE_ENTITIES_VERSION,
     GenOfficeLicenseMaterialArtifact,
     GenOfficeLicenseMaterialCollectionReport,
     GenOfficeSupplementalLicenseSourceArtifact,
