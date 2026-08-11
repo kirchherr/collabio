@@ -18,7 +18,6 @@ from suite.operations.genoffice_internal_oss_admission import (
     GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES,
     GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES,
 )
-from suite.operations.genoffice_legal_review_dossier import GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH
 from suite.operations.genoffice_solo_founder_exception import (
     GENOFFICE_SOLO_FOUNDER_BLOCKED_ACTIONS,
     GENOFFICE_SOLO_FOUNDER_COMPENSATING_CONTROLS,
@@ -30,6 +29,7 @@ from suite.operations.genoffice_solo_founder_exception import (
 )
 from suite.operations.genoffice_third_party_notice import (
     GENOFFICE_DEVELOPMENT_PROFILE,
+    GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH,
     GENOFFICE_SELECTED_SOURCE_SCOPE,
 )
 from suite.operations.genoffice_worker_image_admission import (
