@@ -36,11 +36,11 @@ from suite.operations.genoffice_worker_image_admission import (
     GenOfficeWorkerBuildSignatureResponse,
     GenOfficeWorkerImageAdmissionError,
     GenOfficeWorkerImageBuildEvidence,
+    _verify_docker_archive,
     build_genoffice_worker_build_evidence_report_hash,
     build_genoffice_worker_image_sbom,
     build_genoffice_worker_signing_request,
     verify_genoffice_worker_image_admission,
-    _verify_docker_archive,
 )
 
 EVIDENCE = Path("docs/operations")

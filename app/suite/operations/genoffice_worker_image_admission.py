@@ -175,7 +175,9 @@ class GenOfficeWorkerImageBuildEvidence(BaseModel):
             ("worker build evidence hash", self.report_hash),
         ):
             _require_sha256(value, field=field)
-        if not self.rootfs_layer_digests or not all(_SHA256_PATTERN.fullmatch(item) for item in self.rootfs_layer_digests):
+        if not self.rootfs_layer_digests or not all(
+            _SHA256_PATTERN.fullmatch(item) for item in self.rootfs_layer_digests
+        ):
             raise ValueError("GenOffice worker rootfs layer inventory is invalid")
         if not 0 < self.image_size_bytes <= MAX_IMAGE_ARCHIVE_BYTES:
             raise ValueError("GenOffice worker image size is invalid")
@@ -252,7 +254,10 @@ class GenOfficeWorkerBuildAttestationPayload(BaseModel):
             raise ValueError("GenOffice worker SBOM lacks operating-system inventory")
         if self.vulnerability_count != len(self.vulnerability_findings):
             raise ValueError("GenOffice worker vulnerability count is inconsistent")
-        if set(self.severity_counts) != set(_SEVERITIES) or sum(self.severity_counts.values()) != self.vulnerability_count:
+        if (
+            set(self.severity_counts) != set(_SEVERITIES)
+            or sum(self.severity_counts.values()) != self.vulnerability_count
+        ):
             raise ValueError("GenOffice worker vulnerability severities are inconsistent")
         if self.severity_counts["HIGH"] or self.severity_counts["CRITICAL"]:
             raise ValueError("GenOffice worker attestation contains high or critical vulnerabilities")
@@ -617,7 +622,11 @@ def _verify_docker_archive(path: Path, *, image_id: str, image_ref: str) -> tupl
             if config_file is None or _sha256_bytes(config_file.read()) != image_id:
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive config digest is invalid")
             for layer in layers:
-                if not isinstance(layer, str) or PurePosixPath(layer).is_absolute() or ".." in PurePosixPath(layer).parts:
+                if (
+                    not isinstance(layer, str)
+                    or PurePosixPath(layer).is_absolute()
+                    or ".." in PurePosixPath(layer).parts
+                ):
                     raise GenOfficeWorkerImageAdmissionError("GenOffice image archive layer path is unsafe")
                 if not archive.getmember(layer).isfile():
                     raise GenOfficeWorkerImageAdmissionError("GenOffice image archive layer is not a file")
@@ -1098,7 +1107,10 @@ def verify_genoffice_worker_signing_request(request: GenOfficeWorkerBuildSigning
     if build_genoffice_worker_signing_request_hash(request) != request.request_hash:
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker signing request hash is invalid")
     message = build_genoffice_worker_signature_message(request.payload)
-    if _sha256_bytes(message) != request.signature_message_sha256 or len(message) != request.signature_message_size_bytes:
+    if (
+        _sha256_bytes(message) != request.signature_message_sha256
+        or len(message) != request.signature_message_size_bytes
+    ):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker signature message binding is invalid")
     return message
 
