@@ -2862,6 +2862,366 @@ services:
         source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
         target: /evidence
 
+  genoffice-docx-worker-candidate:
+    profiles: ["office-worker-build"]
+    image: ${SUITE_GENOFFICE_WORKER_IMAGE:-collabio/genoffice-docx-worker:development-candidate}
+    build:
+      context: .
+      dockerfile: docker/genoffice-worker/Dockerfile
+      network: none
+      args:
+        SOURCE_DATE_EPOCH: "${SUITE_GENOFFICE_SOURCE_DATE_EPOCH:-0}"
+        GENOFFICE_CONTEXT_SHA256: "${SUITE_GENOFFICE_CONTEXT_SHA256:-}"
+        GENOFFICE_CONTEXT_REPORT_SHA256: "${SUITE_GENOFFICE_CONTEXT_REPORT_SHA256:-}"
+        GENOFFICE_AUTHORIZATION_REPORT_SHA256: "${SUITE_GENOFFICE_AUTHORIZATION_REPORT_SHA256:-}"
+      additional_contexts:
+        genoffice_context: ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}
+        genoffice_dependencies: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+    network_mode: "none"
+    user: "10003:10003"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700
+
+  genoffice-worker-image-build-evidence:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: evidence
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH: /context/genoffice-development-build-context-report.json
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH: /context/genoffice-development-build-context.tar
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_WORKER_DOCKERFILE_PATH: /inputs/Dockerfile
+      SUITE_GENOFFICE_WORKER_INSPECT_A_PATH: /evidence/genoffice-worker-image-inspect-a.json
+      SUITE_GENOFFICE_WORKER_INSPECT_B_PATH: /evidence/genoffice-worker-image-inspect-b.json
+      SUITE_GENOFFICE_WORKER_IMAGE_ARCHIVE_PATH: /evidence/genoffice-worker-image.tar
+      SUITE_GENOFFICE_WORKER_IMAGE_REF_A: "${SUITE_GENOFFICE_WORKER_IMAGE_REF_A:-}"
+      SUITE_GENOFFICE_WORKER_IMAGE_REF_B: "${SUITE_GENOFFICE_WORKER_IMAGE_REF_B:-}"
+      SUITE_GENOFFICE_WORKER_OBSERVED_AT_UTC: "${SUITE_GENOFFICE_WORKER_OBSERVED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ./docker/genoffice-worker/Dockerfile
+        target: /inputs/Dockerfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}
+        target: /context
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-raw-sbom:
+    profiles: ["office-worker-build"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - image
+      - --input
+      - /evidence/genoffice-worker-image.tar
+      - --format
+      - cyclonedx
+      - --output
+      - /evidence/genoffice-worker-image.raw.cdx.json
+      - --skip-version-check
+      - --disable-telemetry
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-sbom:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: sbom
+      SUITE_GENOFFICE_WORKER_RAW_SBOM_PATH: /evidence/genoffice-worker-image.raw.cdx.json
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /inputs/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /inputs/genoffice-docx-prebuild.cdx.json
+      SUITE_GENOFFICE_WORKER_SBOM_PATH: /evidence/genoffice-worker-image.cdx.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/inputs/genoffice-docx-source-admission-report.json:ro
+      - ./docs/operations/genoffice_docx_prebuild.cdx.json:/inputs/genoffice-docx-prebuild.cdx.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-sbom-validator:
+    profiles: ["office-worker-build"]
+    image: cyclonedx/cyclonedx-cli@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        /cyclonedx validate --input-file /evidence/genoffice-worker-image.cdx.json --input-format json --input-version v1_6 --fail-on-errors
+        digest=$$(sha256sum /evidence/genoffice-worker-image.cdx.json | cut -d ' ' -f 1)
+        printf 'schema=cyclonedx-1.6\nvalidator=cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e\nsbom_sha256=%s\nstatus=valid\n' "$${digest}" > /evidence/genoffice-worker-image-schema-validation.txt.tmp
+        mv /evidence/genoffice-worker-image-schema-validation.txt.tmp /evidence/genoffice-worker-image-schema-validation.txt
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-vulnerability-scan:
+    profiles: ["office-worker-build"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - sbom
+      - --cache-dir
+      - /trivy-cache
+      - --skip-db-update
+      - --skip-java-db-update
+      - --skip-vex-repo-update
+      - --offline-scan
+      - --skip-version-check
+      - --disable-telemetry
+      - --scanners
+      - vuln
+      - --format
+      - json
+      - --output
+      - /evidence/genoffice-worker-image-vulnerability-report.json
+      - /evidence/genoffice-worker-image.cdx.json
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-build-signing-request:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: request
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_WORKER_SBOM_PATH: /evidence/genoffice-worker-image.cdx.json
+      SUITE_GENOFFICE_WORKER_SBOM_SCHEMA_RECEIPT_PATH: /evidence/genoffice-worker-image-schema-validation.txt
+      SUITE_GENOFFICE_WORKER_VULNERABILITY_REPORT_PATH: /evidence/genoffice-worker-image-vulnerability-report.json
+      SUITE_GENOFFICE_TRIVY_DB_METADATA_PATH: /trivy-cache/db/metadata.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /authorization/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_WORKER_ATTESTATION_ID: "${SUITE_GENOFFICE_WORKER_ATTESTATION_ID:-}"
+      SUITE_GENOFFICE_WORKER_ISSUED_AT_UTC: "${SUITE_GENOFFICE_WORKER_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_WORKER_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_WORKER_SIGNING_REQUEST_PATH: /evidence/genoffice-worker-build-signing-request.json
+      SUITE_GENOFFICE_WORKER_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-worker-build-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-admission-verifier:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: verify
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /authorization/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_WORKER_SIGNING_REQUEST_PATH: /evidence/genoffice-worker-build-signing-request.json
+      SUITE_GENOFFICE_WORKER_SIGNATURE_RESPONSE_PATH: /approvals/genoffice-worker-build-signature-response.json
+      SUITE_GENOFFICE_WORKER_VERIFIED_AT_UTC: "${SUITE_GENOFFICE_WORKER_VERIFIED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_ADMISSION_REPORT_PATH: /evidence/genoffice-worker-image-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-worker-build/approvals/genoffice-worker-build-signature-response.json}
+        target: /approvals/genoffice-worker-build-signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-admission-schema:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: schema
+      SUITE_GENOFFICE_WORKER_SCHEMA_OUTPUT_DIR: /evidence
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .
