@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal
+from typing import Any, BinaryIO, Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -457,6 +457,17 @@ def _hash_file(path: Path, *, maximum_size: int) -> tuple[str, int]:
     return f"sha256:{digest.hexdigest()}", size
 
 
+def _hash_stream(source: BinaryIO, *, maximum_size: int) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    size = 0
+    while chunk := source.read(1024 * 1024):
+        size += len(chunk)
+        if size > maximum_size:
+            raise GenOfficeWorkerImageAdmissionError("GenOffice image archive member exceeds its size limit")
+        digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}", size
+
+
 def _read_json(path: Path, *, maximum_size: int = MAX_SMALL_EVIDENCE_BYTES) -> Any:
     _hash_file(path, maximum_size=maximum_size)
     try:
@@ -543,7 +554,7 @@ def _inspect_boundary(
     image: Mapping[str, Any],
     *,
     context_report: GenOfficeDevelopmentBuildContextReport,
-) -> tuple[str, int, tuple[str, ...]]:
+) -> tuple[str, str, int, tuple[str, ...]]:
     manifest_digest = str(image.get("Id", ""))
     if not _SHA256_PATTERN.fullmatch(manifest_digest):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker manifest ID is not a SHA-256 digest")
@@ -600,34 +611,164 @@ def _inspect_boundary(
     layers = tuple(rootfs.get("Layers") or ())
     if rootfs.get("Type") != "layers" or not layers or not all(_SHA256_PATTERN.fullmatch(item) for item in layers):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker rootfs evidence is invalid")
-    return image_config_digest, size, layers
+    return manifest_digest, image_config_digest, size, layers
 
 
-def _verify_docker_archive(path: Path, *, image_id: str, image_ref: str) -> tuple[str, int]:
+def _read_archive_member(
+    archive: tarfile.TarFile,
+    members: Mapping[str, tarfile.TarInfo],
+    name: str,
+    *,
+    maximum_size: int,
+) -> bytes:
+    member = members.get(name)
+    if member is None or not member.isfile() or not 0 <= member.size <= maximum_size:
+        raise GenOfficeWorkerImageAdmissionError(f"GenOffice image archive member is invalid: {name}")
+    source = archive.extractfile(member)
+    if source is None:
+        raise GenOfficeWorkerImageAdmissionError(f"GenOffice image archive member is unreadable: {name}")
+    return source.read()
+
+
+def _verify_oci_archive(
+    archive: tarfile.TarFile,
+    members: Mapping[str, tarfile.TarInfo],
+    *,
+    manifest_digest: str | None,
+    image_id: str,
+    image_ref: str,
+    config_name: str,
+    layers: list[Any],
+) -> None:
+    if manifest_digest is None or not _SHA256_PATTERN.fullmatch(manifest_digest):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI archive lacks its inspected manifest digest")
+    layout = json.loads(
+        _read_archive_member(archive, members, "oci-layout", maximum_size=1024).decode("utf-8")
+    )
+    index = json.loads(
+        _read_archive_member(archive, members, "index.json", maximum_size=1024 * 1024).decode("utf-8")
+    )
+    descriptors = index.get("manifests") if isinstance(index, dict) else None
+    if (
+        layout != {"imageLayoutVersion": "1.0.0"}
+        or not isinstance(index, dict)
+        or index.get("schemaVersion") != 2
+        or index.get("mediaType") != "application/vnd.oci.image.index.v1+json"
+        or not isinstance(descriptors, list)
+        or len(descriptors) != 1
+        or not isinstance(descriptors[0], dict)
+    ):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI archive index is invalid")
+    descriptor = descriptors[0]
+    annotations = descriptor.get("annotations")
+    expected_image_names = {image_ref, f"docker.io/{image_ref}"}
+    if (
+        descriptor.get("mediaType") != "application/vnd.oci.image.manifest.v1+json"
+        or descriptor.get("digest") != manifest_digest
+        or not isinstance(annotations, dict)
+        or annotations.get("config.digest") != image_id
+        or annotations.get("io.containerd.image.name") not in expected_image_names
+        or annotations.get("org.opencontainers.image.ref.name") != image_ref.rsplit(":", maxsplit=1)[-1]
+    ):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI archive descriptor is invalid")
+    manifest_name = f"blobs/sha256/{manifest_digest.removeprefix('sha256:')}"
+    manifest_content = _read_archive_member(
+        archive,
+        members,
+        manifest_name,
+        maximum_size=1024 * 1024,
+    )
+    if _sha256_bytes(manifest_content) != manifest_digest or descriptor.get("size") != len(manifest_content):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI archive manifest digest is invalid")
+    manifest = json.loads(manifest_content.decode("utf-8"))
+    config = manifest.get("config") if isinstance(manifest, dict) else None
+    layer_descriptors = manifest.get("layers") if isinstance(manifest, dict) else None
+    config_member = members.get(config_name)
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schemaVersion") != 2
+        or manifest.get("mediaType") != "application/vnd.oci.image.manifest.v1+json"
+        or not isinstance(config, dict)
+        or config.get("mediaType") != "application/vnd.oci.image.config.v1+json"
+        or config.get("digest") != image_id
+        or config_member is None
+        or config.get("size") != config_member.size
+        or not isinstance(layer_descriptors, list)
+        or len(layer_descriptors) != len(layers)
+    ):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI image manifest is invalid")
+    accepted_layer_media_types = {
+        "application/vnd.oci.image.layer.v1.tar",
+        "application/vnd.oci.image.layer.v1.tar+gzip",
+        "application/vnd.oci.image.layer.v1.tar+zstd",
+    }
+    for layer_path, layer_descriptor in zip(layers, layer_descriptors, strict=True):
+        layer_member = members.get(str(layer_path))
+        expected_digest = f"sha256:{str(layer_path).removeprefix('blobs/sha256/')}"
+        if (
+            not isinstance(layer_descriptor, dict)
+            or layer_descriptor.get("mediaType") not in accepted_layer_media_types
+            or layer_descriptor.get("digest") != expected_digest
+            or layer_member is None
+            or layer_descriptor.get("size") != layer_member.size
+        ):
+            raise GenOfficeWorkerImageAdmissionError("GenOffice OCI image layer descriptor is invalid")
+
+
+def _verify_docker_archive(
+    path: Path,
+    *,
+    image_id: str,
+    image_ref: str,
+    manifest_digest: str | None = None,
+) -> tuple[str, int]:
     archive_hash, archive_size = _hash_file(path, maximum_size=MAX_IMAGE_ARCHIVE_BYTES)
     try:
         with tarfile.open(path, mode="r:*") as archive:
-            manifest_member = archive.getmember("manifest.json")
-            if not manifest_member.isfile() or manifest_member.size > 1024 * 1024:
-                raise GenOfficeWorkerImageAdmissionError("GenOffice image archive manifest is invalid")
-            manifest_file = archive.extractfile(manifest_member)
-            if manifest_file is None:
-                raise GenOfficeWorkerImageAdmissionError("GenOffice image archive manifest is unreadable")
-            manifest = json.loads(manifest_file.read().decode("utf-8"))
+            archive_members = archive.getmembers()
+            members = {member.name: member for member in archive_members}
+            if len(archive_members) > 10_000 or len(members) != len(archive_members):
+                raise GenOfficeWorkerImageAdmissionError("GenOffice image archive member inventory is invalid")
+            for member in archive_members:
+                member_path = PurePosixPath(member.name)
+                if (
+                    member_path.is_absolute()
+                    or ".." in member_path.parts
+                    or not (member.isfile() or member.isdir())
+                ):
+                    raise GenOfficeWorkerImageAdmissionError("GenOffice image archive contains an unsafe member")
+            manifest = json.loads(
+                _read_archive_member(
+                    archive,
+                    members,
+                    "manifest.json",
+                    maximum_size=1024 * 1024,
+                ).decode("utf-8")
+            )
             if not isinstance(manifest, list) or len(manifest) != 1 or not isinstance(manifest[0], dict):
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive must contain one image")
             entry = manifest[0]
             config_name = entry.get("Config")
             repo_tags = entry.get("RepoTags")
             layers = entry.get("Layers")
-            expected_config_name = f"{image_id.removeprefix('sha256:')}.json"
-            if config_name != expected_config_name or repo_tags != [image_ref]:
+            digest_hex = image_id.removeprefix("sha256:")
+            classic_config_name = f"{digest_hex}.json"
+            oci_config_name = f"blobs/sha256/{digest_hex}"
+            if (
+                not isinstance(config_name, str)
+                or config_name not in {classic_config_name, oci_config_name}
+                or repo_tags != [image_ref]
+            ):
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive identity does not match inspect")
             if not isinstance(layers, list) or not layers:
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive has no layers")
-            config_member = archive.getmember(config_name)
-            config_file = archive.extractfile(config_member)
-            if config_file is None or _sha256_bytes(config_file.read()) != image_id:
+            config_content = _read_archive_member(
+                archive,
+                members,
+                config_name,
+                maximum_size=MAX_SMALL_EVIDENCE_BYTES,
+            )
+            if _sha256_bytes(config_content) != image_id:
                 raise GenOfficeWorkerImageAdmissionError("GenOffice image archive config digest is invalid")
             for layer in layers:
                 if (
@@ -636,8 +777,26 @@ def _verify_docker_archive(path: Path, *, image_id: str, image_ref: str) -> tupl
                     or ".." in PurePosixPath(layer).parts
                 ):
                     raise GenOfficeWorkerImageAdmissionError("GenOffice image archive layer path is unsafe")
-                if not archive.getmember(layer).isfile():
+                layer_member = members.get(layer)
+                if layer_member is None or not layer_member.isfile():
                     raise GenOfficeWorkerImageAdmissionError("GenOffice image archive layer is not a file")
+                if layer.startswith("blobs/sha256/"):
+                    layer_file = archive.extractfile(layer_member)
+                    if layer_file is None:
+                        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI image layer is unreadable")
+                    layer_hash, layer_size = _hash_stream(layer_file, maximum_size=MAX_IMAGE_ARCHIVE_BYTES)
+                    if layer_hash != f"sha256:{layer.removeprefix('blobs/sha256/')}" or layer_size != layer_member.size:
+                        raise GenOfficeWorkerImageAdmissionError("GenOffice OCI image layer digest is invalid")
+            if config_name == oci_config_name:
+                _verify_oci_archive(
+                    archive,
+                    members,
+                    manifest_digest=manifest_digest,
+                    image_id=image_id,
+                    image_ref=image_ref,
+                    config_name=config_name,
+                    layers=layers,
+                )
     except (KeyError, OSError, tarfile.TarError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise GenOfficeWorkerImageAdmissionError("GenOffice image archive is invalid") from exc
     return archive_hash, archive_size
@@ -691,14 +850,15 @@ def build_genoffice_worker_image_build_evidence(
         raise GenOfficeWorkerImageAdmissionError("GenOffice offline dependency evidence is invalid")
     image_a, inspect_a_hash = _load_inspect(inspect_a_path, expected_ref=image_ref_a)
     image_b, inspect_b_hash = _load_inspect(inspect_b_path, expected_ref=image_ref_b)
-    image_id_a, image_size_a, layers_a = _inspect_boundary(image_a, context_report=context_report)
-    image_id_b, image_size_b, layers_b = _inspect_boundary(image_b, context_report=context_report)
-    if (image_id_a, image_size_a, layers_a) != (image_id_b, image_size_b, layers_b):
+    manifest_a, image_id_a, image_size_a, layers_a = _inspect_boundary(image_a, context_report=context_report)
+    manifest_b, image_id_b, image_size_b, layers_b = _inspect_boundary(image_b, context_report=context_report)
+    if (manifest_a, image_id_a, image_size_a, layers_a) != (manifest_b, image_id_b, image_size_b, layers_b):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker image builds are not reproducible")
     archive_hash, archive_size = _verify_docker_archive(
         image_archive_path,
         image_id=image_id_a,
         image_ref=image_ref_a,
+        manifest_digest=manifest_a,
     )
     dockerfile_hash, _ = _hash_file(dockerfile_path, maximum_size=1024 * 1024)
     draft = GenOfficeWorkerImageBuildEvidence(

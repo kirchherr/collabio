@@ -339,6 +339,82 @@ def test_worker_docker_archive_is_bound_to_config_digest_and_tag(tmp_path: Path)
         )
 
 
+def test_worker_oci_archive_binds_index_manifest_config_layers_and_tag(tmp_path: Path) -> None:
+    image_ref = "collabio/genoffice-docx-worker:verification-a"
+    config = json.dumps({"architecture": "amd64", "os": "linux"}, sort_keys=True).encode()
+    config_digest = f"sha256:{hashlib.sha256(config).hexdigest()}"
+    layer = b"reproducible-layer"
+    layer_digest = f"sha256:{hashlib.sha256(layer).hexdigest()}"
+    config_name = f"blobs/sha256/{config_digest.removeprefix('sha256:')}"
+    layer_name = f"blobs/sha256/{layer_digest.removeprefix('sha256:')}"
+    oci_manifest = json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": config_digest,
+                "size": len(config),
+            },
+            "layers": [
+                {
+                    "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+                    "digest": layer_digest,
+                    "size": len(layer),
+                }
+            ],
+        },
+        sort_keys=True,
+    ).encode()
+    manifest_digest = f"sha256:{hashlib.sha256(oci_manifest).hexdigest()}"
+    manifest_name = f"blobs/sha256/{manifest_digest.removeprefix('sha256:')}"
+    index = json.dumps(
+        {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": manifest_digest,
+                    "size": len(oci_manifest),
+                    "annotations": {
+                        "config.digest": config_digest,
+                        "io.containerd.image.name": f"docker.io/{image_ref}",
+                        "org.opencontainers.image.ref.name": "verification-a",
+                    },
+                }
+            ],
+        },
+        sort_keys=True,
+    ).encode()
+    docker_manifest = json.dumps(
+        [{"Config": config_name, "RepoTags": [image_ref], "Layers": [layer_name]}],
+        sort_keys=True,
+    ).encode()
+    archive_path = tmp_path / "worker-oci.tar"
+    with tarfile.open(archive_path, "w") as archive:
+        for name, content in (
+            ("oci-layout", b'{"imageLayoutVersion":"1.0.0"}'),
+            ("index.json", index),
+            ("manifest.json", docker_manifest),
+            (config_name, config),
+            (manifest_name, oci_manifest),
+            (layer_name, layer),
+        ):
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            archive.addfile(info, io.BytesIO(content))
+
+    archive_hash, _ = _verify_docker_archive(
+        archive_path,
+        image_id=config_digest,
+        image_ref=image_ref,
+        manifest_digest=manifest_digest,
+    )
+
+    assert archive_hash.startswith("sha256:")
+
+
 def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
     config_digest = _hash("image-config")
     manifest_digest = _hash("image-manifest")
@@ -379,8 +455,9 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
         "RootFS": {"Type": "layers", "Layers": [_hash("layer")]},
     }
 
-    observed_digest, size, layers = _inspect_boundary(image, context_report=context_report)
+    observed_manifest, observed_digest, size, layers = _inspect_boundary(image, context_report=context_report)
 
+    assert observed_manifest == manifest_digest
     assert observed_digest == config_digest
     assert size == 4096
     assert layers == (_hash("layer"),)
