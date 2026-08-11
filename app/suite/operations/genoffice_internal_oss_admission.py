@@ -29,12 +29,21 @@ from suite.operations.genoffice_third_party_notice import (
     load_genoffice_third_party_notice_report,
 )
 
-GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_VERSION = "genoffice_internal_oss_decision_envelope.v1"
+GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_VERSION = "genoffice_internal_oss_decision_envelope.v2"
 GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_VERSION = "genoffice_internal_oss_signer_policy.v1"
 GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_SCHEMA_VERSION = "genoffice_internal_oss_admission_report.v1"
 GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES = ("product_owner", "security_compliance_owner")
 GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES = ("hosted_service", "on_prem_distribution", "production")
 GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES = tuple(f"{prefix}**" for prefix in GENOFFICE_PROHIBITED_SCOPE_PREFIXES)
+GENOFFICE_INTERNAL_OSS_REEVALUATION_TRIGGERS = (
+    "source_commit_change",
+    "source_scope_change",
+    "dependency_or_license_change",
+    "notice_artifact_change",
+    "trademark_use_change",
+    "usage_profile_change",
+    "signer_policy_change",
+)
 MAX_INTERNAL_OSS_INPUT_SIZE_BYTES = 4 * 1024 * 1024
 
 
@@ -55,12 +64,13 @@ class GenOfficeInternalOssDependencyResolution(BaseModel):
 class GenOfficeInternalOssDecisionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_internal_oss_decision_payload.v1"] = "genoffice_internal_oss_decision_payload.v1"
+    schema_version: Literal["genoffice_internal_oss_decision_payload.v2"] = "genoffice_internal_oss_decision_payload.v2"
     decision_id: str
     decision: Literal["approved_for_development_evaluation", "rejected"]
     decided_at_utc: datetime
     risk_acceptance_ref: str
     change_control_ref: str
+    signer_policy_hash: str
     legal_dossier_report_hash: str
     third_party_notice_report_hash: str
     third_party_notice_artifact_sha256: str
@@ -90,6 +100,7 @@ class GenOfficeInternalOssDecisionPayload(BaseModel):
     def require_identity_and_hash(self) -> GenOfficeInternalOssDecisionPayload:
         if not all(value.strip() for value in (self.decision_id, self.risk_acceptance_ref, self.change_control_ref)):
             raise ValueError("GenOffice internal OSS decision identity or control reference is empty")
+        _require_sha256(self.signer_policy_hash, field="internal OSS signer policy hash")
         _require_sha256(self.payload_hash, field="internal OSS decision payload hash")
         return self
 
@@ -112,8 +123,8 @@ class GenOfficeInternalOssDetachedApproval(BaseModel):
 class GenOfficeInternalOssDecisionEnvelope(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_internal_oss_decision_envelope.v1"] = (
-        "genoffice_internal_oss_decision_envelope.v1"
+    schema_version: Literal["genoffice_internal_oss_decision_envelope.v2"] = (
+        "genoffice_internal_oss_decision_envelope.v2"
     )
     payload: GenOfficeInternalOssDecisionPayload
     approvals: tuple[GenOfficeInternalOssDetachedApproval, ...]
@@ -255,6 +266,10 @@ def build_genoffice_internal_oss_admission_report_hash(report: GenOfficeInternal
     return stable_hash(canonical_json(report.model_dump(mode="json", exclude={"report_hash"})))
 
 
+def build_genoffice_internal_oss_signature_message(payload: GenOfficeInternalOssDecisionPayload) -> bytes:
+    return canonical_json(payload.model_dump(mode="json")).encode("utf-8")
+
+
 def _selected_expression(dependency: GenOfficeDependencyLicenseEvidence) -> str:
     if dependency.package_name == "jszip" and dependency.declared_license_expression == "(MIT OR GPL-3.0-or-later)":
         return "MIT"
@@ -336,19 +351,57 @@ def _verify_decision_scope(
     required_resolutions = build_genoffice_internal_oss_dependency_resolutions(dossier)
     if payload.dependency_license_resolutions != required_resolutions:
         raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS dependency resolutions are incomplete")
-    required_triggers = {
-        "source_commit_change",
-        "source_scope_change",
-        "dependency_or_license_change",
-        "notice_artifact_change",
-        "trademark_use_change",
-        "usage_profile_change",
-        "signer_policy_change",
-    }
+    required_triggers = set(GENOFFICE_INTERNAL_OSS_REEVALUATION_TRIGGERS)
     if set(payload.reevaluation_triggers) != required_triggers or len(payload.reevaluation_triggers) != len(
         required_triggers
     ):
         raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS reevaluation triggers are incomplete")
+
+
+def verify_genoffice_internal_oss_envelope_signatures(
+    *,
+    envelope: GenOfficeInternalOssDecisionEnvelope,
+    signer_policy: GenOfficeInternalOssSignerPolicy,
+    signature_verifier: DetachedSignatureVerifier = DEFAULT_DETACHED_SIGNATURE_VERIFIER,
+) -> None:
+    if build_genoffice_internal_oss_payload_hash(envelope.payload) != envelope.payload.payload_hash:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS decision payload hash is invalid")
+    if build_genoffice_internal_oss_record_hash(envelope) != envelope.record_hash:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS decision record hash is invalid")
+    if build_genoffice_internal_oss_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS signer policy hash is invalid")
+    if envelope.payload.signer_policy_hash != signer_policy.policy_hash:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS signer policy drifted after request creation")
+    if signer_policy.effective_at_utc > envelope.payload.decided_at_utc:
+        raise GenOfficeInternalOssAdmissionError(
+            "GenOffice internal OSS signer policy was not effective at decision time"
+        )
+    if len(envelope.approvals) != 2:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission requires exactly two approvals")
+    if set(item.signer_role for item in envelope.approvals) != set(GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES):
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission lacks both required approval roles")
+    if len({item.signer_id for item in envelope.approvals}) != 2:
+        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission violates two-person control")
+    policy_signers = {
+        (item.signer_id, item.signer_role, item.key_id): item for item in signer_policy.signers if item.active
+    }
+    message = build_genoffice_internal_oss_signature_message(envelope.payload)
+    for approval in envelope.approvals:
+        policy_signer = policy_signers.get((approval.signer_id, approval.signer_role, approval.key_id))
+        if policy_signer is None:
+            raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS approval signer is not authorized")
+        public_key = _decode_base64(
+            policy_signer.ed25519_public_key_base64,
+            field="internal OSS public key",
+            expected_size=32,
+        )
+        signature = _decode_base64(
+            approval.signature_base64,
+            field="internal OSS detached signature",
+            expected_size=64,
+        )
+        if not signature_verifier.verify_ed25519(public_key=public_key, signature=signature, message=message):
+            raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS detached signature is invalid")
 
 
 def verify_genoffice_internal_oss_admission(
@@ -372,42 +425,12 @@ def verify_genoffice_internal_oss_admission(
     notice_hash = f"sha256:{hashlib.sha256(notice_artifact).hexdigest()}"
     if notice_hash != notice_report.notice_artifact_sha256:
         raise GenOfficeInternalOssAdmissionError("GenOffice third-party notice artifact hash is invalid")
-    if build_genoffice_internal_oss_record_hash(envelope) != envelope.record_hash:
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS decision record hash is invalid")
-    if build_genoffice_internal_oss_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS signer policy hash is invalid")
-    if signer_policy.effective_at_utc > envelope.payload.decided_at_utc:
-        raise GenOfficeInternalOssAdmissionError(
-            "GenOffice internal OSS signer policy was not effective at decision time"
-        )
     _verify_decision_scope(payload=envelope.payload, dossier=dossier, notice_report=notice_report)
-
-    if len(envelope.approvals) != 2:
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission requires exactly two approvals")
-    if set(item.signer_role for item in envelope.approvals) != set(GENOFFICE_INTERNAL_OSS_APPROVAL_ROLES):
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission lacks both required approval roles")
-    if len({item.signer_id for item in envelope.approvals}) != 2:
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission violates two-person control")
-    policy_signers = {
-        (item.signer_id, item.signer_role, item.key_id): item for item in signer_policy.signers if item.active
-    }
-    message = canonical_json(envelope.payload.model_dump(mode="json")).encode("utf-8")
-    for approval in envelope.approvals:
-        policy_signer = policy_signers.get((approval.signer_id, approval.signer_role, approval.key_id))
-        if policy_signer is None:
-            raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS approval signer is not authorized")
-        public_key = _decode_base64(
-            policy_signer.ed25519_public_key_base64,
-            field="internal OSS public key",
-            expected_size=32,
-        )
-        signature = _decode_base64(
-            approval.signature_base64,
-            field="internal OSS detached signature",
-            expected_size=64,
-        )
-        if not signature_verifier.verify_ed25519(public_key=public_key, signature=signature, message=message):
-            raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS detached signature is invalid")
+    verify_genoffice_internal_oss_envelope_signatures(
+        envelope=envelope,
+        signer_policy=signer_policy,
+        signature_verifier=signature_verifier,
+    )
 
     draft = GenOfficeInternalOssAdmissionReport(
         legal_dossier_report_hash=dossier.report_hash,

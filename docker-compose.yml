@@ -2339,6 +2339,110 @@ services:
       - ./app:/workspace/app:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-internal-oss-signer-policy-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: policy
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_ID: "${SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_ID:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_EFFECTIVE_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_EFFECTIVE_AT_UTC:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNER_ID: "${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_KEY_ID: "${SUITE_GENOFFICE_PRODUCT_OWNER_KEY_ID:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_PATH: /keys/product-owner.ed25519.pub
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNER_ID: "${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_KEY_ID: "${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_KEY_ID:-}"
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_PATH: /keys/security-compliance-owner.ed25519.pub
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.pub}:/keys/product-owner.ed25519.pub:ro
+      - ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.pub}:/keys/security-compliance-owner.ed25519.pub:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-signing-request:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: request
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID: "${SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-internal-oss-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-envelope-assembler:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: assemble
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_PATH: /approvals/product-owner.ed25519.sig
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_PATH: /approvals/security-compliance-owner.ed25519.sig
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH: /evidence/genoffice-internal-oss-decision.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.sig}:/approvals/product-owner.ed25519.sig:ro
+      - ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.sig}:/approvals/security-compliance-owner.ed25519.sig:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
   genoffice-internal-oss-admission:
     profiles: ["office-supply-chain"]
     build:

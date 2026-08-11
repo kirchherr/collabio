@@ -18,10 +18,14 @@ development risk without silently opening production or distribution.
 
 - Keep ADR-0065 and its immutable dossier as the factual evidence layer. Do not rewrite it as an approval.
 - Replace the unavailable external legal decision for the development phase with
-  `genoffice_internal_oss_decision_envelope.v1`.
+  `genoffice_internal_oss_decision_envelope.v2`.
 - Require two distinct internal people in the roles `product_owner` and `security_compliance_owner`. Each signs the exact
-  canonical decision payload with an Ed25519 key authorized by a separately hash-bound signer policy. Signature
-  verification stays behind the Suite KMS adapter.
+  canonical decision payload with an Ed25519 key authorized by a separately hash-bound signer policy. The policy hash
+  is itself part of the signed payload, preventing reassignment of valid signatures through later policy drift.
+  Signature verification stays behind the Suite KMS adapter.
+- Use a separated ceremony: a public-key-only policy builder, a non-effective canonical signing request, signer-local
+  detached signing, and a public-input-only envelope assembler. No central component receives or generates a signing
+  key.
 - The internal decision is a documented risk acceptance, not a legal opinion. It must bind the exact dossier, generated
   third-party notice, source and prohibited scopes, trademark policy, all dependency resolutions and reevaluation
   triggers.
@@ -42,6 +46,7 @@ development risk without silently opening production or distribution.
 - Development is no longer blocked on an unavailable external role.
 - No person, automation or AI is represented as providing legal advice.
 - The exact accountable people, policy, signatures, choices and risk reference remain auditable.
+- A changed signer policy invalidates the signing request and requires a new two-person decision.
 - A successful admission permits building an isolated development candidate, not serving or distributing it.
 - The Office adapter remains replaceable. ECMA-376 and independently licensed engines remain viable alternatives.
 
@@ -50,9 +55,11 @@ development risk without silently opening production or distribution.
 The first two offline builder runs produced identical 97,493-byte notice artifacts with
 `sha256:e6dada57493fc5161dc4c5364f36feab11298fc887f5253eb1f03b3920239162`. The 23-component,
 27-file report is `sha256:878e93a174a9deeae9c137a0229210c45dd636c9763cda9d430d42e6ad07fdc7`.
-Decision and signer-policy schema hashes are `sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698`
-and `sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`. No human
-decision or signer policy was fabricated; development admission remains pending.
+The earlier v1 decision and signer-policy schema hashes were
+`sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698` and
+`sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`. No decision
+used v1. The v2 decision contract adds mandatory signer-policy binding before the first real ceremony. No human decision
+or signer policy was fabricated; development admission remains pending.
 
 ## References
 

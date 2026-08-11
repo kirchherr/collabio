@@ -763,7 +763,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Finding ab. npm-Signatur, Publish-/SLSA-Attestierung, Fulcio-Identitaet und Rekor-Inclusion "
                         "sind kryptografisch verifiziert. Alle 21 Runtime-Archive und 42 Rechtsdateien sind im "
                         "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden. Ein deterministisches Drittanbieter-"
-                        "NOTICE und das interne Ed25519-Vier-Augen-Gate koennen nur den Development-Build oeffnen. "
+                        "NOTICE und die policy-gebundene Ed25519-Signier-Ceremony koennen nur den Development-Build "
+                        "oeffnen. Private Schluessel bleiben ausserhalb von Repository und zentralem Assembler. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -786,10 +787,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_license_material_collector.py",
                         "app/suite/operations/genoffice_legal_review_dossier.py",
                         "app/suite/operations/genoffice_third_party_notice.py",
+                        "app/suite/operations/genoffice_internal_oss_ceremony.py",
                         "app/suite/operations/genoffice_internal_oss_admission.py",
                         "tests/test_genoffice_license_material_collector.py",
                         "tests/test_genoffice_legal_review_dossier.py",
                         "tests/test_genoffice_third_party_notice.py",
+                        "tests/test_genoffice_internal_oss_ceremony.py",
                         "tests/test_genoffice_internal_oss_admission.py",
                         "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
                         "docs/operations/GENOFFICE_INTERNAL_OSS_ADMISSION.md",
@@ -825,6 +828,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "exact_runtime_license_archives_integrity_verified",
                         "offline_notice_trademark_and_enterprise_scope_dossier",
                         "two_distinct_internal_oss_signers_required",
+                        "signer_policy_hash_bound_into_signed_payload",
+                        "public_input_only_envelope_assembler",
+                        "signing_keys_remain_outside_collabio",
                         "ed25519_verification_behind_kms_adapter",
                         "development_worker_build_blocked_until_signed_internal_decision",
                         "hosted_on_prem_and_production_profiles_remain_blocked",

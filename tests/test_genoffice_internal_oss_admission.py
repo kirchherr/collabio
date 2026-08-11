@@ -24,6 +24,7 @@ from suite.operations.genoffice_internal_oss_admission import (
     build_genoffice_internal_oss_dependency_resolutions,
     build_genoffice_internal_oss_payload_hash,
     build_genoffice_internal_oss_record_hash,
+    build_genoffice_internal_oss_signature_message,
     build_genoffice_internal_oss_signer_policy_hash,
     run_genoffice_internal_oss_admission_from_environment,
     verify_genoffice_internal_oss_admission,
@@ -91,41 +92,6 @@ def _signed_fixture(
     resolutions[jszip_index] = resolutions[jszip_index].model_copy(
         update={"selected_distribution_license_expression": jszip_license}
     )
-    payload_draft = GenOfficeInternalOssDecisionPayload(
-        decision_id="oss-decision-test",
-        decision="approved_for_development_evaluation",
-        decided_at_utc=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
-        risk_acceptance_ref="risk:test",
-        change_control_ref="change:test",
-        legal_dossier_report_hash=dossier.report_hash,
-        third_party_notice_report_hash=notice_report.report_hash,
-        third_party_notice_artifact_sha256=notice_report.notice_artifact_sha256,
-        approved_usage_profiles=("development_evaluation",),
-        blocked_usage_profiles=GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES,
-        approved_source_scopes=(GENOFFICE_SELECTED_SOURCE_SCOPE,),
-        prohibited_source_scopes=GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES,
-        trademark_policy=GENOFFICE_REQUIRED_TRADEMARK_POLICY,
-        apache_2_0_terms_accepted=True,
-        apache_notice_preservation_required=True,
-        apache_patent_terms_acknowledged=True,
-        enterprise_scope_excluded=True,
-        jszip_selected_license_expression=jszip_license,
-        pako_selected_license_expression="MIT AND Zlib",
-        dependency_license_resolutions=tuple(resolutions),
-        reevaluation_triggers=(
-            "source_commit_change",
-            "source_scope_change",
-            "dependency_or_license_change",
-            "notice_artifact_change",
-            "trademark_use_change",
-            "usage_profile_change",
-            "signer_policy_change",
-        ),
-        payload_hash="sha256:" + "0" * 64,
-    )
-    payload = payload_draft.model_copy(
-        update={"payload_hash": build_genoffice_internal_oss_payload_hash(payload_draft)}
-    )
     private_keys = (Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate())
     signer_ids = ("person-a", "person-a" if same_signer else "person-b")
     roles: tuple[Literal["product_owner"], Literal["security_compliance_owner"]] = (
@@ -158,7 +124,43 @@ def _signed_fixture(
     policy = policy_draft.model_copy(
         update={"policy_hash": build_genoffice_internal_oss_signer_policy_hash(policy_draft)}
     )
-    message = canonical_json(payload.model_dump(mode="json")).encode("utf-8")
+    payload_draft = GenOfficeInternalOssDecisionPayload(
+        decision_id="oss-decision-test",
+        decision="approved_for_development_evaluation",
+        decided_at_utc=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        risk_acceptance_ref="risk:test",
+        change_control_ref="change:test",
+        signer_policy_hash=policy.policy_hash,
+        legal_dossier_report_hash=dossier.report_hash,
+        third_party_notice_report_hash=notice_report.report_hash,
+        third_party_notice_artifact_sha256=notice_report.notice_artifact_sha256,
+        approved_usage_profiles=("development_evaluation",),
+        blocked_usage_profiles=GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES,
+        approved_source_scopes=(GENOFFICE_SELECTED_SOURCE_SCOPE,),
+        prohibited_source_scopes=GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES,
+        trademark_policy=GENOFFICE_REQUIRED_TRADEMARK_POLICY,
+        apache_2_0_terms_accepted=True,
+        apache_notice_preservation_required=True,
+        apache_patent_terms_acknowledged=True,
+        enterprise_scope_excluded=True,
+        jszip_selected_license_expression=jszip_license,
+        pako_selected_license_expression="MIT AND Zlib",
+        dependency_license_resolutions=tuple(resolutions),
+        reevaluation_triggers=(
+            "source_commit_change",
+            "source_scope_change",
+            "dependency_or_license_change",
+            "notice_artifact_change",
+            "trademark_use_change",
+            "usage_profile_change",
+            "signer_policy_change",
+        ),
+        payload_hash="sha256:" + "0" * 64,
+    )
+    payload = payload_draft.model_copy(
+        update={"payload_hash": build_genoffice_internal_oss_payload_hash(payload_draft)}
+    )
+    message = build_genoffice_internal_oss_signature_message(payload)
     approvals = tuple(
         GenOfficeInternalOssDetachedApproval(
             signer_id=signer_ids[index],

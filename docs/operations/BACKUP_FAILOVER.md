@@ -101,10 +101,12 @@ archives, their collection manifest, the offline LICENSE/NOTICE/trademark/enterp
 decision JSON Schema, the npm-gitHead-bound supplemental source license where a package omitted its full text, and any
 future detached-signature-verified legal record. ADR-0066 additionally retains the deterministic
 `GENOFFICE_THIRD_PARTY_NOTICES.txt`, its report, the internal OSS decision and signer-policy schemas, any installed public
-signer policy, the two-person signed decision envelope, and its development-only admission report. Private signing keys
-are KMS/secret-manager state and never backup payloads. A restore must verify every evidence digest, signer-policy hash,
-decision signature and usage-profile boundary before an Office worker can be rebuilt. Registry or license metadata
-presence without the retained cryptographic bytes, dossier and exact notice remains insufficient.
+signer policy, the policy-bound non-effective signing request, its exact canonical signature-message bytes, both public
+detached signatures, the assembled two-person decision envelope, and its development-only admission report. Signing
+keys are KMS/secret-manager state and never Collabio backup payloads. A restore must verify every evidence digest,
+request/message binding, signer-policy hash in the signed payload, decision signature and usage-profile boundary before
+an Office worker can be rebuilt. Registry or license metadata presence without the retained cryptographic bytes,
+dossier and exact notice remains insufficient.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:

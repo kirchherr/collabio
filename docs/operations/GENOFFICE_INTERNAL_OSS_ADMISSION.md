@@ -34,7 +34,7 @@ for `pako`. Enterprise terms are evidence of exclusion and are not copied into t
 
 ## Internal Decision
 
-The generated `genoffice_internal_oss_decision_envelope.v1` schema requires:
+The generated `genoffice_internal_oss_decision_envelope.v2` schema requires:
 
 - the exact dossier, notice-report and notice-artifact hashes;
 - the exact allowed and prohibited source scopes;
@@ -45,8 +45,26 @@ The generated `genoffice_internal_oss_decision_envelope.v1` schema requires:
 - detached Ed25519 approvals by two different people in the roles `product_owner` and
   `security_compliance_owner`.
 
-The separate signer policy binds signer IDs, roles, key IDs and public keys. The verifier accesses cryptography only
-through the Suite KMS adapter. The repository contains schemas, never private keys and never invented human approvals.
+The separate signer policy binds signer IDs, roles, key IDs and public keys. Its hash is part of the signed decision
+payload, so replacing the policy after request creation invalidates the ceremony. The verifier accesses cryptography
+only through the Suite KMS adapter. The repository contains schemas, never private keys and never invented human
+approvals.
+
+## Signing Ceremony
+
+The ceremony has four fail-closed stages:
+
+1. Two real internal people supply their identities, key IDs and raw 32-byte Ed25519 public keys. The policy builder
+   requires one `product_owner` and one `security_compliance_owner`, distinct people and distinct keys.
+2. The request builder binds that policy hash, the immutable dossier and NOTICE evidence, all accepted obligations and
+   blocked profiles into one canonical message. Its request explicitly records `admission_effective=false`.
+3. Each signer reviews and signs the exact `genoffice-internal-oss-signature-message.json` bytes on a separate approved
+   workstation or KMS. Only the raw 64-byte detached signature leaves that signer boundary.
+4. The no-network assembler reads the request, public policy and two signatures, verifies both through the Suite KMS
+   adapter and writes the decision envelope. It cannot read or generate a signing key.
+
+The resulting envelope is still not a production approval. The separate admission verifier must validate the complete
+legal-evidence chain before the development worker-build permission can become effective.
 
 ## Runbook
 
@@ -60,16 +78,39 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
   genoffice-internal-oss-schema
 ```
 
-After two internal signers have created `genoffice-internal-oss-decision.json` and an operator has installed the public
-`genoffice-internal-oss-signer-policy.json`:
+After the two accountable people and their approved public keys are available, set their non-secret IDs and the two
+public-key host paths, then create the policy:
 
 ```bash
+docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
+  genoffice-internal-oss-signer-policy-builder
+```
+
+Set the decision ID, UTC timestamps, risk-acceptance reference and immutable Git change-control reference, then create
+the policy-bound request:
+
+```bash
+docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
+  genoffice-internal-oss-signing-request
+```
+
+Distribute only the canonical signature-message file to the two signers. After their two raw detached signatures have
+been installed at the configured read-only host paths, assemble and verify the envelope, then run admission:
+
+```bash
+docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
+  genoffice-internal-oss-envelope-assembler
+
 docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
   genoffice-internal-oss-admission
 ```
 
-The admission exits `2` for missing, malformed, stale, same-person, unauthorized or invalidly signed evidence. A green
-report opens only the development worker-build gate.
+Every stage exits `2` for missing, malformed, stale, same-person, unauthorized, drifted or invalidly signed evidence.
+A green admission report opens only the development worker-build gate.
+
+The evidence set to back up together is the signer policy, signing request, exact signature-message bytes, both detached
+signatures, assembled decision envelope and admission report. Public keys and signatures are evidence; signing keys are
+never copied into Collabio backup storage.
 
 ## Verified Evidence Snapshot
 
@@ -78,12 +119,13 @@ The reproducible 2026-08-11 run on `dev001` produced:
 - 23-component, 27-file `GENOFFICE_THIRD_PARTY_NOTICES.txt`:
   `sha256:e6dada57493fc5161dc4c5364f36feab11298fc887f5253eb1f03b3920239162`;
 - notice report: `sha256:878e93a174a9deeae9c137a0229210c45dd636c9763cda9d430d42e6ad07fdc7`;
-- decision-envelope schema: `sha256:86c20d932f1666794bd2e67121c917da49ff4cfed40e70e730040008e5a7c698`;
-- signer-policy schema: `sha256:c5eb255d880075ed408bfe48d73e09156c58f31ee146ebc37e47c499ff700ed3`.
+- decision-envelope schema and signer-policy schema are regenerated and hash-checked after the policy-binding v2
+  contract is deployed.
 
 A second independent builder execution produced the identical notice bytes. No decision envelope, signer policy or
-admission report is committed because no human identity, public key or approval has been supplied. The development
-worker build therefore remains correctly blocked.
+admission report is committed because no human identity, public key or approval has been supplied. A meaningful signing
+request is intentionally not fabricated without its real public signer policy. The development worker build therefore
+remains correctly blocked.
 
 ## Alternatives
 
