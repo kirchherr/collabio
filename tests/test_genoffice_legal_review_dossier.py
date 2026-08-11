@@ -136,9 +136,7 @@ def test_human_decision_schema_requires_separate_signed_record() -> None:
 
 def test_committed_legal_dossier_is_review_ready_hash_valid_and_closed() -> None:
     report = load_genoffice_legal_review_dossier(EVIDENCE / "genoffice_legal_review_dossier_report.json")
-    decision_schema = json.loads(
-        (EVIDENCE / "genoffice_legal_decision_record.schema.json").read_text(encoding="utf-8")
-    )
+    decision_schema = json.loads((EVIDENCE / "genoffice_legal_decision_record.schema.json").read_text(encoding="utf-8"))
 
     assert report.report_hash == "sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a"
     assert report.license_material_collection_report_hash == (
