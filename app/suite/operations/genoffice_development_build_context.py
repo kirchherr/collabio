@@ -6,6 +6,7 @@ import json
 import os
 import tarfile
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Literal
 
@@ -41,9 +42,14 @@ from suite.operations.genoffice_npm_provenance_admission import (
     build_genoffice_npm_provenance_report_hash,
     load_genoffice_npm_provenance_admission_report,
 )
+from suite.operations.genoffice_solo_founder_exception import (
+    GenOfficeSoloFounderExceptionReport,
+    build_genoffice_solo_founder_report_hash,
+    load_genoffice_solo_founder_report,
+)
 
-GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_MANIFEST_SCHEMA_VERSION = "genoffice_development_build_context_manifest.v1"
-GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION = "genoffice_development_build_context_report.v1"
+GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_MANIFEST_SCHEMA_VERSION = "genoffice_development_build_context_manifest.v2"
+GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_SCHEMA_VERSION = "genoffice_development_build_context_report.v2"
 GENOFFICE_BUILD_CONTEXT_MANIFEST_PATH = ".collabio/build-context-manifest.json"
 GENOFFICE_NOTICE_CONTEXT_PATH = "THIRD_PARTY_NOTICES.txt"
 GENOFFICE_QUARANTINED_ROOT_METADATA = {
@@ -78,15 +84,18 @@ class GenOfficeDevelopmentBuildContextFile(BaseModel):
 class GenOfficeDevelopmentBuildContextManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_development_build_context_manifest.v1"] = (
-        "genoffice_development_build_context_manifest.v1"
+    schema_version: Literal["genoffice_development_build_context_manifest.v2"] = (
+        "genoffice_development_build_context_manifest.v2"
     )
     source_report_hash: str
     source_archive_sha256: str
     source_manifest_hash: str
     supply_chain_admission_report_hash: str
     npm_provenance_admission_report_hash: str
-    internal_oss_admission_report_hash: str
+    authorization_mode: Literal["two_person_internal_oss_admission", "solo_founder_development_exception"]
+    development_authorization_report_hash: str
+    internal_oss_admission_report_hash: str | None
+    solo_founder_exception_report_hash: str | None
     third_party_notice_artifact_sha256: str
     source_date_epoch: int
     payload_file_count: int
@@ -97,17 +106,21 @@ class GenOfficeDevelopmentBuildContextManifest(BaseModel):
 class GenOfficeDevelopmentBuildContextReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["genoffice_development_build_context_report.v1"] = (
-        "genoffice_development_build_context_report.v1"
+    schema_version: Literal["genoffice_development_build_context_report.v2"] = (
+        "genoffice_development_build_context_report.v2"
     )
     source_report_hash: str
     source_archive_sha256: str
     source_manifest_hash: str
     supply_chain_admission_report_hash: str
     npm_provenance_admission_report_hash: str
-    internal_oss_admission_report_hash: str
+    authorization_mode: Literal["two_person_internal_oss_admission", "solo_founder_development_exception"]
+    development_authorization_report_hash: str
+    internal_oss_admission_report_hash: str | None
+    solo_founder_exception_report_hash: str | None
     signer_policy_hash: str
-    decision_record_hash: str
+    authorization_record_hash: str
+    decision_record_hash: str | None
     third_party_notice_artifact_sha256: str
     source_date_epoch: int
     selected_source_file_count: int
@@ -156,7 +169,33 @@ class GenOfficeDevelopmentBuildContextReport(BaseModel):
             )
         ):
             raise ValueError("GenOffice development build context opened a runtime boundary")
+        if self.authorization_mode == "two_person_internal_oss_admission":
+            if (
+                self.internal_oss_admission_report_hash != self.development_authorization_report_hash
+                or self.solo_founder_exception_report_hash is not None
+                or self.decision_record_hash != self.authorization_record_hash
+            ):
+                raise ValueError("GenOffice two-person build authorization binding is invalid")
+        elif (
+            self.solo_founder_exception_report_hash != self.development_authorization_report_hash
+            or self.internal_oss_admission_report_hash is not None
+            or self.decision_record_hash is not None
+        ):
+            raise ValueError("GenOffice solo-founder build authorization binding is invalid")
         return self
+
+
+class _DevelopmentAuthorizationEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["two_person_internal_oss_admission", "solo_founder_development_exception"]
+    report_hash: str
+    signer_policy_hash: str
+    authorization_record_hash: str
+    internal_oss_admission_report_hash: str | None
+    solo_founder_exception_report_hash: str | None
+    decision_record_hash: str | None
+    third_party_notice_artifact_sha256: str
 
 
 def _sha256_bytes(content: bytes) -> str:
@@ -208,9 +247,11 @@ def _verify_input_evidence(
     source_report: GenOfficeDocxSourceAdmissionReport,
     supply_chain_report: GenOfficeDocxSupplyChainAdmissionReport,
     npm_provenance_report: GenOfficeNpmProvenanceAdmissionReport,
-    internal_oss_admission_report: GenOfficeInternalOssAdmissionReport,
+    internal_oss_admission_report: GenOfficeInternalOssAdmissionReport | None,
+    solo_founder_exception_report: GenOfficeSoloFounderExceptionReport | None,
     notice_artifact: bytes,
-) -> None:
+    authorization_verified_at_utc: datetime,
+) -> _DevelopmentAuthorizationEvidence:
     if build_genoffice_docx_source_admission_report_hash(source_report) != source_report.report_hash:
         raise GenOfficeDevelopmentBuildContextError("GenOffice source admission report hash is invalid")
     if source_report.report_hash != GENOFFICE_REVIEWED_SOURCE_REPORT_HASH:
@@ -255,25 +296,76 @@ def _verify_input_evidence(
         or not npm_provenance_report.cryptographic_provenance_gate_passed
     ):
         raise GenOfficeDevelopmentBuildContextError("GenOffice npm provenance admission is not reviewed")
-    if (
-        build_genoffice_internal_oss_admission_report_hash(internal_oss_admission_report)
-        != internal_oss_admission_report.report_hash
-    ):
-        raise GenOfficeDevelopmentBuildContextError("GenOffice internal OSS admission report hash is invalid")
-    if not all(
-        (
-            internal_oss_admission_report.internal_oss_decision_verified,
-            internal_oss_admission_report.two_person_control_verified,
-            internal_oss_admission_report.detached_signatures_verified,
-            internal_oss_admission_report.development_build_context_materialization_allowed,
-            internal_oss_admission_report.reproducible_worker_build_allowed,
+    if authorization_verified_at_utc.tzinfo is None or authorization_verified_at_utc.utcoffset() is None:
+        raise GenOfficeDevelopmentBuildContextError("GenOffice authorization verification time lacks a timezone")
+    if (internal_oss_admission_report is None) == (solo_founder_exception_report is None):
+        raise GenOfficeDevelopmentBuildContextError("GenOffice development requires exactly one authorization mode")
+    if internal_oss_admission_report is not None:
+        if (
+            build_genoffice_internal_oss_admission_report_hash(internal_oss_admission_report)
+            != internal_oss_admission_report.report_hash
+        ):
+            raise GenOfficeDevelopmentBuildContextError("GenOffice internal OSS admission report hash is invalid")
+        if not all(
+            (
+                internal_oss_admission_report.internal_oss_decision_verified,
+                internal_oss_admission_report.two_person_control_verified,
+                internal_oss_admission_report.detached_signatures_verified,
+                internal_oss_admission_report.development_build_context_materialization_allowed,
+                internal_oss_admission_report.reproducible_worker_build_allowed,
+            )
+        ):
+            raise GenOfficeDevelopmentBuildContextError(
+                "GenOffice internal OSS admission does not authorize materialization"
+            )
+        authorization = _DevelopmentAuthorizationEvidence(
+            mode="two_person_internal_oss_admission",
+            report_hash=internal_oss_admission_report.report_hash,
+            signer_policy_hash=internal_oss_admission_report.signer_policy_hash,
+            authorization_record_hash=internal_oss_admission_report.decision_record_hash,
+            internal_oss_admission_report_hash=internal_oss_admission_report.report_hash,
+            solo_founder_exception_report_hash=None,
+            decision_record_hash=internal_oss_admission_report.decision_record_hash,
+            third_party_notice_artifact_sha256=internal_oss_admission_report.third_party_notice_artifact_sha256,
         )
-    ):
+    else:
+        assert solo_founder_exception_report is not None
+        if (
+            build_genoffice_solo_founder_report_hash(solo_founder_exception_report)
+            != solo_founder_exception_report.report_hash
+        ):
+            raise GenOfficeDevelopmentBuildContextError("GenOffice solo-founder exception report hash is invalid")
+        now = authorization_verified_at_utc.astimezone(UTC)
+        if not solo_founder_exception_report.issued_at_utc <= now <= solo_founder_exception_report.valid_until_utc:
+            raise GenOfficeDevelopmentBuildContextError("GenOffice solo-founder exception is expired or not active")
+        if not all(
+            (
+                solo_founder_exception_report.solo_founder_risk_acceptance_verified,
+                solo_founder_exception_report.detached_signature_verified,
+                solo_founder_exception_report.compensating_controls_verified,
+                solo_founder_exception_report.write_once_evidence_required,
+                solo_founder_exception_report.development_build_context_materialization_allowed,
+                solo_founder_exception_report.reproducible_worker_build_allowed,
+            )
+        ) or solo_founder_exception_report.two_person_control_verified:
+            raise GenOfficeDevelopmentBuildContextError(
+                "GenOffice solo-founder exception does not authorize materialization"
+            )
+        authorization = _DevelopmentAuthorizationEvidence(
+            mode="solo_founder_development_exception",
+            report_hash=solo_founder_exception_report.report_hash,
+            signer_policy_hash=solo_founder_exception_report.signer_policy_hash,
+            authorization_record_hash=solo_founder_exception_report.signing_request_hash,
+            internal_oss_admission_report_hash=None,
+            solo_founder_exception_report_hash=solo_founder_exception_report.report_hash,
+            decision_record_hash=None,
+            third_party_notice_artifact_sha256=solo_founder_exception_report.third_party_notice_artifact_sha256,
+        )
+    if _sha256_bytes(notice_artifact) != authorization.third_party_notice_artifact_sha256:
         raise GenOfficeDevelopmentBuildContextError(
-            "GenOffice internal OSS admission does not authorize materialization"
+            "GenOffice third-party notice does not match development authorization"
         )
-    if _sha256_bytes(notice_artifact) != internal_oss_admission_report.third_party_notice_artifact_sha256:
-        raise GenOfficeDevelopmentBuildContextError("GenOffice third-party notice does not match internal admission")
+    return authorization
 
 
 def _read_selected_source_files(
@@ -370,18 +462,22 @@ def build_genoffice_development_build_context(
     source_report: GenOfficeDocxSourceAdmissionReport,
     supply_chain_report: GenOfficeDocxSupplyChainAdmissionReport,
     npm_provenance_report: GenOfficeNpmProvenanceAdmissionReport,
-    internal_oss_admission_report: GenOfficeInternalOssAdmissionReport,
+    internal_oss_admission_report: GenOfficeInternalOssAdmissionReport | None = None,
+    solo_founder_exception_report: GenOfficeSoloFounderExceptionReport | None = None,
     notice_artifact: bytes,
     source_date_epoch: int,
+    authorization_verified_at_utc: datetime | None = None,
 ) -> tuple[bytes, GenOfficeDevelopmentBuildContextReport]:
     if source_date_epoch < 0:
         raise GenOfficeDevelopmentBuildContextError("GenOffice SOURCE_DATE_EPOCH must not be negative")
-    _verify_input_evidence(
+    authorization = _verify_input_evidence(
         source_report=source_report,
         supply_chain_report=supply_chain_report,
         npm_provenance_report=npm_provenance_report,
         internal_oss_admission_report=internal_oss_admission_report,
+        solo_founder_exception_report=solo_founder_exception_report,
         notice_artifact=notice_artifact,
+        authorization_verified_at_utc=authorization_verified_at_utc or datetime.now(UTC),
     )
     selected = _read_selected_source_files(archive_path=archive_path, source_report=source_report)
     source_evidence = tuple(
@@ -401,7 +497,10 @@ def build_genoffice_development_build_context(
         source_manifest_hash=source_report.source_manifest_hash,
         supply_chain_admission_report_hash=supply_chain_report.report_hash,
         npm_provenance_admission_report_hash=npm_provenance_report.report_hash,
-        internal_oss_admission_report_hash=internal_oss_admission_report.report_hash,
+        authorization_mode=authorization.mode,
+        development_authorization_report_hash=authorization.report_hash,
+        internal_oss_admission_report_hash=authorization.internal_oss_admission_report_hash,
+        solo_founder_exception_report_hash=authorization.solo_founder_exception_report_hash,
         third_party_notice_artifact_sha256=notice_evidence.sha256,
         source_date_epoch=source_date_epoch,
         payload_file_count=len(payload_evidence),
@@ -419,9 +518,13 @@ def build_genoffice_development_build_context(
         source_manifest_hash=source_report.source_manifest_hash,
         supply_chain_admission_report_hash=supply_chain_report.report_hash,
         npm_provenance_admission_report_hash=npm_provenance_report.report_hash,
-        internal_oss_admission_report_hash=internal_oss_admission_report.report_hash,
-        signer_policy_hash=internal_oss_admission_report.signer_policy_hash,
-        decision_record_hash=internal_oss_admission_report.decision_record_hash,
+        authorization_mode=authorization.mode,
+        development_authorization_report_hash=authorization.report_hash,
+        internal_oss_admission_report_hash=authorization.internal_oss_admission_report_hash,
+        solo_founder_exception_report_hash=authorization.solo_founder_exception_report_hash,
+        signer_policy_hash=authorization.signer_policy_hash,
+        authorization_record_hash=authorization.authorization_record_hash,
+        decision_record_hash=authorization.decision_record_hash,
         third_party_notice_artifact_sha256=notice_evidence.sha256,
         source_date_epoch=source_date_epoch,
         selected_source_file_count=len(source_evidence),
@@ -478,7 +581,6 @@ def run_genoffice_development_build_context_from_environment(
         "source_report": "SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH",
         "supply_chain_report": "SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH",
         "npm_provenance_report": "SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH",
-        "internal_oss_admission_report": "SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH",
         "notice": "SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH",
         "context": "SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH",
         "report": "SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH",
@@ -494,14 +596,28 @@ def run_genoffice_development_build_context_from_environment(
         source_date_epoch = int(values["source_date_epoch"])
     except ValueError as exc:
         raise GenOfficeDevelopmentBuildContextError("GenOffice SOURCE_DATE_EPOCH is invalid") from exc
+    authorization_mode = env.get("SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE", "").strip()
+    if authorization_mode == "two_person_internal_oss_admission":
+        authorization_path = env.get("SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH", "").strip()
+        if not authorization_path:
+            raise GenOfficeDevelopmentBuildContextError("GenOffice two-person authorization path is missing")
+        internal_oss_admission_report = load_genoffice_internal_oss_admission_report(Path(authorization_path))
+        solo_founder_exception_report = None
+    elif authorization_mode == "solo_founder_development_exception":
+        authorization_path = env.get("SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH", "").strip()
+        if not authorization_path:
+            raise GenOfficeDevelopmentBuildContextError("GenOffice solo-founder authorization path is missing")
+        internal_oss_admission_report = None
+        solo_founder_exception_report = load_genoffice_solo_founder_report(Path(authorization_path))
+    else:
+        raise GenOfficeDevelopmentBuildContextError("GenOffice development authorization mode is invalid")
     context, report = build_genoffice_development_build_context(
         archive_path=Path(values["archive"]),
         source_report=load_genoffice_docx_source_admission_report(Path(values["source_report"])),
         supply_chain_report=load_genoffice_docx_supply_chain_admission_report(Path(values["supply_chain_report"])),
         npm_provenance_report=load_genoffice_npm_provenance_admission_report(Path(values["npm_provenance_report"])),
-        internal_oss_admission_report=load_genoffice_internal_oss_admission_report(
-            Path(values["internal_oss_admission_report"])
-        ),
+        internal_oss_admission_report=internal_oss_admission_report,
+        solo_founder_exception_report=solo_founder_exception_report,
         notice_artifact=_read_limited(Path(values["notice"]), label="third-party notice"),
         source_date_epoch=source_date_epoch,
     )

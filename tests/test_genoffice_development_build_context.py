@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import tarfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,13 @@ from suite.operations.genoffice_internal_oss_admission import (
 from suite.operations.genoffice_npm_provenance_admission import (
     GenOfficeNpmProvenanceAdmissionReport,
     load_genoffice_npm_provenance_admission_report,
+)
+from suite.operations.genoffice_solo_founder_exception import (
+    GENOFFICE_SOLO_FOUNDER_BLOCKED_ACTIONS,
+    GENOFFICE_SOLO_FOUNDER_COMPENSATING_CONTROLS,
+    GENOFFICE_SOLO_FOUNDER_LATER_APPROVALS,
+    GenOfficeSoloFounderExceptionReport,
+    build_genoffice_solo_founder_report_hash,
 )
 from suite.operations.genoffice_third_party_notice import (
     GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH,
@@ -164,6 +172,33 @@ def _internal_admission(notice: bytes) -> GenOfficeInternalOssAdmissionReport:
     return draft.model_copy(update={"report_hash": build_genoffice_internal_oss_admission_report_hash(draft)})
 
 
+def _solo_founder_exception(notice: bytes) -> GenOfficeSoloFounderExceptionReport:
+    issued_at = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
+    draft = GenOfficeSoloFounderExceptionReport(
+        exception_id="solo-founder-build-context-test",
+        issued_at_utc=issued_at,
+        valid_until_utc=issued_at + timedelta(days=7),
+        signer_id="founder-1",
+        key_id="founder-key-1",
+        signer_policy_hash="sha256:" + "1" * 64,
+        exception_payload_hash="sha256:" + "2" * 64,
+        signing_request_hash="sha256:" + "3" * 64,
+        signature_response_hash="sha256:" + "4" * 64,
+        legal_dossier_report_hash=GENOFFICE_REVIEWED_LEGAL_DOSSIER_HASH,
+        third_party_notice_report_hash="sha256:" + "5" * 64,
+        third_party_notice_artifact_sha256=f"sha256:{hashlib.sha256(notice).hexdigest()}",
+        approved_usage_profiles=("development_evaluation",),
+        blocked_usage_profiles=GENOFFICE_INTERNAL_OSS_BLOCKED_PROFILES,
+        approved_source_scopes=(GENOFFICE_SELECTED_SOURCE_SCOPE,),
+        prohibited_source_scopes=GENOFFICE_INTERNAL_OSS_PROHIBITED_SCOPES,
+        compensating_controls=GENOFFICE_SOLO_FOUNDER_COMPENSATING_CONTROLS,
+        later_required_approval_roles=GENOFFICE_SOLO_FOUNDER_LATER_APPROVALS,
+        blocked_actions=GENOFFICE_SOLO_FOUNDER_BLOCKED_ACTIONS,
+        report_hash="sha256:" + "0" * 64,
+    )
+    return draft.model_copy(update={"report_hash": build_genoffice_solo_founder_report_hash(draft)})
+
+
 def _fixture(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -265,6 +300,60 @@ def test_build_context_rejects_missing_or_closed_internal_admission(
         run_genoffice_development_build_context_from_environment({})
 
 
+def test_build_context_accepts_only_active_solo_founder_exception(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive, source, supply, npm_provenance, _, notice = _fixture(tmp_path, monkeypatch)
+    exception = _solo_founder_exception(notice)
+    verified_at = datetime(2026, 8, 12, 12, 0, tzinfo=UTC)
+
+    _, report = build_genoffice_development_build_context(
+        archive_path=archive,
+        source_report=source,
+        supply_chain_report=supply,
+        npm_provenance_report=npm_provenance,
+        solo_founder_exception_report=exception,
+        notice_artifact=notice,
+        source_date_epoch=0,
+        authorization_verified_at_utc=verified_at,
+    )
+
+    assert report.authorization_mode == "solo_founder_development_exception"
+    assert report.solo_founder_exception_report_hash == exception.report_hash
+    assert report.internal_oss_admission_report_hash is None
+    assert report.decision_record_hash is None
+    assert report.engine_execution_allowed is False
+    with pytest.raises(GenOfficeDevelopmentBuildContextError, match="expired or not active"):
+        build_genoffice_development_build_context(
+            archive_path=archive,
+            source_report=source,
+            supply_chain_report=supply,
+            npm_provenance_report=npm_provenance,
+            solo_founder_exception_report=exception,
+            notice_artifact=notice,
+            source_date_epoch=0,
+            authorization_verified_at_utc=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        )
+
+
+def test_build_context_rejects_ambiguous_authorization_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    archive, source, supply, npm_provenance, admission, notice = _fixture(tmp_path, monkeypatch)
+
+    with pytest.raises(GenOfficeDevelopmentBuildContextError, match="exactly one authorization mode"):
+        build_genoffice_development_build_context(
+            archive_path=archive,
+            source_report=source,
+            supply_chain_report=supply,
+            npm_provenance_report=npm_provenance,
+            internal_oss_admission_report=admission,
+            solo_founder_exception_report=_solo_founder_exception(notice),
+            notice_artifact=notice,
+            source_date_epoch=0,
+        )
+
+
 def test_build_context_rejects_archive_and_selected_file_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     archive, source, supply, npm_provenance, admission, notice = _fixture(tmp_path, monkeypatch)
     archive.write_bytes(archive.read_bytes() + b"tampered")
@@ -358,6 +447,8 @@ def test_build_context_compose_service_is_offline_read_only_and_admission_bound(
     assert "read_only: true" in service
     assert "no-new-privileges:true" in service
     assert "genoffice-internal-oss-admission-report.json" in service
+    assert "genoffice-solo-founder-exception-report.json" in service
+    assert "SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE" in service
     assert "genoffice-development-build-context.tar" in service
     assert "SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH" in service
     assert "create_host_path: false" in service

@@ -2514,6 +2514,143 @@ services:
       - ./app:/workspace/app:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-solo-founder-schema:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: schema
+      SUITE_GENOFFICE_SOLO_FOUNDER_SCHEMA_OUTPUT_DIR: /evidence
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-policy-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: policy
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_EFFECTIVE_AT_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_EFFECTIVE_AT_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNER_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_KEY_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_KEY_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_PUBLIC_KEY_PATH: /keys/solo-founder.ed25519.pub
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOLO_FOUNDER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/solo-founder.ed25519.pub}
+        target: /keys/solo-founder.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-signing-request:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: request
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_ISSUED_AT_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_SOLO_FOUNDER_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_SOLO_FOUNDER_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_REQUEST_PATH: /evidence/genoffice-solo-founder-exception-request.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-solo-founder-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-exception-verifier:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: verify
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_REQUEST_PATH: /evidence/genoffice-solo-founder-exception-request.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_RESPONSE_PATH: /approvals/solo-founder.signature-response.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /evidence/genoffice-solo-founder-exception-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/solo-founder.signature-response.json}
+        target: /approvals/solo-founder.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
   genoffice-development-build-context:
     profiles: ["office-supply-chain"]
     build:
@@ -2539,7 +2676,9 @@ services:
       SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
       SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
       SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+      SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE: "${SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE:-solo_founder_development_exception}"
       SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH: /evidence/genoffice-internal-oss-admission-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /evidence/genoffice-solo-founder-exception-report.json
       SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
       SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH: /output/genoffice-development-build-context.tar
       SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH: /output/genoffice-development-build-context-report.json
