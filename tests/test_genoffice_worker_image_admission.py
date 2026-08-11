@@ -488,6 +488,8 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "COPY --chown" not in dockerfile
     assert "USER 10003:10003" in dockerfile
     assert "provenance: false" in compose
+    assert "genoffice-worker-image-raw-sbom:" in compose
+    assert "/tmp/trivy-cache" in compose
     assert "worker_execution_allowed: false" in entrypoint
 
 

@@ -2957,6 +2957,8 @@ services:
       - image
       - --input
       - /evidence/genoffice-worker-image.tar
+      - --cache-dir
+      - /tmp/trivy-cache
       - --format
       - cyclonedx
       - --output
