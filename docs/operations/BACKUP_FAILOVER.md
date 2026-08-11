@@ -98,7 +98,8 @@ and release-recovery inputs, not tenant backup payloads. The retained supply-cha
 signature/Sigstore bundles, the exact Node/npm/image receipt, the Fulcio certificate and Rekor inclusion material, and
 the hash-bound no-network admission report. It also includes the 21 exact lock-integrity-verified runtime package
 archives, their collection manifest, the offline LICENSE/NOTICE/trademark/enterprise-scope dossier, the human legal
-decision JSON Schema, and any future detached-signature-verified legal record. A restore must verify all evidence
+decision JSON Schema, the npm-gitHead-bound supplemental source license where a package omitted its full text, and any
+future detached-signature-verified legal record. A restore must verify all evidence
 digests and rerun collection plus offline admission before an Office worker can be rebuilt or promoted. Registry or
 license metadata presence without the retained cryptographic bytes and dossier remains insufficient.
 

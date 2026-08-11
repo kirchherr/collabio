@@ -19,6 +19,9 @@ assumption.
 - Add a credential-less collection zone that downloads only the 21 exact runtime package URLs from the reviewed npm
   lock evidence. Verify every archive against the pinned npm `sha512` integrity before retaining it. Do not install
   packages or execute npm, Node, lifecycle scripts, or upstream code.
+- Treat a package-declared license without full distributable text as incomplete. For `@nodable/entities@3.0.0`, bind
+  npm `gitHead d2070d76...` and repository identity to the exact Codeload source archive SHA-256 `2707baf0...`; use only
+  its root MIT license as supplemental legal evidence. The source archive is not an engine import or build input.
 - Add a separate no-network legal evidence gate. It reads archives selectively without filesystem extraction and binds
   exact hashes for root LICENSE/NOTICE/trademark evidence, the excluded enterprise license, vendored license, and every
   runtime package legal file.

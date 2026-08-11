@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,10 @@ import pytest
 from suite.operations.genoffice_docx_source_admission import GenOfficeRuntimeDependencyEvidence
 from suite.operations.genoffice_license_material_collector import (
     GENOFFICE_NPM_REGISTRY_HOST,
+    NODABLE_ENTITIES_REGISTRY_METADATA_URL,
+    GenOfficeLicenseMaterialArtifact,
     GenOfficeLicenseMaterialCollectionError,
+    _collect_nodable_license_source,
     _package_filename,
     _validated_registry_target,
     _verified_artifact,
@@ -75,6 +79,43 @@ def test_registry_target_accepts_exact_https_registry() -> None:
 def test_environment_runner_requires_source_and_artifact_paths() -> None:
     with pytest.raises(GenOfficeLicenseMaterialCollectionError, match="paths are missing"):
         run_genoffice_license_material_collection_from_environment({})
+
+
+def test_supplemental_source_rejects_registry_git_head_drift(tmp_path: Path) -> None:
+    package = GenOfficeLicenseMaterialArtifact(
+        package_name="@nodable/entities",
+        package_version="3.0.0",
+        resolved_url="https://registry.npmjs.org/@nodable/entities/-/entities-3.0.0.tgz",
+        expected_integrity="sha512-" + base64.b64encode(hashlib.sha512(b"package").digest()).decode("ascii"),
+        artifact_filename="nodable__entities-3.0.0.tgz",
+        size_bytes=7,
+        sha256=f"sha256:{hashlib.sha256(b'package').hexdigest()}",
+        sha512=f"sha512:{hashlib.sha512(b'package').hexdigest()}",
+        integrity_verified=True,
+    )
+    metadata = json.dumps(
+        {
+            "name": "@nodable/entities",
+            "version": "3.0.0",
+            "license": "MIT",
+            "gitHead": "0" * 40,
+            "repository": {"url": "git+https://github.com/nodable/val-parsers.git"},
+            "dist": {"tarball": package.resolved_url, "integrity": package.expected_integrity},
+        }
+    ).encode()
+
+    def registry_fetcher(url: str, maximum_size: int) -> bytes:
+        assert url == NODABLE_ENTITIES_REGISTRY_METADATA_URL
+        assert len(metadata) <= maximum_size
+        return metadata
+
+    with pytest.raises(GenOfficeLicenseMaterialCollectionError, match="source identity"):
+        _collect_nodable_license_source(
+            artifact_directory=tmp_path,
+            package_artifact=package,
+            registry_fetcher=registry_fetcher,
+            source_fetcher=lambda _url, _limit: pytest.fail("source download must not occur"),
+        )
 
 
 def test_collector_has_no_process_or_package_execution_path() -> None:

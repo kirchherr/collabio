@@ -24,8 +24,12 @@ from suite.operations.genoffice_docx_supply_chain_admission import (
     load_genoffice_docx_supply_chain_admission_report,
 )
 from suite.operations.genoffice_license_material_collector import (
+    NODABLE_ENTITIES_NAME,
+    NODABLE_ENTITIES_SOURCE_COMMIT,
+    NODABLE_ENTITIES_VERSION,
     GenOfficeLicenseMaterialArtifact,
     GenOfficeLicenseMaterialCollectionReport,
+    GenOfficeSupplementalLicenseSourceArtifact,
     build_genoffice_license_material_collection_report_hash,
     load_genoffice_license_material_collection_report,
 )
@@ -74,7 +78,14 @@ class GenOfficeLegalFileEvidence(BaseModel):
 
     evidence_id: str
     path: str
-    scope: Literal["root", "selected_engine", "vendored_component", "excluded_enterprise", "runtime_dependency"]
+    scope: Literal[
+        "root",
+        "selected_engine",
+        "vendored_component",
+        "excluded_enterprise",
+        "runtime_dependency",
+        "supplemental_dependency_source",
+    ]
     kind: Literal["license", "notice", "copyright", "readme"]
     package_name: str | None = None
     package_version: str | None = None
@@ -200,6 +211,7 @@ class GenOfficeLegalReviewDossierReport(BaseModel):
     upstream_trademark_owner: str
     enterprise_license_present_and_scope_excluded: bool
     vendored_apache_2_license_text_marker_verified: bool
+    supplemental_dependency_source_license_verified: bool
     all_runtime_package_integrities_verified: bool
     all_runtime_license_text_evidence_complete: bool
     automated_legal_evidence_complete: bool
@@ -369,7 +381,14 @@ def _file_evidence(
     *,
     path: str,
     content: bytes,
-    scope: Literal["root", "selected_engine", "vendored_component", "excluded_enterprise", "runtime_dependency"],
+    scope: Literal[
+        "root",
+        "selected_engine",
+        "vendored_component",
+        "excluded_enterprise",
+        "runtime_dependency",
+        "supplemental_dependency_source",
+    ],
     package_name: str | None = None,
     package_version: str | None = None,
 ) -> GenOfficeLegalFileEvidence:
@@ -426,6 +445,46 @@ def _read_package_legal_files(archive_path: Path) -> dict[str, bytes]:
     return selected
 
 
+def _read_supplemental_source_license(
+    *, archive_path: Path, supplemental: GenOfficeSupplementalLicenseSourceArtifact
+) -> bytes:
+    root = f"val-parsers-{supplemental.source_commit}"
+    expected_path = f"{root}/LICENSE"
+    selected: bytes | None = None
+    seen: set[str] = set()
+    member_count = 0
+    try:
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            for member in archive:
+                member_count += 1
+                if member_count > MAX_ARCHIVE_MEMBER_COUNT:
+                    raise GenOfficeLegalReviewDossierError("supplemental source archive has too many members")
+                path = _safe_archive_path(member.name, root=root)
+                if path in seen:
+                    raise GenOfficeLegalReviewDossierError("supplemental source archive contains duplicate paths")
+                seen.add(path)
+                if not (member.isfile() or member.isdir()):
+                    raise GenOfficeLegalReviewDossierError(
+                        "supplemental source archive contains links or special files"
+                    )
+                if path != expected_path or not member.isfile():
+                    continue
+                if member.size < 0 or member.size > MAX_LEGAL_FILE_SIZE_BYTES:
+                    raise GenOfficeLegalReviewDossierError("supplemental source license exceeds its size limit")
+                source = archive.extractfile(member)
+                if source is None:
+                    raise GenOfficeLegalReviewDossierError("supplemental source license cannot be read")
+                content = source.read(MAX_LEGAL_FILE_SIZE_BYTES + 1)
+                if len(content) != member.size:
+                    raise GenOfficeLegalReviewDossierError("supplemental source license size is inconsistent")
+                selected = content
+    except (OSError, tarfile.TarError) as exc:
+        raise GenOfficeLegalReviewDossierError("supplemental source archive is not readable") from exc
+    if selected is None:
+        raise GenOfficeLegalReviewDossierError("supplemental source archive lacks its root license")
+    return selected
+
+
 def _verify_package_artifact(path: Path, artifact: GenOfficeLicenseMaterialArtifact) -> None:
     sha256, size = _sha256_file(path, maximum_size=8 * 1024 * 1024)
     if sha256 != artifact.sha256 or size != artifact.size_bytes:
@@ -469,6 +528,7 @@ def _dependency_license_evidence(
     dependency: GenOfficeRuntimeDependencyEvidence,
     artifact: GenOfficeLicenseMaterialArtifact,
     artifact_directory: Path,
+    supplemental_files: tuple[GenOfficeLegalFileEvidence, ...] = (),
 ) -> tuple[GenOfficeDependencyLicenseEvidence, tuple[GenOfficeLegalFileEvidence, ...]]:
     if dependency.version is None or dependency.license_expression is None:
         raise GenOfficeLegalReviewDossierError("runtime dependency lacks legal identity metadata")
@@ -477,7 +537,7 @@ def _dependency_license_evidence(
     archive_path = artifact_directory / artifact.artifact_filename
     _verify_package_artifact(archive_path, artifact)
     package_files = _read_package_legal_files(archive_path)
-    legal_files = tuple(
+    package_legal_files = tuple(
         _file_evidence(
             path=path,
             content=content,
@@ -487,10 +547,10 @@ def _dependency_license_evidence(
         )
         for path, content in sorted(package_files.items())
     )
-    license_files = tuple(item for item in legal_files if item.kind == "license")
+    legal_files = (*package_legal_files, *supplemental_files)
     detected_markers = tuple(sorted({marker for item in legal_files for marker in item.detected_markers}))
     required_markers = _required_markers(dependency.license_expression)
-    complete = bool(license_files) and set(required_markers).issubset(detected_markers)
+    complete = bool(legal_files) and set(required_markers).issubset(detected_markers)
     return (
         GenOfficeDependencyLicenseEvidence(
             package_name=dependency.name,
@@ -505,7 +565,7 @@ def _dependency_license_evidence(
             license_text_evidence_complete=complete,
             human_license_choice_required=dependency.license_expression == "(MIT OR GPL-3.0-or-later)",
         ),
-        legal_files,
+        tuple(legal_files),
     )
 
 
@@ -633,6 +693,38 @@ def build_genoffice_legal_review_dossier(
         for path, content in sorted(selected_source.items())
     )
     source_by_path = {item.path: item for item in source_files}
+    supplemental = collection_report.supplemental_source_artifacts[0]
+    metadata_hash, _ = _sha256_file(
+        artifact_directory / supplemental.registry_metadata_filename,
+        maximum_size=1024 * 1024,
+    )
+    if metadata_hash != supplemental.registry_metadata_sha256:
+        raise GenOfficeLegalReviewDossierError("supplemental registry metadata hash is inconsistent")
+    supplemental_archive_path = artifact_directory / supplemental.source_archive_filename
+    supplemental_archive_hash, supplemental_archive_size = _sha256_file(
+        supplemental_archive_path,
+        maximum_size=8 * 1024 * 1024,
+    )
+    if (
+        supplemental_archive_hash != supplemental.source_archive_sha256
+        or supplemental_archive_size != supplemental.source_archive_size_bytes
+    ):
+        raise GenOfficeLegalReviewDossierError("supplemental source archive does not match its collection report")
+    supplemental_license = _read_supplemental_source_license(
+        archive_path=supplemental_archive_path,
+        supplemental=supplemental,
+    )
+    supplemental_evidence = _file_evidence(
+        path=f"supplemental/{supplemental.package_name}@{supplemental.package_version}/LICENSE",
+        content=supplemental_license,
+        scope="supplemental_dependency_source",
+        package_name=supplemental.package_name,
+        package_version=supplemental.package_version,
+    )
+    supplemental_verified = "mit_grant_text" in supplemental_evidence.detected_markers
+    supplemental_by_identity = {
+        (supplemental.package_name, supplemental.package_version): (supplemental_evidence,)
+    }
     artifact_by_identity = {(item.package_name, item.package_version): item for item in collection_report.artifacts}
     dependency_licenses: list[GenOfficeDependencyLicenseEvidence] = []
     dependency_files: list[GenOfficeLegalFileEvidence] = []
@@ -646,6 +738,7 @@ def build_genoffice_legal_review_dossier(
             dependency=dependency,
             artifact=artifact,
             artifact_directory=artifact_directory,
+            supplemental_files=supplemental_by_identity.get((dependency.name, dependency.version), ()),
         )
         dependency_licenses.append(license_evidence)
         dependency_files.extend(legal_files)
@@ -680,6 +773,7 @@ def build_genoffice_legal_review_dossier(
             trademark_verified,
             enterprise_excluded,
             vendored_apache_verified,
+            supplemental_verified,
             all_integrities,
             all_license_text,
             len(ordered_dependencies) == source_report.runtime_dependency_count,
@@ -710,6 +804,7 @@ def build_genoffice_legal_review_dossier(
         upstream_trademark_owner="Mainfunc, Inc.",
         enterprise_license_present_and_scope_excluded=enterprise_excluded,
         vendored_apache_2_license_text_marker_verified=vendored_apache_verified,
+        supplemental_dependency_source_license_verified=supplemental_verified,
         all_runtime_package_integrities_verified=all_integrities,
         all_runtime_license_text_evidence_complete=all_license_text,
         automated_legal_evidence_complete=automated_complete,

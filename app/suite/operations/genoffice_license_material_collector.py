@@ -28,8 +28,22 @@ from suite.operations.genoffice_vendored_provenance_admission import (
 
 GENOFFICE_LICENSE_MATERIAL_COLLECTION_SCHEMA_VERSION = "genoffice_license_material_collection_report.v1"
 GENOFFICE_NPM_REGISTRY_HOST = "registry.npmjs.org"
+GENOFFICE_SOURCE_ARCHIVE_HOST = "codeload.github.com"
+NODABLE_ENTITIES_NAME = "@nodable/entities"
+NODABLE_ENTITIES_VERSION = "3.0.0"
+NODABLE_ENTITIES_REPOSITORY = "git+https://github.com/nodable/val-parsers.git"
+NODABLE_ENTITIES_SOURCE_COMMIT = "d2070d76a8ba07e6c7fa142caeb51ffd756e47eb"
+NODABLE_ENTITIES_REGISTRY_METADATA_URL = "https://registry.npmjs.org/@nodable%2Fentities/3.0.0"
+NODABLE_ENTITIES_SOURCE_ARCHIVE_URL = (
+    "https://codeload.github.com/nodable/val-parsers/tar.gz/d2070d76a8ba07e6c7fa142caeb51ffd756e47eb"
+)
+NODABLE_ENTITIES_SOURCE_ARCHIVE_SHA256 = (
+    "sha256:2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44"
+)
 MAX_PACKAGE_ARCHIVE_SIZE_BYTES = 8 * 1024 * 1024
 MAX_COLLECTION_SIZE_BYTES = 64 * 1024 * 1024
+MAX_REGISTRY_METADATA_SIZE_BYTES = 1024 * 1024
+MAX_SUPPLEMENTAL_SOURCE_ARCHIVE_SIZE_BYTES = 8 * 1024 * 1024
 PACKAGE_FILENAME_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 
 
@@ -51,6 +65,24 @@ class GenOfficeLicenseMaterialArtifact(BaseModel):
     integrity_verified: bool
 
 
+class GenOfficeSupplementalLicenseSourceArtifact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    package_name: str
+    package_version: str
+    reason: Literal["published_package_omits_full_license_text"]
+    repository_url: str
+    source_commit: str
+    registry_metadata_url: str
+    registry_metadata_filename: str
+    registry_metadata_sha256: str
+    source_archive_url: str
+    source_archive_filename: str
+    source_archive_size_bytes: int
+    source_archive_sha256: str
+    source_archive_integrity_verified: bool
+
+
 class GenOfficeLicenseMaterialCollectionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -63,6 +95,7 @@ class GenOfficeLicenseMaterialCollectionReport(BaseModel):
     artifact_count: int
     total_size_bytes: int
     artifacts: tuple[GenOfficeLicenseMaterialArtifact, ...]
+    supplemental_source_artifacts: tuple[GenOfficeSupplementalLicenseSourceArtifact, ...]
     all_artifact_integrities_verified: bool
     network_access_used: bool
     credentials_used: bool
@@ -90,6 +123,22 @@ class GenOfficeLicenseMaterialCollectionReport(BaseModel):
             raise ValueError("GenOffice license material collection is incomplete")
         if not all(item.integrity_verified for item in self.artifacts):
             raise ValueError("GenOffice license material collection contains an unverified artifact")
+        if len(self.supplemental_source_artifacts) != 1:
+            raise ValueError("GenOffice license material collection lacks the reviewed supplemental source")
+        supplemental = self.supplemental_source_artifacts[0]
+        expected_supplemental = {
+            "package_name": NODABLE_ENTITIES_NAME,
+            "package_version": NODABLE_ENTITIES_VERSION,
+            "repository_url": NODABLE_ENTITIES_REPOSITORY,
+            "source_commit": NODABLE_ENTITIES_SOURCE_COMMIT,
+            "registry_metadata_url": NODABLE_ENTITIES_REGISTRY_METADATA_URL,
+            "source_archive_url": NODABLE_ENTITIES_SOURCE_ARCHIVE_URL,
+            "source_archive_sha256": NODABLE_ENTITIES_SOURCE_ARCHIVE_SHA256,
+        }
+        if any(getattr(supplemental, field) != value for field, value in expected_supplemental.items()):
+            raise ValueError("GenOffice supplemental license source is not pinned")
+        if not supplemental.source_archive_integrity_verified:
+            raise ValueError("GenOffice supplemental license source integrity is not verified")
         if not self.network_access_used or any(
             (
                 self.credentials_used,
@@ -184,6 +233,48 @@ def _fetch_registry_package(url: str, maximum_size: int) -> bytes:
     return content
 
 
+def _fetch_supplemental_source_archive(url: str, maximum_size: int) -> bytes:
+    parsed = urlsplit(url)
+    if (
+        url != NODABLE_ENTITIES_SOURCE_ARCHIVE_URL
+        or parsed.scheme != "https"
+        or parsed.hostname != GENOFFICE_SOURCE_ARCHIVE_HOST
+        or parsed.port not in {None, 443}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise GenOfficeLicenseMaterialCollectionError("supplemental source URL is outside the pinned boundary")
+    connection = http.client.HTTPSConnection(
+        GENOFFICE_SOURCE_ARCHIVE_HOST,
+        port=443,
+        timeout=30,
+        context=ssl.create_default_context(),
+    )
+    try:
+        connection.request(
+            "GET",
+            parsed.path,
+            headers={"Accept": "application/gzip", "User-Agent": "collabio-license-material-collector/1"},
+        )
+        response = connection.getresponse()
+        if response.status != 200:
+            raise GenOfficeLicenseMaterialCollectionError(
+                f"supplemental source host returned an unexpected status: {response.status}"
+            )
+        content = response.read(maximum_size + 1)
+    except (OSError, http.client.HTTPException) as exc:
+        raise GenOfficeLicenseMaterialCollectionError("supplemental source download failed") from exc
+    finally:
+        connection.close()
+    if not content or len(content) > maximum_size:
+        raise GenOfficeLicenseMaterialCollectionError(
+            "supplemental source archive is empty or exceeds its size limit"
+        )
+    return content
+
+
 def _verified_artifact(
     *, dependency: GenOfficeRuntimeDependencyEvidence, content: bytes
 ) -> GenOfficeLicenseMaterialArtifact:
@@ -208,11 +299,98 @@ def _verified_artifact(
     )
 
 
+def _persist_bytes(*, target: Path, content: bytes, error: str) -> None:
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    try:
+        temporary.write_bytes(content)
+        temporary.replace(target)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise GenOfficeLicenseMaterialCollectionError(error) from exc
+
+
+def _collect_nodable_license_source(
+    *,
+    artifact_directory: Path,
+    package_artifact: GenOfficeLicenseMaterialArtifact,
+    registry_fetcher: PackageFetcher,
+    source_fetcher: PackageFetcher,
+) -> GenOfficeSupplementalLicenseSourceArtifact:
+    raw_metadata = registry_fetcher(NODABLE_ENTITIES_REGISTRY_METADATA_URL, MAX_REGISTRY_METADATA_SIZE_BYTES)
+    try:
+        metadata = json.loads(raw_metadata.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise GenOfficeLicenseMaterialCollectionError("supplemental registry metadata is not UTF-8 JSON") from exc
+    if not isinstance(metadata, dict):
+        raise GenOfficeLicenseMaterialCollectionError("supplemental registry metadata must be an object")
+    repository = metadata.get("repository")
+    dist = metadata.get("dist")
+    if not isinstance(repository, dict) or not isinstance(dist, dict):
+        raise GenOfficeLicenseMaterialCollectionError("supplemental registry provenance metadata is missing")
+    selected_metadata = {
+        "name": metadata.get("name"),
+        "version": metadata.get("version"),
+        "license": metadata.get("license"),
+        "repository_url": repository.get("url"),
+        "git_head": metadata.get("gitHead"),
+        "tarball_url": dist.get("tarball"),
+        "tarball_integrity": dist.get("integrity"),
+    }
+    expected_metadata = {
+        "name": NODABLE_ENTITIES_NAME,
+        "version": NODABLE_ENTITIES_VERSION,
+        "license": "MIT",
+        "repository_url": NODABLE_ENTITIES_REPOSITORY,
+        "git_head": NODABLE_ENTITIES_SOURCE_COMMIT,
+        "tarball_url": package_artifact.resolved_url,
+        "tarball_integrity": package_artifact.expected_integrity,
+    }
+    if any(selected_metadata[field] != value for field, value in expected_metadata.items()):
+        raise GenOfficeLicenseMaterialCollectionError("supplemental registry source identity is not reviewed")
+    metadata_content = json.dumps(selected_metadata, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+    metadata_filename = "nodable-entities-3.0.0-registry-source-metadata.json"
+    _persist_bytes(
+        target=artifact_directory / metadata_filename,
+        content=metadata_content,
+        error="supplemental registry metadata cannot be persisted",
+    )
+
+    source_content = source_fetcher(
+        NODABLE_ENTITIES_SOURCE_ARCHIVE_URL,
+        MAX_SUPPLEMENTAL_SOURCE_ARCHIVE_SIZE_BYTES,
+    )
+    source_sha256 = f"sha256:{hashlib.sha256(source_content).hexdigest()}"
+    if source_sha256 != NODABLE_ENTITIES_SOURCE_ARCHIVE_SHA256:
+        raise GenOfficeLicenseMaterialCollectionError("supplemental source archive SHA-256 is not reviewed")
+    source_filename = f"nodable-val-parsers-{NODABLE_ENTITIES_SOURCE_COMMIT}.tar.gz"
+    _persist_bytes(
+        target=artifact_directory / source_filename,
+        content=source_content,
+        error="supplemental source archive cannot be persisted",
+    )
+    return GenOfficeSupplementalLicenseSourceArtifact(
+        package_name=NODABLE_ENTITIES_NAME,
+        package_version=NODABLE_ENTITIES_VERSION,
+        reason="published_package_omits_full_license_text",
+        repository_url=NODABLE_ENTITIES_REPOSITORY,
+        source_commit=NODABLE_ENTITIES_SOURCE_COMMIT,
+        registry_metadata_url=NODABLE_ENTITIES_REGISTRY_METADATA_URL,
+        registry_metadata_filename=metadata_filename,
+        registry_metadata_sha256=f"sha256:{hashlib.sha256(metadata_content).hexdigest()}",
+        source_archive_url=NODABLE_ENTITIES_SOURCE_ARCHIVE_URL,
+        source_archive_filename=source_filename,
+        source_archive_size_bytes=len(source_content),
+        source_archive_sha256=source_sha256,
+        source_archive_integrity_verified=True,
+    )
+
+
 def collect_genoffice_license_materials(
     *,
     source_report: GenOfficeDocxSourceAdmissionReport,
     artifact_directory: Path,
     fetcher: PackageFetcher = _fetch_registry_package,
+    supplemental_source_fetcher: PackageFetcher = _fetch_supplemental_source_archive,
 ) -> GenOfficeLicenseMaterialCollectionReport:
     if build_genoffice_docx_source_admission_report_hash(source_report) != source_report.report_hash:
         raise GenOfficeLicenseMaterialCollectionError("GenOffice source report hash is invalid")
@@ -235,16 +413,26 @@ def collect_genoffice_license_materials(
                 "npm license material collection exceeds its total size limit"
             )
         target = artifact_directory / artifact.artifact_filename
-        temporary = target.with_suffix(target.suffix + ".tmp")
-        try:
-            temporary.write_bytes(content)
-            temporary.replace(target)
-        except OSError as exc:
-            temporary.unlink(missing_ok=True)
-            raise GenOfficeLicenseMaterialCollectionError("npm package material cannot be persisted") from exc
+        _persist_bytes(target=target, content=content, error="npm package material cannot be persisted")
         artifacts.append(artifact)
 
     ordered = tuple(artifacts)
+    nodable_artifact = next(
+        (
+            item
+            for item in ordered
+            if (item.package_name, item.package_version) == (NODABLE_ENTITIES_NAME, NODABLE_ENTITIES_VERSION)
+        ),
+        None,
+    )
+    if nodable_artifact is None:
+        raise GenOfficeLicenseMaterialCollectionError("reviewed supplemental package is absent from the runtime set")
+    supplemental = _collect_nodable_license_source(
+        artifact_directory=artifact_directory,
+        package_artifact=nodable_artifact,
+        registry_fetcher=fetcher,
+        source_fetcher=supplemental_source_fetcher,
+    )
     draft = GenOfficeLicenseMaterialCollectionReport(
         source_report_hash=source_report.report_hash,
         source_archive_sha256=source_report.archive_sha256,
@@ -252,6 +440,7 @@ def collect_genoffice_license_materials(
         artifact_count=len(ordered),
         total_size_bytes=total_size,
         artifacts=ordered,
+        supplemental_source_artifacts=(supplemental,),
         all_artifact_integrities_verified=True,
         network_access_used=True,
         credentials_used=False,

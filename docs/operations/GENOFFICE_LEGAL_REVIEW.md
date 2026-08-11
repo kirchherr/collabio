@@ -16,11 +16,14 @@ The review scope is deliberately narrow:
 
 ## Trust Zones
 
-`genoffice-license-material-collector` is the only networked step. It reads the reviewed source report, contacts only
-`https://registry.npmjs.org`, downloads each exact lockfile URL without credentials, and rejects every package whose
-bytes do not match its pinned npm `sha512` integrity. It neither installs packages nor executes lifecycle scripts,
-Node, npm, or upstream code. The package archives and collection report are retained under the Collabio supply-chain
-evidence directory.
+`genoffice-license-material-collector` is the only networked step. It reads the reviewed source report, downloads each
+exact lockfile URL from `https://registry.npmjs.org` without credentials, and rejects every package whose bytes do not
+match its pinned npm `sha512` integrity. `@nodable/entities@3.0.0` declares MIT but omits a full license text from its
+published package. For that package only, the collector additionally binds npm `gitHead`
+`d2070d76a8ba07e6c7fa142caeb51ffd756e47eb` to `github.com/nodable/val-parsers`, downloads the exact Codeload archive,
+and requires SHA-256 `2707baf03a5794a2f18d6af04d376561813e8b27a41fd46d43b85b22949f1e44`. It neither installs
+packages nor executes lifecycle scripts, Node, npm, or upstream code. Package archives, supplemental source evidence,
+and the collection report are retained under the Collabio supply-chain evidence directory.
 
 `genoffice-legal-review-dossier` has `network_mode: none`, a read-only root, no capabilities, bounded resources, and
 read-only source inputs. It never extracts an archive to the filesystem. It selectively reads and hashes:
@@ -29,6 +32,7 @@ read-only source inputs. It never extracts an archive to the filesystem. It sele
 - the separate `ee/LICENSE`, while keeping the complete enterprise tree outside every selected source manifest;
 - the vendored EMF converter license;
 - license, notice, copyright, and supporting README files in each integrity-verified runtime package archive.
+- the root MIT license from the commit-pinned supplemental source used only where the published package omitted it.
 
 The offline gate recognizes only the license expressions already pinned by the reviewed lockfile: `MIT`, `ISC`,
 `MIT OR GPL-3.0-or-later`, and `MIT AND Zlib`. Unknown expressions fail closed. Text markers are evidence-navigation
@@ -49,6 +53,7 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
 The default retained outputs are:
 
 - `backups/genoffice-supply-chain/license-materials/*.tgz`;
+- `backups/genoffice-supply-chain/license-materials/nodable-val-parsers-*.tar.gz` and its canonical npm source metadata;
 - `backups/genoffice-supply-chain/genoffice-license-material-collection-report.json`;
 - `backups/genoffice-supply-chain/genoffice-legal-review-dossier-report.json`;
 - `backups/genoffice-supply-chain/genoffice-legal-decision-record.schema.json`.

@@ -12,12 +12,14 @@ from suite.operations.genoffice_legal_review_dossier import (
     GENOFFICE_REQUIRED_TRADEMARK_POLICY,
     GenOfficeLegalDecisionRecord,
     GenOfficeLegalReviewDossierError,
+    _read_supplemental_source_license,
     _license_semantics,
     _read_package_legal_files,
     _required_markers,
     _text_markers,
     run_genoffice_legal_review_dossier_from_environment,
 )
+from suite.operations.genoffice_license_material_collector import GenOfficeSupplementalLicenseSourceArtifact
 
 
 def _package_archive(path: Path, *, unsafe_link: bool = False) -> None:
@@ -55,6 +57,39 @@ def test_package_legal_reader_rejects_links(tmp_path: Path) -> None:
 
     with pytest.raises(GenOfficeLegalReviewDossierError, match="links or special files"):
         _read_package_legal_files(archive_path)
+
+
+def test_supplemental_source_reader_binds_root_license_to_commit(tmp_path: Path) -> None:
+    commit = "d2070d76a8ba07e6c7fa142caeb51ffd756e47eb"
+    archive_path = tmp_path / "source.tar.gz"
+    license_text = b"Permission is hereby granted, free of charge, to any person obtaining a copy.\n"
+    with tarfile.open(archive_path, mode="w:gz") as archive:
+        root = tarfile.TarInfo(f"val-parsers-{commit}")
+        root.type = tarfile.DIRTYPE
+        archive.addfile(root)
+        license_file = tarfile.TarInfo(f"val-parsers-{commit}/LICENSE")
+        license_file.size = len(license_text)
+        archive.addfile(license_file, io.BytesIO(license_text))
+    supplemental = GenOfficeSupplementalLicenseSourceArtifact(
+        package_name="@nodable/entities",
+        package_version="3.0.0",
+        reason="published_package_omits_full_license_text",
+        repository_url="git+https://github.com/nodable/val-parsers.git",
+        source_commit=commit,
+        registry_metadata_url="https://registry.npmjs.org/@nodable%2Fentities/3.0.0",
+        registry_metadata_filename="metadata.json",
+        registry_metadata_sha256="sha256:" + "0" * 64,
+        source_archive_url=f"https://codeload.github.com/nodable/val-parsers/tar.gz/{commit}",
+        source_archive_filename="source.tar.gz",
+        source_archive_size_bytes=archive_path.stat().st_size,
+        source_archive_sha256="sha256:" + "1" * 64,
+        source_archive_integrity_verified=True,
+    )
+
+    assert _read_supplemental_source_license(
+        archive_path=archive_path,
+        supplemental=supplemental,
+    ) == license_text
 
 
 def test_compound_license_semantics_are_explicit() -> None:

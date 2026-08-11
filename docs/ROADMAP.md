@@ -1534,7 +1534,9 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 - [x] Reproduzierbares GenOffice-Legal-Dossier technisch geschlossen: separater credential-loser Collector laedt alle
   21 exakten Runtime-Paketarchive ausschliesslich von den bereits gepinnten npm-URLs und akzeptiert nur die Lockfile-
   `sha512`-Bytes; ein zweiter no-network/read-only Gate hasht Root-LICENSE/NOTICE, Markenhinweis, ausgeschlossene
-  Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. `OR`-/`AND`-Semantik, sechs verpflichtende
+  Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. Der im npm-Paket fehlende MIT-Volltext von
+  `@nodable/entities@3.0.0` ist ueber npm-`gitHead`, exakten Source-Commit und Codeload-SHA-256 nachgezogen.
+  `OR`-/`AND`-Semantik, sechs verpflichtende
   Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
   erzeugt bewusst keine menschliche Freigabe; Import, Build und Ausfuehrung bleiben geschlossen.
 - [ ] GenOffice-Source-Admission abschliessen: qualifizierte menschliche Legal-/NOTICE-/Trademark-/Compound-License-
