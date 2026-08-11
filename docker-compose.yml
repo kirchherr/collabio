@@ -3058,6 +3058,8 @@ services:
       - /evidence/genoffice-worker-image.tar
       - --cache-dir
       - /trivy-cache
+      - --cache-backend
+      - memory
       - --skip-db-update
       - --skip-java-db-update
       - --skip-vex-repo-update

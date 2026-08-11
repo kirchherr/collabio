@@ -506,6 +506,7 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "genoffice-worker-image-raw-sbom:" in compose
     assert "/tmp/trivy-cache" in compose
     assert "genoffice-worker-image-vulnerability-scan:" in compose
+    assert "--cache-backend" in compose
     assert "container_image" in module
     assert "worker_execution_allowed: false" in entrypoint
 
