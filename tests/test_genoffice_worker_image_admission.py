@@ -349,6 +349,7 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "private_key_ingestion_allowed: Literal[False]" in module
     assert "worker_execution_allowed: Literal[False]" in module
     assert "npm install --offline --ignore-scripts" in dockerfile
+    assert "prepare-runtime-manifest.mjs" in dockerfile
     assert "USER 10003:10003" in dockerfile
     assert "worker_execution_allowed: false" in entrypoint
 

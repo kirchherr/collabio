@@ -17,6 +17,7 @@ COPY --from=genoffice_context /genoffice-development-build-context.tar /tmp/geno
 COPY --from=genoffice_dependencies /license-materials/ /tmp/npm-artifacts/
 COPY --from=genoffice_dependencies /genoffice-license-material-collection-report.json /tmp/dependency-report.json
 COPY docker/genoffice-worker/verify-dependency-artifacts.mjs /opt/collabio/verify-dependency-artifacts.mjs
+COPY docker/genoffice-worker/prepare-runtime-manifest.mjs /opt/collabio/prepare-runtime-manifest.mjs
 COPY docker/genoffice-worker/verify-runtime-inventory.mjs /opt/collabio/verify-runtime-inventory.mjs
 
 RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
@@ -26,6 +27,7 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && node /opt/collabio/verify-dependency-artifacts.mjs \
     && tar --extract --file /tmp/genoffice-context.tar --directory /opt/genoffice \
     && rm /tmp/genoffice-context.tar \
+    && node /opt/collabio/prepare-runtime-manifest.mjs \
     && for archive in /tmp/npm-artifacts/*.tgz; do \
          npm cache add "${archive}" --cache /tmp/npm-cache; \
        done \
