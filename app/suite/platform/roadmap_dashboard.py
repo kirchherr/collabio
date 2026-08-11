@@ -765,6 +765,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "no-network Legal-/NOTICE-/Trademark-Dossier hashgebunden. Ein deterministisches Drittanbieter-"
                         "NOTICE und die policy-gebundene Ed25519-Signier-Ceremony koennen nur den Development-Build "
                         "oeffnen. Private Schluessel bleiben ausserhalb von Repository und zentralem Assembler. "
+                        "Der vorbereitete no-network Materializer erzeugt daraus erst nach realer Admission ein "
+                        "normalisiertes, manifestgebundenes TAR und fuehrt dabei keinen Upstream-Code aus. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -789,13 +791,16 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_third_party_notice.py",
                         "app/suite/operations/genoffice_internal_oss_ceremony.py",
                         "app/suite/operations/genoffice_internal_oss_admission.py",
+                        "app/suite/operations/genoffice_development_build_context.py",
                         "tests/test_genoffice_license_material_collector.py",
                         "tests/test_genoffice_legal_review_dossier.py",
                         "tests/test_genoffice_third_party_notice.py",
                         "tests/test_genoffice_internal_oss_ceremony.py",
                         "tests/test_genoffice_internal_oss_admission.py",
+                        "tests/test_genoffice_development_build_context.py",
                         "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
                         "docs/operations/GENOFFICE_INTERNAL_OSS_ADMISSION.md",
+                        "docs/operations/GENOFFICE_DEVELOPMENT_BUILD_CONTEXT.md",
                         "docs/operations/genoffice_license_material_collection_report.json",
                         "docs/operations/genoffice_legal_review_dossier_report.json",
                         "docs/operations/genoffice_legal_decision_record.schema.json",
@@ -808,6 +813,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
                         "ARCHITECTURE_DECISIONS/ADR-0065-genoffice-legal-review-dossier.md",
                         "ARCHITECTURE_DECISIONS/ADR-0066-genoffice-internal-oss-admission.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0067-genoffice-development-build-context.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -833,6 +839,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "signing_keys_remain_outside_collabio",
                         "ed25519_verification_behind_kms_adapter",
                         "development_worker_build_blocked_until_signed_internal_decision",
+                        "deterministic_tar_context_after_internal_admission_only",
+                        "all_selected_source_files_rehashed_without_extraction",
+                        "normalized_uid_gid_mode_order_and_source_date_epoch",
+                        "materializer_performs_no_dependency_install_or_upstream_execution",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",
                     ),

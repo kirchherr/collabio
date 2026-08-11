@@ -108,6 +108,10 @@ docker compose -p collabio --profile office-supply-chain run --rm --no-deps \
 Every stage exits `2` for missing, malformed, stale, same-person, unauthorized, drifted or invalidly signed evidence.
 A green admission report opens only the development worker-build gate.
 
+The next boundary is `genoffice-development-build-context`. It revalidates this report together with source,
+supply-chain, npm-provenance and NOTICE evidence before producing the normalized TAR described in ADR-0067. It still
+does not install dependencies or build an image.
+
 The evidence set to back up together is the signer policy, signing request, exact signature-message bytes, both detached
 signatures, assembled decision envelope and admission report. Public keys and signatures are evidence; signing keys are
 never copied into Collabio backup storage.

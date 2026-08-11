@@ -103,10 +103,11 @@ future detached-signature-verified legal record. ADR-0066 additionally retains t
 `GENOFFICE_THIRD_PARTY_NOTICES.txt`, its report, the internal OSS decision and signer-policy schemas, any installed public
 signer policy, the policy-bound non-effective signing request, its exact canonical signature-message bytes, both public
 detached signatures, the assembled two-person decision envelope, and its development-only admission report. Signing
-keys are KMS/secret-manager state and never Collabio backup payloads. A restore must verify every evidence digest,
-request/message binding, signer-policy hash in the signed payload, decision signature and usage-profile boundary before
-an Office worker can be rebuilt. Registry or license metadata presence without the retained cryptographic bytes,
-dossier and exact notice remains insufficient.
+keys are KMS/secret-manager state and never Collabio backup payloads. After admission, ADR-0067 additionally retains the
+normalized development build-context TAR, its embedded manifest and its external report. A restore must verify every
+evidence digest, request/message binding, signer-policy hash in the signed payload, decision signature, usage-profile
+boundary, context TAR and embedded manifest before an Office worker can be rebuilt. Registry or license metadata
+presence without the retained cryptographic bytes, dossier and exact notice remains insufficient.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:

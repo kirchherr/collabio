@@ -1550,6 +1550,11 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 - [ ] Internen GenOffice-Development-Entscheid abschliessen: zwei benannte interne Verantwortliche als `product_owner`
   und `security_compliance_owner` in der Signer-Policy aufnehmen, den exakten Payload unabhaengig signieren und den
   Admission-Report reproduzieren. Keine Identitaeten, Schluessel oder Freigaben simulieren.
+- [x] Deterministischen Development-Build-Context hinter dieser Admission vorbereitet: der no-network/read-only
+  Materializer liest das Archiv ohne Extraktion, prueft alle 93 ausgewaehlten Dateien erneut gegen Pfad, Groesse und
+  SHA-256 und erzeugt ein nach UID/GID, Modus, Reihenfolge und `SOURCE_DATE_EPOCH` normalisiertes TAR mit NOTICE und
+  eingebettetem Evidence-Manifest. Ohne reale interne Admission entsteht kein Context; npm, Build, Engine und Import
+  bleiben geschlossen.
 - [ ] Danach reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellen.
   Erst wenn interne Development-Admission und Build-Gate bestanden sind, darf der gepruefte Quellstand in einen
   isolierten Spike-Branch oder ein Worker-Image gelangen; produktive Nutzung bleibt weiterhin gesperrt.

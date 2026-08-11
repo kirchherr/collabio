@@ -2476,6 +2476,42 @@ services:
       - ./app:/workspace/app:ro
       - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
 
+  genoffice-development-build-context:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_development_build_context
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SOURCE_DATE_EPOCH: "${SUITE_GENOFFICE_SOURCE_DATE_EPOCH:-0}"
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+      SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH: /evidence/genoffice-internal-oss-admission-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH: /output/genoffice-development-build-context.tar
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH: /output/genoffice-development-build-context-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}:/source/genoffice.tar.gz:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence:ro
+      - ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}:/output
+
   genoffice-docx-prebuild-sbom:
     profiles: ["office-supply-chain"]
     build:
