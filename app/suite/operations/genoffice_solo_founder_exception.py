@@ -528,7 +528,10 @@ def verify_genoffice_solo_founder_request(request: GenOfficeSoloFounderException
     if build_genoffice_solo_founder_request_hash(request) != request.request_hash:
         raise GenOfficeSoloFounderExceptionError("GenOffice solo-founder request hash is invalid")
     message = build_genoffice_solo_founder_signature_message(request.payload)
-    if _sha256_bytes(message) != request.signature_message_sha256 or len(message) != request.signature_message_size_bytes:
+    if (
+        _sha256_bytes(message) != request.signature_message_sha256
+        or len(message) != request.signature_message_size_bytes
+    ):
         raise GenOfficeSoloFounderExceptionError("GenOffice solo-founder signature message binding is invalid")
     return message
 
