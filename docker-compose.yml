@@ -3053,7 +3053,9 @@ services:
     profiles: ["office-worker-build"]
     image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
     command:
-      - sbom
+      - image
+      - --input
+      - /evidence/genoffice-worker-image.tar
       - --cache-dir
       - /trivy-cache
       - --skip-db-update
@@ -3068,7 +3070,6 @@ services:
       - json
       - --output
       - /evidence/genoffice-worker-image-vulnerability-report.json
-      - /evidence/genoffice-worker-image.cdx.json
     network_mode: "none"
     user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
     read_only: true
@@ -3078,9 +3079,9 @@ services:
       - no-new-privileges:true
     pids_limit: 64
     cpus: "1.0"
-    mem_limit: 512m
+    mem_limit: 1g
     tmpfs:
-      - /tmp:size=64m,noexec,nosuid,nodev
+      - /tmp:size=512m,noexec,nosuid,nodev
     volumes:
       - type: bind
         source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}

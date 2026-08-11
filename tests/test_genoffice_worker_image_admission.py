@@ -179,11 +179,17 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
         "status=valid\n",
         encoding="utf-8",
     )
-    npm_components = [
+    physical_components = [
         component
         for component in sbom["components"]
-        if isinstance(component, dict) and str(component.get("purl", "")).startswith("pkg:npm/")
+        if isinstance(component, dict)
+        and (
+            str(component.get("purl", "")).startswith("pkg:npm/")
+            or str(component.get("purl", "")).startswith("pkg:deb/")
+        )
+        and component.get("purl") != "pkg:npm/emf-converter@2.0.2"
     ]
+    image_digest = sbom["metadata"]["component"]["version"]
     scan_time = issued_at + timedelta(minutes=20)
     vulnerability_path = tmp_path / "genoffice-worker-image-vulnerability-report.json"
     vulnerability_path.write_text(
@@ -191,12 +197,18 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
             {
                 "SchemaVersion": 2,
                 "CreatedAt": scan_time.isoformat(),
-                "ArtifactName": "/evidence/genoffice-worker-image.cdx.json",
-                "ArtifactType": "cyclonedx",
+                "ArtifactName": "collabio/genoffice-docx-worker:verification-a",
+                "ArtifactType": "container_image",
                 "Trivy": {"Version": "0.73.0"},
+                "Metadata": {
+                    "ImageID": image_digest,
+                    "OS": {"Family": "debian", "Name": "12.15"},
+                },
                 "Results": [
                     {
-                        "Packages": [{"Identifier": {"PURL": component["purl"]}} for component in npm_components],
+                        "Packages": [
+                            {"Identifier": {"PURL": component["purl"]}} for component in physical_components
+                        ],
                         "Vulnerabilities": [],
                     }
                 ],
@@ -493,6 +505,8 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "provenance: false" in compose
     assert "genoffice-worker-image-raw-sbom:" in compose
     assert "/tmp/trivy-cache" in compose
+    assert "genoffice-worker-image-vulnerability-scan:" in compose
+    assert "container_image" in module
     assert "worker_execution_allowed: false" in entrypoint
 
 

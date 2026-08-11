@@ -1084,7 +1084,8 @@ def _schema_receipt(path: Path, *, sbom_hash: str) -> str:
 def _trivy_review(
     path: Path,
     *,
-    expected_npm_count: int,
+    expected_image_config_digest: str,
+    expected_package_purls: set[str],
 ) -> tuple[str, datetime, int, dict[str, int], tuple[GenOfficeWorkerVulnerabilityFinding, ...]]:
     report_hash, _ = _hash_file(path, maximum_size=MAX_SMALL_EVIDENCE_BYTES)
     report = _read_json(path)
@@ -1092,12 +1093,23 @@ def _trivy_review(
     if (
         not isinstance(report, dict)
         or report.get("SchemaVersion") != 2
-        or report.get("ArtifactType") != "cyclonedx"
+        or report.get("ArtifactType") != "container_image"
         or not isinstance(trivy, dict)
         or trivy.get("Version") != GENOFFICE_WORKER_TRIVY_VERSION
-        or PurePosixPath(str(report.get("ArtifactName", ""))).name != "genoffice-worker-image.cdx.json"
+        or not str(report.get("ArtifactName", "")).startswith(f"{GENOFFICE_WORKER_IMAGE_NAME}:")
     ):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker Trivy report identity is invalid")
+    metadata = report.get("Metadata")
+    os_metadata = metadata.get("OS") if isinstance(metadata, dict) else None
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("ImageID") != expected_image_config_digest
+        or not isinstance(os_metadata, dict)
+        or os_metadata.get("Family") != "debian"
+        or not isinstance(os_metadata.get("Name"), str)
+        or not os_metadata["Name"]
+    ):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker Trivy image metadata is invalid")
     scan_time = _parse_datetime(str(report.get("CreatedAt", "")), field="worker Trivy scan time")
     results = report.get("Results")
     if not isinstance(results, list) or not results:
@@ -1135,8 +1147,10 @@ def _trivy_review(
                     primary_url=(str(vulnerability["PrimaryURL"]) if vulnerability.get("PrimaryURL") else None),
                 )
             )
-    if sum(purl.startswith("pkg:npm/") for purl in package_purls) < expected_npm_count:
-        raise GenOfficeWorkerImageAdmissionError("GenOffice worker Trivy scan lacks npm runtime packages")
+    if package_purls != expected_package_purls:
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker Trivy package inventory is not exact")
+    if any(item.package_purl not in package_purls for item in findings):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker vulnerability is not bound to its package inventory")
     severity_counter = Counter(item.severity for item in findings)
     severity_counts = {severity: severity_counter.get(severity, 0) for severity in _SEVERITIES}
     if severity_counts["HIGH"] or severity_counts["CRITICAL"]:
@@ -1209,9 +1223,24 @@ def build_genoffice_worker_signing_request(
     if image_digest != build_evidence.image_config_digest:
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker SBOM is bound to another image")
     receipt_hash = _schema_receipt(schema_receipt_path, sbom_hash=sbom_hash)
+    components = sbom.get("components")
+    if not isinstance(components, list):
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker SBOM component inventory is missing")
+    vendored_purl = "pkg:npm/emf-converter@2.0.2"
+    expected_scan_purls = {
+        str(component["purl"])
+        for component in components
+        if isinstance(component, dict)
+        and isinstance(component.get("purl"), str)
+        and (str(component["purl"]).startswith("pkg:npm/") or str(component["purl"]).startswith("pkg:deb/"))
+        and component["purl"] != vendored_purl
+    }
+    if len(expected_scan_purls) != npm_count + os_count - 1:
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker physical package inventory is invalid")
     vulnerability_hash, scan_time, finding_count, severity_counts, findings = _trivy_review(
         vulnerability_report_path,
-        expected_npm_count=npm_count,
+        expected_image_config_digest=build_evidence.image_config_digest,
+        expected_package_purls=expected_scan_purls,
     )
     db_hash, db_updated_at, db_age = _trivy_db_review(trivy_db_metadata_path, scan_time=scan_time)
     payload_draft = GenOfficeWorkerBuildAttestationPayload(
