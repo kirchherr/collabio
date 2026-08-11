@@ -121,7 +121,9 @@ def _signed_fixture(
         ),
         payload_hash="sha256:" + "0" * 64,
     )
-    payload = payload_draft.model_copy(update={"payload_hash": build_genoffice_internal_oss_payload_hash(payload_draft)})
+    payload = payload_draft.model_copy(
+        update={"payload_hash": build_genoffice_internal_oss_payload_hash(payload_draft)}
+    )
     private_keys = (Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate())
     signer_ids = ("person-a", "person-a" if same_signer else "person-b")
     roles = ("product_owner", "security_compliance_owner")

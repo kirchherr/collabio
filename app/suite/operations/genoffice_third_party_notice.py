@@ -3,8 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, Mapping
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -304,7 +305,9 @@ def build_genoffice_third_party_notice(
         "Excluded source scope: ee/** and all prohibited source paths in the pinned admission report\n"
         f"Legal dossier: {dossier.report_hash}\n\n"
     )
-    rendered = header + "".join(_render_component(component=item, contents=content_by_hash) for item in ordered_components)
+    rendered = header + "".join(
+        _render_component(component=item, contents=content_by_hash) for item in ordered_components
+    )
     notice = rendered.encode("utf-8")
     if len(notice) > MAX_NOTICE_SIZE_BYTES:
         raise GenOfficeThirdPartyNoticeError("GenOffice third-party notice exceeds its size limit")

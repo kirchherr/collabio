@@ -5,9 +5,10 @@ import binascii
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Mapping
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -378,7 +379,9 @@ def verify_genoffice_internal_oss_admission(
     if build_genoffice_internal_oss_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
         raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS signer policy hash is invalid")
     if signer_policy.effective_at_utc > envelope.payload.decided_at_utc:
-        raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS signer policy was not effective at decision time")
+        raise GenOfficeInternalOssAdmissionError(
+            "GenOffice internal OSS signer policy was not effective at decision time"
+        )
     _verify_decision_scope(payload=envelope.payload, dossier=dossier, notice_report=notice_report)
 
     if len(envelope.approvals) != 2:
@@ -387,7 +390,9 @@ def verify_genoffice_internal_oss_admission(
         raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission lacks both required approval roles")
     if len({item.signer_id for item in envelope.approvals}) != 2:
         raise GenOfficeInternalOssAdmissionError("GenOffice internal OSS admission violates two-person control")
-    policy_signers = {(item.signer_id, item.signer_role, item.key_id): item for item in signer_policy.signers if item.active}
+    policy_signers = {
+        (item.signer_id, item.signer_role, item.key_id): item for item in signer_policy.signers if item.active
+    }
     message = canonical_json(envelope.payload.model_dump(mode="json")).encode("utf-8")
     for approval in envelope.approvals:
         policy_signer = policy_signers.get((approval.signer_id, approval.signer_role, approval.key_id))
