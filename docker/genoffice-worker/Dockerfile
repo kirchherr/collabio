@@ -46,6 +46,7 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
          --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
          --numeric-owner --hard-dereference -C / \
          opt/genoffice opt/collabio/runtime-inventory.json opt/collabio/runtime-file-inventory.json \
+    && sha256sum /opt/collabio/genoffice-runtime.tar \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
