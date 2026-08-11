@@ -39,7 +39,12 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
               /opt/genoffice/packages/docx-engine/tsconfig.json \
               /opt/genoffice/packages/docx-engine/vitest.config.ts \
               /opt/genoffice/.collabio/upstream \
-    && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
+    && find /opt/genoffice /opt/collabio -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} + \
+    && tar --create --file /opt/collabio/genoffice-runtime.tar --format=posix \
+         --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=10003 --group=10003 \
+         --numeric-owner --pax-option=delete=atime,delete=ctime -C / \
+         opt/genoffice opt/collabio/runtime-inventory.json \
+    && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
 
@@ -52,11 +57,9 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /usr/local/lib/node_modules /usr/local/bin
 
-COPY --from=dependencies --chown=10003:10003 /opt/genoffice/LICENSE /opt/genoffice/LICENSE
-COPY --from=dependencies --chown=10003:10003 /opt/genoffice/THIRD_PARTY_NOTICES.txt /opt/genoffice/THIRD_PARTY_NOTICES.txt
-COPY --from=dependencies --chown=10003:10003 /opt/genoffice/.collabio/build-context-manifest.json /opt/genoffice/.collabio/build-context-manifest.json
-COPY --from=dependencies --chown=10003:10003 /opt/genoffice/packages/docx-engine /opt/genoffice/packages/docx-engine
-COPY --from=dependencies --chown=10003:10003 /opt/collabio/runtime-inventory.json /opt/collabio/runtime-inventory.json
+COPY --from=dependencies /opt/collabio/genoffice-runtime.tar /tmp/genoffice-runtime.tar
+RUN tar --extract --file /tmp/genoffice-runtime.tar --directory / --numeric-owner \
+    && rm /tmp/genoffice-runtime.tar
 COPY --chown=10003:10003 docker/genoffice-worker/worker-entrypoint.mjs /opt/collabio/worker-entrypoint.mjs
 
 LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker candidate" \

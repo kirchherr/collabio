@@ -353,6 +353,8 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "prepare-runtime-manifest.mjs" in dockerfile
     assert "ARG SOURCE_DATE_EPOCH=0" in dockerfile
     assert 'touch -h -d "@${SOURCE_DATE_EPOCH}"' in dockerfile
+    assert "--sort=name" in dockerfile
+    assert "--numeric-owner" in dockerfile
     assert "USER 10003:10003" in dockerfile
     assert "provenance: false" in compose
     assert "worker_execution_allowed: false" in entrypoint
