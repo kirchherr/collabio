@@ -147,9 +147,9 @@ def _authoritative_sbom(build_evidence: GenOfficeWorkerImageBuildEvidence) -> di
     raw_components.append(
         {
             "type": "operating-system",
-            "name": "debian",
-            "version": "13",
-            "purl": "pkg:deb/debian/base-files@13.8%2Bdeb13u1?arch=amd64",
+            "name": "alpine",
+            "version": "3.23",
+            "purl": "pkg:apk/alpine/alpine-baselayout@3.7.1-r8?arch=x86_64",
         }
     )
     raw_sbom = {
@@ -185,7 +185,7 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
         if isinstance(component, dict)
         and (
             str(component.get("purl", "")).startswith("pkg:npm/")
-            or str(component.get("purl", "")).startswith("pkg:deb/")
+            or str(component.get("purl", "")).startswith("pkg:apk/alpine/")
         )
         and component.get("purl") != "pkg:npm/emf-converter@2.0.2"
     ]
@@ -202,7 +202,7 @@ def _scan_evidence(tmp_path: Path, sbom: dict[str, Any], issued_at: datetime) ->
                 "Trivy": {"Version": "0.73.0"},
                 "Metadata": {
                     "ImageID": image_digest,
-                    "OS": {"Family": "debian", "Name": "12.15"},
+                    "OS": {"Family": "alpine", "Name": "3.23.2"},
                 },
                 "Results": [
                     {
@@ -450,6 +450,10 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
                 "io.collabio.genoffice.authorization-report-sha256": (
                     context_report.development_authorization_report_hash
                 ),
+                "io.collabio.genoffice.build-base-image": (
+                    "node:24.18.0-bookworm-slim@sha256:"
+                    "6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
+                ),
                 "io.collabio.genoffice.build-context-report-sha256": context_report.report_hash,
                 "io.collabio.genoffice.build-context-sha256": context_report.context_tar_sha256,
                 "io.collabio.genoffice.execution-state": "blocked",
@@ -457,6 +461,10 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
                 "io.collabio.genoffice.scope": "development_evaluation",
                 "io.collabio.genoffice.source-import-allowed": "false",
                 "io.collabio.genoffice.tenant-content-allowed": "false",
+                "io.collabio.genoffice.runtime-base-image": (
+                    "node:24-alpine3.23@sha256:"
+                    "5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+                ),
             },
             "User": "10003:10003",
             "WorkingDir": "/opt/genoffice/packages/docx-engine",
@@ -473,6 +481,12 @@ def test_worker_inspect_uses_oci_descriptor_config_digest() -> None:
     assert observed_digest == config_digest
     assert size == 4096
     assert layers == (_hash("layer"),)
+    image["Config"]["Labels"]["io.collabio.genoffice.runtime-base-image"] = "invalid"
+    with pytest.raises(GenOfficeWorkerImageAdmissionError, match="boundary labels"):
+        _inspect_boundary(image, context_report=context_report)
+    image["Config"]["Labels"]["io.collabio.genoffice.runtime-base-image"] = (
+        "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+    )
     image["Descriptor"]["annotations"]["config.digest"] = "invalid"
     with pytest.raises(GenOfficeWorkerImageAdmissionError, match="config digest"):
         _inspect_boundary(image, context_report=context_report)

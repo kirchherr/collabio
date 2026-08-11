@@ -50,9 +50,13 @@ GENOFFICE_WORKER_SIGNATURE_RESPONSE_SCHEMA_VERSION = "genoffice_worker_build_sig
 GENOFFICE_WORKER_ADMISSION_REPORT_SCHEMA_VERSION = "genoffice_worker_image_admission_report.v1"
 GENOFFICE_WORKER_ATTESTATION_PAYLOAD_SCHEMA_VERSION = "genoffice_worker_build_attestation_payload.v1"
 GENOFFICE_WORKER_IMAGE_SBOM_SCHEMA_VERSION = "genoffice_worker_image_sbom.v1"
-GENOFFICE_WORKER_BASE_IMAGE_REF: Literal[
+GENOFFICE_WORKER_BUILD_BASE_IMAGE_REF: Literal[
     "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
 ] = "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
+GENOFFICE_WORKER_RUNTIME_BASE_IMAGE_REF: Literal[
+    "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+] = "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+GENOFFICE_WORKER_OS_PURL_PREFIX = "pkg:apk/alpine/"
 GENOFFICE_WORKER_TRIVY_IMAGE_REF = (
     "aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c"
 )
@@ -109,11 +113,15 @@ class GenOfficeWorkerImageBuildEvidence(BaseModel):
     build_a_inspect_sha256: str
     build_b_inspect_sha256: str
     dockerfile_sha256: str
-    base_image_ref: Literal[
+    build_base_image_ref: Literal[
         "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
-    ] = GENOFFICE_WORKER_BASE_IMAGE_REF
-    node_version: Literal["24.18.0"] = "24.18.0"
-    npm_version: Literal["11.16.0"] = "11.16.0"
+    ] = GENOFFICE_WORKER_BUILD_BASE_IMAGE_REF
+    runtime_base_image_ref: Literal[
+        "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
+    ] = GENOFFICE_WORKER_RUNTIME_BASE_IMAGE_REF
+    build_node_version: Literal["24.18.0"] = "24.18.0"
+    build_npm_version: Literal["11.16.0"] = "11.16.0"
+    runtime_node_version: Literal["24.19.0"] = "24.19.0"
     development_build_context_report_hash: str
     development_build_context_tar_sha256: str
     source_archive_sha256: str
@@ -587,6 +595,7 @@ def _inspect_boundary(
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker image labels are missing")
     expected_labels = {
         "io.collabio.genoffice.authorization-report-sha256": context_report.development_authorization_report_hash,
+        "io.collabio.genoffice.build-base-image": GENOFFICE_WORKER_BUILD_BASE_IMAGE_REF,
         "io.collabio.genoffice.build-context-report-sha256": context_report.report_hash,
         "io.collabio.genoffice.build-context-sha256": context_report.context_tar_sha256,
         "io.collabio.genoffice.execution-state": "blocked",
@@ -594,6 +603,7 @@ def _inspect_boundary(
         "io.collabio.genoffice.scope": "development_evaluation",
         "io.collabio.genoffice.source-import-allowed": "false",
         "io.collabio.genoffice.tenant-content-allowed": "false",
+        "io.collabio.genoffice.runtime-base-image": GENOFFICE_WORKER_RUNTIME_BASE_IMAGE_REF,
     }
     if any(labels.get(name) != expected for name, expected in expected_labels.items()):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker image boundary labels are invalid")
@@ -956,9 +966,9 @@ def build_genoffice_worker_image_sbom(
     npm_purls = {purl for purl in normalized_by_purl if purl.startswith("pkg:npm/")}
     if npm_purls != expected_runtime_purls | {engine_purl, vendored_purl}:
         raise GenOfficeWorkerImageAdmissionError("GenOffice authoritative npm inventory is not exact")
-    os_purls = {purl for purl in normalized_by_purl if purl.startswith("pkg:deb/")}
+    os_purls = {purl for purl in normalized_by_purl if purl.startswith(GENOFFICE_WORKER_OS_PURL_PREFIX)}
     if not os_purls:
-        raise GenOfficeWorkerImageAdmissionError("GenOffice image SBOM lacks Debian package inventory")
+        raise GenOfficeWorkerImageAdmissionError("GenOffice image SBOM lacks Alpine package inventory")
     image_digest = build_evidence.image_config_digest
     image_component_ref = f"urn:collabio:genoffice-worker:{image_digest}"
     timestamp = datetime.fromtimestamp(build_evidence.source_date_epoch, tz=UTC).isoformat().replace("+00:00", "Z")
@@ -1045,7 +1055,7 @@ def _sbom_inventory(sbom: Mapping[str, Any]) -> tuple[str, int, int, int, str]:
     if len(values) != len(set(values)):
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker SBOM component PURLs are duplicated")
     npm_count = sum(item.startswith("pkg:npm/") for item in values)
-    os_count = sum(item.startswith("pkg:deb/") for item in values)
+    os_count = sum(item.startswith(GENOFFICE_WORKER_OS_PURL_PREFIX) for item in values)
     properties = metadata.get("properties")
     raw_hash = None
     if isinstance(properties, list):
@@ -1105,7 +1115,7 @@ def _trivy_review(
         not isinstance(metadata, dict)
         or metadata.get("ImageID") != expected_image_config_digest
         or not isinstance(os_metadata, dict)
-        or os_metadata.get("Family") != "debian"
+        or os_metadata.get("Family") != "alpine"
         or not isinstance(os_metadata.get("Name"), str)
         or not os_metadata["Name"]
     ):
@@ -1232,7 +1242,10 @@ def build_genoffice_worker_signing_request(
         for component in components
         if isinstance(component, dict)
         and isinstance(component.get("purl"), str)
-        and (str(component["purl"]).startswith("pkg:npm/") or str(component["purl"]).startswith("pkg:deb/"))
+        and (
+            str(component["purl"]).startswith("pkg:npm/")
+            or str(component["purl"]).startswith(GENOFFICE_WORKER_OS_PURL_PREFIX)
+        )
         and component["purl"] != vendored_purl
     }
     if len(expected_scan_purls) != npm_count + os_count - 1:

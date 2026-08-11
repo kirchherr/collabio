@@ -51,7 +51,7 @@ RUN test -n "${GENOFFICE_CONTEXT_SHA256}" \
     && sha256sum /opt/collabio/genoffice-runtime.tar \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt/collabio/genoffice-runtime.tar
 
-FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
+FROM node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a AS runtime
 
 ARG SOURCE_DATE_EPOCH=0
 ARG GENOFFICE_CONTEXT_SHA256
@@ -64,8 +64,8 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /opt /usr/local/lib/node_modules /usr/local/bin
 
 RUN --mount=from=dependencies,source=/opt/collabio,target=/mnt,ro \
-    cp --no-preserve=all /mnt/genoffice-runtime.tar /tmp/genoffice-runtime.tar \
-    && tar --extract --file /tmp/genoffice-runtime.tar --directory / --numeric-owner \
+    cat /mnt/genoffice-runtime.tar > /tmp/genoffice-runtime.tar \
+    && tar --extract --file /tmp/genoffice-runtime.tar --directory / \
     && rm /tmp/genoffice-runtime.tar \
     && touch -h -d "@${SOURCE_DATE_EPOCH}" /tmp /opt /opt/collabio /opt/genoffice
 
@@ -73,6 +73,7 @@ LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker
       org.opencontainers.image.description="Non-runtime development candidate for the admitted GenOffice DOCX engine scope" \
       org.opencontainers.image.source="https://github.com/kirchherr/collabio" \
       org.opencontainers.image.licenses="Apache-2.0" \
+      io.collabio.genoffice.build-base-image="node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d" \
       io.collabio.genoffice.build-context-sha256="${GENOFFICE_CONTEXT_SHA256}" \
       io.collabio.genoffice.build-context-report-sha256="${GENOFFICE_CONTEXT_REPORT_SHA256}" \
       io.collabio.genoffice.authorization-report-sha256="${GENOFFICE_AUTHORIZATION_REPORT_SHA256}" \
@@ -80,7 +81,8 @@ LABEL org.opencontainers.image.title="Collabio GenOffice DOCX development worker
       io.collabio.genoffice.execution-state="blocked" \
       io.collabio.genoffice.source-import-allowed="false" \
       io.collabio.genoffice.tenant-content-allowed="false" \
-      io.collabio.genoffice.production-use-allowed="false"
+      io.collabio.genoffice.production-use-allowed="false" \
+      io.collabio.genoffice.runtime-base-image="node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a"
 
 ENV HOME=/nonexistent \
     NODE_ENV=production \
