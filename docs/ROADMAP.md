@@ -1553,10 +1553,14 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   erneut auf Aktivitaet geprueft und meldet ausdruecklich `two_person_control_verified=false`. Sie oeffnet nur den
   no-network Development-Build-Context; Import, Engine, Tenant-Content, Hosted Service, On-Prem und Produktion bleiben
   geschlossen. Policy, Request, Message und Report sind privat und write-once; Private-Key-Ingestion bleibt verboten.
-- [ ] Reale Solo-Founder-Ausnahme abschliessen: dedizierten extern verwahrten Ed25519-Schluessel erzeugen, nur den
-  rohen 32-Byte-Public-Key einbringen, Policy und maximal 30 Tage gueltigen Request mit echten IDs/Referenzen erzeugen,
-  die exakten Message-Bytes extern signieren und den Ausnahmebericht reproduzieren. Keine Identitaet, Signatur oder
-  Risikoentscheidung simulieren.
+- [x] Reale Solo-Founder-Ausnahme abgeschlossen: dedizierter Ed25519-Schluessel ausserhalb von Collabio und `dev001`
+  erzeugt und lokal per Windows-DPAPI geschuetzt; nur der rohe 32-Byte-Public-Key mit
+  `sha256:13cd5f64e63a8e9ae0bb8ca683f30d2db0377cfe8f819a8e7fe869cb98fa4647` wurde eingebracht. Die reale
+  `founder_risk_owner`-Signatur bindet Policy, Request `sha256:b6e307e7...3230e`, Legal-/NOTICE-Evidence,
+  Risikoreferenz und Commit `7652e3f`. Ausnahmebericht `sha256:c9cbc425...e7f53` ist vom 11. bis 18. August 2026
+  aktiv und erlaubt ausschliesslich die no-network Development-Build-Context-Materialisierung. Der reproduzierte
+  95-Dateien-Context ist `sha256:55822a9c...5fcad`; Import, Engine, Tenant-Content, Hosted Service, On-Prem und
+  Produktion bleiben geschlossen, `two_person_control_verified=false`.
 - [ ] Zwei-Personen-GenOffice-Entscheid vor jeder Runtime-, Pilot-, Distributions- oder Produktionsgrenze abschliessen:
   zwei benannte Verantwortliche als `product_owner` und `security_compliance_owner` aufnehmen und den exakten Payload
   unabhaengig signieren. Der vorbereitete Request v2 bleibt maximal 72 Stunden gueltig und bindet Personen, Rollen,
