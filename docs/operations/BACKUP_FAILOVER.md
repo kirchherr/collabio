@@ -122,6 +122,10 @@ generated document content are prohibited backup artifacts. A restore must verif
 worker/corpus/sandbox hash, then keep the restored authorization non-executable: its historical validity window is
 evidence, never permission for a new run.
 
+The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
+Restore them from Git, install only after byte review, and verify that both global Ubuntu AppArmor user-namespace
+restrictions remain enabled. Never back up or restore a host-wide sysctl override that disables those restrictions.
+
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:
 

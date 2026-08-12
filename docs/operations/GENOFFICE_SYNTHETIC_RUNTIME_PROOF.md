@@ -87,6 +87,21 @@ Do not substitute `runc`, weaken the profile or treat Docker inspect evidence al
 replace the `dev001` gVisor installation, then repeat the complete create-inspect-start sequence in a new immutable
 evidence generation.
 
+The host diagnosis identified Ubuntu's AppArmor restriction for unprivileged user namespaces as the immediate cause.
+Keep both global AppArmor restrictions enabled. Install the repository-controlled, path-bound exception for the
+package-managed `/usr/bin/runsc`; it grants only the AppArmor `userns` permission and does not restart Docker:
+
+```bash
+cd /home/extern/collabio
+sudo ./security/apparmor/install-runsc-profile.sh
+./security/apparmor/verify-runsc-profile.sh
+```
+
+The installer validates the Debian package owner, root ownership, mode and profile syntax. It refuses to overwrite a
+different host profile. The verifier requires exact repository/host bytes, a loaded profile and both global AppArmor
+hardening sysctls still set to `1`. Installing the profile is host preparation only and grants no Collabio runtime
+authorization.
+
 ## Two-Person Ceremony
 
 Enroll two different accountable humans in `genoffice_runtime_signer_policy.v1`. Key generation and signing happen in

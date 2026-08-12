@@ -1582,7 +1582,8 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
 - [ ] Reale `runsc`-In-Container-Probe auf `dev001` schliessen: der Container wurde am 12. August 2026 mit korrekter
   HostConfig erzeugt, aber `runsc` scheitert bereits vor Prozessstart; auch der minimale Host-Smoke-Test endet mit
   `fork/exec /proc/self/exe: resource temporarily unavailable`. Kein Fallback auf `runc`, keine Engine-Ausfuehrung und
-  keine Freigabe, bis die Host-Runtime repariert und der unveraenderte Probevertrag in einer neuen Generation besteht.
+  keine Freigabe, bis das versionierte pfadgebundene AppArmor-`userns`-Profil interaktiv installiert, die globalen
+  Restriktionen weiterhin aktiv nachgewiesen und der unveraenderte Probevertrag in einer neuen Generation bestanden ist.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
