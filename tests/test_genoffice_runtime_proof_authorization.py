@@ -186,7 +186,7 @@ def test_sandbox_profile_and_docker_inspect_are_exact() -> None:
         {
             "Config": {"User": "10003:10003"},
             "HostConfig": {
-                "Runtime": "runsc",
+                "Runtime": "runsc-kvm",
                 "NetworkMode": "none",
                 "ReadonlyRootfs": True,
                 "PidsLimit": 32,
@@ -210,7 +210,7 @@ def test_sandbox_probe_compose_keeps_evidence_read_only_and_reports_via_logs() -
     compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
     probe = compose.split("\n  genoffice-runtime-sandbox-probe:\n", maxsplit=1)[1].split("\n  api:\n", maxsplit=1)[0]
 
-    assert "runtime: runsc" in probe
+    assert "runtime: runsc-kvm" in probe
     assert 'network_mode: "none"' in probe
     assert 'user: "10003:10003"' in probe
     assert "read_only: true" in probe

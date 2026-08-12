@@ -94,13 +94,29 @@ package-managed `/usr/bin/runsc`; it grants only the AppArmor `userns` permissio
 ```bash
 cd /home/extern/collabio
 sudo ./security/apparmor/install-runsc-profile.sh
-./security/apparmor/verify-runsc-profile.sh
+sudo ./security/apparmor/verify-runsc-profile.sh
 ```
 
 The installer validates the Debian package owner, root ownership, mode and profile syntax. It refuses to overwrite a
 different host profile. The verifier requires exact repository/host bytes, a loaded profile and both global AppArmor
 hardening sysctls still set to `1`. Installing the profile is host preparation only and grants no Collabio runtime
 authorization.
+
+On the bare-metal `dev001` host, the default `systrap` platform still fails before process creation after that profile
+is loaded. Keep the existing `runsc` Docker runtime unchanged and add the independently named `runsc-kvm` runtime:
+
+```bash
+cd /home/extern/collabio
+flock /home/extern/.codex-coordination/docker.lock \
+  sudo ./security/gvisor/install-runsc-kvm-runtime.py
+sudo ./security/gvisor/verify-runsc-kvm-runtime.py
+```
+
+The installer requires verified bare metal, `/dev/kvm`, loaded vendor KVM modules, package-managed `runsc`, the exact
+loaded AppArmor profile and enabled global restrictions. It adds only `runsc-kvm` with `--platform=kvm`, validates a
+temporary daemon configuration before atomic replacement, keeps a root-only rollback copy, reloads rather than
+restarts Docker and fails if any previously running container disappears. The GenOffice probe is pinned to this named
+runtime; existing Collabio, Tricert and Webcut runtime selection does not change.
 
 ## Two-Person Ceremony
 

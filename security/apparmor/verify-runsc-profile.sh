@@ -10,6 +10,7 @@ fail() {
   exit 1
 }
 
+[ "$(id -u)" -eq 0 ] || fail "runsc AppArmor profile verification requires root"
 [ -f "$SOURCE_PROFILE" ] || fail "versioned runsc AppArmor profile is missing"
 [ -f "$TARGET_PROFILE" ] || fail "installed runsc AppArmor profile is missing"
 cmp -s "$SOURCE_PROFILE" "$TARGET_PROFILE" || fail "installed runsc AppArmor profile drifted"

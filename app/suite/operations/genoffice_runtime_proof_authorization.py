@@ -119,7 +119,7 @@ class GenOfficeRuntimeSandboxProfile(BaseModel):
 
     schema_version: Literal["genoffice_runtime_sandbox_profile.v1"] = "genoffice_runtime_sandbox_profile.v1"
     profile_id: Literal["genoffice-synthetic-proof-runsc-v1"] = "genoffice-synthetic-proof-runsc-v1"
-    runtime_class: Literal["runsc"] = "runsc"
+    runtime_class: Literal["runsc-kvm"] = "runsc-kvm"
     network_mode: Literal["none"] = "none"
     user: Literal["10003:10003"] = "10003:10003"
     read_only_root_filesystem: Literal[True] = True

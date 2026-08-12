@@ -3294,7 +3294,7 @@ services:
       context: .
       target: dev
     command: python -m suite.operations.genoffice_runtime_proof_authorization
-    runtime: runsc
+    runtime: runsc-kvm
     network_mode: "none"
     user: "10003:10003"
     read_only: true

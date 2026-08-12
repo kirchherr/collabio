@@ -28,7 +28,8 @@ approval.
 - Generate the corpus independently in Collabio. It contains formatting/table fidelity, deeply nested XML,
   an external relationship, a declared ZIP bomb and an inert macro marker. Active content is preflight-only and may
   never reach the engine.
-- Pin the sandbox to gVisor `runsc`, `network_mode: none`, read-only root and corpus, no capabilities, no new
+- Pin the sandbox to the separately named gVisor `runsc-kvm` runtime on verified bare metal, `network_mode: none`,
+  read-only root and corpus, no capabilities, no new
   privileges, fixed UID/GID, CPU/memory/PID limits and one noexec transient tmpfs.
 - Prove the sandbox separately before engine execution. The probe verifies Docker HostConfig, failed outbound socket
   and DNS attempts, read-only boundaries and scratch cleanup while explicitly reporting `engine_executed=false` and
