@@ -1571,9 +1571,18 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   eingebettetem Evidence-Manifest. Report und Manifest v2 akzeptieren entweder eine regulaere Zwei-Personen-Admission
   oder eine aktive Solo-Founder-Ausnahme, niemals beide. Ohne reale Signatur entsteht kein Context; npm, Build, Engine
   und Import bleiben geschlossen.
-- [ ] Danach reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellen.
-  Erst wenn eine reale Development-Autorisierung und das Build-Gate bestanden sind, darf der gepruefte Quellstand in einen
-  isolierten Spike-Branch oder ein Worker-Image gelangen; produktive Nutzung bleibt weiterhin gesperrt.
+- [x] Reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellt:
+  Generation 05 bindet Build-Context, identischen Dual-Build, Image-Archiv, 41-Komponenten-CycloneDX-SBOM, frischen
+  Offline-Scan ohne Findings und externe Founder-Signatur. Der Status-Entrypoint und alle Runtime-/Tenant-/Produktions-
+  Grenzen bleiben geschlossen; die Admission endet am 19. August 2026.
+- [x] Synthetische Runtime-Vorstufe ohne Engine-Ausfuehrung implementiert: fuenf deterministische OOXML-Fixtures,
+  kanonisches `runsc`-/No-Egress-Profil, Docker-HostConfig-/In-Container-Probevertrag sowie eine maximal 24 Stunden
+  gueltige Zwei-Personen-Ceremony binden Image, SBOM, Scan, Korpus und Sandbox. Das Probe-Schema meldet ausdruecklich
+  `engine_executed=false`; die fehlende zweite reale Person wird weder simuliert noch durch die Solo-Ausnahme ersetzt.
+- [ ] Reale `runsc`-In-Container-Probe auf `dev001` schliessen: der Container wurde am 12. August 2026 mit korrekter
+  HostConfig erzeugt, aber `runsc` scheitert bereits vor Prozessstart; auch der minimale Host-Smoke-Test endet mit
+  `fork/exec /proc/self/exe: resource temporarily unavailable`. Kein Fallback auf `runc`, keine Engine-Ausfuehrung und
+  keine Freigabe, bis die Host-Runtime repariert und der unveraenderte Probevertrag in einer neuen Generation besteht.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

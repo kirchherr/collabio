@@ -128,6 +128,7 @@ Collabio evidence backups.
 
 ## Next Boundary
 
-The next admissible step is a separate, no-egress sandbox proof using only synthetic documents. It needs real
-two-person runtime authorization plus fidelity, resource-limit, malicious-document, cleanup and recovery evidence
-before the status-only worker entry point can change.
+ADR-0070 now provides the separate deterministic corpus, no-egress `runsc` profile, real sandbox-probe contract and
+complete two-person runtime ceremony. No second signer has been simulated, so engine execution remains closed. The next
+admissible implementation is a newly rebuilt and attested proof harness after a real two-person envelope exists; see
+`GENOFFICE_SYNTHETIC_RUNTIME_PROOF.md`.

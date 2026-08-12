@@ -115,6 +115,13 @@ authorization mode, usage-profile boundary, context TAR and embedded manifest be
 Registry or license metadata
 presence without the retained cryptographic bytes, dossier and exact notice remains insufficient.
 
+ADR-0070 adds a separate synthetic runtime-proof generation. Back up its deterministic fixture bytes and manifest,
+canonical `runsc` sandbox profile, raw Docker HostConfig inspection, sandbox probe report, public two-person signer
+policy, request/message, detached public responses, envelope and authorization report. Private keys, proof scratch and
+generated document content are prohibited backup artifacts. A restore must verify both distinct signers and every
+worker/corpus/sandbox hash, then keep the restored authorization non-executable: its historical validity window is
+evidence, never permission for a new run.
+
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:
 

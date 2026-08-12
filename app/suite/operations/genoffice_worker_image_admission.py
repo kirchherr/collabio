@@ -1409,6 +1409,16 @@ def load_genoffice_worker_signature_response(path: Path) -> GenOfficeWorkerBuild
         raise GenOfficeWorkerImageAdmissionError("GenOffice worker signature response is invalid") from exc
 
 
+def load_genoffice_worker_image_admission_report(path: Path) -> GenOfficeWorkerImageAdmissionReport:
+    try:
+        report = GenOfficeWorkerImageAdmissionReport.model_validate(_read_json(path))
+    except ValueError as exc:
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker image admission report is invalid") from exc
+    if build_genoffice_worker_admission_report_hash(report) != report.report_hash:
+        raise GenOfficeWorkerImageAdmissionError("GenOffice worker image admission report hash is invalid")
+    return report
+
+
 def persist_genoffice_worker_schemas(*, output_directory: Path) -> dict[str, str]:
     schemas = {
         "build_evidence": (

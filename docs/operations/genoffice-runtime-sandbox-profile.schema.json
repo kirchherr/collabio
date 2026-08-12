@@ -1,0 +1,145 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cap_drop": {
+      "default": [
+        "ALL"
+      ],
+      "items": {
+        "const": "ALL",
+        "type": "string"
+      },
+      "title": "Cap Drop",
+      "type": "array"
+    },
+    "corpus_mount_read_only": {
+      "const": true,
+      "default": true,
+      "title": "Corpus Mount Read Only",
+      "type": "boolean"
+    },
+    "credentials_mounted": {
+      "const": false,
+      "default": false,
+      "title": "Credentials Mounted",
+      "type": "boolean"
+    },
+    "dns_probe_required": {
+      "const": true,
+      "default": true,
+      "title": "Dns Probe Required",
+      "type": "boolean"
+    },
+    "docker_socket_mounted": {
+      "const": false,
+      "default": false,
+      "title": "Docker Socket Mounted",
+      "type": "boolean"
+    },
+    "host_devices_mounted": {
+      "const": false,
+      "default": false,
+      "title": "Host Devices Mounted",
+      "type": "boolean"
+    },
+    "host_runtime_inspection_required": {
+      "const": true,
+      "default": true,
+      "title": "Host Runtime Inspection Required",
+      "type": "boolean"
+    },
+    "memory_bytes": {
+      "const": 536870912,
+      "default": 536870912,
+      "title": "Memory Bytes",
+      "type": "integer"
+    },
+    "nano_cpus": {
+      "const": 500000000,
+      "default": 500000000,
+      "title": "Nano Cpus",
+      "type": "integer"
+    },
+    "network_mode": {
+      "const": "none",
+      "default": "none",
+      "title": "Network Mode",
+      "type": "string"
+    },
+    "no_new_privileges": {
+      "const": true,
+      "default": true,
+      "title": "No New Privileges",
+      "type": "boolean"
+    },
+    "outbound_socket_probe_required": {
+      "const": true,
+      "default": true,
+      "title": "Outbound Socket Probe Required",
+      "type": "boolean"
+    },
+    "pids_limit": {
+      "const": 32,
+      "default": 32,
+      "title": "Pids Limit",
+      "type": "integer"
+    },
+    "profile_hash": {
+      "title": "Profile Hash",
+      "type": "string"
+    },
+    "profile_id": {
+      "const": "genoffice-synthetic-proof-runsc-v1",
+      "default": "genoffice-synthetic-proof-runsc-v1",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "read_only_root_filesystem": {
+      "const": true,
+      "default": true,
+      "title": "Read Only Root Filesystem",
+      "type": "boolean"
+    },
+    "runtime_class": {
+      "const": "runsc",
+      "default": "runsc",
+      "title": "Runtime Class",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_sandbox_profile.v1",
+      "default": "genoffice_runtime_sandbox_profile.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scratch_tmpfs": {
+      "const": "/scratch:size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700",
+      "default": "/scratch:size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700",
+      "title": "Scratch Tmpfs",
+      "type": "string"
+    },
+    "tenant_storage_mounted": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Storage Mounted",
+      "type": "boolean"
+    },
+    "transient_cleanup_required": {
+      "const": true,
+      "default": true,
+      "title": "Transient Cleanup Required",
+      "type": "boolean"
+    },
+    "user": {
+      "const": "10003:10003",
+      "default": "10003:10003",
+      "title": "User",
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_hash"
+  ],
+  "title": "GenOfficeRuntimeSandboxProfile",
+  "type": "object"
+}

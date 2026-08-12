@@ -3228,6 +3228,107 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-runtime-proof-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: "${SUITE_GENOFFICE_RUNTIME_PROOF_MODE:-schema}"
+      SUITE_GENOFFICE_RUNTIME_SCHEMA_OUTPUT_DIR: /schemas
+      SUITE_GENOFFICE_RUNTIME_CORPUS_OUTPUT_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_MANIFEST_PATH: /corpus/genoffice-synthetic-corpus-manifest.json
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+      SUITE_GENOFFICE_WORKER_ADMISSION_REPORT_PATH: /worker/genoffice-worker-image-admission-report.json
+      SUITE_GENOFFICE_RUNTIME_SIGNER_POLICY_PATH: /evidence/genoffice-runtime-signer-policy.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ID: "${SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ID:-}"
+      SUITE_GENOFFICE_RUNTIME_ISSUED_AT_UTC: "${SUITE_GENOFFICE_RUNTIME_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_RUNTIME_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_RUNTIME_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_RUNTIME_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_RUNTIME_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_RUNTIME_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_RUNTIME_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_RUNTIME_SIGNING_REQUEST_PATH: /evidence/genoffice-runtime-signing-request.json
+      SUITE_GENOFFICE_RUNTIME_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-runtime-signature-message.json
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/product-owner-signature-response.json
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/security-compliance-owner-signature-response.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ENVELOPE_PATH: /evidence/genoffice-runtime-authorization-envelope.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_REPORT_PATH: /evidence/genoffice-runtime-authorization-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations:/schemas
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /worker
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_APPROVALS_HOST_DIR:-./backups/genoffice-runtime-proof/approvals}
+        target: /approvals
+        read_only: true
+
+  genoffice-runtime-sandbox-probe:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    runtime: runsc
+    network_mode: "none"
+    user: "10003:10003"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /scratch:size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: sandbox-probe
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_MANIFEST_PATH: /corpus/genoffice-synthetic-corpus-manifest.json
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
+        read_only: true
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .
