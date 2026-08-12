@@ -1104,9 +1104,17 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "exact_upstream_archive_sha256" in office_source_admission["guardrails"]
     assert "npm_registry_signature_and_publish_attestation_verified" in office_source_admission["guardrails"]
     assert "slsa_fulcio_identity_and_rekor_inclusion_verified" in office_source_admission["guardrails"]
+    assert "two_independent_no_cache_worker_builds" in office_source_admission["guardrails"]
+    assert "worker_archive_config_digest_binding" in office_source_admission["guardrails"]
+    assert "authoritative_cyclonedx_runtime_image_sbom" in office_source_admission["guardrails"]
+    assert "fresh_offline_runtime_image_vulnerability_scan" in office_source_admission["guardrails"]
+    assert "external_ed25519_worker_build_attestation" in office_source_admission["guardrails"]
+    assert "development_image_available_with_worker_execution_false" in office_source_admission["guardrails"]
     assert "source_import_and_production_use_blocked" in office_source_admission["guardrails"]
     assert "app/suite/operations/genoffice_docx_source_admission.py" in office_source_admission["evidence_refs"]
     assert "app/suite/operations/genoffice_npm_provenance_admission.py" in office_source_admission["evidence_refs"]
+    assert "app/suite/operations/genoffice_worker_image_admission.py" in office_source_admission["evidence_refs"]
+    assert "docs/operations/GENOFFICE_WORKER_IMAGE_ADMISSION.md" in office_source_admission["evidence_refs"]
     production_continuity = next(
         capability
         for capability in capabilities

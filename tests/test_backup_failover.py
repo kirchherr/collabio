@@ -347,6 +347,13 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_solo_founder_two_person_false_check" in object_storage.restore_verification_gates
     assert "genoffice_solo_founder_runtime_boundaries_closed_check" in object_storage.restore_verification_gates
     assert "genoffice_development_authorization_mode_exclusivity_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_dual_build_reproducibility_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_archive_config_binding_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_cyclonedx_schema_and_image_binding_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_trivy_database_freshness_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_detached_signature_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_runtime_boundaries_closed_check" in object_storage.restore_verification_gates
+    assert "genoffice_worker_private_signing_key_absence_check" in object_storage.restore_verification_gates
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -354,6 +361,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "docker compose run --rm kb-runtime-reconciler" in object_storage.current_dev_commands
     assert "docker compose run --rm source-object-runtime-bootstrap" in object_storage.current_dev_commands
     assert "docker compose run --rm backend-storage-foundation-gate" in object_storage.current_dev_commands
+    assert (
+        "docker compose --profile office-worker-build run --rm genoffice-worker-image-admission-verifier"
+        in object_storage.current_dev_commands
+    )
 
     kms = policy.target("kms_and_secrets")
     assert "kms_adapter_policy_check" in kms.integrity_checks

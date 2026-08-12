@@ -534,6 +534,7 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "/tmp/trivy-cache" in compose
     assert "genoffice-worker-image-vulnerability-scan:" in compose
     assert "--cache-backend" in compose
+    assert compose.count("./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro") == 2
     assert "container_image" in module
     assert "worker_execution_allowed: false" in entrypoint
 
@@ -546,3 +547,26 @@ def test_worker_build_context_report_remains_non_runtime() -> None:
     assert fields["source_import_allowed"].default is False
     assert fields["tenant_content_allowed"].default is False
     assert fields["production_use_allowed"].default is False
+
+
+def test_committed_worker_admission_schemas_are_hash_bound_without_real_attestation() -> None:
+    expected = {
+        "genoffice-worker-image-build-evidence.schema.json": (
+            "sha256:6197401cb4d4b7ba911dae1fa24238d79df00945bc135d4b77e0798e705f7a43"
+        ),
+        "genoffice-worker-build-signing-request.schema.json": (
+            "sha256:74e38f0f431483d94acf9f135b32203ee9e06f7a375dac483e9b81969b7a12a7"
+        ),
+        "genoffice-worker-build-signature-response.schema.json": (
+            "sha256:c69af2065780df6700466da456e48c76d8c16f254ce00fe9d0750f09a8e713fa"
+        ),
+        "genoffice-worker-image-admission-report.schema.json": (
+            "sha256:88b294a8dddccafe029420641cc405cc91a4980c3851a83a9f58ac35ac5b535d"
+        ),
+    }
+
+    for filename, expected_hash in expected.items():
+        schema_bytes = (EVIDENCE / filename).read_bytes()
+        assert f"sha256:{hashlib.sha256(schema_bytes).hexdigest()}" == expected_hash
+    assert not (EVIDENCE / "genoffice-worker-image-admission-report.json").exists()
+    assert not (EVIDENCE / "genoffice-worker-build-signature-response.json").exists()

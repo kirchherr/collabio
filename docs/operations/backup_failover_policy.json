@@ -127,7 +127,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
-      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
+      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "worker image archives, dual-build inspect records, runtime inventories, canonical signing messages, public signature responses, admission reports, public signer keys, and key-rotation receipts without private signing keys", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
     },
     {
       "domain_id": "mail_messages_threads",
@@ -376,10 +376,40 @@
         "genoffice_solo_founder_runtime_boundaries_closed_check",
         "genoffice_solo_founder_write_once_mode_check",
         "genoffice_development_authorization_mode_exclusivity_check",
-        "genoffice_development_authorization_active_at_restore_check"
+        "genoffice_development_authorization_active_at_restore_check",
+        "genoffice_worker_dual_build_reproducibility_check",
+        "genoffice_worker_archive_config_binding_check",
+        "genoffice_worker_runtime_inventory_check",
+        "genoffice_worker_cyclonedx_schema_and_image_binding_check",
+        "genoffice_worker_trivy_database_freshness_check",
+        "genoffice_worker_vulnerability_report_hash_and_finding_check",
+        "genoffice_worker_signing_request_payload_and_message_hash_check",
+        "genoffice_worker_signature_response_binding_check",
+        "genoffice_worker_detached_signature_check",
+        "genoffice_worker_runtime_boundaries_closed_check",
+        "genoffice_worker_private_signing_key_absence_check"
       ],
       "failover_mode": "manual switch to an independently verified versioned restore target; production replication remains a deployment prerequisite",
-      "current_dev_commands": ["docker compose run --rm source-object-runtime-bootstrap", "docker compose run --rm backend-storage-foundation-gate", "docker compose --profile restore-drill run --rm derived-preview-recovery-drill", "docker compose --profile office-supply-chain run --rm genoffice-npm-provenance-admission", "docker compose --profile office-supply-chain run --rm genoffice-license-material-collector", "docker compose --profile office-supply-chain run --rm genoffice-legal-review-dossier", "docker compose --profile office-supply-chain run --rm genoffice-third-party-notice-builder", "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-schema", "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-signer-policy-builder", "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-signing-request", "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-envelope-assembler", "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-admission", "docker compose --profile office-supply-chain run --rm genoffice-development-build-context", "docker compose run --rm kb-runtime-reconciler"]
+      "current_dev_commands": [
+        "docker compose run --rm source-object-runtime-bootstrap",
+        "docker compose run --rm backend-storage-foundation-gate",
+        "docker compose --profile restore-drill run --rm derived-preview-recovery-drill",
+        "docker compose --profile office-supply-chain run --rm genoffice-npm-provenance-admission",
+        "docker compose --profile office-supply-chain run --rm genoffice-license-material-collector",
+        "docker compose --profile office-supply-chain run --rm genoffice-legal-review-dossier",
+        "docker compose --profile office-supply-chain run --rm genoffice-third-party-notice-builder",
+        "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-schema",
+        "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-signer-policy-builder",
+        "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-signing-request",
+        "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-envelope-assembler",
+        "docker compose --profile office-supply-chain run --rm genoffice-internal-oss-admission",
+        "docker compose --profile office-supply-chain run --rm genoffice-development-build-context",
+        "docker compose --profile office-worker-build run --rm genoffice-worker-image-build-evidence",
+        "docker compose --profile office-worker-build run --rm genoffice-worker-image-sbom-validator",
+        "docker compose --profile office-worker-build run --rm genoffice-worker-image-vulnerability-scan",
+        "docker compose --profile office-worker-build run --rm genoffice-worker-image-admission-verifier",
+        "docker compose run --rm kb-runtime-reconciler"
+      ]
     },
     {
       "target_id": "kms_and_secrets",

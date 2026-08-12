@@ -774,6 +774,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Freigabe. "
                         "Der vorbereitete no-network Materializer erzeugt daraus erst nach realer Autorisierung ein "
                         "normalisiertes, manifestgebundenes TAR und fuehrt dabei keinen Upstream-Code aus. "
+                        "Das daraus gebaute Alpine-Worker-Image ist durch zwei unabhaengige No-Cache-Builds, "
+                        "Archiv-zu-Config-Bindung, eine autoritative CycloneDX-1.6-Runtime-SBOM, einen frischen "
+                        "Offline-Vulnerability-Scan und eine externe Ed25519-Build-Attestierung verifiziert. Das "
+                        "signierte Image ist nur als Development-Spike-Artefakt verfuegbar; sein Entry-Point und "
+                        "der Admission-Report halten die Worker-Ausfuehrung geschlossen. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -800,6 +805,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_internal_oss_admission.py",
                         "app/suite/operations/genoffice_solo_founder_exception.py",
                         "app/suite/operations/genoffice_development_build_context.py",
+                        "app/suite/operations/genoffice_worker_image_admission.py",
                         "tests/test_genoffice_license_material_collector.py",
                         "tests/test_genoffice_legal_review_dossier.py",
                         "tests/test_genoffice_third_party_notice.py",
@@ -807,10 +813,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_genoffice_internal_oss_admission.py",
                         "tests/test_genoffice_solo_founder_exception.py",
                         "tests/test_genoffice_development_build_context.py",
+                        "tests/test_genoffice_worker_image_admission.py",
                         "docs/operations/GENOFFICE_LEGAL_REVIEW.md",
                         "docs/operations/GENOFFICE_INTERNAL_OSS_ADMISSION.md",
                         "docs/operations/GENOFFICE_SOLO_FOUNDER_EXCEPTION.md",
                         "docs/operations/GENOFFICE_DEVELOPMENT_BUILD_CONTEXT.md",
+                        "docs/operations/GENOFFICE_WORKER_IMAGE_ADMISSION.md",
                         "docs/operations/genoffice_license_material_collection_report.json",
                         "docs/operations/genoffice_legal_review_dossier_report.json",
                         "docs/operations/genoffice_legal_decision_record.schema.json",
@@ -822,6 +830,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice-solo-founder-exception-request.schema.json",
                         "docs/operations/genoffice-solo-founder-signature-response.schema.json",
                         "docs/operations/genoffice-solo-founder-exception-report.schema.json",
+                        "docs/operations/genoffice-worker-image-build-evidence.schema.json",
+                        "docs/operations/genoffice-worker-build-signing-request.schema.json",
+                        "docs/operations/genoffice-worker-build-signature-response.schema.json",
+                        "docs/operations/genoffice-worker-image-admission-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -829,6 +841,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0066-genoffice-internal-oss-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0067-genoffice-development-build-context.md",
                         "ARCHITECTURE_DECISIONS/ADR-0068-genoffice-solo-founder-development-exception.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0069-genoffice-worker-image-admission.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -867,6 +880,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "all_selected_source_files_rehashed_without_extraction",
                         "normalized_uid_gid_mode_order_and_source_date_epoch",
                         "materializer_performs_no_dependency_install_or_upstream_execution",
+                        "two_independent_no_cache_worker_builds",
+                        "worker_archive_config_digest_binding",
+                        "authoritative_cyclonedx_runtime_image_sbom",
+                        "fresh_offline_runtime_image_vulnerability_scan",
+                        "external_ed25519_worker_build_attestation",
+                        "development_image_available_with_worker_execution_false",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",
                     ),
