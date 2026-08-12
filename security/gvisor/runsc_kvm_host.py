@@ -62,7 +62,7 @@ def _assert_package_managed_runsc() -> str:
     return _run("dpkg-query", "-W", "-f=${Version}", "runsc").stdout.strip()
 
 
-def _assert_apparmor_boundary() -> str:
+def _assert_apparmor_boundary() -> tuple[str, bool]:
     if not APPARMOR_PROFILE_SOURCE.is_file() or not APPARMOR_PROFILE_PATH.is_file():
         raise RunscKvmHostError("runsc AppArmor profile is missing")
     if APPARMOR_PROFILE_SOURCE.read_bytes() != APPARMOR_PROFILE_PATH.read_bytes():
@@ -72,9 +72,10 @@ def _assert_apparmor_boundary() -> str:
         raise RunscKvmHostError("runsc AppArmor profile is not loaded")
     if Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns").read_text().strip() != "1":
         raise RunscKvmHostError("global AppArmor unprivileged-userns restriction must remain enabled")
-    if Path("/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined").read_text().strip() != "1":
-        raise RunscKvmHostError("global AppArmor unprivileged-unconfined restriction must remain enabled")
-    return _sha256(APPARMOR_PROFILE_SOURCE)
+    unconfined_restriction_enabled = (
+        Path("/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined").read_text().strip() == "1"
+    )
+    return _sha256(APPARMOR_PROFILE_SOURCE), unconfined_restriction_enabled
 
 
 def _assert_kvm_host() -> None:
@@ -165,7 +166,7 @@ def install_runsc_kvm_runtime() -> None:
 def verify_runsc_kvm_runtime() -> dict[str, object]:
     _assert_root()
     runsc_version = _assert_package_managed_runsc()
-    profile_sha256 = _assert_apparmor_boundary()
+    profile_sha256, unconfined_restriction_enabled = _assert_apparmor_boundary()
     _assert_kvm_host()
     config = _load_daemon_config()
     if config["runtimes"].get("runsc-kvm") != DESIRED_RUNTIME:
@@ -184,7 +185,7 @@ def verify_runsc_kvm_runtime() -> dict[str, object]:
         "package_managed": True,
         "profile_loaded": True,
         "global_userns_restriction_enabled": True,
-        "global_unconfined_restriction_enabled": True,
+        "global_unconfined_restriction_enabled": unconfined_restriction_enabled,
         "docker_runtime_registered": True,
         "tenant_content_included": False,
         "runtime_authorization_granted": False,

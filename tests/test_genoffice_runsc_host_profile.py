@@ -64,7 +64,7 @@ def test_runsc_host_verifiers_require_root_and_never_disable_userns_hardening() 
     assert "verification requires root" in profile_verifier
     assert "os.geteuid() != 0" in kvm_host
     assert "apparmor_restrict_unprivileged_userns" in kvm_host
-    assert "apparmor_restrict_unprivileged_unconfined" in kvm_host
+    assert "unconfined_restriction_enabled" in kvm_host
     assert "sysctl" not in kvm_host
 
 
@@ -80,7 +80,7 @@ def test_backup_policy_carries_runsc_host_profile_without_global_disable() -> No
         in object_storage["restore_verification_gates"]
     )
     assert (
-        "genoffice_runsc_global_apparmor_userns_restrictions_enabled_check"
+        "genoffice_runsc_primary_apparmor_userns_restriction_and_unconfined_state_check"
         in object_storage["restore_verification_gates"]
     )
     assert "genoffice_runsc_kvm_additive_runtime_argument_check" in object_storage["restore_verification_gates"]

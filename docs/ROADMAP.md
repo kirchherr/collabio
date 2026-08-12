@@ -1583,7 +1583,9 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   HostConfig erzeugt, aber `runsc` scheitert bereits vor Prozessstart; auch der minimale Host-Smoke-Test endet mit
   `fork/exec /proc/self/exe: resource temporarily unavailable`. Kein Fallback auf `runc`, keine Engine-Ausfuehrung und
   keine Freigabe. Das versionierte pfadgebundene AppArmor-`userns`-Profil ist inzwischen geladen und beide globalen
-  Restriktionen bleiben aktiv; `systrap` scheitert dennoch unveraendert. Naechster Hostschritt ist deshalb die additive,
+  globale primaere Userns-Restriktion bleibt aktiv; die separate Unconfined-Zusatzhaertung ist als `0` erfasst und wird nicht
+  ohne projektuebergreifende Auswirkungspruefung umgestellt. `systrap` scheitert dennoch unveraendert. Naechster
+  Hostschritt ist deshalb die additive,
   offiziell unterstuetzte `runsc-kvm`-Runtime auf dem nachgewiesenen Bare-Metal-/KVM-Host. Der unveraenderte
   Probevertrag muss danach unter `runsc-kvm` in einer neuen Generation bestehen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,

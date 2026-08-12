@@ -123,11 +123,13 @@ worker/corpus/sandbox hash, then keep the restored authorization non-executable:
 evidence, never permission for a new run.
 
 The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
-Restore them from Git, install only after byte review, and verify that both global Ubuntu AppArmor user-namespace
-restrictions remain enabled. Never back up or restore a host-wide sysctl override that disables those restrictions.
+Restore them from Git, install only after byte review, and verify that the primary global Ubuntu AppArmor userns
+restriction remains enabled. Record the separate unprivileged-unconfined setting and change it only after a shared-host
+impact review. Never back up or restore a host-wide override that disables the primary restriction.
 Preserve the versioned additive `runsc-kvm` installer/verifier and the root-only pre-change Docker daemon configuration
-on the host. Rebuild verification must prove bare metal, the KVM device/modules, exact AppArmor bytes, both global
-restrictions, exact `--platform=kvm` runtime arguments and preservation of every container across Docker reload.
+on the host. Rebuild verification must prove bare metal, the KVM device/modules, exact AppArmor bytes, the primary
+restriction, the recorded additional setting, exact `--platform=kvm` runtime arguments and preservation of every
+container across Docker reload.
 
 The first content-capable Office edit change must update this policy and its restore drill in the same commit. The
 `office_documents` domain already reserves these future durable artifacts:

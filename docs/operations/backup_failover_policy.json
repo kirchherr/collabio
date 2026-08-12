@@ -397,7 +397,7 @@
         "genoffice_runtime_general_tenant_import_network_persistence_distribution_production_boundaries_closed_check",
         "genoffice_runtime_private_key_scratch_and_generated_content_absence_check",
         "genoffice_runsc_apparmor_profile_exact_byte_and_loaded_state_check",
-        "genoffice_runsc_global_apparmor_userns_restrictions_enabled_check",
+        "genoffice_runsc_primary_apparmor_userns_restriction_and_unconfined_state_check",
         "genoffice_runsc_kvm_bare_metal_device_and_module_check",
         "genoffice_runsc_kvm_additive_runtime_argument_check",
         "genoffice_runsc_kvm_docker_reload_container_preservation_check"

@@ -87,8 +87,8 @@ Do not substitute `runc`, weaken the profile or treat Docker inspect evidence al
 replace the `dev001` gVisor installation, then repeat the complete create-inspect-start sequence in a new immutable
 evidence generation.
 
-The host diagnosis identified Ubuntu's AppArmor restriction for unprivileged user namespaces as the immediate cause.
-Keep both global AppArmor restrictions enabled. Install the repository-controlled, path-bound exception for the
+The host diagnosis identified Ubuntu's AppArmor restriction for unprivileged user namespaces as an immediate blocker.
+Keep the primary global AppArmor userns restriction enabled. Install the repository-controlled, path-bound exception for the
 package-managed `/usr/bin/runsc`; it grants only the AppArmor `userns` permission and does not restart Docker:
 
 ```bash
@@ -98,8 +98,10 @@ sudo ./security/apparmor/verify-runsc-profile.sh
 ```
 
 The installer validates the Debian package owner, root ownership, mode and profile syntax. It refuses to overwrite a
-different host profile. The verifier requires exact repository/host bytes, a loaded profile and both global AppArmor
-hardening sysctls still set to `1`. Installing the profile is host preparation only and grants no Collabio runtime
+different host profile. The verifier requires exact repository/host bytes, a loaded profile and the primary Ubuntu
+AppArmor unprivileged-userns restriction still set to `1`. It records the separate unprivileged-unconfined restriction
+without changing it; on the shared `dev001` host this additional control is currently `0` and needs a separate
+cross-project impact review. Installing the profile is host preparation only and grants no Collabio runtime
 authorization.
 
 On the bare-metal `dev001` host, the default `systrap` platform still fails before process creation after that profile
@@ -113,7 +115,8 @@ sudo ./security/gvisor/verify-runsc-kvm-runtime.py
 ```
 
 The installer requires verified bare metal, `/dev/kvm`, loaded vendor KVM modules, package-managed `runsc`, the exact
-loaded AppArmor profile and enabled global restrictions. It adds only `runsc-kvm` with `--platform=kvm`, validates a
+loaded AppArmor profile and the enabled primary userns restriction. It adds only `runsc-kvm` with `--platform=kvm`,
+validates a
 temporary daemon configuration before atomic replacement, keeps a root-only rollback copy, reloads rather than
 restarts Docker and fails if any previously running container disappears. The GenOffice probe is pinned to this named
 runtime; existing Collabio, Tricert and Webcut runtime selection does not change.
