@@ -84,4 +84,12 @@ def test_backup_policy_carries_runsc_host_profile_without_global_disable() -> No
         in object_storage["restore_verification_gates"]
     )
     assert "genoffice_runsc_kvm_additive_runtime_argument_check" in object_storage["restore_verification_gates"]
+    assert (
+        "genoffice_runtime_probe_access_receipt_hash_mode_group_and_unchanged_content_check"
+        in object_storage["restore_verification_gates"]
+    )
+    assert (
+        "genoffice_runtime_probe_container_id_hostname_and_inspect_hash_binding_check"
+        in object_storage["restore_verification_gates"]
+    )
     assert "apparmor_restrict_unprivileged_userns=0" not in json.dumps(policy)

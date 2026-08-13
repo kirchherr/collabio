@@ -116,11 +116,14 @@ Registry or license metadata
 presence without the retained cryptographic bytes, dossier and exact notice remains insufficient.
 
 ADR-0070 adds a separate synthetic runtime-proof generation. Back up its deterministic fixture bytes and manifest,
-canonical `runsc` sandbox profile, raw Docker HostConfig inspection, sandbox probe report, public two-person signer
-policy, request/message, detached public responses, envelope and authorization report. Private keys, proof scratch and
-generated document content are prohibited backup artifacts. A restore must verify both distinct signers and every
-worker/corpus/sandbox hash, then keep the restored authorization non-executable: its historical validity window is
-evidence, never permission for a new run.
+canonical `runsc-kvm` sandbox profile, raw Docker HostConfig inspection, hash-preserving access receipt, host-runtime
+verification, final container state, sandbox probe report, public two-person signer policy, request/message, detached
+public responses, envelope and authorization report. Private keys, proof scratch and generated document content are
+prohibited backup artifacts. A restore must verify access scope and modes, container ID/hostname and image-digest
+binding, image-bound probe code, the exact two read-only mounts, absent host devices, empty in-process capability sets,
+both distinct signers and every worker/corpus/sandbox hash. A zero-byte host-verifier receipt fails restore validation.
+Keep the restored authorization non-executable: its historical validity window is evidence, never permission for a new
+run.
 
 The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
 Restore them from Git, install only after byte review, and verify that the primary global Ubuntu AppArmor userns

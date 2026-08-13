@@ -3315,7 +3315,6 @@ services:
       SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
       SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
     volumes:
-      - ./app:/workspace/app:ro
       - type: bind
         source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
         target: /corpus
@@ -3326,6 +3325,49 @@ services:
         source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
         target: /evidence
         read_only: true
+        bind:
+          create_host_path: false
+
+  genoffice-runtime-proof-access-preparer:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: access-prep
+      SUITE_GENOFFICE_RUNTIME_PROOF_SOURCE_UID: ${SUITE_RUNTIME_UID:-1000}
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_EVIDENCE_DIR: /evidence
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
         bind:
           create_host_path: false
 

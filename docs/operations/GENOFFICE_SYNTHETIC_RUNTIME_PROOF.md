@@ -7,7 +7,7 @@ independent Ed25519 signatures.
 ## What Exists Now
 
 - deterministic five-file synthetic OOXML corpus;
-- hash-bound `runsc` no-egress sandbox profile;
+- hash-bound `runsc-kvm` no-egress sandbox profile;
 - Docker HostConfig and in-container isolation-probe contract;
 - 24-hour two-person runtime request, response, envelope and report contracts;
 - Compose profile `office-worker-runtime-proof`;
@@ -60,36 +60,73 @@ JSON.
 docker compose -p collabio --profile office-worker-runtime-proof create \
   genoffice-runtime-sandbox-probe
 docker inspect collabio-genoffice-runtime-sandbox-probe-1 \
-  > "$SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR/genoffice-runtime-sandbox-probe.inspect.json"
+  > /tmp/genoffice-runtime-sandbox-probe.inspect.json
+docker compose -p collabio --profile office-worker-runtime-proof run -T --rm --no-deps \
+  genoffice-runtime-proof-access-preparer \
+  > /tmp/genoffice-runtime-proof-access-receipt.json
 docker compose -p collabio --profile office-worker-runtime-proof start \
   genoffice-runtime-sandbox-probe
 docker compose -p collabio --profile office-worker-runtime-proof logs --no-log-prefix \
   genoffice-runtime-sandbox-probe \
-  > "$SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR/genoffice-runtime-sandbox-probe-report.json"
+  > /tmp/genoffice-runtime-sandbox-probe-report.json
 ```
 
-Grant UID `10003` read-only ACL access to the corpus, profile and inspect evidence before container creation. The
-evidence bind itself remains read-only; the operator captures the single canonical JSON line from Docker logs into the
-write-once report. The verifier requires `Runtime=runsc`, `NetworkMode=none`, a read-only root, `CapDrop=ALL`,
-no-new-privileges, the exact CPU/memory/PID limits, read-only corpus and exact tmpfs. It then requires network/DNS
-failure and empty scratch.
+Validate each temporary JSON file before moving it into its absent final path with mode `0600`. The temporary path is
+intentional: shell redirection must not create a zero-byte file inside the evidence generation before the access
+preparer inventories unrelated evidence. Use `-T` so Compose cannot consume the remaining operator script as TTY
+input. Capture the final exited container state before removal. Preflight and lock steps are omitted from the compact
+example but remain mandatory around every lifecycle operation.
+
+The access preparer runs as a confined root helper with no network, a read-only root filesystem, no Docker socket and
+only `CHOWN`, read-only `DAC_READ_SEARCH`, and `FOWNER`. Root is required because Docker does not retain those
+effective capabilities across `exec` for the non-root artifact owner. The helper validates the expected host owner,
+canonical corpus, profile and raw inspect bytes before changing metadata, rejects symlinks and ownership drift, and
+changes only the known synthetic inputs to group `10003` with modes `0640/0750`.
+It proves content hashes were preserved and unrelated host evidence was untouched. Do not substitute POSIX ACLs:
+gVisor `directfs` did not expose the host ACL grant to the sandbox on `dev001`. Do not make the evidence world-readable.
+
+The evidence bind itself remains read-only in the probe; the operator captures the single canonical JSON line from
+Docker logs into the write-once report. The verifier requires a digest-addressed image, `Runtime=runsc-kvm`,
+`NetworkMode=none`, a read-only root, `CapDrop=ALL`, no added capabilities, no privileged mode, no host devices,
+no-new-privileges, the exact CPU/memory/PID limits, exact read-only `/corpus` and `/evidence` bind mounts and exact
+tmpfs. Probe code must come from the image rather than a host application bind. In process it requires every
+capability set exposed by `/proc/self/status` to be zero; when gVisor exposes `NoNewPrivs`, its value must be `1`.
+It then requires network/DNS failure and empty scratch.
 
 ### Current dev001 Result
 
-The 12 August 2026 preflight is fail-closed. Docker created the exact probe container and its inspect evidence confirms
-`User=10003:10003`, `Runtime=runsc`, `NetworkMode=none` and `ReadonlyRootfs=true`. Starting the container failed before
-its process was created with a `runsc` sandbox startup EOF. A separate minimal Alpine container using `runsc` also
-failed before process creation with `fork/exec /proc/self/exe: resource temporarily unavailable`. Host PID, memory,
-disk and user-namespace limits were not exhausted at observation time.
+Generations 01 through 03 are preserved as fail-closed evidence. They exposed the original `systrap` startup failure,
+the fact that gVisor `directfs` does not expose the host POSIX ACL grant, and one transient KVM sandbox-start EOF.
+Generation 04 completed the narrower first in-container proof. Self-review then identified that its verifier code came
+from a host bind and did not prove an exact mount/device inventory. Generation 05 preserved the strict new check's
+fail-closed result while confirming that this gVisor build omits the optional `NoNewPrivs` status line even though all
+five process capability sets are zero. Failed states remain separate from the final generation.
 
-No in-container probe report exists for this attempt, no engine executed and no runtime authorization was granted.
-Do not substitute `runc`, weaken the profile or treat Docker inspect evidence alone as an isolation proof. Repair or
-replace the `dev001` gVisor installation, then repeat the complete create-inspect-start sequence in a new immutable
-evidence generation.
+Generation `runtime-proof-preflight-20260813-06` is the completed hardened proof. Its exact container
+`666e3f3c5b95...` used image `sha256:b68e4ad5d72698586013c0c6e9d0d5f13a0f92c5a0ff0463775482b4e9892646`,
+exited `0`, and verified its own hostname against the full container ID in the raw inspect document. The immutable
+evidence chain is:
+
+- corpus manifest `sha256:2d0d98971107053a42c7318bf397b3a7fb674cfc758268ff486e5331d81577eb`;
+- sandbox profile `sha256:9fe2c1bd9037ca7ef62d43fb5e763249af806e0394ac6084c1cd212323a4ec40`;
+- inspect file SHA-256 `bb5dfc7dedb18e3a9eab62136cd76df9537b876b86f2a6f333ffd07548f1d544`;
+- access-receipt file SHA-256 `f041a27dd053f2e2ddfeed190a0cf5fcdade81084406fc660198c4c13d8ac0ab`;
+- probe-report file SHA-256 `f7f58d21015c0c5688cd3eff91582fe64c9238baf0669ddbb61b057386c29d1e`;
+- final-state file SHA-256 `fb137db647ca8348b5c46565cb1858c87e454559bcc54249f75fee0862945b63`;
+- internal probe report `sha256:e87ce2ed574e69ff1801b7c6ec0669e16f13341d366dfdf49b460fdff8ad5cfd`.
+
+The report verifies container identity, image-bound probe code, exact read-only mount inventory, absent host devices,
+`runsc-kvm`, no network or DNS, read-only root and corpus, empty process capabilities, no-new-privileges HostConfig,
+exact CPU/memory/PID limits and clean scratch. It still states `engine_executed=false`,
+`tenant_content_included=false`, `external_network_used=false` and `runtime_authorization_granted=false`.
+
+The root host-verifier receipt remains incomplete until a non-empty JSON result from
+`security/gvisor/verify-runsc-kvm-runtime.py` has been schema-checked and moved write-once into Generation 06. An empty
+or failed redirect is diagnostic evidence only and must never be counted as verification.
 
 The host diagnosis identified Ubuntu's AppArmor restriction for unprivileged user namespaces as an immediate blocker.
-Keep the primary global AppArmor userns restriction enabled. Install the repository-controlled, path-bound exception for the
-package-managed `/usr/bin/runsc`; it grants only the AppArmor `userns` permission and does not restart Docker:
+Keep the primary global AppArmor userns restriction enabled. Install the repository-controlled, path-bound exception
+for the package-managed `/usr/bin/runsc`; it grants only the AppArmor `userns` permission and does not restart Docker:
 
 ```bash
 cd /home/extern/collabio
@@ -116,8 +153,7 @@ sudo ./security/gvisor/verify-runsc-kvm-runtime.py
 
 The installer requires verified bare metal, `/dev/kvm`, loaded vendor KVM modules, package-managed `runsc`, the exact
 loaded AppArmor profile and the enabled primary userns restriction. It adds only `runsc-kvm` with `--platform=kvm`,
-validates a
-temporary daemon configuration before atomic replacement, keeps a root-only rollback copy, reloads rather than
+validates a temporary daemon configuration before atomic replacement, keeps a root-only rollback copy, reloads rather than
 restarts Docker and fails if any previously running container disappears. The GenOffice probe is pinned to this named
 runtime; existing Collabio, Tricert and Webcut runtime selection does not change.
 

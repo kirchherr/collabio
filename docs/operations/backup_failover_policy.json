@@ -127,7 +127,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
-      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "worker image archives, dual-build inspect records, runtime inventories, canonical signing messages, public signature responses, admission reports, public signer keys, and key-rotation receipts without private signing keys", "synthetic Office corpus bytes and manifests, runtime sandbox profiles, raw Docker HostConfig inspection, no-egress probe reports, two-person runtime requests/messages/responses/envelopes and authorization reports without private keys or scratch", "versioned path-bound runsc AppArmor profile plus installer and verifier without host-wide userns-disable overrides", "versioned additive runsc-kvm Docker runtime installer and verifier plus root-only pre-change daemon configuration", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
+      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "worker image archives, dual-build inspect records, runtime inventories, canonical signing messages, public signature responses, admission reports, public signer keys, and key-rotation receipts without private signing keys", "synthetic Office corpus bytes and manifests, runtime sandbox profiles, raw Docker HostConfig inspection with exact image and mount inventory, hash-preserving probe-access preparation receipts, final container states, no-egress and empty-capability probe reports, two-person runtime requests/messages/responses/envelopes and authorization reports without private keys or scratch", "versioned path-bound runsc AppArmor profile plus installer and verifier without host-wide userns-disable overrides", "versioned additive runsc-kvm Docker runtime installer and verifier plus root-only pre-change daemon configuration", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
     },
     {
       "domain_id": "mail_messages_threads",
@@ -390,6 +390,13 @@
         "genoffice_worker_private_signing_key_absence_check",
         "genoffice_runtime_synthetic_corpus_byte_and_manifest_hash_check",
         "genoffice_runtime_sandbox_profile_hash_check",
+        "genoffice_runtime_probe_access_receipt_hash_mode_group_and_unchanged_content_check",
+        "genoffice_runtime_probe_container_id_hostname_and_inspect_hash_binding_check",
+        "genoffice_runtime_probe_image_digest_and_image_bound_code_check",
+        "genoffice_runtime_probe_exact_read_only_mount_inventory_and_host_device_absence_check",
+        "genoffice_runtime_probe_in_process_capability_sets_empty_check",
+        "genoffice_runtime_probe_final_state_exit_zero_check",
+        "genoffice_runtime_host_verifier_receipt_nonempty_hash_check",
         "genoffice_runtime_docker_host_config_and_no_egress_probe_check",
         "genoffice_runtime_two_distinct_signers_and_detached_signatures_check",
         "genoffice_runtime_worker_image_sbom_scan_corpus_sandbox_binding_check",
@@ -591,7 +598,7 @@
     "knowledge-base source-version evidence hashes when applicable",
     "knowledge-base restore evidence hash when applicable",
     "source preview content release receipt hashes and tenant isolation checks when applicable",
-    "GenOffice synthetic corpus manifest, sandbox profile and no-egress probe report hashes when applicable",
+    "GenOffice synthetic corpus manifest, runsc-kvm profile, access receipt, host verification, inspect and identity-bound no-egress probe report hashes when applicable",
     "GenOffice two-person runtime authorization record and report hashes when applicable",
     "LMS restore drill evidence hash when applicable",
     "Tickets & Incidents storage migration evidence hash when applicable",

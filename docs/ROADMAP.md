@@ -1576,18 +1576,22 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Offline-Scan ohne Findings und externe Founder-Signatur. Der Status-Entrypoint und alle Runtime-/Tenant-/Produktions-
   Grenzen bleiben geschlossen; die Admission endet am 19. August 2026.
 - [x] Synthetische Runtime-Vorstufe ohne Engine-Ausfuehrung implementiert: fuenf deterministische OOXML-Fixtures,
-  kanonisches `runsc`-/No-Egress-Profil, Docker-HostConfig-/In-Container-Probevertrag sowie eine maximal 24 Stunden
+  kanonisches `runsc-kvm`-/No-Egress-Profil, Docker-HostConfig-/In-Container-Probevertrag sowie eine maximal 24 Stunden
   gueltige Zwei-Personen-Ceremony binden Image, SBOM, Scan, Korpus und Sandbox. Das Probe-Schema meldet ausdruecklich
   `engine_executed=false`; die fehlende zweite reale Person wird weder simuliert noch durch die Solo-Ausnahme ersetzt.
-- [ ] Reale `runsc`-In-Container-Probe auf `dev001` schliessen: der Container wurde am 12. August 2026 mit korrekter
-  HostConfig erzeugt, aber `runsc` scheitert bereits vor Prozessstart; auch der minimale Host-Smoke-Test endet mit
-  `fork/exec /proc/self/exe: resource temporarily unavailable`. Kein Fallback auf `runc`, keine Engine-Ausfuehrung und
-  keine Freigabe. Das versionierte pfadgebundene AppArmor-`userns`-Profil ist inzwischen geladen und beide globalen
-  globale primaere Userns-Restriktion bleibt aktiv; die separate Unconfined-Zusatzhaertung ist als `0` erfasst und wird nicht
-  ohne projektuebergreifende Auswirkungspruefung umgestellt. `systrap` scheitert dennoch unveraendert. Naechster
-  Hostschritt ist deshalb die additive,
-  offiziell unterstuetzte `runsc-kvm`-Runtime auf dem nachgewiesenen Bare-Metal-/KVM-Host. Der unveraenderte
-  Probevertrag muss danach unter `runsc-kvm` in einer neuen Generation bestehen.
+- [x] Reale `runsc-kvm`-In-Container-Probe auf `dev001` geschlossen: die additive KVM-Runtime laesst die bestehende
+  `runsc`-Registrierung unveraendert; AppArmor-Userns-Hauptschutz bleibt aktiv. Der eng begrenzte Access-Preparer
+  prueft Eigentum, Symlinkfreiheit, kanonische Bytes und Docker-HostConfig, bevor er nur den synthetischen Inputs
+  Gruppenleserechte fuer UID/GID `10003` gibt. Die abschliessende Generation 06 bindet Container-ID und Hostname,
+  unveraenderliches Image `sha256:b68e4ad5...92646`, imageinternen Pruefcode, exakt zwei read-only Bind-Mounts und
+  die Abwesenheit von Host-Geraeten an das write-once Inspect-Dokument. Der exakte Container `666e3f3c5b95...`
+  bestand Runtime, No-Egress, DNS-Blockade, read-only Root/Korpus, alle in `/proc/self/status` sichtbaren leeren
+  Capability-Sets, no-new-privileges-HostConfig, Ressourcenlimits und Scratch-Cleanup. Inspect-Datei
+  `sha256:bb5dfc7d...1d544`, Access-Receipt-Datei `sha256:f041a27d...ac0ab`, Probebericht-Datei
+  `sha256:f7f58d21...29d1e`, interner Bericht `sha256:e87ce2ed...5cfd`. Engine, Tenant-Content, externe Netznutzung
+  und Runtime-Autorisierung blieben false. Generation 04 bleibt als engerer Vorgaengerbeleg erhalten; Generationen
+  01 bis 03 und 05 dokumentieren fail-closed Diagnosepfade. Der separate rootgebundene Host-Verifier-Beleg bleibt
+  bis zu seiner nicht-leeren, validierten Ablage ein administrativer Nachlauf und oeffnet keine Runtime-Grenze.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

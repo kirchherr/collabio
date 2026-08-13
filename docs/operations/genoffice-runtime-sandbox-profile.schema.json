@@ -36,6 +36,18 @@
       "title": "Docker Socket Mounted",
       "type": "boolean"
     },
+    "evidence_mount_read_only": {
+      "const": true,
+      "default": true,
+      "title": "Evidence Mount Read Only",
+      "type": "boolean"
+    },
+    "exact_mount_inventory_required": {
+      "const": true,
+      "default": true,
+      "title": "Exact Mount Inventory Required",
+      "type": "boolean"
+    },
     "host_devices_mounted": {
       "const": false,
       "default": false,
@@ -83,6 +95,12 @@
       "default": 32,
       "title": "Pids Limit",
       "type": "integer"
+    },
+    "probe_code_from_image_required": {
+      "const": true,
+      "default": true,
+      "title": "Probe Code From Image Required",
+      "type": "boolean"
     },
     "profile_hash": {
       "title": "Profile Hash",

@@ -132,6 +132,9 @@ class GenOfficeRuntimeSandboxProfile(BaseModel):
         "/scratch:size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700"
     )
     corpus_mount_read_only: Literal[True] = True
+    evidence_mount_read_only: Literal[True] = True
+    probe_code_from_image_required: Literal[True] = True
+    exact_mount_inventory_required: Literal[True] = True
     docker_socket_mounted: Literal[False] = False
     host_devices_mounted: Literal[False] = False
     credentials_mounted: Literal[False] = False
@@ -156,6 +159,10 @@ class GenOfficeRuntimeSandboxProbeReport(BaseModel):
     sandbox_profile_hash: str
     corpus_manifest_hash: str
     docker_inspect_sha256: str
+    container_identity_verified: Literal[True] = True
+    probe_code_image_bound_verified: Literal[True] = True
+    mount_inventory_exact_verified: Literal[True] = True
+    host_devices_absent_verified: Literal[True] = True
     runtime_class_verified: Literal[True] = True
     network_mode_none_verified: Literal[True] = True
     read_only_root_verified: Literal[True] = True
@@ -189,6 +196,54 @@ class GenOfficeRuntimeSandboxProbeReport(BaseModel):
             ("runtime sandbox probe report hash", self.report_hash),
         ):
             _require_sha256(value, field=field)
+        return self
+
+
+class GenOfficeRuntimeProofAccessArtifact(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    relative_path: str
+    content_sha256: str
+    size_bytes: int
+
+    @model_validator(mode="after")
+    def require_artifact(self) -> GenOfficeRuntimeProofAccessArtifact:
+        if PurePosixPath(self.relative_path).name != self.relative_path or self.size_bytes <= 0:
+            raise ValueError("GenOffice runtime proof access artifact is invalid")
+        _require_sha256(self.content_sha256, field="runtime proof access artifact hash")
+        return self
+
+
+class GenOfficeRuntimeProofAccessReceipt(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal["genoffice_runtime_proof_access_receipt.v1"] = "genoffice_runtime_proof_access_receipt.v1"
+    prepared_at_utc: datetime
+    probe_identity: Literal["10003:10003"] = "10003:10003"
+    directory_mode: Literal["0750"] = "0750"
+    file_mode: Literal["0640"] = "0640"
+    corpus_artifacts: tuple[GenOfficeRuntimeProofAccessArtifact, ...]
+    evidence_artifacts: tuple[GenOfficeRuntimeProofAccessArtifact, ...]
+    symlink_absence_verified: Literal[True] = True
+    ownership_scope_verified: Literal[True] = True
+    content_hashes_preserved: Literal[True] = True
+    unrelated_evidence_untouched: Literal[True] = True
+    tenant_content_included: Literal[False] = False
+    runtime_authorization_granted: Literal[False] = False
+    receipt_hash: str
+
+    @field_validator("prepared_at_utc")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("GenOffice runtime proof access preparation time lacks a timezone")
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def require_receipt(self) -> GenOfficeRuntimeProofAccessReceipt:
+        if not self.corpus_artifacts or len(self.evidence_artifacts) != 2:
+            raise ValueError("GenOffice runtime proof access receipt inventory is invalid")
+        _require_sha256(self.receipt_hash, field="runtime proof access receipt hash")
         return self
 
 
@@ -720,6 +775,152 @@ def build_genoffice_runtime_sandbox_profile_hash(profile: GenOfficeRuntimeSandbo
     return stable_hash(canonical_json(profile.model_dump(mode="json", exclude={"profile_hash"})))
 
 
+def _runtime_access_artifact(path: Path) -> GenOfficeRuntimeProofAccessArtifact:
+    content = _read_limited(path)
+    return GenOfficeRuntimeProofAccessArtifact(
+        relative_path=path.name,
+        content_sha256=_sha256_bytes(content),
+        size_bytes=len(content),
+    )
+
+
+def _require_access_target(path: Path, *, expected_uid: int, directory: bool) -> None:
+    metadata = path.lstat()
+    expected_type = stat.S_ISDIR if directory else stat.S_ISREG
+    if path.is_symlink() or not expected_type(metadata.st_mode):
+        raise GenOfficeRuntimeProofAuthorizationError(f"GenOffice runtime proof access target is invalid: {path.name}")
+    if metadata.st_uid != expected_uid:
+        raise GenOfficeRuntimeProofAuthorizationError(
+            f"GenOffice runtime proof access target owner drifted: {path.name}"
+        )
+    forbidden_mode = 0o027 if directory else 0o037
+    if stat.S_IMODE(metadata.st_mode) & forbidden_mode:
+        raise GenOfficeRuntimeProofAuthorizationError(
+            f"GenOffice runtime proof access target is too permissive: {path.name}"
+        )
+
+
+def _unrelated_evidence_snapshot(
+    evidence_directory: Path,
+    *,
+    excluded_names: set[str],
+) -> tuple[tuple[str, int, int, int, str], ...]:
+    snapshot: list[tuple[str, int, int, int, str]] = []
+    for path in sorted(evidence_directory.iterdir(), key=lambda item: item.name):
+        if path.name in excluded_names:
+            continue
+        metadata = path.lstat()
+        if path.is_symlink() or not stat.S_ISREG(metadata.st_mode):
+            raise GenOfficeRuntimeProofAuthorizationError(
+                f"GenOffice unrelated runtime evidence target is invalid: {path.name}"
+            )
+        snapshot.append(
+            (
+                path.name,
+                metadata.st_uid,
+                metadata.st_gid,
+                stat.S_IMODE(metadata.st_mode),
+                _sha256_bytes(_read_limited(path)),
+            )
+        )
+    return tuple(snapshot)
+
+
+def build_genoffice_runtime_proof_access_receipt_hash(receipt: GenOfficeRuntimeProofAccessReceipt) -> str:
+    return stable_hash(canonical_json(receipt.model_dump(mode="json", exclude={"receipt_hash"})))
+
+
+def prepare_genoffice_runtime_proof_access(
+    *,
+    corpus_directory: Path,
+    evidence_directory: Path,
+    sandbox_profile_path: Path,
+    docker_inspect_path: Path,
+    prepared_at_utc: datetime,
+    target_gid: int = 10003,
+    expected_owner_uid: int | None = None,
+) -> GenOfficeRuntimeProofAccessReceipt:
+    owner_uid = os.geteuid() if expected_owner_uid is None else expected_owner_uid
+    if target_gid < 0 or owner_uid < 0:
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice runtime proof access target group is invalid")
+    if sandbox_profile_path.parent != evidence_directory or docker_inspect_path.parent != evidence_directory:
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice runtime proof evidence path escaped its directory")
+    for path, is_directory in (
+        (corpus_directory, True),
+        (evidence_directory, True),
+        (sandbox_profile_path, False),
+        (docker_inspect_path, False),
+    ):
+        _require_access_target(path, expected_uid=owner_uid, directory=is_directory)
+
+    manifest_path = corpus_directory / "genoffice-synthetic-corpus-manifest.json"
+    manifest = load_genoffice_synthetic_corpus_manifest(manifest_path)
+    verify_genoffice_synthetic_corpus(manifest=manifest, corpus_directory=corpus_directory)
+    profile = load_genoffice_runtime_sandbox_profile(sandbox_profile_path)
+    inspect_bytes = _read_limited(docker_inspect_path)
+    try:
+        inspect = json.loads(inspect_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox Docker inspect evidence is invalid") from exc
+    _verify_docker_inspect(inspect, profile)
+
+    corpus_paths = tuple(
+        sorted(
+            (*(corpus_directory / item.filename for item in manifest.artifacts), manifest_path),
+            key=lambda path: path.name,
+        )
+    )
+    evidence_paths = (docker_inspect_path, sandbox_profile_path)
+    targets = (corpus_directory, evidence_directory, *corpus_paths, *evidence_paths)
+    for path in targets:
+        _require_access_target(
+            path,
+            expected_uid=owner_uid,
+            directory=path in {corpus_directory, evidence_directory},
+        )
+
+    excluded_names = {path.name for path in evidence_paths}
+    unrelated_before = _unrelated_evidence_snapshot(evidence_directory, excluded_names=excluded_names)
+    corpus_before = tuple(_runtime_access_artifact(path) for path in corpus_paths)
+    evidence_before = tuple(_runtime_access_artifact(path) for path in evidence_paths)
+
+    for directory in (corpus_directory, evidence_directory):
+        os.chown(directory, -1, target_gid)
+        directory.chmod(0o750)
+    for path in (*corpus_paths, *evidence_paths):
+        os.chown(path, -1, target_gid)
+        path.chmod(0o640)
+
+    for directory in (corpus_directory, evidence_directory):
+        metadata = directory.stat()
+        if metadata.st_gid != target_gid or stat.S_IMODE(metadata.st_mode) != 0o750:
+            raise GenOfficeRuntimeProofAuthorizationError("GenOffice runtime proof directory access preparation failed")
+    for path in (*corpus_paths, *evidence_paths):
+        metadata = path.stat()
+        if metadata.st_gid != target_gid or stat.S_IMODE(metadata.st_mode) != 0o640:
+            raise GenOfficeRuntimeProofAuthorizationError("GenOffice runtime proof file access preparation failed")
+    if corpus_before != tuple(_runtime_access_artifact(path) for path in corpus_paths):
+        raise GenOfficeRuntimeProofAuthorizationError(
+            "GenOffice runtime proof corpus content changed during access preparation"
+        )
+    if evidence_before != tuple(_runtime_access_artifact(path) for path in evidence_paths):
+        raise GenOfficeRuntimeProofAuthorizationError(
+            "GenOffice runtime proof evidence content changed during access preparation"
+        )
+    if unrelated_before != _unrelated_evidence_snapshot(evidence_directory, excluded_names=excluded_names):
+        raise GenOfficeRuntimeProofAuthorizationError(
+            "GenOffice unrelated runtime evidence changed during access preparation"
+        )
+
+    draft = GenOfficeRuntimeProofAccessReceipt(
+        prepared_at_utc=prepared_at_utc,
+        corpus_artifacts=corpus_before,
+        evidence_artifacts=evidence_before,
+        receipt_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"receipt_hash": build_genoffice_runtime_proof_access_receipt_hash(draft)})
+
+
 def _load_model(path: Path, model: type[BaseModel], *, label: str) -> BaseModel:
     try:
         return model.model_validate_json(_read_limited(path))
@@ -743,7 +944,12 @@ def load_genoffice_runtime_sandbox_profile(path: Path) -> GenOfficeRuntimeSandbo
     return profile
 
 
-def _verify_docker_inspect(inspect: Any, profile: GenOfficeRuntimeSandboxProfile) -> None:
+def _verify_docker_inspect(
+    inspect: Any,
+    profile: GenOfficeRuntimeSandboxProfile,
+    *,
+    current_container_hostname: str | None = None,
+) -> None:
     if not isinstance(inspect, list) or len(inspect) != 1 or not isinstance(inspect[0], dict):
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox Docker inspect evidence is invalid")
     config = inspect[0].get("Config", {})
@@ -759,17 +965,55 @@ def _verify_docker_inspect(inspect: Any, profile: GenOfficeRuntimeSandboxProfile
     )
     if any(actual != wanted for actual, wanted in expected):
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox Docker host configuration drifted")
-    if set(host.get("CapDrop") or ()) != {"ALL"}:
+    image_id = inspect[0].get("Image")
+    if not isinstance(image_id, str) or len(image_id) != 71 or not image_id.startswith("sha256:"):
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox probe image is not digest-bound")
+    if current_container_hostname is not None:
+        container_id = inspect[0].get("Id")
+        configured_hostname = config.get("Hostname")
+        if (
+            not isinstance(container_id, str)
+            or len(container_id) != 64
+            or any(character not in "0123456789abcdef" for character in container_id)
+            or configured_hostname != current_container_hostname
+            or not container_id.startswith(current_container_hostname)
+        ):
+            raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox container identity drifted")
+    if set(host.get("CapDrop") or ()) != {"ALL"} or host.get("CapAdd") not in (None, []):
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox capabilities are not dropped")
+    if host.get("Privileged") is not False:
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox privileged mode is not disabled")
+    if host.get("Devices") not in (None, []) or host.get("DeviceRequests") not in (None, []):
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox host devices are present")
     if "no-new-privileges:true" not in set(host.get("SecurityOpt") or ()):
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox no-new-privileges is absent")
     tmpfs = host.get("Tmpfs") or {}
     if tmpfs.get("/scratch") != profile.scratch_tmpfs.split(":", 1)[1]:
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox scratch tmpfs drifted")
     mounts = inspect[0].get("Mounts") or []
-    corpus_mount = tuple(item for item in mounts if item.get("Destination") == "/corpus")
-    if len(corpus_mount) != 1 or corpus_mount[0].get("RW") is not False:
-        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox corpus mount is not read-only")
+    mount_inventory = {
+        item.get("Destination"): (item.get("Type"), item.get("RW")) for item in mounts if isinstance(item, dict)
+    }
+    if len(mounts) != 2 or mount_inventory != {
+        "/corpus": ("bind", False),
+        "/evidence": ("bind", False),
+    }:
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox mount inventory drifted")
+
+
+def _verify_in_process_privilege_state(status_path: Path = Path("/proc/self/status")) -> None:
+    try:
+        status = status_path.read_text(encoding="ascii")
+        fields = dict(line.split(":", 1) for line in status.splitlines() if ":" in line)
+        capability_fields = ("CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb")
+        if any(int(fields[name].strip(), 16) != 0 for name in capability_fields):
+            raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox process capabilities are not empty")
+        if "NoNewPrivs" in fields and fields["NoNewPrivs"].strip() != "1":
+            raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox process no-new-privileges is absent")
+    except (KeyError, OSError, ValueError) as exc:
+        if isinstance(exc, GenOfficeRuntimeProofAuthorizationError):
+            raise
+        raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox process privilege state is invalid") from exc
 
 
 def run_genoffice_runtime_sandbox_probe(
@@ -788,7 +1032,8 @@ def run_genoffice_runtime_sandbox_probe(
         inspect = json.loads(inspect_bytes)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise GenOfficeRuntimeProofAuthorizationError("GenOffice sandbox Docker inspect evidence is invalid") from exc
-    _verify_docker_inspect(inspect, profile)
+    _verify_docker_inspect(inspect, profile, current_container_hostname=socket.gethostname())
+    _verify_in_process_privilege_state()
 
     try:
         Path("/opt/collabio-sandbox-root-write").write_bytes(b"blocked")
@@ -1281,6 +1526,7 @@ def persist_genoffice_runtime_schemas(output_directory: Path) -> dict[str, str]:
         ("genoffice-synthetic-corpus-manifest.schema.json", GenOfficeSyntheticCorpusManifest),
         ("genoffice-runtime-sandbox-profile.schema.json", GenOfficeRuntimeSandboxProfile),
         ("genoffice-runtime-sandbox-probe-report.schema.json", GenOfficeRuntimeSandboxProbeReport),
+        ("genoffice-runtime-proof-access-receipt.schema.json", GenOfficeRuntimeProofAccessReceipt),
         ("genoffice-runtime-signer-policy.schema.json", GenOfficeRuntimeSignerPolicy),
         ("genoffice-runtime-signing-request.schema.json", GenOfficeRuntimeSigningRequest),
         ("genoffice-runtime-signature-response.schema.json", GenOfficeRuntimeSignatureResponse),
@@ -1311,6 +1557,19 @@ def main() -> None:
             _write_new_private(
                 Path(os.environ["SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH"]),
                 _json_bytes(result),
+            )
+        elif mode == "access-prep":
+            if os.geteuid() != 0:
+                raise GenOfficeRuntimeProofAuthorizationError(
+                    "GenOffice runtime proof access preparation requires its confined root helper"
+                )
+            result = prepare_genoffice_runtime_proof_access(
+                corpus_directory=Path(os.environ["SUITE_GENOFFICE_RUNTIME_CORPUS_DIR"]),
+                evidence_directory=Path(os.environ["SUITE_GENOFFICE_RUNTIME_EVIDENCE_DIR"]),
+                sandbox_profile_path=Path(os.environ["SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH"]),
+                docker_inspect_path=Path(os.environ["SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH"]),
+                prepared_at_utc=datetime.now(UTC),
+                expected_owner_uid=int(os.environ["SUITE_GENOFFICE_RUNTIME_PROOF_SOURCE_UID"]),
             )
         elif mode == "sandbox-probe":
             result = run_genoffice_runtime_sandbox_probe(

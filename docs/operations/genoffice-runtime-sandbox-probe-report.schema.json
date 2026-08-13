@@ -7,6 +7,12 @@
       "title": "Capabilities Empty Verified",
       "type": "boolean"
     },
+    "container_identity_verified": {
+      "const": true,
+      "default": true,
+      "title": "Container Identity Verified",
+      "type": "boolean"
+    },
     "content_included": {
       "const": false,
       "default": false,
@@ -39,6 +45,18 @@
       "title": "External Network Used",
       "type": "boolean"
     },
+    "host_devices_absent_verified": {
+      "const": true,
+      "default": true,
+      "title": "Host Devices Absent Verified",
+      "type": "boolean"
+    },
+    "mount_inventory_exact_verified": {
+      "const": true,
+      "default": true,
+      "title": "Mount Inventory Exact Verified",
+      "type": "boolean"
+    },
     "network_mode_none_verified": {
       "const": true,
       "default": true,
@@ -60,6 +78,12 @@
       "const": true,
       "default": true,
       "title": "Outbound Socket Blocked",
+      "type": "boolean"
+    },
+    "probe_code_image_bound_verified": {
+      "const": true,
+      "default": true,
+      "title": "Probe Code Image Bound Verified",
       "type": "boolean"
     },
     "read_only_corpus_verified": {

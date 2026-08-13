@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import stat
 import struct
 import zipfile
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -24,13 +27,16 @@ from suite.operations.genoffice_runtime_proof_authorization import (
     GenOfficeRuntimeSigningRequest,
     GenOfficeSyntheticCorpusManifest,
     _verify_docker_inspect,
+    _verify_in_process_privilege_state,
     assemble_genoffice_runtime_authorization_envelope,
+    build_genoffice_runtime_proof_access_receipt_hash,
     build_genoffice_runtime_sandbox_profile,
     build_genoffice_runtime_signer_policy,
     build_genoffice_runtime_signing_request,
     build_genoffice_synthetic_corpus,
     materialize_genoffice_synthetic_corpus,
     persist_genoffice_runtime_schemas,
+    prepare_genoffice_runtime_proof_access,
     verify_genoffice_runtime_authorization,
     verify_genoffice_runtime_signing_request,
     verify_genoffice_synthetic_corpus,
@@ -184,6 +190,58 @@ def test_sandbox_profile_and_docker_inspect_are_exact() -> None:
     profile = build_genoffice_runtime_sandbox_profile()
     inspect: list[dict[str, Any]] = [
         {
+            "Image": "sha256:" + "f" * 64,
+            "Id": "a" * 64,
+            "Config": {"Hostname": "a" * 12, "User": "10003:10003"},
+            "HostConfig": {
+                "Runtime": "runsc-kvm",
+                "NetworkMode": "none",
+                "ReadonlyRootfs": True,
+                "PidsLimit": 32,
+                "NanoCpus": 500_000_000,
+                "Memory": 536_870_912,
+                "CapDrop": ["ALL"],
+                "CapAdd": None,
+                "Privileged": False,
+                "Devices": [],
+                "DeviceRequests": None,
+                "SecurityOpt": ["no-new-privileges:true"],
+                "Tmpfs": {"/scratch": "size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700"},
+            },
+            "Mounts": [
+                {"Destination": "/corpus", "Type": "bind", "RW": False},
+                {"Destination": "/evidence", "Type": "bind", "RW": False},
+            ],
+        }
+    ]
+
+    _verify_docker_inspect(inspect, profile, current_container_hostname="a" * 12)
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="container identity drifted"):
+        _verify_docker_inspect(inspect, profile, current_container_hostname="b" * 12)
+    inspect[0]["HostConfig"]["Runtime"] = "runc"
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="configuration drifted"):
+        _verify_docker_inspect(inspect, profile)
+
+
+def test_sandbox_probe_compose_keeps_evidence_read_only_and_reports_via_logs() -> None:
+    compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
+    probe = compose.split("\n  genoffice-runtime-sandbox-probe:\n", maxsplit=1)[1].split(
+        "\n  genoffice-runtime-proof-access-preparer:\n", maxsplit=1
+    )[0]
+
+    assert "runtime: runsc-kvm" in probe
+    assert 'network_mode: "none"' in probe
+    assert 'user: "10003:10003"' in probe
+    assert "read_only: true" in probe
+    assert "target: /evidence\n        read_only: true" in probe
+    assert "./app:/workspace/app:ro" not in probe
+    assert "SUITE_GENOFFICE_RUNTIME_SANDBOX_PROBE_REPORT_PATH" not in probe
+
+
+def _runtime_inspect() -> list[dict[str, Any]]:
+    return [
+        {
+            "Image": "sha256:" + "f" * 64,
             "Config": {"User": "10003:10003"},
             "HostConfig": {
                 "Runtime": "runsc-kvm",
@@ -193,29 +251,154 @@ def test_sandbox_profile_and_docker_inspect_are_exact() -> None:
                 "NanoCpus": 500_000_000,
                 "Memory": 536_870_912,
                 "CapDrop": ["ALL"],
+                "CapAdd": None,
+                "Privileged": False,
+                "Devices": [],
+                "DeviceRequests": None,
                 "SecurityOpt": ["no-new-privileges:true"],
                 "Tmpfs": {"/scratch": "size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700"},
             },
-            "Mounts": [{"Destination": "/corpus", "RW": False}],
+            "Mounts": [
+                {"Destination": "/corpus", "Type": "bind", "RW": False},
+                {"Destination": "/evidence", "Type": "bind", "RW": False},
+            ],
         }
     ]
 
-    _verify_docker_inspect(inspect, profile)
-    inspect[0]["HostConfig"]["Runtime"] = "runc"
-    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="configuration drifted"):
-        _verify_docker_inspect(inspect, profile)
+
+def test_sandbox_inspect_rejects_image_privilege_device_and_mount_drift() -> None:
+    profile = build_genoffice_runtime_sandbox_profile()
+
+    image_drift = _runtime_inspect()
+    image_drift[0]["Image"] = "collabio:latest"
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="not digest-bound"):
+        _verify_docker_inspect(image_drift, profile)
+
+    for field, value, message in (
+        ("CapAdd", ["SYS_ADMIN"], "capabilities are not dropped"),
+        ("Privileged", True, "privileged mode is not disabled"),
+        ("Devices", [{"PathOnHost": "/dev/kvm"}], "host devices are present"),
+    ):
+        host_drift = deepcopy(_runtime_inspect())
+        host_drift[0]["HostConfig"][field] = value
+        with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match=message):
+            _verify_docker_inspect(host_drift, profile)
+
+    mount_drift = deepcopy(_runtime_inspect())
+    mount_drift[0]["Mounts"].append({"Destination": "/workspace/app", "Type": "bind", "RW": False})
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="mount inventory drifted"):
+        _verify_docker_inspect(mount_drift, profile)
 
 
-def test_sandbox_probe_compose_keeps_evidence_read_only_and_reports_via_logs() -> None:
+def test_in_process_privilege_state_requires_empty_capabilities(tmp_path: Path) -> None:
+    status = tmp_path / "status"
+    empty_capabilities = "\n".join(
+        (
+            "CapInh:\t0000000000000000",
+            "CapPrm:\t0000000000000000",
+            "CapEff:\t0000000000000000",
+            "CapBnd:\t0000000000000000",
+            "CapAmb:\t0000000000000000",
+        )
+    )
+    status.write_text(f"{empty_capabilities}\nNoNewPrivs:\t1\n", encoding="ascii")
+    _verify_in_process_privilege_state(status)
+
+    status.write_text(f"{empty_capabilities}\n", encoding="ascii")
+    _verify_in_process_privilege_state(status)
+
+    non_empty_capabilities = empty_capabilities.replace("CapEff:\t0000000000000000", "CapEff:\t1")
+    status.write_text(f"{non_empty_capabilities}\n", encoding="ascii")
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="capabilities are not empty"):
+        _verify_in_process_privilege_state(status)
+
+    status.write_text(f"{empty_capabilities}\nNoNewPrivs:\t0\n", encoding="ascii")
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="no-new-privileges is absent"):
+        _verify_in_process_privilege_state(status)
+
+
+def test_runtime_proof_access_preparation_preserves_content_and_unrelated_evidence(tmp_path: Path) -> None:
+    corpus = tmp_path / "corpus"
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    materialize_genoffice_synthetic_corpus(corpus)
+    corpus.chmod(0o700)
+    evidence.chmod(0o700)
+    profile = evidence / "genoffice-runtime-sandbox-profile.json"
+    profile.write_text(build_genoffice_runtime_sandbox_profile().model_dump_json(), encoding="utf-8")
+    profile.chmod(0o600)
+    inspect = evidence / "genoffice-runtime-sandbox-probe.inspect.json"
+    inspect.write_text(json.dumps(_runtime_inspect()), encoding="utf-8")
+    inspect.chmod(0o600)
+    unrelated = evidence / "host-installation.log"
+    unrelated.write_text("non-sensitive host state", encoding="utf-8")
+    unrelated.chmod(0o600)
+    unrelated_before = (unrelated.read_bytes(), unrelated.stat().st_mode, unrelated.stat().st_gid)
+
+    receipt = prepare_genoffice_runtime_proof_access(
+        corpus_directory=corpus,
+        evidence_directory=evidence,
+        sandbox_profile_path=profile,
+        docker_inspect_path=inspect,
+        prepared_at_utc=datetime(2026, 8, 13, 6, 0, tzinfo=UTC),
+        target_gid=os.getgid(),
+    )
+
+    assert stat.S_IMODE(corpus.stat().st_mode) == 0o750
+    assert stat.S_IMODE(evidence.stat().st_mode) == 0o750
+    assert all(stat.S_IMODE(path.stat().st_mode) == 0o640 for path in corpus.iterdir())
+    assert stat.S_IMODE(profile.stat().st_mode) == 0o640
+    assert stat.S_IMODE(inspect.stat().st_mode) == 0o640
+    assert unrelated_before == (unrelated.read_bytes(), unrelated.stat().st_mode, unrelated.stat().st_gid)
+    assert receipt.receipt_hash == build_genoffice_runtime_proof_access_receipt_hash(receipt)
+    assert receipt.tenant_content_included is False
+    assert receipt.runtime_authorization_granted is False
+
+
+def test_runtime_proof_access_preparation_rejects_symlink(tmp_path: Path) -> None:
+    corpus = tmp_path / "corpus"
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    materialize_genoffice_synthetic_corpus(corpus)
+    corpus.chmod(0o700)
+    evidence.chmod(0o700)
+    profile = evidence / "genoffice-runtime-sandbox-profile.json"
+    profile.write_text(build_genoffice_runtime_sandbox_profile().model_dump_json(), encoding="utf-8")
+    profile.chmod(0o600)
+    inspect = evidence / "genoffice-runtime-sandbox-probe.inspect.json"
+    inspect.symlink_to(profile)
+
+    with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match=r"inspect evidence is invalid|target is invalid"):
+        prepare_genoffice_runtime_proof_access(
+            corpus_directory=corpus,
+            evidence_directory=evidence,
+            sandbox_profile_path=profile,
+            docker_inspect_path=inspect,
+            prepared_at_utc=datetime(2026, 8, 13, 6, 0, tzinfo=UTC),
+            target_gid=os.getgid(),
+        )
+
+
+def test_runtime_access_preparer_compose_is_confined_and_capability_minimal() -> None:
     compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
-    probe = compose.split("\n  genoffice-runtime-sandbox-probe:\n", maxsplit=1)[1].split("\n  api:\n", maxsplit=1)[0]
+    control = compose.split("\n  genoffice-runtime-proof-control:\n", maxsplit=1)[1].split(
+        "\n  genoffice-runtime-sandbox-probe:\n", maxsplit=1
+    )[0]
+    preparer = compose.split("\n  genoffice-runtime-proof-access-preparer:\n", maxsplit=1)[1].split(
+        "\n  api:\n", maxsplit=1
+    )[0]
 
-    assert "runtime: runsc-kvm" in probe
-    assert 'network_mode: "none"' in probe
-    assert 'user: "10003:10003"' in probe
-    assert "read_only: true" in probe
-    assert "target: /evidence\n        read_only: true" in probe
-    assert "SUITE_GENOFFICE_RUNTIME_SANDBOX_PROBE_REPORT_PATH" not in probe
+    assert 'user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"' in control
+    assert 'network_mode: "none"' in preparer
+    assert 'user: "0:0"' in preparer
+    assert "SUITE_GENOFFICE_RUNTIME_PROOF_SOURCE_UID: ${SUITE_RUNTIME_UID:-1000}" in preparer
+    assert "      - ALL" in preparer
+    assert "      - CHOWN" in preparer
+    assert "      - DAC_READ_SEARCH" in preparer
+    assert "      - FOWNER" in preparer
+    assert "no-new-privileges:true" in preparer
+    assert "read_only: true" in preparer
+    assert "docker.sock" not in preparer
 
 
 def test_two_person_runtime_authorization_is_worker_corpus_and_sandbox_bound() -> None:
@@ -312,8 +495,20 @@ def test_runtime_schemas_and_worker_admission_loader_are_write_once(tmp_path: Pa
     schema_dir.mkdir()
     hashes = persist_genoffice_runtime_schemas(schema_dir)
 
-    assert len(hashes) == 8
+    assert len(hashes) == 9
     assert all(value.startswith("sha256:") for value in hashes.values())
+    report_schema_path = schema_dir / "genoffice-runtime-sandbox-probe-report.schema.json"
+    report_schema = json.loads(report_schema_path.read_text(encoding="utf-8"))
+    assert report_schema["properties"]["container_identity_verified"]["const"] is True
+    assert (
+        report_schema_path.read_bytes()
+        == (
+            Path(__file__).parents[1] / "docs" / "operations" / "genoffice-runtime-sandbox-probe-report.schema.json"
+        ).read_bytes()
+    )
+    assert (schema_dir / "genoffice-runtime-proof-access-receipt.schema.json").read_bytes() == (
+        Path(__file__).parents[1] / "docs" / "operations" / "genoffice-runtime-proof-access-receipt.schema.json"
+    ).read_bytes()
     with pytest.raises(GenOfficeRuntimeProofAuthorizationError, match="already exists"):
         persist_genoffice_runtime_schemas(schema_dir)
 
