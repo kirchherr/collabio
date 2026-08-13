@@ -3612,6 +3612,183 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-docx-fidelity-ceremony-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-policy:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: policy
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_ID: ${SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_EFFECTIVE_AT_UTC: ${SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_EFFECTIVE_AT_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_PUBLIC_KEY_PATH: /keys/word.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_PUBLIC_KEY_PATH: /keys/libreoffice.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_PUBLIC_KEY_PATH: /keys/genoffice.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /output/genoffice-docx-fidelity-result-signer-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/word.ed25519.pub}
+        target: /keys/word.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/libreoffice.ed25519.pub}
+        target: /keys/libreoffice.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/genoffice.ed25519.pub}
+        target: /keys/genoffice.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-request:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: request
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /inputs/genoffice-docx-fidelity-result-signer-policy.json
+      SUITE_GENOFFICE_FIDELITY_STUDY_PLAN_PATH: /inputs/genoffice-docx-fidelity-study-plan.json
+      SUITE_GENOFFICE_FIDELITY_RESULT_PAYLOAD_PATH: /inputs/result-payload.json
+      SUITE_GENOFFICE_FIDELITY_PREPARED_AT_UTC: ${SUITE_GENOFFICE_FIDELITY_PREPARED_AT_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_VALID_UNTIL_UTC: ${SUITE_GENOFFICE_FIDELITY_VALID_UNTIL_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_SIGNING_REQUEST_PATH: /output/result-signing-request.json
+      SUITE_GENOFFICE_FIDELITY_SIGNATURE_MESSAGE_PATH: /output/result-signature-message.bin
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-assemble:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: assemble
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /inputs/genoffice-docx-fidelity-result-signer-policy.json
+      SUITE_GENOFFICE_FIDELITY_STUDY_PLAN_PATH: /inputs/genoffice-docx-fidelity-study-plan.json
+      SUITE_GENOFFICE_FIDELITY_SIGNING_REQUEST_PATH: /inputs/result-signing-request.json
+      SUITE_GENOFFICE_FIDELITY_SIGNATURE_RESPONSE_PATH: /approvals/result.signature-response.json
+      SUITE_GENOFFICE_FIDELITY_SIGNED_RESULT_PATH: /output/signed-result-envelope.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/approvals/result.signature-response.json}
+        target: /approvals/result.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .

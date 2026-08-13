@@ -793,8 +793,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "unabhaengig pruefen. Ein digestgebundener, netzloser LibreOffice-Runner hat unter runsc-kvm "
                         "fuer alle drei synthetischen Fixtures unsigned Evidence erzeugt: die gleichen Engine-Render "
                         "sind pixelgleich, waehrend der echte Open-XML-SDK-Validator sechs bis sieben "
-                        "Schemafindings belegt. Signatur, unabhaengige Bytepruefung, Schwellenkalibrierung und Human "
-                        "Review bleiben offen. "
+                        "Schemafindings belegt. Eine private-key-freie, netzlose Ergebniszeremonie bindet nun eine "
+                        "vollstaendige Drei-Engine-Public-Key-Policy, begrenzte Requests und externe Ed25519-Antworten "
+                        "an das bestehende Result-Envelope; sie behauptet im Solo-Betrieb keine personelle Trennung. "
+                        "Reale Signatur, unabhaengige Bytepruefung, Schwellenkalibrierung und Human Review bleiben "
+                        "offen. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -889,6 +892,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/GENOFFICE_DOCX_LIBREOFFICE_RUNNER.md",
                         "docs/operations/genoffice-docx-libreoffice-run-request.schema.json",
                         "docs/operations/genoffice-docx-libreoffice-runner-report.schema.json",
+                        "app/suite/operations/genoffice_docx_fidelity_ceremony.py",
+                        "tests/test_genoffice_docx_fidelity_ceremony.py",
+                        "docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md",
+                        "docs/operations/genoffice-docx-fidelity-signing-request.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-external-signature-response.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -902,6 +910,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0072-genoffice-docx-fidelity-study.md",
                         "ARCHITECTURE_DECISIONS/ADR-0073-genoffice-docx-fidelity-evidence-verification.md",
                         "ARCHITECTURE_DECISIONS/ADR-0074-genoffice-docx-libreoffice-synthetic-runner.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0075-genoffice-docx-fidelity-result-signing-ceremony.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -967,6 +976,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "libreoffice_runner_uses_runsc_kvm_without_network_or_private_key",
                         "openxml_sdk_3_5_1_restore_is_locked_and_metadata_only",
                         "real_unsigned_libreoffice_evidence_does_not_grant_compatibility",
+                        "fidelity_result_ceremony_has_no_sign_or_private_key_path",
+                        "engine_policy_request_message_and_external_signature_are_cross_bound",
+                        "engine_key_separation_does_not_claim_human_separation",
                         "no_fidelity_claim_without_calibration_and_human_review",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",

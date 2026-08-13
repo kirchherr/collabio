@@ -910,6 +910,14 @@ external-signature and ADR-0073 verifier steps really pass. Restoration never re
 The operator command sequence and first retained baseline hashes are in
 `docs/operations/GENOFFICE_DOCX_LIBREOFFICE_RUNNER.md`.
 
+ADR-0075 adds no live state. Preserve the public three-engine signer policy and public keys, bounded request,
+canonical message, detached response, signed envelope and independent ADR-0073 report with the matching immutable
+evidence generation. Exclude every private key representation, including DPAPI ciphertext, HSM session material, KMS
+credentials and provider tokens. On restore, recompute policy, request, message, envelope and receipt hashes, verify the
+Ed25519 signature, then run ADR-0073 against the restored evidence bytes. Never infer a human separation-of-duties
+claim from the three engine keys and never infer compatibility from a valid signature or successful byte check. See
+`docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md`.
+
 ## Minimum Restore Drill
 
 Monthly for active development and before every production-readiness milestone:

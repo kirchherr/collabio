@@ -1151,6 +1151,17 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert "libreoffice_runner_uses_runsc_kvm_without_network_or_private_key" in (office_source_admission["guardrails"])
     assert "real_unsigned_libreoffice_evidence_does_not_grant_compatibility" in (office_source_admission["guardrails"])
+    assert "app/suite/operations/genoffice_docx_fidelity_ceremony.py" in office_source_admission["evidence_refs"]
+    assert "docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md" in office_source_admission["evidence_refs"]
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0075-genoffice-docx-fidelity-result-signing-ceremony.md"
+        in office_source_admission["evidence_refs"]
+    )
+    assert "fidelity_result_ceremony_has_no_sign_or_private_key_path" in office_source_admission["guardrails"]
+    assert (
+        "engine_policy_request_message_and_external_signature_are_cross_bound" in office_source_admission["guardrails"]
+    )
+    assert "engine_key_separation_does_not_claim_human_separation" in office_source_admission["guardrails"]
     assert "no_fidelity_claim_without_calibration_and_human_review" in office_source_admission["guardrails"]
     production_continuity = next(
         capability

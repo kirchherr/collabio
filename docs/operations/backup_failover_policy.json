@@ -148,6 +148,7 @@
         "DOCX fidelity study policy and schemas, exact 3x3 plan, metadata-only structural baselines, readiness reports, public signer policies, signed result envelopes, referenced evidence hashes, calibrated-threshold records, and human-review records without private keys or transient RGB",
         "DOCX fidelity execution receipts, output DOCX candidates, Open XML and font reports, reference/candidate CDR manifests, visual comparison manifests, source-blind evidence verification reports, and retained review evidence without private keys, credentials, profiles, tokens, scratch, or expired transient RGB",
         "LibreOffice synthetic runner schemas, digest-bound run requests, exact package and NuGet lock inputs, unsigned result payloads, canonical signature messages, runner reports, execution receipts, output DOCX candidates, metadata-only OpenXML findings, CDR manifests and visual measurements without private keys, tenant content, profiles, temporary PDFs, credentials or transient RGB buffers",
+        "DOCX fidelity signing-ceremony schemas, public engine signer policies and keys, bounded signing requests, canonical result messages, detached public signature responses, signed result envelopes and independent evidence-verification reports without private keys, DPAPI ciphertext, HSM sessions, KMS credentials or provider tokens",
         "versioned path-bound runsc AppArmor profile plus installer and verifier without host-wide userns-disable overrides",
         "versioned additive runsc-kvm Docker runtime installer and verifier plus root-only pre-change daemon configuration",
         "engine source commit and worker image digest bindings",
@@ -485,6 +486,10 @@
         "docker compose --profile office-worker-runtime-proof run --rm --pull never genoffice-docx-fidelity-libreoffice-runner",
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-schema",
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-verifier",
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-ceremony-schema",
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-ceremony-policy",
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-ceremony-request",
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-ceremony-assemble",
         "docker compose run --rm kb-runtime-reconciler"
       ]
     },

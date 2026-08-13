@@ -460,6 +460,11 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-verifier"
         in object_storage.current_dev_commands
     )
+    for service in ("schema", "policy", "request", "assemble"):
+        assert (
+            "docker compose --profile office-worker-runtime-proof run --rm "
+            f"genoffice-docx-fidelity-ceremony-{service}" in object_storage.current_dev_commands
+        )
     assert (
         "DOCX quick-edit preflight policy and schemas, 19-fixture synthetic corpus, metadata-only evaluation reports, "
         "source-blind revalidation evidence, and hard-closed harness admission"
@@ -477,6 +482,12 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "candidates, metadata-only OpenXML findings, CDR manifests and visual measurements without private keys, "
         "tenant content, profiles, temporary PDFs, credentials or transient RGB buffers"
         in policy.domain("office_documents").state_artifacts
+    )
+    assert (
+        "DOCX fidelity signing-ceremony schemas, public engine signer policies and keys, bounded signing requests, "
+        "canonical result messages, detached public signature responses, signed result envelopes and independent "
+        "evidence-verification reports without private keys, DPAPI ciphertext, HSM sessions, KMS credentials or "
+        "provider tokens" in policy.domain("office_documents").state_artifacts
     )
     assert (
         "DOCX fidelity study policy and schemas, exact 3x3 plan, metadata-only structural baselines, "

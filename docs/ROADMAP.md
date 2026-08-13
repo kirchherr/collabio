@@ -1624,6 +1624,11 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   im gleichen Engine-Render pixelgleich; der echte `DocumentFormat.OpenXml`-3.5.1-Validator haelt zugleich sechs bis
   sieben Schemafindings pro Output fest. Die Ergebnisse sind weder signiert noch unabhaengig byteverifiziert;
   Kompatibilitaet, Kalibrierung, Human Review, Tenant-Content und produktive Writes bleiben deshalb geschlossen.
+- [x] Private-Key-freie Fidelity-Ergebniszeremonie geschlossen: eine vollstaendige, enginespezifische Public-Key-Policy,
+  maximal 72 Stunden gueltige Requests und extern erzeugte Ed25519-Antworten werden bis zum bestehenden ADR-0072-
+  Envelope revalidiert. Kein `sign`-Modus und kein Private-Key-Mount existiert; getrennte Engine-Schluessel belegen im
+  Solo-Betrieb keine getrennten Personen. Erst der nachgelagerte ADR-0073-Verifier darf Evidenzbytes als geprueft
+  melden. Die reale Signatur und Bytepruefung der drei LibreOffice-Ergebnisse wird als Operationsbeleg nachgezogen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
