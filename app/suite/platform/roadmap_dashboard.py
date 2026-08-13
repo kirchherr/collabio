@@ -798,7 +798,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "an das bestehende Result-Envelope; sie behauptet im Solo-Betrieb keine personelle Trennung. "
                         "Die LibreOffice-Zeile ist mit drei enginespezifisch signierten und unabhaengig bytegeprueften "
                         "Ergebnissen abgeschlossen. Die Word- und GenOffice-Zeilen, Schwellenkalibrierung und Human "
-                        "Review bleiben offen; die Gesamtmatrix steht bei 3/9 und erlaubt keinen Kompatibilitaetsclaim. "
+                        "Review bleiben offen; die Gesamtmatrix steht bei 3/9 und erlaubt keinen "
+                        "Kompatibilitaetsclaim. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
