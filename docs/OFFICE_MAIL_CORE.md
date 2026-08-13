@@ -126,12 +126,13 @@ Before Quick Edit may process content, a separate admission change must prove:
 - restore and failover drills for durable draft journals, candidate versions, collaboration manifests, receipts, and
   policy/engine hashes. Transient plaintext worker files and session tokens are never backup artifacts.
 
-ADR-0072 now fixes the fidelity-study control plane before those engines are run. Microsoft Word is an interactive
-Windows reference runner rather than an unattended server dependency; LibreOffice is an isolated headless runner; and
+ADR-0072 fixes the fidelity-study control plane before those engines are run. Microsoft Word is an interactive Windows
+reference runner rather than an unattended server dependency; LibreOffice is an isolated headless runner; and
 GenOffice stays behind the ADR-0070 two-person `runsc-kvm` boundary. The exact three-by-three plan, structural OOXML
-baselines, deterministic RGB metrics and per-engine Ed25519 result envelopes are implemented. The current readiness
-bundle contains no engine output and cannot make a compatibility claim. Even a complete signed matrix still requires
-referenced-evidence verification, calibrated thresholds and human fidelity review.
+baselines, deterministic RGB metrics and per-engine Ed25519 result envelopes are implemented. The original readiness
+bundle contains no engine output and cannot make a compatibility claim. The later LibreOffice row is signed and its
+referenced evidence is verified, but a complete matrix still requires the Word and GenOffice rows, calibrated
+thresholds and human fidelity review.
 
 ADR-0073 implements that referenced-evidence verification as an independent no-engine control. It strictly validates
 the retained file tree and execution receipt, reruns DOCX preflight and structural fingerprinting, verifies Open XML and
@@ -139,12 +140,14 @@ font metadata, checks both same-engine source and round-trip CDR page bytes, and
 can prove one signed result's evidence bytes internally consistent; it cannot replace real runner authorization,
 threshold calibration, cross-engine review or a human compatibility decision.
 
-ADR-0074 now implements the first real engine path without opening product editing. A digest-bound LibreOffice 25.8
-image runs one synthetic assignment at a time under `runsc-kvm`, without network, capabilities, credentials or signing
-keys. It uses an exact locked `DocumentFormat.OpenXml` 3.5.1 validator, writes the complete unsigned ADR-0073 evidence
-tree and hands only a canonical signature message to the external signing boundary. The first three-fixture baseline
-was visually exact under same-engine rendering, but it also retained six to seven real OpenXML schema findings per
-output. That is execution evidence and a useful baseline, not a compatibility pass. Tenant content, product saves,
+ADR-0074 implements the first real engine path without opening product editing. A digest-bound LibreOffice 25.8 image
+runs one synthetic assignment at a time under `runsc-kvm`, without network, capabilities, credentials or signing keys.
+It uses an exact locked `DocumentFormat.OpenXml` 3.5.1 validator, writes the complete initially unsigned ADR-0073
+evidence tree and hands only a canonical signature message to the external signing boundary. A post-policy generation
+has since produced three valid LibreOffice envelopes whose referenced evidence bytes were independently verified. The
+three-fixture baseline was visually exact under same-engine rendering, but it also retained six to seven real OpenXML
+schema findings per output. That is authenticated execution evidence and a useful baseline, not a compatibility pass.
+Tenant content, product saves,
 cross-engine acceptance, calibrated thresholds and human review remain closed.
 
 This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second

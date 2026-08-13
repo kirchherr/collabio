@@ -1620,15 +1620,19 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   und Spike-Abschluss bleiben false; ohne reale autorisierte Runner-Evidenz wird kein Erfolgsbeleg simuliert.
 - [x] Ersten realen Fidelity-Engine-Pfad geschlossen: ein digestgebundener LibreOffice-25.8-Runner verarbeitet unter
   `runsc-kvm`, ohne Netzwerk, Capabilities, Credentials oder Private Key genau ein synthetisches Assignment und
-  erzeugt das vollstaendige unsigned ADR-0073-Evidence-Bundle samt externer Signaturuebergabe. Alle drei Fixtures sind
-  im gleichen Engine-Render pixelgleich; der echte `DocumentFormat.OpenXml`-3.5.1-Validator haelt zugleich sechs bis
-  sieben Schemafindings pro Output fest. Die Ergebnisse sind weder signiert noch unabhaengig byteverifiziert;
-  Kompatibilitaet, Kalibrierung, Human Review, Tenant-Content und produktive Writes bleiben deshalb geschlossen.
+  erzeugt das vollstaendige ADR-0073-Evidence-Bundle samt externer Signaturuebergabe. Eine nach Inkrafttreten der
+  Signer-Policy erzeugte Generation deckt alle drei Fixtures ab; ihre enginespezifischen Ed25519-Envelopes und alle
+  referenzierten Evidenzbytes sind unabhaengig verifiziert. Die gleichen Engine-Render sind pixelgleich, waehrend der
+  echte `DocumentFormat.OpenXml`-3.5.1-Validator weiterhin sechs bis sieben Schemafindings pro Output festhaelt. Damit
+  ist die LibreOffice-Zeile `3/3`, die Gesamtmatrix aber erst `3/9`; Kompatibilitaet, Kalibrierung, Human Review,
+  Tenant-Content und produktive Writes bleiben geschlossen.
 - [x] Private-Key-freie Fidelity-Ergebniszeremonie geschlossen: eine vollstaendige, enginespezifische Public-Key-Policy,
   maximal 72 Stunden gueltige Requests und extern erzeugte Ed25519-Antworten werden bis zum bestehenden ADR-0072-
   Envelope revalidiert. Kein `sign`-Modus und kein Private-Key-Mount existiert; getrennte Engine-Schluessel belegen im
   Solo-Betrieb keine getrennten Personen. Erst der nachgelagerte ADR-0073-Verifier darf Evidenzbytes als geprueft
-  melden. Die reale Signatur und Bytepruefung der drei LibreOffice-Ergebnisse wird als Operationsbeleg nachgezogen.
+  melden. Der Operationsbeleg ist fuer alle drei LibreOffice-Ergebnisse abgeschlossen: die drei privaten Fidelity-
+  Schluessel liegen ausschliesslich als Windows-CurrentUser-DPAPI-Ciphertext auf der Operator-Workstation; auf `dev001`
+  wurden nur Public Keys und Signaturantworten verarbeitet. Word- und GenOffice-Ergebnisse bleiben ausstehend.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

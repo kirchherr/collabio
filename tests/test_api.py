@@ -1150,9 +1150,13 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "libreoffice_runner_accepts_only_digest_bound_synthetic_assignments" in (office_source_admission["guardrails"])
     )
     assert "libreoffice_runner_uses_runsc_kvm_without_network_or_private_key" in (office_source_admission["guardrails"])
-    assert "real_unsigned_libreoffice_evidence_does_not_grant_compatibility" in (office_source_admission["guardrails"])
+    assert "real_signed_and_byte_verified_libreoffice_row_does_not_grant_compatibility" in (
+        office_source_admission["guardrails"]
+    )
+    assert "libreoffice_signed_row_is_three_of_nine_matrix_assignments" in office_source_admission["guardrails"]
     assert "app/suite/operations/genoffice_docx_fidelity_ceremony.py" in office_source_admission["evidence_refs"]
     assert "docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md" in office_source_admission["evidence_refs"]
+    assert "docs/operations/DEV001_OPERATIONS_LOG.md" in office_source_admission["evidence_refs"]
     assert (
         "ARCHITECTURE_DECISIONS/ADR-0075-genoffice-docx-fidelity-result-signing-ceremony.md"
         in office_source_admission["evidence_refs"]
