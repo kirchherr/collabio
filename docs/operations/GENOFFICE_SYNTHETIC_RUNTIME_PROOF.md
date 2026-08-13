@@ -120,9 +120,14 @@ The report verifies container identity, image-bound probe code, exact read-only 
 exact CPU/memory/PID limits and clean scratch. It still states `engine_executed=false`,
 `tenant_content_included=false`, `external_network_used=false` and `runtime_authorization_granted=false`.
 
-The root host-verifier receipt remains incomplete until a non-empty JSON result from
-`security/gvisor/verify-runsc-kvm-runtime.py` has been schema-checked and moved write-once into Generation 06. An empty
-or failed redirect is diagnostic evidence only and must never be counted as verification.
+The root host-verifier receipt is complete in Generation 06. File SHA-256
+`ba3ad9be3a1140adb1de474bd4ad693e727925f9980e151859f5befdb42931b1` binds AppArmor profile
+`sha256:f2650b6ceb4c4b575cd61dde1f9c16b03cfb293e10ec4b5d8edf752798069db5`, Docker daemon configuration
+`sha256:5ad1476b038c0a93a75daf391b0038d8d67915147ff2bc14abb2a5490030501f` and package-managed `runsc`
+`20260803.0`. It verifies bare metal, KVM, the loaded path-bound profile, enabled primary global userns restriction and
+registered additive `runsc-kvm` runtime. The separate unprivileged-unconfined restriction is recorded as disabled and
+still requires cross-project review before any change. The receipt states `tenant_content_included=false` and
+`runtime_authorization_granted=false`. Historical empty redirects remain diagnostic evidence and are not verification.
 
 The host diagnosis identified Ubuntu's AppArmor restriction for unprivileged user namespaces as an immediate blocker.
 Keep the primary global AppArmor userns restriction enabled. Install the repository-controlled, path-bound exception

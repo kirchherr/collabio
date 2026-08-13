@@ -1590,8 +1590,11 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `sha256:bb5dfc7d...1d544`, Access-Receipt-Datei `sha256:f041a27d...ac0ab`, Probebericht-Datei
   `sha256:f7f58d21...29d1e`, interner Bericht `sha256:e87ce2ed...5cfd`. Engine, Tenant-Content, externe Netznutzung
   und Runtime-Autorisierung blieben false. Generation 04 bleibt als engerer Vorgaengerbeleg erhalten; Generationen
-  01 bis 03 und 05 dokumentieren fail-closed Diagnosepfade. Der separate rootgebundene Host-Verifier-Beleg bleibt
-  bis zu seiner nicht-leeren, validierten Ablage ein administrativer Nachlauf und oeffnet keine Runtime-Grenze.
+  01 bis 03 und 05 dokumentieren fail-closed Diagnosepfade. Der separate rootgebundene Host-Verifier-Beleg ist in
+  Generation 06 mit Datei-SHA-256 `ba3ad9be...31b1` abgeschlossen: Bare Metal, KVM-Geraet, paketverwaltetes
+  `runsc` `20260803.0`, geladenes AppArmor-Profil, aktiver globaler Userns-Hauptschutz und registrierte additive
+  Docker-Runtime sind verifiziert. Die zusaetzliche Unconfined-Restriktion bleibt dokumentiert false; Tenant-Content
+  und Runtime-Autorisierung bleiben false.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
