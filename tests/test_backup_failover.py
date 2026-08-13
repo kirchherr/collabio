@@ -373,6 +373,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_fidelity_output_preflight_and_structural_recomputation_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_openxml_font_cdr_and_visual_cross_binding_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_evidence_verification_report_hash_check" in object_storage.integrity_checks
+    assert "genoffice_libreoffice_runner_request_report_schema_hash_check" in object_storage.integrity_checks
+    assert "genoffice_libreoffice_runner_image_digest_and_openxml_lock_check" in object_storage.integrity_checks
+    assert "genoffice_libreoffice_execution_receipt_and_result_payload_hash_check" in object_storage.integrity_checks
+    assert "genoffice_libreoffice_baseline_metadata_report_hash_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_exact_three_engine_by_three_fixture_plan_check" in (
         object_storage.restore_verification_gates
     )
@@ -405,6 +409,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_fidelity_evidence_success_still_blocks_threshold_review_claim_and_spike_check" in (
         object_storage.restore_verification_gates
     )
+    assert "genoffice_libreoffice_assignment_exact_tree_digest_expiry_and_synthetic_only_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_libreoffice_runsc_kvm_no_network_read_only_root_and_empty_capability_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_libreoffice_unsigned_result_still_blocks_verification_calibration_review_and_claim_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_libreoffice_profiles_temporary_pdfs_credentials_private_keys_and_transient_rgb_absence_check" in (
+        object_storage.restore_verification_gates
+    )
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -425,6 +441,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         in object_storage.current_dev_commands
     )
     assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-libreoffice-schema"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-libreoffice-prepare"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm --pull never "
+        "genoffice-docx-fidelity-libreoffice-runner" in object_storage.current_dev_commands
+    )
+    assert (
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-schema"
         in object_storage.current_dev_commands
     )
@@ -441,6 +469,13 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "DOCX fidelity execution receipts, output DOCX candidates, Open XML and font reports, reference/candidate CDR "
         "manifests, visual comparison manifests, source-blind evidence verification reports, and retained review "
         "evidence without private keys, credentials, profiles, tokens, scratch, or expired transient RGB"
+        in policy.domain("office_documents").state_artifacts
+    )
+    assert (
+        "LibreOffice synthetic runner schemas, digest-bound run requests, exact package and NuGet lock inputs, "
+        "unsigned result payloads, canonical signature messages, runner reports, execution receipts, output DOCX "
+        "candidates, metadata-only OpenXML findings, CDR manifests and visual measurements without private keys, "
+        "tenant content, profiles, temporary PDFs, credentials or transient RGB buffers"
         in policy.domain("office_documents").state_artifacts
     )
     assert (

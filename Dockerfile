@@ -83,3 +83,53 @@ WORKDIR /job
 USER 10002:10002
 
 ENTRYPOINT ["python", "-m", "suite.platform.source_object_preview_conversion_worker"]
+
+FROM base AS openxml-validator-build
+
+ARG DOTNET8_SDK_VERSION=8.0.129-r0
+
+RUN apk add --no-cache "dotnet8-sdk=${DOTNET8_SDK_VERSION}"
+
+WORKDIR /src/openxml-validator
+COPY tools/openxml-validator/Collabio.OpenXmlValidator.csproj .
+COPY tools/openxml-validator/packages.lock.json .
+RUN dotnet restore --locked-mode
+COPY tools/openxml-validator/Program.cs .
+RUN dotnet publish --configuration Release --no-restore --output /opt/collabio-openxml-validator \
+    && find /opt/collabio-openxml-validator -type f -exec chmod 0444 {} +
+
+FROM base AS libreoffice-fidelity-runner
+
+ARG LIBREOFFICE_VERSION=25.8.7.3-r0
+ARG POPPLER_UTILS_VERSION=25.12.0-r1
+ARG FONTCONFIG_VERSION=2.17.1-r1
+ARG DEJAVU_FONT_VERSION=2.37-r6
+ARG LIBERATION_FONT_VERSION=2.1.5-r2
+ARG DOTNET8_RUNTIME_VERSION=8.0.29-r0
+
+RUN apk add --no-cache \
+        "libreoffice-common=${LIBREOFFICE_VERSION}" \
+        "libreoffice-writer=${LIBREOFFICE_VERSION}" \
+        "poppler-utils=${POPPLER_UTILS_VERSION}" \
+        "fontconfig=${FONTCONFIG_VERSION}" \
+        "font-dejavu=${DEJAVU_FONT_VERSION}" \
+        "ttf-liberation=${LIBERATION_FONT_VERSION}" \
+        "dotnet8-runtime=${DOTNET8_RUNTIME_VERSION}" \
+    && addgroup -S -g 10004 fidelity \
+    && adduser -S -D -H -u 10004 -G fidelity fidelity \
+    && mkdir --parents /job/input /job/output /job/tmp/home \
+    && chown -R 10004:10004 /job
+
+COPY --from=openxml-validator-build /opt/collabio-openxml-validator /opt/collabio-openxml-validator
+COPY --chown=10004:10004 app ./app
+
+ENV PYTHONPATH=/workspace/app \
+    HOME=/job/tmp/home \
+    TMPDIR=/job/tmp \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+
+WORKDIR /job
+USER 10004:10004
+
+ENTRYPOINT ["python", "-m", "suite.operations.genoffice_docx_libreoffice_runner"]

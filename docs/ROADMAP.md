@@ -1618,6 +1618,12 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Receipt werden bis zur enginespezifischen Ed25519-Signatur zurueckgebunden. Ein erfolgreicher Einzelbeleg darf nun
   `referenced_evidence_content_verified=true` melden, aber Schwellenkalibrierung, Human Review, Kompatibilitaetsclaim
   und Spike-Abschluss bleiben false; ohne reale autorisierte Runner-Evidenz wird kein Erfolgsbeleg simuliert.
+- [x] Ersten realen Fidelity-Engine-Pfad geschlossen: ein digestgebundener LibreOffice-25.8-Runner verarbeitet unter
+  `runsc-kvm`, ohne Netzwerk, Capabilities, Credentials oder Private Key genau ein synthetisches Assignment und
+  erzeugt das vollstaendige unsigned ADR-0073-Evidence-Bundle samt externer Signaturuebergabe. Alle drei Fixtures sind
+  im gleichen Engine-Render pixelgleich; der echte `DocumentFormat.OpenXml`-3.5.1-Validator haelt zugleich sechs bis
+  sieben Schemafindings pro Output fest. Die Ergebnisse sind weder signiert noch unabhaengig byteverifiziert;
+  Kompatibilitaet, Kalibrierung, Human Review, Tenant-Content und produktive Writes bleiben deshalb geschlossen.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

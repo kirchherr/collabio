@@ -3432,6 +3432,112 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-docx-fidelity-libreoffice-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_libreoffice_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice-schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-libreoffice-prepare:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_libreoffice_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: prepare
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_FIXTURE_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_FIXTURE_ID:-invalid}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/assignment}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-libreoffice-image:
+    profiles: ["office-worker-runtime-proof"]
+    image: collabio/genoffice-docx-fidelity-libreoffice:dev
+    build:
+      context: .
+      target: libreoffice-fidelity-runner
+    command: []
+
+  genoffice-docx-fidelity-libreoffice-runner:
+    profiles: ["office-worker-runtime-proof"]
+    image: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    command: []
+    runtime: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SANDBOX_RUNTIME:-runsc-kvm}
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    cpus: "2.0"
+    mem_limit: 2048m
+    tmpfs:
+      - /job/tmp:size=768m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+    environment:
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: run
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_INPUT_DIR: /job/input
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /job/output
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/assignment}
+        target: /job/input
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/output}
+        target: /job/output
+        bind:
+          create_host_path: false
+
   genoffice-docx-fidelity-evidence-schema:
     profiles: ["office-worker-runtime-proof"]
     build:
@@ -3623,6 +3729,7 @@ services:
       - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
       - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -3695,6 +3802,7 @@ services:
       - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
       - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 

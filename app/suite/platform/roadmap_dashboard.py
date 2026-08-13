@@ -790,7 +790,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Evidenzbyte-Pruefung, kalibrierte Schwellen und Human Review ohne Kompatibilitaetswirkung. "
                         "Der separate source-blinde Evidence-Verifier kann inzwischen jedes Receipt-Artefakt, DOCX-"
                         "Preflight, OOXML-Struktur, Open-XML-/Font-Bindung, CDR-RGB-Byte und jeden visuellen Messwert "
-                        "unabhaengig pruefen; reale Runner-Evidenz liegt weiterhin nicht vor. "
+                        "unabhaengig pruefen. Ein digestgebundener, netzloser LibreOffice-Runner hat unter runsc-kvm "
+                        "fuer alle drei synthetischen Fixtures unsigned Evidence erzeugt: die gleichen Engine-Render "
+                        "sind pixelgleich, waehrend der echte Open-XML-SDK-Validator sechs bis sieben "
+                        "Schemafindings belegt. Signatur, unabhaengige Bytepruefung, Schwellenkalibrierung und Human "
+                        "Review bleiben offen. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -877,6 +881,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice-docx-fidelity-visual-comparison-manifest.schema.json",
                         "docs/operations/genoffice-docx-fidelity-execution-receipt.schema.json",
                         "docs/operations/genoffice-docx-fidelity-evidence-verification-report.schema.json",
+                        "app/suite/operations/genoffice_docx_libreoffice_runner.py",
+                        "tests/test_genoffice_docx_libreoffice_runner.py",
+                        "tools/openxml-validator/Collabio.OpenXmlValidator.csproj",
+                        "tools/openxml-validator/packages.lock.json",
+                        "tools/openxml-validator/Program.cs",
+                        "docs/operations/GENOFFICE_DOCX_LIBREOFFICE_RUNNER.md",
+                        "docs/operations/genoffice-docx-libreoffice-run-request.schema.json",
+                        "docs/operations/genoffice-docx-libreoffice-runner-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -889,6 +901,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0071-genoffice-docx-quick-edit-preflight.md",
                         "ARCHITECTURE_DECISIONS/ADR-0072-genoffice-docx-fidelity-study.md",
                         "ARCHITECTURE_DECISIONS/ADR-0073-genoffice-docx-fidelity-evidence-verification.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0074-genoffice-docx-libreoffice-synthetic-runner.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -950,6 +963,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "output_preflight_and_ooxml_structure_recomputed_from_docx_bytes",
                         "openxml_font_cdr_and_visual_measurements_cross_bound",
                         "single_result_evidence_verification_does_not_grant_compatibility",
+                        "libreoffice_runner_accepts_only_digest_bound_synthetic_assignments",
+                        "libreoffice_runner_uses_runsc_kvm_without_network_or_private_key",
+                        "openxml_sdk_3_5_1_restore_is_locked_and_metadata_only",
+                        "real_unsigned_libreoffice_evidence_does_not_grant_compatibility",
                         "no_fidelity_claim_without_calibration_and_human_review",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",

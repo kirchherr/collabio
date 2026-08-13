@@ -895,6 +895,21 @@ off-site durability, provider credentials, approved endpoint switching, or a Pos
 
 Local dumps are written to `./backups/`, which is gitignored.
 
+## LibreOffice Fidelity Evidence Recovery
+
+The ADR-0074 synthetic runner adds recoverable Office evidence, but no new live service or database state. Preserve the
+public runner schemas and source/build lock inputs in Git. Preserve each completed private assignment, output DOCX,
+metadata-only report, CDR manifest/page bytes, execution receipt, unsigned result payload and canonical signature
+message on the `object_storage_records` target. Exclude LibreOffice profiles, temporary PDFs, credentials, private
+keys, container scratch and transient in-memory RGB buffers.
+
+A recovery check must rebuild every receipt inventory and hash, validate the canonical run request and image digest,
+confirm synthetic-only and no-tenant flags, verify the OpenXML/package/font/CDR/visual cross-bindings, and retain
+`result_signed=false`, `evidence_independently_verified=false` and `compatibility_claim_allowed=false` until the later
+external-signature and ADR-0073 verifier steps really pass. Restoration never re-executes an Office engine implicitly.
+The operator command sequence and first retained baseline hashes are in
+`docs/operations/GENOFFICE_DOCX_LIBREOFFICE_RUNNER.md`.
+
 ## Minimum Restore Drill
 
 Monthly for active development and before every production-readiness milestone:

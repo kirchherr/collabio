@@ -139,6 +139,14 @@ font metadata, checks both same-engine source and round-trip CDR page bytes, and
 can prove one signed result's evidence bytes internally consistent; it cannot replace real runner authorization,
 threshold calibration, cross-engine review or a human compatibility decision.
 
+ADR-0074 now implements the first real engine path without opening product editing. A digest-bound LibreOffice 25.8
+image runs one synthetic assignment at a time under `runsc-kvm`, without network, capabilities, credentials or signing
+keys. It uses an exact locked `DocumentFormat.OpenXml` 3.5.1 validator, writes the complete unsigned ADR-0073 evidence
+tree and hands only a canonical signature message to the external signing boundary. The first three-fixture baseline
+was visually exact under same-engine rendering, but it also retained six to seven real OpenXML schema findings per
+output. That is execution evidence and a useful baseline, not a compatibility pass. Tenant content, product saves,
+cross-engine acceptance, calibrated thresholds and human review remain closed.
+
 This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
 storage, authorization, compliance, recovery, or AI control plane.
 
