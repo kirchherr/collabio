@@ -366,6 +366,25 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         object_storage.restore_verification_gates
     )
     assert "genoffice_quick_edit_harness_hard_closed_check" in object_storage.restore_verification_gates
+    assert "genoffice_fidelity_policy_plan_and_baseline_hash_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_result_engine_assignment_and_signer_binding_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_referenced_evidence_hash_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_exact_three_engine_by_three_fixture_plan_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_structural_baseline_metadata_only_and_no_engine_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_distinct_engine_signer_and_detached_signature_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_complete_signed_matrix_intake_check" in object_storage.restore_verification_gates
+    assert "genoffice_fidelity_referenced_evidence_content_calibration_and_human_review_gate_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_private_key_credentials_profiles_scratch_and_transient_rgb_absence_check" in (
+        object_storage.restore_verification_gates
+    )
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -382,8 +401,19 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         in object_storage.current_dev_commands
     )
     assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-study-control"
+        in object_storage.current_dev_commands
+    )
+    assert (
         "DOCX quick-edit preflight policy and schemas, 19-fixture synthetic corpus, metadata-only evaluation reports, "
         "source-blind revalidation evidence, and hard-closed harness admission"
+        in policy.domain("office_documents").state_artifacts
+    )
+    assert (
+        "DOCX fidelity study policy and schemas, exact 3x3 plan, metadata-only structural baselines, "
+        "readiness reports, "
+        "public signer policies, signed result envelopes, referenced evidence hashes, calibrated-threshold records, "
+        "and human-review records without private keys or transient RGB"
         in policy.domain("office_documents").state_artifacts
     )
 

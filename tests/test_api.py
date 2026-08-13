@@ -1121,6 +1121,17 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "docs/operations/genoffice-docx-quick-edit-harness-admission-report.schema.json"
         in office_source_admission["evidence_refs"]
     )
+    assert "app/suite/operations/genoffice_docx_fidelity_study.py" in office_source_admission["evidence_refs"]
+    assert "tests/test_genoffice_docx_fidelity_study.py" in office_source_admission["evidence_refs"]
+    assert "docs/operations/GENOFFICE_DOCX_FIDELITY_STUDY.md" in office_source_admission["evidence_refs"]
+    assert (
+        "docs/operations/genoffice-docx-fidelity-result-matrix-intake-report.schema.json"
+        in office_source_admission["evidence_refs"]
+    )
+    assert "exact_three_engine_by_three_fixture_fidelity_plan" in office_source_admission["guardrails"]
+    assert "microsoft_word_requires_interactive_windows_runner" in office_source_admission["guardrails"]
+    assert "one_distinct_ed25519_result_signer_per_engine" in office_source_admission["guardrails"]
+    assert "no_fidelity_claim_without_calibration_and_human_review" in office_source_admission["guardrails"]
     production_continuity = next(
         capability
         for capability in capabilities

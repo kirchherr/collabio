@@ -133,6 +133,16 @@ absence of content in reports. It must also prove that no archive was extracted,
 write occurred and the harness remains denied unless separately valid runtime and executable-image admissions exist.
 The comparison matrix and future engine output are new evidence generations, never inferred from this bundle.
 
+ADR-0072 adds the engine-independent Fidelity Study control plane. Back up its canonical policy and ten schemas, exact
+three-engine-by-three-fixture plan, three metadata-only structural baselines and hard-closed readiness report. When real
+runners become authorized, also retain public signer policies, signed result envelopes, exact engine/environment/font
+identities, output/preflight/structure/Open-XML/CDR/comparison/receipt evidence, threshold-calibration records and human
+review records. Restore must verify all hashes and detached signatures, the exact assignment order, distinct signer key
+per engine, source-blind attestations and every referenced evidence byte. A signed matrix alone remains insufficient:
+missing artifact verification, calibrated thresholds or human review keeps compatibility and spike completion false.
+Private runner keys, credentials, Office profiles, decrypted scratch, tokens and transient raw RGB are prohibited backup
+artifacts. Historical runtime authorization never permits a new engine execution after restore.
+
 The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
 Restore them from Git, install only after byte review, and verify that the primary global Ubuntu AppArmor userns
 restriction remains enabled. Record the separate unprivileged-unconfined setting and change it only after a shared-host

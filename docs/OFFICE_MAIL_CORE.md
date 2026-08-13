@@ -126,6 +126,13 @@ Before Quick Edit may process content, a separate admission change must prove:
 - restore and failover drills for durable draft journals, candidate versions, collaboration manifests, receipts, and
   policy/engine hashes. Transient plaintext worker files and session tokens are never backup artifacts.
 
+ADR-0072 now fixes the fidelity-study control plane before those engines are run. Microsoft Word is an interactive
+Windows reference runner rather than an unattended server dependency; LibreOffice is an isolated headless runner; and
+GenOffice stays behind the ADR-0070 two-person `runsc-kvm` boundary. The exact three-by-three plan, structural OOXML
+baselines, deterministic RGB metrics and per-engine Ed25519 result envelopes are implemented. The current readiness
+bundle contains no engine output and cannot make a compatibility claim. Even a complete signed matrix still requires
+referenced-evidence verification, calibrated thresholds and human fidelity review.
+
 This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
 storage, authorization, compliance, recovery, or AI control plane.
 

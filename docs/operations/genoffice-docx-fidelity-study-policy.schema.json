@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "GenOfficeDocxFidelityEngineTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "engine_id": {
+          "enum": [
+            "microsoft_word",
+            "libreoffice",
+            "genoffice"
+          ],
+          "title": "Engine Id",
+          "type": "string"
+        },
+        "interactive_user_session_required": {
+          "title": "Interactive User Session Required",
+          "type": "boolean"
+        },
+        "network_mode": {
+          "const": "none",
+          "default": "none",
+          "title": "Network Mode",
+          "type": "string"
+        },
+        "runner_mode": {
+          "enum": [
+            "interactive_windows_client",
+            "isolated_headless_worker",
+            "authorized_runsc_kvm_worker"
+          ],
+          "title": "Runner Mode",
+          "type": "string"
+        },
+        "runtime_authorization_required": {
+          "title": "Runtime Authorization Required",
+          "type": "boolean"
+        },
+        "synthetic_content_only": {
+          "const": true,
+          "default": true,
+          "title": "Synthetic Content Only",
+          "type": "boolean"
+        },
+        "tenant_credentials_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Tenant Credentials Allowed",
+          "type": "boolean"
+        },
+        "unattended_execution_allowed": {
+          "title": "Unattended Execution Allowed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "engine_id",
+        "runner_mode",
+        "unattended_execution_allowed",
+        "interactive_user_session_required",
+        "runtime_authorization_required"
+      ],
+      "title": "GenOfficeDocxFidelityEngineTarget",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "automated_layout_acceptance_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Automated Layout Acceptance Allowed",
+      "type": "boolean"
+    },
+    "calibrated_visual_thresholds_available": {
+      "const": false,
+      "default": false,
+      "title": "Calibrated Visual Thresholds Available",
+      "type": "boolean"
+    },
+    "cdr_profile_ref": {
+      "const": "collabio-pixel-cdr:raw-rgb.v1",
+      "default": "collabio-pixel-cdr:raw-rgb.v1",
+      "title": "Cdr Profile Ref",
+      "type": "string"
+    },
+    "compatibility_claims_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claims Allowed",
+      "type": "boolean"
+    },
+    "engine_targets": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxFidelityEngineTarget"
+      },
+      "title": "Engine Targets",
+      "type": "array"
+    },
+    "exact_engine_identity_required": {
+      "const": true,
+      "default": true,
+      "title": "Exact Engine Identity Required",
+      "type": "boolean"
+    },
+    "exact_font_baseline_required": {
+      "const": true,
+      "default": true,
+      "title": "Exact Font Baseline Required",
+      "type": "boolean"
+    },
+    "fidelity_axes": {
+      "default": [
+        "ooxml_schema_conformance",
+        "semantic_feature_preservation",
+        "package_structure_preservation",
+        "markup_compatibility_preservation",
+        "visual_layout_measurement",
+        "source_blind_security_revalidation"
+      ],
+      "items": {
+        "enum": [
+          "ooxml_schema_conformance",
+          "semantic_feature_preservation",
+          "package_structure_preservation",
+          "markup_compatibility_preservation",
+          "visual_layout_measurement",
+          "source_blind_security_revalidation"
+        ],
+        "type": "string"
+      },
+      "title": "Fidelity Axes",
+      "type": "array"
+    },
+    "fixture_ids": {
+      "default": [
+        "formatting-table-fidelity",
+        "headers-comments-footnotes-fidelity",
+        "unknown-markup-passthrough"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Fixture Ids",
+      "type": "array"
+    },
+    "human_visual_review_required": {
+      "const": true,
+      "default": true,
+      "title": "Human Visual Review Required",
+      "type": "boolean"
+    },
+    "markup_compatibility_validation_required": {
+      "const": true,
+      "default": true,
+      "title": "Markup Compatibility Validation Required",
+      "type": "boolean"
+    },
+    "open_xml_sdk_validation_required": {
+      "const": true,
+      "default": true,
+      "title": "Open Xml Sdk Validation Required",
+      "type": "boolean"
+    },
+    "policy_hash": {
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "policy_id": {
+      "const": "genoffice-docx-fidelity-study-v1",
+      "default": "genoffice-docx-fidelity-study-v1",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "production_use_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Production Use Allowed",
+      "type": "boolean"
+    },
+    "raster_dpi": {
+      "const": 144,
+      "default": 144,
+      "title": "Raster Dpi",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_study_policy.v1",
+      "default": "genoffice_docx_fidelity_study_policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signed_result_envelope_required": {
+      "const": true,
+      "default": true,
+      "title": "Signed Result Envelope Required",
+      "type": "boolean"
+    },
+    "source_blind_revalidation_required": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Required",
+      "type": "boolean"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "engine_targets",
+    "policy_hash"
+  ],
+  "title": "GenOfficeDocxFidelityStudyPolicy",
+  "type": "object"
+}

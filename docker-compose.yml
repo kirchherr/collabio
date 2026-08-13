@@ -3402,6 +3402,36 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-docx-fidelity-study-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_study
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_STUDY_MODE: "${SUITE_GENOFFICE_FIDELITY_STUDY_MODE:-schema}"
+      SUITE_GENOFFICE_FIDELITY_STUDY_OUTPUT_DIR: /bundle
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_STUDY_HOST_DIR:-./backups/genoffice-docx-fidelity-study}
+        target: /bundle
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .

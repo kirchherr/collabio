@@ -1604,6 +1604,13 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   Exportregeln, kandidat-only source-blinde Revalidierung und die CDR-Pflicht sind hashgebunden. Der Harness-Gate
   bleibt mit fehlender Zwei-Personen-Runtime-Autorisierung, fehlendem neu attestiertem Executable-Image und dem
   status-only Entry-Point ausdruecklich geschlossen; Engine und Tenant-Content bleiben false.
+- [x] Reproduzierbare DOCX-Fidelity-Studie vor der Engine-Ausfuehrung geschlossen: eine exakte `3 Engines x 3 Fixtures`-
+  Matrix trennt den interaktiven Windows-Word-Runner von isoliertem LibreOffice Headless und dem weiterhin zwei-
+  personenpflichtigen GenOffice-`runsc-kvm`-Runner. Drei metadata-only OOXML-Strukturbaselines, feste RGB-Messmetriken
+  bei 144 DPI, exakte Engine-/Font-/Umgebungsbindungen, enginespezifische Ed25519-Ergebnis-Signer und ein vollstaendiger
+  9er-Matrix-Intake sind schema- und hashgebunden. Selbst neun gueltige Signaturen bleiben ohne Evidenzbyte-Pruefung,
+  kalibrierte visuelle Schwellen und menschliches Review ohne Kompatibilitaets- oder Spike-Abschlusswirkung. Der aktuelle
+  write-once Readiness-Beleg fuehrt alle zehn realen Blocker und bestaetigt `engine_executed=false`.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

@@ -784,6 +784,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Fidelity-Regeln und eine kandidat-only source-blinde Revalidierung sind hashgebunden; der "
                         "Executable-Harness bleibt ohne echte Zwei-Personen-Freigabe und neues attestiertes Image "
                         "hart geschlossen. "
+                        "Eine exakte 3x3-Fidelity-Studie bindet Word, LibreOffice und GenOffice an dieselben drei "
+                        "synthetischen Fixtures, strukturelle OOXML-Baselines, CDR-RGB-Metriken und getrennte "
+                        "Ed25519-Runner-Identitaeten. Selbst der vollstaendige signierte Matrix-Intake bleibt ohne "
+                        "Evidenzbyte-Pruefung, kalibrierte Schwellen und Human Review ohne Kompatibilitaetswirkung. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -848,6 +852,19 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice-docx-quick-edit-corpus-evaluation-report.schema.json",
                         "docs/operations/genoffice-docx-source-blind-revalidation-report.schema.json",
                         "docs/operations/genoffice-docx-quick-edit-harness-admission-report.schema.json",
+                        "app/suite/operations/genoffice_docx_fidelity_study.py",
+                        "tests/test_genoffice_docx_fidelity_study.py",
+                        "docs/operations/GENOFFICE_DOCX_FIDELITY_STUDY.md",
+                        "docs/operations/genoffice-docx-fidelity-study-policy.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-study-plan.schema.json",
+                        "docs/operations/genoffice-docx-structural-fingerprint-report.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-baseline-report.schema.json",
+                        "docs/operations/genoffice-docx-rgb-page-comparison-report.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-engine-result-payload.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-result-signer-policy.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-signed-result-envelope.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-result-matrix-intake-report.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-readiness-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -858,6 +875,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0069-genoffice-worker-image-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0070-genoffice-synthetic-runtime-proof-authorization.md",
                         "ARCHITECTURE_DECISIONS/ADR-0071-genoffice-docx-quick-edit-preflight.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0072-genoffice-docx-fidelity-study.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -908,6 +926,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "safe_and_high_fidelity_export_contracts_are_separate",
                         "candidate_only_source_blind_revalidation_required",
                         "executable_harness_closed_without_two_person_authorization_and_new_attested_image",
+                        "exact_three_engine_by_three_fixture_fidelity_plan",
+                        "microsoft_word_requires_interactive_windows_runner",
+                        "libreoffice_requires_isolated_headless_runner",
+                        "genoffice_runner_requires_two_person_runtime_authorization",
+                        "structural_ooxml_and_cdr_rgb_metrics_are_separate_axes",
+                        "one_distinct_ed25519_result_signer_per_engine",
+                        "signed_matrix_intake_does_not_verify_referenced_evidence_bytes",
+                        "no_fidelity_claim_without_calibration_and_human_review",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",
                     ),
