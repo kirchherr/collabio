@@ -918,6 +918,21 @@ Ed25519 signature, then run ADR-0073 against the restored evidence bytes. Never 
 claim from the three engine keys and never infer compatibility from a valid signature or successful byte check. See
 `docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md`.
 
+## Microsoft Word Fidelity Evidence Recovery
+
+ADR-0076 adds no live service and no tenant state. Preserve the public host-readiness report, exact assignment,
+four-file interactive handoff, collector image digest, collector evidence tree, unsigned payload, canonical signature
+message, detached public signature response, signed envelope and independent ADR-0073 verification report on the
+`object_storage_records` target. The Word account profile, Office/OneAuth/AAD caches, credentials, `%TEMP%`, temporary
+Word files, DPAPI ciphertext, private keys and transient raster buffers are never backup or transfer artifacts.
+
+Recovery must verify the exact assignment and handoff inventories, request lifetime and hashes, runner script and Word
+binary hashes, dedicated account SID hash, firewall-rule hash, Windows/font identity, all three DOCX/PDF hashes,
+collector image digest, execution receipt inventory and every OpenXML/CDR/visual cross-binding. Restoration never
+launches Word. A new run requires a fresh interactive host preflight and assignment. A restored unsigned or merely
+collected result remains `result_signed=false`, `evidence_independently_verified=false` and
+`compatibility_claim_allowed=false`; see `docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md`.
+
 ## Minimum Restore Drill
 
 Monthly for active development and before every production-readiness milestone:

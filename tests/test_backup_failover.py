@@ -377,6 +377,14 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_libreoffice_runner_image_digest_and_openxml_lock_check" in object_storage.integrity_checks
     assert "genoffice_libreoffice_execution_receipt_and_result_payload_hash_check" in object_storage.integrity_checks
     assert "genoffice_libreoffice_baseline_metadata_report_hash_check" in object_storage.integrity_checks
+    assert "genoffice_word_host_readiness_and_runner_script_hash_check" in object_storage.integrity_checks
+    assert "genoffice_word_assignment_handoff_and_interactive_receipt_hash_check" in object_storage.integrity_checks
+    assert "genoffice_word_collector_image_execution_receipt_and_result_payload_hash_check" in (
+        object_storage.integrity_checks
+    )
+    assert "genoffice_word_profile_credentials_dpapi_private_key_and_transient_workspace_absence_check" in (
+        object_storage.integrity_checks
+    )
     assert "genoffice_fidelity_exact_three_engine_by_three_fixture_plan_check" in (
         object_storage.restore_verification_gates
     )
@@ -421,6 +429,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_libreoffice_profiles_temporary_pdfs_credentials_private_keys_and_transient_rgb_absence_check" in (
         object_storage.restore_verification_gates
     )
+    assert "genoffice_word_dedicated_interactive_account_identity_firewall_and_signing_custody_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_word_assignment_request_lifetime_source_script_and_host_binding_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_word_exact_handoff_source_blind_collector_and_runsc_kvm_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_word_unsigned_result_still_blocks_verification_calibration_review_and_claim_check" in (
+        object_storage.restore_verification_gates
+    )
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -453,6 +473,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "genoffice-docx-fidelity-libreoffice-runner" in object_storage.current_dev_commands
     )
     assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-word-schema"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-word-prepare"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm --pull never "
+        "genoffice-docx-fidelity-word-collector" in object_storage.current_dev_commands
+    )
+    assert (
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-schema"
         in object_storage.current_dev_commands
     )
@@ -482,6 +514,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "candidates, metadata-only OpenXML findings, CDR manifests and visual measurements without private keys, "
         "tenant content, profiles, temporary PDFs, credentials or transient RGB buffers"
         in policy.domain("office_documents").state_artifacts
+    )
+    assert any(
+        artifact.startswith("Microsoft Word interactive reference-runner schemas")
+        for artifact in policy.domain("office_documents").state_artifacts
     )
     assert (
         "DOCX fidelity signing-ceremony schemas, public engine signer policies and keys, bounded signing requests, "
@@ -526,6 +562,8 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "source_object_derived_preview_recovery_drill_report.v1" in runbook
     assert "Raw RGB CDR pages" in runbook
     assert "preview-conversion-proof-cdr-renderer" in runbook
+    assert "Microsoft Word Fidelity Evidence Recovery" in runbook
+    assert "GENOFFICE_DOCX_WORD_RUNNER.md" in runbook
 
 
 def test_backup_failover_policy_covers_future_suite_domains() -> None:

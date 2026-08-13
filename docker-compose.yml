@@ -3538,6 +3538,131 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-docx-fidelity-word-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_word_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-word/schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-word-prepare:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_word_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: prepare
+      SUITE_GENOFFICE_FIDELITY_WORD_FIXTURE_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_FIXTURE_ID:-invalid}
+      SUITE_GENOFFICE_FIDELITY_WORD_HOST_REPORT_PATH: /inputs/host-readiness-report.json
+      SUITE_GENOFFICE_FIDELITY_WORD_RUNNER_SCRIPT_PATH: /inputs/Invoke-CollabioWordFidelity.ps1
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_HOST_REPORT_PATH:-./backups/genoffice-docx-fidelity-word/host-readiness-report.json}
+        target: /inputs/host-readiness-report.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./tools/windows/Invoke-CollabioWordFidelity.ps1
+        target: /inputs/Invoke-CollabioWordFidelity.ps1
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/assignment}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-word-collector-image:
+    profiles: ["office-worker-runtime-proof"]
+    image: collabio/genoffice-docx-fidelity-word-collector:dev
+    build:
+      context: .
+      target: word-fidelity-collector
+    command: []
+
+  genoffice-docx-fidelity-word-collector:
+    profiles: ["office-worker-runtime-proof"]
+    image: ${SUITE_GENOFFICE_FIDELITY_WORD_COLLECTOR_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    command: []
+    runtime: ${SUITE_GENOFFICE_FIDELITY_WORD_SANDBOX_RUNTIME:-runsc-kvm}
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    cpus: "1.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=384m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+      - /tmp:size=32m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+    environment:
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: collect
+      SUITE_GENOFFICE_FIDELITY_WORD_INPUT_DIR: /job/input
+      SUITE_GENOFFICE_FIDELITY_WORD_HANDOFF_DIR: /job/handoff
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /job/output
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/assignment}
+        target: /job/input
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_HANDOFF_HOST_DIR:-./backups/genoffice-docx-fidelity-word/interactive-handoff}
+        target: /job/handoff
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/output}
+        target: /job/output
+        bind:
+          create_host_path: false
+
   genoffice-docx-fidelity-evidence-schema:
     profiles: ["office-worker-runtime-proof"]
     build:
@@ -3891,6 +4016,7 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./.github:/workspace/.github:ro
@@ -3964,6 +4090,7 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./.github:/workspace/.github:ro

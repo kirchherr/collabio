@@ -1,0 +1,173 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "blocking_reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reasons",
+      "type": "array"
+    },
+    "dedicated_local_account_verified": {
+      "title": "Dedicated Local Account Verified",
+      "type": "boolean"
+    },
+    "document_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Document Content Included",
+      "type": "boolean"
+    },
+    "font_count": {
+      "maximum": 100000,
+      "minimum": 0,
+      "title": "Font Count",
+      "type": "integer"
+    },
+    "font_inventory": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Font Inventory",
+      "type": "array"
+    },
+    "host_ready": {
+      "title": "Host Ready",
+      "type": "boolean"
+    },
+    "interactive_user_session_verified": {
+      "title": "Interactive User Session Verified",
+      "type": "boolean"
+    },
+    "network_isolation_rule_sha256": {
+      "title": "Network Isolation Rule Sha256",
+      "type": "string"
+    },
+    "normalized_font_inventory_sha256": {
+      "title": "Normalized Font Inventory Sha256",
+      "type": "string"
+    },
+    "observed_at_utc": {
+      "format": "date-time",
+      "title": "Observed At Utc",
+      "type": "string"
+    },
+    "office_identity_absent": {
+      "title": "Office Identity Absent",
+      "type": "boolean"
+    },
+    "operator_account_sid_sha256": {
+      "title": "Operator Account Sid Sha256",
+      "type": "string"
+    },
+    "outbound_firewall_block_verified": {
+      "title": "Outbound Firewall Block Verified",
+      "type": "boolean"
+    },
+    "powershell_version": {
+      "title": "Powershell Version",
+      "type": "string"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "process_architecture": {
+      "title": "Process Architecture",
+      "type": "string"
+    },
+    "runner_script_sha256": {
+      "title": "Runner Script Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_word_host_readiness_report.v1",
+      "default": "genoffice_docx_word_host_readiness_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "session_zero_absent": {
+      "title": "Session Zero Absent",
+      "type": "boolean"
+    },
+    "signing_custody_accessible": {
+      "title": "Signing Custody Accessible",
+      "type": "boolean"
+    },
+    "source_synthetic_only": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic Only",
+      "type": "boolean"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    },
+    "tenant_credentials_available": {
+      "title": "Tenant Credentials Available",
+      "type": "boolean"
+    },
+    "windows_build": {
+      "title": "Windows Build",
+      "type": "string"
+    },
+    "windows_display_version": {
+      "title": "Windows Display Version",
+      "type": "string"
+    },
+    "windows_product_name": {
+      "title": "Windows Product Name",
+      "type": "string"
+    },
+    "winword_installed": {
+      "title": "Winword Installed",
+      "type": "boolean"
+    },
+    "word_executable_sha256": {
+      "title": "Word Executable Sha256",
+      "type": "string"
+    },
+    "word_process_absent": {
+      "title": "Word Process Absent",
+      "type": "boolean"
+    },
+    "word_version": {
+      "title": "Word Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "observed_at_utc",
+    "runner_script_sha256",
+    "operator_account_sid_sha256",
+    "word_executable_sha256",
+    "word_version",
+    "windows_product_name",
+    "windows_display_version",
+    "windows_build",
+    "process_architecture",
+    "powershell_version",
+    "font_inventory",
+    "font_count",
+    "normalized_font_inventory_sha256",
+    "network_isolation_rule_sha256",
+    "dedicated_local_account_verified",
+    "interactive_user_session_verified",
+    "session_zero_absent",
+    "office_identity_absent",
+    "tenant_credentials_available",
+    "signing_custody_accessible",
+    "winword_installed",
+    "outbound_firewall_block_verified",
+    "word_process_absent",
+    "host_ready",
+    "blocking_reasons"
+  ],
+  "title": "GenOfficeDocxWordHostReadinessReport",
+  "type": "object"
+}

@@ -133,3 +133,30 @@ WORKDIR /job
 USER 10004:10004
 
 ENTRYPOINT ["python", "-m", "suite.operations.genoffice_docx_libreoffice_runner"]
+
+FROM base AS word-fidelity-collector
+
+ARG POPPLER_UTILS_VERSION=25.12.0-r1
+ARG DOTNET8_RUNTIME_VERSION=8.0.29-r0
+
+RUN apk add --no-cache \
+        "poppler-utils=${POPPLER_UTILS_VERSION}" \
+        "dotnet8-runtime=${DOTNET8_RUNTIME_VERSION}" \
+    && addgroup -S -g 10005 wordcollector \
+    && adduser -S -D -H -u 10005 -G wordcollector wordcollector \
+    && mkdir --parents /job/input /job/handoff /job/output /job/tmp/home \
+    && chown -R 10005:10005 /job
+
+COPY --from=openxml-validator-build /opt/collabio-openxml-validator /opt/collabio-openxml-validator
+COPY --chown=10005:10005 app ./app
+
+ENV PYTHONPATH=/workspace/app \
+    HOME=/job/tmp/home \
+    TMPDIR=/job/tmp \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+
+WORKDIR /job
+USER 10005:10005
+
+ENTRYPOINT ["python", "-m", "suite.operations.genoffice_docx_word_runner"]

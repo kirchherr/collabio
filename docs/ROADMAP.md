@@ -1633,6 +1633,13 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   melden. Der Operationsbeleg ist fuer alle drei LibreOffice-Ergebnisse abgeschlossen: die drei privaten Fidelity-
   Schluessel liegen ausschliesslich als Windows-CurrentUser-DPAPI-Ciphertext auf der Operator-Workstation; auf `dev001`
   wurden nur Public Keys und Signaturantworten verarbeitet. Word- und GenOffice-Ergebnisse bleiben ausstehend.
+- [x] Interaktiven Microsoft-Word-Referenzpfad technisch geschlossen: ein dediziertes lokales Windows-Konto ohne
+  Office-Identitaet, ohne Zugriff auf die Fidelity-Signing-Custody und mit gepruefter `WINWORD.EXE`-Outbound-Sperre
+  erzeugt nach sichtbarem Read-only-Open, erzwungen deaktivierten Makros und expliziter menschlicher Bestaetigung ein
+  exaktes oeffentliches Vier-Dateien-Handoff. Vorbereitung und source-blinde Auswertung bleiben getrennte netzlose
+  `dev001`-Container; der Collector laeuft unter `runsc-kvm`, erzeugt ADR-0073-Evidenz und uebergibt nur eine kanonische
+  Signaturmessage an ADR-0075. Der Pfad ist implementiert und vertraglich getestet, aber noch nicht real ausgefuehrt:
+  Word bleibt `0/3`, die authentifizierte Gesamtmatrix `3/9`, und kein Kompatibilitaetsclaim ist erlaubt.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

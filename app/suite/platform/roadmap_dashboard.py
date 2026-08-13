@@ -797,8 +797,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "vollstaendige Drei-Engine-Public-Key-Policy, begrenzte Requests und externe Ed25519-Antworten "
                         "an das bestehende Result-Envelope; sie behauptet im Solo-Betrieb keine personelle Trennung. "
                         "Die LibreOffice-Zeile ist mit drei enginespezifisch signierten und unabhaengig bytegeprueften "
-                        "Ergebnissen abgeschlossen. Die Word- und GenOffice-Zeilen, Schwellenkalibrierung und Human "
-                        "Review bleiben offen; die Gesamtmatrix steht bei 3/9 und erlaubt keinen "
+                        "Ergebnissen abgeschlossen. Der Microsoft-Word-Referenzpfad ist technisch als sichtbarer "
+                        "interaktiver Windows-Runner unter einem dedizierten identitaets- und schluesselfreien Konto "
+                        "plus separatem netzlosen runsc-kvm-Collector umgesetzt. Er hat noch kein reales Ergebnis "
+                        "erzeugt. Die Word- und GenOffice-Zeilen, Schwellenkalibrierung und Human Review bleiben "
+                        "offen; die Gesamtmatrix steht bei 3/9 und erlaubt keinen "
                         "Kompatibilitaetsclaim. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
@@ -899,6 +902,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/GENOFFICE_DOCX_FIDELITY_SIGNING_CEREMONY.md",
                         "docs/operations/genoffice-docx-fidelity-signing-request.schema.json",
                         "docs/operations/genoffice-docx-fidelity-external-signature-response.schema.json",
+                        "app/suite/operations/genoffice_docx_word_runner.py",
+                        "tests/test_genoffice_docx_word_runner.py",
+                        "tools/windows/Invoke-CollabioWordFidelity.ps1",
+                        "docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md",
+                        "docs/operations/genoffice-docx-word-host-readiness-report.schema.json",
+                        "docs/operations/genoffice-docx-word-run-request.schema.json",
+                        "docs/operations/genoffice-docx-word-interactive-receipt.schema.json",
+                        "docs/operations/genoffice-docx-word-collector-report.schema.json",
                         "docs/operations/DEV001_OPERATIONS_LOG.md",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
@@ -914,6 +925,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0073-genoffice-docx-fidelity-evidence-verification.md",
                         "ARCHITECTURE_DECISIONS/ADR-0074-genoffice-docx-libreoffice-synthetic-runner.md",
                         "ARCHITECTURE_DECISIONS/ADR-0075-genoffice-docx-fidelity-result-signing-ceremony.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0076-genoffice-docx-word-interactive-reference-runner.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -983,6 +995,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "fidelity_result_ceremony_has_no_sign_or_private_key_path",
                         "engine_policy_request_message_and_external_signature_are_cross_bound",
                         "engine_key_separation_does_not_claim_human_separation",
+                        "word_runner_requires_dedicated_local_interactive_account",
+                        "word_runner_rejects_office_identity_signing_custody_and_missing_outbound_block",
+                        "word_macros_force_disabled_source_read_only_and_human_confirmation_required",
+                        "word_handoff_is_unsigned_exact_and_collected_source_blind_under_runsc_kvm",
+                        "implemented_word_path_without_real_results_remains_zero_of_three",
                         "no_fidelity_claim_without_calibration_and_human_review",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",

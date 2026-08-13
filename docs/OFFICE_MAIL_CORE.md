@@ -150,6 +150,13 @@ schema findings per output. That is authenticated execution evidence and a usefu
 Tenant content, product saves,
 cross-engine acceptance, calibrated thresholds and human review remain closed.
 
+ADR-0076 implements the Microsoft Word reference boundary without turning Word into a server dependency. A dedicated
+local Windows account must have no Office identity, no access to Fidelity signing custody and a verified outbound block
+for `WINWORD.EXE`. The script runs only in a visible interactive desktop, forces macros off, opens one exact synthetic
+fixture read-only, requires a human confirmation, and produces an unsigned DOCX plus same-engine source/candidate PDFs.
+A separate no-network `runsc-kvm` collector on `dev001` performs source-blind validation and evidence materialization.
+The path is implemented but has not yet produced a real Word row; the authenticated matrix therefore remains `3/9`.
+
 This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
 storage, authorization, compliance, recovery, or AI control plane.
 
