@@ -369,6 +369,10 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_fidelity_policy_plan_and_baseline_hash_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_result_engine_assignment_and_signer_binding_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_referenced_evidence_hash_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_execution_receipt_artifact_inventory_hash_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_output_preflight_and_structural_recomputation_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_openxml_font_cdr_and_visual_cross_binding_check" in object_storage.integrity_checks
+    assert "genoffice_fidelity_evidence_verification_report_hash_check" in object_storage.integrity_checks
     assert "genoffice_fidelity_exact_three_engine_by_three_fixture_plan_check" in (
         object_storage.restore_verification_gates
     )
@@ -383,6 +387,22 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         object_storage.restore_verification_gates
     )
     assert "genoffice_fidelity_private_key_credentials_profiles_scratch_and_transient_rgb_absence_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_evidence_exact_tree_regular_file_and_no_symlink_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_evidence_duplicate_json_key_and_strict_schema_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_evidence_receipt_inventory_rebuild_check" in (object_storage.restore_verification_gates)
+    assert "genoffice_fidelity_evidence_docx_preflight_and_structure_reproduction_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_evidence_reference_candidate_cdr_page_hash_and_visual_reproduction_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_fidelity_evidence_success_still_blocks_threshold_review_claim_and_spike_check" in (
         object_storage.restore_verification_gates
     )
     assert "ciphertext_hash_check" in object_storage.integrity_checks
@@ -405,8 +425,22 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         in object_storage.current_dev_commands
     )
     assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-schema"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-docx-fidelity-evidence-verifier"
+        in object_storage.current_dev_commands
+    )
+    assert (
         "DOCX quick-edit preflight policy and schemas, 19-fixture synthetic corpus, metadata-only evaluation reports, "
         "source-blind revalidation evidence, and hard-closed harness admission"
+        in policy.domain("office_documents").state_artifacts
+    )
+    assert (
+        "DOCX fidelity execution receipts, output DOCX candidates, Open XML and font reports, reference/candidate CDR "
+        "manifests, visual comparison manifests, source-blind evidence verification reports, and retained review "
+        "evidence without private keys, credentials, profiles, tokens, scratch, or expired transient RGB"
         in policy.domain("office_documents").state_artifacts
     )
     assert (

@@ -69,8 +69,10 @@ Matrix intake is not study acceptance. It records that signatures and evidence r
 - `compatibility_claim_allowed=false`;
 - `quick_edit_spike_complete=false`.
 
-The evidence verifier added later must read and hash each referenced artifact, validate Open XML reports, reconcile CDR
-pages and font baselines, and preserve the same fail-closed state until calibration and human review are recorded.
+ADR-0073 implements the independent evidence verifier. It reads and hashes each receipt-inventoried artifact, reruns the
+output preflight and OOXML structural fingerprint, validates strict Open XML and font reports, reconciles both CDR
+bundles, and recomputes every RGB comparison. This can set `referenced_evidence_content_verified=true` for one signed
+result while preserving the same fail-closed state until all nine real results, calibration and human review exist.
 
 ## Visual measurement
 

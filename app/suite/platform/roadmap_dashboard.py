@@ -788,6 +788,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "synthetischen Fixtures, strukturelle OOXML-Baselines, CDR-RGB-Metriken und getrennte "
                         "Ed25519-Runner-Identitaeten. Selbst der vollstaendige signierte Matrix-Intake bleibt ohne "
                         "Evidenzbyte-Pruefung, kalibrierte Schwellen und Human Review ohne Kompatibilitaetswirkung. "
+                        "Der separate source-blinde Evidence-Verifier kann inzwischen jedes Receipt-Artefakt, DOCX-"
+                        "Preflight, OOXML-Struktur, Open-XML-/Font-Bindung, CDR-RGB-Byte und jeden visuellen Messwert "
+                        "unabhaengig pruefen; reale Runner-Evidenz liegt weiterhin nicht vor. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -865,6 +868,15 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice-docx-fidelity-signed-result-envelope.schema.json",
                         "docs/operations/genoffice-docx-fidelity-result-matrix-intake-report.schema.json",
                         "docs/operations/genoffice-docx-fidelity-readiness-report.schema.json",
+                        "app/suite/operations/genoffice_docx_fidelity_evidence.py",
+                        "tests/test_genoffice_docx_fidelity_evidence.py",
+                        "docs/operations/GENOFFICE_DOCX_FIDELITY_EVIDENCE.md",
+                        "docs/operations/genoffice-docx-openxml-validation-report.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-font-baseline-report.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-cdr-manifest.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-visual-comparison-manifest.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-execution-receipt.schema.json",
+                        "docs/operations/genoffice-docx-fidelity-evidence-verification-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -876,6 +888,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0070-genoffice-synthetic-runtime-proof-authorization.md",
                         "ARCHITECTURE_DECISIONS/ADR-0071-genoffice-docx-quick-edit-preflight.md",
                         "ARCHITECTURE_DECISIONS/ADR-0072-genoffice-docx-fidelity-study.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0073-genoffice-docx-fidelity-evidence-verification.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -933,6 +946,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "structural_ooxml_and_cdr_rgb_metrics_are_separate_axes",
                         "one_distinct_ed25519_result_signer_per_engine",
                         "signed_matrix_intake_does_not_verify_referenced_evidence_bytes",
+                        "source_blind_receipt_inventory_and_artifact_byte_verification",
+                        "output_preflight_and_ooxml_structure_recomputed_from_docx_bytes",
+                        "openxml_font_cdr_and_visual_measurements_cross_bound",
+                        "single_result_evidence_verification_does_not_grant_compatibility",
                         "no_fidelity_claim_without_calibration_and_human_review",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",

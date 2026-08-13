@@ -1131,6 +1131,15 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "exact_three_engine_by_three_fixture_fidelity_plan" in office_source_admission["guardrails"]
     assert "microsoft_word_requires_interactive_windows_runner" in office_source_admission["guardrails"]
     assert "one_distinct_ed25519_result_signer_per_engine" in office_source_admission["guardrails"]
+    assert "app/suite/operations/genoffice_docx_fidelity_evidence.py" in office_source_admission["evidence_refs"]
+    assert "docs/operations/GENOFFICE_DOCX_FIDELITY_EVIDENCE.md" in office_source_admission["evidence_refs"]
+    assert (
+        "docs/operations/genoffice-docx-fidelity-evidence-verification-report.schema.json"
+        in office_source_admission["evidence_refs"]
+    )
+    assert "source_blind_receipt_inventory_and_artifact_byte_verification" in office_source_admission["guardrails"]
+    assert "output_preflight_and_ooxml_structure_recomputed_from_docx_bytes" in office_source_admission["guardrails"]
+    assert "single_result_evidence_verification_does_not_grant_compatibility" in (office_source_admission["guardrails"])
     assert "no_fidelity_claim_without_calibration_and_human_review" in office_source_admission["guardrails"]
     production_continuity = next(
         capability

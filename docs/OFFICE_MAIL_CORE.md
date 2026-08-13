@@ -133,6 +133,12 @@ baselines, deterministic RGB metrics and per-engine Ed25519 result envelopes are
 bundle contains no engine output and cannot make a compatibility claim. Even a complete signed matrix still requires
 referenced-evidence verification, calibrated thresholds and human fidelity review.
 
+ADR-0073 implements that referenced-evidence verification as an independent no-engine control. It strictly validates
+the retained file tree and execution receipt, reruns DOCX preflight and structural fingerprinting, verifies Open XML and
+font metadata, checks both same-engine source and round-trip CDR page bytes, and recomputes every RGB metric. The control
+can prove one signed result's evidence bytes internally consistent; it cannot replace real runner authorization,
+threshold calibration, cross-engine review or a human compatibility decision.
+
 This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
 storage, authorization, compliance, recovery, or AI control plane.
 

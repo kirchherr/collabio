@@ -143,6 +143,16 @@ missing artifact verification, calibrated thresholds or human review keeps compa
 Private runner keys, credentials, Office profiles, decrypted scratch, tokens and transient raw RGB are prohibited backup
 artifacts. Historical runtime authorization never permits a new engine execution after restore.
 
+ADR-0073 adds the independent source-blind evidence-verification generation for each signed runner result. Retain the
+execution receipt, candidate DOCX, output preflight and structural fingerprint, strict Open XML and font reports,
+reference/candidate study CDR manifests, visual comparison manifest, signed envelope and verification report. Restore
+must rebuild the receipt file inventory from exact bytes, reject links or unexpected files, rerun DOCX preflight and
+structure analysis, verify every retained CDR page hash and reproduce every retained RGB measurement. Raw RGB is
+transient and may expire only after required hash and review evidence is retained; its absence means visual evidence
+cannot be independently reverified. A successful restored evidence report still leaves thresholds, human review,
+compatibility and Quick Edit completion false. Private keys, credentials, runner profiles, tokens and scratch remain
+prohibited.
+
 The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
 Restore them from Git, install only after byte review, and verify that the primary global Ubuntu AppArmor userns
 restriction remains enabled. Record the separate unprivileged-unconfined setting and change it only after a shared-host

@@ -1611,6 +1611,13 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   9er-Matrix-Intake sind schema- und hashgebunden. Selbst neun gueltige Signaturen bleiben ohne Evidenzbyte-Pruefung,
   kalibrierte visuelle Schwellen und menschliches Review ohne Kompatibilitaets- oder Spike-Abschlusswirkung. Der aktuelle
   write-once Readiness-Beleg fuehrt alle zehn realen Blocker und bestaetigt `engine_executed=false`.
+- [x] Source-blinde Fidelity-Evidenzpruefung geschlossen: der netzlose, enginefreie Verifier hasht jedes durch ein
+  signiertes Execution Receipt inventarisierte Artefakt, berechnet Output-Preflight und OOXML-Strukturfingerprint aus
+  den DOCX-Bytes neu, validiert strikte metadata-only Open-XML- und Font-Berichte, prueft jede Referenz-/Kandidaten-RGB-
+  Seite und reproduziert alle visuellen Messwerte. Plan, Policy, Assignment, Engine, Umgebung, Font-Baseline, CDR und
+  Receipt werden bis zur enginespezifischen Ed25519-Signatur zurueckgebunden. Ein erfolgreicher Einzelbeleg darf nun
+  `referenced_evidence_content_verified=true` melden, aber Schwellenkalibrierung, Human Review, Kompatibilitaetsclaim
+  und Spike-Abschluss bleiben false; ohne reale autorisierte Runner-Evidenz wird kein Erfolgsbeleg simuliert.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

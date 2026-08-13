@@ -888,6 +888,8 @@ def verify_genoffice_docx_fidelity_signed_result(
     study_plan: GenOfficeDocxFidelityStudyPlan,
     verifier: DetachedSignatureVerifier = DEFAULT_DETACHED_SIGNATURE_VERIFIER,
 ) -> GenOfficeDocxFidelityEngineResultPayload:
+    if _hash_model(study_plan, hash_field="plan_hash") != study_plan.plan_hash:
+        raise GenOfficeDocxFidelityStudyError("GenOffice fidelity study plan hash is invalid")
     if build_genoffice_docx_fidelity_result_signer_policy_hash(signer_policy) != signer_policy.policy_hash:
         raise GenOfficeDocxFidelityStudyError("GenOffice fidelity result signer policy hash is invalid")
     if envelope.signer_policy_hash != signer_policy.policy_hash:

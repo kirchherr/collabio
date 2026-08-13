@@ -3432,6 +3432,80 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-docx-fidelity-evidence-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_evidence
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence-schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-evidence-verifier:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_evidence
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 768m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_MODE: verify
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_ROOT: /evidence
+      SUITE_GENOFFICE_FIDELITY_INPUT_DIR: /inputs
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_BUNDLE_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/bundle}
+        target: /evidence
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/output}
+        target: /output
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .
