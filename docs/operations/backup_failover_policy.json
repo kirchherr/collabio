@@ -127,7 +127,30 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
-      "state_artifacts": ["draft state", "draft journals", "draft checkpoints", "saved versions", "candidate versions", "business records", "WORM evidence records", "collaboration manifests", "append-only office edit receipts", "office edit policy and engine manifests", "exact engine source archives and source admission reports", "selected-source and dependency manifest hashes", "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports", "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance", "worker image archives, dual-build inspect records, runtime inventories, canonical signing messages, public signature responses, admission reports, public signer keys, and key-rotation receipts without private signing keys", "synthetic Office corpus bytes and manifests, runtime sandbox profiles, raw Docker HostConfig inspection with exact image and mount inventory, hash-preserving probe-access preparation receipts, final container states, no-egress and empty-capability probe reports, two-person runtime requests/messages/responses/envelopes and authorization reports without private keys or scratch", "versioned path-bound runsc AppArmor profile plus installer and verifier without host-wide userns-disable overrides", "versioned additive runsc-kvm Docker runtime installer and verifier plus root-only pre-change daemon configuration", "engine source commit and worker image digest bindings", "signed-original and derived-version signature state", "office edit recovery drill reports"]
+      "state_artifacts": [
+        "draft state",
+        "draft journals",
+        "draft checkpoints",
+        "saved versions",
+        "candidate versions",
+        "business records",
+        "WORM evidence records",
+        "collaboration manifests",
+        "append-only office edit receipts",
+        "office edit policy and engine manifests",
+        "exact engine source archives and source admission reports",
+        "selected-source and dependency manifest hashes",
+        "vendored dependency registry metadata, exact package archives, byte-provenance reports, raw npm signature/Sigstore bundles, pinned verifier receipts, Fulcio certificates, Rekor inclusion material, and cryptographic admission reports",
+        "pre-build and runtime-image SBOMs, schema-validation receipts, scanner/DB metadata, vulnerability decisions, build digests, and signed provenance",
+        "worker image archives, dual-build inspect records, runtime inventories, canonical signing messages, public signature responses, admission reports, public signer keys, and key-rotation receipts without private signing keys",
+        "synthetic Office corpus bytes and manifests, runtime sandbox profiles, raw Docker HostConfig inspection with exact image and mount inventory, hash-preserving probe-access preparation receipts, final container states, no-egress and empty-capability probe reports, two-person runtime requests/messages/responses/envelopes and authorization reports without private keys or scratch",
+        "DOCX quick-edit preflight policy and schemas, 19-fixture synthetic corpus, metadata-only evaluation reports, source-blind revalidation evidence, and hard-closed harness admission",
+        "versioned path-bound runsc AppArmor profile plus installer and verifier without host-wide userns-disable overrides",
+        "versioned additive runsc-kvm Docker runtime installer and verifier plus root-only pre-change daemon configuration",
+        "engine source commit and worker image digest bindings",
+        "signed-original and derived-version signature state",
+        "office edit recovery drill reports"
+      ]
     },
     {
       "domain_id": "mail_messages_threads",
@@ -403,6 +426,11 @@
         "genoffice_runtime_maximum_24_hour_validity_check",
         "genoffice_runtime_general_tenant_import_network_persistence_distribution_production_boundaries_closed_check",
         "genoffice_runtime_private_key_scratch_and_generated_content_absence_check",
+        "genoffice_quick_edit_preflight_policy_and_schema_hash_check",
+        "genoffice_quick_edit_19_fixture_byte_manifest_and_expected_decision_check",
+        "genoffice_quick_edit_source_blind_candidate_only_revalidation_check",
+        "genoffice_quick_edit_signed_original_retention_and_derived_invalidation_check",
+        "genoffice_quick_edit_harness_hard_closed_check",
         "genoffice_runsc_apparmor_profile_exact_byte_and_loaded_state_check",
         "genoffice_runsc_primary_apparmor_userns_restriction_and_unconfined_state_check",
         "genoffice_runsc_kvm_bare_metal_device_and_module_check",
@@ -431,6 +459,7 @@
         "docker compose --profile office-worker-runtime-proof run --rm genoffice-runtime-proof-control",
         "docker compose --profile office-worker-runtime-proof create genoffice-runtime-sandbox-probe",
         "docker compose --profile office-worker-runtime-proof start genoffice-runtime-sandbox-probe",
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-quick-edit-preflight-control",
         "docker compose run --rm kb-runtime-reconciler"
       ]
     },

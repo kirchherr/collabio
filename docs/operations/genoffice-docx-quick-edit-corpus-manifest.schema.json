@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "GenOfficeDocxQuickEditCorpusArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "fidelity",
+            "external_relationship",
+            "active_content",
+            "embedded_object",
+            "package_structure",
+            "resource_exhaustion",
+            "xml_parser",
+            "digital_signature"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "content_sha256": {
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "engine_invocation_authorized": {
+          "const": false,
+          "default": false,
+          "title": "Engine Invocation Authorized",
+          "type": "boolean"
+        },
+        "expected_decision": {
+          "enum": [
+            "allow_future_engine_evaluation",
+            "reject_before_engine"
+          ],
+          "title": "Expected Decision",
+          "type": "string"
+        },
+        "expected_findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Findings",
+          "type": "array"
+        },
+        "expected_signature_state": {
+          "default": "absent",
+          "enum": [
+            "absent",
+            "present_unverified"
+          ],
+          "title": "Expected Signature State",
+          "type": "string"
+        },
+        "fidelity_features": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fidelity Features",
+          "type": "array"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "future_engine_evaluation_eligible": {
+          "title": "Future Engine Evaluation Eligible",
+          "type": "boolean"
+        },
+        "original_retention_required": {
+          "default": false,
+          "title": "Original Retention Required",
+          "type": "boolean"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "filename",
+        "category",
+        "expected_decision",
+        "expected_findings",
+        "future_engine_evaluation_eligible",
+        "content_sha256",
+        "size_bytes"
+      ],
+      "title": "GenOfficeDocxQuickEditCorpusArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxQuickEditCorpusArtifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "classification": {
+      "const": "synthetic_public_non_personal",
+      "default": "synthetic_public_non_personal",
+      "title": "Classification",
+      "type": "string"
+    },
+    "customer_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Customer Content Included",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "external_network_used": {
+      "const": false,
+      "default": false,
+      "title": "External Network Used",
+      "type": "boolean"
+    },
+    "manifest_hash": {
+      "title": "Manifest Hash",
+      "type": "string"
+    },
+    "personal_data_included": {
+      "const": false,
+      "default": false,
+      "title": "Personal Data Included",
+      "type": "boolean"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_quick_edit_corpus_manifest.v1",
+      "default": "genoffice_docx_quick_edit_corpus_manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_date_epoch": {
+      "const": 0,
+      "default": 0,
+      "title": "Source Date Epoch",
+      "type": "integer"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    },
+    "total_size_bytes": {
+      "title": "Total Size Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "preflight_policy_hash",
+    "artifacts",
+    "total_size_bytes",
+    "manifest_hash"
+  ],
+  "title": "GenOfficeDocxQuickEditCorpusManifest",
+  "type": "object"
+}

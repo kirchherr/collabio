@@ -125,6 +125,14 @@ both distinct signers and every worker/corpus/sandbox hash. A zero-byte host-ver
 Keep the restored authorization non-executable: its historical validity window is evidence, never permission for a new
 run.
 
+ADR-0071 adds the engine-independent DOCX Quick-Edit preflight bundle. Back up the exact policy and schemas, all 19
+synthetic fixture bytes and their manifest, metadata-only fixture/evaluation reports, the source-blind revalidation
+report and the hard-closed harness-admission report. Restore verification must reproduce every byte and report hash,
+the `3/16` allow/reject decision split, signed-original retention state, `invalidated_by_edit` derivation rule and the
+absence of content in reports. It must also prove that no archive was extracted, no engine/network/persistent document
+write occurred and the harness remains denied unless separately valid runtime and executable-image admissions exist.
+The comparison matrix and future engine output are new evidence generations, never inferred from this bundle.
+
 The versioned `security/apparmor/usr.bin.runsc` host profile and its installer/verifier are part of host-rebuild state.
 Restore them from Git, install only after byte review, and verify that the primary global Ubuntu AppArmor userns
 restriction remains enabled. Record the separate unprivileged-unconfined setting and change it only after a shared-host

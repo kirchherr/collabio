@@ -354,6 +354,18 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert "genoffice_worker_detached_signature_check" in object_storage.restore_verification_gates
     assert "genoffice_worker_runtime_boundaries_closed_check" in object_storage.restore_verification_gates
     assert "genoffice_worker_private_signing_key_absence_check" in object_storage.restore_verification_gates
+    assert "genoffice_quick_edit_preflight_policy_and_schema_hash_check" in object_storage.restore_verification_gates
+    assert (
+        "genoffice_quick_edit_19_fixture_byte_manifest_and_expected_decision_check"
+        in object_storage.restore_verification_gates
+    )
+    assert "genoffice_quick_edit_source_blind_candidate_only_revalidation_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_quick_edit_signed_original_retention_and_derived_invalidation_check" in (
+        object_storage.restore_verification_gates
+    )
+    assert "genoffice_quick_edit_harness_hard_closed_check" in object_storage.restore_verification_gates
     assert "ciphertext_hash_check" in object_storage.integrity_checks
     assert "aad_hash_check" in object_storage.integrity_checks
     assert "content_hash_verifier_check" in object_storage.integrity_checks
@@ -364,6 +376,15 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
     assert (
         "docker compose --profile office-worker-build run --rm genoffice-worker-image-admission-verifier"
         in object_storage.current_dev_commands
+    )
+    assert (
+        "docker compose --profile office-worker-runtime-proof run --rm genoffice-quick-edit-preflight-control"
+        in object_storage.current_dev_commands
+    )
+    assert (
+        "DOCX quick-edit preflight policy and schemas, 19-fixture synthetic corpus, metadata-only evaluation reports, "
+        "source-blind revalidation evidence, and hard-closed harness admission"
+        in policy.domain("office_documents").state_artifacts
     )
 
     kms = policy.target("kms_and_secrets")

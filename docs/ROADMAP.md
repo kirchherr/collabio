@@ -1595,6 +1595,15 @@ Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
   `runsc` `20260803.0`, geladenes AppArmor-Profil, aktiver globaler Userns-Hauptschutz und registrierte additive
   Docker-Runtime sind verifiziert. Die zusaetzliche Unconfined-Restriktion bleibt dokumentiert false; Tenant-Content
   und Runtime-Autorisierung bleiben false.
+- [x] Engine-unabhaengige DOCX-Quick-Edit-Vorstufe geschlossen: ein fester Preflight begrenzt Archivbytes, Parts,
+  Expansion, Kompressionsrate, XML-Groesse/-Tiefe und Relationships ohne Dateisystemextraktion. Der deterministische
+  19-Faelle-Korpus deckt drei Fidelity-Vertraege sowie Remote-Relationships/Templates, VBA, OLE, Pfadtraversal,
+  doppelte/case-kollidierende Parts, ZIP-Ressourcenangriffe, DTD/Entities, XML-Tiefe/Fehlform, Package-Signaturen,
+  Encryption-Flags und unbekannte Kompressionsmethoden ab. Signierte Originale werden als `present_unverified`
+  blockiert und muessen erhalten bleiben; jede spaetere Ableitung traegt `invalidated_by_edit`. Safe-/High-Fidelity-
+  Exportregeln, kandidat-only source-blinde Revalidierung und die CDR-Pflicht sind hashgebunden. Der Harness-Gate
+  bleibt mit fehlender Zwei-Personen-Runtime-Autorisierung, fehlendem neu attestiertem Executable-Image und dem
+  status-only Entry-Point ausdruecklich geschlossen; Engine und Tenant-Content bleiben false.
 - [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
   Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
   oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven

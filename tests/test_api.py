@@ -1115,6 +1115,12 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "app/suite/operations/genoffice_npm_provenance_admission.py" in office_source_admission["evidence_refs"]
     assert "app/suite/operations/genoffice_worker_image_admission.py" in office_source_admission["evidence_refs"]
     assert "docs/operations/GENOFFICE_WORKER_IMAGE_ADMISSION.md" in office_source_admission["evidence_refs"]
+    assert "app/suite/operations/genoffice_docx_quick_edit_preflight.py" in office_source_admission["evidence_refs"]
+    assert "docs/operations/GENOFFICE_DOCX_QUICK_EDIT_PREFLIGHT.md" in office_source_admission["evidence_refs"]
+    assert (
+        "docs/operations/genoffice-docx-quick-edit-harness-admission-report.schema.json"
+        in office_source_admission["evidence_refs"]
+    )
     production_continuity = next(
         capability
         for capability in capabilities

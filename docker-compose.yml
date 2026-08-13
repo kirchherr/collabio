@@ -3371,6 +3371,37 @@ services:
         bind:
           create_host_path: false
 
+  genoffice-quick-edit-preflight-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_quick_edit_preflight
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_QUICK_EDIT_PREFLIGHT_MODE: "${SUITE_GENOFFICE_QUICK_EDIT_PREFLIGHT_MODE:-schema}"
+      SUITE_GENOFFICE_QUICK_EDIT_SCHEMA_OUTPUT_DIR: /bundle
+      SUITE_GENOFFICE_QUICK_EDIT_BUNDLE_OUTPUT_DIR: /bundle
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_QUICK_EDIT_BUNDLE_HOST_DIR:-./backups/genoffice-quick-edit-preflight}
+        target: /bundle
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .

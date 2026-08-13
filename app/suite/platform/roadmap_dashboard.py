@@ -778,7 +778,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Archiv-zu-Config-Bindung, eine autoritative CycloneDX-1.6-Runtime-SBOM, einen frischen "
                         "Offline-Vulnerability-Scan und eine externe Ed25519-Build-Attestierung verifiziert. Das "
                         "signierte Image ist nur als Development-Spike-Artefakt verfuegbar; sein Entry-Point und "
-                        "der Admission-Report halten die Worker-Ausfuehrung geschlossen. "
+                        "der Admission-Report halten die Worker-Ausfuehrung geschlossen. Ein engine-unabhaengiger "
+                        "19-Faelle-OOXML-Preflight prueft inzwischen Paketstruktur, Expansion, XML, externe "
+                        "Relationships, VBA/OLE und unvalidierte Package-Signaturen ohne Extraktion. Safe-/High-"
+                        "Fidelity-Regeln und eine kandidat-only source-blinde Revalidierung sind hashgebunden; der "
+                        "Executable-Harness bleibt ohne echte Zwei-Personen-Freigabe und neues attestiertes Image "
+                        "hart geschlossen. "
                         "Import, Engine, Content, Hosted Service, On-Prem und Produktion bleiben bis ihrer jeweils "
                         "eigenen Build-, Security-, Fidelity-, Recovery- und Deployment-Evidence geschlossen."
                     ),
@@ -834,6 +839,15 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/operations/genoffice-worker-build-signing-request.schema.json",
                         "docs/operations/genoffice-worker-build-signature-response.schema.json",
                         "docs/operations/genoffice-worker-image-admission-report.schema.json",
+                        "app/suite/operations/genoffice_docx_quick_edit_preflight.py",
+                        "tests/test_genoffice_docx_quick_edit_preflight.py",
+                        "docs/operations/GENOFFICE_DOCX_QUICK_EDIT_PREFLIGHT.md",
+                        "docs/operations/genoffice-docx-quick-edit-preflight-policy.schema.json",
+                        "docs/operations/genoffice-docx-quick-edit-corpus-manifest.schema.json",
+                        "docs/operations/genoffice-docx-quick-edit-preflight-report.schema.json",
+                        "docs/operations/genoffice-docx-quick-edit-corpus-evaluation-report.schema.json",
+                        "docs/operations/genoffice-docx-source-blind-revalidation-report.schema.json",
+                        "docs/operations/genoffice-docx-quick-edit-harness-admission-report.schema.json",
                         "ARCHITECTURE_DECISIONS/ADR-0062-genoffice-source-admission.md",
                         "ARCHITECTURE_DECISIONS/ADR-0063-genoffice-prebuild-supply-chain.md",
                         "ARCHITECTURE_DECISIONS/ADR-0064-genoffice-npm-cryptographic-provenance.md",
@@ -842,6 +856,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0067-genoffice-development-build-context.md",
                         "ARCHITECTURE_DECISIONS/ADR-0068-genoffice-solo-founder-development-exception.md",
                         "ARCHITECTURE_DECISIONS/ADR-0069-genoffice-worker-image-admission.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0070-genoffice-synthetic-runtime-proof-authorization.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0071-genoffice-docx-quick-edit-preflight.md",
                     ),
                     api_routes=(
                         "/v1/source-objects/{object_id}/versions/{version_id}/office-edit-adapter-evaluations",
@@ -886,6 +902,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "fresh_offline_runtime_image_vulnerability_scan",
                         "external_ed25519_worker_build_attestation",
                         "development_image_available_with_worker_execution_false",
+                        "bounded_ooxml_preflight_without_filesystem_extraction",
+                        "external_active_embedded_and_ambiguous_package_content_rejected",
+                        "signed_original_retained_and_derived_signature_invalidated",
+                        "safe_and_high_fidelity_export_contracts_are_separate",
+                        "candidate_only_source_blind_revalidation_required",
+                        "executable_harness_closed_without_two_person_authorization_and_new_attested_image",
                         "hosted_on_prem_and_production_profiles_remain_blocked",
                         "source_import_and_production_use_blocked",
                     ),
