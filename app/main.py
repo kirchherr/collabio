@@ -835,6 +835,11 @@ from suite.platform.productivity_pilot_real_user_closure_report import (
     ProductivityPilotRealUserClosureService,
     build_default_productivity_pilot_real_user_closure_report_store,
 )
+from suite.platform.productivity_pilot_real_user_readiness import (
+    ProductivityPilotRealUserReadinessConflict,
+    ProductivityPilotRealUserReadinessResponse,
+    ProductivityPilotRealUserReadinessService,
+)
 from suite.platform.productivity_pilot_real_user_runtime_window import (
     ProductivityPilotRealUserRuntimeAccessDecision,
     ProductivityPilotRealUserRuntimeWindow,
@@ -1708,6 +1713,13 @@ def build_app() -> FastAPI:
         closure_report_store=productivity_pilot_real_user_closure_report_store,
         runtime_enabled=productivity_pilot_runtime_enabled(),
     )
+    productivity_pilot_real_user_readiness_service = ProductivityPilotRealUserReadinessService(
+        admission_store=productivity_pilot_real_user_admission_store,
+        start_authorization_store=productivity_pilot_start_authorization_store,
+        runtime_window_store=productivity_pilot_real_user_runtime_window_store,
+        closure_report_store=productivity_pilot_real_user_closure_report_store,
+        runtime_enabled=productivity_pilot_runtime_enabled(),
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -2204,6 +2216,52 @@ def build_app() -> FastAPI:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Real-user productivity pilot closure report evidence is invalid",
             ) from exc
+
+    @app.get(
+        "/v1/platform/productivity-pilot/real-user-readiness",
+        response_model=ProductivityPilotRealUserReadinessResponse,
+    )
+    def get_real_user_productivity_pilot_readiness(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> ProductivityPilotRealUserReadinessResponse:
+        service: ProductivityPilotRealUserReadinessService = (
+            request.app.state.productivity_pilot_real_user_readiness_service
+        )
+        try:
+            response = service.current(user_context=context.user_context)
+        except ProductivityPilotRealUserReadinessConflict as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Real-user productivity pilot readiness evidence is invalid",
+            ) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.productivity_pilot.real_user_readiness_read",
+            source_object_ids=[
+                f"productivity_pilot_{item.evidence_type}:{item.evidence_hash}"
+                for item in response.evidence_refs
+            ],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "stage": response.stage.value,
+                "runtime_kill_switch_enabled": response.runtime_kill_switch_enabled,
+                "current_cycle_complete": response.current_cycle_complete,
+                "participant_count": response.participant_count,
+                "allowed_api_operation_count": response.allowed_api_operation_count,
+                "observation_count": response.observation_count,
+                "domain_receipt_count": response.domain_receipt_count,
+                "available_evidence_count": len(response.available_evidence),
+                "missing_evidence_count": len(response.missing_evidence),
+                "blocking_reason_count": len(response.blocking_reasons),
+                "runtime_activation_authorized": response.runtime_activation_authorized,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
 
     @app.post(
         "/v1/platform/productivity-pilot/runtime-windows",
@@ -22556,6 +22614,7 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_real_user_runtime_window_service = productivity_pilot_real_user_runtime_window_service
     app.state.productivity_pilot_real_user_closure_report_store = productivity_pilot_real_user_closure_report_store
     app.state.productivity_pilot_real_user_closure_service = productivity_pilot_real_user_closure_service
+    app.state.productivity_pilot_real_user_readiness_service = productivity_pilot_real_user_readiness_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

@@ -139,10 +139,11 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
         current_focus="real_user_productivity_pilot_evidence_collection",
-        current_foundation_state="production_continuity_evidence_read_model_ready_without_live_evidence",
+        current_foundation_state="real_user_pilot_readiness_control_ready_without_live_evidence",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
+            "read_real_user_productivity_pilot_readiness_snapshot",
             "collect_real_user_productivity_pilot_nomination",
             "refresh_real_user_productivity_pilot_control_evidence",
             "review_production_continuity_requirements_and_gate_status",
@@ -635,6 +636,37 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/platform/productivity-pilot/real-user-closure-reports/current",
                     ),
                     next_action="collect_real_user_nomination_and_current_human_control_evidence",
+                ),
+                RoadmapCapability(
+                    capability_id="productivity_pilot_real_user_readiness",
+                    title="Real User Pilot Readiness Read Model",
+                    summary=(
+                        "Ein tenant-sicheres Read Model validiert die aktuelle Nomination-, Admission-, Start-, "
+                        "Runtime- und Closure-Kette und liefert den naechsten zulaessigen Schritt ohne Laufzeit- "
+                        "oder Persistenzwirkung."
+                    ),
+                    status=RoadmapCapabilityStatus.OPERATIONAL,
+                    capability_type="operations_pilot_control",
+                    evidence_refs=(
+                        "app/suite/platform/productivity_pilot_real_user_readiness.py",
+                        "tests/test_productivity_pilot_real_user_readiness.py",
+                        "docs/operations/PRODUCTIVITY_PILOT_REAL_USER_READINESS.md",
+                        "docs/operations/BACKUP_FAILOVER.md",
+                    ),
+                    guardrails=(
+                        "tenant_admin_or_security_admin_only",
+                        "authoritative_evidence_hashes_revalidated_on_every_read",
+                        "stale_prior_cycle_evidence_never_promoted_to_current",
+                        "principal_ids_and_business_content_excluded",
+                        "runtime_kill_switch_state_is_observed_not_changed",
+                        "no_nomination_admission_start_runtime_or_closure_write",
+                        "audit_metadata_contains_hashes_counts_and_stage_only",
+                        "read_model_is_rebuildable_from_append_only_control_ledgers",
+                    ),
+                    api_routes=(
+                        "/v1/platform/productivity-pilot/real-user-readiness",
+                    ),
+                    next_action="collect_only_the_evidence_named_by_the_current_readiness_stage",
                 ),
             ),
         ),

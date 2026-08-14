@@ -110,7 +110,9 @@ Bereits umgesetzt:
 - [x] Explizite, maximal acht Stunden gueltige Start-Autorisierung mit Vier-Augen-Prinzip, vollstaendiger Monitoring-/Rollback-Evidenz, automatischem Ablauf und default-closed Deployment-Kill-Switch an Admission, Preflight, Policy und Traffic-Scope binden.
 - [x] Designated-User-Runtime-Window mit separatem Tenant-Admin-Vier-Augen-Schritt, exakter Start-/Route-Bindung und append-only metadata-only Zugriffsbeobachtungen erzwingen.
 - [x] Kontrollierten Entwicklungs-Pilot mit einem synthetisch designierten Fachnutzer auf genau sieben Operationen ausfuehren, alle sieben append-only Beobachtungen nachweisen, den Kill-Switch sofort schliessen und Backup-/Restore-Evidenz erneuern.
-- [ ] Tenant-sicheren append-only Closure-Report an geschlossenem Switch, Runtime-Fenster, Beobachtungen, Domain-Receipts und erneuerter Recovery-Evidenz binden; erst danach einen separat freigegebenen Pilot mit real benannten Nutzern starten.
+- [x] Tenant-sicheren append-only Closure-Report an geschlossenem Switch, Runtime-Fenster, Beobachtungen, Domain-Receipts und erneuerter Recovery-Evidenz binden.
+- [x] Tenant-sicheres Realnutzer-Pilot-Read-Model ueber Nomination, Admission, Start, Runtime und Closure bereitstellen; alte Zyklen nicht hochstufen und fehlerhafte Evidenz fail-closed behandeln.
+- [ ] Reale Principals, Zweck-, Privacy-, Workforce-, Production-Continuity- und Vier-Augen-Evidenz sammeln; erst danach einen separat freigegebenen Realnutzer-Pilot starten.
 
 Noch nicht umgesetzt:
 

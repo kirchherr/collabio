@@ -108,11 +108,13 @@ Current sprint:
 98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
 99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
 100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
+101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
 
 ## Next Engineering Step
 
 Collect the accountable real-user pilot evidence without opening live traffic:
 
+- Read `GET /v1/platform/productivity-pilot/real-user-readiness` first and work only on the reported current lifecycle gap.
 - Accept named principals, purpose, lawful basis, IAM roles, privacy and workforce evidence only from accountable tenant owners; do not fabricate placeholders.
 - Refresh preflight, backup, isolated restore, foundation, business-release, production-continuity, monitoring, rollback, admission, and start evidence as one new chain.
 - Collect actual production topology, PITR, offsite, promotion and cross-site drill evidence from accountable operations owners; the gate must remain blocked without it.
