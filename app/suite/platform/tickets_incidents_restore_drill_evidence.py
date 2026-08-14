@@ -526,9 +526,7 @@ def _controlled_pilot_sql_restore_verified() -> bool:
 
 def _tenant_approval_record_sql_restore_verified() -> bool:
     try:
-        sql = " ".join(
-            get_migration(TICKETS_INCIDENTS_TENANT_APPROVAL_RECORD_MIGRATION_VERSION).sql().lower().split()
-        )
+        sql = " ".join(get_migration(TICKETS_INCIDENTS_TENANT_APPROVAL_RECORD_MIGRATION_VERSION).sql().lower().split())
     except (FileNotFoundError, LookupError):
         return False
 

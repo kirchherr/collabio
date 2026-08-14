@@ -703,10 +703,7 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
         "Tickets & Incidents tenant-admin activation approval record hash"
         in policy.domain("service_ticket_records").state_artifacts
     )
-    assert (
-        "tickets.tenant_admin_activation_approval_records"
-        in policy.domain("service_ticket_records").state_artifacts
-    )
+    assert "tickets.tenant_admin_activation_approval_records" in policy.domain("service_ticket_records").state_artifacts
     assert (
         "Tickets & Incidents tenant approval record migration 0074"
         in policy.domain("service_ticket_records").state_artifacts

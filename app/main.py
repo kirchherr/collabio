@@ -2720,13 +2720,9 @@ def build_app() -> FastAPI:
                 "catalog_registration_migration_present": response.catalog_registration_migration_present,
                 "metadata_schema_migration_present": response.metadata_schema_migration_present,
                 "approval_record_migration_present": response.approval_record_migration_present,
-                "tenant_approval_record_migration_present": (
-                    response.tenant_approval_record_migration_present
-                ),
+                "tenant_approval_record_migration_present": (response.tenant_approval_record_migration_present),
                 "approval_record_restore_verified": response.approval_record_restore_verified,
-                "tenant_approval_record_restore_verified": (
-                    response.tenant_approval_record_restore_verified
-                ),
+                "tenant_approval_record_restore_verified": (response.tenant_approval_record_restore_verified),
                 "table_restore_verified": response.table_restore_verified,
                 "rls_restore_verified": response.rls_restore_verified,
                 "tenant_isolation_restore_verified": response.tenant_isolation_restore_verified,

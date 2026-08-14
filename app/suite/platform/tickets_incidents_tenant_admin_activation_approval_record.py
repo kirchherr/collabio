@@ -405,17 +405,13 @@ class PgTicketsIncidentsTenantAdminActivationApprovalRecordStore:
 
 def build_default_tickets_incidents_tenant_admin_activation_approval_record_store(
     environ: Mapping[str, str] | None = None,
-) -> (
-    TicketsIncidentsTenantAdminActivationApprovalRecordStore
-):
+) -> TicketsIncidentsTenantAdminActivationApprovalRecordStore:
     env = os.environ if environ is None else environ
     backend = env.get("SUITE_TICKETS_TENANT_APPROVAL_RECORD_BACKEND", "memory").strip().lower()
     if backend in {"memory", "inmemory", "in-memory"}:
         return InMemoryTicketsIncidentsTenantAdminActivationApprovalRecordStore()
     if backend in {"postgres", "postgresql", "pg"}:
-        database_dsn = env.get("SUITE_TICKETS_TENANT_APPROVAL_RECORD_DSN") or env.get(
-            "SUITE_DATABASE_DSN"
-        )
+        database_dsn = env.get("SUITE_TICKETS_TENANT_APPROVAL_RECORD_DSN") or env.get("SUITE_DATABASE_DSN")
         if not database_dsn:
             raise ValueError(
                 "PostgreSQL Tickets tenant approval record store requires "
