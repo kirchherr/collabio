@@ -420,6 +420,8 @@ def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:
     assert "-AdoptExistingAccount after manual review" in script
     assert "-ReplaceDriftedFirewallRule after manual review" in script
     assert "Remove-LocalGroupMember" in script
+    assert "-Member $account.SID" not in script
+    assert script.count("-Member $account") == 2
     assert 'SecurityIdentifier]::new("S-1-5-32-545")' in script
     assert 'SecurityIdentifier]::new("S-1-5-32-544")' in script
     assert "SetAccessRuleProtection($true, $false)" in script

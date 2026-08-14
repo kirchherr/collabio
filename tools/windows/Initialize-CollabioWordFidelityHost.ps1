@@ -249,13 +249,13 @@ function Set-RunnerAccount {
         $members = @(Get-LocalGroupMember -Group $group.Name -ErrorAction Stop)
         $isMember = @($members | Where-Object { $_.SID -and $_.SID.Value -eq $account.SID.Value }).Count -gt 0
         if ($isMember -and $group.SID.Value -ne $UsersSid.Value) {
-            Remove-LocalGroupMember -Group $group.Name -Member $account.SID -Confirm:$false
+            Remove-LocalGroupMember -Group $group.Name -Member $account -Confirm:$false
         }
     }
     $usersGroup = Get-LocalGroup -SID $UsersSid
     $usersMembers = @(Get-LocalGroupMember -Group $usersGroup.Name -ErrorAction Stop)
     if (@($usersMembers | Where-Object { $_.SID -and $_.SID.Value -eq $account.SID.Value }).Count -eq 0) {
-        Add-LocalGroupMember -Group $usersGroup.Name -Member $account.SID
+        Add-LocalGroupMember -Group $usersGroup.Name -Member $account
     }
 }
 
