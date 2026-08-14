@@ -22,6 +22,7 @@ from suite.platform.tickets_incidents_controlled_pilot import (
     TicketsIncidentsControlledPilotEnablementCommand,
     TicketsIncidentsControlledPilotService,
     TicketsIncidentsControlledPilotStage,
+    TicketsIncidentsControlledPilotStatusResponse,
     build_tickets_incidents_controlled_pilot_status_response,
 )
 from suite.platform.tickets_incidents_module import build_default_tickets_incidents_subfeature_registry
@@ -47,7 +48,7 @@ def test_controlled_pilot_status_drives_the_authoritative_four_stage_flow() -> N
     execution_approvals = InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore()
     receipts = InMemoryTicketsIncidentsControlledPilotReceiptStore()
 
-    def status_response():
+    def status_response() -> TicketsIncidentsControlledPilotStatusResponse:
         return build_tickets_incidents_controlled_pilot_status_response(
             user_context=user,
             module_registry=registry,
@@ -124,19 +125,17 @@ def test_controlled_pilot_status_drives_the_authoritative_four_stage_flow() -> N
         approval_record_store=execution_approvals,
         receipt_store=receipts,
     )
-    common_command = {
-        "approval_boundary_evidence_hash": execution_approval.approval_boundary_evidence_hash,
-        "approval_record_evidence_hash": execution_approval.evidence_hash,
-        "tickets_restore_drill_evidence_hash": execution_approval.tickets_restore_drill_evidence_hash,
-        "policy_snapshot_hash": RESTORE_POLICY_HASH,
-        "feature_manifest_hash": build_default_tickets_incidents_subfeature_registry().manifest_hash,
-        "change_request_ref": "change:pilot-status",
-    }
+    feature_manifest_hash = build_default_tickets_incidents_subfeature_registry().manifest_hash
     service.admit(
         user_context=user,
         command=TicketsIncidentsControlledPilotAdmissionCommand(
-            **common_command,
+            approval_boundary_evidence_hash=execution_approval.approval_boundary_evidence_hash,
+            approval_record_evidence_hash=execution_approval.evidence_hash,
+            tickets_restore_drill_evidence_hash=execution_approval.tickets_restore_drill_evidence_hash,
+            policy_snapshot_hash=RESTORE_POLICY_HASH,
+            feature_manifest_hash=feature_manifest_hash,
             idempotency_key_ref="idempotency:pilot-status-admission",
+            change_request_ref="change:pilot-status",
             human_confirmation_reference="confirmation:pilot-status-admission",
             human_confirmation_statement=ADMISSION_CONFIRMATION_STATEMENT,
             audit_chain_ref="audit:pilot-status",
@@ -152,8 +151,13 @@ def test_controlled_pilot_status_drives_the_authoritative_four_stage_flow() -> N
     service.enable(
         user_context=user,
         command=TicketsIncidentsControlledPilotEnablementCommand(
-            **common_command,
+            approval_boundary_evidence_hash=execution_approval.approval_boundary_evidence_hash,
+            approval_record_evidence_hash=execution_approval.evidence_hash,
+            tickets_restore_drill_evidence_hash=execution_approval.tickets_restore_drill_evidence_hash,
+            policy_snapshot_hash=RESTORE_POLICY_HASH,
+            feature_manifest_hash=feature_manifest_hash,
             idempotency_key_ref="idempotency:pilot-status-enablement",
+            change_request_ref="change:pilot-status",
             human_confirmation_reference="confirmation:pilot-status-enablement",
             human_confirmation_statement=ENABLEMENT_CONFIRMATION_STATEMENT,
             audit_chain_ref="audit:pilot-status",
