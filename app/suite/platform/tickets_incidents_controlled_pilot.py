@@ -578,14 +578,14 @@ def build_tickets_incidents_controlled_pilot_status_response(
         if gate.approval_gate_ready
         else None
     )
-    execution_approval = execution_approval_record_store.latest_for_tenant(
-        tenant_id=user_context.tenant_id
-    )
+    execution_approval = execution_approval_record_store.latest_for_tenant(tenant_id=user_context.tenant_id)
     feature_manifest_hash = build_default_tickets_incidents_subfeature_registry().manifest_hash
     tenant_approval_hash = (
         execution_approval.tenant_admin_approval_record_hash
         if execution_approval is not None
-        else tenant_approval.evidence_hash if tenant_approval is not None else ZERO_HASH
+        else tenant_approval.evidence_hash
+        if tenant_approval is not None
+        else ZERO_HASH
     )
     expected_boundary_hash = (
         build_tickets_incidents_controlled_pilot_approval_boundary_hash(
@@ -635,8 +635,7 @@ def build_tickets_incidents_controlled_pilot_status_response(
         elif (
             admission.approval_record_evidence_hash != execution_approval.evidence_hash
             or admission.feature_manifest_hash != feature_manifest_hash
-            or admission.tickets_restore_drill_evidence_hash
-            != execution_approval.tickets_restore_drill_evidence_hash
+            or admission.tickets_restore_drill_evidence_hash != execution_approval.tickets_restore_drill_evidence_hash
         ):
             reasons.append("tickets_incidents_admission_evidence_chain_mismatch")
     if authorization is not None:
@@ -678,9 +677,7 @@ def build_tickets_incidents_controlled_pilot_status_response(
     elif tenant_approval is None and execution_approval is None:
         stage = TicketsIncidentsControlledPilotStage.TENANT_APPROVAL_REQUIRED
         confirmation_kind = "tenant_activation_readiness"
-        confirmation_statement = (
-            TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
-        )
+        confirmation_statement = TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
         next_action = "record_tickets_incidents_tenant_admin_activation_approval"
     elif execution_approval is None:
         stage = TicketsIncidentsControlledPilotStage.EXECUTION_APPROVAL_REQUIRED
@@ -728,9 +725,7 @@ def build_tickets_incidents_controlled_pilot_status_response(
             authorization.evidence_hash if authorization is not None else ZERO_HASH
         ),
         enablement_completion_receipt_present=completion is not None,
-        enablement_completion_receipt_evidence_hash=(
-            completion.evidence_hash if completion is not None else ZERO_HASH
-        ),
+        enablement_completion_receipt_evidence_hash=(completion.evidence_hash if completion is not None else ZERO_HASH),
         catalog_status=catalog_status,
         tenant_module_status=tenant_state.status if tenant_state is not None else None,
         enabled_features=(tenant_state.enabled_features if tenant_state is not None else {}),
@@ -738,9 +733,7 @@ def build_tickets_incidents_controlled_pilot_status_response(
         required_confirmation_statement=confirmation_statement,
         blocking_reasons=tuple(reasons),
         pilot_state_consistent=not reasons,
-        tickets_business_api_allowed=(
-            stage == TicketsIncidentsControlledPilotStage.VERTICAL_SLICE_VALIDATION_REQUIRED
-        ),
+        tickets_business_api_allowed=(stage == TicketsIncidentsControlledPilotStage.VERTICAL_SLICE_VALIDATION_REQUIRED),
         evidence_hash=ZERO_HASH,
         next_action=next_action,
     )

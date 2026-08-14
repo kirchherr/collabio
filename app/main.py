@@ -5284,13 +5284,9 @@ def build_app() -> FastAPI:
                 "module_id": response.module_id,
                 "stage": response.stage,
                 "pilot_state_consistent": response.pilot_state_consistent,
-                "execution_approval_boundary_trusted": (
-                    response.execution_approval_boundary_trusted
-                ),
+                "execution_approval_boundary_trusted": (response.execution_approval_boundary_trusted),
                 "admission_receipt_present": response.admission_receipt_present,
-                "enablement_completion_receipt_present": (
-                    response.enablement_completion_receipt_present
-                ),
+                "enablement_completion_receipt_present": (response.enablement_completion_receipt_present),
                 "tickets_business_api_allowed": response.tickets_business_api_allowed,
                 "worker_activation_allowed": response.worker_activation_allowed,
                 "content_included": response.content_included,
