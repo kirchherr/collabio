@@ -351,15 +351,13 @@ class ProductivityPilotRealUserReadinessService:
     ) -> ProductivityPilotStartAuthorization | None:
         if nomination is None or admission is None or start is None:
             return None
-        if (
-            start.preflight_gate_hash != admission.preflight_gate_hash
-            or _utc(start.authorized_at_utc) < _utc(admission.approved_at_utc)
+        if start.preflight_gate_hash != admission.preflight_gate_hash or _utc(start.authorized_at_utc) < _utc(
+            admission.approved_at_utc
         ):
             blocking_reasons.append("current_start_authorization_belongs_to_previous_control_chain")
             return None
-        if (
-            _utc(start.effective_at_utc) < _utc(admission.scheduled_start_at_utc)
-            or _utc(start.expires_at_utc) > _utc(admission.scheduled_end_at_utc)
+        if _utc(start.effective_at_utc) < _utc(admission.scheduled_start_at_utc) or _utc(start.expires_at_utc) > _utc(
+            admission.scheduled_end_at_utc
         ):
             raise ProductivityPilotRealUserReadinessConflict(
                 "real-user productivity pilot start authorization exceeds the admitted schedule"

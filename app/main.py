@@ -2239,8 +2239,7 @@ def build_app() -> FastAPI:
             user_context=context.user_context,
             event_type="platform.productivity_pilot.real_user_readiness_read",
             source_object_ids=[
-                f"productivity_pilot_{item.evidence_type}:{item.evidence_hash}"
-                for item in response.evidence_refs
+                f"productivity_pilot_{item.evidence_type}:{item.evidence_hash}" for item in response.evidence_refs
             ],
             metadata={
                 "surface": "platform_api",

@@ -663,9 +663,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "audit_metadata_contains_hashes_counts_and_stage_only",
                         "read_model_is_rebuildable_from_append_only_control_ledgers",
                     ),
-                    api_routes=(
-                        "/v1/platform/productivity-pilot/real-user-readiness",
-                    ),
+                    api_routes=("/v1/platform/productivity-pilot/real-user-readiness",),
                     next_action="collect_only_the_evidence_named_by_the_current_readiness_stage",
                 ),
             ),
