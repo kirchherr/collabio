@@ -6,6 +6,9 @@ source-blind collection run in Docker on `dev001`.
 
 ## Boundary
 
+- Word execution is forbidden on production systems, operator workstations and any host holding signing custody.
+- Use a dedicated, isolated, non-production Windows VM with no tenant credentials, shared clipboard, shared folders or
+  host-drive passthrough. Transfer only reviewed synthetic assignments and the exact public handoff.
 - Valid fixtures: `formatting-table-fidelity`, `headers-comments-footnotes-fidelity`,
   `unknown-markup-passthrough`.
 - The Word account is the dedicated local account `collabio-word-runner` with no Microsoft/Office identity.
@@ -18,7 +21,8 @@ source-blind collection run in Docker on `dev001`.
 
 ## One-Time Windows Setup
 
-Run the reviewed host bootstrap from an elevated Windows PowerShell console. It creates or converges the dedicated
+Run the reviewed host bootstrap only inside the dedicated non-production Windows VM from an elevated Windows
+PowerShell console. It creates or converges the dedicated
 standard account, removes every local group membership except built-in Users, creates a tightly ACL-bound public
 workspace, explicitly denies that account access to signing custody and binds an outbound deny rule to the measured
 `WINWORD.EXE`. Passwords are entered twice as `SecureString` and are neither serialized nor logged. The write-once
@@ -35,7 +39,8 @@ The script rejects an existing account with another purpose and a drifted same-n
 review, use `-AdoptExistingAccount` or `-ReplaceDriftedFirewallRule` explicitly; use `-RotatePassword` only for a
 deliberate credential rotation. Audit without mutation is available with `-Mode Audit` and a fresh output path.
 
-Log on locally once as `collabio-word-runner` to initialize its profile. Do not sign the account into Office,
+Never perform this setup on the operator workstation or a production system. Log on locally once as
+`collabio-word-runner` to initialize its profile. Do not sign the account into Office,
 OneDrive, Entra ID or a Microsoft account. If Word requires user-bound cloud activation, stop: that host is not an
 eligible isolated runner until approved device-based licensing is available. Remote interactive use remains outside
 this procedure.

@@ -488,7 +488,7 @@ function Assert-HostBinding {
 function Assert-RunRequest {
     param(
         $Request,
-        $Host,
+        $ExpectedHost,
         [string]$HostReportPath,
         [string]$SourcePath,
         [string]$CorpusPath,
@@ -534,10 +534,10 @@ function Assert-RunRequest {
     if ((Get-Sha256File -Path $HostReportPath) -cne $Request.host_readiness_report_sha256 -or
         (Get-Sha256File -Path $PSCommandPath) -cne $Request.runner_script_sha256 -or
         (Get-Sha256File -Path $SourcePath) -cne $Request.source_content_sha256 -or
-        $Host.runner_script_sha256 -cne $Request.runner_script_sha256 -or
-        $Host.operator_account_sid_sha256 -cne $Request.operator_account_sid_sha256 -or
-        $Host.word_executable_sha256 -cne $Request.word_executable_sha256 -or
-        $Host.network_isolation_rule_sha256 -cne $Request.network_isolation_rule_sha256) {
+        $ExpectedHost.runner_script_sha256 -cne $Request.runner_script_sha256 -or
+        $ExpectedHost.operator_account_sid_sha256 -cne $Request.operator_account_sid_sha256 -or
+        $ExpectedHost.word_executable_sha256 -cne $Request.word_executable_sha256 -or
+        $ExpectedHost.network_isolation_rule_sha256 -cne $Request.network_isolation_rule_sha256) {
         throw "The Word run-request artifact binding drifted."
     }
     if ((Get-ModelHash -Value $Request -HashField "request_hash") -cne $Request.request_hash) {
@@ -683,14 +683,14 @@ $requestPath = Join-Path $control "run-request.json"
 $hostPath = Join-Path $control "host-readiness-report.json"
 $corpusPath = Join-Path $control "corpus-manifest.json"
 $request = Get-Content -LiteralPath $requestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$host = Get-Content -LiteralPath $hostPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$expectedHost = Get-Content -LiteralPath $hostPath -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert-ExactDirectory -Path $inputDirectory -ExpectedNames @([string]$request.source_filename) -Directories $false
 $sourcePath = Join-Path $inputDirectory ([string]$request.source_filename)
 $observedHost = Get-HostReadinessReport
-Assert-HostBinding -Expected $host -Observed $observedHost
+Assert-HostBinding -Expected $expectedHost -Observed $observedHost
 Assert-RunRequest `
     -Request $request `
-    -Host $host `
+    -ExpectedHost $expectedHost `
     -HostReportPath $hostPath `
     -SourcePath $sourcePath `
     -CorpusPath $corpusPath `

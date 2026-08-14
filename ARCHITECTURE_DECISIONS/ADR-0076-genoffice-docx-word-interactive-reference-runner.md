@@ -15,12 +15,21 @@ user profile and may display modal UI. Running `WINWORD.EXE` in Docker, as a ser
 logged-on user, or as a multi-tenant conversion backend is therefore outside this architecture.
 
 The Word runner also cannot share the operator's Office identity, tenant credentials or locally held Fidelity signing
-keys. Evidence processing must remain reproducible on `dev001`, where Word cannot run. The design consequently needs
-an explicit desktop execution boundary and a separate source-blind collector.
+keys. Account ACLs and a process firewall rule reduce exposure but do not isolate Word from the workstation kernel,
+installed software or host-level compromise. Evidence processing must remain reproducible on `dev001`, where Word
+cannot run. The design consequently needs an explicit disposable desktop-VM execution boundary and a separate
+source-blind collector.
 
 ## Decision
 
 Collabio adds a two-stage Microsoft Word reference path.
+
+The Windows stage may run only in a dedicated, isolated, non-production Windows VM. Production systems, operator
+workstations and every host holding signing custody are forbidden. The VM has no tenant credentials, shared
+clipboard, shared folders, host-drive passthrough or general network interface. Guest firewall enforcement remains
+defense in depth; the VM boundary or virtual network must independently deny egress. Only one reviewed synthetic
+assignment enters and only the exact public four-file handoff leaves. Restore the reviewed clean snapshot after every
+fixture. Office licensing and activation must be valid without adding a tenant or personal identity to the runner.
 
 The Windows stage is `tools/windows/Invoke-CollabioWordFidelity.ps1`. It has only `Preflight` and `Run` modes and must
 execute in a logged-on, non-session-zero desktop under the dedicated local `collabio-word-runner` account. Preflight
@@ -70,6 +79,8 @@ from successful Word execution.
   Microsoft and incompatible with the required visible human confirmation.
 - Word under the operator's normal account: Office identities, cached tenant credentials and signing custody would
   share one trust boundary.
+- Word under a separate local account on a production system or operator workstation: account ACLs and a guest
+  firewall do not create a separate kernel or protect host custody from a Word or OS compromise.
 - Signing inside the Word script: this would mix engine execution and key custody and make the handoff non-auditable.
 - Rendering the source with a different engine: reference and candidate PDFs must come from the same measured Word
   instance before cross-engine comparison.
@@ -79,12 +90,15 @@ from successful Word execution.
 ## Consequences
 
 - Word remains a manual reference instrument, not a Collabio runtime dependency or scalable conversion service.
-- The dedicated account and outbound firewall rule are host prerequisites and require an operator setup step.
+- The dedicated non-production VM, local account, hypervisor-level egress denial and guest outbound firewall rule are
+  prerequisites and require an operator setup step.
 - A real result exists only after interactive execution, isolated collection, detached signing and independent
   evidence verification.
 - The current authenticated matrix remains `3/9` until all three Word results are actually produced and verified.
 - Public schemas, assignments, receipts, outputs and evidence are recoverable records. Office profiles, temporary
   workspaces, credentials, DPAPI ciphertext and every private-key representation are excluded from backup transfer.
+- The 2026-08-14 operator-workstation bootstrap, readiness report and formatting assignment are retained as diagnostic
+  evidence only. They authorize no Word execution and must not enter the signed Fidelity matrix.
 
 ## References
 
@@ -92,3 +106,5 @@ from successful Word execution.
 - [Word Application.AutomationSecurity](https://learn.microsoft.com/en-us/office/vba/api/word.application.automationsecurity)
 - [Word Document.SaveAs2](https://learn.microsoft.com/en-us/office/vba/api/word.saveas2)
 - [Word Document.ExportAsFixedFormat](https://learn.microsoft.com/en-us/office/vba/api/word.document.exportasfixedformat)
+- [Microsoft: Windows Sandbox configuration and isolation controls](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file)
+- [Microsoft: Hyper-V Generation 2 VM security features](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/generation-2-virtual-machine-security-features)

@@ -363,11 +363,16 @@ def test_word_schemas_match_versioned_operations_contracts(tmp_path: Path) -> No
 
 def test_word_runner_and_collector_are_interactive_isolated_and_key_free() -> None:
     script = SCRIPT_PATH.read_text(encoding="utf-8")
+    adr = Path("ARCHITECTURE_DECISIONS/ADR-0076-genoffice-docx-word-interactive-reference-runner.md").read_text(
+        encoding="utf-8"
+    )
+    runbook = Path("docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md").read_text(encoding="utf-8")
     git_attributes = Path(".gitattributes").read_text(encoding="utf-8")
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
 
     assert "$word.AutomationSecurity = 3" in script
+    assert re.search(r"\$(?:Host|host)\b", script) is None
     assert "$word.Visible = $true" in script
     assert "$ExpectedFixtureHashes" in script
     assert "$ExpectedStudyPlanHash" in script
@@ -400,6 +405,10 @@ def test_word_runner_and_collector_are_interactive_isolated_and_key_free() -> No
     assert "create_host_path: false" in collector
     assert "docker.sock" not in collector
     assert "signing" not in collector.lower()
+    assert re.search(r"Production systems, operator\s+workstations", adr)
+    assert re.search(r"shared\s+clipboard, shared folders, host-drive passthrough", adr)
+    assert "authorize no Word execution" in adr
+    assert "Word execution is forbidden on production systems" in runbook
 
 
 def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:

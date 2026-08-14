@@ -1168,6 +1168,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     )
     assert "engine_key_separation_does_not_claim_human_separation" in office_source_admission["guardrails"]
     assert "app/suite/operations/genoffice_docx_word_runner.py" in office_source_admission["evidence_refs"]
+    assert "tools/windows/Initialize-CollabioWordFidelityHost.ps1" in office_source_admission["evidence_refs"]
     assert "tools/windows/Invoke-CollabioWordFidelity.ps1" in office_source_admission["evidence_refs"]
     assert "docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md" in office_source_admission["evidence_refs"]
     assert (
@@ -1175,6 +1176,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in office_source_admission["evidence_refs"]
     )
     assert "word_runner_requires_dedicated_local_interactive_account" in office_source_admission["guardrails"]
+    assert "word_execution_requires_isolated_nonproduction_windows_vm" in office_source_admission["guardrails"]
+    assert "operator_workstation_word_assignment_is_diagnostic_only" in office_source_admission["guardrails"]
     assert "implemented_word_path_without_real_results_remains_zero_of_three" in office_source_admission["guardrails"]
     assert "no_fidelity_claim_without_calibration_and_human_review" in office_source_admission["guardrails"]
     production_continuity = next(
