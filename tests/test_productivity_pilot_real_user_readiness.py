@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,12 +12,14 @@ from suite.ai_control_plane.models import UserContext
 from suite.platform.productivity_pilot_real_user_admission import (
     ProductivityPilotParticipantEvidence,
     ProductivityPilotRealUserAdmission,
+    ProductivityPilotRealUserAdmissionStore,
     ProductivityPilotRealUserNomination,
     build_productivity_pilot_real_user_admission_hash,
     build_productivity_pilot_real_user_nomination_hash,
 )
 from suite.platform.productivity_pilot_real_user_closure_report import (
     ProductivityPilotRealUserClosureReport,
+    ProductivityPilotRealUserClosureReportStore,
     build_productivity_pilot_real_user_closure_report_hash,
 )
 from suite.platform.productivity_pilot_real_user_readiness import (
@@ -28,10 +31,12 @@ from suite.platform.productivity_pilot_real_user_readiness import (
 from suite.platform.productivity_pilot_real_user_runtime_window import (
     ProductivityPilotRealUserRuntimeObservation,
     ProductivityPilotRealUserRuntimeWindow,
+    ProductivityPilotRealUserRuntimeWindowStore,
     build_productivity_pilot_real_user_runtime_window_hash,
 )
 from suite.platform.productivity_pilot_start_authorization import (
     ProductivityPilotStartAuthorization,
+    ProductivityPilotStartAuthorizationStore,
     build_productivity_pilot_start_authorization_hash,
 )
 
@@ -206,10 +211,10 @@ def _service(
     runtime_enabled: bool = False,
 ) -> ProductivityPilotRealUserReadinessService:
     return ProductivityPilotRealUserReadinessService(
-        admission_store=_AdmissionStore(nomination, admission),
-        start_authorization_store=_StartStore(start),
-        runtime_window_store=_RuntimeStore(window),
-        closure_report_store=_ClosureStore(closure),
+        admission_store=cast(ProductivityPilotRealUserAdmissionStore, _AdmissionStore(nomination, admission)),
+        start_authorization_store=cast(ProductivityPilotStartAuthorizationStore, _StartStore(start)),
+        runtime_window_store=cast(ProductivityPilotRealUserRuntimeWindowStore, _RuntimeStore(window)),
+        closure_report_store=cast(ProductivityPilotRealUserClosureReportStore, _ClosureStore(closure)),
         runtime_enabled=runtime_enabled,
         clock=lambda: NOW,
     )
