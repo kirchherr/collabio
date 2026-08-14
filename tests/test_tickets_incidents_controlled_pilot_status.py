@@ -172,7 +172,7 @@ def test_controlled_pilot_status_api_is_admin_only_and_does_not_activate() -> No
     admin_headers = {
         "X-Tenant-Id": "tenant-demo",
         "X-User-Id": "tenant-admin-1",
-        "X-Role-Ids": "tenant_admin",
+        "X-Role-Ids": "tenant-admin",
     }
     member_headers = {
         "X-Tenant-Id": "tenant-demo",
