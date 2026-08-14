@@ -8,6 +8,8 @@ from suite.persistence.migration_catalog import load_migration_manifest
 from suite.platform.modules import default_module_registry
 from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
     CONFIRMATION_STATEMENT as EXECUTION_APPROVAL_CONFIRMATION_STATEMENT,
+)
+from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
     InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore,
     TicketsIncidentsActivationDryRunExecutionApprovalRecordCommand,
     build_tickets_incidents_activation_dry_run_execution_approval_record_response,

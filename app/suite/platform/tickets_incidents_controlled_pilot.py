@@ -17,6 +17,8 @@ from suite.persistence.migration_catalog import MigrationManifestEntry
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, TenantModuleState
 from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
     CONFIRMATION_STATEMENT as EXECUTION_APPROVAL_CONFIRMATION_STATEMENT,
+)
+from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
     TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse,
     TicketsIncidentsActivationDryRunExecutionApprovalRecordStore,
     build_tickets_incidents_controlled_pilot_approval_boundary_hash,

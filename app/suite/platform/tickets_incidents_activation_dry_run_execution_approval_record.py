@@ -228,7 +228,11 @@ class InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
     def latest_for_tenant(
         self, *, tenant_id: str
     ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None:
-        records = [record for (record_tenant_id, _), record in self._by_boundary.items() if record_tenant_id == tenant_id]
+        records = [
+            record
+            for (record_tenant_id, _), record in self._by_boundary.items()
+            if record_tenant_id == tenant_id
+        ]
         return max(records, key=lambda record: record.approved_at_utc) if records else None
 
 
