@@ -109,6 +109,7 @@ Current sprint:
 99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
 100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
 101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
+102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
 
 ## Next Engineering Step
 
@@ -121,6 +122,7 @@ Collect the accountable real-user pilot evidence without opening live traffic:
 - Use the Security-Admin requirements and gate-status read APIs to verify the current policy contract and fail-closed state; do not add an evidence upload API.
 - Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until the new chain and the hash-only closure path pass together.
 - Require explicit human four-eyes approvals before any later live pilot window.
+- While accountable real-user evidence is pending, advance the designated Tickets test-tenant pilot only through `GET /v1/platform/modules/families/tickets-incidents/controlled-pilot/status`; never fabricate or infer its exact human confirmations.
 - Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.
 - Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
 

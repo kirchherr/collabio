@@ -9,8 +9,10 @@ from suite.platform.tickets_incidents_activation_dry_run_execution_approval_reco
     CONFIRMATION_STATEMENT,
     InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore,
     TicketsIncidentsActivationDryRunExecutionApprovalRecordCommand,
+    build_tickets_incidents_controlled_pilot_approval_boundary_hash,
     build_tickets_incidents_activation_dry_run_execution_approval_record_response,
 )
+from suite.platform.tickets_incidents_module import build_default_tickets_incidents_subfeature_registry
 from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
     build_tickets_incidents_tenant_admin_activation_approval_gate_response,
 )
@@ -22,6 +24,30 @@ from suite.platform.tickets_incidents_tenant_admin_activation_approval_record im
 )
 
 BOUNDARY_HASH = "sha256:" + ("a" * 64)
+
+
+def expected_boundary_hash(
+    *,
+    user_context: UserContext,
+    store: InMemoryTicketsIncidentsTenantAdminActivationApprovalRecordStore,
+) -> str:
+    gate = build_tickets_incidents_tenant_admin_activation_approval_gate_response(
+        user_context=user_context,
+        module_registry=default_module_registry(),
+        migration_manifest_entries=load_migration_manifest(),
+    )
+    tenant_approval = store.latest_for_gate(
+        tenant_id=user_context.tenant_id,
+        approval_gate_evidence_hash=gate.evidence_hash,
+    )
+    assert tenant_approval is not None
+    assert gate.tickets_restore_drill_evidence_hash is not None
+    return build_tickets_incidents_controlled_pilot_approval_boundary_hash(
+        tenant_id=user_context.tenant_id,
+        tenant_admin_approval_record_hash=tenant_approval.evidence_hash,
+        tickets_restore_drill_evidence_hash=gate.tickets_restore_drill_evidence_hash,
+        feature_manifest_hash=build_default_tickets_incidents_subfeature_registry().manifest_hash,
+    )
 
 
 def build_tenant_approval_store(
@@ -82,9 +108,10 @@ def test_execution_approval_record_is_explicit_append_only_and_non_executing() -
         role_ids={"tenant-admin"},
     )
     store = build_tenant_approval_store(user_context)
+    boundary_hash = expected_boundary_hash(user_context=user_context, store=store)
 
     response = build_tickets_incidents_activation_dry_run_execution_approval_record_response(
-        command=execution_approval_command(),
+        command=execution_approval_command(approval_boundary_evidence_hash=boundary_hash),
         user_context=user_context,
         module_registry=default_module_registry(),
         migration_manifest_entries=load_migration_manifest(),
@@ -106,7 +133,7 @@ def test_execution_approval_record_is_explicit_append_only_and_non_executing() -
     assert (
         approval_store.latest_for_boundary(
             tenant_id="tenant-demo",
-            approval_boundary_evidence_hash=BOUNDARY_HASH,
+            approval_boundary_evidence_hash=boundary_hash,
         )
         == response
     )
@@ -118,8 +145,33 @@ def test_execution_approval_record_rejects_side_effect_requests() -> None:
         user_id="tenant-admin-1",
         role_ids={"tenant-admin"},
     )
+    store = build_tenant_approval_store(user_context)
+    boundary_hash = expected_boundary_hash(user_context=user_context, store=store)
     response = build_tickets_incidents_activation_dry_run_execution_approval_record_response(
-        command=execution_approval_command(worker_execution_requested=True),
+        command=execution_approval_command(
+            approval_boundary_evidence_hash=boundary_hash,
+            worker_execution_requested=True,
+        ),
+        user_context=user_context,
+        module_registry=default_module_registry(),
+        migration_manifest_entries=load_migration_manifest(),
+        tenant_approval_record_store=store,
+    )
+
+    assert response.approval_record_created is False
+    assert "worker_execution_request_forbidden" in response.blocking_reasons
+    with pytest.raises(ValueError, match="blocked"):
+        InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore().append(response)
+
+
+def test_execution_approval_rejects_untrusted_boundary_hash() -> None:
+    user_context = UserContext(
+        tenant_id="tenant-demo",
+        user_id="tenant-admin-1",
+        role_ids={"tenant-admin"},
+    )
+    response = build_tickets_incidents_activation_dry_run_execution_approval_record_response(
+        command=execution_approval_command(),
         user_context=user_context,
         module_registry=default_module_registry(),
         migration_manifest_entries=load_migration_manifest(),
@@ -127,9 +179,7 @@ def test_execution_approval_record_rejects_side_effect_requests() -> None:
     )
 
     assert response.approval_record_created is False
-    assert "worker_execution_request_forbidden" in response.blocking_reasons
-    with pytest.raises(ValueError, match="blocked"):
-        InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore().append(response)
+    assert "activation_dry_run_execution_approval_boundary_hash_mismatch" in response.blocking_reasons
 
 
 def test_execution_approval_command_requires_exact_human_confirmation() -> None:

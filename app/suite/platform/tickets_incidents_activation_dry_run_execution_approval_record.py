@@ -17,6 +17,7 @@ from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
 from suite.platform.tickets_incidents_module import (
     TICKETS_INCIDENTS_CONTINUITY_DOMAIN,
     TICKETS_INCIDENTS_MODULE_ID,
+    build_default_tickets_incidents_subfeature_registry,
 )
 from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
     build_tickets_incidents_tenant_admin_activation_approval_gate_response,
@@ -35,6 +36,7 @@ CONFIRMATION_STATEMENT = (
 )
 NEXT_ACTION = "exercise_tickets_incidents_productive_vertical_slice_in_controlled_pilot"
 RETRY_ACTION = "record_tickets_incidents_activation_dry_run_execution_approval"
+APPROVAL_BOUNDARY_SCHEMA_VERSION = "tickets_incidents_controlled_pilot_approval_boundary.v1"
 ZERO_HASH = "sha256:" + ("0" * 64)
 SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -185,6 +187,10 @@ class TicketsIncidentsActivationDryRunExecutionApprovalRecordStore(Protocol):
         self, *, tenant_id: str, approval_boundary_evidence_hash: str
     ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None: ...
 
+    def latest_for_tenant(
+        self, *, tenant_id: str
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None: ...
+
 
 class InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
     def __init__(
@@ -218,6 +224,12 @@ class InMemoryTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
         self, *, tenant_id: str, approval_boundary_evidence_hash: str
     ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None:
         return self._by_boundary.get((tenant_id, approval_boundary_evidence_hash))
+
+    def latest_for_tenant(
+        self, *, tenant_id: str
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None:
+        records = [record for (record_tenant_id, _), record in self._by_boundary.items() if record_tenant_id == tenant_id]
+        return max(records, key=lambda record: record.approved_at_utc) if records else None
 
 
 class PgTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
@@ -314,6 +326,46 @@ class PgTicketsIncidentsActivationDryRunExecutionApprovalRecordStore:
             return None
         return TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse.model_validate(row[0])
 
+    def latest_for_tenant(
+        self, *, tenant_id: str
+    ) -> TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse | None:
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT approval_record
+                FROM tickets.activation_dry_run_execution_approval_records
+                WHERE tenant_id = %s
+                ORDER BY approved_at_utc DESC, created_at_utc DESC
+                LIMIT 1
+                """,
+                (tenant_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse.model_validate(row[0])
+
+
+def build_tickets_incidents_controlled_pilot_approval_boundary_hash(
+    *,
+    tenant_id: str,
+    tenant_admin_approval_record_hash: str,
+    tickets_restore_drill_evidence_hash: str,
+    feature_manifest_hash: str,
+) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "schema_version": APPROVAL_BOUNDARY_SCHEMA_VERSION,
+                "tenant_id": tenant_id,
+                "module_id": TICKETS_INCIDENTS_MODULE_ID,
+                "tenant_admin_approval_record_hash": tenant_admin_approval_record_hash,
+                "tickets_restore_drill_evidence_hash": tickets_restore_drill_evidence_hash,
+                "feature_manifest_hash": feature_manifest_hash,
+            }
+        )
+    )
+
 
 def build_default_tickets_incidents_activation_dry_run_execution_approval_record_store(
     environ: Mapping[str, str] | None = None,
@@ -354,6 +406,17 @@ def build_tickets_incidents_activation_dry_run_execution_approval_record_respons
         if gate.approval_gate_ready
         else None
     )
+    feature_manifest_hash = build_default_tickets_incidents_subfeature_registry().manifest_hash
+    expected_approval_boundary_evidence_hash = (
+        build_tickets_incidents_controlled_pilot_approval_boundary_hash(
+            tenant_id=user_context.tenant_id,
+            tenant_admin_approval_record_hash=tenant_approval.evidence_hash,
+            tickets_restore_drill_evidence_hash=gate.tickets_restore_drill_evidence_hash or ZERO_HASH,
+            feature_manifest_hash=feature_manifest_hash,
+        )
+        if tenant_approval is not None
+        else ZERO_HASH
+    )
     command_hash = stable_hash(
         canonical_json(
             {
@@ -379,8 +442,8 @@ def build_tickets_incidents_activation_dry_run_execution_approval_record_respons
         reasons.append("tickets_incidents_activation_approval_gate_not_ready")
     if tenant_approval is None or not tenant_approval.approval_record_created:
         reasons.append("tickets_incidents_tenant_admin_activation_approval_record_missing")
-    if command.approval_boundary_evidence_hash == ZERO_HASH:
-        reasons.append("activation_dry_run_execution_approval_boundary_hash_missing")
+    if command.approval_boundary_evidence_hash != expected_approval_boundary_evidence_hash:
+        reasons.append("activation_dry_run_execution_approval_boundary_hash_mismatch")
     if user_context.role_ids.isdisjoint({"tenant-admin", "tenant_admin"}):
         reasons.append("tenant_admin_role_required")
     if not command.approval_record_requested:

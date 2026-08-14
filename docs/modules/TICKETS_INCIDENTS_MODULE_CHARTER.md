@@ -1,7 +1,7 @@
 # Tickets & Incidents Module Charter
 
-Status: controlled_pilot_path_ready_not_executed
-Date: 2026-07-29
+Status: controlled_pilot_status_ready_not_executed
+Date: 2026-08-14
 Module ID: `tickets_incidents`
 Module kind: `business_domain`
 Owner: platform/product
@@ -72,6 +72,8 @@ Discovery and readiness start with `GET /v1/platform/modules/families/tickets-in
 
 The controlled pilot then uses two separate tenant-admin commands. Admission installs the catalog package through an approval-bound database function and provisions the tenant as `disabled` with every feature off. Enablement first appends an authorization receipt, then opens exactly `items.read`, `items.write`, `events.read`, and `events.write`, and finally appends a completion receipt. Compliance evidence, RAG, AI, workers, destructive actions, and external effects remain outside this pilot.
 
+`GET /v1/platform/modules/families/tickets-incidents/controlled-pilot/status` is the authoritative operator read path. It consolidates the current approval, admission, authorization, completion, catalog, and tenant-module state and returns the one next required human confirmation. It is tenant-admin/security-admin restricted, metadata-only, and cannot write or activate anything. The final execution approval boundary is derived from tenant ID, the tenant-admin approval evidence hash, restore evidence hash, and feature manifest hash; arbitrary non-zero boundary hashes are rejected.
+
 Compliance-only later:
 
 - retention evaluation and disposition execution
@@ -133,7 +135,7 @@ A restored tenant must keep business routes closed until module and feature stat
 
 The productive service has in-memory and PostgreSQL repository adapters. PostgreSQL writes set tenant context inside each transaction; ticket creation and transitions couple ticket/event persistence atomically. No body, comment, attachment, prompt, output, transcript, audio, password, or raw human confirmation statement is stored in these tables.
 
-The controlled pilot implementation is code-ready but has not been executed on a designated tenant. The next step is to select one test tenant, record the required approval, call admission and verify the disabled-state receipt, then separately confirm enablement of exactly four read/write features. Execute the API and restore evidence checks before widening access.
+The controlled pilot implementation and consolidated status read path are code-ready but have not been executed on a designated tenant. The next step is to select one test tenant, follow only the stage reported by the status endpoint, record the required approval, call admission and verify the disabled-state receipt, then separately confirm enablement of exactly four read/write features. Execute the API and restore evidence checks before widening access.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import, SLA recalculation, escalation, or workflow activation.
 ## 9. Decommissioning

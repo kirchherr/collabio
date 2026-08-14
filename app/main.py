@@ -1051,7 +1051,9 @@ from suite.platform.tickets_incidents_controlled_pilot import (
     TicketsIncidentsControlledPilotEnablementCommand,
     TicketsIncidentsControlledPilotReceipt,
     TicketsIncidentsControlledPilotService,
+    TicketsIncidentsControlledPilotStatusResponse,
     build_default_tickets_incidents_controlled_pilot_receipt_store,
+    build_tickets_incidents_controlled_pilot_status_response,
 )
 from suite.platform.tickets_incidents_migration_evidence_gate import (
     TicketsIncidentsMigrationEvidenceGateResponse,
@@ -5244,6 +5246,56 @@ def build_app() -> FastAPI:
                 "tickets_business_api_allowed": response.tickets_business_api_allowed,
                 "worker_activation_allowed": response.worker_activation_allowed,
                 "evidence_hash": response.evidence_hash,
+                "next_action": response.next_action,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/modules/families/tickets-incidents/controlled-pilot/status",
+        response_model=TicketsIncidentsControlledPilotStatusResponse,
+    )
+    def tickets_incidents_controlled_pilot_status(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> TicketsIncidentsControlledPilotStatusResponse:
+        try:
+            response = build_tickets_incidents_controlled_pilot_status_response(
+                user_context=context.user_context,
+                module_registry=request.app.state.module_registry,
+                migration_manifest_entries=migration_manifest,
+                tenant_approval_record_store=(
+                    request.app.state.tickets_incidents_tenant_admin_activation_approval_record_store
+                ),
+                execution_approval_record_store=(
+                    request.app.state.tickets_incidents_dry_run_execution_approval_record_store
+                ),
+                receipt_store=request.app.state.tickets_incidents_controlled_pilot_receipt_store,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.tickets_incidents.controlled_pilot_status",
+            source_object_ids=[f"tickets_pilot_status:{response.evidence_hash}"],
+            metadata={
+                "surface": "platform_api",
+                "schema_version": response.schema_version,
+                "module_id": response.module_id,
+                "stage": response.stage,
+                "pilot_state_consistent": response.pilot_state_consistent,
+                "execution_approval_boundary_trusted": (
+                    response.execution_approval_boundary_trusted
+                ),
+                "admission_receipt_present": response.admission_receipt_present,
+                "enablement_completion_receipt_present": (
+                    response.enablement_completion_receipt_present
+                ),
+                "tickets_business_api_allowed": response.tickets_business_api_allowed,
+                "worker_activation_allowed": response.worker_activation_allowed,
+                "content_included": response.content_included,
+                "evidence_hash": response.evidence_hash,
+                "blocking_reason_count": len(response.blocking_reasons),
                 "next_action": response.next_action,
             },
         )

@@ -16,8 +16,10 @@ from suite.ai_control_plane.models import UserContext
 from suite.persistence.migration_catalog import MigrationManifestEntry
 from suite.platform.modules import InMemoryModuleRegistry, ModuleStatus, PgModuleRegistry, TenantModuleState
 from suite.platform.tickets_incidents_activation_dry_run_execution_approval_record import (
+    CONFIRMATION_STATEMENT as EXECUTION_APPROVAL_CONFIRMATION_STATEMENT,
     TicketsIncidentsActivationDryRunExecutionApprovalRecordResponse,
     TicketsIncidentsActivationDryRunExecutionApprovalRecordStore,
+    build_tickets_incidents_controlled_pilot_approval_boundary_hash,
 )
 from suite.platform.tickets_incidents_module import (
     TICKETS_AI_ASSIST_FEATURE_ID,
@@ -31,10 +33,18 @@ from suite.platform.tickets_incidents_module import (
     TICKETS_RAG_INDEXING_FEATURE_ID,
     build_default_tickets_incidents_subfeature_registry,
 )
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
+    build_tickets_incidents_tenant_admin_activation_approval_gate_response,
+)
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_record import (
+    TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT,
+    TicketsIncidentsTenantAdminActivationApprovalRecordStore,
+)
 
 SCHEMA_VERSION = "tickets_incidents_controlled_pilot_receipt.v1"
 ADMISSION_ENDPOINT = "/v1/platform/modules/families/tickets-incidents/controlled-pilot/admission"
 ENABLEMENT_ENDPOINT = "/v1/platform/modules/families/tickets-incidents/controlled-pilot/enablement"
+STATUS_ENDPOINT = "/v1/platform/modules/families/tickets-incidents/controlled-pilot/status"
 ADMISSION_CONFIRMATION_STATEMENT = (
     "I explicitly approve installation and disabled tenant provisioning of the Tickets & Incidents "
     "controlled pilot. This does not enable business APIs, workers, AI, RAG, "
@@ -54,6 +64,15 @@ class TicketsIncidentsPilotReceiptType(StrEnum):
     ADMISSION = "admission"
     ENABLEMENT_AUTHORIZATION = "enablement_authorization"
     ENABLEMENT_COMPLETED = "enablement_completed"
+
+
+class TicketsIncidentsControlledPilotStage(StrEnum):
+    TENANT_APPROVAL_REQUIRED = "tenant_approval_required"
+    EXECUTION_APPROVAL_REQUIRED = "execution_approval_required"
+    ADMISSION_REQUIRED = "admission_required"
+    ENABLEMENT_REQUIRED = "enablement_required"
+    VERTICAL_SLICE_VALIDATION_REQUIRED = "vertical_slice_validation_required"
+    EVIDENCE_INVALID = "evidence_invalid"
 
 
 def controlled_pilot_enabled_features() -> dict[str, bool]:
@@ -268,6 +287,89 @@ class TicketsIncidentsControlledPilotReceipt(BaseModel):
         return self
 
 
+class TicketsIncidentsControlledPilotStatusResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "tickets_incidents_controlled_pilot_status.v1"
+    tenant_id: str
+    module_id: str = TICKETS_INCIDENTS_MODULE_ID
+    endpoint: str = STATUS_ENDPOINT
+    result_contract: str = "metadata_only_tickets_incidents_controlled_pilot_status_no_activation"
+    continuity_domain: str = TICKETS_INCIDENTS_CONTINUITY_DOMAIN
+    stage: TicketsIncidentsControlledPilotStage
+    approval_gate_ready: bool
+    approval_gate_evidence_hash: str
+    tickets_restore_drill_evidence_hash: str
+    feature_manifest_hash: str
+    tenant_admin_approval_record_present: bool
+    expected_execution_approval_boundary_hash: str
+    execution_approval_record_present: bool
+    execution_approval_record_evidence_hash: str
+    execution_approval_boundary_trusted: bool
+    admission_receipt_present: bool
+    admission_receipt_evidence_hash: str
+    enablement_authorization_receipt_present: bool
+    enablement_authorization_receipt_evidence_hash: str
+    enablement_completion_receipt_present: bool
+    enablement_completion_receipt_evidence_hash: str
+    catalog_status: ModuleStatus
+    tenant_module_status: ModuleStatus | None
+    enabled_features: dict[str, bool]
+    required_confirmation_kind: str | None
+    required_confirmation_statement: str | None
+    blocking_reasons: tuple[str, ...]
+    pilot_state_consistent: bool
+    tickets_business_api_allowed: bool
+    worker_activation_allowed: bool = False
+    ai_or_rag_allowed: bool = False
+    compliance_feature_allowed: bool = False
+    content_included: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "approval_gate_evidence_hash",
+        "tickets_restore_drill_evidence_hash",
+        "feature_manifest_hash",
+        "expected_execution_approval_boundary_hash",
+        "execution_approval_record_evidence_hash",
+        "admission_receipt_evidence_hash",
+        "enablement_authorization_receipt_evidence_hash",
+        "enablement_completion_receipt_evidence_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def require_status_hash(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("controlled pilot status hashes must be sha256 references")
+        return value
+
+    @model_validator(mode="after")
+    def require_read_only_status(self) -> Self:
+        if self.pilot_state_consistent != (not self.blocking_reasons):
+            raise ValueError("pilot consistency must match blocking reasons")
+        if self.stage == TicketsIncidentsControlledPilotStage.EVIDENCE_INVALID and self.pilot_state_consistent:
+            raise ValueError("invalid pilot evidence must report blocking reasons")
+        if self.stage != TicketsIncidentsControlledPilotStage.EVIDENCE_INVALID and not self.pilot_state_consistent:
+            raise ValueError("inconsistent pilot evidence must use the invalid stage")
+        if self.tickets_business_api_allowed != (
+            self.stage == TicketsIncidentsControlledPilotStage.VERTICAL_SLICE_VALIDATION_REQUIRED
+        ):
+            raise ValueError("business API state must match completed pilot enablement")
+        if (
+            self.worker_activation_allowed
+            or self.ai_or_rag_allowed
+            or self.compliance_feature_allowed
+            or self.content_included
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("controlled pilot status cannot open high-risk surfaces")
+        return self
+
+
 class TicketsIncidentsControlledPilotReceiptStore(Protocol):
     def append(self, receipt: TicketsIncidentsControlledPilotReceipt) -> TicketsIncidentsControlledPilotReceipt: ...
 
@@ -447,6 +549,207 @@ def build_default_tickets_incidents_controlled_pilot_receipt_store(
             )
         return PgTicketsIncidentsControlledPilotReceiptStore(database_dsn=database_dsn)
     raise ValueError(f"Unsupported SUITE_TICKETS_PILOT_RECEIPT_BACKEND: {backend}")
+
+
+def build_tickets_incidents_controlled_pilot_status_response(
+    *,
+    user_context: UserContext,
+    module_registry: InMemoryModuleRegistry | PgModuleRegistry,
+    migration_manifest_entries: Iterable[MigrationManifestEntry],
+    tenant_approval_record_store: TicketsIncidentsTenantAdminActivationApprovalRecordStore,
+    execution_approval_record_store: TicketsIncidentsActivationDryRunExecutionApprovalRecordStore,
+    receipt_store: TicketsIncidentsControlledPilotReceiptStore,
+) -> TicketsIncidentsControlledPilotStatusResponse:
+    if user_context.role_ids.isdisjoint({"tenant-admin", "tenant_admin", "security-admin"}):
+        raise PermissionError("tenant admin role required for controlled Tickets pilot status")
+
+    gate = build_tickets_incidents_tenant_admin_activation_approval_gate_response(
+        user_context=user_context,
+        module_registry=module_registry,
+        migration_manifest_entries=migration_manifest_entries,
+    )
+    tenant_approval = (
+        tenant_approval_record_store.latest_for_gate(
+            tenant_id=user_context.tenant_id,
+            approval_gate_evidence_hash=gate.evidence_hash,
+        )
+        if gate.approval_gate_ready
+        else None
+    )
+    execution_approval = execution_approval_record_store.latest_for_tenant(
+        tenant_id=user_context.tenant_id
+    )
+    feature_manifest_hash = build_default_tickets_incidents_subfeature_registry().manifest_hash
+    tenant_approval_hash = (
+        execution_approval.tenant_admin_approval_record_hash
+        if execution_approval is not None
+        else tenant_approval.evidence_hash if tenant_approval is not None else ZERO_HASH
+    )
+    expected_boundary_hash = (
+        build_tickets_incidents_controlled_pilot_approval_boundary_hash(
+            tenant_id=user_context.tenant_id,
+            tenant_admin_approval_record_hash=tenant_approval_hash,
+            tickets_restore_drill_evidence_hash=(
+                execution_approval.tickets_restore_drill_evidence_hash
+                if execution_approval is not None
+                else gate.tickets_restore_drill_evidence_hash or ZERO_HASH
+            ),
+            feature_manifest_hash=feature_manifest_hash,
+        )
+        if tenant_approval_hash != ZERO_HASH
+        else ZERO_HASH
+    )
+    execution_boundary_trusted = execution_approval is None or (
+        execution_approval.approval_boundary_evidence_hash == expected_boundary_hash
+        and execution_approval.explicit_human_execution_approval_present
+    )
+
+    admission = receipt_store.latest_for_type(
+        tenant_id=user_context.tenant_id,
+        receipt_type=TicketsIncidentsPilotReceiptType.ADMISSION,
+    )
+    authorization = receipt_store.latest_for_type(
+        tenant_id=user_context.tenant_id,
+        receipt_type=TicketsIncidentsPilotReceiptType.ENABLEMENT_AUTHORIZATION,
+    )
+    completion = receipt_store.latest_for_type(
+        tenant_id=user_context.tenant_id,
+        receipt_type=TicketsIncidentsPilotReceiptType.ENABLEMENT_COMPLETED,
+    )
+    tenant_state = module_registry.get_tenant_module_or_none(
+        tenant_id=user_context.tenant_id,
+        module_id=TICKETS_INCIDENTS_MODULE_ID,
+    )
+    catalog_status = module_registry.get_catalog_entry(TICKETS_INCIDENTS_MODULE_ID).status
+
+    reasons: list[str] = []
+    if not gate.approval_gate_ready and execution_approval is None:
+        reasons.append("tickets_incidents_approval_gate_not_ready")
+    if execution_approval is not None and not execution_boundary_trusted:
+        reasons.append("tickets_incidents_execution_approval_boundary_untrusted")
+    if admission is not None:
+        if execution_approval is None:
+            reasons.append("tickets_incidents_admission_without_execution_approval")
+        elif (
+            admission.approval_record_evidence_hash != execution_approval.evidence_hash
+            or admission.feature_manifest_hash != feature_manifest_hash
+            or admission.tickets_restore_drill_evidence_hash
+            != execution_approval.tickets_restore_drill_evidence_hash
+        ):
+            reasons.append("tickets_incidents_admission_evidence_chain_mismatch")
+    if authorization is not None:
+        if admission is None:
+            reasons.append("tickets_incidents_enablement_authorization_without_admission")
+        elif authorization.admission_receipt_evidence_hash != admission.evidence_hash:
+            reasons.append("tickets_incidents_enablement_authorization_chain_mismatch")
+    if completion is not None:
+        if admission is None or authorization is None:
+            reasons.append("tickets_incidents_enablement_completion_chain_incomplete")
+        elif (
+            completion.admission_receipt_evidence_hash != admission.evidence_hash
+            or completion.authorization_receipt_evidence_hash != authorization.evidence_hash
+        ):
+            reasons.append("tickets_incidents_enablement_completion_chain_mismatch")
+
+    if completion is not None:
+        if (
+            tenant_state is None
+            or tenant_state.status != ModuleStatus.ENABLED
+            or tenant_state.enabled_features != controlled_pilot_enabled_features()
+        ):
+            reasons.append("tickets_incidents_enabled_tenant_state_mismatch")
+    elif admission is not None:
+        if (
+            tenant_state is None
+            or tenant_state.status != ModuleStatus.DISABLED
+            or tenant_state.enabled_features != controlled_pilot_disabled_features()
+        ):
+            reasons.append("tickets_incidents_disabled_tenant_state_mismatch")
+    elif tenant_state is not None:
+        reasons.append("tickets_incidents_tenant_state_without_admission")
+
+    if reasons:
+        stage = TicketsIncidentsControlledPilotStage.EVIDENCE_INVALID
+        confirmation_kind = None
+        confirmation_statement = None
+        next_action = "repair_tickets_incidents_controlled_pilot_evidence_before_continuing"
+    elif tenant_approval is None and execution_approval is None:
+        stage = TicketsIncidentsControlledPilotStage.TENANT_APPROVAL_REQUIRED
+        confirmation_kind = "tenant_activation_readiness"
+        confirmation_statement = (
+            TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_CONFIRMATION_STATEMENT
+        )
+        next_action = "record_tickets_incidents_tenant_admin_activation_approval"
+    elif execution_approval is None:
+        stage = TicketsIncidentsControlledPilotStage.EXECUTION_APPROVAL_REQUIRED
+        confirmation_kind = "controlled_pilot_execution"
+        confirmation_statement = EXECUTION_APPROVAL_CONFIRMATION_STATEMENT
+        next_action = "record_tickets_incidents_controlled_pilot_execution_approval"
+    elif admission is None:
+        stage = TicketsIncidentsControlledPilotStage.ADMISSION_REQUIRED
+        confirmation_kind = "controlled_pilot_admission"
+        confirmation_statement = ADMISSION_CONFIRMATION_STATEMENT
+        next_action = "admit_tickets_incidents_controlled_pilot_disabled"
+    elif completion is None:
+        stage = TicketsIncidentsControlledPilotStage.ENABLEMENT_REQUIRED
+        confirmation_kind = "controlled_pilot_enablement"
+        confirmation_statement = ENABLEMENT_CONFIRMATION_STATEMENT
+        next_action = "enable_exact_tickets_incidents_controlled_pilot_feature_set"
+    else:
+        stage = TicketsIncidentsControlledPilotStage.VERTICAL_SLICE_VALIDATION_REQUIRED
+        confirmation_kind = None
+        confirmation_statement = None
+        next_action = "run_tickets_incidents_vertical_slice_and_recovery_evidence"
+
+    draft = TicketsIncidentsControlledPilotStatusResponse(
+        tenant_id=user_context.tenant_id,
+        stage=stage,
+        approval_gate_ready=gate.approval_gate_ready,
+        approval_gate_evidence_hash=gate.evidence_hash,
+        tickets_restore_drill_evidence_hash=(
+            execution_approval.tickets_restore_drill_evidence_hash
+            if execution_approval is not None
+            else gate.tickets_restore_drill_evidence_hash or ZERO_HASH
+        ),
+        feature_manifest_hash=feature_manifest_hash,
+        tenant_admin_approval_record_present=tenant_approval_hash != ZERO_HASH,
+        expected_execution_approval_boundary_hash=expected_boundary_hash,
+        execution_approval_record_present=execution_approval is not None,
+        execution_approval_record_evidence_hash=(
+            execution_approval.evidence_hash if execution_approval is not None else ZERO_HASH
+        ),
+        execution_approval_boundary_trusted=execution_boundary_trusted,
+        admission_receipt_present=admission is not None,
+        admission_receipt_evidence_hash=admission.evidence_hash if admission is not None else ZERO_HASH,
+        enablement_authorization_receipt_present=authorization is not None,
+        enablement_authorization_receipt_evidence_hash=(
+            authorization.evidence_hash if authorization is not None else ZERO_HASH
+        ),
+        enablement_completion_receipt_present=completion is not None,
+        enablement_completion_receipt_evidence_hash=(
+            completion.evidence_hash if completion is not None else ZERO_HASH
+        ),
+        catalog_status=catalog_status,
+        tenant_module_status=tenant_state.status if tenant_state is not None else None,
+        enabled_features=(tenant_state.enabled_features if tenant_state is not None else {}),
+        required_confirmation_kind=confirmation_kind,
+        required_confirmation_statement=confirmation_statement,
+        blocking_reasons=tuple(reasons),
+        pilot_state_consistent=not reasons,
+        tickets_business_api_allowed=(
+            stage == TicketsIncidentsControlledPilotStage.VERTICAL_SLICE_VALIDATION_REQUIRED
+        ),
+        evidence_hash=ZERO_HASH,
+        next_action=next_action,
+    )
+    status_payload = draft.model_dump(
+        mode="json",
+        exclude={"evidence_hash", "required_confirmation_statement"},
+    )
+    status_payload["required_confirmation_statement_hash"] = (
+        stable_hash(confirmation_statement) if confirmation_statement is not None else ZERO_HASH
+    )
+    return draft.model_copy(update={"evidence_hash": stable_hash(canonical_json(status_payload))})
 
 
 class TicketsIncidentsControlledPilotService:
