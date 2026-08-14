@@ -39,6 +39,7 @@ from suite.operations.genoffice_docx_word_runner import (
 
 REQUESTED_AT = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
 SCRIPT_PATH = Path("tools/windows/Invoke-CollabioWordFidelity.ps1")
+BOOTSTRAP_SCRIPT_PATH = Path("tools/windows/Initialize-CollabioWordFidelityHost.ps1")
 FONTS = ("Aptos", "Liberation Sans", "Times New Roman")
 
 
@@ -398,3 +399,35 @@ def test_word_runner_and_collector_are_interactive_isolated_and_key_free() -> No
     assert "create_host_path: false" in collector
     assert "docker.sock" not in collector
     assert "signing" not in collector.lower()
+
+
+def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:
+    script = BOOTSTRAP_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert '[ValidateSet("Audit", "Apply")]' in script
+    assert 'Read-Host "Enter the dedicated local runner password" -AsSecureString' in script
+    assert 'Read-Host "Confirm the dedicated local runner password" -AsSecureString' in script
+    assert "SecureStringToBSTR" in script
+    assert "ZeroFreeBSTR" in script
+    assert "GetNetworkCredential" not in script
+    assert "ConvertFrom-SecureString" not in script
+    assert "password_included = $false" in script
+    assert 'throw "Apply mode requires an elevated Windows PowerShell session."' in script
+    assert "-AdoptExistingAccount after manual review" in script
+    assert "-ReplaceDriftedFirewallRule after manual review" in script
+    assert "Remove-LocalGroupMember" in script
+    assert 'SecurityIdentifier]::new("S-1-5-32-545")' in script
+    assert 'SecurityIdentifier]::new("S-1-5-32-544")' in script
+    assert "SetAccessRuleProtection($true, $false)" in script
+    assert "PurgeAccessRules($RunnerSid)" in script
+    assert "AccessControlType]::Deny" in script
+    assert '$FirewallRuleName = "Collabio Word fidelity outbound deny"' in script
+    assert "New-NetFirewallRule" in script
+    assert "-Direction Outbound -Action Block" in script
+    assert "-RemoteAddress Any -Profile Any -Enabled True" in script
+    assert "[IO.FileMode]::CreateNew" in script
+    assert 'schema_version = "genoffice_docx_word_host_bootstrap_report.v1"' in script
+    assert "tenant_content_included = $false" in script
+    assert "private_key_included = $false" in script
+    assert "Register-ScheduledTask" not in script
+    assert "Start-Process" not in script

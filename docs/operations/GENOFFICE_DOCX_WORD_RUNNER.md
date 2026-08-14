@@ -18,23 +18,27 @@ source-blind collection run in Docker on `dev001`.
 
 ## One-Time Windows Setup
 
-Run account and firewall administration from an elevated operator shell. Do not sign the runner account into Office,
-OneDrive, Entra ID or a Microsoft account. Use a strong local password and deny interactive remote access unless an
-explicitly controlled console session is required.
+Run the reviewed host bootstrap from an elevated Windows PowerShell console. It creates or converges the dedicated
+standard account, removes every local group membership except built-in Users, creates a tightly ACL-bound public
+workspace, explicitly denies that account access to signing custody and binds an outbound deny rule to the measured
+`WINWORD.EXE`. Passwords are entered twice as `SecureString` and are neither serialized nor logged. The write-once
+report contains metadata and hashes only.
 
 ```powershell
-$word = 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
-New-NetFirewallRule `
-  -DisplayName 'Collabio Word fidelity outbound deny' `
-  -Direction Outbound `
-  -Action Block `
-  -Program $word `
-  -Profile Any `
-  -Enabled True
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tools\windows\Initialize-CollabioWordFidelityHost.ps1 `
+  -Mode Apply `
+  -OutputPath .\word-host-bootstrap-report.json
 ```
 
-Create the local account through the approved Windows administration process. Keep its working directories outside
-the operator signing-custody tree and grant access only to the assignment and handoff generation being processed.
+The script rejects an existing account with another purpose and a drifted same-name firewall rule. After manual
+review, use `-AdoptExistingAccount` or `-ReplaceDriftedFirewallRule` explicitly; use `-RotatePassword` only for a
+deliberate credential rotation. Audit without mutation is available with `-Mode Audit` and a fresh output path.
+
+Log on locally once as `collabio-word-runner` to initialize its profile. Do not sign the account into Office,
+OneDrive, Entra ID or a Microsoft account. If Word requires user-bound cloud activation, stop: that host is not an
+eligible isolated runner until approved device-based licensing is available. Remote interactive use remains outside
+this procedure.
 
 ## 1. Host Preflight
 
