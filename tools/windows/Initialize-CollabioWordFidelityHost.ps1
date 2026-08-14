@@ -19,7 +19,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ZeroHash = "sha256:" + ("0" * 64)
-$PurposeDescription = "Collabio synthetic Word fidelity interactive runner"
+$PurposeDescription = "Collabio Word fidelity interactive runner"
 $FirewallRuleName = "Collabio Word fidelity outbound deny"
 $UsersSid = [Security.Principal.SecurityIdentifier]::new("S-1-5-32-545")
 $AdministratorsSid = [Security.Principal.SecurityIdentifier]::new("S-1-5-32-544")

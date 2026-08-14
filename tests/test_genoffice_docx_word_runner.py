@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -403,8 +404,11 @@ def test_word_runner_and_collector_are_interactive_isolated_and_key_free() -> No
 
 def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:
     script = BOOTSTRAP_SCRIPT_PATH.read_text(encoding="utf-8")
+    purpose = re.search(r'^\$PurposeDescription = "([^"]+)"$', script, flags=re.MULTILINE)
 
     assert '[ValidateSet("Audit", "Apply")]' in script
+    assert purpose is not None
+    assert len(purpose.group(1)) <= 48
     assert 'Read-Host "Enter the dedicated local runner password" -AsSecureString' in script
     assert 'Read-Host "Confirm the dedicated local runner password" -AsSecureString' in script
     assert "SecureStringToBSTR" in script
