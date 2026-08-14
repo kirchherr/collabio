@@ -41,6 +41,7 @@ from suite.operations.genoffice_docx_word_runner import (
 REQUESTED_AT = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
 SCRIPT_PATH = Path("tools/windows/Invoke-CollabioWordFidelity.ps1")
 BOOTSTRAP_SCRIPT_PATH = Path("tools/windows/Initialize-CollabioWordFidelityHost.ps1")
+DECOMMISSION_SCRIPT_PATH = Path("tools/windows/Remove-CollabioWordFidelityHost.ps1")
 FONTS = ("Aptos", "Liberation Sans", "Times New Roman")
 
 
@@ -448,3 +449,27 @@ def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:
     assert "private_key_included = $false" in script
     assert "Register-ScheduledTask" not in script
     assert "Start-Process" not in script
+
+
+def test_word_host_decommission_is_explicit_sid_bound_and_fail_closed() -> None:
+    script = DECOMMISSION_SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert '[ValidateSet("Audit", "Apply")]' in script
+    assert "[string]$ExpectedRunnerSid" in script
+    assert '$ExpectedWorkspaceRoot = "C:\\ProgramData\\Collabio\\WordFidelity"' in script
+    assert '$ExpectedSigningCustodyPath = "C:\\Users\\tkirchherr\\.collabio\\signing"' in script
+    assert 'throw "Apply mode requires an elevated Windows PowerShell session."' in script
+    assert 'throw "Runner sessions exist; use -LogoffRunnerSession after review."' in script
+    assert 'throw "A runner profile exists; use -RemoveRunnerProfile after review."' in script
+    assert "Assert-ExactLocalPath -Path $workspaceFull" in script
+    assert "ReparsePoint" in script
+    assert "PurgeAccessRules($RunnerSid)" in script
+    assert "Remove-NetFirewallRule -Confirm:$false" in script
+    assert "Remove-Item -LiteralPath $verifiedWorkspace -Recurse -Force" in script
+    assert "Remove-CimInstance -Confirm:$false" in script
+    assert "Remove-LocalUser -Name $RunnerAccount -Confirm:$false" in script
+    assert "[IO.FileMode]::CreateNew" in script
+    assert 'schema_version = "genoffice_docx_word_host_decommission_report.v1"' in script
+    assert "signing_custody_contents_accessed = $false" in script
+    assert "tenant_content_included = $false" in script
+    assert "private_key_included = $false" in script

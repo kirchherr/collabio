@@ -1169,6 +1169,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "engine_key_separation_does_not_claim_human_separation" in office_source_admission["guardrails"]
     assert "app/suite/operations/genoffice_docx_word_runner.py" in office_source_admission["evidence_refs"]
     assert "tools/windows/Initialize-CollabioWordFidelityHost.ps1" in office_source_admission["evidence_refs"]
+    assert "tools/windows/Remove-CollabioWordFidelityHost.ps1" in office_source_admission["evidence_refs"]
     assert "tools/windows/Invoke-CollabioWordFidelity.ps1" in office_source_admission["evidence_refs"]
     assert "docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md" in office_source_admission["evidence_refs"]
     assert (

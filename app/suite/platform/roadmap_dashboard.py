@@ -905,6 +905,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/genoffice_docx_word_runner.py",
                         "tests/test_genoffice_docx_word_runner.py",
                         "tools/windows/Initialize-CollabioWordFidelityHost.ps1",
+                        "tools/windows/Remove-CollabioWordFidelityHost.ps1",
                         "tools/windows/Invoke-CollabioWordFidelity.ps1",
                         "docs/operations/GENOFFICE_DOCX_WORD_RUNNER.md",
                         "docs/operations/genoffice-docx-word-host-readiness-report.schema.json",

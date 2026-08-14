@@ -45,6 +45,27 @@ OneDrive, Entra ID or a Microsoft account. If Word requires user-bound cloud act
 eligible isolated runner until approved device-based licensing is available. Remote interactive use remains outside
 this procedure.
 
+## Decommission
+
+Retire a fidelity VM or remove an accidental workstation bootstrap with the reviewed teardown script. Run `Audit`
+first and bind the operation to the SID reported by `Get-LocalUser collabio-word-runner`. `Apply` refuses a drifted
+account, firewall rule, signing ACL, workspace path or profile path; it also refuses a running Word process. The two
+switches are deliberate confirmation that a reviewed runner session may be logged off and its dedicated profile may
+be removed. The script removes only the runner SID's explicit deny rule and never enumerates signing-custody content.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tools\windows\Remove-CollabioWordFidelityHost.ps1 `
+  -Mode Apply `
+  -ExpectedRunnerSid "S-1-5-21-..." `
+  -LogoffRunnerSession `
+  -RemoveRunnerProfile `
+  -OutputPath .\word-host-decommission-report.json
+```
+
+Preserve the write-once report outside the removed workspace. Success requires `decommissioned=true` and zero
+remaining account, session, profile, firewall, signing-ACL and workspace counts.
+
 ## 1. Host Preflight
 
 Log on locally as `collabio-word-runner`. Confirm Word is closed. Run from a PowerShell console in that visible session:
