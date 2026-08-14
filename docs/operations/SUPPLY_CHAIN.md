@@ -49,6 +49,13 @@ graph. CI runs the same three generators and rejects any lock drift with **git d
 
 ## Pull Request And Main Gate
 
+The importable repository ruleset is `.github/rulesets/main.json`. It targets the default branch, has no bypass
+actors, requires an up-to-date pull request with resolved review threads and linear history, blocks force pushes and
+deletion, and binds both required checks (`quality` and `supply-chain`) to GitHub Actions application ID `15368`.
+Because the user-owned repository currently has only one human administrator, the policy requires zero approving
+reviews; this avoids a self-lockout without permitting direct pushes. Raise the review count only when a second
+independent maintainer can approve changes.
+
 The `supply-chain` job in `.github/workflows/ci.yml` runs after the Docker Compose quality gate:
 
 1. Build the `runtime` Docker target.

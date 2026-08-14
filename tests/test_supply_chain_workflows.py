@@ -13,6 +13,7 @@ DOCKERFILE_PATH = REPO_ROOT / "Dockerfile"
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
 LOCK_SCRIPT_PATH = REPO_ROOT / "docker" / "regenerate-dependency-locks.sh"
 DEPENDABOT_PATH = REPO_ROOT / ".github" / "dependabot.yml"
+MAIN_BRANCH_RULESET_PATH = REPO_ROOT / ".github" / "rulesets" / "main.json"
 VEX_PATH = REPO_ROOT / "security" / "vex" / "collabio.openvex.json"
 VEX_REGISTER_PATH = REPO_ROOT / "security" / "vex" / "decision-register.json"
 REQUIREMENTS_PATH = REPO_ROOT / "requirements.txt"
@@ -147,6 +148,32 @@ def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
     assert workflow.count("TRIVY_SHOW_SUPPRESSED:") == 2
     assert workflow.count("skip-files:") == 4
     assert workflow.count("version: v0.73.0") == 5
+
+
+def test_default_branch_ruleset_requires_pr_and_both_github_actions_checks() -> None:
+    ruleset = json.loads(MAIN_BRANCH_RULESET_PATH.read_text(encoding="utf-8"))
+    rules = {rule["type"]: rule for rule in ruleset["rules"]}
+
+    assert ruleset["target"] == "branch"
+    assert ruleset["enforcement"] == "active"
+    assert ruleset["bypass_actors"] == []
+    assert ruleset["conditions"] == {
+        "ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}
+    }
+    assert {"deletion", "non_fast_forward", "required_linear_history"} <= rules.keys()
+
+    pull_request = rules["pull_request"]["parameters"]
+    assert pull_request["allowed_merge_methods"] == ["squash", "rebase"]
+    assert pull_request["required_approving_review_count"] == 0
+    assert pull_request["required_review_thread_resolution"] is True
+    assert pull_request["require_last_push_approval"] is False
+
+    status_checks = rules["required_status_checks"]["parameters"]
+    assert status_checks["strict_required_status_checks_policy"] is True
+    assert status_checks["required_status_checks"] == [
+        {"context": "quality", "integration_id": 15368},
+        {"context": "supply-chain", "integration_id": 15368},
+    ]
 
 
 def test_release_tags_require_quality_scans_sboms_and_attestations_for_both_images() -> None:
