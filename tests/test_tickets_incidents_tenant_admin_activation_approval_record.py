@@ -1,9 +1,11 @@
+import os
 from datetime import UTC, datetime
 
 import pytest
 
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migration_catalog import load_migration_manifest
+from suite.persistence.migrator import apply_migrations
 from suite.platform.modules import default_module_registry
 from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
     build_tickets_incidents_tenant_admin_activation_approval_gate_response,
@@ -14,7 +16,9 @@ from suite.platform.tickets_incidents_tenant_admin_activation_approval_record im
     TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_RESULT_CONTRACT,
     TICKETS_INCIDENTS_TENANT_ADMIN_ACTIVATION_APPROVAL_RECORD_SCHEMA_VERSION,
     InMemoryTicketsIncidentsTenantAdminActivationApprovalRecordStore,
+    PgTicketsIncidentsTenantAdminActivationApprovalRecordStore,
     TicketsIncidentsTenantAdminActivationApprovalRecordCommand,
+    build_default_tickets_incidents_tenant_admin_activation_approval_record_store,
     build_tickets_incidents_tenant_admin_activation_approval_record_hash,
     build_tickets_incidents_tenant_admin_activation_approval_record_response,
 )
@@ -114,6 +118,26 @@ def test_tickets_incidents_approval_record_store_is_idempotent_without_activatio
     assert module_registry.get_tenant_module_or_none(tenant_id="tenant-demo", module_id="tickets_incidents") is None
 
 
+def test_tickets_incidents_tenant_approval_store_backend_selection_is_explicit() -> None:
+    assert isinstance(
+        build_default_tickets_incidents_tenant_admin_activation_approval_record_store({}),
+        InMemoryTicketsIncidentsTenantAdminActivationApprovalRecordStore,
+    )
+    assert isinstance(
+        build_default_tickets_incidents_tenant_admin_activation_approval_record_store(
+            {
+                "SUITE_TICKETS_TENANT_APPROVAL_RECORD_BACKEND": "postgres",
+                "SUITE_DATABASE_DSN": "postgresql://app:secret@postgres/collabio",
+            }
+        ),
+        PgTicketsIncidentsTenantAdminActivationApprovalRecordStore,
+    )
+    with pytest.raises(ValueError, match="requires"):
+        build_default_tickets_incidents_tenant_admin_activation_approval_record_store(
+            {"SUITE_TICKETS_TENANT_APPROVAL_RECORD_BACKEND": "postgres"}
+        )
+
+
 def test_tickets_incidents_approval_record_blocks_non_tenant_admin_without_persistence() -> None:
     module_registry = default_module_registry()
     user_context = UserContext(tenant_id="tenant-demo", user_id="reader-1", role_ids={"knowledge-worker"})
@@ -135,3 +159,47 @@ def test_tickets_incidents_approval_record_blocks_non_tenant_admin_without_persi
     assert "tenant_admin_role_required" in response.blocking_reasons
     with pytest.raises(ValueError, match="blocked"):
         InMemoryTicketsIncidentsTenantAdminActivationApprovalRecordStore().append(response)
+
+
+def test_tickets_incidents_tenant_approval_record_is_persistent_and_tenant_scoped() -> None:
+    migration_dsn = os.environ.get("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = os.environ.get("SUITE_DATABASE_DSN")
+    if not migration_dsn or not app_dsn:
+        pytest.skip("PostgreSQL test DSNs are not configured")
+    apply_migrations(migration_dsn)
+
+    module_registry = default_module_registry()
+    user_context = UserContext(
+        tenant_id="tenant-tickets-approval-persistence",
+        user_id="tenant-admin-1",
+        role_ids={"tenant-admin"},
+    )
+    approval_gate = build_tickets_incidents_tenant_admin_activation_approval_gate_response(
+        user_context=user_context,
+        module_registry=module_registry,
+        migration_manifest_entries=load_migration_manifest(),
+    )
+    record = build_tickets_incidents_tenant_admin_activation_approval_record_response(
+        command=_approval_command(approval_gate.evidence_hash),
+        user_context=user_context,
+        module_registry=module_registry,
+        migration_manifest_entries=load_migration_manifest(),
+    )
+    store = PgTicketsIncidentsTenantAdminActivationApprovalRecordStore(database_dsn=app_dsn)
+
+    assert store.append(record) == record
+    assert store.append(record) == record
+    assert (
+        store.latest_for_gate(
+            tenant_id=user_context.tenant_id,
+            approval_gate_evidence_hash=approval_gate.evidence_hash,
+        )
+        == record
+    )
+    assert (
+        store.latest_for_gate(
+            tenant_id="tenant-other",
+            approval_gate_evidence_hash=approval_gate.evidence_hash,
+        )
+        is None
+    )

@@ -66,7 +66,7 @@ Code-ready productive API:
 - `GET /v1/tickets/{ticket_id}/events`
 - `POST /v1/tickets/{ticket_id}/transitions`
 
-The global catalog remains `not_installed`; these routes therefore return the module gate response in the standard environment. A controlled pilot must install the package, apply migrations `0051` through `0054`, provision and enable the tenant module, and explicitly enable the read/write features. Ticket creation atomically appends a `created` event. Status transitions use an allowed transition matrix plus `expected_status`, atomically update the ticket and append an immutable event, and reject archival under active Legal Hold. Non-operator users can only read tickets they own; ticket operators can read tenant tickets, while writes require an operator role.
+The global catalog remains `not_installed`; these routes therefore return the module gate response in the standard environment. A controlled pilot must install the package, apply module migrations `0051` through `0054` plus `0074`, provision and enable the tenant module, and explicitly enable the read/write features. Ticket creation atomically appends a `created` event. Status transitions use an allowed transition matrix plus `expected_status`, atomically update the ticket and append an immutable event, and reject archival under active Legal Hold. Non-operator users can only read tickets they own; ticket operators can read tenant tickets, while writes require an operator role.
 
 Discovery and readiness start with `GET /v1/platform/modules/families/tickets-incidents/catalog-readiness`; the activation control chain remains available under `/v1/platform/modules/families/tickets-incidents/*`. Its final explicit approval endpoint is `POST /v1/platform/modules/families/tickets-incidents/activation-dry-run-execution-approval-records`. The endpoint stores hash/reference metadata only, requires an exact human confirmation statement and tenant-admin role, is tenant scoped and append-only, and does not itself execute a dry-run, install a package, provision tenant state, dispatch a worker, or activate the business API.
 
@@ -118,6 +118,7 @@ Required evidence:
 - module state and feature-flag restore check
 - `tickets.ticket_items` row-count and tenant-isolation check
 - `tickets.ticket_events` row-count, ordering, immutability, and ticket foreign-key check
+- `tickets.tenant_admin_activation_approval_records` row-count, uniqueness, RLS, and append-only check
 - `tickets.activation_dry_run_execution_approval_records` row-count, uniqueness, RLS, and append-only check
 - `tickets.controlled_pilot_receipts` admission/authorization/completion chain, RLS, uniqueness, and append-only check
 - SLA, lifecycle, retention, Legal Hold, KMS, and audit-reference restore checks
@@ -132,6 +133,7 @@ A restored tenant must keep business routes closed until module and feature stat
 - `0052_tickets_incidents_metadata_schema.sql` creates tenant-scoped ticket and immutable event metadata tables with RLS, no-hard-delete policies, retention, Legal Hold, KMS, audit, and SLA columns.
 - `0053_tickets_incidents_dry_run_execution_approval_records.sql` adds the tenant-scoped append-only explicit approval record table.
 - `0054_tickets_incidents_controlled_pilot.sql` adds append-only admission/authorization/completion receipts, a tightly scoped approval-bound catalog installation function, and advances the module migration manifest to `0051`/`0052`/`0053`/`0054`.
+- `0074_tickets_incidents_tenant_activation_approval_records.sql` persists the first exact human readiness approval as tenant-scoped append-only hash/reference metadata and advances the module migration manifest to `0051`/`0052`/`0053`/`0054`/`0074`.
 
 The productive service has in-memory and PostgreSQL repository adapters. PostgreSQL writes set tenant context inside each transaction; ticket creation and transitions couple ticket/event persistence atomically. No body, comment, attachment, prompt, output, transcript, audio, password, or raw human confirmation statement is stored in these tables.
 

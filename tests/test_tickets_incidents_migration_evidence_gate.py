@@ -44,15 +44,15 @@ def test_tickets_incidents_migration_evidence_gate_is_metadata_only_before_stora
     assert response.external_side_effect_allowed is False
     assert response.planned_schema_name == "tickets"
     assert response.planned_object_types == ("ticket.ticket", "ticket.event")
-    assert response.existing_tickets_migration_versions == ("0051", "0052", "0053", "0054")
-    assert response.existing_tickets_storage_migration_versions == ("0052", "0053", "0054")
+    assert response.existing_tickets_migration_versions == ("0051", "0052", "0053", "0054", "0074")
+    assert response.existing_tickets_storage_migration_versions == ("0052", "0053", "0054", "0074")
     assert response.feature_manifest_hash.startswith("sha256:")
     assert response.object_rule_manifest_hash.startswith("sha256:")
     assert "backup_restore_ticket_incident_records_update" in response.required_storage_migration_evidence
     assert "no_tenant_state_creation_confirmed" in response.required_storage_migration_evidence
     assert "no_business_api_or_worker_activation_confirmed" in response.required_storage_migration_evidence
-    assert response.summary.tickets_manifest_migration_count == 4
-    assert response.summary.tickets_storage_migration_count == 3
+    assert response.summary.tickets_manifest_migration_count == 5
+    assert response.summary.tickets_storage_migration_count == 4
     assert response.summary.planned_object_type_count == 2
     assert response.summary.required_storage_evidence_count == len(response.required_storage_migration_evidence)
     assert response.summary.blocking_reason_count == 0

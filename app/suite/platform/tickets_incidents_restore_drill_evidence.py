@@ -31,6 +31,7 @@ TICKETS_INCIDENTS_RESTORE_DRILL_EVIDENCE_ENDPOINT = (
 TICKETS_INCIDENTS_CATALOG_REGISTRATION_MIGRATION_VERSION = "0051"
 TICKETS_INCIDENTS_APPROVAL_RECORD_MIGRATION_VERSION = "0053"
 TICKETS_INCIDENTS_CONTROLLED_PILOT_MIGRATION_VERSION = "0054"
+TICKETS_INCIDENTS_TENANT_APPROVAL_RECORD_MIGRATION_VERSION = "0074"
 TICKETS_INCIDENTS_RESTORE_DRILL_NEXT_ACTION = (
     "prepare_tickets_incidents_tenant_admin_activation_approval_gate_without_runtime_activation"
 )
@@ -66,8 +67,10 @@ class TicketsIncidentsRestoreDrillEvidenceResponse(BaseModel):
     metadata_schema_migration_present: bool
     approval_record_migration_present: bool
     controlled_pilot_migration_present: bool
+    tenant_approval_record_migration_present: bool
     approval_record_restore_verified: bool
     controlled_pilot_receipt_restore_verified: bool
+    tenant_approval_record_restore_verified: bool
     table_restore_verified: bool
     rls_restore_verified: bool
     tenant_isolation_restore_verified: bool
@@ -165,8 +168,10 @@ class TicketsIncidentsRestoreDrillEvidenceResponse(BaseModel):
             and self.metadata_schema_migration_present
             and self.approval_record_migration_present
             and self.controlled_pilot_migration_present
+            and self.tenant_approval_record_migration_present
             and self.approval_record_restore_verified
             and self.controlled_pilot_receipt_restore_verified
+            and self.tenant_approval_record_restore_verified
             and self.table_restore_verified
             and self.rls_restore_verified
             and self.tenant_isolation_restore_verified
@@ -238,16 +243,22 @@ def build_tickets_incidents_restore_drill_evidence_response(
     controlled_pilot_migration_present = (
         TICKETS_INCIDENTS_CONTROLLED_PILOT_MIGRATION_VERSION in tickets_migration_versions
     )
+    tenant_approval_record_migration_present = (
+        TICKETS_INCIDENTS_TENANT_APPROVAL_RECORD_MIGRATION_VERSION in tickets_migration_versions
+    )
     approval_record_restore_verified = _approval_record_sql_restore_verified()
     controlled_pilot_receipt_restore_verified = _controlled_pilot_sql_restore_verified()
+    tenant_approval_record_restore_verified = _tenant_approval_record_sql_restore_verified()
     migration_plan_ready = (
         catalog_migration_present
         and metadata_schema_migration_present
         and approval_record_migration_present
         and controlled_pilot_migration_present
+        and tenant_approval_record_migration_present
         and storage_evidence.storage_migration_evidence_ready
         and approval_record_restore_verified
         and controlled_pilot_receipt_restore_verified
+        and tenant_approval_record_restore_verified
     )
     blocking_reasons = _blocking_reasons(
         catalog_status=catalog_status,
@@ -257,12 +268,14 @@ def build_tickets_incidents_restore_drill_evidence_response(
         sql_checks=sql_checks,
         approval_record_restore_verified=approval_record_restore_verified,
         controlled_pilot_receipt_restore_verified=controlled_pilot_receipt_restore_verified,
+        tenant_approval_record_restore_verified=tenant_approval_record_restore_verified,
     )
     restored_tables = (
         "tickets.ticket_items",
         "tickets.ticket_events",
         "tickets.activation_dry_run_execution_approval_records",
         "tickets.controlled_pilot_receipts",
+        "tickets.tenant_admin_activation_approval_records",
     )
     restored_object_types = TICKETS_INCIDENTS_OBJECT_TYPES
     required_restore_evidence = (
@@ -270,6 +283,8 @@ def build_tickets_incidents_restore_drill_evidence_response(
         "tickets_incidents_metadata_schema_migration_0052",
         "tickets_incidents_approval_record_migration_0053",
         "tickets_incidents_controlled_pilot_migration_0054",
+        "tickets_incidents_tenant_approval_record_migration_0074",
+        "tickets_tenant_activation_approval_record_append_only_restore_check",
         "tickets_activation_approval_record_append_only_restore_check",
         "tickets_controlled_pilot_receipt_append_only_restore_check",
         "tickets_controlled_pilot_scoped_catalog_install_function_restore_check",
@@ -296,8 +311,10 @@ def build_tickets_incidents_restore_drill_evidence_response(
         metadata_schema_migration_present=metadata_schema_migration_present,
         approval_record_migration_present=approval_record_migration_present,
         controlled_pilot_migration_present=controlled_pilot_migration_present,
+        tenant_approval_record_migration_present=tenant_approval_record_migration_present,
         approval_record_restore_verified=approval_record_restore_verified,
         controlled_pilot_receipt_restore_verified=controlled_pilot_receipt_restore_verified,
+        tenant_approval_record_restore_verified=tenant_approval_record_restore_verified,
         table_restore_verified=sql_checks.table_restore_verified,
         rls_restore_verified=sql_checks.rls_restore_verified,
         tenant_isolation_restore_verified=sql_checks.tenant_isolation_restore_verified,
@@ -332,6 +349,7 @@ def build_tickets_incidents_restore_drill_evidence_response(
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
             "app/suite/persistence/migrations/0054_tickets_incidents_controlled_pilot.sql",
+            "app/suite/persistence/migrations/0074_tickets_incidents_tenant_activation_approval_records.sql",
             "tests/test_tickets_incidents_restore_drill_evidence.py",
             "tests/test_tickets_incidents_controlled_pilot.py",
             "tests/test_tickets_incidents_activation_dry_run_execution_approval_record.py",
@@ -506,6 +524,37 @@ def _controlled_pilot_sql_restore_verified() -> bool:
     )
 
 
+def _tenant_approval_record_sql_restore_verified() -> bool:
+    try:
+        sql = " ".join(
+            get_migration(TICKETS_INCIDENTS_TENANT_APPROVAL_RECORD_MIGRATION_VERSION).sql().lower().split()
+        )
+    except (FileNotFoundError, LookupError):
+        return False
+
+    required_markers = (
+        "create table if not exists tickets.tenant_admin_activation_approval_records",
+        "alter table tickets.tenant_admin_activation_approval_records enable row level security",
+        "alter table tickets.tenant_admin_activation_approval_records force row level security",
+        "create policy tickets_tenant_activation_approval_records_tenant_select",
+        "create policy tickets_tenant_activation_approval_records_tenant_insert",
+        "create policy tickets_tenant_activation_approval_records_no_update",
+        "create policy tickets_tenant_activation_approval_records_no_hard_delete",
+        "tenant_id = collabio.current_tenant_id()",
+        "using (false)",
+        'required_migration_versions = \'["0051", "0052", "0053", "0054", "0074"]\'::jsonb',
+    )
+    forbidden_payloads = (
+        "human_confirmation_statement text",
+        "ticket_content text",
+        "raw_payload text",
+        "password text",
+    )
+    return all(marker in sql for marker in required_markers) and not any(
+        payload in sql for payload in forbidden_payloads
+    )
+
+
 def _catalog_status(*, module_registry: InMemoryModuleRegistry | PgModuleRegistry) -> str | None:
     try:
         return module_registry.get_catalog_entry(TICKETS_INCIDENTS_MODULE_ID).status.value
@@ -542,6 +591,7 @@ def _blocking_reasons(
     sql_checks: _MetadataSchemaSqlChecks,
     approval_record_restore_verified: bool,
     controlled_pilot_receipt_restore_verified: bool,
+    tenant_approval_record_restore_verified: bool,
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     if catalog_status is None:
@@ -558,6 +608,8 @@ def _blocking_reasons(
         reasons.append("tickets_incidents_activation_approval_record_restore_unverified")
     if not controlled_pilot_receipt_restore_verified:
         reasons.append("tickets_incidents_controlled_pilot_receipt_restore_unverified")
+    if not tenant_approval_record_restore_verified:
+        reasons.append("tickets_incidents_tenant_approval_record_restore_unverified")
     if not sql_checks.table_restore_verified:
         reasons.append("tickets_incidents_ticket_event_table_restore_unverified")
     if not sql_checks.rls_restore_verified or not sql_checks.tenant_isolation_restore_verified:

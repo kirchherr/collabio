@@ -110,6 +110,7 @@ Current sprint:
 100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
 101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
 102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
+103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
 
 ## Next Engineering Step
 

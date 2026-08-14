@@ -28,7 +28,7 @@ The possible stages are:
 
 ## Controlled Sequence
 
-1. Record the tenant activation-readiness approval returned by the status endpoint. This writes metadata only.
+1. Record the tenant activation-readiness approval returned by the status endpoint. This writes hash/reference metadata only to the tenant-scoped append-only PostgreSQL ledger and stores no raw confirmation statement.
 2. Read status again and use its `expected_execution_approval_boundary_hash` for the separate execution approval. The server rejects arbitrary boundary hashes.
 3. Read status again and admit the package. Verify the returned module state is `disabled`, every feature is off, and `/v1/tickets` remains closed.
 4. Read status again and separately approve enablement. Verify exactly `items.read`, `items.write`, `events.read`, and `events.write` are enabled.

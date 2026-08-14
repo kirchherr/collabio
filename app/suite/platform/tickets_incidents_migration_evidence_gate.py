@@ -243,6 +243,7 @@ def build_tickets_incidents_migration_evidence_gate_response(
             "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
             "app/suite/persistence/migrations/0053_tickets_incidents_dry_run_execution_approval_records.sql",
             "app/suite/persistence/migrations/0054_tickets_incidents_controlled_pilot.sql",
+            "app/suite/persistence/migrations/0074_tickets_incidents_tenant_activation_approval_records.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "tests/test_tickets_incidents_migration_evidence_gate.py",
         ),

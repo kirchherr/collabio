@@ -1708,7 +1708,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "remain separate gates."
             ),
             manifest_hash="sha256:tickets-incidents-module-manifest",
-            required_migration_versions=("0051", "0052", "0053", "0054"),
+            required_migration_versions=("0051", "0052", "0053", "0054", "0074"),
         ),
     )
 

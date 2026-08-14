@@ -934,7 +934,7 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     assert time_tracking_catalog.status == ModuleStatus.INSTALLED
     assert time_tracking_catalog.required_migration_versions == ("0060",)
     assert tickets_catalog.status == ModuleStatus.NOT_INSTALLED
-    assert tickets_catalog.required_migration_versions == ("0051", "0052", "0053", "0054")
+    assert tickets_catalog.required_migration_versions == ("0051", "0052", "0053", "0054", "0074")
     assert module_ids >= {"crm_erp", "knowledge_base"}
     assert "lms" not in module_ids
     assert "tasks_activities" not in module_ids

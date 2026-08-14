@@ -1783,7 +1783,7 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Tickets & Incidents
 
 - [x] Modulvertrag, Feature Registry, Objektregeln und Catalog-Discovery.
-- [x] Migrationen `0051` bis `0054` fuer Catalog, Ticket/Event-Metadaten, append-only Ausfuehrungsfreigaben und Pilot-Receipts.
+- [x] Migrationen `0051` bis `0054` plus `0074` fuer Catalog, Ticket/Event-Metadaten, persistente append-only Human-/Ausfuehrungsfreigaben und Pilot-Receipts.
 - [x] Tenant-sichere produktive API-Vertikale fuer Ticketanlage, autorisierte Reads, Statuswechsel und Ereigniskette.
 - [x] Atomare Ticket/Event-Writes, optimistische Statuspruefung, Audit, PostgreSQL-RLS-Adapter und Legal-Hold-Schutz.
 - [x] Expliziter Human-Approval-Record ohne Aktivierungs- oder Worker-Seiteneffekt.

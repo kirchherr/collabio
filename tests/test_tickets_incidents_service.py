@@ -206,3 +206,4 @@ def test_ticket_repository_backend_is_explicit_and_compose_uses_postgres() -> No
 
     compose = (Path(__file__).parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
     assert "SUITE_TICKETS_REPOSITORY_BACKEND: postgres" in compose
+    assert "SUITE_TICKETS_TENANT_APPROVAL_RECORD_BACKEND: postgres" in compose

@@ -671,6 +671,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:source-object-preview-conversion-recovery",
         ),
     ),
+    SqlMigration(
+        version="0074",
+        name="tickets_incidents_tenant_activation_approval_records",
+        resource_name="0074_tickets_incidents_tenant_activation_approval_records.sql",
+        module_id="tickets_incidents",
+        evidence_refs=(
+            "doc:tickets-incidents-controlled-pilot",
+            "test:tickets-incidents-tenant-approval-persistence",
+        ),
+    ),
 )
 
 
