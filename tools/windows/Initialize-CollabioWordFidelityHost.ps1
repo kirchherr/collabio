@@ -322,11 +322,21 @@ function Get-WorkspaceObservation {
         return [ordered]@{ exists = $false; verified = $false; acl_hash = $ZeroHash }
     }
     $operatorSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+        [Security.AccessControl.InheritanceFlags]::ObjectInherit
+    $propagation = [Security.AccessControl.PropagationFlags]::None
+    $normalizedModifyRights = [int64]([Security.AccessControl.FileSystemAccessRule]::new(
+        $RunnerSid,
+        [Security.AccessControl.FileSystemRights]::Modify,
+        $inheritance,
+        $propagation,
+        [Security.AccessControl.AccessControlType]::Allow
+    ).FileSystemRights)
     $expectedRights = @{
         $SystemSid.Value = [int64][Security.AccessControl.FileSystemRights]::FullControl
         $AdministratorsSid.Value = [int64][Security.AccessControl.FileSystemRights]::FullControl
-        $operatorSid = [int64][Security.AccessControl.FileSystemRights]::Modify
-        $RunnerSid.Value = [int64][Security.AccessControl.FileSystemRights]::Modify
+        $operatorSid = $normalizedModifyRights
+        $RunnerSid.Value = $normalizedModifyRights
     }
     $expectedSids = @($expectedRights.Keys)
     $records = [Collections.Generic.List[string]]::new()
@@ -345,8 +355,7 @@ function Get-WorkspaceObservation {
             $sid = [string]$rule.IdentityReference.Value
             if ($expectedSids -notcontains $sid -or
                 $rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or
-                $rule.InheritanceFlags -ne ([Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
-                    [Security.AccessControl.InheritanceFlags]::ObjectInherit) -or
+                $rule.InheritanceFlags -ne $inheritance -or
                 [int64]$rule.FileSystemRights -ne $expectedRights[$sid]) {
                 $verified = $false
             }

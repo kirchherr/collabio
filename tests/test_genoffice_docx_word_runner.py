@@ -425,6 +425,8 @@ def test_word_host_bootstrap_is_explicit_idempotent_and_secret_free() -> None:
     assert 'SecurityIdentifier]::new("S-1-5-32-545")' in script
     assert 'SecurityIdentifier]::new("S-1-5-32-544")' in script
     assert "SetAccessRuleProtection($true, $false)" in script
+    assert "$normalizedModifyRights" in script
+    assert ").FileSystemRights)" in script
     assert "PurgeAccessRules($RunnerSid)" in script
     assert "AccessControlType]::Deny" in script
     assert '$FirewallRuleName = "Collabio Word fidelity outbound deny"' in script
