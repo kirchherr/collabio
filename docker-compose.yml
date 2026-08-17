@@ -2869,7 +2869,6 @@ services:
       context: .
       dockerfile: docker/genoffice-worker/Dockerfile
       network: none
-      provenance: false
       args:
         SOURCE_DATE_EPOCH: "${SUITE_GENOFFICE_SOURCE_DATE_EPOCH:-0}"
         GENOFFICE_CONTEXT_SHA256: "${SUITE_GENOFFICE_CONTEXT_SHA256:-}"

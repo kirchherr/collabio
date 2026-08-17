@@ -45,6 +45,7 @@ Build two independent tags with `--no-cache --pull=false`, identical context/rep
 `SOURCE_DATE_EPOCH=0` and `BUILDX_NO_DEFAULT_ATTESTATIONS=1`:
 
 ```bash
+BUILDX_NO_DEFAULT_ATTESTATIONS=1 \
 docker compose -p collabio --profile office-worker-build build \
   --no-cache --pull=false genoffice-docx-worker-candidate
 ```

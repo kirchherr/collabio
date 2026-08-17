@@ -509,6 +509,9 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     module = Path("app/suite/operations/genoffice_worker_image_admission.py").read_text(encoding="utf-8")
     dockerfile = Path("docker/genoffice-worker/Dockerfile").read_text(encoding="utf-8")
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+    runbook = Path("docs/operations/GENOFFICE_WORKER_IMAGE_ADMISSION.md").read_text(
+        encoding="utf-8"
+    )
     entrypoint = Path("docker/genoffice-worker/worker-entrypoint.mjs").read_text(encoding="utf-8")
 
     for forbidden in ("subprocess", "socket", "httpx", "requests", "urllib", "cryptography"):
@@ -529,7 +532,8 @@ def test_worker_module_does_not_ingest_private_keys_or_open_runtime_boundary() -
     assert "/usr/local/bin/yarnpkg" in dockerfile
     assert '"@${SOURCE_DATE_EPOCH}" /opt /usr/local/lib/node_modules' in dockerfile
     assert "USER 10003:10003" in dockerfile
-    assert "provenance: false" in compose
+    assert "provenance: false" not in compose
+    assert "BUILDX_NO_DEFAULT_ATTESTATIONS=1" in runbook
     assert "genoffice-worker-image-raw-sbom:" in compose
     assert "/tmp/trivy-cache" in compose
     assert "genoffice-worker-image-vulnerability-scan:" in compose
