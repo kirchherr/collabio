@@ -5,10 +5,10 @@ import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 import psycopg
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import verify_audit_chain
 from suite.ai_control_plane.models import AuditEvent
@@ -25,6 +25,8 @@ class AuditWormSnapshotError(RuntimeError):
 
 
 class AuditSnapshotEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
     event_id: str
     schema_version: str
     sequence_number: int = Field(ge=1)
@@ -52,7 +54,9 @@ class AuditSnapshotEvent(BaseModel):
 
 
 class AuditWormSnapshotManifest(BaseModel):
-    schema_version: str = "audit_worm_snapshot_manifest.v2"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    schema_version: Literal["audit_worm_snapshot_manifest.v2"] = "audit_worm_snapshot_manifest.v2"
     tenant_id: str
     checkpoint_id: str
     from_sequence_number: int = Field(default=1, ge=1)
@@ -106,7 +110,9 @@ class AuditWormSnapshotManifest(BaseModel):
 
 
 class AuditWormSnapshotBundle(BaseModel):
-    schema_version: str = "audit_worm_snapshot_bundle.v2"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    schema_version: Literal["audit_worm_snapshot_bundle.v2"] = "audit_worm_snapshot_bundle.v2"
     manifest: AuditWormSnapshotManifest
     manifest_hash: str
     signature: AuditCheckpointSignature
@@ -120,6 +126,8 @@ class AuditWormSnapshotBundle(BaseModel):
             raise ValueError("signature tenant does not match manifest tenant")
         if self.signature.signed_digest != self.manifest_hash:
             raise ValueError("signature digest does not match manifest hash")
+        if self.signature.signed_at_utc != self.manifest.generated_at_utc:
+            raise ValueError("signature timestamp does not match manifest generation timestamp")
         event_payload = [event.model_dump(mode="json") for event in self.events]
         if _sha256_ref(_canonical_bytes(event_payload)) != self.manifest.events_hash:
             raise ValueError("events_hash does not match snapshot events")
@@ -135,7 +143,9 @@ class AuditWormSnapshotBundle(BaseModel):
 
 
 class AuditWormSnapshotResult(BaseModel):
-    schema_version: str = "audit_worm_snapshot_result.v2"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    schema_version: Literal["audit_worm_snapshot_result.v2"] = "audit_worm_snapshot_result.v2"
     tenant_id: str
     checkpoint_id: str
     export_id: str

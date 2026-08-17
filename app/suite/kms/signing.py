@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from hashlib import sha256
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.kms.adapter import KmsPolicyViolation
 
@@ -57,7 +57,9 @@ class AuditSignatureError(RuntimeError):
 
 
 class AuditCheckpointSignature(BaseModel):
-    schema_version: str = "audit_checkpoint_signature.v2"
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    schema_version: Literal["audit_checkpoint_signature.v2"] = "audit_checkpoint_signature.v2"
     tenant_id: str
     signed_digest: str
     signing_algorithm: AuditSigningAlgorithm

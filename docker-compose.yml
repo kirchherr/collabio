@@ -199,6 +199,23 @@ services:
       - no-new-privileges:true
     restart: "no"
 
+  audit-worm-verify:
+    profiles: ["audit-worm-verify"]
+    build:
+      context: .
+      target: runtime
+    entrypoint: ["python", "-m", "suite.operations.audit_worm_verify"]
+    command: ["--help"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
 
   object-storage-profile-check:
     build:

@@ -121,7 +121,7 @@ Noch nicht umgesetzt:
 - [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
 - [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
-  Providerneutraler v2-Control-Plane-Pfad, Migration, One-shot-Worker, KMS-Sign/Verify, exakter Object-Version-Readback und append-only Receipts sind umgesetzt; realer Provider-, Delete-Denial- und Restore-Nachweis bleibt offen.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, One-shot-Worker, KMS-Sign/Verify, exakter Object-Version-Readback, append-only Receipts und offline Audit-Verifikation gegen separat gepinnte Tenant-Trust-Policies sind umgesetzt; realer Provider-, Delete-Denial- und Restore-Nachweis bleibt offen.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -529,7 +529,7 @@ Aufgaben:
 - [ ] Role- und Datenklassen-spezifische Modellfreigaben administrierbar machen.
 - [x] Append-only Audit Event Schema implementieren.
 - [x] Audit Hash Chain implementieren.
-- [ ] Audit Verification Command implementieren.
+- [x] Audit Verification Command mit exaktem Bundle-Hash, separat gepinnter Tenant-Trust-Policy, vollstaendiger Chain-Pruefung und providerfreier ECDSA/RSA-PSS-Verifikation implementieren.
 - [x] Persistente Audit Storage Abstraktion implementieren.
 - [x] PostgreSQL Audit Store mit isolierter Runtime-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence implementieren.
 - [ ] PostgreSQL-Backed Stores mit Migrationen implementieren.

@@ -17,6 +17,8 @@ Collabio adds a v2 path without rewriting v1 history:
 - Supported initial algorithms are ECDSA/SHA-256 and RSA-PSS/SHA-256. KMS must immediately verify its generated signature.
 - The signed bundle is written as an exact S3 object version with explicit Compliance retention and SSE-KMS.
 - The bundle archives the public DER key and its hash so signature verification does not depend on future private-key availability.
+- The archived key is verification material, not self-authenticating trust. Offline verification requires a tenant trust policy whose canonical hash is pinned in a separate change-controlled record. It binds logical key version, provider identity, public-key hash, allowed algorithm and signing-time validity.
+- A default-off, networkless and read-only Compose command verifies exact bundle bytes, the complete tenant chain and ECDSA/SHA-256 or RSA-PSS/SHA-256 signatures locally. It emits metadata-only success or fixed failure output.
 - The worker reads that exact version back and checks content hash, metadata, retention, Legal Hold and encryption before persistence.
 - PostgreSQL records separate append-only checkpoint and object-version receipts under forced tenant RLS and owner-level mutation triggers.
 - A deterministic checkpoint identity makes a completed chain prefix idempotent. Storage objects left by a later database failure are retained for reconciliation.
