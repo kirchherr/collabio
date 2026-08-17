@@ -95,7 +95,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "restore audit tables and WORM snapshots; verify hash chain before declaring service recovered",
-      "state_artifacts": ["audit events", "audit hashes", "audit checkpoints", "audit WORM export evidence", "vector worker audit events", "embedding model approval audit events", "preview renderer worker audit events", "preview content release audit events", "verification checkpoints", "WORM audit snapshots"]
+      "state_artifacts": ["audit events", "audit hashes", "legacy HMAC audit checkpoints", "legacy audit WORM export evidence", "asymmetric KMS audit checkpoint signatures", "audit snapshot manifest hashes", "exact-version audit WORM snapshot receipts", "audit WORM object version IDs", "audit WORM Object Lock retention evidence", "audit WORM SSE-KMS evidence", "vector worker audit events", "embedding model approval audit events", "preview renderer worker audit events", "preview content release audit events", "verification checkpoints", "WORM audit snapshots"]
     },
     {
       "domain_id": "object_storage_records",
@@ -103,7 +103,7 @@
       "primary_target_id": "object_storage_records",
       "criticality": "critical",
       "recovery_strategy": "restore or switch to replicated versioned object store; verify object manifests, retention, and legal hold",
-      "state_artifacts": ["source object manifests", "derived preview PDF source objects", "derived preview source-to-output lineage", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "storage object manifests", "envelope encryption manifests", "envelope rewrap manifests", "cryptoshred simulation manifests", "restore drill reports", "object manifests", "content hashes", "content hash verification evidence", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
+      "state_artifacts": ["source object manifests", "derived preview PDF source objects", "derived preview source-to-output lineage", "retention manifests", "retention policy snapshots", "legal hold decision evidence", "storage object manifests", "signed audit WORM snapshot bundles", "audit WORM snapshot exact object versions", "envelope encryption manifests", "envelope rewrap manifests", "cryptoshred simulation manifests", "restore drill reports", "object manifests", "content hashes", "content hash verification evidence", "bucket profile policy", "object lock configuration", "retention metadata", "legal hold metadata", "object versions"]
     },
     {
       "domain_id": "kms_key_metadata",
@@ -629,6 +629,9 @@
     "productivity pilot preflight gate hash and selected tenant module state manifest hash",
     "productivity pilot admission evidence hash, tenant scope, RLS and append-only verification",
     "storage, envelope, retention, and KMS evidence hashes",
+    "audit snapshot v2 manifest, bundle and asymmetric KMS signature hashes when applicable",
+    "audit WORM snapshot exact object version, readback, Compliance retention and SSE-KMS receipt when applicable",
+    "audit snapshot checkpoint and WORM receipt tenant-RLS, append-only trigger and restore equivalence when applicable",
     "module registry state and tenant module lifecycle result",
     "module registry operations report hash when applicable",
     "Legacy SQL evidence ledger hash when applicable",

@@ -76,6 +76,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [x] ADR-0026: Legal hold semantics.
 - [ ] ADR-0027: Envelope encryption implementation.
 - [ ] ADR-0028: Dev KMS and enterprise KMS adapter strategy.
+- [x] ADR-0077: Asymmetric KMS-signed audit checkpoints and verified exact-version WORM snapshots.
 - [ ] ADR-0029: Text extraction and parser sandbox model.
 - [ ] ADR-0030: Embedding metadata schema.
 - [x] ADR-0031: pgvector vs. Qdrant first vector backend.

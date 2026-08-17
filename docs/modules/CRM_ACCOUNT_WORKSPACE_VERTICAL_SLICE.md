@@ -32,7 +32,7 @@ The API route is `GET /v1/crm/accounts/{account_object_id}/workspace`. An unread
 
 The Compose API selects this repository through `SUITE_CRM_REPOSITORY_BACKEND=postgres`. The explicit `crm-runtime-bootstrap` service performs an idempotent development seed before API and backup execution. Its output contains counts and a hash only; no CRM field values or note content are emitted.
 
-The backup service depends on the CRM bootstrap, so CRM records are included in the same PostgreSQL backup and independent restore comparison as every future module table.
+The CRM bootstrap is an explicit operation. Once its transaction is committed, CRM records are included in the same PostgreSQL backup and independent restore comparison as every future module table. The backup service intentionally does not invoke the bootstrap or migrations, so it can preserve a true pre-change database state.
 
 ## Deliberate Boundary
 

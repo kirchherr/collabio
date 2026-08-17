@@ -681,6 +681,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:tickets-incidents-tenant-approval-persistence",
         ),
     ),
+    SqlMigration(
+        version="0075",
+        name="audit_worm_snapshots_v2",
+        resource_name="0075_audit_worm_snapshots_v2.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:ai-audit-schema",
+            "test:audit-worm-snapshot-v2",
+        ),
+    ),
 )
 
 

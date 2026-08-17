@@ -106,6 +106,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0072",
         "0073",
         "0074",
+        "0075",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -164,8 +165,8 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     ]
     assert [migration.version for migration in time_tracking_migrations] == ["0060"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "tickets_incidents"
-    assert manifest[-1].name == "tickets_incidents_tenant_activation_approval_records"
+    assert manifest[-1].module_id == "core"
+    assert manifest[-1].name == "audit_worm_snapshots_v2"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
@@ -999,6 +1000,54 @@ def test_audit_event_store_migration_declares_append_only_roles_and_evidence_tab
     assert "output_text" not in audit_events_body
     assert "transcript_text" not in audit_events_body
     assert "token_body" not in audit_events_body
+
+
+def test_audit_worm_snapshot_v2_migration_requires_kms_signatures_and_verified_object_versions() -> None:
+    migration = get_migration("0075")
+    sql = normalized(migration.sql())
+    checkpoint_body = table_body(migration.sql(), "collabio.audit_snapshot_checkpoints_v2")
+    receipt_body = table_body(migration.sql(), "collabio.audit_worm_snapshot_receipts_v2")
+
+    assert migration.module_id == "core"
+    for column in [
+        "events_hash",
+        "manifest_hash",
+        "signature_algorithm",
+        "signing_message_type",
+        "signature_key_ref",
+        "provider_key_id",
+        "public_key_sha256",
+        "signature bytea",
+        "signature_sha256",
+        "provider_verified",
+    ]:
+        assert column in checkpoint_body
+    for column in [
+        "bundle_hash",
+        "object_version_id",
+        "object_lock_mode",
+        "object_lock_retain_until_utc",
+        "server_side_encryption",
+        "storage_kms_key_ref",
+        "readback_verified",
+        "object_lock_verified",
+        "encryption_verified",
+    ]:
+        assert column in receipt_body
+
+    assert "signature_algorithm in ('ecdsa-sha256', 'rsassa-pss-sha256')" in sql
+    assert "signing_message_type = 'digest'" in sql
+    assert "object_lock_mode = 'compliance'" in sql
+    assert "server_side_encryption = 'aws:kms'" in sql
+    assert "private key material and audit event bodies are forbidden" in sql
+    for table in ["audit_snapshot_checkpoints_v2", "audit_worm_snapshot_receipts_v2"]:
+        assert f"alter table collabio.{table} enable row level security" in sql
+        assert f"alter table collabio.{table} force row level security" in sql
+        assert f"create trigger {table}_append_only" in sql
+        assert f"grant select, insert on table collabio.{table} to collabio_audit_writer" in sql
+        assert f"revoke all on table collabio.{table} from collabio_app" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
 
 
 def test_authz_admin_runtime_role_migration_declares_admin_write_boundary() -> None:

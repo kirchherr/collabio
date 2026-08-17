@@ -38,7 +38,9 @@ TENANT_IAM_TABLES = {
 AUDIT_TABLES = {
     "collabio.audit_checkpoints",
     "collabio.audit_events",
+    "collabio.audit_snapshot_checkpoints_v2",
     "collabio.audit_worm_exports",
+    "collabio.audit_worm_snapshot_receipts_v2",
 }
 AUDIT_APPEND_ONLY_POLICIES_BY_TABLE = {
     "collabio.audit_checkpoints": {
@@ -49,9 +51,17 @@ AUDIT_APPEND_ONLY_POLICIES_BY_TABLE = {
         "audit_events_no_hard_delete",
         "audit_events_no_update",
     },
+    "collabio.audit_snapshot_checkpoints_v2": {
+        "audit_snapshot_checkpoints_v2_no_hard_delete",
+        "audit_snapshot_checkpoints_v2_no_update",
+    },
     "collabio.audit_worm_exports": {
         "audit_worm_exports_no_hard_delete",
         "audit_worm_exports_no_update",
+    },
+    "collabio.audit_worm_snapshot_receipts_v2": {
+        "audit_worm_snapshot_receipts_v2_no_hard_delete",
+        "audit_worm_snapshot_receipts_v2_no_update",
     },
 }
 AUDIT_APPEND_ONLY_POLICIES = {

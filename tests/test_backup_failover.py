@@ -586,6 +586,9 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "KMS adapter policy" in policy.domain("kms_key_metadata").state_artifacts
     assert "vector worker audit events" in policy.domain("audit_evidence").state_artifacts
     assert "embedding model approval audit events" in policy.domain("audit_evidence").state_artifacts
+    assert "asymmetric KMS audit checkpoint signatures" in policy.domain("audit_evidence").state_artifacts
+    assert "exact-version audit WORM snapshot receipts" in policy.domain("audit_evidence").state_artifacts
+    assert "signed audit WORM snapshot bundles" in policy.domain("object_storage_records").state_artifacts
     assert policy.domain("search_indexes").criticality == "rebuildable"
     assert "benchmark reports" in policy.domain("search_indexes").state_artifacts
     assert "ACL versions" in policy.domain("vector_indexes").state_artifacts
@@ -930,6 +933,14 @@ def test_backup_failover_policy_requires_change_control_for_new_state() -> None:
         in policy.restore_drill_evidence
     )
     assert "module lifecycle audit event metadata for module_registry_state" in policy.restore_drill_evidence
+    assert (
+        "audit snapshot v2 manifest, bundle and asymmetric KMS signature hashes when applicable"
+        in policy.restore_drill_evidence
+    )
+    assert (
+        "audit WORM snapshot exact object version, readback, Compliance retention and SSE-KMS receipt when applicable"
+        in policy.restore_drill_evidence
+    )
     assert "Knowledge Base runtime reconciliation drift or worker failure is reported" in policy.incident_triggers
     assert "module registry seed, backfill, repair, or worker discovery drill fails" in policy.incident_triggers
 
@@ -1189,9 +1200,17 @@ def test_module_registry_operations_runbook_names_seed_backfill_repair_and_smoke
 
 def test_compose_exposes_backup_and_verification_commands() -> None:
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
+    backup = compose.split("\n  backup:\n", 1)[1].split("\n  backup-verify:\n", 1)[0]
+    backup_verify = compose.split("\n  backup-verify:\n", 1)[1].split("\n  postgres-backup-restore-loader:\n", 1)[0]
 
     assert "\n  backup:\n" in compose
     assert "\n  backup-verify:\n" in compose
+    assert "postgres:" in backup
+    assert "source-object-runtime-bootstrap" not in backup
+    assert "crm-runtime-bootstrap" not in backup
+    assert "migrate:" not in backup
+    assert "depends_on:" not in backup_verify
+    assert "pg_dump" not in backup_verify
     assert "\n  production-continuity-deployment-gate:\n" in compose
     assert "\n  kb-runtime-reconciler:\n" in compose
     assert "\n  module-registry-drill:\n" in compose

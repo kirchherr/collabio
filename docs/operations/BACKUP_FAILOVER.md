@@ -32,12 +32,15 @@ replication and current drill evidence remain deployment-owned infrastructure wo
 - Backups containing tenant data are classified data.
 - Production backups must be encrypted, off-host, access-controlled, and covered by retention and legal hold rules.
 - Audit and backup evidence must be hashable and exportable.
-- PostgreSQL audit event rows, checkpoints, and WORM export evidence must be restored together before an audit chain is trusted.
+- PostgreSQL audit event rows, legacy checkpoints/exports, v2 asymmetric KMS checkpoint signatures, and exact-version WORM receipts must be restored together before an audit chain is trusted.
+- A v2 audit snapshot restore must re-read the recorded object version, reproduce the bundle and manifest hashes, verify the detached signature against the recorded provider key, and re-check Compliance retention, Legal Hold and SSE-KMS controls before audit service resumes.
 - Vector worker audit events must remain in the deployment audit chain and survive restore verification before recovered vector indexes are trusted.
 - Embedding model approval and retirement audit events must be restored with the registry state before source indexing resumes.
 - Source object restores must prove metadata and content still match their canonical manifest and content hashes.
 - Storage object restores must prove storage manifest hash, object version ID, bucket profile, KMS reference, object-lock configuration, and legal-hold evidence.
 - KMS restores must prove adapter policy, key-reference evidence hashes, rotation evidence, cryptoshred manifests, destruction evidence, and no plaintext key export.
+
+Migration `0075` adds `collabio.audit_snapshot_checkpoints_v2` and `collabio.audit_worm_snapshot_receipts_v2`. Both are part of the critical `audit_evidence` PostgreSQL continuity domain; signed bundles and their exact protected object versions are part of `object_storage_records`. The one-shot workflow and real-provider acceptance boundary are defined in `docs/operations/AUDIT_WORM_SNAPSHOTS.md`. A storage write without a PostgreSQL receipt is retained as reconciliation evidence, never silently removed.
 - Encrypted object restores must prove envelope manifest hash, ciphertext hash, AAD hash, wrapped data key hash, rewrap evidence hash where present, and KMS evidence hash before decrypting.
 - Cryptoshredded object restore evidence must prove source manifest hash, retention manifest hash, cryptoshred manifest hash, KMS destruction evidence hash, and the no-plaintext-key-export claim.
 - Restore drills must produce a restore drill report hash that can be recomputed from the report payload.
@@ -190,11 +193,17 @@ Create a PostgreSQL logical backup:
 docker compose run --rm backup
 ```
 
+The backup service depends only on a healthy PostgreSQL service. It must not start migrations, seeders, runtime
+bootstraps, workers, or application services. Run any desired bootstrap explicitly before the backup. This preserves
+the current schema as a real pre-migration recovery point.
+
 Verify the newest local backup checksum and pg_restore catalog:
 
 ```bash
 docker compose run --rm backup-verify
 ```
+
+Verification consumes the newest existing dump and must not create another backup or run migrations implicitly.
 
 Restore the newest dump into the isolated PostgreSQL target and compare source and target state:
 

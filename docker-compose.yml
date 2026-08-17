@@ -161,6 +161,44 @@ services:
     volumes:
       - minio_restore_data:/data
 
+  audit-worm-snapshot:
+    profiles: ["audit-worm"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.audit_worm_snapshot_worker
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_AUDIT_WORM_SNAPSHOT_ENABLED: ${SUITE_AUDIT_WORM_SNAPSHOT_ENABLED:-0}
+      SUITE_AUDIT_WORM_TENANT_ID: ${SUITE_AUDIT_WORM_TENANT_ID:-}
+      SUITE_AUDIT_WORM_CREATED_BY: ${SUITE_AUDIT_WORM_CREATED_BY:-}
+      SUITE_AUDIT_DATABASE_DSN: ${SUITE_AUDIT_DATABASE_DSN:-}
+      SUITE_AUDIT_SIGNING_KMS_KEY_REF: ${SUITE_AUDIT_SIGNING_KMS_KEY_REF:-}
+      SUITE_AUDIT_SIGNING_PROVIDER_KEY_ID: ${SUITE_AUDIT_SIGNING_PROVIDER_KEY_ID:-}
+      SUITE_AUDIT_SIGNING_ALGORITHM: ${SUITE_AUDIT_SIGNING_ALGORITHM:-ecdsa-sha256}
+      SUITE_AUDIT_SIGNING_PROVIDER_PROFILE: ${SUITE_AUDIT_SIGNING_PROVIDER_PROFILE:-aws-kms}
+      SUITE_AUDIT_KMS_ENDPOINT_URL: ${SUITE_AUDIT_KMS_ENDPOINT_URL:-}
+      SUITE_AUDIT_KMS_REGION: ${SUITE_AUDIT_KMS_REGION:-eu-central-1}
+      SUITE_AUDIT_STORAGE_KMS_KEY_REF: ${SUITE_AUDIT_STORAGE_KMS_KEY_REF:-}
+      SUITE_AUDIT_STORAGE_PROVIDER_KEY_ID: ${SUITE_AUDIT_STORAGE_PROVIDER_KEY_ID:-}
+      SUITE_AUDIT_WORM_STORAGE_PROVIDER: ${SUITE_AUDIT_WORM_STORAGE_PROVIDER:-aws-s3}
+      SUITE_AUDIT_WORM_BUCKET_ID: ${SUITE_AUDIT_WORM_BUCKET_ID:-evidence-records}
+      SUITE_AUDIT_WORM_RETENTION_POLICY_ID: ${SUITE_AUDIT_WORM_RETENTION_POLICY_ID:-audit-security-10y-v1}
+      SUITE_AUDIT_WORM_RETENTION_DAYS: ${SUITE_AUDIT_WORM_RETENTION_DAYS:-3650}
+      SUITE_AUDIT_WORM_LEGAL_HOLD: ${SUITE_AUDIT_WORM_LEGAL_HOLD:-0}
+      SUITE_S3_ENDPOINT_URL: ${SUITE_S3_ENDPOINT_URL:-}
+      SUITE_S3_ACCESS_KEY_ID: ${SUITE_S3_ACCESS_KEY_ID:-}
+      SUITE_S3_SECRET_ACCESS_KEY: ${SUITE_S3_SECRET_ACCESS_KEY:-}
+      SUITE_S3_REGION: ${SUITE_S3_REGION:-eu-central-1}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
 
   object-storage-profile-check:
     build:
@@ -343,10 +381,8 @@ services:
   backup:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
     depends_on:
-      source-object-runtime-bootstrap:
-        condition: service_completed_successfully
-      crm-runtime-bootstrap:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     environment:
       PGPASSWORD: collabio_owner
     entrypoint: ["/bin/sh", "-lc"]
@@ -363,9 +399,6 @@ services:
 
   backup-verify:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
-    depends_on:
-      backup:
-        condition: service_completed_successfully
     entrypoint: ["/bin/sh", "-lc"]
     command: >
       "set -eu;
