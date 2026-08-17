@@ -157,9 +157,7 @@ def test_default_branch_ruleset_requires_pr_and_both_github_actions_checks() -> 
     assert ruleset["target"] == "branch"
     assert ruleset["enforcement"] == "active"
     assert ruleset["bypass_actors"] == []
-    assert ruleset["conditions"] == {
-        "ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}
-    }
+    assert ruleset["conditions"] == {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}}
     assert {"deletion", "non_fast_forward", "required_linear_history"} <= rules.keys()
 
     pull_request = rules["pull_request"]["parameters"]
