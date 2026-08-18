@@ -13,7 +13,7 @@ from typing import Any, Literal, Protocol, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from suite.kms.signing import AuditSigningAlgorithm, AwsKmsSigningClient
+from suite.kms.signing import AwsKmsSigningClient
 from suite.operations.audit_worm_verify import (
     AuditSigningTrustPolicy,
     AuditWormSnapshotVerificationReport,
@@ -434,7 +434,11 @@ def accept_audit_worm_provider(
     if not (policy.valid_from_utc <= checked_at <= policy.valid_until_utc):
         raise AuditWormProviderAcceptanceError("acceptance_policy_outside_validity")
     tenant_hash = _sha256_ref(expected_tenant_id.strip().encode("utf-8"))
-    if not expected_tenant_id.strip() or tenant_hash != policy.tenant_id_sha256 or receipt.tenant_id != expected_tenant_id:
+    if (
+        not expected_tenant_id.strip()
+        or tenant_hash != policy.tenant_id_sha256
+        or receipt.tenant_id != expected_tenant_id
+    ):
         raise AuditWormProviderAcceptanceError("tenant_scope_mismatch")
     if receipt.bucket_id != policy.bucket_id or not receipt.object_key.startswith(policy.object_key_prefix):
         raise AuditWormProviderAcceptanceError("provider_object_scope_mismatch")
@@ -491,7 +495,12 @@ def accept_audit_worm_provider(
         expected_tenant_id=expected_tenant_id,
         expected_checkpoint_id=receipt.checkpoint_id,
     )
-    _require_short_active_retention(policy=policy, inspection=inspection.evidence, verification=verification, now=checked_at)
+    _require_short_active_retention(
+        policy=policy,
+        inspection=inspection.evidence,
+        verification=verification,
+        now=checked_at,
+    )
 
     deletion = provider_probe.prove_exact_version_delete_denied(
         receipt=receipt,
