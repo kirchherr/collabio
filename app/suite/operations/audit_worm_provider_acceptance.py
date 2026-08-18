@@ -76,9 +76,7 @@ def _require_utc(value: datetime) -> datetime:
 
 
 class AuditWormProviderAcceptancePolicy(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_policy.v1"] = (
-        "audit_worm_provider_acceptance_policy.v1"
-    )
+    schema_version: Literal["audit_worm_provider_acceptance_policy.v1"] = "audit_worm_provider_acceptance_policy.v1"
     policy_id: str = Field(min_length=1, max_length=128)
     tenant_id_sha256: str
     provider_profile: Literal["aws"] = "aws"
@@ -322,9 +320,7 @@ class AwsAuditWormProviderProbe:
 
 
 class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_report.v1"] = (
-        "audit_worm_provider_acceptance_report.v1"
-    )
+    schema_version: Literal["audit_worm_provider_acceptance_report.v1"] = "audit_worm_provider_acceptance_report.v1"
     accepted: Literal[True] = True
     checked_at_utc: datetime
     policy_id: str
@@ -383,9 +379,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
 
 
 class AuditWormProviderAcceptanceFailure(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_failure.v1"] = (
-        "audit_worm_provider_acceptance_failure.v1"
-    )
+    schema_version: Literal["audit_worm_provider_acceptance_failure.v1"] = "audit_worm_provider_acceptance_failure.v1"
     accepted: Literal[False] = False
     failure_code: Literal["acceptance_failed"] = "acceptance_failed"
     content_included: Literal[False] = False
@@ -560,8 +554,10 @@ def _require_short_active_retention(
     if _parse_utc(verification.retain_until_utc) != retain_until or retain_until <= now:
         raise AuditWormProviderAcceptanceError("retention_not_active_or_manifest_mismatch")
     duration = retain_until - generated_at
-    if not timedelta(hours=policy.minimum_retention_hours) <= duration <= timedelta(
-        hours=policy.maximum_retention_hours
+    if (
+        not timedelta(hours=policy.minimum_retention_hours)
+        <= duration
+        <= timedelta(hours=policy.maximum_retention_hours)
     ):
         raise AuditWormProviderAcceptanceError("retention_outside_approved_proof_window")
 
