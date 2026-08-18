@@ -19,6 +19,7 @@ Collabio adds a v2 path without rewriting v1 history:
 - The bundle archives the public DER key and its hash so signature verification does not depend on future private-key availability.
 - The archived key is verification material, not self-authenticating trust. Offline verification requires a tenant trust policy whose canonical hash is pinned in a separate change-controlled record. It binds logical key version, provider identity, public-key hash, allowed algorithm and signing-time validity.
 - A default-off, networkless and read-only Compose command verifies exact bundle bytes, the complete tenant chain and ECDSA/SHA-256 or RSA-PSS/SHA-256 signatures locally. It emits metadata-only success or fixed failure output.
+- A separate default-off live-provider acceptance command binds an approved short-lived policy to exact bundle, receipt, trust-policy, restore-report, bucket/prefix and provider-key hashes. It validates the full restore and offline signature evidence before attempting an exact-version delete, requires AWS `403 AccessDenied`, then proves the same version remains readable. It has no resource-provisioning or retention-changing path.
 - The worker reads that exact version back and checks content hash, metadata, retention, Legal Hold and encryption before persistence.
 - PostgreSQL records separate append-only checkpoint and object-version receipts under forced tenant RLS and owner-level mutation triggers.
 - A deterministic checkpoint identity makes a completed chain prefix idempotent. Storage objects left by a later database failure are retained for reconciliation.
@@ -28,7 +29,7 @@ The existing HMAC tables remain restoreable legacy evidence and are not promoted
 
 ## Consequences
 
-Real provider credentials and a disposable Object-Lock proof bucket are still required for production acceptance. The implementation cannot honestly satisfy the productive WORM/KMS roadmap item until an exact-version delete-denial test and isolated restore are recorded. Compliance-mode retention is deliberately irreversible for its duration, so proof runs require an approved short-lived but non-shortenable test policy.
+An approved workload identity, a disposable Object-Lock proof bucket and purpose-bound provider keys are still required for production acceptance. The implementation cannot honestly satisfy the productive WORM/KMS roadmap item until the acceptance command records a real exact-version delete denial and binds it to an isolated restore. Compliance-mode retention is deliberately irreversible for its duration, so proof runs require an approved short-lived but non-shortenable test policy.
 
 ## References
 

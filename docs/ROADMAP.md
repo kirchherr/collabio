@@ -121,7 +121,7 @@ Noch nicht umgesetzt:
 - [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
 - [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
-  Providerneutraler v2-Control-Plane-Pfad, Migration, One-shot-Worker, KMS-Sign/Verify, exakter Object-Version-Readback, append-only Receipts und offline Audit-Verifikation gegen separat gepinnte Tenant-Trust-Policies sind umgesetzt; realer Provider-, Delete-Denial- und Restore-Nachweis bleibt offen.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, One-shot-Worker, KMS-Sign/Verify, exakter Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt; reale AWS-Workload-Identity und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -577,6 +577,7 @@ Aufgaben:
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
 - [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
+- [x] Fail-closed AWS-Provider-Abnahmegate mit gepinnter Artefakt-Policy, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
 - [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.

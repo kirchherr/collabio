@@ -76,6 +76,55 @@ A production provider is accepted only when one real, non-content test tenant ru
 
 Until this evidence exists for the selected production providers, the roadmap item remains partially complete and no claim of productive WORM/KMS operation is allowed.
 
+### Provider acceptance gate
+
+`audit-worm-provider-acceptance` automates the live AWS acceptance ceremony but never provisions or changes a bucket, Object Lock configuration or KMS key. The profile is off by default and uses the AWS SDK workload-identity chain only; no static access-key variables are present in Compose.
+
+Use a dedicated, empty proof bucket created with Object Lock enabled. The proof tenant must contain synthetic, non-personal and non-business audit events only. Configure exactly one day of Compliance retention and Legal Hold `OFF`. The acceptance identity should have only the read actions needed for the exact object, `kms:DescribeKey`, and `s3:DeleteObjectVersion` for the proof prefix. It must not have bucket-management, retention-change, Legal-Hold-change, KMS-administration or Object-Lock-bypass permissions. `s3:DeleteObjectVersion` is present solely so S3 can reject the exact-version request because of active Compliance retention.
+
+Before any provider call, the command validates a separately pinned `audit_worm_provider_acceptance_policy.v1`. Its canonical hash binds:
+
+- the hash of the synthetic tenant ID;
+- the exact region, dedicated bucket and proof object-key prefix;
+- hashes of the signing and storage provider key IDs;
+- the exact bundle, snapshot receipt, signing trust policy and PostgreSQL restore-report hashes;
+- an at-most-seven-day policy validity window and a one-to-seven-day permitted retention range;
+- explicit authorization for provider calls and the exact-version delete-denial attempt.
+
+The acceptance policy is a reviewed authorization record, not configuration inferred by the command. Pin its canonical SHA-256 outside the mounted input directory. Do not calculate the expected policy hash from an untrusted file delivered beside the evidence at execution time.
+
+The ceremony order is fixed:
+
+1. Validate all policy, receipt, trust-policy and restore-report hashes locally.
+2. Require an isolated, metadata-only PostgreSQL restore report whose exact source and target state manifests match and whose append-only audit controls pass.
+3. Read and head only the receipt's exact S3 `VersionId`; verify its hash, active Compliance retention, Legal Hold `OFF` and expected SSE-KMS key.
+4. Describe the exact asymmetric KMS signing key and require `Enabled` plus `SIGN_VERIFY`.
+5. Run the complete offline bundle, tenant-chain and signature verifier.
+6. Submit exactly `DeleteObject(Bucket, Key, VersionId)`. An unversioned delete-marker request is forbidden and is not evidence.
+7. Require AWS `403 AccessDenied`, then read the same exact version again and reproduce its hash.
+
+Run only after the snapshot and isolated restore evidence have been produced and the policy hash has been approved:
+
+```sh
+export SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_ENABLED=1
+docker compose -p collabio --profile audit-worm-provider-acceptance run --rm --no-deps \
+  --volume "$INPUT_DIR:/input:ro" audit-worm-provider-acceptance \
+  --policy /input/provider-acceptance-policy.json \
+  --expected-policy-hash "sha256:<separately-pinned-policy-hash>" \
+  --receipt /input/audit-worm-object-receipt.json \
+  --restore-report /input/postgres-restore-report.json \
+  --expected-restore-report-hash "sha256:<approved-restore-report-hash>" \
+  --trust-policy /input/trust-policy.json \
+  --expected-trust-policy-hash "sha256:<approved-trust-policy-hash>" \
+  --expected-bundle-hash "sha256:<receipt-bundle-hash>" \
+  --expected-tenant-id "<synthetic-proof-tenant-id>" \
+  --execution-confirmation I_APPROVE_EXACT_VERSION_DELETE_DENIAL_PROBE
+```
+
+Success emits `audit_worm_provider_acceptance_report.v1`. Bucket, object key, version ID, tenant ID, provider key IDs and provider request IDs are represented only by SHA-256 references. Event bodies, signatures, public-key bytes and secrets are never emitted. Any failure emits one fixed metadata-only record and exits non-zero. If the exact-version delete unexpectedly succeeds, the ceremony fails irrecoverably and must not be represented as accepted evidence.
+
+The command deliberately cannot run on `dev001` yet: no approved AWS workload identity, dedicated Object-Lock proof bucket or purpose-bound KMS keys are configured there. This is an external acceptance prerequisite, not an implementation fallback to MinIO or local credentials.
+
 ## Recovery
 
 The S3 write precedes the PostgreSQL receipt transaction. A database failure can therefore leave a valid protected object version without a receipt. Reconciliation must inspect only the configured tenant prefix, verify the bundle, signature, exact object controls and current audit prefix, then append the missing receipt. Never overwrite or delete an orphaned protected version.
