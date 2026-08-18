@@ -358,6 +358,7 @@ def test_synthetic_non_content_scope_is_enforced() -> None:
             events=(event.model_copy(update={"source_object_ids": ["forbidden-object"]}),),
         )
 
+
 class AccessDeniedError(RuntimeError):
     def __init__(self) -> None:
         self.response = {
