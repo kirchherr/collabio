@@ -291,30 +291,38 @@ def test_acceptance_gate_rejects_unpinned_or_unconfirmed_execution_before_provid
     trust_policy = _trust_policy()
     restore_report = _restore_report()
     probe = FakeProviderProbe()
-    common = {
-        "policy": policy,
-        "receipt": _receipt(),
-        "restore_report": restore_report,
-        "expected_restore_report_hash": restore_report.report_hash,
-        "trust_policy": trust_policy,
-        "expected_trust_policy_hash": build_audit_signing_trust_policy_hash(trust_policy),
-        "expected_bundle_hash": _hash(BUNDLE_BODY),
-        "expected_tenant_id": TENANT_ID,
-        "provider_probe": probe,
-        "checked_at_utc": CHECKED_AT,
-    }
+    receipt = _receipt()
+    trust_policy_hash = build_audit_signing_trust_policy_hash(trust_policy)
 
     with pytest.raises(AuditWormProviderAcceptanceError, match="execution_confirmation_missing"):
         accept_audit_worm_provider(
-            **common,
+            policy=policy,
             expected_policy_hash=build_acceptance_policy_hash(policy),
+            receipt=receipt,
+            restore_report=restore_report,
+            expected_restore_report_hash=restore_report.report_hash,
+            trust_policy=trust_policy,
+            expected_trust_policy_hash=trust_policy_hash,
+            expected_bundle_hash=_hash(BUNDLE_BODY),
+            expected_tenant_id=TENANT_ID,
             execution_confirmation="not-approved",
+            provider_probe=probe,
+            checked_at_utc=CHECKED_AT,
         )
     with pytest.raises(AuditWormProviderAcceptanceError, match="acceptance_policy_hash_mismatch"):
         accept_audit_worm_provider(
-            **common,
+            policy=policy,
             expected_policy_hash=_hash("different-policy"),
+            receipt=receipt,
+            restore_report=restore_report,
+            expected_restore_report_hash=restore_report.report_hash,
+            trust_policy=trust_policy,
+            expected_trust_policy_hash=trust_policy_hash,
+            expected_bundle_hash=_hash(BUNDLE_BODY),
+            expected_tenant_id=TENANT_ID,
             execution_confirmation=EXECUTION_CONFIRMATION,
+            provider_probe=probe,
+            checked_at_utc=CHECKED_AT,
         )
 
     assert probe.inspect_calls == 0
