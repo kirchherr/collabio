@@ -20,11 +20,13 @@ from suite.operations.audit_worm_provider_acceptance import (
     AuditWormProviderAcceptancePolicy,
     AwsAuditWormProviderProbe,
     accept_audit_worm_provider,
+    _require_synthetic_non_content_events,
     build_acceptance_policy_hash,
     build_acceptance_report_hash,
     build_audit_worm_object_receipt_hash,
     main,
 )
+from suite.operations.audit_worm_snapshot import AuditSnapshotEvent
 from suite.operations.audit_worm_verify import (
     AuditSigningTrustPolicy,
     AuditTrustedSigningKey,
@@ -48,6 +50,7 @@ VERSION_ID = "proof-version-id"
 SIGNING_KEY_ID = "arn:aws:kms:eu-central-1:123456789012:key/signing-proof"
 STORAGE_KEY_ID = "arn:aws:kms:eu-central-1:123456789012:key/storage-proof"
 BUNDLE_BODY = b'{"schema_version":"audit_worm_snapshot_bundle.v2"}'
+SYNTHETIC_PRINCIPAL = "synthetic-worm-provider-proof"
 
 
 def _hash(value: str | bytes) -> str:
@@ -62,6 +65,7 @@ def _policy() -> AuditWormProviderAcceptancePolicy:
     return AuditWormProviderAcceptancePolicy(
         policy_id="aws-worm-provider-proof-20260818",
         tenant_id_sha256=_hash(TENANT_ID),
+        synthetic_principal_id_sha256=_hash(SYNTHETIC_PRINCIPAL),
         region="eu-central-1",
         bucket_id=BUCKET_ID,
         object_key_prefix=OBJECT_PREFIX,
@@ -245,6 +249,11 @@ def test_acceptance_gate_binds_policy_offline_verification_restore_and_live_deni
         "verify_audit_worm_snapshot_bundle",
         lambda **_kwargs: _verification(trust_policy),
     )
+    monkeypatch.setattr(
+        acceptance_module,
+        "_require_synthetic_non_content_bundle",
+        lambda _body: _hash(SYNTHETIC_PRINCIPAL),
+    )
 
     report = accept_audit_worm_provider(
         policy=policy,
@@ -267,6 +276,7 @@ def test_acceptance_gate_binds_policy_offline_verification_restore_and_live_deni
     assert report.signatures_included is False
     assert report.public_keys_included is False
     assert report.bucket_id_sha256 == _hash(BUCKET_ID)
+    assert report.synthetic_principal_id_sha256 == _hash(SYNTHETIC_PRINCIPAL)
     assert probe.inspect_calls == 1
     assert probe.delete_calls == 1
     serialized = report.model_dump_json()
@@ -322,6 +332,31 @@ def test_acceptance_policy_rejects_long_retention_or_ambiguous_prefix() -> None:
     with pytest.raises(ValidationError, match="end with a slash"):
         AuditWormProviderAcceptancePolicy.model_validate(values)
 
+
+def test_synthetic_non_content_scope_is_enforced() -> None:
+    event = AuditSnapshotEvent(
+        event_id="event-proof",
+        schema_version="audit_event.v1",
+        sequence_number=1,
+        tenant_id=TENANT_ID,
+        user_id=SYNTHETIC_PRINCIPAL,
+        event_type="audit.worm_provider_acceptance.synthetic",
+        metadata={"purpose": "audit_worm_provider_acceptance", "synthetic": True},
+        previous_event_hash="sha256:" + ("0" * 64),
+        event_hash=_hash("event-proof"),
+        recorded_at_utc="2026-08-18T10:00:00Z",
+    )
+
+    assert _require_synthetic_non_content_events(
+        generated_by=SYNTHETIC_PRINCIPAL,
+        events=(event,),
+    ) == _hash(SYNTHETIC_PRINCIPAL)
+
+    with pytest.raises(AuditWormProviderAcceptanceError, match="synthetic_non_content_scope_invalid"):
+        _require_synthetic_non_content_events(
+            generated_by=SYNTHETIC_PRINCIPAL,
+            events=(event.model_copy(update={"source_object_ids": ["forbidden-object"]}),),
+        )
 
 class AccessDeniedError(RuntimeError):
     def __init__(self) -> None:
@@ -382,7 +417,7 @@ class FakeKmsClient:
 
 def test_aws_probe_uses_only_exact_version_delete_and_proves_post_denial_readback() -> None:
     s3_client = FakeS3Client()
-    probe = AwsAuditWormProviderProbe(s3_client=s3_client, kms_client=FakeKmsClient())  # type: ignore[arg-type]
+    probe = AwsAuditWormProviderProbe(s3_client=s3_client, kms_client=FakeKmsClient())
 
     inspection = probe.inspect(
         receipt=_receipt(),

@@ -4,7 +4,7 @@ import argparse
 import importlib
 import json
 import os
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
@@ -13,7 +13,7 @@ from typing import Any, Literal, Protocol, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from suite.kms.signing import AwsKmsSigningClient
+from suite.operations.audit_worm_snapshot import AuditSnapshotEvent, AuditWormSnapshotBundle
 from suite.operations.audit_worm_verify import (
     AuditSigningTrustPolicy,
     AuditWormSnapshotVerificationReport,
@@ -26,7 +26,7 @@ from suite.operations.postgres_restore_drill import (
     build_postgres_restore_drill_report_hash,
 )
 from suite.storage.audit_worm_store import AuditWormObjectReceipt
-from suite.storage.s3_sdk_client import S3SdkClient, S3SdkStreamingBody
+from suite.storage.s3_sdk_client import S3SdkStreamingBody
 
 MAX_POLICY_BYTES = 1024 * 1024
 MAX_RECEIPT_BYTES = 1024 * 1024
@@ -79,6 +79,7 @@ class AuditWormProviderAcceptancePolicy(StrictAcceptanceModel):
     schema_version: Literal["audit_worm_provider_acceptance_policy.v1"] = "audit_worm_provider_acceptance_policy.v1"
     policy_id: str = Field(min_length=1, max_length=128)
     tenant_id_sha256: str
+    synthetic_principal_id_sha256: str
     provider_profile: Literal["aws"] = "aws"
     region: str = Field(min_length=1, max_length=64)
     bucket_id: str = Field(min_length=3, max_length=255)
@@ -100,6 +101,7 @@ class AuditWormProviderAcceptancePolicy(StrictAcceptanceModel):
 
     _validate_hashes = field_validator(
         "tenant_id_sha256",
+        "synthetic_principal_id_sha256",
         "signing_provider_key_id_sha256",
         "storage_provider_key_id_sha256",
         "expected_bundle_hash",
@@ -187,8 +189,25 @@ class AuditWormProviderProbe(Protocol):
     ) -> AuditWormDeleteDenialProof: ...
 
 
+class AuditWormAcceptanceS3Client(Protocol):
+    def get_object(self, **kwargs: object) -> Mapping[str, Any]: ...
+
+    def head_object(self, **kwargs: object) -> Mapping[str, Any]: ...
+
+    def delete_object(self, **kwargs: object) -> Mapping[str, Any]: ...
+
+
+class AuditWormAcceptanceKmsClient(Protocol):
+    def describe_key(self, **kwargs: object) -> Mapping[str, Any]: ...
+
+
 class AwsAuditWormProviderProbe:
-    def __init__(self, *, s3_client: S3SdkClient, kms_client: AwsKmsSigningClient) -> None:
+    def __init__(
+        self,
+        *,
+        s3_client: AuditWormAcceptanceS3Client,
+        kms_client: AuditWormAcceptanceKmsClient,
+    ) -> None:
         self.s3_client = s3_client
         self.kms_client = kms_client
 
@@ -326,6 +345,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
     policy_id: str
     acceptance_policy_hash: str
     tenant_id_sha256: str
+    synthetic_principal_id_sha256: str
     provider_profile: Literal["aws"] = "aws"
     region: str
     bucket_id_sha256: str
@@ -356,6 +376,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
     _validate_hashes = field_validator(
         "acceptance_policy_hash",
         "tenant_id_sha256",
+        "synthetic_principal_id_sha256",
         "bucket_id_sha256",
         "object_key_sha256",
         "object_version_id_sha256",
@@ -489,6 +510,9 @@ def accept_audit_worm_provider(
         expected_tenant_id=expected_tenant_id,
         expected_checkpoint_id=receipt.checkpoint_id,
     )
+    synthetic_principal_id_sha256 = _require_synthetic_non_content_bundle(inspection.bundle_body)
+    if synthetic_principal_id_sha256 != policy.synthetic_principal_id_sha256:
+        raise AuditWormProviderAcceptanceError("synthetic_principal_mismatch")
     _require_short_active_retention(
         policy=policy,
         inspection=inspection.evidence,
@@ -505,6 +529,7 @@ def accept_audit_worm_provider(
         policy_id=policy.policy_id,
         acceptance_policy_hash=expected_policy_hash,
         tenant_id_sha256=tenant_hash,
+        synthetic_principal_id_sha256=synthetic_principal_id_sha256,
         region=policy.region,
         bucket_id_sha256=_sha256_ref(receipt.bucket_id.encode("utf-8")),
         object_key_sha256=_sha256_ref(receipt.object_key.encode("utf-8")),
@@ -560,6 +585,39 @@ def _require_short_active_retention(
         <= timedelta(hours=policy.maximum_retention_hours)
     ):
         raise AuditWormProviderAcceptanceError("retention_outside_approved_proof_window")
+
+
+def _require_synthetic_non_content_bundle(bundle_body: bytes) -> str:
+    try:
+        bundle = AuditWormSnapshotBundle.model_validate_json(bundle_body)
+    except (ValidationError, ValueError) as exc:
+        raise AuditWormProviderAcceptanceError("synthetic_bundle_invalid") from exc
+    return _require_synthetic_non_content_events(
+        generated_by=bundle.manifest.generated_by,
+        events=bundle.events,
+    )
+
+
+def _require_synthetic_non_content_events(
+    *,
+    generated_by: str,
+    events: Sequence[AuditSnapshotEvent],
+) -> str:
+    if len(events) != 1:
+        raise AuditWormProviderAcceptanceError("synthetic_proof_requires_one_event")
+    event = events[0]
+    if (
+        event.user_id != generated_by
+        or event.event_type != "audit.worm_provider_acceptance.synthetic"
+        or event.source_object_ids
+        or event.input_hash is not None
+        or event.output_hash is not None
+        or event.model_id is not None
+        or event.prompt_template_id is not None
+        or event.metadata != {"purpose": "audit_worm_provider_acceptance", "synthetic": True}
+    ):
+        raise AuditWormProviderAcceptanceError("synthetic_non_content_scope_invalid")
+    return _sha256_ref(generated_by.encode("utf-8"))
 
 
 def _provider_call(provider: str, operation: str, action: Any) -> Mapping[str, Any]:
@@ -655,8 +713,8 @@ def main(argv: list[str] | None = None, *, env: Mapping[str, str] | None = None)
         boto3_module = importlib.import_module("boto3")
         client_factory: Any = boto3_module.client
         probe = AwsAuditWormProviderProbe(
-            s3_client=cast(S3SdkClient, client_factory("s3", region_name=policy.region)),
-            kms_client=cast(AwsKmsSigningClient, client_factory("kms", region_name=policy.region)),
+            s3_client=cast(AuditWormAcceptanceS3Client, client_factory("s3", region_name=policy.region)),
+            kms_client=cast(AuditWormAcceptanceKmsClient, client_factory("kms", region_name=policy.region)),
         )
         report = accept_audit_worm_provider(
             policy=policy,

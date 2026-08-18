@@ -80,11 +80,11 @@ Until this evidence exists for the selected production providers, the roadmap it
 
 `audit-worm-provider-acceptance` automates the live AWS acceptance ceremony but never provisions or changes a bucket, Object Lock configuration or KMS key. The profile is off by default and uses the AWS SDK workload-identity chain only; no static access-key variables are present in Compose.
 
-Use a dedicated, empty proof bucket created with Object Lock enabled. The proof tenant must contain synthetic, non-personal and non-business audit events only. Configure exactly one day of Compliance retention and Legal Hold `OFF`. The acceptance identity should have only the read actions needed for the exact object, `kms:DescribeKey`, and `s3:DeleteObjectVersion` for the proof prefix. It must not have bucket-management, retention-change, Legal-Hold-change, KMS-administration or Object-Lock-bypass permissions. `s3:DeleteObjectVersion` is present solely so S3 can reject the exact-version request because of active Compliance retention.
+Use a dedicated, empty proof bucket created with Object Lock enabled. The proof tenant must contain exactly one synthetic, non-personal and non-business event named `audit.worm_provider_acceptance.synthetic`. It must have no source objects, input/output hashes, model or prompt reference; its metadata must be exactly `{"purpose":"audit_worm_provider_acceptance","synthetic":true}`. Configure exactly one day of Compliance retention and Legal Hold `OFF`. The acceptance identity should have only the read actions needed for the exact object, `kms:DescribeKey`, and `s3:DeleteObjectVersion` for the proof prefix. It must not have bucket-management, retention-change, Legal-Hold-change, KMS-administration or Object-Lock-bypass permissions. `s3:DeleteObjectVersion` is present solely so S3 can reject the exact-version request because of active Compliance retention.
 
 Before any provider call, the command validates a separately pinned `audit_worm_provider_acceptance_policy.v1`. Its canonical hash binds:
 
-- the hash of the synthetic tenant ID;
+- hashes of the synthetic tenant and synthetic principal IDs;
 - the exact region, dedicated bucket and proof object-key prefix;
 - hashes of the signing and storage provider key IDs;
 - the exact bundle, snapshot receipt, signing trust policy and PostgreSQL restore-report hashes;
