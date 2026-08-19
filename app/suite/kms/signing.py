@@ -154,6 +154,19 @@ class AuditCheckpointSigner(Protocol):
     ) -> AuditCheckpointSignature: ...
 
 
+@dataclass(frozen=True)
+class AuditSigningProviderInspection:
+    provider_key_id: str
+    key_type: str
+    key_version: int
+    public_key_der: bytes
+    request_id: str
+
+
+class AuditSigningProviderInspector(Protocol):
+    def inspect_provider_key(self, *, provider_key_id: str) -> AuditSigningProviderInspection: ...
+
+
 class AwsKmsSigningClient(Protocol):
     def describe_key(self, **kwargs: object) -> Mapping[str, Any]: ...
 

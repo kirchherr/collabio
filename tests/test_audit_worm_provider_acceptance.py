@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 import suite.operations.audit_worm_provider_acceptance as acceptance_module
-from suite.kms.signing import AuditSigningAlgorithm
+from suite.kms.signing import AuditSigningAlgorithm, AuditSigningProviderInspection
 from suite.operations.audit_worm_provider_acceptance import (
     EXECUTION_CONFIRMATION,
     AuditWormDeleteDenialProof,
@@ -18,7 +18,8 @@ from suite.operations.audit_worm_provider_acceptance import (
     AuditWormLiveInspectionResult,
     AuditWormProviderAcceptanceError,
     AuditWormProviderAcceptancePolicy,
-    AwsAuditWormProviderProbe,
+    S3CompatibleAuditWormProviderProbe,
+    _required_self_hosted_s3_origin,
     _require_synthetic_non_content_events,
     accept_audit_worm_provider,
     build_acceptance_policy_hash,
@@ -47,8 +48,10 @@ BUCKET_ID = "collabio-disposable-worm-proof"
 OBJECT_PREFIX = "audit-snapshots/v2/proof-tenant/"
 OBJECT_KEY = OBJECT_PREFIX + "00000000000000000001/checkpoint.json"
 VERSION_ID = "proof-version-id"
-SIGNING_KEY_ID = "arn:aws:kms:eu-central-1:123456789012:key/signing-proof"
-STORAGE_KEY_ID = "arn:aws:kms:eu-central-1:123456789012:key/storage-proof"
+SIGNING_KEY_ID = "openbao-transit://transit/collabio-audit-proof/v1"
+STORAGE_KEY_ID = "ceph-kmip://collabio-worm-proof/v1"
+S3_ENDPOINT = "https://rgw-proof.internal.example"
+OPENBAO_ENDPOINT = "https://openbao-proof.internal.example"
 BUNDLE_BODY = b'{"schema_version":"audit_worm_snapshot_bundle.v2"}'
 SYNTHETIC_PRINCIPAL = "synthetic-worm-provider-proof"
 
@@ -63,10 +66,12 @@ def _policy() -> AuditWormProviderAcceptancePolicy:
     trust_policy = _trust_policy()
     restore_report = _restore_report()
     return AuditWormProviderAcceptancePolicy(
-        policy_id="aws-worm-provider-proof-20260818",
+        policy_id="self-hosted-worm-provider-proof-20260818",
         tenant_id_sha256=_hash(TENANT_ID),
         synthetic_principal_id_sha256=_hash(SYNTHETIC_PRINCIPAL),
-        region="eu-central-1",
+        s3_signing_region="collabio-eu-1",
+        object_store_endpoint_sha256=_hash(S3_ENDPOINT),
+        signing_provider_endpoint_sha256=_hash(OPENBAO_ENDPOINT),
         bucket_id=BUCKET_ID,
         object_key_prefix=OBJECT_PREFIX,
         signing_provider_key_id_sha256=_hash(SIGNING_KEY_ID),
@@ -90,7 +95,7 @@ def _receipt() -> AuditWormObjectReceipt:
     return AuditWormObjectReceipt(
         tenant_id=TENANT_ID,
         checkpoint_id="audit-checkpoint-v2-proof",
-        storage_provider="aws-s3",
+        storage_provider="ceph-rgw",
         bucket_id=BUCKET_ID,
         object_key=OBJECT_KEY,
         object_version_id=VERSION_ID,
@@ -119,7 +124,7 @@ def _trust_policy() -> AuditSigningTrustPolicy:
         trusted_keys=(
             AuditTrustedSigningKey(
                 kms_key_ref=f"kms-sign://{TENANT_ID}/audit/v1",
-                provider_profile="aws-kms",
+                provider_profile="openbao-transit",
                 provider_key_id=SIGNING_KEY_ID,
                 public_key_sha256=_hash("public-key"),
                 allowed_signing_algorithms=(AuditSigningAlgorithm.ECDSA_SHA_256,),
@@ -184,7 +189,7 @@ def _verification(policy: AuditSigningTrustPolicy) -> AuditWormSnapshotVerificat
         trust_policy_hash=build_audit_signing_trust_policy_hash(policy),
         signing_key_ref=f"kms-sign://{TENANT_ID}/audit/v1",
         signing_key_version=1,
-        provider_profile="aws-kms",
+        provider_profile="openbao-transit",
         provider_key_id_hash=_hash(SIGNING_KEY_ID),
         public_key_sha256=_hash("public-key"),
         signature_sha256=_hash("signature"),
@@ -215,10 +220,12 @@ class FakeProviderProbe:
                 retain_until_utc=RETAIN_UNTIL,
                 storage_provider_key_id_sha256=_hash(STORAGE_KEY_ID),
                 signing_provider_key_id_sha256=_hash(SIGNING_KEY_ID),
-                signing_key_spec="ECC_NIST_P256",
+                signing_public_key_sha256=_hash("public-key"),
+                signing_key_type="ecdsa-p256",
+                signing_key_version=1,
                 initial_get_request_id_sha256=_hash("initial-get"),
                 head_request_id_sha256=_hash("head"),
-                describe_key_request_id_sha256=_hash("describe"),
+                signing_key_inspection_request_id_sha256=_hash("inspect"),
             ),
         )
 
@@ -341,6 +348,21 @@ def test_acceptance_policy_rejects_long_retention_or_ambiguous_prefix() -> None:
         AuditWormProviderAcceptancePolicy.model_validate(values)
 
 
+def test_acceptance_runtime_requires_self_hosted_https_object_store() -> None:
+    with pytest.raises(AuditWormProviderAcceptanceError, match="endpoint_invalid"):
+        _required_self_hosted_s3_origin(
+            {"SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL": "http://ceph-rgw:7480"}
+        )
+    with pytest.raises(AuditWormProviderAcceptanceError, match="must_be_self_hosted"):
+        _required_self_hosted_s3_origin(
+            {
+                "SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL": (
+                    "https://proof-bucket.s3.eu-central-1.amazonaws.com"
+                )
+            }
+        )
+
+
 def test_synthetic_non_content_scope_is_enforced() -> None:
     event = AuditSnapshotEvent(
         event_id="event-proof",
@@ -409,24 +431,24 @@ class FakeS3Client:
         raise AccessDeniedError
 
 
-class FakeKmsClient:
-    def describe_key(self, **kwargs: object) -> Mapping[str, Any]:
-        assert kwargs == {"KeyId": SIGNING_KEY_ID}
-        return {
-            "KeyMetadata": {
-                "Arn": SIGNING_KEY_ID,
-                "Enabled": True,
-                "KeyState": "Enabled",
-                "KeyUsage": "SIGN_VERIFY",
-                "KeySpec": "ECC_NIST_P256",
-            },
-            "ResponseMetadata": {"RequestId": "describe-request"},
-        }
+class FakeSigningKeyInspector:
+    def inspect_provider_key(self, *, provider_key_id: str) -> AuditSigningProviderInspection:
+        assert provider_key_id == SIGNING_KEY_ID
+        return AuditSigningProviderInspection(
+            provider_key_id=SIGNING_KEY_ID,
+            key_type="ecdsa-p256",
+            key_version=1,
+            public_key_der=b"public-key",
+            request_id="inspect-request",
+        )
 
 
-def test_aws_probe_uses_only_exact_version_delete_and_proves_post_denial_readback() -> None:
+def test_s3_compatible_probe_uses_only_exact_version_delete_and_proves_post_denial_readback() -> None:
     s3_client = FakeS3Client()
-    probe = AwsAuditWormProviderProbe(s3_client=s3_client, kms_client=FakeKmsClient())
+    probe = S3CompatibleAuditWormProviderProbe(
+        s3_client=s3_client,
+        signing_key_inspector=FakeSigningKeyInspector(),
+    )
 
     inspection = probe.inspect(
         receipt=_receipt(),
@@ -489,4 +511,6 @@ def test_provider_acceptance_cli_is_default_off_and_compose_service_is_hardened(
     assert "no-new-privileges:true" in block
     assert "ports:" not in block
     assert "SUITE_S3_ACCESS_KEY_ID" not in block
+    assert "AWS_REGION" not in block
+    assert "SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_ADDR" in block
     assert EXECUTION_CONFIRMATION in runbook

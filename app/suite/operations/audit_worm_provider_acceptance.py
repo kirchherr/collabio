@@ -10,9 +10,12 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal, Protocol, Self, cast
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from suite.kms.openbao_transit import OpenBaoTransitHttpClient, OpenBaoTransitSigningKeyInspector
+from suite.kms.signing import AuditSigningKeyReference, AuditSigningProviderInspector
 from suite.operations.audit_worm_snapshot import AuditSnapshotEvent, AuditWormSnapshotBundle
 from suite.operations.audit_worm_verify import (
     AuditSigningTrustPolicy,
@@ -39,8 +42,8 @@ ACCEPTANCE_CHECKS = (
     "dedicated_bucket_and_prefix",
     "short_active_compliance_retention",
     "legal_hold_off",
-    "provider_kms_encryption",
-    "enabled_asymmetric_sign_verify_key",
+    "s3_sse_kms_encryption",
+    "versioned_asymmetric_sign_verify_key",
     "exact_version_readback",
     "offline_signature_verification",
     "isolated_postgres_restore",
@@ -76,12 +79,14 @@ def _require_utc(value: datetime) -> datetime:
 
 
 class AuditWormProviderAcceptancePolicy(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_policy.v1"] = "audit_worm_provider_acceptance_policy.v1"
+    schema_version: Literal["audit_worm_provider_acceptance_policy.v2"] = "audit_worm_provider_acceptance_policy.v2"
     policy_id: str = Field(min_length=1, max_length=128)
     tenant_id_sha256: str
     synthetic_principal_id_sha256: str
-    provider_profile: Literal["aws"] = "aws"
-    region: str = Field(min_length=1, max_length=64)
+    provider_profile: Literal["self-hosted-ceph-openbao-v1"] = "self-hosted-ceph-openbao-v1"
+    s3_signing_region: str = Field(min_length=1, max_length=64)
+    object_store_endpoint_sha256: str
+    signing_provider_endpoint_sha256: str
     bucket_id: str = Field(min_length=3, max_length=255)
     object_key_prefix: str = Field(min_length=1, max_length=512)
     signing_provider_key_id_sha256: str
@@ -102,6 +107,8 @@ class AuditWormProviderAcceptancePolicy(StrictAcceptanceModel):
     _validate_hashes = field_validator(
         "tenant_id_sha256",
         "synthetic_principal_id_sha256",
+        "object_store_endpoint_sha256",
+        "signing_provider_endpoint_sha256",
         "signing_provider_key_id_sha256",
         "storage_provider_key_id_sha256",
         "expected_bundle_hash",
@@ -135,19 +142,21 @@ class AuditWormLiveInspection(StrictAcceptanceModel):
     server_side_encryption: Literal["aws:kms"] = "aws:kms"
     storage_provider_key_id_sha256: str
     signing_provider_key_id_sha256: str
-    signing_key_enabled: Literal[True] = True
-    signing_key_usage: Literal["SIGN_VERIFY"] = "SIGN_VERIFY"
-    signing_key_spec: str = Field(pattern=r"^(ECC_|RSA_).+")
+    signing_public_key_sha256: str
+    signing_key_usage: Literal["sign-verify"] = "sign-verify"
+    signing_key_type: str = Field(pattern=r"^(ecdsa-p256|rsa-(2048|3072|4096))$")
+    signing_key_version: int = Field(ge=1)
     initial_get_request_id_sha256: str
     head_request_id_sha256: str
-    describe_key_request_id_sha256: str
+    signing_key_inspection_request_id_sha256: str
 
     _validate_hashes = field_validator(
         "storage_provider_key_id_sha256",
         "signing_provider_key_id_sha256",
+        "signing_public_key_sha256",
         "initial_get_request_id_sha256",
         "head_request_id_sha256",
-        "describe_key_request_id_sha256",
+        "signing_key_inspection_request_id_sha256",
     )(_require_sha256)
     _validate_retain_until = field_validator("retain_until_utc")(_require_utc)
 
@@ -197,19 +206,15 @@ class AuditWormAcceptanceS3Client(Protocol):
     def delete_object(self, **kwargs: object) -> Mapping[str, Any]: ...
 
 
-class AuditWormAcceptanceKmsClient(Protocol):
-    def describe_key(self, **kwargs: object) -> Mapping[str, Any]: ...
-
-
-class AwsAuditWormProviderProbe:
+class S3CompatibleAuditWormProviderProbe:
     def __init__(
         self,
         *,
         s3_client: AuditWormAcceptanceS3Client,
-        kms_client: AuditWormAcceptanceKmsClient,
+        signing_key_inspector: AuditSigningProviderInspector,
     ) -> None:
         self.s3_client = s3_client
-        self.kms_client = kms_client
+        self.signing_key_inspector = signing_key_inspector
 
     def inspect(
         self,
@@ -252,36 +257,25 @@ class AwsAuditWormProviderProbe:
         if not storage_key_id:
             raise AuditWormProviderAcceptanceError("storage_provider_key_missing")
 
-        describe_response = self._kms_call(
-            "describe_key",
-            lambda: self.kms_client.describe_key(KeyId=signing_provider_key_id),
-        )
-        key_metadata = describe_response.get("KeyMetadata")
-        if not isinstance(key_metadata, Mapping):
-            raise AuditWormProviderAcceptanceError("signing_key_metadata_missing")
-        observed_signing_key_id = str(key_metadata.get("Arn") or key_metadata.get("KeyId") or "").strip()
-        if observed_signing_key_id != signing_provider_key_id:
+        try:
+            signing_key = self.signing_key_inspector.inspect_provider_key(provider_key_id=signing_provider_key_id)
+        except Exception as exc:
+            raise AuditWormProviderAcceptanceError("signing_key_inspection_failed") from exc
+        if signing_key.provider_key_id != signing_provider_key_id:
             raise AuditWormProviderAcceptanceError("signing_provider_key_mismatch")
-        if (
-            key_metadata.get("Enabled") is not True
-            or key_metadata.get("KeyState") != "Enabled"
-            or key_metadata.get("KeyUsage") != "SIGN_VERIFY"
-        ):
-            raise AuditWormProviderAcceptanceError("signing_key_not_enabled_for_sign_verify")
-        key_spec = str(key_metadata.get("KeySpec", "")).strip()
-        if not (key_spec.startswith("ECC_") or key_spec.startswith("RSA_")):
-            raise AuditWormProviderAcceptanceError("signing_key_not_asymmetric")
 
         return AuditWormLiveInspectionResult(
             bundle_body=bundle_body,
             evidence=AuditWormLiveInspection(
                 retain_until_utc=retain_until,
                 storage_provider_key_id_sha256=_sha256_ref(storage_key_id.encode("utf-8")),
-                signing_provider_key_id_sha256=_sha256_ref(observed_signing_key_id.encode("utf-8")),
-                signing_key_spec=key_spec,
+                signing_provider_key_id_sha256=_sha256_ref(signing_key.provider_key_id.encode("utf-8")),
+                signing_public_key_sha256=_sha256_ref(signing_key.public_key_der),
+                signing_key_type=signing_key.key_type,
+                signing_key_version=signing_key.key_version,
                 initial_get_request_id_sha256=_request_id_hash(get_response),
                 head_request_id_sha256=_request_id_hash(head_response),
-                describe_key_request_id_sha256=_request_id_hash(describe_response),
+                signing_key_inspection_request_id_sha256=_sha256_ref(signing_key.request_id.encode("utf-8")),
             ),
         )
 
@@ -333,21 +327,16 @@ class AwsAuditWormProviderProbe:
     def _s3_call(operation: str, action: Any) -> Mapping[str, Any]:
         return _provider_call("s3", operation, action)
 
-    @staticmethod
-    def _kms_call(operation: str, action: Any) -> Mapping[str, Any]:
-        return _provider_call("kms", operation, action)
-
-
 class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_report.v1"] = "audit_worm_provider_acceptance_report.v1"
+    schema_version: Literal["audit_worm_provider_acceptance_report.v2"] = "audit_worm_provider_acceptance_report.v2"
     accepted: Literal[True] = True
     checked_at_utc: datetime
     policy_id: str
     acceptance_policy_hash: str
     tenant_id_sha256: str
     synthetic_principal_id_sha256: str
-    provider_profile: Literal["aws"] = "aws"
-    region: str
+    provider_profile: Literal["self-hosted-ceph-openbao-v1"] = "self-hosted-ceph-openbao-v1"
+    s3_signing_region: str
     bucket_id_sha256: str
     object_key_sha256: str
     object_version_id_sha256: str
@@ -360,7 +349,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
     signing_provider_key_id_sha256: str
     storage_provider_key_id_sha256: str
     object_lock_retain_until_utc: datetime
-    kms_describe_request_id_sha256: str
+    signing_key_inspection_request_id_sha256: str
     initial_get_request_id_sha256: str
     head_request_id_sha256: str
     delete_request_id_sha256: str
@@ -388,7 +377,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
         "target_state_manifest_hash",
         "signing_provider_key_id_sha256",
         "storage_provider_key_id_sha256",
-        "kms_describe_request_id_sha256",
+        "signing_key_inspection_request_id_sha256",
         "initial_get_request_id_sha256",
         "head_request_id_sha256",
         "delete_request_id_sha256",
@@ -400,7 +389,7 @@ class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
 
 
 class AuditWormProviderAcceptanceFailure(StrictAcceptanceModel):
-    schema_version: Literal["audit_worm_provider_acceptance_failure.v1"] = "audit_worm_provider_acceptance_failure.v1"
+    schema_version: Literal["audit_worm_provider_acceptance_failure.v2"] = "audit_worm_provider_acceptance_failure.v2"
     accepted: Literal[False] = False
     failure_code: Literal["acceptance_failed"] = "acceptance_failed"
     content_included: Literal[False] = False
@@ -499,6 +488,9 @@ def accept_audit_worm_provider(
     if (
         inspection.evidence.storage_provider_key_id_sha256 != policy.storage_provider_key_id_sha256
         or inspection.evidence.signing_provider_key_id_sha256 != policy.signing_provider_key_id_sha256
+        or inspection.evidence.signing_public_key_sha256 != signing_key.public_key_sha256
+        or inspection.evidence.signing_key_version
+        != AuditSigningKeyReference.parse(signing_key.kms_key_ref).key_version
         or inspection.evidence.retain_until_utc != _parse_utc(receipt.object_lock_retain_until_utc)
     ):
         raise AuditWormProviderAcceptanceError("live_provider_key_mismatch")
@@ -530,7 +522,7 @@ def accept_audit_worm_provider(
         acceptance_policy_hash=expected_policy_hash,
         tenant_id_sha256=tenant_hash,
         synthetic_principal_id_sha256=synthetic_principal_id_sha256,
-        region=policy.region,
+        s3_signing_region=policy.s3_signing_region,
         bucket_id_sha256=_sha256_ref(receipt.bucket_id.encode("utf-8")),
         object_key_sha256=_sha256_ref(receipt.object_key.encode("utf-8")),
         object_version_id_sha256=_sha256_ref(receipt.object_version_id.encode("utf-8")),
@@ -543,7 +535,9 @@ def accept_audit_worm_provider(
         signing_provider_key_id_sha256=inspection.evidence.signing_provider_key_id_sha256,
         storage_provider_key_id_sha256=inspection.evidence.storage_provider_key_id_sha256,
         object_lock_retain_until_utc=inspection.evidence.retain_until_utc,
-        kms_describe_request_id_sha256=inspection.evidence.describe_key_request_id_sha256,
+        signing_key_inspection_request_id_sha256=(
+            inspection.evidence.signing_key_inspection_request_id_sha256
+        ),
         initial_get_request_id_sha256=inspection.evidence.initial_get_request_id_sha256,
         head_request_id_sha256=inspection.evidence.head_request_id_sha256,
         delete_request_id_sha256=deletion.delete_request_id_sha256,
@@ -681,8 +675,45 @@ def _read_bounded(path: Path, maximum_bytes: int) -> bytes:
     return value
 
 
+def _required_env(env: Mapping[str, str], name: str) -> str:
+    value = env.get(name, "").strip().rstrip("/")
+    if not value:
+        raise AuditWormProviderAcceptanceError("provider_configuration_missing")
+    return value
+
+
+def _required_self_hosted_s3_origin(env: Mapping[str, str]) -> str:
+    value = _required_env(env, "SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL")
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise AuditWormProviderAcceptanceError("object_store_endpoint_invalid")
+    hostname = parsed.hostname.lower()
+    if hostname.endswith(".amazonaws.com") or hostname.endswith(".amazonaws.com.cn"):
+        raise AuditWormProviderAcceptanceError("object_store_must_be_self_hosted")
+    return value
+
+
+def _read_secret_text(path: Path) -> str:
+    value = _read_bounded(path, 16_384)
+    try:
+        decoded = value.decode("utf-8").strip()
+    except UnicodeDecodeError as exc:
+        raise AuditWormProviderAcceptanceError("provider_secret_file_invalid") from exc
+    if not decoded:
+        raise AuditWormProviderAcceptanceError("provider_secret_file_invalid")
+    return decoded
+
+
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the fail-closed AWS audit WORM provider acceptance gate")
+    parser = argparse.ArgumentParser(description="Run the fail-closed self-hosted audit WORM provider acceptance gate")
     parser.add_argument("--policy", required=True, type=Path)
     parser.add_argument("--expected-policy-hash", required=True)
     parser.add_argument("--receipt", required=True, type=Path)
@@ -710,11 +741,43 @@ def main(argv: list[str] | None = None, *, env: Mapping[str, str] | None = None)
         trust_policy = AuditSigningTrustPolicy.model_validate_json(
             _read_bounded(args.trust_policy, MAX_TRUST_POLICY_BYTES)
         )
+        object_store_endpoint = _required_self_hosted_s3_origin(runtime_env)
+        signing_provider_endpoint = _required_env(
+            runtime_env,
+            "SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_ADDR",
+        )
+        if (
+            _sha256_ref(object_store_endpoint.encode("utf-8")) != policy.object_store_endpoint_sha256
+            or _sha256_ref(signing_provider_endpoint.encode("utf-8"))
+            != policy.signing_provider_endpoint_sha256
+        ):
+            raise AuditWormProviderAcceptanceError("provider_endpoint_policy_mismatch")
         boto3_module = importlib.import_module("boto3")
         client_factory: Any = boto3_module.client
-        probe = AwsAuditWormProviderProbe(
-            s3_client=cast(AuditWormAcceptanceS3Client, client_factory("s3", region_name=policy.region)),
-            kms_client=cast(AuditWormAcceptanceKmsClient, client_factory("kms", region_name=policy.region)),
+        openbao_client = OpenBaoTransitHttpClient(
+            address=signing_provider_endpoint,
+            token=_read_secret_text(
+                Path(_required_env(runtime_env, "SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TOKEN_FILE"))
+            ),
+            namespace=runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_NAMESPACE") or None,
+            tls_ca_file=runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TLS_CA_FILE") or None,
+            client_cert_file=(
+                runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_CERT_FILE") or None
+            ),
+            client_key_file=(
+                runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_KEY_FILE") or None
+            ),
+        )
+        probe = S3CompatibleAuditWormProviderProbe(
+            s3_client=cast(
+                AuditWormAcceptanceS3Client,
+                client_factory(
+                    "s3",
+                    endpoint_url=object_store_endpoint,
+                    region_name=policy.s3_signing_region,
+                ),
+            ),
+            signing_key_inspector=OpenBaoTransitSigningKeyInspector(client=openbao_client),
         )
         report = accept_audit_worm_provider(
             policy=policy,

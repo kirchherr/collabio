@@ -121,7 +121,7 @@ Noch nicht umgesetzt:
 - [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
 - [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
-  Providerneutraler v2-Control-Plane-Pfad, Migration, One-shot-Worker, KMS-Sign/Verify, exakter Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt; reale AWS-Workload-Identity und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, OpenBao-Transit-One-shot-Worker, Sign/Verify, exakter Ceph-RGW-Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt; ein realer selbst gehosteter Ceph/OpenBao-Proof-Stack und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch. AWS ist weder Voraussetzung noch Roadmap-Ziel.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -577,7 +577,7 @@ Aufgaben:
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
 - [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
-- [x] Fail-closed AWS-Provider-Abnahmegate mit gepinnter Artefakt-Policy, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
+- [x] Fail-closed Abnahmegate fuer den selbst gehosteten Ceph-RGW-/OpenBao-Transit-Referenzstack mit gepinnten Endpunkten und Artefakten, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
 - [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.
@@ -1307,7 +1307,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 91. [x] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Content-Store-Inventar, Orphan-Reconciliation-Nachweis, Restore-Drill-Hash und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
 92. [x] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
 93. [x] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
-94. [x] Konkreten MinIO/AWS-SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen.
+94. [x] Konkreten S3-kompatiblen SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen; MinIO bleibt Entwicklungsziel, Ceph RGW ist das produktive Referenzprofil.
 95. [x] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
 96. [x] Knowledge-Base-Produktivwiring tenant-sicher aktivierbar machen: Runtime-Gate-Evidence per Admin-/Deployment-Aktivierung tenant-spezifisch persistieren und die API vom prozessweiten `SUITE_KB_RUNTIME_TENANT_ID` in eine request-sichere Runtime-Auswahl ueberfuehren.
 97. [x] Knowledge-Base-Content-Reconciliation operationalisieren: aktivierte Runtime-Tenants regelmaessig gegen Object-Store-Inventar, Storage-Manifeste und Restore-Drill-Evidence pruefen, Aktivierungen bei Drift sperren und Refresh-/Reactivation-Evidence auditierbar machen.

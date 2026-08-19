@@ -8,12 +8,14 @@ The worker is non-destructive but compliance-relevant. It fails closed unless `S
 
 ## Security boundary
 
-- Use the dedicated, non-cryptoshred signing-key namespace `kms-sign://tenant-a/audit/v3` and map it to an asymmetric provider key with `SIGN_VERIFY` usage.
+- Use the dedicated, non-cryptoshred signing-key namespace `kms-sign://tenant-a/audit/v3` and map it to a versioned OpenBao Transit key such as `openbao-transit://transit/tenant-a-audit/v3`.
 - Use a separate storage-encryption key mapping. Signing and storage-encryption keys must not be the same key.
-- Prefer workload identity or an instance/task role. Do not place long-lived cloud credentials in the repository or Compose file.
+- Collabio's production reference profile is self-hosted Ceph RGW plus OpenBao Transit. AWS infrastructure, an AWS account and AWS IAM are not prerequisites or roadmap goals.
+- Use short-lived, least-privilege Ceph credentials and a narrowly scoped OpenBao machine token delivered through mounted secret files. Do not place credentials or tokens in the repository or Compose file.
 - The database DSN must use `collabio_audit_writer`, not the normal application role.
 - The target bucket must have versioning and Object Lock enabled before the first write.
 - Production writes require `COMPLIANCE` mode, an explicit retain-until timestamp, exact-version readback and SSE-KMS verification.
+- Ceph exposes the S3-compatible wire token `aws:kms` for SSE-KMS. This protocol literal in SDK calls and persisted v2 receipts does not select or contact AWS; the mandatory explicit endpoint selects the self-hosted Ceph RGW service.
 - A Legal Hold is independent of fixed retention. Set `SUITE_AUDIT_WORM_LEGAL_HOLD=1` only from an authoritative hold decision.
 - Do not route snapshot event bodies, signed bundles, credentials or signatures into normal observability logs. The worker prints only the metadata-only result receipt.
 - The public key archived in a bundle is verification material, not a trust anchor. Pin the tenant trust-policy hash in a separate, change-controlled evidence record.
@@ -29,10 +31,13 @@ The worker reads these required values:
 - `SUITE_AUDIT_SIGNING_PROVIDER_KEY_ID`
 - `SUITE_AUDIT_STORAGE_KMS_KEY_REF`
 - `SUITE_AUDIT_STORAGE_PROVIDER_KEY_ID`
+- `SUITE_S3_ENDPOINT_URL` as an explicit HTTPS Ceph RGW origin
+- `SUITE_OPENBAO_ADDR` as an explicit HTTPS OpenBao origin
+- `SUITE_OPENBAO_TOKEN_FILE`; the token is read from the mounted file and is never accepted as a Compose value
 
 Retention defaults to policy `audit-security-10y-v1` and 3650 days. The default bucket is `evidence-records`. Override values only through an approved tenant retention policy.
 
-Run one explicit tenant snapshot with the `audit-worm` profile after migration `0075` is applied. Schedule the same one-shot command at the required interval; completed unchanged prefixes return their existing receipt without another KMS or S3 call.
+Run one explicit tenant snapshot with the `audit-worm` profile after migration `0075` is applied. Schedule the same one-shot command at the required interval; completed unchanged prefixes return their existing receipt without another OpenBao or S3-compatible call.
 
 ## Offline verification
 
@@ -64,8 +69,8 @@ Success emits `audit_worm_snapshot_verification_report.v2` with hashes, key refe
 
 A production provider is accepted only when one real, non-content test tenant run proves all of the following:
 
-1. KMS `DescribeKey` reports an enabled asymmetric `SIGN_VERIFY` key.
-2. KMS signs and verifies the manifest digest and returns auditable request IDs.
+1. OpenBao exposes the exact non-deletable asymmetric key version and its public key.
+2. OpenBao Transit signs and verifies the manifest digest and returns auditable request IDs.
    The bundle contains the public DER key and its SHA-256 for later offline verification; it never contains a private key.
 3. S3 returns a non-empty object version ID.
 4. Exact-version readback reproduces the bundle SHA-256.
@@ -74,18 +79,18 @@ A production provider is accepted only when one real, non-content test tenant ru
 7. A deletion attempt against that exact protected version is denied. Perform this only in an approved disposable proof bucket because Compliance retention cannot be shortened.
 8. The exact downloaded object version passes `audit-worm-verify` against the separately pinned tenant trust-policy hash without network access.
 
-Until this evidence exists for the selected production providers, the roadmap item remains partially complete and no claim of productive WORM/KMS operation is allowed.
+Until this evidence exists for the self-hosted production providers, the roadmap item remains partially complete and no claim of productive WORM/KMS operation is allowed.
 
 ### Provider acceptance gate
 
-`audit-worm-provider-acceptance` automates the live AWS acceptance ceremony but never provisions or changes a bucket, Object Lock configuration or KMS key. The profile is off by default and uses the AWS SDK workload-identity chain only; no static access-key variables are present in Compose.
+`audit-worm-provider-acceptance` automates the live self-hosted provider acceptance but never provisions or changes a bucket, Object Lock configuration or signing key. The profile is off by default. It requires explicit HTTPS origins for Ceph RGW and OpenBao, and those origin hashes are pinned in the approval policy. The S3-compatible Python SDK is used only against that explicit Ceph endpoint; no AWS endpoint or AWS account is involved.
 
-Use a dedicated, empty proof bucket created with Object Lock enabled. The proof tenant must contain exactly one synthetic, non-personal and non-business event named `audit.worm_provider_acceptance.synthetic`. It must have no source objects, input/output hashes, model or prompt reference; its metadata must be exactly `{"purpose":"audit_worm_provider_acceptance","synthetic":true}`. Configure exactly one day of Compliance retention and Legal Hold `OFF`. The acceptance identity should have only the read actions needed for the exact object, `kms:DescribeKey`, and `s3:DeleteObjectVersion` for the proof prefix. It must not have bucket-management, retention-change, Legal-Hold-change, KMS-administration or Object-Lock-bypass permissions. `s3:DeleteObjectVersion` is present solely so S3 can reject the exact-version request because of active Compliance retention.
+Use a dedicated, empty proof bucket created with Object Lock enabled. The proof tenant must contain exactly one synthetic, non-personal and non-business event named `audit.worm_provider_acceptance.synthetic`. It must have no source objects, input/output hashes, model or prompt reference; its metadata must be exactly `{"purpose":"audit_worm_provider_acceptance","synthetic":true}`. Configure exactly one day of Compliance retention and Legal Hold `OFF`. The Ceph acceptance identity should have only exact-object read/head plus version-delete permission for the proof prefix. The OpenBao token should have only read access to the exact Transit key metadata. Neither identity may manage buckets, retention, Legal Hold, key lifecycle or Object-Lock bypass. Version delete is present solely so Ceph RGW can reject the exact-version request because of active Compliance retention.
 
-Before any provider call, the command validates a separately pinned `audit_worm_provider_acceptance_policy.v1`. Its canonical hash binds:
+Before any provider call, the command validates a separately pinned `audit_worm_provider_acceptance_policy.v2`. Its canonical hash binds:
 
 - hashes of the synthetic tenant and synthetic principal IDs;
-- the exact region, dedicated bucket and proof object-key prefix;
+- the exact self-hosted provider profile, S3 signing region, hashes of both HTTPS origins, dedicated bucket and proof object-key prefix;
 - hashes of the signing and storage provider key IDs;
 - the exact bundle, snapshot receipt, signing trust policy and PostgreSQL restore-report hashes;
 - an at-most-seven-day policy validity window and a one-to-seven-day permitted retention range;
@@ -98,16 +103,20 @@ The ceremony order is fixed:
 1. Validate all policy, receipt, trust-policy and restore-report hashes locally.
 2. Require an isolated, metadata-only PostgreSQL restore report whose exact source and target state manifests match and whose append-only audit controls pass.
 3. Read and head only the receipt's exact S3 `VersionId`; verify its hash, active Compliance retention, Legal Hold `OFF` and expected SSE-KMS key.
-4. Describe the exact asymmetric KMS signing key and require `Enabled` plus `SIGN_VERIFY`.
+4. Inspect the exact OpenBao Transit key version, require deletion to be disabled, bind its asymmetric type and public-key hash to the trust policy.
 5. Run the complete offline bundle, tenant-chain and signature verifier.
 6. Submit exactly `DeleteObject(Bucket, Key, VersionId)`. An unversioned delete-marker request is forbidden and is not evidence.
-7. Require AWS `403 AccessDenied`, then read the same exact version again and reproduce its hash.
+7. Require S3-compatible `403 AccessDenied`, then read the same exact version again and reproduce its hash.
 
 Run only after the snapshot and isolated restore evidence have been produced and the policy hash has been approved:
 
 ```sh
 export SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_ENABLED=1
+export SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL=https://rgw-proof.internal.example
+export SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_ADDR=https://openbao.internal.example
+export SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TOKEN_FILE=/run/secrets/openbao-audit-proof-token
 docker compose -p collabio --profile audit-worm-provider-acceptance run --rm --no-deps \
+  --volume "$SECRET_DIR/openbao-token:/run/secrets/openbao-audit-proof-token:ro" \
   --volume "$INPUT_DIR:/input:ro" audit-worm-provider-acceptance \
   --policy /input/provider-acceptance-policy.json \
   --expected-policy-hash "sha256:<separately-pinned-policy-hash>" \
@@ -121,9 +130,9 @@ docker compose -p collabio --profile audit-worm-provider-acceptance run --rm --n
   --execution-confirmation I_APPROVE_EXACT_VERSION_DELETE_DENIAL_PROBE
 ```
 
-Success emits `audit_worm_provider_acceptance_report.v1`. Bucket, object key, version ID, tenant ID, provider key IDs and provider request IDs are represented only by SHA-256 references. Event bodies, signatures, public-key bytes and secrets are never emitted. Any failure emits one fixed metadata-only record and exits non-zero. If the exact-version delete unexpectedly succeeds, the ceremony fails irrecoverably and must not be represented as accepted evidence.
+Success emits `audit_worm_provider_acceptance_report.v2`. Bucket, object key, version ID, tenant ID, provider key IDs and provider request IDs are represented only by SHA-256 references. Event bodies, signatures, public-key bytes and secrets are never emitted. Any failure emits one fixed metadata-only record and exits non-zero. If the exact-version delete unexpectedly succeeds, the ceremony fails irrecoverably and must not be represented as accepted evidence.
 
-The command deliberately cannot run on `dev001` yet: no approved AWS workload identity, dedicated Object-Lock proof bucket or purpose-bound KMS keys are configured there. This is an external acceptance prerequisite, not an implementation fallback to MinIO or local credentials.
+The command deliberately cannot run on `dev001` yet: no approved Ceph RGW proof endpoint, dedicated Object-Lock proof bucket or OpenBao signing service is deployed there. Do not turn the shared development host into an improvised production storage or key-management cluster. MinIO remains a development compatibility target and is not accepted as productive WORM evidence.
 
 ## Recovery
 
@@ -131,10 +140,11 @@ The S3 write precedes the PostgreSQL receipt transaction. A database failure can
 
 ## Primary references
 
-- AWS KMS `Sign`: https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html
-- AWS KMS `GetPublicKey`: https://docs.aws.amazon.com/kms/latest/APIReference/API_GetPublicKey.html
-- AWS KMS key-spec and signature algorithm reference: https://docs.aws.amazon.com/kms/latest/developerguide/symm-asymm-choose-key-spec.html
-- AWS KMS asymmetric keys: https://docs.aws.amazon.com/kms/latest/developerguide/symmetric-asymmetric.html
-- Amazon S3 Object Lock: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html
-- Amazon S3 Object Lock operations: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-managing.html
+- Ceph RGW S3 API: https://docs.ceph.com/en/latest/radosgw/s3/
+- Ceph RGW bucket and Object Lock operations: https://docs.ceph.com/en/latest/radosgw/s3/bucketops/
+- Ceph RGW object retention and Legal Hold operations: https://docs.ceph.com/en/reef/radosgw/s3/objectops/
+- Ceph RGW KMIP integration: https://docs.ceph.com/en/latest/radosgw/kmip/
+- OpenBao Transit: https://openbao.org/docs/secrets/transit/
+- OpenBao Transit API: https://openbao.org/api-docs/secret/transit/
+- OpenBao security model: https://openbao.org/docs/internals/security/
 - NIST FIPS 186-5 Digital Signature Standard: https://csrc.nist.gov/pubs/fips/186-5/final
