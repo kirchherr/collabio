@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from suite.storage.adapter_policy import ObjectLockMode, load_storage_adapter_policy, storage_adapter_policy_summary
@@ -91,7 +92,7 @@ def test_object_storage_is_mandatory_api_dependency_and_runs_provider_profile_ev
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
     requirements = REQUIREMENTS_PATH.read_text(encoding="utf-8")
 
-    assert "boto3>=1.35.0,<2.0" in requirements
+    assert re.search(r"^boto3==[0-9]+\.[0-9]+\.[0-9]+$", requirements, flags=re.MULTILINE)
     assert "\n  minio:\n" in compose
     assert 'profiles: ["object-storage"]' not in compose
     assert "\n  object-storage-profile-check:\n" in compose
