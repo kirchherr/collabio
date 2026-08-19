@@ -326,6 +326,8 @@ class S3CompatibleAuditWormProviderProbe:
     @staticmethod
     def _s3_call(operation: str, action: Any) -> Mapping[str, Any]:
         return _provider_call("s3", operation, action)
+
+
 class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
     schema_version: Literal["audit_worm_provider_acceptance_report.v2"] = "audit_worm_provider_acceptance_report.v2"
     accepted: Literal[True] = True
