@@ -90,9 +90,7 @@ def test_openbao_transit_signer_uses_versioned_key_and_provider_verification() -
             "signature_algorithm": None,
         }
     ]
-    assert client.verify_calls[0]["signature"] == "vault:v3:" + base64.b64encode(
-        b"openbao-signature"
-    ).decode("ascii")
+    assert client.verify_calls[0]["signature"] == "vault:v3:" + base64.b64encode(b"openbao-signature").decode("ascii")
 
 
 def test_openbao_transit_inspection_rejects_deletable_or_unapproved_keys() -> None:

@@ -326,7 +326,6 @@ class S3CompatibleAuditWormProviderProbe:
     @staticmethod
     def _s3_call(operation: str, action: Any) -> Mapping[str, Any]:
         return _provider_call("s3", operation, action)
-
 class AuditWormProviderAcceptanceReport(StrictAcceptanceModel):
     schema_version: Literal["audit_worm_provider_acceptance_report.v2"] = "audit_worm_provider_acceptance_report.v2"
     accepted: Literal[True] = True
@@ -535,9 +534,7 @@ def accept_audit_worm_provider(
         signing_provider_key_id_sha256=inspection.evidence.signing_provider_key_id_sha256,
         storage_provider_key_id_sha256=inspection.evidence.storage_provider_key_id_sha256,
         object_lock_retain_until_utc=inspection.evidence.retain_until_utc,
-        signing_key_inspection_request_id_sha256=(
-            inspection.evidence.signing_key_inspection_request_id_sha256
-        ),
+        signing_key_inspection_request_id_sha256=(inspection.evidence.signing_key_inspection_request_id_sha256),
         initial_get_request_id_sha256=inspection.evidence.initial_get_request_id_sha256,
         head_request_id_sha256=inspection.evidence.head_request_id_sha256,
         delete_request_id_sha256=deletion.delete_request_id_sha256,
@@ -748,8 +745,7 @@ def main(argv: list[str] | None = None, *, env: Mapping[str, str] | None = None)
         )
         if (
             _sha256_ref(object_store_endpoint.encode("utf-8")) != policy.object_store_endpoint_sha256
-            or _sha256_ref(signing_provider_endpoint.encode("utf-8"))
-            != policy.signing_provider_endpoint_sha256
+            or _sha256_ref(signing_provider_endpoint.encode("utf-8")) != policy.signing_provider_endpoint_sha256
         ):
             raise AuditWormProviderAcceptanceError("provider_endpoint_policy_mismatch")
         boto3_module = importlib.import_module("boto3")
@@ -761,12 +757,8 @@ def main(argv: list[str] | None = None, *, env: Mapping[str, str] | None = None)
             ),
             namespace=runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_NAMESPACE") or None,
             tls_ca_file=runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TLS_CA_FILE") or None,
-            client_cert_file=(
-                runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_CERT_FILE") or None
-            ),
-            client_key_file=(
-                runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_KEY_FILE") or None
-            ),
+            client_cert_file=(runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_CERT_FILE") or None),
+            client_key_file=(runtime_env.get("SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_KEY_FILE") or None),
         )
         probe = S3CompatibleAuditWormProviderProbe(
             s3_client=cast(

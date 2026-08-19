@@ -42,8 +42,7 @@ class OpenBaoTransitKeyReference:
         match = OPENBAO_PROVIDER_KEY_PATTERN.fullmatch(normalized)
         if match is None:
             raise KmsPolicyViolation(
-                "OpenBao provider key reference must be "
-                "openbao-transit://<mount>/<key-name>/v<version>"
+                "OpenBao provider key reference must be openbao-transit://<mount>/<key-name>/v<version>"
             )
         reference = cls(
             mount_path=match.group(1),
@@ -262,9 +261,7 @@ class OpenBaoTransitAuditCheckpointSigner(OpenBaoTransitSigningKeyInspector):
         inspection = self.inspect_provider_key(provider_key_id=self.provider_key_ref.canonical_ref)
         _require_algorithm_key_type(algorithm=self.signing_algorithm, key_type=inspection.key_type)
         digest_base64 = base64.b64encode(digest).decode("ascii")
-        signature_algorithm = (
-            "pss" if self.signing_algorithm is AuditSigningAlgorithm.RSASSA_PSS_SHA_256 else None
-        )
+        signature_algorithm = "pss" if self.signing_algorithm is AuditSigningAlgorithm.RSASSA_PSS_SHA_256 else None
         try:
             sign_response = self.client.sign_digest(
                 mount_path=self.provider_key_ref.mount_path,
