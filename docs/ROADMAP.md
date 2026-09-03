@@ -121,7 +121,7 @@ Noch nicht umgesetzt:
 - [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
 - [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
-  Providerneutraler v2-Control-Plane-Pfad, Migration, OpenBao-Transit-One-shot-Worker, Sign/Verify, exakter Ceph-RGW-Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt; ein realer selbst gehosteter Ceph/OpenBao-Proof-Stack und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch. AWS ist weder Voraussetzung noch Roadmap-Ziel.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, OpenBao-Transit-One-shot-Worker, Sign/Verify, exakter Ceph-RGW-Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt. Die Kubernetes/Rook/Ceph/OpenBao-Produktionsreferenz, exakten Versionspins, sichere Proof/Production-Trennung und der metadata-only Stack-Preflight sind ebenfalls umgesetzt; ein dedizierter realer Proof-Cluster und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch. AWS ist weder Voraussetzung noch Roadmap-Ziel.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -578,6 +578,7 @@ Aufgaben:
 - [x] KMS Adapter implementieren.
 - [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
 - [x] Fail-closed Abnahmegate fuer den selbst gehosteten Ceph-RGW-/OpenBao-Transit-Referenzstack mit gepinnten Endpunkten und Artefakten, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
+- [x] Gehaertete Kubernetes/Rook/Ceph/OpenBao-Referenzkonfiguration, exakte Release-Policy, Proof/Production-Topologien und fail-closed Provider-Stack-Preflight implementieren.
 - [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.

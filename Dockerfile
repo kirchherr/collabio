@@ -37,6 +37,7 @@ RUN addgroup -S -g 10001 collabio \
 COPY --chown=10001:10001 app ./app
 COPY --chown=10001:10001 docs/operations/genoffice_evaluation_policy.json ./docs/operations/genoffice_evaluation_policy.json
 COPY --chown=10001:10001 docs/operations/productivity_pilot_policy.json ./docs/operations/productivity_pilot_policy.json
+COPY --chown=10001:10001 infra/self-hosted/provider-stack-policy.json ./infra/self-hosted/provider-stack-policy.json
 
 ENV PYTHONPATH=/workspace/app
 

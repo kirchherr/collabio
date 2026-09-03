@@ -1,4 +1,4 @@
-# S3/MinIO Storage Adapter Plan
+# S3-Compatible Storage Adapter Plan
 
 The storage adapter is the object-content boundary beneath source objects.
 
@@ -31,8 +31,9 @@ docs/storage_adapter_policy.json
 Decision summary:
 
 - Provider API: S3-compatible.
-- Development and self-hosted evaluation provider: MinIO.
-- Production compatibility target: AWS S3 Object Lock semantics.
+- Development compatibility provider: MinIO.
+- Production reference: self-hosted Ceph RGW Object Lock with OpenBao Transit-backed SSE-KMS.
+- The S3 API is a protocol boundary; no AWS infrastructure, account or IAM dependency is required.
 - Metadata authority: PostgreSQL.
 - Native object bytes, object versions, manifests, parser artifacts, audit snapshots, and export packages: object storage.
 
@@ -113,5 +114,7 @@ The storage adapter must never be an authorization source. Read flows still requ
 6. Write object version IDs and manifest evidence into audit/outbox events.
 7. [x] Add an exact-version restore command and metadata-only report for storage manifests, content hashes, target metadata, Object Lock, Legal Hold, and isolated-target evidence.
 8. [x] Add provider profile tests before allowing production object writes.
-9. [x] Bind the concrete MinIO/AWS SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
+9. [x] Bind the concrete S3-compatible SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
 10. [x] Bind the exact-version restore report to a freshly recomputed persistent runtime report in `backend_storage_foundation_gate.v1`; production cross-site replication and provider-specific failover automation remain deployment work.
+11. [x] Add the self-hosted Rook/Ceph/OpenBao production reference, Proof/Production topology policy and metadata-only preflight.
+12. [ ] Run the real non-content provider acceptance and isolated provider restores on a dedicated proof cluster, then bind their hashes into production readiness evidence.

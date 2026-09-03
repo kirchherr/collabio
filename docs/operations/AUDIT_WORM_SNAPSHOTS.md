@@ -134,6 +134,8 @@ Success emits `audit_worm_provider_acceptance_report.v2`. Bucket, object key, ve
 
 The command deliberately cannot run on `dev001` yet: no approved Ceph RGW proof endpoint, dedicated Object-Lock proof bucket or OpenBao signing service is deployed there. Do not turn the shared development host into an improvised production storage or key-management cluster. MinIO remains a development compatibility target and is not accepted as productive WORM evidence.
 
+The deployment reference and its separate Proof/Production readiness contract live in `infra/self-hosted`. ADR-0078 requires a dedicated Kubernetes provider cluster, digest-pinned Rook/Ceph/OpenBao images, encrypted provider traffic, independent recovery and isolated restores. The metadata-only `self-hosted-provider-preflight` binds this live acceptance report for production readiness but cannot execute deployment or provider changes itself.
+
 ## Recovery
 
 The S3 write precedes the PostgreSQL receipt transaction. A database failure can therefore leave a valid protected object version without a receipt. Reconciliation must inspect only the configured tenant prefix, verify the bundle, signature, exact object controls and current audit prefix, then append the missing receipt. Never overwrite or delete an orphaned protected version.

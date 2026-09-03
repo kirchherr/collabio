@@ -71,7 +71,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 
 ## Phase 2 ADRs
 
-- [x] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target.
+- [x] ADR-0024: S3-compatible object storage and self-hosted Ceph/OpenBao production target.
 - [x] ADR-0025: Retention policy engine.
 - [x] ADR-0026: Legal hold semantics.
 - [ ] ADR-0027: Envelope encryption implementation.
@@ -119,6 +119,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [ ] ADR-0056: High availability and multi-region strategy.
 - [ ] ADR-0057: Enterprise audit evidence pack.
 - [x] ADR-0058: Platform Module System and optional business modules.
+- [x] ADR-0078: Self-hosted compliance provider stack.
 
 ## Immediate ADR Priority
 

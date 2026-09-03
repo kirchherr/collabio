@@ -14,7 +14,7 @@ COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
 REQUIREMENTS_PATH = REPO_ROOT / "requirements.txt"
 
 
-def test_storage_adapter_policy_declares_s3_minio_boundary() -> None:
+def test_storage_adapter_policy_declares_s3_self_hosted_boundary() -> None:
     policy = load_storage_adapter_policy(POLICY_PATH)
 
     assert storage_adapter_policy_summary(policy) == {
@@ -25,8 +25,8 @@ def test_storage_adapter_policy_declares_s3_minio_boundary() -> None:
         "bucket_profile_count": 4,
         "object_lock_bucket_count": 2,
     }
-    assert "aws_s3_object_lock" in policy.production_compatibility_targets
-    assert "minio_object_lock" in policy.production_compatibility_targets
+    assert "ceph_rgw_object_lock_openbao_transit" in policy.production_compatibility_targets
+    assert "aws_s3_object_lock" not in policy.production_compatibility_targets
     assert "source_object_write_guard" in policy.adapter_requirements
     assert "no_direct_sdk_access_from_feature_code" in policy.adapter_requirements
     assert "feature_code_direct_s3_sdk_call" in policy.forbidden_operations
@@ -71,7 +71,7 @@ def test_storage_adapter_adr_and_backlog_are_in_sync() -> None:
     assert "MinIO" in adr
     assert "Object Lock" in adr
     assert "SourceObjectWriteGuard" in adr
-    assert "- [x] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target." in backlog
+    assert "- [x] ADR-0024: S3-compatible object storage and self-hosted Ceph/OpenBao production target." in backlog
 
 
 def test_storage_adapter_docs_bind_sdk_behind_content_store_port() -> None:

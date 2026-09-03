@@ -1,0 +1,49 @@
+{
+  "schema_version": "self_hosted_provider_stack_policy.v1",
+  "policy_id": "collabio-self-hosted-provider-stack-20260903",
+  "provider_profile": "self-hosted-ceph-openbao-v1",
+  "versions": {
+    "kubernetes_minimum": "1.30.0",
+    "rook_chart": "v1.19.6",
+    "ceph": "20.2.4",
+    "openbao_chart": "0.29.3",
+    "openbao": "2.6.2"
+  },
+  "proof_minimums": {
+    "kubernetes_nodes": 1,
+    "failure_domains": 1,
+    "ceph_monitors": 1,
+    "ceph_managers": 1,
+    "ceph_osds": 1,
+    "rgw_instances": 1,
+    "openbao_raft_voters": 1,
+    "openbao_healthy_voters": 1,
+    "openbao_audit_devices": 1
+  },
+  "production_minimums": {
+    "kubernetes_nodes": 3,
+    "failure_domains": 3,
+    "ceph_monitors": 3,
+    "ceph_managers": 2,
+    "ceph_osds": 3,
+    "rgw_instances": 2,
+    "openbao_raft_voters": 3,
+    "openbao_healthy_voters": 3,
+    "openbao_audit_devices": 2
+  },
+  "maximum_evidence_age_hours": 24,
+  "openbao_seal_strategy": "shamir-offline-custody",
+  "production_unseal_shares": 5,
+  "production_unseal_threshold": 3,
+  "require_digest_pinned_images": true,
+  "require_verified_release_signatures": true,
+  "require_tls": true,
+  "require_ceph_msgr2_encryption": true,
+  "require_object_lock_compliance": true,
+  "require_openbao_transit_for_sse_kms": true,
+  "require_separate_storage_and_signing_keys": true,
+  "require_openbao_storage_independent_from_ceph": true,
+  "forbid_public_provider_endpoints": true,
+  "forbid_root_runtime_tokens": true,
+  "forbid_unseal_material_in_cluster": true
+}

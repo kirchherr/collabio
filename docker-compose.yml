@@ -245,6 +245,23 @@ services:
       - no-new-privileges:true
     restart: "no"
 
+  self-hosted-provider-preflight:
+    profiles: ["self-hosted-provider-preflight"]
+    build:
+      context: .
+      target: runtime
+    entrypoint: ["python", "-m", "suite.operations.self_hosted_provider_stack"]
+    command: ["--help"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
 
   object-storage-profile-check:
     build:
@@ -4111,6 +4128,7 @@ services:
       - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
       - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./infra:/workspace/infra:ro
       - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
@@ -4185,6 +4203,7 @@ services:
       - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
       - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
       - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./infra:/workspace/infra:ro
       - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro

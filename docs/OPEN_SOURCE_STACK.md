@@ -48,7 +48,7 @@ Dieses Dokument sammelt bewährte Open-Source- und offene Standard-Bausteine. "E
 | --- | --- | --- | --- |
 | Crypto API | Eigene Adapter-Schicht | default | Keine direkte Krypto im Business-Code. |
 | Dev KMS | Lokaler Software-KMS / OpenBao-Kandidat | candidate | Lizenz, Security und Betriebsmodell pruefen. |
-| Enterprise KMS | HSM/PKCS#11, Cloud KMS Adapter, OpenBao/Vault-kompatible Adapter | candidate | Kunden brauchen unterschiedliche Betriebsmodelle. |
+| Enterprise KMS | OpenBao Transit, optional self-hosted HSM/PKCS#11 | selected | Der Produktionsreferenzpfad bleibt selbst gehostet; externe Provider erfordern spaetere gesonderte Zulassung. |
 | Envelope Encryption | Pflicht | default | Tenant-, Datenklassen- und Objekt-Key-Hierarchie. |
 | Key Rotation | Pflicht | default | Muss von Anfang an modelliert werden. |
 | Crypto Shredding | Nur policy-gesteuert | default | Nie pauschal fuer GoBD oder Legal Hold. |
