@@ -61,7 +61,8 @@ def _evidence(*, target_profile: Literal["proof", "production"] = "production") 
             public_provider_endpoint_exposed=False,
         ),
         ceph=CephStackEvidence(
-            rook=_artifact("rook", "v1.19.6"),
+            rook=_artifact("rook", "v1.20.7"),
+            ceph_csi_operator=_artifact("ceph-csi-operator", "1.0.4"),
             ceph=_artifact("ceph", "20.2.4"),
             rgw_endpoint="https://rgw.internal.example",
             health_status="HEALTH_OK",
@@ -83,7 +84,7 @@ def _evidence(*, target_profile: Literal["proof", "production"] = "production") 
             health_report_sha256=_hash("ceph-health"),
         ),
         openbao=OpenBaoStackEvidence(
-            chart_version="0.29.3",
+            chart_version="0.29.4",
             artifact=_artifact("openbao", "2.6.2"),
             endpoint="https://openbao.internal.example",
             initialized=True,
@@ -166,6 +167,7 @@ def test_production_stack_fails_closed_on_version_topology_recovery_and_acceptan
             "ceph": _evidence().ceph.model_copy(
                 update={
                     "rook": _artifact("rook", "v1.19.5"),
+                    "ceph_csi_operator": _artifact("ceph-csi-operator", "1.0.3"),
                     "monitor_count": 1,
                 }
             ),
@@ -259,14 +261,17 @@ def test_reference_manifests_are_fail_safe_and_aws_infrastructure_free() -> None
 
     assert "useAllNodes: false" in cluster
     assert "useAllDevices: false" in cluster
-    assert "encryptedDevice: true" in cluster
+    assert 'encryptedDevice: "true"' in cluster
     assert "nodes: []" in cluster
     assert "allowUninstallWithVolumes: false" in cluster
-    assert "image: quay.io/ceph/ceph:v20.2.4" in cluster
+    assert (
+        "image: quay.io/ceph/ceph:v20.2.4@sha256:6bb1c8a42fbc0bf87938946990b65174466997bc11c31eb5a323225a779fd8f9"
+        in cluster
+    )
     assert "KMS_PROVIDER: vault" in object_store
     assert "VAULT_ADDR: https://openbao-active.openbao.svc.cluster.local:8200" in object_store
     assert "object_lock" not in object_store.lower()
-    assert 'tag: "2.6.2"' in openbao
+    assert 'tag: "2.6.2@sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641"' in openbao
     assert "storageClass: openbao-independent-rwo" in openbao
     assert "tls_disable = 0" in openbao
     assert "replicas: 3" in openbao
@@ -288,3 +293,179 @@ def test_preflight_runtime_is_networkless_read_only_and_policy_bundled() -> None
     assert "no-new-privileges:true" in service
     assert 'restart: "no"' in service
     assert "infra/self-hosted/provider-stack-policy.json" in dockerfile
+
+
+def test_dev001_provider_cluster_is_pinned_isolated_and_non_destructive() -> None:
+    development = REPO_ROOT / "infra" / "self-hosted" / "development"
+    versions = (development / "versions.env").read_text()
+    k3d = (development / "k3d.yaml").read_text()
+    audit_policy = (development / "audit-policy.yaml").read_text()
+    ceph = (development / "ceph-cluster.yaml.template").read_text()
+    local_block = (development / "local-block-storage.yaml").read_text()
+    toolbox = (development / "ceph-toolbox-and-user.yaml").read_text()
+    openbao = (development / "openbao-values.yaml").read_text()
+    rook = (development / "rook-operator-values.yaml").read_text()
+    storage_node = (development / "k3s-storage-node.Dockerfile").read_text()
+    storage_entrypoint = (development / "k3s-storage-entrypoint.sh").read_text()
+    lifecycle = (REPO_ROOT / "tools" / "self-hosted" / "provider-dev-stack.sh").read_text()
+
+    assert "ROOK_CHART_VERSION=v1.20.7" in versions
+    assert "OPENBAO_CHART_VERSION=0.29.4" in versions
+    assert versions.count("@sha256:") == 5
+    assert "K3S_BASE_IMAGE=rancher/k3s:v1.36.4-k3s1@sha256:" in versions
+    assert "ALPINE_BASE_IMAGE=alpine:3.23@sha256:" in versions
+    assert "LVM2_VERSION=2.03.35-r0" in versions
+    assert "CRYPTSETUP_VERSION=2.8.1-r0" in versions
+    assert "EUDEV_VERSION=3.2.14-r6" in versions
+    assert "FROM ${ALPINE_BASE_IMAGE} AS storage_runtime" in storage_node
+    assert "FROM ${K3S_BASE_IMAGE}" in storage_node
+    assert '"lvm2=${LVM2_VERSION}"' in storage_node
+    assert '"cryptsetup=${CRYPTSETUP_VERSION}"' in storage_node
+    assert '"eudev=${EUDEV_VERSION}"' in storage_node
+    assert "COPY --from=storage_runtime / /" not in storage_node
+    assert "COPY --from=storage_runtime /lib/ /lib/" in storage_node
+    assert "COPY --from=storage_runtime /usr/lib/ /usr/lib/" in storage_node
+    assert "COPY --from=storage_runtime /usr/bin/ /usr/bin/" not in storage_node
+    assert "/bin/k3d-entrypoint-storage.sh" in storage_node
+    assert "/sbin/udevd --daemon --resolve-names=never" in storage_entrypoint
+    assert "--subsystem-match=block" not in storage_entrypoint
+    assert 'exec /bin/k3s "$@"' not in storage_entrypoint
+    assert "servers: 3" in k3d
+    assert "image: ${K3S_IMAGE}" in k3d
+    assert "collabio.io/storage-node-runtime-fingerprint=${COLLABIO_STORAGE_NODE_RUNTIME_FINGERPRINT}" in k3d
+    assert "hostIP: 127.0.0.1" in k3d
+    assert 'hostPort: "26443"' in k3d
+    assert "--secrets-encryption-provider=secretbox" in k3d
+    assert "audit-log-mode=blocking-strict" in k3d
+    assert "audit-policy.yaml:/etc/collabio/audit-policy.yaml:ro" in k3d
+    assert "/run/udev:/run/udev" not in k3d
+    assert "level: Metadata" in audit_policy
+    assert "disableLoadbalancer: true" in k3d
+    assert "useAllNodes: false" in ceph
+    assert "useAllDevices: false" in ceph
+    assert "storageClassDeviceSets:" in ceph
+    assert "count: 3" in ceph
+    assert "portable: false" in ceph
+    assert "encrypted: true" in ceph
+    assert "storageClassName: collabio-provider-local-block" in ceph
+    assert "volumeMode: Block" in ceph
+    assert (
+        """    prepareosd:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 2Gi"""
+        in ceph
+    )
+    assert local_block.count("kind: PersistentVolume\n") == 3
+    assert local_block.count("path: /dev/collabio-provider-osd") == 3
+    assert local_block.count("persistentVolumeReclaimPolicy: Retain") == 3
+    assert "provisioner: kubernetes.io/no-provisioner" in local_block
+    assert "volumeBindingMode: WaitForFirstConsumer" in local_block
+    assert local_block.count("k3d-collabio-provider-server-") == 3
+    assert "serviceAccountName: rook-ceph-default" in toolbox
+    assert "KEYRING_MOUNT=/var/lib/rook-ceph-mon/secret.keyring" in toolbox
+    assert "printf '[%s]\\nkey = %s\\n'" in toolbox
+    assert "runAsNonRoot: true" in toolbox
+    assert "runAsUser: 2016" in toolbox
+    assert "allowPrivilegeEscalation: false" in toolbox
+    assert "secretName: rook-ceph-mon" in toolbox
+    assert "replicas: 3" in openbao
+    assert "tls_disable = 0" in openbao
+    assert "storageClass: openbao-independent-rwo" in openbao
+    assert 'audit "file" "audit-primary"' in openbao
+    assert 'audit "file" "audit-secondary"' in openbao
+    assert "configAnnotation: true" in openbao
+    assert 'mode = "0600"' in openbao
+    assert 'log_raw = "false"' in openbao
+    assert "installCsiOperator: true" in rook
+    assert "v1.0.4@sha256:c62933fd4083635f969f8a61932af45dba9902d48867e2b5d98a69d8e4344eb6" in rook
+    assert "crd/cephconnections.csi.ceph.io" in lifecycle
+    assert "deployment/ceph-csi-controller-manager" in lifecycle
+    assert 'flock -w 1800 "$BUILD_LOCK" flock -w 1800 "$DOCKER_LOCK"' in lifecycle
+    assert "docker compose ls" in lifecycle
+    assert 'candidate=$(losetup --find | awk "{print \\$1}")' in lifecycle
+    assert "--output NAME,BACK-INO,BACK-FILE" in lifecycle
+    assert "build_storage_node_image" in lifecycle
+    assert "image_runtime_fingerprint" in lifecycle
+    assert "STORAGE_NODE_RUNTIME_FINGERPRINT" in lifecycle
+    assert "export COLLABIO_STORAGE_NODE_RUNTIME_FINGERPRINT" in lifecycle
+    assert "collabio.io/storage-node-runtime-fingerprint" in lifecycle
+    assert "verify_cluster_node_image" in lifecycle
+    assert "verify_storage_node_runtime" in lifecycle
+    assert lifecycle.count("initialize_storage_udev_database") == 3
+    assert "udevadm trigger --subsystem-match=block --action=add" in lifecycle
+    assert "docker run --rm --network none --entrypoint /bin/sh" in lifecycle
+    assert 'test "$(printf collabio | xargs printf %s)" = collabio' in lifecycle
+    assert "bootstrap|reconcile|smoke|backup|start" in lifecycle
+    assert 'wait --for=create "pod/$pod" --timeout=600s' in lifecycle
+    assert "udevadm trigger --action=change" in lifecycle
+    assert "stable_device=/dev/collabio-provider-osd" in lifecycle
+    assert 'mknod "$stable_device" b 7 "$minor"' in lifecycle
+    assert 'stat -c %t:%T "$stable_device"' in lifecycle
+    assert lifecycle.count("prepare_kubelet_block_mapping_devices") == 2
+    assert "last_minor=$((first_minor + 7))" in lifecycle
+    assert 'mknod "$path" b 7 "$current"' in lifecycle
+    assert 'printf "7:%x" "$current"' in lifecycle
+    assert lifecycle.count("harden_cephx_cipher_policy") == 2
+    assert "AUTH_INSECURE_CLIENT_KEY_TYPE" in lifecycle
+    assert "AUTH_INSECURE_SERVICE_KEY_TYPE" in lifecycle
+    assert "mon set auth_allowed_ciphers aes256k" in lifecycle
+    assert "config set mon mon_auth_allow_insecure_key false" in lifecycle
+    assert 'map(.name) == ["aes256k"]' in lifecycle
+    assert "ceph_toolbox_exec status >/dev/null" in lifecycle
+    assert lifecycle.count("verify_ceph_osd_topology") == 2
+    assert ".num_osds == 3 and .num_up_osds == 3 and .num_in_osds == 3" in lifecycle
+    assert 'startswith("k3d-collabio-provider-server-")' in lifecycle
+    assert "all($hosts[]; (.children | length) == 1)" in lifecycle
+    assert "status.observedGeneration" in lifecycle
+    assert "Ceph object store did not reach observed Ready phase" in lifecycle
+    assert "expected two ready RGW replicas" in lifecycle
+    assert "rook-ceph-rgw-collabio-objects-b" not in lifecycle
+    assert "cephobjectstore/collabio-objects --timeout=1200s" not in lifecycle
+    assert 'apply -f "$CONFIG_DIR/local-block-storage.yaml"' in lifecycle
+    assert "test -S /run/udev/control" in lifecycle
+    assert "udev placeholder" not in lifecycle
+    assert 'docker cp "$udev_record"' not in lifecycle
+    assert "docker cp /run/udev/data/." not in lifecycle
+    assert "rollout restart deployment/rook-ceph-operator" not in lifecycle
+    assert 'mknod "$candidate" b 7 "$minor"' in lifecycle
+    assert 'test -b "$candidate"' in lifecycle
+    assert "--for=jsonpath='{.status.readyReplicas}'=3 statefulset/openbao" in lifecycle
+    assert 'replace --raw="$endpoint" -f -' in lifecycle
+    assert 'bao operator unseal "$share"' not in lifecycle
+    assert "openbao_raft_has_peer" in lifecycle
+    assert "-leader-ca-cert=@/openbao/tls/ca.crt" in lifecycle
+    assert "-leader-client-cert=@/openbao/tls/tls.crt" in lifecycle
+    assert "-leader-client-key=@/openbao/tls/tls.key" in lifecycle
+    assert "BAO_ADDR=https://openbao-active.openbao.svc.cluster.local:8200" in lifecycle
+    assert "BAO_TLS_SERVER_NAME=openbao-active.openbao.svc.cluster.local" in lifecycle
+    assert "wait_for_openbao_active" in lifecycle
+    assert "kubernetes.io/service-name=openbao-active" in lifecycle
+    assert "declarative OpenBao audit devices are not active" in lifecycle
+    assert "audit enable" not in lifecycle
+    assert "unsafe_allow_api_audit_creation" not in openbao + lifecycle
+    assert "docker system prune" not in lifecycle
+    assert "docker volume prune" not in lifecycle
+    assert "cluster delete" not in lifecycle
+    assert "down -v" not in lifecycle
+
+
+def test_development_rgw_uses_tls_and_non_exportable_openbao_transit_contract() -> None:
+    development = REPO_ROOT / "infra" / "self-hosted" / "development"
+    object_store = (development / "ceph-object-store.yaml").read_text()
+    rgw_policy = (development / "openbao-rgw-policy.hcl").read_text()
+    lifecycle = (REPO_ROOT / "tools" / "self-hosted" / "provider-dev-stack.sh").read_text()
+
+    assert "securePort: 443" in object_store
+    assert "instances: 2" in object_store
+    assert "KMS_PROVIDER: vault" in object_store
+    assert "VAULT_SECRET_ENGINE: transit" in object_store
+    assert 'VAULT_VERIFY_SSL: "true"' in object_store
+    assert "VAULT_CACERT: collabio-openbao-ca" in object_store
+    assert "collabio-storage/datakey/plaintext/collabio-rgw-sse-kms" in rgw_policy
+    assert "collabio-storage/decrypt/collabio-rgw-sse-kms" in rgw_policy
+    assert "exportable=false" in lifecycle
+    assert "deletion_allowed=false" in lifecycle
+    assert "amazonaws.com" not in object_store + lifecycle

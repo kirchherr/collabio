@@ -14,7 +14,7 @@ Collabio must not require AWS or another public cloud. The reference must remain
 
 The production reference stack is Kubernetes with Rook-managed Ceph RGW and OpenBao:
 
-- Rook `v1.19.6`, Ceph Tentacle `20.2.4`, OpenBao chart `0.29.3` and OpenBao `2.6.2` are exact policy versions. Runtime images must additionally be pinned by verified multi-arch SHA-256 digests.
+- Rook `v1.20.7`, Ceph Tentacle `20.2.4`, OpenBao chart `0.29.4` and OpenBao `2.6.2` are exact policy versions. Runtime images are pinned by verified multi-arch SHA-256 digests.
 - Production uses at least three independent failure domains, three Ceph monitors, two managers, three OSDs, two RGW instances and three healthy OpenBao Raft voters.
 - Ceph messenger v2 encryption and RGW TLS are mandatory. Record and evidence buckets are created with Object Lock, versioning and approved Compliance retention before their first write.
 - Ceph RGW uses its `vault` compatibility backend against self-hosted OpenBao Transit for SSE-KMS. Storage keys are symmetric and non-exportable. Audit-signing keys are separate, asymmetric, non-exportable and non-deletable.
@@ -24,9 +24,10 @@ The production reference stack is Kubernetes with Rook-managed Ceph RGW and Open
 - Production readiness also requires replicated Ceph object data, isolated Ceph restore, OpenBao Raft snapshots, isolated OpenBao restore, Kubernetes control-plane restore, independent recovery credentials and a separate recovery failure domain.
 - A one-node profile may be used only for disposable, synthetic, non-content protocol proof. Its report is labelled `proof` and can never satisfy production topology or recovery requirements.
 - The checked-in CephCluster manifest has no nodes or devices. A site-specific reviewed overlay is mandatory, preventing accidental disk consumption.
+- A separate `dev001` profile runs three K3s server containers through k3d, with sparse file-backed loop OSDs and independent local-path PVCs for OpenBao. This profile supports complete functional integration and simulated node failover but can never satisfy a multi-host production HA claim.
 - The metadata-only preflight consumes separately collected evidence and a separately pinned policy hash. It cannot deploy, unseal, delete, change retention or execute failover.
 
-The shared `dev001` host remains a Docker development runner. It is not the provider cluster and must not host an improvised production or HA claim.
+The shared `dev001` host remains a Docker development runner. It hosts the containerized provider development cluster but must not host an improvised production or HA claim.
 
 ## Consequences
 

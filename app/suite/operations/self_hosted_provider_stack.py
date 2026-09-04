@@ -57,6 +57,7 @@ def _require_self_hosted_https_origin(value: str) -> str:
 class ProviderVersions(StrictStackModel):
     kubernetes_minimum: str = Field(pattern=r"^1\.(3[0-9]|[4-9][0-9])\.[0-9]+$")
     rook_chart: str = Field(pattern=r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+    ceph_csi_operator: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
     ceph: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
     openbao_chart: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
     openbao: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -137,6 +138,7 @@ class KubernetesStackEvidence(StrictStackModel):
 
 class CephStackEvidence(StrictStackModel):
     rook: ComponentArtifactEvidence
+    ceph_csi_operator: ComponentArtifactEvidence
     ceph: ComponentArtifactEvidence
     rgw_endpoint: str
     health_status: Literal["HEALTH_OK"]
@@ -335,6 +337,7 @@ def build_self_hosted_provider_stack_report(
         (
             _version_tuple(evidence.kubernetes.version) >= _version_tuple(policy.versions.kubernetes_minimum),
             evidence.ceph.rook.version == policy.versions.rook_chart,
+            evidence.ceph.ceph_csi_operator.version == policy.versions.ceph_csi_operator,
             evidence.ceph.ceph.version == policy.versions.ceph,
             evidence.openbao.chart_version == policy.versions.openbao_chart,
             evidence.openbao.artifact.version == policy.versions.openbao,

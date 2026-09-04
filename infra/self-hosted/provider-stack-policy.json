@@ -4,9 +4,10 @@
   "provider_profile": "self-hosted-ceph-openbao-v1",
   "versions": {
     "kubernetes_minimum": "1.30.0",
-    "rook_chart": "v1.19.6",
+    "rook_chart": "v1.20.7",
+    "ceph_csi_operator": "1.0.4",
     "ceph": "20.2.4",
-    "openbao_chart": "0.29.3",
+    "openbao_chart": "0.29.4",
     "openbao": "2.6.2"
   },
   "proof_minimums": {

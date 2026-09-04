@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rook-ceph-tools
+  namespace: rook-ceph
+  labels:
+    app: rook-ceph-tools
+    app.kubernetes.io/part-of: collabio-provider-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rook-ceph-tools
+  template:
+    metadata:
+      labels:
+        app: rook-ceph-tools
+        app.kubernetes.io/part-of: collabio-provider-stack
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: rook-ceph-default
+      containers:
+        - name: rook-ceph-tools
+          image: quay.io/ceph/ceph:v20.2.4@sha256:6bb1c8a42fbc0bf87938946990b65174466997bc11c31eb5a323225a779fd8f9
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              ENDPOINT_MOUNT=/etc/rook/mon-endpoints
+              KEYRING_MOUNT=/var/lib/rook-ceph-mon/secret.keyring
+              CONFIG_OVERRIDE_MOUNT=/etc/rook-config-override/config
+              CEPH_CONFIG=/etc/ceph/ceph.conf
+              KEYRING_FILE=/etc/ceph/keyring
+
+              config_override_exists() {
+                [ -f "$CONFIG_OVERRIDE_MOUNT" ] && [ -s "$CONFIG_OVERRIDE_MOUNT" ]
+              }
+
+              write_keyring() {
+                ceph_secret=$(cat "$KEYRING_MOUNT")
+                umask 077
+                printf '[%s]\nkey = %s\n' "$ROOK_CEPH_USERNAME" "$ceph_secret" >"$KEYRING_FILE"
+              }
+
+              write_conf() {
+                mon_endpoints=$(sed 's/[a-z0-9_-]\+=//g' "$ENDPOINT_MOUNT")
+                config_override=""
+                if config_override_exists; then
+                  config_override=$(cat "$CONFIG_OVERRIDE_MOUNT")
+                fi
+                cat >"$CEPH_CONFIG" <<EOF
+              [global]
+              mon_host = $mon_endpoints
+              [client.admin]
+              keyring = $KEYRING_FILE
+
+              $config_override
+              EOF
+              }
+
+              write_keyring
+              write_conf
+              keyring_stamp=$(stat -c %Z "$(realpath "$KEYRING_MOUNT")")
+              endpoint_stamp=$(stat -c %Z "$(realpath "$ENDPOINT_MOUNT")")
+              override_stamp=""
+              if config_override_exists; then
+                override_stamp=$(stat -c %Z "$(realpath "$CONFIG_OVERRIDE_MOUNT")")
+              fi
+
+              while sleep 10; do
+                current_keyring_stamp=$(stat -c %Z "$(realpath "$KEYRING_MOUNT")")
+                current_endpoint_stamp=$(stat -c %Z "$(realpath "$ENDPOINT_MOUNT")")
+                current_override_stamp=""
+                if config_override_exists; then
+                  current_override_stamp=$(stat -c %Z "$(realpath "$CONFIG_OVERRIDE_MOUNT")")
+                fi
+                if [ "$current_keyring_stamp" != "$keyring_stamp" ]; then
+                  write_keyring
+                  keyring_stamp="$current_keyring_stamp"
+                fi
+                if [ "$current_endpoint_stamp" != "$endpoint_stamp" ] \
+                  || [ "$current_override_stamp" != "$override_stamp" ]; then
+                  write_conf
+                  endpoint_stamp="$current_endpoint_stamp"
+                  override_stamp="$current_override_stamp"
+                fi
+              done
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 2016
+            runAsGroup: 2016
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: ROOK_CEPH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rook-ceph-mon
+                  key: ceph-username
+          volumeMounts:
+            - mountPath: /etc/ceph
+              name: ceph-config
+            - name: mon-endpoint-volume
+              mountPath: /etc/rook
+            - name: ceph-admin-secret
+              mountPath: /var/lib/rook-ceph-mon
+              readOnly: true
+            - name: rook-config-override
+              mountPath: /etc/rook-config-override
+              readOnly: true
+      volumes:
+        - name: ceph-admin-secret
+          secret:
+            secretName: rook-ceph-mon
+            optional: false
+            items:
+              - key: ceph-secret
+                path: secret.keyring
+        - name: mon-endpoint-volume
+          configMap:
+            name: rook-ceph-mon-endpoints
+            items:
+              - key: data
+                path: mon-endpoints
+        - name: rook-config-override
+          configMap:
+            name: rook-config-override
+            optional: true
+        - name: ceph-config
+          emptyDir: {}
+      tolerations:
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 5
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: collabio-dev
+  namespace: rook-ceph
+  labels:
+    app.kubernetes.io/part-of: collabio-provider-stack
+spec:
+  store: collabio-objects
+  displayName: Collabio development integration user
