@@ -141,6 +141,7 @@ def test_ci_supply_chain_gate_scans_runtime_and_publishes_sbom() -> None:
     assert "severity: HIGH,CRITICAL" in workflow
     assert "severity: CRITICAL" in workflow
     assert "ignore-unfixed: true" not in workflow
+    assert workflow.count("trivyignores: .trivyignore.yaml") == 1
     assert "format: cyclonedx" in workflow
     assert "artifacts/collabio-runtime.cdx.json" in workflow
     assert "retention-days: 30" in workflow

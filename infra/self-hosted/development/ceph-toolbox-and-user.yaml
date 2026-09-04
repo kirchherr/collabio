@@ -19,6 +19,14 @@ spec:
     spec:
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: rook-ceph-default
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2016
+        runAsGroup: 2016
+        fsGroup: 2016
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: rook-ceph-tools
           image: quay.io/ceph/ceph:v20.2.4@sha256:6bb1c8a42fbc0bf87938946990b65174466997bc11c31eb5a323225a779fd8f9
@@ -89,13 +97,18 @@ spec:
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 2016
             runAsGroup: 2016
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
+            - name: HOME
+              value: /tmp
             - name: ROOK_CEPH_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -112,6 +125,8 @@ spec:
             - name: rook-config-override
               mountPath: /etc/rook-config-override
               readOnly: true
+            - name: runtime-tmp
+              mountPath: /tmp
       volumes:
         - name: ceph-admin-secret
           secret:
@@ -132,6 +147,10 @@ spec:
             optional: true
         - name: ceph-config
           emptyDir: {}
+        - name: runtime-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
       tolerations:
         - key: node.kubernetes.io/unreachable
           operator: Exists

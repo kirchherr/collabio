@@ -17,6 +17,8 @@ Three K3s server containers provide Kubernetes and embedded etcd quorum behavior
 - RGW uses TLS and OpenBao Transit SSE-KMS. The storage master key is non-exportable and distinct from the asymmetric audit-signing key.
 - Runtime credentials, TLS private keys and OpenBao custody material are mode `0600` below the ignored runtime directory.
 - The lifecycle script acquires `build.lock` before `docker.lock`, prints the shared Docker inventory before starts, and has no delete or destroy command.
+- The Ceph toolbox has a read-only root filesystem, RuntimeDefault seccomp, explicit non-root pod/container identities and only bounded `emptyDir` write paths.
+- The k3d storage-node image must run root-only node services and block-device setup. Its sole Trivy exception is path-scoped to that development Dockerfile, carries a rationale, expires after 90 days and cannot suppress findings in application or production images.
 
 ## Lifecycle
 

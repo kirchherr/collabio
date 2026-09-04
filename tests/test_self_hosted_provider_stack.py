@@ -308,6 +308,7 @@ def test_dev001_provider_cluster_is_pinned_isolated_and_non_destructive() -> Non
     storage_node = (development / "k3s-storage-node.Dockerfile").read_text()
     storage_entrypoint = (development / "k3s-storage-entrypoint.sh").read_text()
     lifecycle = (REPO_ROOT / "tools" / "self-hosted" / "provider-dev-stack.sh").read_text()
+    trivy_ignore = (REPO_ROOT / ".trivyignore.yaml").read_text()
 
     assert "ROOK_CHART_VERSION=v1.20.7" in versions
     assert "OPENBAO_CHART_VERSION=0.29.4" in versions
@@ -369,8 +370,20 @@ def test_dev001_provider_cluster_is_pinned_isolated_and_non_destructive() -> Non
     assert "printf '[%s]\\nkey = %s\\n'" in toolbox
     assert "runAsNonRoot: true" in toolbox
     assert "runAsUser: 2016" in toolbox
+    assert "fsGroupChangePolicy: OnRootMismatch" in toolbox
+    assert "readOnlyRootFilesystem: true" in toolbox
+    assert toolbox.count("seccompProfile:") == 2
+    assert "medium: Memory" in toolbox
+    assert "sizeLimit: 64Mi" in toolbox
     assert "allowPrivilegeEscalation: false" in toolbox
     assert "secretName: rook-ceph-mon" in toolbox
+    assert trivy_ignore.count("- id:") == 1
+    assert "- id: AVD-DS-0002" in trivy_ignore
+    assert '"infra/self-hosted/development/k3s-storage-node.Dockerfile"' in trivy_ignore
+    assert "expired_at: 2026-12-03" in trivy_ignore
+    assert "nested development host" in trivy_ignore
+    assert "vulnerabilities:" not in trivy_ignore
+    assert "secrets:" not in trivy_ignore
     assert "replicas: 3" in openbao
     assert "tls_disable = 0" in openbao
     assert "storageClass: openbao-independent-rwo" in openbao

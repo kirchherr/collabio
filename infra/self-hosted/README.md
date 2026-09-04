@@ -50,6 +50,8 @@ The one-time encrypted OSD preparation is limited to `2Gi` per job. This is deli
 
 After Rook reports the cluster ready, bootstrap starts a non-root, capability-free Ceph toolbox from the same digest-pinned image. It verifies that no client or daemon still uses an insecure CephX key type, confirms that monitor preference and service tickets already use `aes256k`, then removes legacy `aes` authentication and disables creation of insecure keys. Administrative access and `HEALTH_OK` must both succeed afterward; health warnings are not muted.
 
+The toolbox also uses a read-only root filesystem, RuntimeDefault seccomp at pod and container level, an explicit non-root pod security context, and bounded memory-backed `/tmp`; only `/etc/ceph` remains writable through an `emptyDir`. The custom k3d node image is different: K3s, kubelet, udev, LVM, cryptsetup and block-device setup require root inside that nested development host. `.trivyignore.yaml` contains the only repository misconfiguration exception, scoped to that exact Dockerfile with a written rationale and a 90-day expiry. It never applies to application or production images.
+
 Object-store readiness follows Rook's generation-aware `status.phase=Ready` contract. The two gateways are verified as two ready replicas of the single zone deployment that Rook creates for this store.
 
 The bootstrap also fails closed unless Ceph reports exactly three OSDs, all `up` and `in`, with exactly one OSD below each simulated provider host. It never removes an unexpected OSD automatically.

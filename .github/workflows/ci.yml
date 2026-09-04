@@ -74,6 +74,7 @@ jobs:
           output: artifacts/repository-security.json
           severity: HIGH,CRITICAL
           ignore-unfixed: false
+          trivyignores: .trivyignore.yaml
           exit-code: 1
 
       - name: Scan runtime image

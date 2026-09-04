@@ -20,6 +20,7 @@ RUN python -m pip install --require-hashes --requirement requirements-dev.lock
 COPY app ./app
 COPY tests ./tests
 COPY pyproject.toml .
+COPY .trivyignore.yaml .
 
 ENV PYTHONPATH=/workspace/app
 

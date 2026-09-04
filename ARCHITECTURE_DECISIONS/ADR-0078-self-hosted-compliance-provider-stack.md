@@ -25,6 +25,7 @@ The production reference stack is Kubernetes with Rook-managed Ceph RGW and Open
 - A one-node profile may be used only for disposable, synthetic, non-content protocol proof. Its report is labelled `proof` and can never satisfy production topology or recovery requirements.
 - The checked-in CephCluster manifest has no nodes or devices. A site-specific reviewed overlay is mandatory, preventing accidental disk consumption.
 - A separate `dev001` profile runs three K3s server containers through k3d, with sparse file-backed loop OSDs and independent local-path PVCs for OpenBao. This profile supports complete functional integration and simulated node failover but can never satisfy a multi-host production HA claim.
+- Development administration uses a non-root, read-only-root Ceph toolbox. The nested k3d node image itself remains root because K3s, kubelet, udev, LVM, cryptsetup and block-device setup are node-level privileged functions; its scanner exception is limited to that exact development Dockerfile, documented and time-bounded.
 - The metadata-only preflight consumes separately collected evidence and a separately pinned policy hash. It cannot deploy, unseal, delete, change retention or execute failover.
 
 The shared `dev001` host remains a Docker development runner. It hosts the containerized provider development cluster but must not host an improvised production or HA claim.
