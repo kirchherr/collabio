@@ -4112,6 +4112,7 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.dockerignore:/workspace/.dockerignore:ro
       - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
@@ -4187,6 +4188,7 @@ services:
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.dockerignore:/workspace/.dockerignore:ro
       - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests

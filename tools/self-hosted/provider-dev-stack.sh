@@ -17,6 +17,10 @@ CLUSTER_NAME="collabio-provider"
 KUBE_API_PORT="26443"
 BUILD_LOCK="/home/extern/.codex-coordination/build.lock"
 DOCKER_LOCK="/home/extern/.codex-coordination/docker.lock"
+PROTOCOL_PROBE_IMAGE="collabio-provider-protocol-probe:development"
+PROTOCOL_PROBE_CONFIRMATION="I_APPROVE_READ_ONLY_PROVIDER_PROTOCOL_PROBE"
+PROTOCOL_PROBE_NAMESPACE="collabio-provider-tests"
+PROTOCOL_PROBE_NAME="collabio-provider-protocol-probe"
 
 # shellcheck source=/dev/null
 source "$CONFIG_DIR/versions.env"
@@ -59,7 +63,7 @@ acquire_locks() {
   [[ "${COLLABIO_PROVIDER_LOCKED:-0}" == "1" ]] && return 0
 
   case "$command_name" in
-    bootstrap|reconcile|smoke|backup|start)
+    bootstrap|reconcile|smoke|backup|protocol-probe|start)
       exec flock -w 1800 "$BUILD_LOCK" flock -w 1800 "$DOCKER_LOCK" \
         env COLLABIO_PROVIDER_LOCKED=1 "$0" "$command_name" "$@"
       ;;
@@ -141,6 +145,7 @@ inspect_shared_docker_state() {
     --format '{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}'
   docker ps --filter label=com.collabio.stack=self-hosted-provider-development \
     --format '{{.Names}}|{{.Image}}|{{.Status}}|{{.Ports}}'
+  ss -ltn
 }
 
 image_runtime_fingerprint() {
@@ -616,6 +621,8 @@ configure_openbao() {
 
   bao_root_policy_write "$root_token" collabio-rgw "$CONFIG_DIR/openbao-rgw-policy.hcl"
   bao_root_policy_write "$root_token" collabio-application "$CONFIG_DIR/openbao-application-policy.hcl"
+  bao_root_policy_write "$root_token" collabio-provider-probe \
+    "$CONFIG_DIR/openbao-provider-probe-policy.hcl"
   create_periodic_token "$root_token" collabio-rgw "$CUSTODY_DIR/rgw-openbao.token"
   create_periodic_token "$root_token" collabio-application "$CUSTODY_DIR/application-openbao.token"
 
@@ -627,6 +634,27 @@ configure_openbao() {
     | jq -e '.data.exportable == false and .data.deletion_allowed == false' >/dev/null
   bao_root_exec "$root_token" read -format=json collabio-signing/keys/collabio-audit-signing \
     | jq -e '.data.exportable == false and .data.deletion_allowed == false' >/dev/null
+}
+
+create_protocol_probe_token() {
+  local root_token="$1"
+  local response_file="$2"
+  bao_root_policy_write "$root_token" collabio-provider-probe \
+    "$CONFIG_DIR/openbao-provider-probe-policy.hcl"
+  bao_root_exec "$root_token" token create \
+    -ttl=10m \
+    -explicit-max-ttl=10m \
+    -use-limit=1 \
+    -no-default-policy \
+    -policy=collabio-provider-probe \
+    -format=json >"$response_file"
+  chmod 0600 "$response_file"
+  jq -e '
+    .auth.renewable == false
+      and .auth.lease_duration <= 600
+      and .auth.num_uses == 1
+      and .auth.policies == ["collabio-provider-probe"]
+  ' "$response_file" >/dev/null || die "OpenBao protocol-probe token policy is invalid"
 }
 
 ceph_toolbox_exec() {
@@ -896,9 +924,116 @@ stop_stack() {
   "$K3D" cluster stop "$CLUSTER_NAME"
 }
 
+cleanup_protocol_probe() {
+  local token_accessor="${1:-}"
+  local root_token="${2:-}"
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" delete job "$PROTOCOL_PROBE_NAME" \
+    --ignore-not-found --wait=true >/dev/null 2>&1 || true
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" delete secret \
+    "$PROTOCOL_PROBE_NAME-credentials" --ignore-not-found >/dev/null 2>&1 || true
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" delete configmap \
+    "$PROTOCOL_PROBE_NAME-input" --ignore-not-found >/dev/null 2>&1 || true
+  if [[ -n "$token_accessor" && -n "$root_token" ]]; then
+    bao_root_exec "$root_token" token revoke -accessor "$token_accessor" >/dev/null 2>&1 || true
+  fi
+}
+
+protocol_probe() {
+  local confirmation="${1:-}"
+  [[ "$confirmation" == "$PROTOCOL_PROBE_CONFIRMATION" ]] \
+    || die "protocol probe requires exact confirmation: $PROTOCOL_PROBE_CONFIRMATION"
+
+  prepare_runtime_dirs
+  install_tools
+  inspect_shared_docker_state
+  cluster_exists || die "cluster $CLUSTER_NAME does not exist; run bootstrap"
+  write_kubeconfig
+  wait_for_nodes
+
+  local status_file="$EVIDENCE_DIR/provider-development-status.json"
+  local report_file="$EVIDENCE_DIR/provider-protocol-probe-report.json"
+  local report_temp="$report_file.tmp"
+  local token_response token_file token_accessor root_token runtime_image_id status_hash
+  token_response=""
+  token_file=""
+  token_accessor=""
+  root_token=""
+
+  cleanup_protocol_probe "" ""
+  log "building the application runtime used by the read-only provider probe"
+  docker build --pull=false --target runtime --tag "$PROTOCOL_PROBE_IMAGE" "$ROOT_DIR"
+  runtime_image_id="$(docker image inspect "$PROTOCOL_PROBE_IMAGE" --format '{{.Id}}')"
+  [[ "$runtime_image_id" =~ ^sha256:[a-f0-9]{64}$ ]] \
+    || die "invalid protocol-probe runtime image ID"
+  "$K3D" image import --cluster "$CLUSTER_NAME" "$PROTOCOL_PROBE_IMAGE"
+  write_status_evidence
+
+  token_response="$(mktemp "$RUNTIME_DIR/provider-probe-token.XXXXXX")"
+  token_file="$(mktemp "$RUNTIME_DIR/provider-probe-token-value.XXXXXX")"
+  trap 'cleanup_protocol_probe "${token_accessor:-}" "${root_token:-}"; rm -f "$token_response" "$token_file" "$report_temp"' EXIT
+  root_token="$(jq -er .root_token "$CUSTODY_DIR/openbao-init.json")"
+  create_protocol_probe_token "$root_token" "$token_response"
+  token_accessor="$(jq -er .auth.accessor "$token_response")"
+  jq -er .auth.client_token "$token_response" >"$token_file"
+  chmod 0600 "$token_file"
+
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" create secret generic \
+    "$PROTOCOL_PROBE_NAME-credentials" \
+    --from-file=s3-access-key="$CUSTODY_DIR/rgw-access-key" \
+    --from-file=s3-secret-key="$CUSTODY_DIR/rgw-secret-key" \
+    --from-file=openbao-token="$token_file" \
+    --from-file=ca.crt="$CUSTODY_DIR/tls/ca.crt" \
+    --dry-run=client -o yaml | "$KUBECTL" apply -f - >/dev/null
+  status_hash="sha256:$(sha256sum "$status_file" | awk '{print $1}')"
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" create configmap \
+    "$PROTOCOL_PROBE_NAME-input" \
+    --from-file=provider-development-status.json="$status_file" \
+    --from-literal=expected-status-sha256="$status_hash" \
+    --from-literal=runtime-image-id="$runtime_image_id" \
+    --dry-run=client -o yaml | "$KUBECTL" apply -f - >/dev/null
+  rm -f "$token_response" "$token_file"
+
+  "$KUBECTL" apply -f "$CONFIG_DIR/provider-protocol-probe.yaml" >/dev/null
+  if ! "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" wait \
+    --for=condition=complete "job/$PROTOCOL_PROBE_NAME" --timeout=180s >/dev/null; then
+    "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" logs "job/$PROTOCOL_PROBE_NAME" \
+      >"$report_temp" 2>/dev/null || true
+    cleanup_protocol_probe "$token_accessor" "$root_token"
+    rm -f "$report_temp"
+    die "read-only provider protocol probe failed"
+  fi
+  "$KUBECTL" -n "$PROTOCOL_PROBE_NAMESPACE" logs "job/$PROTOCOL_PROBE_NAME" >"$report_temp"
+  jq -e '
+    .schema_version == "self_hosted_provider_protocol_probe_report.v1"
+      and .ready == true
+      and .authenticated_rgw_read_only_call_verified == true
+      and .authenticated_openbao_key_read_verified == true
+      and .bucket_names_included == false
+      and .object_versions_read == false
+      and .signature_operation_attempted == false
+      and .write_attempted == false
+      and .delete_attempted == false
+      and .tenant_content_included == false
+      and .secrets_included == false
+      and .production_evidence_admissible == false
+      and .production_ha_claim == false
+  ' "$report_temp" >/dev/null || {
+    cleanup_protocol_probe "$token_accessor" "$root_token"
+    rm -f "$report_temp"
+    die "provider protocol probe emitted an invalid report"
+  }
+  mv "$report_temp" "$report_file"
+  chmod 0600 "$report_file"
+  cleanup_protocol_probe "$token_accessor" "$root_token"
+  unset root_token
+  trap - EXIT
+  log "read-only provider protocol probe passed: sha256:$(sha256sum "$report_file" | awk '{print $1}')"
+  log "the report is development evidence only and makes no production or HA claim"
+}
+
 usage() {
   cat <<'EOF'
-Usage: tools/self-hosted/provider-dev-stack.sh COMMAND
+Usage: tools/self-hosted/provider-dev-stack.sh COMMAND [CONFIRMATION]
 
 Commands:
   bootstrap   Create or converge the complete dev001 provider stack
@@ -906,6 +1041,8 @@ Commands:
   status      Show Kubernetes, OpenBao and Ceph status without changing state
   start       Start existing k3d containers; follow with reconcile
   stop        Stop only the exact collabio-provider k3d cluster
+  protocol-probe I_APPROVE_READ_ONLY_PROVIDER_PROTOCOL_PROBE
+               Run one ephemeral authenticated read-only RGW/OpenBao probe
 
 The script deliberately has no destroy command. Removal requires a separately
 reviewed backup and explicit operator procedure.
@@ -917,9 +1054,21 @@ main() {
   shift || true
   require_dev_host
   case "$command_name" in
-    bootstrap|reconcile|start|stop)
+    bootstrap|reconcile)
       acquire_locks "$command_name" "$@"
       "$command_name" "$@"
+      ;;
+    start)
+      acquire_locks "$command_name" "$@"
+      start_stack "$@"
+      ;;
+    stop)
+      acquire_locks "$command_name" "$@"
+      stop_stack "$@"
+      ;;
+    protocol-probe)
+      acquire_locks "$command_name" "$@"
+      protocol_probe "$@"
       ;;
     status)
       show_status

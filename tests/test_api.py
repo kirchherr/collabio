@@ -1045,8 +1045,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     body = response.json()
     assert body["schema_version"] == "platform_roadmap_dashboard.v1"
     assert body["tenant_id"] == "tenant-demo"
-    assert body["current_focus"] == "real_user_productivity_pilot_evidence_collection"
-    assert body["current_foundation_state"] == "real_user_pilot_readiness_control_ready_without_live_evidence"
+    assert body["current_focus"] == "self_hosted_provider_application_protocol_integration"
+    assert body["current_foundation_state"] == "provider_stack_running_read_only_protocol_probe_ready_not_executed"
     assert body["content_included"] is False
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
@@ -1090,6 +1090,12 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "transient_cdr_bundles_excluded_from_backup" in backup_failover["guardrails"]
     assert "app/suite/operations/derived_preview_recovery_drill.py" in backup_failover["evidence_refs"]
     assert "docs/operations/PREVIEW_CDR.md" in backup_failover["evidence_refs"]
+    storage_kms = next(
+        capability for capability in capabilities if capability["capability_id"] == "storage_kms_retention"
+    )
+    assert "read_only_provider_probe_requires_exact_confirmation" in storage_kms["guardrails"]
+    assert "provider_probe_cannot_write_sign_or_delete" in storage_kms["guardrails"]
+    assert "app/suite/operations/self_hosted_provider_protocol_probe.py" in storage_kms["evidence_refs"]
     preview_renderer = next(
         capability for capability in capabilities if capability["capability_id"] == "preview_renderer"
     )
@@ -1561,7 +1567,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["schema_version"] == "platform_roadmap_plan_snapshot.v1"
     assert body["tenant_id"] == "tenant-demo"
     assert body["dashboard_schema_version"] == "platform_roadmap_dashboard.v1"
-    assert body["current_focus"] == "real_user_productivity_pilot_evidence_collection"
+    assert body["current_focus"] == "self_hosted_provider_application_protocol_integration"
     assert (
         body["decision_rule"]
         == "foundation_first_only_pull_forward_items_that_close_backend_readiness_or_unlock_productivity"
@@ -1572,13 +1578,14 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert body["external_side_effect_allowed"] is False
     assert body["summary"] == {
         "now_count": 1,
-        "next_count": 1,
+        "next_count": 2,
         "later_count": 4,
-        "total_count": 6,
+        "total_count": 7,
         "foundation_ready_count": 35,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
+        "self_hosted_provider_protocol_integration",
         "real_user_productivity_pilot_admission",
         "module_family_backlog_kb_lms_tickets_time_tracking",
         "full_office_suite_client",
@@ -1586,7 +1593,9 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "productive_legacy_sql_import_writes",
         "automation_execution_for_tasks_tickets_lms_time_tracking",
     }
-    assert items["real_user_productivity_pilot_admission"]["priority"] == "now"
+    assert items["self_hosted_provider_protocol_integration"]["priority"] == "now"
+    assert items["self_hosted_provider_protocol_integration"]["can_start_now"] is True
+    assert items["real_user_productivity_pilot_admission"]["priority"] == "next"
     assert items["real_user_productivity_pilot_admission"]["can_start_now"] is True
     assert items["module_family_backlog_kb_lms_tickets_time_tracking"]["priority"] == "next"
     assert items["full_office_suite_client"]["priority"] == "later"
@@ -1604,7 +1613,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
     assert event.output_hash is None
     assert event.metadata["result_contract"] == "metadata_only_roadmap_plan_snapshot"
     assert event.metadata["now_count"] == 1
-    assert event.metadata["next_count"] == 1
+    assert event.metadata["next_count"] == 2
     assert event.metadata["later_count"] == 4
     assert event.metadata["content_included"] is False
     assert event.metadata["destructive_actions_allowed"] is False

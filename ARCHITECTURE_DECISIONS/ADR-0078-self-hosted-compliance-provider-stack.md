@@ -27,6 +27,7 @@ The production reference stack is Kubernetes with Rook-managed Ceph RGW and Open
 - A separate `dev001` profile runs three K3s server containers through k3d, with sparse file-backed loop OSDs and independent local-path PVCs for OpenBao. This profile supports complete functional integration and simulated node failover but can never satisfy a multi-host production HA claim.
 - Development administration uses a non-root, read-only-root Ceph toolbox. The nested k3d node image itself remains root because K3s, kubelet, udev, LVM, cryptsetup and block-device setup are node-level privileged functions; its scanner exception is limited to that exact development Dockerfile, documented and time-bounded.
 - The metadata-only preflight consumes separately collected evidence and a separately pinned policy hash. It cannot deploy, unseal, delete, change retention or execute failover.
+- Before any mutating WORM acceptance, an ephemeral application-runtime Job may perform exactly one authenticated RGW bucket-list read and one exact OpenBao signing-key metadata read. It receives a single-use, at-most-ten-minute key-read token, has no service-account token, write, sign or delete path, emits only hashes and counts, and is never admissible as production or HA evidence.
 
 The shared `dev001` host remains a Docker development runner. It hosts the containerized provider development cluster but must not host an improvised production or HA claim.
 
@@ -41,6 +42,7 @@ Production remains intentionally blocked until a dedicated cluster exists and pr
 - `infra/self-hosted/provider-stack-policy.json` defines exact versions, Proof/Production minimums and mandatory controls.
 - `infra/self-hosted/rook` and `infra/self-hosted/openbao` contain fail-safe reference configuration.
 - `suite.operations.self_hosted_provider_stack` validates digest pins, topology, TLS, isolation, KMS, WORM, recovery, freshness and acceptance-report binding.
+- `suite.operations.self_hosted_provider_protocol_probe` validates the current development-status hash and exact version contract before the two read-only provider calls, then emits a self-hashed metadata-only report.
 - `tests/test_self_hosted_provider_stack.py` covers positive Proof/Production paths and fail-closed drift.
 - The existing live provider acceptance remains the authoritative exact-version Sign/Verify, retention and delete-denial proof.
 

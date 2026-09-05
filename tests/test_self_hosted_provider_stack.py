@@ -309,6 +309,7 @@ def test_dev001_provider_cluster_is_pinned_isolated_and_non_destructive() -> Non
     storage_entrypoint = (development / "k3s-storage-entrypoint.sh").read_text()
     lifecycle = (REPO_ROOT / "tools" / "self-hosted" / "provider-dev-stack.sh").read_text()
     trivy_ignore = (REPO_ROOT / ".trivyignore.yaml").read_text()
+    dockerignore = (REPO_ROOT / ".dockerignore").read_text().splitlines()
 
     assert "ROOK_CHART_VERSION=v1.20.7" in versions
     assert "OPENBAO_CHART_VERSION=0.29.4" in versions
@@ -411,7 +412,10 @@ def test_dev001_provider_cluster_is_pinned_isolated_and_non_destructive() -> Non
     assert "udevadm trigger --subsystem-match=block --action=add" in lifecycle
     assert "docker run --rm --network none --entrypoint /bin/sh" in lifecycle
     assert 'test "$(printf collabio | xargs printf %s)" = collabio' in lifecycle
-    assert "bootstrap|reconcile|smoke|backup|start" in lifecycle
+    assert "bootstrap|reconcile|smoke|backup|protocol-probe|start" in lifecycle
+    assert ".provider-runtime" in dockerignore
+    assert ".env" in dockerignore
+    assert ".env.*" in dockerignore
     assert 'wait --for=create "pod/$pod" --timeout=600s' in lifecycle
     assert "udevadm trigger --action=change" in lifecycle
     assert "stable_device=/dev/collabio-provider-osd" in lifecycle
@@ -482,3 +486,50 @@ def test_development_rgw_uses_tls_and_non_exportable_openbao_transit_contract() 
     assert "exportable=false" in lifecycle
     assert "deletion_allowed=false" in lifecycle
     assert "amazonaws.com" not in object_store + lifecycle
+
+
+def test_development_provider_protocol_probe_is_read_only_ephemeral_and_explicit() -> None:
+    development = REPO_ROOT / "infra" / "self-hosted" / "development"
+    manifest = (development / "provider-protocol-probe.yaml").read_text()
+    policy = (development / "openbao-provider-probe-policy.hcl").read_text()
+    lifecycle = (REPO_ROOT / "tools" / "self-hosted" / "provider-dev-stack.sh").read_text()
+
+    assert policy.strip() == ('path "collabio-signing/keys/collabio-audit-signing" {\n  capabilities = ["read"]\n}')
+    assert "create" not in policy
+    assert "update" not in policy
+    assert "delete" not in policy
+    assert manifest.count("automountServiceAccountToken: false") == 2
+    assert "kind: NetworkPolicy" in manifest
+    assert "policyTypes:\n    - Ingress\n    - Egress" in manifest
+    assert "kind: Job" in manifest
+    assert "backoffLimit: 0" in manifest
+    assert "activeDeadlineSeconds: 180" in manifest
+    assert "imagePullPolicy: Never" in manifest
+    assert "readOnlyRootFilesystem: true" in manifest
+    assert "allowPrivilegeEscalation: false" in manifest
+    assert "runAsNonRoot: true" in manifest
+    assert "drop:\n                - ALL" in manifest
+    assert "medium: Memory" in manifest
+    assert "sizeLimit: 32Mi" in manifest
+    assert "hostNetwork:" not in manifest
+    assert "hostPort:" not in manifest
+    assert "persistentVolumeClaim:" not in manifest
+    assert "I_APPROVE_READ_ONLY_PROVIDER_PROTOCOL_PROBE" in lifecycle
+    assert "protocol probe requires exact confirmation" in lifecycle
+    assert "bootstrap|reconcile|smoke|backup|protocol-probe|start" in lifecycle
+    assert '--target runtime --tag "$PROTOCOL_PROBE_IMAGE"' in lifecycle
+    assert "-ttl=10m" in lifecycle
+    assert "-explicit-max-ttl=10m" in lifecycle
+    assert "-use-limit=1" in lifecycle
+    assert "-no-default-policy" in lifecycle
+    assert '--from-file=openbao-token="$token_file"' in lifecycle
+    assert "--from-literal=openbao-token=" not in lifecycle
+    assert 'delete job "$PROTOCOL_PROBE_NAME"' in lifecycle
+    assert '"$PROTOCOL_PROBE_NAME-credentials" --ignore-not-found' in lifecycle
+    assert '"$PROTOCOL_PROBE_NAME-input" --ignore-not-found' in lifecycle
+    assert "production_evidence_admissible == false" in lifecycle
+    assert "signature_operation_attempted == false" in lifecycle
+    assert "write_attempted == false" in lifecycle
+    assert "delete_attempted == false" in lifecycle
+    assert 'start_stack "$@"' in lifecycle
+    assert 'stop_stack "$@"' in lifecycle

@@ -155,6 +155,27 @@ def _validate_capability_refs(
 def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[RoadmapPlanItem, ...]:
     return (
         RoadmapPlanItem(
+            work_item_id="self_hosted_provider_protocol_integration",
+            title="Selbst gehosteten Provider an die Anwendung binden",
+            summary=(
+                "Der Ceph-/OpenBao-Entwicklungsstack laeuft. Als naechstes wird der implementierte, rein lesende "
+                "Protokoll-Probe nach separater Bestaetigung ausgefuehrt; erst danach werden ein synthetischer "
+                "Object-Lock-Nachweis und der isolierte Receipt-Restore vorbereitet."
+            ),
+            priority=RoadmapPlanPriority.NOW,
+            capability_ids=("storage_kms_retention", "audit_chain", "backup_failover"),
+            readiness_gate="explicit_read_only_probe_confirmation_then_separate_worm_mutation_authorization",
+            decision="now_because_it_closes_the_application_to_provider_foundation_without_tenant_writes",
+            evidence_refs=(
+                "app/suite/operations/self_hosted_provider_protocol_probe.py",
+                "infra/self-hosted/development/provider-protocol-probe.yaml",
+                "docs/operations/SELF_HOSTED_PROVIDER_DEVELOPMENT.md",
+                "docs/operations/AUDIT_WORM_SNAPSHOTS.md",
+                "ARCHITECTURE_DECISIONS/ADR-0078-self-hosted-compliance-provider-stack.md",
+            ),
+            can_start_now=True,
+        ),
+        RoadmapPlanItem(
             work_item_id="real_user_productivity_pilot_admission",
             title="Realnutzer-Pilot separat aufnehmen",
             summary=(
@@ -164,7 +185,7 @@ def _roadmap_plan_items(*, dashboard: RoadmapDashboardResponse) -> tuple[Roadmap
                 "sowie Preflight, Monitoring, Rollback, Production Continuity und Start mit aktueller Evidenz neu "
                 "erzeugt werden."
             ),
-            priority=RoadmapPlanPriority.NOW,
+            priority=RoadmapPlanPriority.NEXT,
             capability_ids=(
                 "productivity_pilot_preflight",
                 "productivity_pilot_admission",

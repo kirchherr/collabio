@@ -579,6 +579,7 @@ Aufgaben:
 - [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
 - [x] Fail-closed Abnahmegate fuer den selbst gehosteten Ceph-RGW-/OpenBao-Transit-Referenzstack mit gepinnten Endpunkten und Artefakten, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
 - [x] Gehaertete Kubernetes/Rook/Ceph/OpenBao-Referenzkonfiguration, exakte Release-Policy, Proof/Production-Topologien und fail-closed Provider-Stack-Preflight implementieren.
+- [x] Ephemeren, explizit bestaetigten und rein lesenden Collabio-Runtime-Protokoll-Probe fuer authentifiziertes Ceph-RGW-/OpenBao-TLS mit kurzlebiger Least-Privilege-Identitaet und metadata-only Entwicklungsreport implementieren.
 - [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.

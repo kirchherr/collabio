@@ -138,17 +138,17 @@ def build_roadmap_dashboard_response(*, user_context: UserContext) -> RoadmapDas
     summary = _roadmap_summary(groups)
     return RoadmapDashboardResponse(
         tenant_id=user_context.tenant_id,
-        current_focus="real_user_productivity_pilot_evidence_collection",
-        current_foundation_state="real_user_pilot_readiness_control_ready_without_live_evidence",
+        current_focus="self_hosted_provider_application_protocol_integration",
+        current_foundation_state="provider_stack_running_read_only_protocol_probe_ready_not_executed",
         summary=summary,
         groups=groups,
         immediate_next_steps=(
-            "read_real_user_productivity_pilot_readiness_snapshot",
-            "collect_real_user_productivity_pilot_nomination",
-            "refresh_real_user_productivity_pilot_control_evidence",
-            "review_production_continuity_requirements_and_gate_status",
-            "collect_current_production_continuity_topology_and_drill_evidence",
-            "keep_runtime_closed_until_named_principals_and_four_eyes_approvals_are_complete",
+            "explicitly_authorize_and_run_read_only_provider_protocol_probe",
+            "prepare_dedicated_synthetic_object_lock_proof_bucket",
+            "collect_isolated_postgresql_receipt_restore_evidence",
+            "separately_authorize_exact_version_delete_denial_acceptance",
+            "keep_provider_writes_and_production_claims_closed_until_acceptance_is_complete",
+            "retain_real_user_pilot_as_next_external_evidence_step",
         ),
         deferred_scope=(
             "full_office_suite_client",
@@ -700,20 +700,34 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                 RoadmapCapability(
                     capability_id="storage_kms_retention",
                     title="Storage, KMS, Retention und Legal Hold",
-                    summary="Content Hashing, Envelope Encryption, S3 Stores, Retention und Legal Hold stehen.",
+                    summary=(
+                        "Content Hashing, Envelope Encryption, S3 Stores, Retention und Legal Hold stehen. Der "
+                        "selbst gehostete Ceph-/OpenBao-Entwicklungsstack laeuft; sein rein lesender "
+                        "Anwendungs-Protokoll-Probe ist implementiert, aber noch nicht ausgefuehrt."
+                    ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="data_protection",
                     evidence_refs=(
                         "tests/test_envelope_encryption.py",
                         "tests/test_retention_manifest.py",
                         "tests/test_legal_hold_service.py",
+                        "app/suite/operations/self_hosted_provider_protocol_probe.py",
+                        "tests/test_self_hosted_provider_protocol_probe.py",
+                        "infra/self-hosted/development/provider-protocol-probe.yaml",
+                        "docs/operations/SELF_HOSTED_PROVIDER_DEVELOPMENT.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0078-self-hosted-compliance-provider-stack.md",
                     ),
                     guardrails=(
                         "content_hash_required",
                         "kms_key_refs",
                         "retention_policy_required",
                         "legal_hold_state_visible",
+                        "read_only_provider_probe_requires_exact_confirmation",
+                        "single_use_openbao_key_metadata_identity",
+                        "provider_probe_cannot_write_sign_or_delete",
+                        "development_probe_never_grants_production_or_ha_claim",
                     ),
+                    next_action="run_read_only_provider_probe_then_prepare_separately_authorized_worm_acceptance",
                 ),
                 RoadmapCapability(
                     capability_id="rag_vector_security",
