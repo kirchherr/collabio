@@ -77,6 +77,7 @@ Bereits umgesetzt:
 - [x] Initiale API- und Policy-Tests.
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
+- [x] Supply-Chain-Gate fuer Repository und gebautes Runtime-Image: Vulnerability-, Secret-, IaC-/Misconfiguration- und Lizenzpruefung, CycloneDX-SBOM sowie OIDC/Sigstore-basierte Provenance- und SBOM-Attestierungen fuer getaggte Releases.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung.
 - [x] Statischer OIDC/JWKS Verifier mit RS256, `kid`-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting.
@@ -98,14 +99,29 @@ Bereits umgesetzt:
 - [x] Docker-PostgreSQL/pgvector-Service mit Migrationsrunner und Live-RLS-Integrationstests.
 - [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
 - [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
+- [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
+- [x] Atomarer CRM-Account-Onboarding-Write fuer Account, Contact, Activity, metadata-only Note, vier Objekt-ACLs und append-only Receipt in einer PostgreSQL-Transaktion mit Idempotenz-, Rollen-, RLS-, Rollback- und Restore-Proof.
+- [x] Produktiver Tasks-&-Activities-Slice fuer atomare Task-/Initialaktivitaets-/ACL-/Receipt-Writes, ACL-gepruefte Reads, Rollen- und Feature-Gates sowie PostgreSQL-Restore-Kontrollen.
+- [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
+- [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
+- [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
+- [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; dieser Schritt allein startet keinen Pilot-Traffic.
+- [x] Tenant- und routenspezifische Traffic-Scope-Erzwingung append-only an Admission, Preflight und Policy binden; Default Deny blockiert alle verwalteten Pilot-Routen bis zur separaten Start-Autorisierung.
+- [x] Explizite, maximal acht Stunden gueltige Start-Autorisierung mit Vier-Augen-Prinzip, vollstaendiger Monitoring-/Rollback-Evidenz, automatischem Ablauf und default-closed Deployment-Kill-Switch an Admission, Preflight, Policy und Traffic-Scope binden.
+- [x] Designated-User-Runtime-Window mit separatem Tenant-Admin-Vier-Augen-Schritt, exakter Start-/Route-Bindung und append-only metadata-only Zugriffsbeobachtungen erzwingen.
+- [x] Kontrollierten Entwicklungs-Pilot mit einem synthetisch designierten Fachnutzer auf genau sieben Operationen ausfuehren, alle sieben append-only Beobachtungen nachweisen, den Kill-Switch sofort schliessen und Backup-/Restore-Evidenz erneuern.
+- [x] Tenant-sicheren append-only Closure-Report an geschlossenem Switch, Runtime-Fenster, Beobachtungen, Domain-Receipts und erneuerter Recovery-Evidenz binden.
+- [x] Tenant-sicheres Realnutzer-Pilot-Read-Model ueber Nomination, Admission, Start, Runtime und Closure bereitstellen; alte Zyklen nicht hochstufen und fehlerhafte Evidenz fail-closed behandeln.
+- [ ] Reale Principals, Zweck-, Privacy-, Workforce-, Production-Continuity- und Vier-Augen-Evidenz sammeln; erst danach einen separat freigegebenen Realnutzer-Pilot starten.
 
 Noch nicht umgesetzt:
 
 - [x] Master-Compliance-Dokumente.
 - [x] ADR-Struktur.
-- [ ] Persistente Datenbank.
-- [ ] Vollstaendiger IAM/OIDC Auth Context.
+- [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
+- [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, OpenBao-Transit-One-shot-Worker, Sign/Verify, exakter Ceph-RGW-Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt. Die Kubernetes/Rook/Ceph/OpenBao-Produktionsreferenz, exakten Versionspins, sichere Proof/Production-Trennung und der metadata-only Stack-Preflight sind ebenfalls umgesetzt; ein dedizierter realer Proof-Cluster und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch. AWS ist weder Voraussetzung noch Roadmap-Ziel.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -436,12 +452,12 @@ Aufgaben:
 - [x] `pyproject.toml` mit Ruff, MyPy/Pyright und Pytest anlegen.
 - [ ] TypeScript-/Frontend-Tooling vorbereiten.
 - [x] CI fuer Tests, Lint, Typpruefung und Docker Build anlegen.
-- [ ] Secret Scan integrieren.
-- [ ] Dependency Scan integrieren.
-- [ ] License Scan integrieren.
+- [x] Secret Scan integrieren.
+- [x] Dependency Scan integrieren.
+- [x] License Scan integrieren.
 - [ ] SAST/DAST/IaC Scan einplanen.
-- [ ] CycloneDX SBOM generieren.
-- [ ] Build Provenance und signierte Artefakte vorbereiten.
+- [x] CycloneDX SBOM generieren.
+- [x] Build Provenance und signierte Artefakte vorbereiten.
 - [ ] ADR-Template anlegen.
 - [ ] Compliance-Matrix als YAML/Markdown-Quelle versionieren.
 - [ ] Test-Fixtures fuer Tenants, Rollen, Dokumente, Mails, Holds und AI Policies anlegen.
@@ -513,7 +529,7 @@ Aufgaben:
 - [ ] Role- und Datenklassen-spezifische Modellfreigaben administrierbar machen.
 - [x] Append-only Audit Event Schema implementieren.
 - [x] Audit Hash Chain implementieren.
-- [ ] Audit Verification Command implementieren.
+- [x] Audit Verification Command mit exaktem Bundle-Hash, separat gepinnter Tenant-Trust-Policy, vollstaendiger Chain-Pruefung und providerfreier ECDSA/RSA-PSS-Verifikation implementieren.
 - [x] Persistente Audit Storage Abstraktion implementieren.
 - [x] PostgreSQL Audit Store mit isolierter Runtime-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence implementieren.
 - [ ] PostgreSQL-Backed Stores mit Migrationen implementieren.
@@ -560,6 +576,11 @@ Aufgaben:
 - [x] Content Hash Verification implementieren.
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
+- [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
+- [x] Fail-closed Abnahmegate fuer den selbst gehosteten Ceph-RGW-/OpenBao-Transit-Referenzstack mit gepinnten Endpunkten und Artefakten, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
+- [x] Gehaertete Kubernetes/Rook/Ceph/OpenBao-Referenzkonfiguration, exakte Release-Policy, Proof/Production-Topologien und fail-closed Provider-Stack-Preflight implementieren.
+- [x] Ephemeren, explizit bestaetigten und rein lesenden Collabio-Runtime-Protokoll-Probe fuer authentifiziertes Ceph-RGW-/OpenBao-TLS mit kurzlebiger Least-Privilege-Identitaet und metadata-only Entwicklungsreport implementieren.
+- [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.
 - [x] Key Rotation Interface implementieren.
@@ -1025,7 +1046,7 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
+- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.search.keyword`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
 - [x] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [x] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [x] Persistente CRM/ERP Schema-Scaffold-Migration mit `crm_erp.schema_plans`, `crm_erp.object_type_rules`, RLS und startup-blocking Evidence implementieren.
@@ -1033,26 +1054,42 @@ CRM/ERP `crm_erp`:
 - [x] Gated CRM Contacts Read-Vertical-Slice mit `crm.contacts`, Account-Link-Redaktion, Pflichtmetadaten, RLS, Audit und `GET /v1/crm/contacts` implementieren.
 - [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Pflichtmetadaten, RLS, Audit, metadata-only Notes und `GET /v1/crm/activities` plus `GET /v1/crm/notes` implementieren.
 - [x] Minimalen ERP Products Read-Vertical-Slice mit `erp.products`, `internal` Klassifikation, Pflichtmetadaten, RLS, Audit und `GET /v1/erp/products` als Architekturbeweis implementieren.
-- [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
+- [x] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [x] Datenklassen harmonisieren: `personal_data`, `working_data`, `gobd_record`, `security_data` und `export_package` sind Alias-/Lifecycle-/Objektkonzepte auf kanonischen Runtime-Klassen.
-- [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
-- [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
-- [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
-- [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
+- [x] Pflichtmetadaten-Contract auf weitere Modul-Write-Slices und Migration-Staging ausweiten, bevor neue persistente Fachobjekte eingefuehrt werden.
+- [x] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
+- [x] Legacy-SQL-Staging-Profile in den spaeteren Import-Dry-Run-Store einhaengen, sobald Row-Count- und Checksum-Strategie feststeht.
+- [x] Legacy-SQL-Import-Dry-Run als metadata-only Worker ausfuehren und Ergebnis-Store anbinden, ohne produktive Import-Writes.
+- [x] Legacy-SQL-Import-Dry-Run-Result-Review und Human-Approval-Gate fuer spaetere Import-Writes planen.
+- [x] Legacy-SQL-Import-Write-Approval-Request-Boundary als nicht-ausfuehrendes Admin-/API-Gate vorbereiten, ohne Import-Writes freizuschalten.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Persistenz planen, weiterhin ohne Import-Write-Execution.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Store-Migration mit RLS, Append-only und Idempotency vorbereiten, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Store-Adapter anbinden, weiterhin ohne Import-Write-Execution.
+- [x] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
+- [x] Legacy-SQL-Migration-Run-Registry-Skeleton mit RLS, Idempotency und metadata-only Reports vorbereiten, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Registry-Adapter fuer metadata-only Run-/Report-Lookup anbinden, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Migration-API-Read-Endpoints fuer metadata-only Run-/Report-Discovery anbinden, ohne Run-Erstellung, Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Creation-Boundary als nicht-ausfuehrendes Admin-Gate vorbereiten, ohne Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Creation-Store-Persistenz an Boundary binden und idempotent metadata-only speichern, ohne Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Report-Metadata-Persistenz an Run binden und idempotent metadata-only speichern, ohne Report-Freigabe oder Import-Write-Execution.
+- [x] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
+- [x] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices und Invoice Items sind als metadata-only API-Slices vorhanden.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
-- [ ] CRM/ERP Search zuerst klassisch/ACL-gefiltert, RAG erst nach Source Resolver, Redaction und Audit Trace.
+- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG-Readiness ist ueber `GET /v1/platform/search/crm-erp/rag-readiness` contract-ready fuer Kontextaufbau; Source-Resolver-ACL-Trace, Source-Citation-Contract, Prompt-Audit-Contract, Redaction-Contract, Authorized-Context-Contract und Inference-Execution-Boundary sind ueber `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract`, `POST /v1/platform/search/crm-erp/prompt-audit-contract`, `POST /v1/platform/search/crm-erp/redaction-contract`, `POST /v1/platform/search/crm-erp/authorized-context-contract` und `POST /v1/platform/search/crm-erp/inference-execution-boundary` metadata-only vorhanden, echte Provider-Ausfuehrung und RAG-Antwortgenerierung bleiben offen.
 - [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
 
 Vorbereitete Modul-Familien:
 
 - Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`; Source-Version- und Restore-Evidence fuer Manifest Hash, Content Hash, ACL-Version, Disabled-State-Restore und Legal-Hold-Restore ist vorbereitet.
-- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
+- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence. Charter, Feature-Registry, Object-Rules, globaler `not_installed`-Katalogeintrag, `0046_lms_metadata_schema.sql`, `0047_lms_package_install_approval_records.sql`, `0048_lms_dry_run_execution_approval_records.sql`, `GET /v1/platform/modules/families/lms/catalog-readiness`, `GET /v1/platform/modules/families/lms/restore-drill-evidence`, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate`, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records`, `GET /v1/platform/modules/families/lms/package-installation-readiness`, `POST /v1/platform/modules/families/lms/package-installation-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-executor-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-implementation-review` und `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-contract`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-request-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-runtime-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-receipt-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-persistence-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-activation-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary` fuer den ersten Kurs-/Einschreibestatus-Slice sind vorbereitet; echte Package-Installation, Tenant-Provisioning, Business-API und Runtime bleiben bewusst naechste Gates; der Result-Contract definiert nur Receipt-Felder und No-Write-Flags; Execution-Gate, Request-Boundary, Runtime-Boundary, Execution-Preflight, Receipt-Boundary, Result-Persistence-Boundary, Start-, Dispatch-, Worker-Boundary, Final-Readiness-Gate und Approval-Boundary, Approval-Record, Admission-Gate, Runbook und Execution-Plan und Plan-Review und Scheduler-Boundary und Worker-Image-Boundary bleiben ebenfalls metadata-only.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
 - Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.
 
 Alle vorbereiteten Modul-Familien starten ueber `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`. CRM/ERP bleibt damit der Architekturbeweis fuer Modul-Slices, nicht der Produktfokus.
+
+Der tenant-sichere Backlog-Kontrakt GET /v1/platform/modules/families/backlog macht diese Modul-Familien metadata-only sichtbar. Er aktiviert keine Module, legt keine Aufgaben an und erlaubt keine Runtime-Ausfuehrung; er zeigt nur die notwendigen Charter-, Feature-, Registry-, Rechte-, Audit-, Retention- und Backup-/Failover-Gates je Familie. LMS hat zusaetzlich `GET /v1/platform/modules/families/lms/catalog-readiness`, `GET /v1/platform/modules/families/lms/restore-drill-evidence`, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate`, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records`, `GET /v1/platform/modules/families/lms/package-installation-readiness`, `POST /v1/platform/modules/families/lms/package-installation-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-executor-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-implementation-review` und `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-contract`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-request-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-runtime-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-receipt-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-persistence-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-activation-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary` als metadata-only Readiness-, Approval-Record-, Boundary-, Skeleton-, Dry-Run-Plan-, Dry-Run-Execution-Boundary-, Dry-Run-Execution-Skeleton-, Dry-Run-Executor-Implementation-Review- und Dry-Run-Result-Contract- und Dry-Run-Execution-Gate- und Dry-Run-Execution-Request-Boundary- und Dry-Run-Executor-Runtime-Boundary- und Dry-Run-Execution-Preflight- und Dry-Run-Execution-Receipt-Boundary- und Dry-Run-Result-Persistence-Boundary- und Approval-Boundary-, Admission-Gate-, Runbook- und Execution-Plan- und Plan-Review- und Scheduler-Boundary- und Worker-Image-Boundary-Nachweise nach dem globalen `not_installed`-Katalogeintrag und vor Package-Installation, Tenant-Provisioning und Business-API.
 
 Exit-Kriterien:
 
@@ -1168,6 +1205,17 @@ Deliver:
 
 Empfohlene naechste Reihenfolge:
 
+Roadmap-Triage-Regel ab jetzt:
+
+- **Fundament jetzt:** Tenant-Isolation, Auth/Rights, Audit, Backup/Restore, RLS, Evidence-Gates, Datenmodell-Grenzen und
+  alles, was spaeter nur teuer oder riskant nachzuziehen waere.
+- **Produktzug jetzt:** schmale End-to-End-Pfade, die echte Nutzung beweisen und auf dem Fundament aufsetzen.
+- **Spaeter / nicht jetzt:** Adapter, Komfortfunktionen, breitere Moduloberflaechen, echte Renderer/Viewer,
+  Automatisierung und Integrationen, wenn sie keinen aktuellen Sicherheits- oder Datenmodell-Blocker loesen.
+
+Vor jedem neuen Roadmap-Punkt wird explizit entschieden: **Muss das jetzt?** Wenn nein, bleibt der Punkt sichtbar, wird
+aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt priorisiert.
+
 1. [x] Research Baseline, Open-Source-Stack-Matrix und ADR-Backlog anlegen.
 2. [x] `PRODUCT_CHARTER.md`, `SECURITY.md`, `THREAT_MODEL.md` und `COMPLIANCE_MATRIX.md` anlegen.
 3. [x] `ARCHITECTURE_DECISIONS/` mit ADR-Template und ADRs fuer Tenancy, WORM, KMS und Audit anlegen.
@@ -1223,7 +1271,7 @@ Empfohlene naechste Reihenfolge:
 53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
 54. [x] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
 55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, RAG und AI Assist implementieren.
+56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, Keyword-Suche, RAG und AI Assist implementieren.
 57. [x] Review-Kritik aufnehmen und P0-Soforthaertungen fuer dev-only Header Auth, RAG DataClass Propagation und lokale Dev-Krypto umsetzen.
 58. [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung implementieren.
 59. [x] Statischen OIDC/JWKS Verifier mit RS256-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting implementieren.
@@ -1256,7 +1304,373 @@ Empfohlene naechste Reihenfolge:
 86. [x] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes implementieren, der Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence fuer Create/Edit gemeinsam committed oder verwirft.
 87. [x] Source-Object-Persistenzgrenze fuer Knowledge-Base-Writes haerten: dauerhafte metadata-only Write-Receipts mit `collabio.source_object_write_receipts`, RLS, Receipt-Hash und API-Execution-Evidence anbinden.
 88. [x] PostgreSQL-Source-Metadatenadapter und Content-Store-Bridge fuer Source Objects entwerfen, damit Knowledge-Base-Writes spaeter Source-Metadata, Content-Manifest, Artikel-/Version-Metadaten und Evidence ohne Content-Leakage atomar koordinieren koennen.
-89. [ ] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+89. [x] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+90. [x] Knowledge-Base-Production-Write-Grenze haerten: gemeinsamen PostgreSQL-Transaktionskontext fuer KB-Metadatenadapter, Source-Object-Receipts und Source-Metadata-Bridge entwerfen, damit API-Produktivwiring erst mit explizitem Atomicity-/Recovery-Nachweis aktiviert wird.
+91. [x] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Content-Store-Inventar, Orphan-Reconciliation-Nachweis, Restore-Drill-Hash und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
+92. [x] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
+93. [x] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
+94. [x] Konkreten S3-kompatiblen SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen; MinIO bleibt Entwicklungsziel, Ceph RGW ist das produktive Referenzprofil.
+95. [x] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
+96. [x] Knowledge-Base-Produktivwiring tenant-sicher aktivierbar machen: Runtime-Gate-Evidence per Admin-/Deployment-Aktivierung tenant-spezifisch persistieren und die API vom prozessweiten `SUITE_KB_RUNTIME_TENANT_ID` in eine request-sichere Runtime-Auswahl ueberfuehren.
+97. [x] Knowledge-Base-Content-Reconciliation operationalisieren: aktivierte Runtime-Tenants regelmaessig gegen Object-Store-Inventar, Storage-Manifeste und Restore-Drill-Evidence pruefen, Aktivierungen bei Drift sperren und Refresh-/Reactivation-Evidence auditierbar machen.
+98. [x] Knowledge-Base-Reconciliation als Worker-Betriebspfad ausbauen: tenant-Auswahl aus Modulstatus/Runtime-Aktivierungen, Compose-Worker-Entrypoint, Runbook-Evidence, Retry-/Alerting-Kontrakt und regelmaessige Restore-Drill-Bindung operationalisieren.
+99. [x] Persistente Platform-Module-Registry fuer API und Worker angleichen: `collabio.module_catalog` und `collabio.tenant_modules` als Store anbinden, Migration-Evidence aus DB verwenden, tenant-sichere `ModuleWorkerGate`-Nutzung fuer API/Worker vereinheitlichen und Dev-Seeding/Backfill definieren.
+100. [x] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
+101. [x] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
+102. [x] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
+103. [x] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
+104. [x] SourceObject-Detailzug produktionsnah machen: repository-backed metadata-only Detail-Endpoints fuer Dokumente, Mail und Wissensdatenbank anbinden, ACL-Pruefung pro Detailabruf auditieren und die Workspace-Shell von Cockpit-Flow-Snapshots auf diese Detail-API umstellen.
+105. [x] SourceObject-Detailzug weiter haerten: Detail-API auf persistente SourceObject-Repository-Backends fuer Dokumente/Mail vorbereiten, UI-Fehlerzustaende fuer 403/404 sichtbar differenzieren und Pg-basierte Detail-Smoke-Tests einziehen.
+106. [x] Dokument-/Mail-Detailzug als naechsten Produktpfad vorbereiten: persistente Repository-Auswahl operationalisieren, SourceObject-Flows von Demo-Seeding zu Backend-Konfiguration fuehren und Detailansichten um sichere Preview-Slots ohne Content-Bypass erweitern.
+107. [x] Dokument-/Mail-Preview-Gate konkretisieren: sichere metadata-first Preview-Policies, Parser-/Sanitizer-Grenzen, Mail-Header/Attachment-Metadaten und Content-Freigabe nur hinter explizitem Policy-/ACL-/Audit-Nachweis vorbereiten.
+108. [x] Dokument-/Mail-Preview-Approval-Skeleton vorbereiten: Content-Preview-Anfragen als metadata-only Decision-Objekte modellieren, Tenant-Policy/ACL/Audit/Parser-Sanitizer-Evidence pruefen und weiterhin blockieren, bis explizite Freigabe und sichere Renderer-Grenzen nachgewiesen sind.
+109. [x] Dokument-/Mail-Preview-Approval operationalisieren: persistentes Preview-Decision-Ledger, Tenant-Policy-Schalter, Renderer-Sandbox-Evidence und Human-Confirmation-Workflow anbinden, ohne Content-Ausgabe freizuschalten.
+110. [x] Preview-Decision-Ledger produktionshart machen: PostgreSQL/RLS-Adapter, Restore-Evidence, Backup-Abdeckung und Renderer-Sandbox-Worker-Evidence anbinden, bevor irgendein Content-Rendering-Pfad geoeffnet wird.
+111. [x] Renderer-Sandbox-Worker-Skeleton aufbauen: isolierten Worker-Run als metadata-only Evidence erzeugen, Parser/Sanitizer/Backup/Restore-Evidence gegen Tenant und SourceObject binden und weiterhin keinen gerenderten Content ausgeben.
+112. [x] Renderer-Sandbox-Evidence produktionshart machen: PostgreSQL/RLS-Store, Restore-Drill-Pruefung und Worker-Queue-Anbindung fuer Preview-Renderer-Evidence ergaenzen, bevor echte Rendering-Engines oder Viewer eingebunden werden.
+113. [x] Renderer-Worker-Runbook und Restore-Drill operationalisieren: Queue-Wiederaufnahme, Idempotency-Replay, Tenant-Isolation-Smoke-Test und Preview-Decision-/Renderer-Evidence-Recovery als wiederholbaren Compose-Drill nachweisen.
+114. [x] Preview-Renderer-Drill mit realer Postgres-Smoke-Fixture erweitern: API erzeugt Decision-/Renderer-Evidence, `preview-renderer-drill` verifiziert sie im Compose-Pfad, und der Report-Hash wird als Release-/Restore-Evidence referenzierbar.
+115. [x] Preview-Renderer-Release-Gate definieren: frischen API-Smoke-Report-Hash und Recovery-Drill-Report-Hash als harte Voraussetzung modellieren, bevor echte Renderer, Viewer oder Content-Release-Workflows angeschlossen werden.
+116. [x] Preview-Renderer-Release-Gate-Evidence operationalisieren: Gate-Reports persistent referenzieren, Compose-Smoke um Gate-Erzeugung erweitern und echte Renderer-/Viewer-Anbindung erst hinter diesem Gate erlauben.
+117. [x] Preview-Renderer-Release-Gate-Store produktionshart machen: PostgreSQL/RLS-Migration, Restore-Drill-Pruefung und Compose-Smoke auf persistenten Gate-Store umstellen, bevor Renderer-/Viewer-Gate-Hashes produktiv verwendet werden.
+118. [x] Roadmap-Triage vor dem naechsten Ausbau anwenden: naechsten Schritt nur ziehen, wenn er Fundament oder unmittelbaren Produktzug staerkt; spaeter nachziehbare Adapter-/UI-/Automationsarbeit sichtbar parken.
+119. [x] Legacy-SQL-Import-Readiness-Evidence definieren: Discovery-/Import-/Mapping-Hashes zusammenfuehren, Dry-Run nur bei sauberer Mapping-Kette erlauben und Quarantaene/`legacy.row` als manuellen Mapping-Blocker ausweisen.
+120. [x] Legacy-SQL-Readiness als Compose/Worker-Smoke operationalisieren: Metadata-Worker-Ergebnis, Mapping-Manifest und Readiness-Evidence als Report ausgeben, bevor reale SQL-Verbindung oder Import-Dry-Run zugelassen wird.
+121. [x] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
+122. [x] Legacy-SQL-Discovery-Intake operationalisieren: Admin-/Worker-Entry-Point fuer Intake-Evidence und Metadata-Worker-Command anbinden, ohne echte Verbindung, Import-Dry-Run oder Rohdatenfreigabe.
+123. [x] Legacy-SQL-Evidence-Ledger persistieren: Intake-, Discovery-, Mapping-, Readiness- und Smoke-Report-Hashes tenant-sicher mit RLS/Restore-Evidence speichern, bevor echte Legacy-Verbindungen zugelassen werden.
+124. [x] Legacy-SQL-Evidence-Ledger in Intake-/Readiness-Drills verdrahten: Operations-Reports optional in `collabio.legacy_sql_evidence_ledger` schreiben und Restore-Drill-Nachweis mit Report-Hashes verbinden.
+125. [x] Legacy-SQL-Evidence-Ledger-Backends operationalisieren: JSONL/Postgres-Schreibpfad in Compose-Drills pruefen, Restore-Drill gegen Ledger-Eintraege laufen lassen und erst danach echte Legacy-Host-Profile freigeben.
+126. [x] Legacy-SQL-Host-Profile-Release-Gate vorbereiten: echte Host-Profile nur nach Ledger-Operations-Report, Connector-Policy-Hash, Secret-Ref, Egress-Freigabe und expliziter menschlicher Bestaetigung aktivierbar machen; keine DSN, keine Rohdaten und kein Import-Dry-Run im Gate.
+127. [x] Legacy-SQL-Host-Profile-Release-Gate operationalisieren: Gate-Evidence tenant-sicher persistieren, Compose-Smoke fuer Ready/Blocked-Pfade anbinden und erst danach einen echten Host-Profile-Adapter vorbereiten.
+128. [x] Legacy-SQL-Host-Profile-Adapter-Skeleton vorbereiten: Persistierte Ready-Gate-Evidence tenant-sicher laden, Secret-/Egress-Handles nur an metadata-only Worker-Scheduling binden und weiterhin keine echte Netzwerkverbindung im Default-Compose oeffnen.
+129. [x] Legacy-SQL-Metadata-Worker-Scheduling-Queue vorbereiten: Schedule-Evidence tenant-sicher und idempotent persistieren, Worker-Lease/Retry/Restore-Evidence modellieren und weiterhin keine echte Legacy-Verbindung im Default-Compose oeffnen.
+130. [x] Legacy-SQL-Metadata-Worker-Lease-Consumer-Skeleton vorbereiten: geleaste Queue-Jobs in einem isolierten Offline-Runner validieren, Secret-/Egress-Aufloesung weiterhin nur als Handle pruefen und echte Legacy-Verbindung weiter gesperrt lassen.
+131. [x] Legacy-SQL-Connector-Sandbox-Profil vorbereiten: default-off Netzwerk-/Secret-Handle-Profil fuer spaetere reale Legacy-Host-Konnektivitaet modellieren, nur hinter Release-Gate, Queue-Lease und Consumer-Activation sichtbar machen und Rohdaten/Import weiterhin blockieren.
+132. [x] Legacy-SQL-Connector-Sandbox-Enablement-Gate vorbereiten: explizite menschliche Freigabe, Provider-Attestation, Restore-Evidence und Sandbox-Profil-Hash als hartes Gate fuer spaetere echte Verbindungsversuche modellieren; Raw Data, Import-Dry-Run und Import-Write bleiben getrennt blockiert.
+133. [x] Legacy-SQL-Connector-Provider-Attestation-Adapter vorbereiten: Netzwerk-, Secret-Resolver- und Audit-Provider-Handles gegen echte Deployment-Profile validieren, aber weiterhin keine Verbindung oeffnen und kein Secret-Material aufloesen.
+134. [x] Legacy-SQL-Connector-Connection-Attempt-Preflight-Gate vorbereiten: Enablement-Gate, Provider-Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor spaeter echte Verbindungsversuche implementiert werden.
+135. [x] Legacy-SQL-Connector-Real-Connection-Executor-Skeleton vorbereiten: hinter dem Preflight-Gate einen weiterhin nicht-ausfuehrenden Executor-Contract modellieren, der Secret-/Socket-Materialisierung, Timeout-/Retry-Policy, Audit und Kill-Switches vor echter Implementierung festlegt.
+136. [x] Legacy-SQL-Connector-Real-Connection-Executor-Policy-Store vorbereiten: Executor-Contracts, Timeout-/Retry-Policies, Audit-Plaene und Kill-Switch-Policies tenant-sicher persistierbar machen, bevor echte Socket-Ausfuehrung implementiert wird.
+137. [x] Legacy-SQL-Connector-Execution-Readiness-Review-Gate vorbereiten: gespeicherte Executor-Policy-Bundles gegen Human-Review, Change-Control, Restore-Drill und Kill-Switch-Zustand pruefen, bevor echte Socket- oder Secret-Materialisierung ueberhaupt geplant wird.
+138. [x] Legacy-SQL-Connector-Materialization-Plan-Gate vorbereiten: Review-Gate-Ergebnis, Provider-Profile, Operator-MFA und Kill-Switch-Snapshot in einen weiterhin nicht-ausfuehrenden Materialisierungsplan binden, bevor Socket- oder Secret-Materialisierung implementiert wird.
+139. [x] Legacy-SQL-Connector-Socket-Secret-Implementation-ADR vorbereiten: Materialization-Plan-Gate-Ergebnis, echte Provider-Limits, Netzwerkroute, Secret-Manager, Rollback und Kill-Switch-Runbook als ADR-Gate dokumentieren, bevor eine ausfuehrende Implementierung geschrieben wird.
+140. [x] Legacy-SQL-Connector-Runtime-PR-Gate vorbereiten: ADR-Gate-Ergebnis, Runtime-Code-Review, Testcontainer, Secret-Manager-Binding, Netzwerkroute, Rollback-Probe und Kill-Switch-Probe als letztes nicht-ausfuehrendes PR-Gate binden, bevor Socket- oder Secret-Runtime-Code gemergt wird.
+141. [x] Legacy-SQL-Connector-Runtime-Merge-Gate vorbereiten: Runtime-PR-Gate-Ergebnis, Branch-Protection-Status, Security-Scan, Container-Provenance, Secret-Rotation-Plan und Kill-Switch-Drill als Merge-Gate binden, bevor ausfuehrender Socket-/Secret-Code in eine aktivierbare Runtime gelangt.
+142. [x] Legacy-SQL-Connector-Runtime-Activation-Gate vorbereiten: Runtime-Merge-Gate-Ergebnis, tenant-spezifische Aktivierungsfreigabe, Runtime-Feature-Flag, Secret-Rotation-Bestaetigung, Netzwerkfreigabe, Rollback-Freeze und Kill-Switch-Arming als weiterhin nicht-ausfuehrendes Activation-Gate binden, bevor echte Verbindungsversuche aktivierbar werden.
+143. [x] Legacy-SQL-Connector-Live-Connection-Gate vorbereiten: Runtime-Activation-Gate-Ergebnis, Secret-Broker-Binding, Netzwerk-Egress-Policy, Least-Privilege-DB-Rolle, Timeout-/Circuit-Breaker, Audit-Sink und Emergency-Disable als weiterhin kontrolliertes Gate binden, bevor ein erster echter metadata-only Connection-Probe erlaubt wird.
+144. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Gate vorbereiten: Live-Connection-Gate-Ergebnis, echten Provider-Treiber, Secret-Broker-Read-Path, Metadata-Query-Allowlist, Timeout-/Circuit-Breaker-Ausfuehrung, Audit-Sink und Emergency-Disable als eng begrenztes Ausfuehrungsgate binden, bevor ein erster echter metadata-only Probe implementiert wird.
+145. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Skeleton implementieren: Metadata-Connection-Probe-Gate-Ergebnis, Provider-Treiber-Adapter, Secret-Broker-Leseaufruf, Metadata-Query-Allowlist, Timeout-/Circuit-Breaker, Audit-Sink und Emergency-Disable als ersten echten metadata-only Probe hinter Default-Off und Kill-Switch implementieren, ohne Rohdaten, Import-Dry-Run oder Writes zu erlauben.
+146. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Live-Adapter haerten: echten Postgres-Provider hinter dem Skeleton mit Secret-Broker-Materialisierung, freigegebener Netzwerkroute, Redaction/Audit, Timeout-/Circuit-Breaker und Emergency-Stop in einem isolierten Worker aktivieren, weiterhin ohne Rohdaten, Import-Dry-Run oder Writes. SQL Server bleibt bis zu Treibercontainer-, Netzwerkprofil- und Testinstanz-Evidence bewusst Adapter-spaeter.
+147. [x] Produktzug-Re-Fokus nach Legacy-SQL-Metadata-Probe: Legacy-SQL bei metadata-only Live-Probe einfrieren und als naechsten MVP-Slice Workspace/Module-Cockpit, KB-/Dokument-/Mail-SourceObject-Flow, Preview-Entscheidung und Rechte-/Audit-Sichtbarkeit produktnah zusammenfuehren, ohne neue Import- oder Rohdatenpfade.
+148. [x] Workspace-Preview-Entscheidung produktiver fuehren: aus der Flow-Readiness heraus einen gefuehrten metadata-only Action-Flow fuer Renderer-Sandbox-Evidence und Preview-Decision-Anforderung bauen, weiter ohne Content-Rendering oder Rohdatenfreigabe.
+149. [x] Produktiver Arbeitskorb als naechster MVP-Slice: aus Modulstatus, SourceObject-Readiness und Preview-Entscheidungen eine einfache Aufgaben-/Naechste-Schritte-Sicht ableiten, ohne das spaetere Aufgabenmodul, Tickets oder Automationen vorwegzunehmen.
+150. [x] Arbeitskorb-Aktionen rollen- und zustandsgefuehrt schaerfen: Work-Items mit sicheren Action-Hints, Modul-/Flow-Sprungzielen und UI-Gates verbinden, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+151. [x] Arbeitskorb-Rollenmatrix absichern: Tenant-Admin, Security-Admin und Reader-Kontexte gegen dieselben Work-Items pruefen und UI-/Contract-Gates nachweisen, ohne eine neue RBAC-Engine oder persistente Aufgaben einzufuehren.
+152. [x] Arbeitskorb-State-Transitions nachweisen: nach Preview-Decision und Modul-Provision/Enable Work-Items neu berechnen und obsolete Actions ausblenden oder umstufen, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+153. [x] Arbeitskorb-Operational-Evidence schaerfen: Work-Item-Zaehler, Confirmation-Gates und State-Transition-Signale in Audit-/Cockpit-Metadaten nachvollziehbar machen, ohne Rohdaten, Inhalte oder persistente Aufgaben zu speichern.
+154. [x] Arbeitskorb-Operational-Summary im Workspace sichtbar machen: die read-only Evidence aus Work-Item-Zaehlern, Rollen-/Confirmation-Gates und State-Transition-Signalen kompakt anzeigen, ohne neue Aktionen, persistente Aufgaben oder Rohdaten einzufuehren.
+155. [x] Workspace-Cockpit als MVP-Startpunkt konsolidieren: Module, Arbeitskorb, SourceObject-Flows und Detailansicht als produktiven Einstieg pruefen, offene Foundation-Luecken priorisieren und spaetere Nice-to-haves aus dem unmittelbaren Pfad entfernen.
+156. [x] MVP-Startpunkt-Snapshot als Review-Artefakt vorbereiten: Cockpit-Readiness, offene Foundation-Gaps, Deferred-Themen und naechste sichere Aktion in einem metadata-only Handover-Report exportierbar machen, ohne produktive Automationen oder neue Module vorzuziehen.
+157. [x] Foundation-Gap-Abbau aus dem MVP-Snapshot starten: Preview-Decision-Gaps, Modulaktivierung und Human-Confirmation als naechsten produktiven Pfad priorisieren, waehrend Office/Mail-Vollclients, Tickets, LMS und Zeiterfassung bewusst deferred bleiben.
+158. [x] Preview-Decision-Gap konkret abbauen: aus dem Foundation-Gap-Plan die pending Preview-Decision-Arbeitsschritte zuerst operationalisieren und nach Ausfuehrung die Gap-Liste automatisch reduzieren, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+159. [x] Preview-Blocked-Gap klaeren: nach abgebautem Pending-Gap die geblockten Preview-Decisions als Evidence-/Policy-Thema sichtbar fuehren und entscheiden, welche Evidence wirklich jetzt noetig ist, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+160. [x] Modulaktivierungs-Gap fokussiert abbauen: nach Preview-Evidence-Brief nur die notwendigen Modul-Provisioning-/Enablement-Aktionen fuer den MVP-Arbeitsbereich operationalisieren, ohne spaetere Modulfachlichkeit, Tickets oder Automationen vorzuziehen.
+161. [x] Human-Confirmation-Gap scharf stellen: verbleibende explizite Bestaetigungen nach Preview- und Modul-Gap getrennt sichtbar fuehren und nur notwendige bestaetigungsgebundene Foundation-Schritte behandeln, ohne persistente Aufgaben, Tickets oder Automationen vorzuziehen.
+162. [x] Content-Release-Gate bewusst halten: nach geschaerftem Human-Confirmation-Gap den verbleibenden Content-Release-Block als Policy-/Viewer-Deferred-Entscheidung dokumentieren und nur pruefen, ob MVP-Readiness ohne Content-Preview produktiv genug ist.
+163. [x] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
+164. [x] MVP-Produktivpfad als Release-Kandidat pruefen: Demo-Tenant, Rollenmatrix, Audit-Events, Snapshot-Export und Backup-/Failover-Schutzsignale als zusammenhaengenden Smoke-Run dokumentieren, ohne neue Module oder Content-Preview-Funktionalitaet vorzuziehen.
+165. [x] MVP-Release-Handover schaerfen: Release-Candidate-Smoke, Snapshot-Hash und offene Foundation-Gaps in eine knappe Betreiber-/Reviewer-Uebergabe zusammenfassen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+166. [x] MVP-Release-Review abschliessen: Handover-Evidence, offene Gaps und Betreiber-Checkliste gegen Security-/Compliance-Guardrails reviewbar machen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+167. [x] MVP-Pilot-Freigabe vorbereiten: Release-Review, Handover und Smoke-Evidence in ein minimales Pilot-Gate ueberfuehren, ohne neue Produktfunktionen, Content-Preview oder Automationen vorzuziehen.
+168. [x] MVP-Pilot-Betriebsstatus sichtbar machen: Pilot-Gate, Release-Review und offene Foundation-Gaps als read-only Betreiberstatus zusammenziehen, ohne neue Produktfunktionen, Content-Preview, Tickets oder Automationen vorzuziehen.
+169. [x] MVP-Pilot-Readiness-Bericht schaerfen: Pilot-Betriebsstatus, offene Foundation-Gaps und Deferred-Scope in eine knappe Review-/Betreiberansicht ueberfuehren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+170. [x] MVP-Pilot-Startumfang fixieren: Readiness-Bericht, Betreiberstatus und erlaubte Pilot-Flaechen als minimalen Startumfang dokumentieren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+171. [x] MVP-Pilot-Betreiberpfad absichern: fixierten Startumfang, Evidence-Kette und offene Foundation-Gaps als kurzes metadata-only Runbook sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+172. [x] MVP-Pilot-Reviewpunkt festlegen: Betreiber-Runbook, Startumfang und offene Foundation-Gaps als formalen Reviewpunkt fuer Pilotstart sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+173. [x] MVP-Pilot-Startentscheidung vorbereiten: Reviewpunkt, Runbook und Evidence-Hashes in eine explizite Human-Confirmation-Vorlage ueberfuehren, ohne Pilotstart, Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit auszufuehren.
+174. [x] MVP-Pilot-Entscheidungsprotokoll vorbereiten: Human-Confirmation-Vorlage, Reviewpunkt und Evidence-Hashes in ein auditierbares Entscheidungsprotokoll-Schema ueberfuehren, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+175. [x] MVP-Pilot-Entscheidungs-Preflight sichtbar machen: Entscheidungsprotokoll-Schema, Human-Confirmation-Vorlage und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+176. [x] MVP-Pilot-Approval-Workflow abgrenzen: Preflight, Entscheidungsprotokoll-Schema und Human-Confirmation-Vorlage in eine klare Workflow-Grenze ueberfuehren, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+177. [x] MVP-Pilot-Approval-Readiness konsolidieren: Approval-Workflow-Grenze, Preflight und Entscheidungsartefakte als finale read-only Freigabevorbereitung zusammenziehen, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+178. [x] MVP-Pilot-Go-No-Go-Grenze vorbereiten: Approval-Readiness in eine explizite Human-Decision-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+179. [x] MVP-Pilot-Go-No-Go-Entscheidungsprotokoll vorbereiten: Go/No-Go-Grenze, Approval-Readiness und Evidence-Hashes in ein auditierbares Human-Decision-Record-Schema ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+180. [x] MVP-Pilot-Decision-Capture-Grenze vorbereiten: Go/No-Go-Entscheidungsprotokoll-Schema in eine explizite Human-Decision-Capture-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+181. [x] MVP-Pilot-Decision-Capture-Preflight sichtbar machen: Decision-Capture-Grenze, Go/No-Go-Entscheidungsprotokoll-Schema und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+182. [x] MVP-Pilot-Decision-Capture-Submit-Skeleton vorbereiten: Decision-Capture-Preflight in einen expliziten Human-Submit-Vertrag ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+183. [x] MVP-Pilot-Decision-Capture-Submit-Dry-Run vorbereiten: Submit-Skeleton in eine reine Validierungs-Simulation fuer Human-Submit-Eingaben ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+184. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Grenze vorbereiten: Dry-Run-Vertrag in eine explizite Payload-Validierungsgrenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+185. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Dry-Run vorbereiten: Payload-Validierungsgrenze in eine explizite, nicht persistierende Validierungsanfrage fuer synthetische Human-Submit-Payloads ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+186. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Boundary vorbereiten: Payload-Validation-Dry-Run in eine explizite Request-Boundary fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+187. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Dry-Run vorbereiten: Request-Boundary in eine nicht persistierende Request-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+188. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Skeleton vorbereiten: Request-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+189. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Dry-Run vorbereiten: Execution-Skeleton in eine nicht persistierende Execution-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+190. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Boundary vorbereiten: Execution-Dry-Run in eine explizite Aktivierungsgrenze fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+191. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Dry-Run vorbereiten: Activation-Boundary in eine nicht persistierende Aktivierungs-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+192. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Skeleton vorbereiten: Activation-Dry-Run in einen nicht aktivierten Approval-Skeleton fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+193. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Dry-Run vorbereiten: Approval-Skeleton in eine nicht persistierende Approval-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+194. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Boundary vorbereiten: Approval-Dry-Run in eine explizite Request-Boundary fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+195. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Dry-Run vorbereiten: Approval-Request-Boundary in eine nicht persistierende Request-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+196. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Skeleton vorbereiten: Request-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+197. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Dry-Run vorbereiten: Execution-Skeleton in eine nicht persistierende Execution-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+198. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Boundary vorbereiten: Execution-Dry-Run in eine explizite Result-Boundary fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+199. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Dry-Run vorbereiten: Result-Boundary in eine nicht persistierende Result-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+200. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Execution-Skeleton vorbereiten: Result-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+201. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Boundary vorbereiten: Result-Execution-Skeleton in eine explizite Handler-Boundary fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+202. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Dry-Run vorbereiten: Handler-Boundary in eine nicht registrierende Handler-Dry-Run-Auswertung fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+203. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Skeleton vorbereiten: Handler-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Handler-Ausfuehrung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+204. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Dry-Run vorbereiten: Handler-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ausfuehrung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+205. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Boundary vorbereiten: Handler-Execution-Dry-Run in eine explizite Handler-Execution-Result-Boundary fuer spaetere Handler-Ergebnisverarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+206. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisverarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+207. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+208. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+209. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+210. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+211. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+212. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+213. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+214. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+215. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+216. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+217. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+218. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+219. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+220. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+221. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+222. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+223. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+224. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+225. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+226. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+227. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+228. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Pruefung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+229. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+230. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+231. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+232. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+233. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+234. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+235. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung in eine nicht aktivierte Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+236. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung in einen nicht persistierenden Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+237. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+238. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+239. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung in eine nicht aktivierte Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+240. [x] Boundary-Fortsetzungsserie beendet und Produktfokus wiederhergestellt: keine weiteren abstrakten Dry-Run-Huellen ohne unmittelbaren Nutzer- oder Betriebswert; offene Arbeit wird wieder an produktiven Foundation-Gaps, echten Betriebsnachweisen und zusammenhaengenden Produktzuegen priorisiert.
+
+## Aktueller Fokus: Persistente Backend-Runtime
+
+- [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
+- [x] MinIO-Bucket-Bootstrap mit Versionierung, Object Lock und Legal-Hold-Providerprofil zum API-Startgate gemacht.
+- [x] `persistent_source_object_runtime_report.v1` fuer idempotentes Dev-Seeding, frische Repository-Instanz, exakte Versions-Reads und tenant-sichere Content-Reconciliation implementiert.
+- [x] Test- und Quality-Datenbank vom Runtime-PostgreSQL getrennt, damit append-only Testevidenz keinen Produktzustand mehr verschmutzt.
+- [x] Isolierten Compose-Nachweis mit drei SourceObjects, zwei Tenants, null fehlenden/orphaned Objekten und erfolgreichem tenant-/ACL-geprueftem API-Read erbracht.
+- [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
+- [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
+- [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
+- [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
+
+Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
+
+Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
+
+- [x] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: providerneutraler Adapter-Port mit ausgewaehlter
+  Canonical-PDF-/LibreOffice-/PDF.js-Strategie, statischer Registry, frischem tenant-gebundenem Wiring-Guard und
+  metadata-only Dry-Run; kein Renderer, Viewer, WOPI, Inhaltszugriff oder Output ist aktiviert.
+- [x] Digest-gepinnten, credential-losen LibreOffice-/QPDF-Conversion-Worker und Derived-Preview-SourceObject-Lifecycle
+  hinter ein separates Execution-Gate gesetzt: staerkere Runtime wird erzwungen, Malware/CDR-Preflight,
+  Ressourcenlimits, PDF-Revalidierung, Font-Baseline und Restore-/Viewer-Bindungen sind Teil des unveraenderlichen
+  Auftrags; abgeleitete PDFs erben ACL, Klassifikation, Retention, Legal Hold, KMS- und Source-Version-Lineage.
+- [x] Metadata-only Conversion-Job-Evidence und Derived-Preview-Restore-Reconciliation implementiert: Command,
+  Preflight, Worker-Result, SourceObject-Write-Receipt, Lineage-Receipt und Execution-Gate werden atomar gebunden und auf
+  isolierten PostgreSQL-/Object-Storage-Zielen hashgenau abgeglichen; leere Restores erzeugen keine
+  Produktionsfreigabe und der Drill aktiviert weder Dispatch noch Preview-Serving.
+- [x] Kontrollierte nicht-leere Entwicklungs-Proof-Kette implementiert: ein credential-loser/no-egress
+  `runsc`-Engine-Preflight blockiert vor jedem Write; danach folgen atomarer synthetischer Source-/Gate-Write,
+  isolierter Conversion-Worker, unabhaengig revalidierter Derived-Preview-Commit und sichere Vernichtung beider
+  transienten Workspaces. Frei gesetzte Runtime-Evidence wird nicht akzeptiert.
+- [x] Proof-Kette auf `dev001` mit registrierter `runsc`-Runtime ausgefuehrt und den Proof-Tenant anschliessend ueber
+  frisches PostgreSQL-Backup, isolierten Restore, unabhaengigen Exact-Version-Object-Restore und nicht-leere
+  Derived-Preview-Reconciliation nachgewiesen: Proof-Report
+  `sha256:25a26caf230ed6588877db2d6332a0d42fb4128a74254d62c2cac272c45c5cc8`, Backend-Gate
+  `sha256:ce2438da232f71d20e710aee7e53c497ed51ac212450e29edca4f6e0a91f71c1` und Recovery-Report
+  `sha256:df53b16d2cb5093025bc7d362fb4aa63458e0307a28d1c436f3641c21b2a5d5f`; Production-Admission blieb deaktiviert.
+- [x] Fail-closed Production-Admission-Grenze implementiert: tenant-, Execution-Gate-, Recovery- und Image-Digest-
+  Bindung, maximal 24 Stunden frische Runtime-/Malware-/CDR-/Supply-Chain-/Viewer-Evidence, drei getrennte
+  Ed25519-Rollen in DSSE/in-toto, erneute Worker-Pruefung und unveraenderliche Vererbung des Gate-Hashs in Command und
+  Result. Das Release publiziert und attestiert Runtime und Preview-Renderer mit jeweils eigener SBOM und Provenance.
+  Die Gate schaltet ausschliesslich Conversion-Dispatch; Preview-Serving bleibt separat gesperrt.
+- [x] Collabio-eigenen realen ClamAV-Scanpfad als ersten externen Production-Admission-Eingang operationalisiert:
+  digest-gepinnter unprivilegierter Dienst ohne Host-Port im internen Compose-Netz, begrenztes `INSTREAM`-Protokoll,
+  tenant-/SourceObject-/Versions-/Content-Hash-gebundene metadata-only Evidence, frischer Clean-/EICAR-Smoke und
+  Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; signierte
+  Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
+- [x] Realen ClamAV-/`runsc`-Pfad samt Schemaevolution und Recovery auf `dev001` nachgewiesen: Clean/EICAR-Smoke
+  `sha256:e5d6c5b200ef04259c16622e9b2cc7ea1129721deaea2515571a0efeaf3d34c1`, aktueller nicht-leerer Proof
+  `sha256:77c6105833ff427fc0d28e846c41871b97508bb634150aa70f75f516e13be723`, frisches Backup
+  `sha256:aeacc5f9cc4c14898d395bbb8eca4a50779c6a4e776a3c5c5a601c298bcdb405` und Recovery
+  `sha256:5dbcaeafc177e0c5f658e31f0082291e04025f1d7e84b0114db1b5d722fb6faa` mit `3/3/3` Evidence-/Receipt-/Item-
+  Reconciliation. Historische Command-/Result-`v1`- und `v2`-Hashes bleiben lesbar; aktuelle Evidence verwendet den
+  separaten CDR-Vertrag in Result `v3`.
+- [x] Fail-closed Pixel-CDR als getrennte Vertrauensgrenze implementiert: ein credential-loser/no-egress
+  `runsc`-Renderer verarbeitet die Source und emittiert ausschliesslich exakt validierte rohe RGB-Seiten samt
+  hashgebundenem Manifest; ein zweiter `runsc`-Rebuilder ohne Source-Mount rekonstruiert das PDF und durchlaeuft QPDF,
+  PDFInfo sowie aktive Objektpruefungen erneut. Fehlende, zusaetzliche, manipulierte oder ungebundene CDR-Dateien
+  blockieren den Job. Pillow 12.3.0 ist in einem eigenen universellen SHA-256-Lock isoliert und wird in CI/Release auf
+  Drift geprueft.
+- [x] Office-Edit-Architektur als dritten, von Preview und WOPI getrennten Port festgelegt: `OfficeEditAdapter.v1`,
+  Collabio-native Quick-Edit-Kandidatenversion, separater WOPI-Pfad fuer Vollkollaboration und Local-LLM-Gateway fuer
+  ausschliesslich bestaetigungspflichtige AI-Drafts. Ein metadata-only API-Gate bindet Tenant, ACL, SourceObject-Version,
+  Policy-Hash, Adapter-Hash und Upstream-Commit, ohne Content, Import, Engine, Session, Netzwerk oder Write zu oeffnen.
+- [x] GenOffice selektiv und fail-closed in die Roadmap aufgenommen: kein Fork; exakter Upstream-Commit
+  `fd33934dab1fdf8666af3f88b9794e7b4e19474a`; ausschliesslich `packages/docx-engine/**` als spaeterer Importkandidat;
+  Tabellen-/Praesentationsengines nur als Referenz; `ee/**`, Shell und Cloud-AI-Quellpfade verboten. Die
+  maschinenlesbare Evaluation-Policy blockiert Import und Produktion bis alle Gates erfuellt sind.
+- [x] Reproduzierbare GenOffice-Source-Evidence fuer den DOCX-Kandidaten geschlossen: Codeload-Archiv des exakten
+  Commits mit SHA-256 gebunden, ohne Extraktion geprueft, ausgewaehlte Dateien einzeln gehasht, verbotene Scopes aus dem
+  Manifest ausgeschlossen, npm-v3-Lock rekursiv auf 21 Runtime-Pakete samt Registry-Integritaet und Lizenzmetadaten
+  aufgeloest sowie vendored EMF-Converter und Root-`postinstall` sichtbar gemacht. Der no-network/read-only Verifier
+  fuehrt weder npm/Node noch Upstream-Code aus und oeffnet weiterhin keinen Import.
+- [x] Automatisierte GenOffice-Pre-Build-Supply-Chain geschlossen: vendorten `emf-converter@2.0.2` gegen das gepinnte
+  npm-Tarball bytegenau verifiziert, 23 Komponenten als deterministisches CycloneDX-1.6-SBOM inventarisiert, mit
+  digest-gepinntem CycloneDX CLI validiert und mit Trivy 0.73.0 gegen eine frisch und getrennt geladene DB vollstaendig
+  netzlos gescannt. Exakter 23-PURL-Abgleich, null Findings und ein hashgebundener Admission-Report sind nachgewiesen;
+  Import, Engine und Produktion bleiben geschlossen.
+- [x] Kryptografische npm-Provenance des vendorten EMF-Konverters geschlossen: digest-gepinntes Node 24.18.0/npm
+  11.16.0 verifiziert credential-los Registrysignatur, npm-Publish-Attestierung und SLSA v1; der getrennte netzlose
+  Admission-Gate bindet exakten SHA-512-Subject, GitHub-hosted Workflow, Source-Commit `9aca5abf...`, Fulcio-Zertifikat
+  und zwei Rekor-Inclusion-Proofs. Import, Engine und Produktion bleiben geschlossen.
+- [x] Reproduzierbares GenOffice-Legal-Dossier technisch geschlossen: separater credential-loser Collector laedt alle
+  21 exakten Runtime-Paketarchive ausschliesslich von den bereits gepinnten npm-URLs und akzeptiert nur die Lockfile-
+  `sha512`-Bytes; ein zweiter no-network/read-only Gate hasht Root-LICENSE/NOTICE, Markenhinweis, ausgeschlossene
+  Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. Der im npm-Paket fehlende MIT-Volltext von
+  `@nodable/entities@3.0.0` ist ueber npm-`gitHead`, exakten Source-Commit und Codeload-SHA-256 nachgezogen.
+  Der reproduzierte Lauf bindet 21/21 Archive, 42 Rechtsdateien, Collection-Report `sha256:2a75877f...`, Offline-
+  Dossier `sha256:eb523d13...` und Decision-Schema `sha256:f4e8c757...`. `OR`-/`AND`-Semantik, sechs verpflichtende
+  Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
+  erzeugt bewusst keine menschliche Freigabe; Import, Build, Image-SBOM und Ausfuehrung bleiben geschlossen.
+- [x] Nicht verfuegbare externe Rechtspruefung durch eine ehrliche interne OSS-Admission fuer den Development-Kandidaten
+  ersetzt: deterministisches `THIRD_PARTY_NOTICES`, exakte Apache-/NOTICE-/Trademark-/Enterprise- und Dependency-
+  Entscheidungen, zwei verschiedene interne Rollen, Ed25519-Pruefung hinter dem KMS-Adapter, hashgebundene Signer-Policy
+  und automatische Neubewertung bei jeder relevanten Aenderung. Das Gate kann ausschliesslich
+  `development_evaluation` oeffnen. Das reale 23-Komponenten-/27-Dateien-NOTICE wurde zweimal bytegleich als
+  `sha256:e6dada57...` reproduziert; Report `sha256:878e93a1...` und beide Schema-Hashes sind versioniert. Hosted Service,
+  On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
+- [x] Ehrlichen Solo-Founder-Ausnahmepfad als kompensierende Kontrolle vorbereitet: eine benannte
+  `founder_risk_owner`-Identitaet signiert extern einen an Public-Evidence, Scope, Risikoreferenz, Change-Control und
+  alle geschlossenen Grenzen gebundenen Request. Die Ausnahme gilt hoechstens 30 Tage, wird bei jeder Materialisierung
+  erneut auf Aktivitaet geprueft und meldet ausdruecklich `two_person_control_verified=false`. Sie oeffnet nur den
+  no-network Development-Build-Context; Import, Engine, Tenant-Content, Hosted Service, On-Prem und Produktion bleiben
+  geschlossen. Policy, Request, Message und Report sind privat und write-once; Private-Key-Ingestion bleibt verboten.
+- [x] Reale Solo-Founder-Ausnahme abgeschlossen: dedizierter Ed25519-Schluessel ausserhalb von Collabio und `dev001`
+  erzeugt und lokal per Windows-DPAPI geschuetzt; nur der rohe 32-Byte-Public-Key mit
+  `sha256:13cd5f64e63a8e9ae0bb8ca683f30d2db0377cfe8f819a8e7fe869cb98fa4647` wurde eingebracht. Die reale
+  `founder_risk_owner`-Signatur bindet Policy, Request `sha256:b6e307e7...3230e`, Legal-/NOTICE-Evidence,
+  Risikoreferenz und Commit `7652e3f`. Ausnahmebericht `sha256:c9cbc425...e7f53` ist vom 11. bis 18. August 2026
+  aktiv und erlaubt ausschliesslich die no-network Development-Build-Context-Materialisierung. Der reproduzierte
+  95-Dateien-Context ist `sha256:55822a9c...5fcad`; Import, Engine, Tenant-Content, Hosted Service, On-Prem und
+  Produktion bleiben geschlossen, `two_person_control_verified=false`.
+- [ ] Zwei-Personen-GenOffice-Entscheid vor jeder Runtime-, Pilot-, Distributions- oder Produktionsgrenze abschliessen:
+  zwei benannte Verantwortliche als `product_owner` und `security_compliance_owner` aufnehmen und den exakten Payload
+  unabhaengig signieren. Der vorbereitete Request v2 bleibt maximal 72 Stunden gueltig und bindet Personen, Rollen,
+  Keys, Request und Message. Die Solo-Ausnahme ersetzt diese spaetere Trennung nicht.
+- [x] Deterministischen Development-Build-Context hinter exakt einer Autorisierung vorbereitet: der no-network/read-only
+  Materializer liest das Archiv ohne Extraktion, prueft alle 93 ausgewaehlten Dateien erneut gegen Pfad, Groesse und
+  SHA-256 und erzeugt ein nach UID/GID, Modus, Reihenfolge und `SOURCE_DATE_EPOCH` normalisiertes TAR mit NOTICE und
+  eingebettetem Evidence-Manifest. Report und Manifest v2 akzeptieren entweder eine regulaere Zwei-Personen-Admission
+  oder eine aktive Solo-Founder-Ausnahme, niemals beide. Ohne reale Signatur entsteht kein Context; npm, Build, Engine
+  und Import bleiben geschlossen.
+- [x] Reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellt:
+  Generation 05 bindet Build-Context, identischen Dual-Build, Image-Archiv, 41-Komponenten-CycloneDX-SBOM, frischen
+  Offline-Scan ohne Findings und externe Founder-Signatur. Der Status-Entrypoint und alle Runtime-/Tenant-/Produktions-
+  Grenzen bleiben geschlossen; die Admission endet am 19. August 2026.
+- [x] Synthetische Runtime-Vorstufe ohne Engine-Ausfuehrung implementiert: fuenf deterministische OOXML-Fixtures,
+  kanonisches `runsc-kvm`-/No-Egress-Profil, Docker-HostConfig-/In-Container-Probevertrag sowie eine maximal 24 Stunden
+  gueltige Zwei-Personen-Ceremony binden Image, SBOM, Scan, Korpus und Sandbox. Das Probe-Schema meldet ausdruecklich
+  `engine_executed=false`; die fehlende zweite reale Person wird weder simuliert noch durch die Solo-Ausnahme ersetzt.
+- [x] Reale `runsc-kvm`-In-Container-Probe auf `dev001` geschlossen: die additive KVM-Runtime laesst die bestehende
+  `runsc`-Registrierung unveraendert; AppArmor-Userns-Hauptschutz bleibt aktiv. Der eng begrenzte Access-Preparer
+  prueft Eigentum, Symlinkfreiheit, kanonische Bytes und Docker-HostConfig, bevor er nur den synthetischen Inputs
+  Gruppenleserechte fuer UID/GID `10003` gibt. Die abschliessende Generation 06 bindet Container-ID und Hostname,
+  unveraenderliches Image `sha256:b68e4ad5...92646`, imageinternen Pruefcode, exakt zwei read-only Bind-Mounts und
+  die Abwesenheit von Host-Geraeten an das write-once Inspect-Dokument. Der exakte Container `666e3f3c5b95...`
+  bestand Runtime, No-Egress, DNS-Blockade, read-only Root/Korpus, alle in `/proc/self/status` sichtbaren leeren
+  Capability-Sets, no-new-privileges-HostConfig, Ressourcenlimits und Scratch-Cleanup. Inspect-Datei
+  `sha256:bb5dfc7d...1d544`, Access-Receipt-Datei `sha256:f041a27d...ac0ab`, Probebericht-Datei
+  `sha256:f7f58d21...29d1e`, interner Bericht `sha256:e87ce2ed...5cfd`. Engine, Tenant-Content, externe Netznutzung
+  und Runtime-Autorisierung blieben false. Generation 04 bleibt als engerer Vorgaengerbeleg erhalten; Generationen
+  01 bis 03 und 05 dokumentieren fail-closed Diagnosepfade. Der separate rootgebundene Host-Verifier-Beleg ist in
+  Generation 06 mit Datei-SHA-256 `ba3ad9be...31b1` abgeschlossen: Bare Metal, KVM-Geraet, paketverwaltetes
+  `runsc` `20260803.0`, geladenes AppArmor-Profil, aktiver globaler Userns-Hauptschutz und registrierte additive
+  Docker-Runtime sind verifiziert. Die zusaetzliche Unconfined-Restriktion bleibt dokumentiert false; Tenant-Content
+  und Runtime-Autorisierung bleiben false.
+- [x] Engine-unabhaengige DOCX-Quick-Edit-Vorstufe geschlossen: ein fester Preflight begrenzt Archivbytes, Parts,
+  Expansion, Kompressionsrate, XML-Groesse/-Tiefe und Relationships ohne Dateisystemextraktion. Der deterministische
+  19-Faelle-Korpus deckt drei Fidelity-Vertraege sowie Remote-Relationships/Templates, VBA, OLE, Pfadtraversal,
+  doppelte/case-kollidierende Parts, ZIP-Ressourcenangriffe, DTD/Entities, XML-Tiefe/Fehlform, Package-Signaturen,
+  Encryption-Flags und unbekannte Kompressionsmethoden ab. Signierte Originale werden als `present_unverified`
+  blockiert und muessen erhalten bleiben; jede spaetere Ableitung traegt `invalidated_by_edit`. Safe-/High-Fidelity-
+  Exportregeln, kandidat-only source-blinde Revalidierung und die CDR-Pflicht sind hashgebunden. Der Harness-Gate
+  bleibt mit fehlender Zwei-Personen-Runtime-Autorisierung, fehlendem neu attestiertem Executable-Image und dem
+  status-only Entry-Point ausdruecklich geschlossen; Engine und Tenant-Content bleiben false.
+- [x] Reproduzierbare DOCX-Fidelity-Studie vor der Engine-Ausfuehrung geschlossen: eine exakte `3 Engines x 3 Fixtures`-
+  Matrix trennt den interaktiven Windows-Word-Runner von isoliertem LibreOffice Headless und dem weiterhin zwei-
+  personenpflichtigen GenOffice-`runsc-kvm`-Runner. Drei metadata-only OOXML-Strukturbaselines, feste RGB-Messmetriken
+  bei 144 DPI, exakte Engine-/Font-/Umgebungsbindungen, enginespezifische Ed25519-Ergebnis-Signer und ein vollstaendiger
+  9er-Matrix-Intake sind schema- und hashgebunden. Selbst neun gueltige Signaturen bleiben ohne Evidenzbyte-Pruefung,
+  kalibrierte visuelle Schwellen und menschliches Review ohne Kompatibilitaets- oder Spike-Abschlusswirkung. Der aktuelle
+  write-once Readiness-Beleg fuehrt alle zehn realen Blocker und bestaetigt `engine_executed=false`.
+- [x] Source-blinde Fidelity-Evidenzpruefung geschlossen: der netzlose, enginefreie Verifier hasht jedes durch ein
+  signiertes Execution Receipt inventarisierte Artefakt, berechnet Output-Preflight und OOXML-Strukturfingerprint aus
+  den DOCX-Bytes neu, validiert strikte metadata-only Open-XML- und Font-Berichte, prueft jede Referenz-/Kandidaten-RGB-
+  Seite und reproduziert alle visuellen Messwerte. Plan, Policy, Assignment, Engine, Umgebung, Font-Baseline, CDR und
+  Receipt werden bis zur enginespezifischen Ed25519-Signatur zurueckgebunden. Ein erfolgreicher Einzelbeleg darf nun
+  `referenced_evidence_content_verified=true` melden, aber Schwellenkalibrierung, Human Review, Kompatibilitaetsclaim
+  und Spike-Abschluss bleiben false; ohne reale autorisierte Runner-Evidenz wird kein Erfolgsbeleg simuliert.
+- [x] Ersten realen Fidelity-Engine-Pfad geschlossen: ein digestgebundener LibreOffice-25.8-Runner verarbeitet unter
+  `runsc-kvm`, ohne Netzwerk, Capabilities, Credentials oder Private Key genau ein synthetisches Assignment und
+  erzeugt das vollstaendige ADR-0073-Evidence-Bundle samt externer Signaturuebergabe. Eine nach Inkrafttreten der
+  Signer-Policy erzeugte Generation deckt alle drei Fixtures ab; ihre enginespezifischen Ed25519-Envelopes und alle
+  referenzierten Evidenzbytes sind unabhaengig verifiziert. Die gleichen Engine-Render sind pixelgleich, waehrend der
+  echte `DocumentFormat.OpenXml`-3.5.1-Validator weiterhin sechs bis sieben Schemafindings pro Output festhaelt. Damit
+  ist die LibreOffice-Zeile `3/3`, die Gesamtmatrix aber erst `3/9`; Kompatibilitaet, Kalibrierung, Human Review,
+  Tenant-Content und produktive Writes bleiben geschlossen.
+- [x] Private-Key-freie Fidelity-Ergebniszeremonie geschlossen: eine vollstaendige, enginespezifische Public-Key-Policy,
+  maximal 72 Stunden gueltige Requests und extern erzeugte Ed25519-Antworten werden bis zum bestehenden ADR-0072-
+  Envelope revalidiert. Kein `sign`-Modus und kein Private-Key-Mount existiert; getrennte Engine-Schluessel belegen im
+  Solo-Betrieb keine getrennten Personen. Erst der nachgelagerte ADR-0073-Verifier darf Evidenzbytes als geprueft
+  melden. Der Operationsbeleg ist fuer alle drei LibreOffice-Ergebnisse abgeschlossen: die drei privaten Fidelity-
+  Schluessel liegen ausschliesslich als Windows-CurrentUser-DPAPI-Ciphertext auf der Operator-Workstation; auf `dev001`
+  wurden nur Public Keys und Signaturantworten verarbeitet. Word- und GenOffice-Ergebnisse bleiben ausstehend.
+- [x] Interaktiven Microsoft-Word-Referenzpfad technisch geschlossen: ein dediziertes lokales Windows-Konto ohne
+  Office-Identitaet, ohne Zugriff auf die Fidelity-Signing-Custody und mit gepruefter `WINWORD.EXE`-Outbound-Sperre
+  erzeugt nach sichtbarem Read-only-Open, erzwungen deaktivierten Makros und expliziter menschlicher Bestaetigung ein
+  exaktes oeffentliches Vier-Dateien-Handoff. Vorbereitung und source-blinde Auswertung bleiben getrennte netzlose
+  `dev001`-Container; der Collector laeuft unter `runsc-kvm`, erzeugt ADR-0073-Evidenz und uebergibt nur eine kanonische
+  Signaturmessage an ADR-0075. Der Pfad ist implementiert und vertraglich getestet, aber noch nicht real ausgefuehrt:
+  Word bleibt `0/3`, die authentifizierte Gesamtmatrix `3/9`, und kein Kompatibilitaetsclaim ist erlaubt.
+- [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
+  Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
+  oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
+  Tenant-Versionen.
+- [ ] Produktiven Quick-Edit-Save erst nach atomarem Kandidatenversions-Write, frischer ACL-/Tenant-Pruefung,
+  expliziter Nutzerbestaetigung, append-only Edit-Receipt sowie nicht-leerem Backup-/Restore-/Failover-Drill oeffnen.
+  Draft-Journal, Kandidatenversion, Engine-/Policy-Hashes und Receipt muessen wiederherstellbar sein; Scratch und Tokens
+  duerfen nicht im Backup landen.
+- [ ] WOPI-Vollkollaboration als eigenen Architektur- und Releasepfad evaluieren. Collabora Online ist der bevorzugte
+  erste Kandidat, ONLYOFFICE die Alternative; Proof Keys, Locks, Token-Laufzeit, Callback-Validierung, Save-As,
+  Co-Authoring-Recovery und Write-Receipts werden nicht in Quick Edit oder Preview versteckt.
+- [x] Getrennten CDR-Pfad auf `dev001` samt Backup und Failover nachgewiesen: Image
+  `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`, CDR-Manifest
+  `sha256:5e70931345ebc3b7d003f568bbd351e2986d7f8036f8659404159df44a2ba7dd`, Proof
+  `sha256:e4df54a791145737fb4ea3fc72ab8f6948aed03faa6a5a0ce2a461094a44fe71` und Recovery
+  `sha256:e4d725bf14596cb49884ad97abe03bdd46df4bd0609bc3a1653a8059a4e5cfae` mit `4/4/4`-Reconciliation. RGB-,
+  Control-, Input- und Output-Scratch waren anschliessend leer; Production-Admission, Dispatch und Serving blieben aus.
+- [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, produktiver
+  Malware-/CDR-HA- und Failover-Evidence, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance,
+  erneut erfolgreichem nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin, unabhaengigen boesartigen
+  Active-Content-Fixtures und realer Drei-Rollen-Signaturzeremonie ausfuehren. Keine dieser externen
+  Production-Evidenzen wird im Repository simuliert; bis zu ihrem Vorliegen bleibt
+  die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
 
 ## Release-Strategie
 
@@ -1339,6 +1753,50 @@ Enthaelt:
 - [ ] Optionales CRM/ERP Modul als erster Business-Modulnachweis.
 - [ ] Vorbereitete Modulpfade fuer Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
+## Aktueller Umsetzungsstand: Backend-Fundament
+
+- [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
+- [x] Exakter Quell-/Zielvergleich fuer 59 Migrationen, 63 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
+- [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
+- [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.
+- [x] Lieferkettennachweis als Release-Fundament geschlossen: unveraenderlich gepinnte Actions, Runtime-Image-Scans, verbotene Lizenz-Gates, CycloneDX-SBOM, SHA-256-Checksummen und schluessellose Provenance-/SBOM-Attestierungen fuer versionierte Release-Artefakte.
+- [x] Reproduzierbare Dependency- und Image-Promotion-Grenze geschlossen: direkte Python-Constraints werden in digest-gepinnten Compose-Werkzeugcontainern als universelle transitive SHA-256-Locks aufgeloest; Docker installiert ausschliesslich mit Hashpflicht, CI blockiert Lock-Drift, getaggte Releases publizieren exakt das gepruefte Image nach GHCR und attestieren den OCI-Digest.
+- [x] Getrennte Staging-/Production-Promotion geschlossen: geschuetzte GitHub Environments, main-only Ausfuehrung, exakte Tag-/Digest-Bindung, Release-Provenance- und CycloneDX-Verifikation sowie signierte metadata-only Promotion-Admission; Produktion verlangt zusaetzlich eine gueltige Staging-Attestierung desselben Digests.
+- [ ] Repository-Administratoren aktivieren Required Reviewer, Self-Review-Sperre, Branch-Restriktion und Bypass-Sperre fuer die GitHub Environments **staging** und **production** und setzen erst danach deren Variable **PROMOTION_POLICY_CONFIGURED=true**.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Tasks-Slice erneut gruen: Task, initiale Activity, zwei Objekt-ACLs, ein append-only Receipt, idempotenter Replay, exakter unabhaengiger Restore (`1|1|2|1`), 59 Migrationen, 63 Tabellen und Backend-Gate-Hash `sha256:66d6b7d91ce2d2fdb8f9d21f90a38797e3c637d59ffc0ec2eff25fe6b2f25836`.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Time-Tracking-Slice gruen: Entry, initiales Approval `not_submitted`, zwei Objekt-ACLs, ein metadata-only Receipt, autorisierte Reads (`1|1`) und atomare PostgreSQL-Zaehlung (`1|1|2|1`); isolierter Restore mit Time-Tracking-Schreibkontrollen, 60 Migrationen, 66 Tabellen und Backend-Gate-Hash `sha256:690d59e7515854c3a6dc79bb6f817b739a249cbcd6a7a43abc74732d08f3071d`.
+- [x] Fail-closed Deployment-Gate fuer produktives PITR/WAL-Archiv, verschluesselte immutable Offsite-Backups, gefencete HA-Promotion und standortgetrennte PostgreSQL-/Object-Storage-/KMS-Recovery umgesetzt; Policy `backup_failover_policy.v4`, frische hash-only Operator-Evidenz, RPO/RTO, drei getrennte Ed25519-signierte in-toto/DSSE-Attestierungen und Runtime-Reverifikation gegen eine separate Signer-Policy werden geprueft, ohne Deployment, Promotion, Traffic-Switch oder Business-Write auszufuehren. Reale Produktionsevidenz bleibt bewusst offen.
+- [x] Security-Admin-Bedienpfad fuer Production Continuity geschlossen: tenant-gebundene Requirements- und Gate-Status-Read-APIs leiten Schwellenwerte aus der aktuellen Policy ab, normalisieren `missing`, `invalid`, `expired`, `blocked` und `ready`, auditieren nur Metadaten und besitzen bewusst keinen Evidenz-Upload-, Report-Mutations- oder Ausfuehrungspfad.
+- [x] Private-key-freie Offline-Signaturzeremonie fuer Production Continuity geschlossen: Ein gehaerteter No-Network-Compose-Pfad erzeugt kanonische, evidenz-, deployment-, policy- und rollen-gebundene DSSE-Signierauftraege, akzeptiert exakt drei extern erzeugte Ed25519-Antworten und schreibt den Envelope erst nach erneuter kryptografischer Verifikation. Es existieren bewusst kein Signierbefehl, kein Private-Key-Modell und kein Provider-Credential-Pfad.
+- [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
+- [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
+- [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
+- [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
+- [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
+- [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.
+- [x] Productivity-Pilot-Startfreigabe operational: Migration `0063`, tenant-sicheres append-only RLS-Ledger, Security-Admin-Vier-Augen-Prinzip, exakt fuenf Monitoring- und vier Rollback-Nachweise, maximal acht Stunden, per Request gepruefter Ablauf und default-closed Runtime-Kill-Switch.
+- [x] Technischer Runtime-Proof geschlossen: vier freigegebene Reads `200`, Fremdroute `403`, nach Kill-Switch `423`, Business-Row-Counts unveraendert, Start-Evidenz `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7`, 63 Migrationen, 70 Tabellen, exakter isolierter Restore und Backend-Gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c`.
+- [x] Technische Runtime-Window-Grenze geschlossen: Migration `0064`, tenant-sichere append-only RLS-Ledger fuer designierte Nutzer und inhaltsfreie Zugriffsbeobachtungen, separates Tenant-Admin-Vier-Augen-Prinzip sowie per Request gepruefte Nutzer-, Zeit-, Start- und Routenbindung.
+- [x] Kontrollierter Entwicklungs-Pilotnachweis auf `dev001` geschlossen: vier getrennte Kontrollakteure, ein synthetisch designierter Fachnutzer, exakt sieben erfolgreiche Operationen, sieben eindeutige append-only Beobachtungen, Fremdprincipal `403`, geschlossener Kill-Switch `423`, Backup `sha256:6852be0dabed8de26734d29b71dc7914a1b70268c4b7c77a29aabc98f2dbabcf`, isolierter Restore und Backend-Gate `sha256:df5a61c6ebb3d653c5e855278928b67d0189fb8a1e0abadfebf29177c47aa53b`.
+- [x] Append-only Closure-Report geschlossen: Migration `0065`, Security-Admin-Vier-Augen-Abschluss bei geschlossenem Switch, sieben autoritative Beobachtungen, drei Domain-Receipts, Closure-Evidenz `sha256:902a47ed16ab0e8a1a8de9e9a501b873da25b9a32caae38a4a021005a740d4b3` und hashgleicher isolierter Restore; Post-Closure-Gates `sha256:a13ac0d300562853cf8b9b4f23bedc1102f039ccbfca601a941ffb399293ff47` und `sha256:9745878212d8d443a6e8d5b51bac32c4b2241507b79366fe55d65e490fe38d2e` gruen.
+- [x] Realnutzer-Aufnahmegrenze implementiert: Migration `0066`, autoritative IAM-/Rollenpruefung, pseudonymisierte Teilnehmerbelege, Zweck-/Rechtsgrundlagen-/Privacy-/Retention-Bindung, bedingte DPIA-/Betriebsratsnachweise, frische Preflight-/Backup-/Restore-Evidenz und Tenant-Admin/Security-Admin-Vier-Augen-Prinzip; Runtime und Traffic bleiben technisch unfreigegeben.
+- [x] Hash-only Realnutzer-Runtime vorbereitet: Migrationen `0067`, `0068` und `0071`, Principal-IDs nur transient gegen Tenant-IAM, ausschliesslich tenant-gebundene Hashes im Window- und Observation-Ledger, Rollen-Revalidierung bei Aktivierung und Zugriff, frische Admission-/Start-Bindung, automatischer Request-Gate-Wechsel und technisches Verbot von Runtime v1 nach Realnutzer-Admission. Der deploymentweite Kill-Switch bleibt geschlossen.
+- [x] Separaten hash-only Realnutzer-Closure-Pfad implementiert: Migrationen `0069` und `0070`, Security-Admin-Vier-Augen-Abschluss bei geschlossenem Switch, vollstaendige hash-only Observation- und Receipt-Manifeste, sicherer Nullaktivitaets-Abschluss, frische Recovery-Bindung, tenant-sichere API und verpflichtender isolierter Restore-Vertrag.
+- [ ] Naechster Fokus: benannte Principals, Zweck, Rollen, aktuelle Privacy-/Workforce-Kontrollnachweise und neue Vier-Augen-Freigaben fuer einen echten Pilotlauf durch verantwortliche Tenant-Stellen aufnehmen. Keine Platzhalter erzeugen, Entwicklungsbelege nicht wiederverwenden und den Kill-Switch bis zur gemeinsamen Abnahme geschlossen halten.
+- [ ] Parallel ueber den Security-Admin-Read-Pfad die aktuellen Anforderungen und den fail-closed Status pruefen; verantwortliche Operations-Stellen liefern danach reale Produktions-Topologie-, PITR-, Offsite-Restore-, HA-Promotion- und Cross-Site-Failover-Evidenz samt drei extern erzeugten Signaturen fuer `production_continuity_deployment_gate.v2`. Ohne gruenen kryptografisch verifizierten Report und passende aktuelle Signer-Policy bleibt selbst ein gesetzter Runtime-Schalter wirkungslos.
+
+## Aktueller Umsetzungsstand: Tickets & Incidents
+
+- [x] Modulvertrag, Feature Registry, Objektregeln und Catalog-Discovery.
+- [x] Migrationen `0051` bis `0054` plus `0074` fuer Catalog, Ticket/Event-Metadaten, persistente append-only Human-/Ausfuehrungsfreigaben und Pilot-Receipts.
+- [x] Tenant-sichere produktive API-Vertikale fuer Ticketanlage, autorisierte Reads, Statuswechsel und Ereigniskette.
+- [x] Atomare Ticket/Event-Writes, optimistische Statuspruefung, Audit, PostgreSQL-RLS-Adapter und Legal-Hold-Schutz.
+- [x] Expliziter Human-Approval-Record ohne Aktivierungs- oder Worker-Seiteneffekt.
+- [x] Backup/Restore-Vertrag fuer Ticket-, Event-, Approval-, Modul- und Feature-Zustand.
+- [x] Konsolidierter tenant-sicherer Pilotstatus mit kryptografisch gebundener Ausfuehrungsfreigabe, Receipt-Chain-Pruefung und genau einer naechsten Human-Aktion; keine Aktivierung oder Inhaltsdaten.
+- [ ] Kontrollierter Pilot: Paket installieren, einen Test-Tenant provisionieren, Read/Write-Features explizit aktivieren und Restore-/API-Nachweise abnehmen.
+- [ ] Nach Pilotfreigabe naechste produktive Modulfamilie anhand des Masterfahrplans auswaehlen.
 ## Kritische Fallstricke
 
 - DSGVO-Loeschung vs. GoBD-Aufbewahrung: nie direkter Delete ohne Policy Engine.

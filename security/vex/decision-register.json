@@ -1,0 +1,18 @@
+{
+  "schema": "collabio.vex-decision-register.v1",
+  "decisions": [
+    {
+      "vulnerability_id": "CVE-2026-69247",
+      "product": "pkg:pypi/cryptography@49.0.0",
+      "owner": "platform-security",
+      "reviewer": "application-security",
+      "decision": "not_affected",
+      "reason": "The affected PKCS#7 EnvelopedData decryption API is not present in an application execution path.",
+      "compensating_control": "tests/test_supply_chain_workflows.py rejects any PKCS#7 reference in application code.",
+      "upstream_reference": "https://github.com/pyca/cryptography/security/advisories/GHSA-g6cj-pr64-35w5",
+      "recorded_at": "2026-08-06",
+      "review_after": "2026-09-06",
+      "expires_at": "2026-10-06"
+    }
+  ]
+}

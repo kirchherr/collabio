@@ -59,6 +59,54 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0025",
         "0026",
         "0027",
+        "0028",
+        "0029",
+        "0030",
+        "0031",
+        "0032",
+        "0033",
+        "0034",
+        "0035",
+        "0036",
+        "0037",
+        "0038",
+        "0039",
+        "0040",
+        "0041",
+        "0042",
+        "0043",
+        "0044",
+        "0045",
+        "0046",
+        "0047",
+        "0048",
+        "0049",
+        "0050",
+        "0051",
+        "0052",
+        "0053",
+        "0054",
+        "0055",
+        "0056",
+        "0057",
+        "0058",
+        "0059",
+        "0060",
+        "0061",
+        "0062",
+        "0063",
+        "0064",
+        "0065",
+        "0066",
+        "0067",
+        "0068",
+        "0069",
+        "0070",
+        "0071",
+        "0072",
+        "0073",
+        "0074",
+        "0075",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -71,25 +119,524 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     core_migrations = load_module_migrations("core")
     crm_erp_migrations = load_module_migrations("crm_erp")
     knowledge_base_migrations = load_module_migrations("knowledge_base")
+    lms_migrations = load_module_migrations("lms")
+    tasks_activities_migrations = load_module_migrations("tasks_activities")
+    tickets_incidents_migrations = load_module_migrations("tickets_incidents")
+    time_tracking_migrations = load_module_migrations("time_tracking")
     manifest = load_migration_manifest()
 
-    assert len(core_migrations) == len(load_migrations()) - 10
-    assert [migration.version for migration in crm_erp_migrations] == ["0016", "0017", "0018", "0019", "0020"]
+    assert len(core_migrations) == len(load_migrations()) - 37
+    assert [migration.version for migration in crm_erp_migrations] == [
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+        "0034",
+        "0035",
+        "0036",
+        "0037",
+        "0038",
+        "0039",
+        "0040",
+        "0041",
+        "0042",
+        "0043",
+        "0044",
+        "0057",
+    ]
     assert [migration.version for migration in knowledge_base_migrations] == [
         "0021",
         "0022",
         "0023",
         "0024",
         "0025",
+        "0028",
+        "0029",
     ]
+    assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
+    assert [migration.version for migration in tasks_activities_migrations] == ["0050", "0059"]
+    assert [migration.version for migration in tickets_incidents_migrations] == [
+        "0051",
+        "0052",
+        "0053",
+        "0054",
+        "0074",
+    ]
+    assert [migration.version for migration in time_tracking_migrations] == ["0060"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "core"
+    assert manifest[-1].name == "audit_worm_snapshots_v2"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
 
     with pytest.raises(ValueError, match="module_id"):
         load_module_migrations("Not-A-Module")
+
+
+def test_lms_catalog_registration_migration_is_metadata_only_not_installed_seed() -> None:
+    migration = get_migration("0045")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_catalog_registration"
+    assert "insert into collabio.module_catalog" in sql
+    assert "'lms'" in sql
+    assert "'learning management'" in sql
+    assert "'not_installed'" in sql
+    assert "'[]'::jsonb" in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "create schema" not in sql
+    assert "create table" not in sql
+
+
+def test_tasks_activities_catalog_registration_migration_is_metadata_only_not_installed_seed() -> None:
+    migration = get_migration("0050")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "tasks_activities"
+    assert migration.name == "tasks_activities_catalog_registration"
+    assert "insert into collabio.module_catalog" in sql
+    assert "'tasks_activities'" in sql
+    assert "'tasks and activities'" in sql
+    assert "'not_installed'" in sql
+    assert '"0050"' in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "create schema" not in sql
+    assert "create table" not in sql
+    assert "task.task" not in sql
+    assert "task.activity" not in sql
+
+
+def test_tickets_incidents_catalog_registration_migration_is_metadata_only_not_installed_seed() -> None:
+    migration = get_migration("0051")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_catalog_registration"
+    assert "insert into collabio.module_catalog" in sql
+    assert "'tickets_incidents'" in sql
+    assert "'tickets and incidents'" in sql
+    assert "'not_installed'" in sql
+    assert '"0051"' in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "create schema" not in sql
+    assert "create table" not in sql
+    assert "ticket.ticket" not in sql
+    assert "ticket.event" not in sql
+
+
+def test_tickets_incidents_metadata_schema_migration_declares_ticket_event_tables_rls_and_no_payload_storage() -> None:
+    migration = get_migration("0052")
+    sql = normalized(migration.sql())
+    ticket_items_body = table_body(migration.sql(), "tickets.ticket_items")
+    ticket_events_body = table_body(migration.sql(), "tickets.ticket_events")
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_metadata_schema"
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in (
+        (ticket_items_body, "tickets.ticket_items"),
+        (ticket_events_body, "tickets.ticket_events"),
+    ):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "retention_policy_id text not null default 'rp-standard'" in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in ["ticket_id", "ticket_number", "ticket_status", "priority", "subject_redacted", "sla_state"]:
+        assert re.search(rf"\b{column}\b", ticket_items_body), f"{column} missing from tickets.ticket_items"
+    for column in ["event_id", "ticket_id", "event_type", "event_status", "event_summary_redacted"]:
+        assert re.search(rf"\b{column}\b", ticket_events_body), f"{column} missing from tickets.ticket_events"
+
+    assert (
+        "object_type text not null default 'ticket.ticket' check (object_type = 'ticket.ticket')" in ticket_items_body
+    )
+    assert "object_type text not null default 'ticket.event' check (object_type = 'ticket.event')" in ticket_events_body
+    assert "foreign key (tenant_id, ticket_id)" in ticket_events_body
+    assert "references tickets.ticket_items (tenant_id, ticket_id)" in ticket_events_body
+    assert "alter table tickets.ticket_items enable row level security" in sql
+    assert "alter table tickets.ticket_items force row level security" in sql
+    assert "alter table tickets.ticket_events enable row level security" in sql
+    assert "alter table tickets.ticket_events force row level security" in sql
+    assert "create policy tickets_ticket_items_tenant_select" in sql
+    assert "create policy tickets_ticket_items_tenant_insert" in sql
+    assert "create policy tickets_ticket_items_tenant_update" in sql
+    assert "create policy tickets_ticket_items_no_hard_delete" in sql
+    assert "create policy tickets_ticket_events_tenant_select" in sql
+    assert "create policy tickets_ticket_events_tenant_insert" in sql
+    assert "create policy tickets_ticket_events_no_update" in sql
+    assert "create policy tickets_ticket_events_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger tickets_ticket_items_touch_updated_at_utc" in sql
+    assert "create trigger tickets_ticket_events_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table tickets.ticket_items to collabio_app" in sql
+    assert "grant select, insert on table tickets.ticket_events to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "raw_message text" not in sql
+    assert "attachment_payload" not in sql
+    assert "prompt" not in sql
+    assert "ai_output" not in sql
+    assert "transcript" not in sql
+    assert "audio_blob" not in sql
+    assert "description text" not in sql
+    assert "body text" not in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0051", "0052"]' in sql
+    assert "where module_id = 'tickets_incidents'" in sql
+    assert "status = 'not_installed'" in sql
+
+
+def test_tickets_incidents_activation_approval_records_migration_is_append_only_and_tenant_scoped() -> None:
+    migration = get_migration("0053")
+    sql = normalized(migration.sql())
+    table = "tickets.activation_dry_run_execution_approval_records"
+    body = table_body(migration.sql(), table)
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_dry_run_execution_approval_records"
+    assert f"create table if not exists {table}" in sql
+    for column in (
+        "tenant_id",
+        "approval_boundary_evidence_hash",
+        "tenant_admin_approval_record_hash",
+        "tickets_restore_drill_evidence_hash",
+        "command_hash",
+        "idempotency_key_hash",
+        "confirmation_statement_hash",
+        "approval_record_ref",
+        "approved_by",
+        "approved_at_utc",
+        "approval_record",
+        "evidence_hash",
+    ):
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from {table}"
+    assert f"alter table {table} enable row level security" in sql
+    assert f"alter table {table} force row level security" in sql
+    assert "create policy tickets_activation_dry_run_approval_records_tenant_select" in sql
+    assert "create policy tickets_activation_dry_run_approval_records_tenant_insert" in sql
+    assert "create policy tickets_activation_dry_run_approval_records_no_update" in sql
+    assert "create policy tickets_activation_dry_run_approval_records_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert f"grant select, insert on table {table} to collabio_app" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
+    assert "human_confirmation_statement text" not in sql
+    assert "ticket_content text" not in sql
+    assert "raw_payload text" not in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0051", "0052", "0053"]' in sql
+    assert "where module_id = 'tickets_incidents'" in sql
+
+
+def test_tickets_incidents_controlled_pilot_migration_is_scoped_append_only_and_tenant_safe() -> None:
+    migration = get_migration("0054")
+    sql = normalized(migration.sql())
+    table = "tickets.controlled_pilot_receipts"
+    body = table_body(migration.sql(), table)
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_controlled_pilot"
+    assert f"create table if not exists {table}" in sql
+    for column in (
+        "tenant_id",
+        "receipt_type",
+        "approval_boundary_evidence_hash",
+        "approval_record_evidence_hash",
+        "tickets_restore_drill_evidence_hash",
+        "idempotency_key_hash",
+        "enabled_features",
+        "receipt",
+        "evidence_hash",
+    ):
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from {table}"
+    assert f"alter table {table} enable row level security" in sql
+    assert f"alter table {table} force row level security" in sql
+    assert "create policy tickets_controlled_pilot_receipts_tenant_select" in sql
+    assert "create policy tickets_controlled_pilot_receipts_tenant_insert" in sql
+    assert "create policy tickets_controlled_pilot_receipts_no_update" in sql
+    assert "create policy tickets_controlled_pilot_receipts_no_hard_delete" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "security definer" in sql
+    assert "persisted explicit tickets pilot approval not found" in sql
+    assert "revoke all on function collabio.install_tickets_incidents_catalog_for_pilot" in sql
+    assert "grant execute on function collabio.install_tickets_incidents_catalog_for_pilot" in sql
+    assert "grant update on table collabio.module_catalog" not in sql
+    assert "human_confirmation_statement text" not in sql
+    assert "ticket_content text" not in sql
+    assert "raw_payload text" not in sql
+    assert '["0051", "0052", "0053", "0054"]' in sql
+
+
+def test_tickets_tenant_activation_approval_migration_is_durable_append_only_and_tenant_safe() -> None:
+    migration = get_migration("0074")
+    sql = normalized(migration.sql())
+    table = "tickets.tenant_admin_activation_approval_records"
+    body = table_body(migration.sql(), table)
+
+    assert migration.module_id == "tickets_incidents"
+    assert migration.name == "tickets_incidents_tenant_activation_approval_records"
+    assert f"create table if not exists {table}" in sql
+    for column in (
+        "tenant_id",
+        "approval_gate_evidence_hash",
+        "tickets_restore_drill_evidence_hash",
+        "command_hash",
+        "idempotency_key_hash",
+        "human_confirmation_statement_hash",
+        "approval_record_ref",
+        "approved_by",
+        "approved_at_utc",
+        "approval_record",
+        "evidence_hash",
+    ):
+        assert re.search(rf"\b{column}\b", body), f"{column} missing from {table}"
+    assert f"alter table {table} enable row level security" in sql
+    assert f"alter table {table} force row level security" in sql
+    assert "create policy tickets_tenant_activation_approval_records_tenant_select" in sql
+    assert "create policy tickets_tenant_activation_approval_records_tenant_insert" in sql
+    assert "create policy tickets_tenant_activation_approval_records_no_update" in sql
+    assert "create policy tickets_tenant_activation_approval_records_no_hard_delete" in sql
+    assert "tenant_id = collabio.current_tenant_id()" in sql
+    assert "using (false)" in sql
+    assert f"grant select, insert on table {table} to collabio_app" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
+    assert "human_confirmation_statement text" not in sql
+    assert "ticket_content text" not in sql
+    assert "raw_payload text" not in sql
+    assert "insert into collabio.tenant_modules" not in sql
+    assert '["0051", "0052", "0053", "0054", "0074"]' in sql
+
+
+def test_lms_metadata_schema_migration_declares_courses_enrollments_rls_and_no_content_storage() -> None:
+    sql = normalized(get_migration("0046").sql())
+    courses_body = table_body(get_migration("0046").sql(), "lms.courses")
+    enrollments_body = table_body(get_migration("0046").sql(), "lms.enrollments")
+
+    required_metadata_columns = [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "data_classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "schema_version",
+    ]
+    for body, table_name in ((courses_body, "lms.courses"), (enrollments_body, "lms.enrollments")):
+        for column in required_metadata_columns:
+            assert re.search(rf"\b{column}\b", body), f"{column} missing from {table_name}"
+        assert "retention_policy_id text not null default 'rp-standard'" in body
+        assert "legal_hold_state text not null default 'none'" in body
+        assert "kms_key_ref text not null check" in body
+        assert "audit_chain_ref text not null check" in body
+
+    for column in ["course_key", "title", "course_version_label", "catalog_state", "source_object_ref"]:
+        assert re.search(rf"\b{column}\b", courses_body), f"{column} missing from lms.courses"
+
+    for column in [
+        "course_object_id",
+        "learner_principal_id",
+        "enrollment_state",
+        "assigned_at_utc",
+        "due_at_utc",
+        "completed_at_utc",
+        "completion_evidence_object_id",
+    ]:
+        assert re.search(rf"\b{column}\b", enrollments_body), f"{column} missing from lms.enrollments"
+
+    assert "object_type text not null default 'lms.course' check (object_type = 'lms.course')" in courses_body
+    assert (
+        "data_classification text not null default 'internal' check (data_classification = 'internal')" in courses_body
+    )
+    assert "object_type text not null default 'lms.enrollment'" in enrollments_body
+    assert (
+        "data_classification text not null default 'personal' check (data_classification = 'personal')"
+        in enrollments_body
+    )
+    assert "foreign key (tenant_id, course_object_id)" in enrollments_body
+    assert "references lms.courses (tenant_id, object_id)" in enrollments_body
+    assert "alter table lms.courses enable row level security" in sql
+    assert "alter table lms.courses force row level security" in sql
+    assert "alter table lms.enrollments enable row level security" in sql
+    assert "alter table lms.enrollments force row level security" in sql
+    assert "create policy lms_courses_tenant_select" in sql
+    assert "create policy lms_courses_tenant_insert" in sql
+    assert "create policy lms_courses_tenant_update" in sql
+    assert "create policy lms_courses_no_hard_delete" in sql
+    assert "create policy lms_enrollments_tenant_select" in sql
+    assert "create policy lms_enrollments_tenant_insert" in sql
+    assert "create policy lms_enrollments_tenant_update" in sql
+    assert "create policy lms_enrollments_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "create trigger lms_courses_touch_updated_at_utc" in sql
+    assert "create trigger lms_enrollments_touch_updated_at_utc" in sql
+    assert "grant select, insert, update on table lms.courses to collabio_app" in sql
+    assert "grant select, insert, update on table lms.enrollments to collabio_app" in sql
+    assert "grant delete" not in sql
+    assert "course_content" not in sql
+    assert "source_text" not in sql
+    assert "raw_audio" not in sql
+    assert "prompt" not in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0046"' in sql
+    assert "where module_id = 'lms'" in sql
+    assert "status = 'not_installed'" in sql
+
+
+def test_lms_package_install_approval_record_migration_is_append_only_metadata_store() -> None:
+    migration = get_migration("0047")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "lms.package_install_approval_records")
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_package_install_approval_records"
+    assert "tenant_id" in table
+    assert "approval_gate_evidence_hash" in table
+    assert "lms_restore_drill_evidence_hash" in table
+    assert "human_confirmation_statement_hash" in table
+    assert "approval_record jsonb not null" in table
+    assert "lms_tenant_admin_package_approval_record.v1" in table
+    assert "future_package_installation_execution_gate_required" in table
+    assert "package_installation_execution_allowed boolean not null default false" in table
+    assert "tenant_provisioning_allowed boolean not null default false" in table
+    assert "lms_business_api_allowed boolean not null default false" in table
+    assert "package_installation_executed boolean not null default false" in table
+    assert "tenant_module_state_created boolean not null default false" in table
+    assert "content_included boolean not null default false" in table
+    assert "destructive_actions_allowed boolean not null default false" in table
+    assert "external_side_effect_allowed boolean not null default false" in table
+    assert "human_confirmation_statement" in sql
+    assert "not (approval_record ? 'human_confirmation_statement')" in sql
+    assert "alter table lms.package_install_approval_records enable row level security" in sql
+    assert "alter table lms.package_install_approval_records force row level security" in sql
+    assert "create policy lms_package_install_approval_records_tenant_select" in sql
+    assert "create policy lms_package_install_approval_records_tenant_insert" in sql
+    assert "create policy lms_package_install_approval_records_no_update" in sql
+    assert "create policy lms_package_install_approval_records_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0045", "0046", "0047"]' in sql
+
+
+def test_lms_dry_run_execution_approval_record_migration_is_append_only_metadata_store() -> None:
+    migration = get_migration("0048")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "lms.dry_run_execution_approval_records")
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_dry_run_execution_approval_records"
+    assert "tenant_id" in table
+    assert "dry_run_execution_approval_boundary_evidence_hash" in table
+    assert "tenant_admin_approval_record_hash" in table
+    assert "human_confirmation_statement_hash" in table
+    assert "approval_record jsonb not null" in table
+    assert "lms_package_installation_dry_run_execution_approval_record.v1" in table
+    assert "explicit_human_execution_approval_present boolean not null default true" in table
+    assert "future_dry_run_execution_admission_gate_required" in table
+    assert "worker_dispatch_allowed boolean not null default false" in table
+    assert "worker_queue_enqueued boolean not null default false" in table
+    assert "worker_execution_allowed boolean not null default false" in table
+    assert "package_installation_dry_run_execution_allowed boolean not null default false" in table
+    assert "dry_run_result_persistence_allowed boolean not null default false" in table
+    assert "tenant_module_state_created boolean not null default false" in table
+    assert "content_included boolean not null default false" in table
+    assert "destructive_actions_allowed boolean not null default false" in table
+    assert "external_side_effect_allowed boolean not null default false" in table
+    assert "human_confirmation_statement" in sql
+    assert "not (approval_record ? 'human_confirmation_statement')" in sql
+    assert "alter table lms.dry_run_execution_approval_records enable row level security" in sql
+    assert "alter table lms.dry_run_execution_approval_records force row level security" in sql
+    assert "create policy lms_dry_run_execution_approval_records_tenant_select" in sql
+    assert "create policy lms_dry_run_execution_approval_records_tenant_insert" in sql
+    assert "create policy lms_dry_run_execution_approval_records_no_update" in sql
+    assert "create policy lms_dry_run_execution_approval_records_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0045", "0046", "0047", "0048"]' in sql
+
+
+def test_lms_dry_run_execution_job_outbox_migration_is_non_executing_queue_state() -> None:
+    migration = get_migration("0049")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "lms.dry_run_execution_job_outbox")
+
+    assert migration.module_id == "lms"
+    assert migration.name == "lms_dry_run_execution_job_outbox"
+    assert "tenant_id" in table
+    assert "dry_run_execution_admission_gate_evidence_hash" in table
+    assert "dry_run_execution_scheduler_boundary_evidence_hash" in table
+    assert "dry_run_execution_worker_image_boundary_evidence_hash" in table
+    assert "dry_run_execution_final_readiness_gate_evidence_hash" in table
+    assert "worker_idempotency_key_hash" in table
+    assert "restore_evidence_hash" in table
+    assert (
+        "queue_status text not null check (queue_status in ('queued', 'leased', 'retry_scheduled', 'blocked'))" in sql
+    )
+    assert "scheduler_activation_allowed boolean not null default false" in table
+    assert "worker_image_resolution_allowed boolean not null default false" in table
+    assert "worker_dispatch_allowed boolean not null default false" in table
+    assert "worker_execution_allowed boolean not null default false" in table
+    assert "package_installation_dry_run_execution_allowed boolean not null default false" in table
+    assert "dry_run_result_persistence_allowed boolean not null default false" in table
+    assert "package_installation_execution_allowed boolean not null default false" in table
+    assert "tenant_module_state_created boolean not null default false" in table
+    assert "destructive_actions_allowed boolean not null default false" in table
+    assert "external_side_effect_allowed boolean not null default false" in table
+    assert "not (job_evidence ? 'human_confirmation_statement')" in sql
+    assert "not (job_evidence ? 'course_content')" in sql
+    assert "not (job_evidence ? 'training_content')" in sql
+    assert "not (job_evidence ? 'dry_run_result_payload')" in sql
+    assert "not (job_evidence ? 'worker_execution_payload')" in sql
+    assert "alter table lms.dry_run_execution_job_outbox enable row level security" in sql
+    assert "alter table lms.dry_run_execution_job_outbox force row level security" in sql
+    assert "create policy lms_dry_run_execution_job_outbox_tenant_select" in sql
+    assert "create policy lms_dry_run_execution_job_outbox_tenant_insert" in sql
+    assert "create policy lms_dry_run_execution_job_outbox_tenant_lease_retry_update" in sql
+    assert "create policy lms_dry_run_execution_job_outbox_no_hard_delete" in sql
+    assert "using (tenant_id = collabio.current_tenant_id())" in sql
+    assert "using (false)" in sql
+    assert "grant select, insert on table lms.dry_run_execution_job_outbox to collabio_app" in sql
+    assert "grant update (" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '["0045", "0046", "0047", "0048", "0049"]' in sql
 
 
 def test_pgvector_embedding_schema_declares_required_compliance_metadata() -> None:
@@ -223,6 +770,22 @@ def test_platform_module_registry_migration_declares_lifecycle_tables_and_rls() 
     assert "tenant_id = collabio.current_tenant_id()" in sql
     assert "create policy tenant_modules_no_hard_delete" in sql
     assert "using (false)" in sql
+
+
+def test_platform_module_registry_runtime_store_migration_seeds_catalog_and_worker_select() -> None:
+    sql = normalized(get_migration("0030").sql())
+
+    assert "alter table collabio.module_catalog" in sql
+    assert "required_migration_versions jsonb not null default '[]'::jsonb" in sql
+    assert "module_catalog_required_migration_versions_json_check" in sql
+    assert "knowledge_base" in sql
+    assert '"0029"' in sql
+    assert "on conflict (module_id) do update" in sql
+    assert "on conflict (tenant_id, module_id) do nothing" in sql
+    assert "tenant_modules_worker_module_select" in sql
+    assert "to collabio_worker using (true)" in sql
+    assert "grant select on table collabio.module_catalog to collabio_worker" in sql
+    assert "grant select on table collabio.tenant_modules to collabio_worker" in sql
 
 
 def test_tenant_module_decommission_evidence_migration_requires_evidence_refs() -> None:
@@ -437,6 +1000,54 @@ def test_audit_event_store_migration_declares_append_only_roles_and_evidence_tab
     assert "output_text" not in audit_events_body
     assert "transcript_text" not in audit_events_body
     assert "token_body" not in audit_events_body
+
+
+def test_audit_worm_snapshot_v2_migration_requires_kms_signatures_and_verified_object_versions() -> None:
+    migration = get_migration("0075")
+    sql = normalized(migration.sql())
+    checkpoint_body = table_body(migration.sql(), "collabio.audit_snapshot_checkpoints_v2")
+    receipt_body = table_body(migration.sql(), "collabio.audit_worm_snapshot_receipts_v2")
+
+    assert migration.module_id == "core"
+    for column in [
+        "events_hash",
+        "manifest_hash",
+        "signature_algorithm",
+        "signing_message_type",
+        "signature_key_ref",
+        "provider_key_id",
+        "public_key_sha256",
+        "signature bytea",
+        "signature_sha256",
+        "provider_verified",
+    ]:
+        assert column in checkpoint_body
+    for column in [
+        "bundle_hash",
+        "object_version_id",
+        "object_lock_mode",
+        "object_lock_retain_until_utc",
+        "server_side_encryption",
+        "storage_kms_key_ref",
+        "readback_verified",
+        "object_lock_verified",
+        "encryption_verified",
+    ]:
+        assert column in receipt_body
+
+    assert "signature_algorithm in ('ecdsa-sha256', 'rsassa-pss-sha256')" in sql
+    assert "signing_message_type = 'digest'" in sql
+    assert "object_lock_mode = 'compliance'" in sql
+    assert "server_side_encryption = 'aws:kms'" in sql
+    assert "private key material and audit event bodies are forbidden" in sql
+    for table in ["audit_snapshot_checkpoints_v2", "audit_worm_snapshot_receipts_v2"]:
+        assert f"alter table collabio.{table} enable row level security" in sql
+        assert f"alter table collabio.{table} force row level security" in sql
+        assert f"create trigger {table}_append_only" in sql
+        assert f"grant select, insert on table collabio.{table} to collabio_audit_writer" in sql
+        assert f"revoke all on table collabio.{table} from collabio_app" in sql
+    assert "grant update" not in sql
+    assert "grant delete" not in sql
 
 
 def test_authz_admin_runtime_role_migration_declares_admin_write_boundary() -> None:
@@ -1177,6 +1788,702 @@ def test_source_object_metadata_storage_bridge_migration_is_metadata_only_and_rl
     assert "output_text" not in sql
     assert "raw_payload" not in sql
     assert "content_bytes" not in sql
+
+
+def test_knowledge_base_runtime_activation_migration_is_tenant_scoped_metadata_only() -> None:
+    sql = normalized(get_migration("0028").sql())
+    table = table_body(get_migration("0028").sql(), "collabio.knowledge_base_runtime_activations")
+
+    assert "create table if not exists collabio.knowledge_base_runtime_activations" in sql
+    for column in [
+        "tenant_id",
+        "activation_id",
+        "backend",
+        "active",
+        "activated_at_utc",
+        "activated_by",
+        "provider_profile_id",
+        "restore_drill_report_hash",
+        "source_content_recovery_evidence_hash",
+        "provider_profile_evidence_hash",
+        "production_write_deployment_gate_evidence_hash",
+        "source_content_recovery_evidence",
+        "provider_profile_evidence",
+        "production_write_deployment_gate_evidence",
+        "approval_reference",
+        "audit_chain_ref",
+        "activation_evidence_hash",
+    ]:
+        assert column in table
+    assert "jsonb_typeof(source_content_recovery_evidence) = 'object'" in sql
+    assert "jsonb_typeof(provider_profile_evidence) = 'object'" in sql
+    assert "jsonb_typeof(production_write_deployment_gate_evidence) = 'object'" in sql
+    assert "knowledge_base_runtime_activations_one_active_idx" in sql
+    assert "where active" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "knowledge_base_runtime_activations_tenant_select" in sql
+    assert "knowledge_base_runtime_activations_tenant_insert" in sql
+    assert "knowledge_base_runtime_activations_tenant_deactivate" in sql
+    assert "knowledge_base_runtime_activations_no_hard_delete" in sql
+    assert "grant select, insert on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
+    assert "grant update (active) on table collabio.knowledge_base_runtime_activations to collabio_app" in sql
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_knowledge_base_runtime_reconciliation_migration_blocks_drift_metadata_only() -> None:
+    sql = normalized(get_migration("0029").sql())
+    table = table_body(get_migration("0029").sql(), "collabio.knowledge_base_runtime_reconciliation_evidence")
+
+    assert "alter table collabio.knowledge_base_runtime_activations" in sql
+    assert "deactivation_reconciliation_evidence_hash" in sql
+    assert "create table if not exists collabio.knowledge_base_runtime_reconciliation_evidence" in sql
+    for column in [
+        "tenant_id",
+        "activation_id",
+        "reconciliation_id",
+        "checked_at_utc",
+        "checked_by",
+        "activation_evidence_hash",
+        "previous_source_content_recovery_evidence_hash",
+        "observed_source_content_recovery_evidence_hash",
+        "previous_provider_profile_evidence_hash",
+        "observed_provider_profile_evidence_hash",
+        "previous_production_write_deployment_gate_evidence_hash",
+        "observed_production_write_deployment_gate_evidence_hash",
+        "observed_source_content_recovery_evidence",
+        "observed_provider_profile_evidence",
+        "observed_production_write_deployment_gate_evidence",
+        "blocking_reasons",
+        "reconciliation_status",
+        "recommended_action",
+        "runtime_deactivated",
+        "audit_chain_ref",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "references collabio.knowledge_base_runtime_activations" in sql
+    assert "jsonb_typeof(observed_source_content_recovery_evidence) = 'object'" in sql
+    assert "jsonb_typeof(observed_provider_profile_evidence) = 'object'" in sql
+    assert "jsonb_typeof(observed_production_write_deployment_gate_evidence) = 'object'" in sql
+    assert "knowledge_base_runtime_reconciliation_tenant_select" in sql
+    assert "knowledge_base_runtime_reconciliation_tenant_insert" in sql
+    assert "knowledge_base_runtime_reconciliation_no_update" in sql
+    assert "knowledge_base_runtime_reconciliation_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert (
+        "grant select, insert on table collabio.knowledge_base_runtime_reconciliation_evidence to collabio_app" in sql
+    )
+    assert (
+        "grant update (active, deactivated_at_utc, deactivated_by, deactivation_reason, "
+        "deactivation_reconciliation_evidence_hash) on table collabio.knowledge_base_runtime_activations "
+        "to collabio_app" in sql
+    )
+    assert "source_text" not in sql
+    assert "article_body" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_decision_ledger_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0031").sql())
+    table = table_body(get_migration("0031").sql(), "collabio.source_object_preview_decision_evidence")
+
+    for column in [
+        "tenant_id",
+        "source_object_id",
+        "source_version_id",
+        "source_object_type",
+        "preview_slot_id",
+        "preview_policy_id",
+        "decision_status",
+        "content_release_allowed",
+        "content_included",
+        "tenant_preview_policy_enabled",
+        "required_content_release_evidence",
+        "provided_evidence",
+        "provided_evidence_refs",
+        "missing_evidence",
+        "blocking_reasons",
+        "renderer_sandbox_evidence_ref",
+        "backup_coverage_evidence_ref",
+        "restore_evidence_ref",
+        "human_confirmation_reference",
+        "reason_hash",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "decision_status = 'blocked'" in table
+    assert "content_release_allowed = false" in table
+    assert "content_included = false" in table
+    assert "renderer_sandbox_worker_evidence" in table
+    assert "backup_coverage_evidence" in table
+    assert "restore_drill_evidence" in table
+    assert "source_object_preview_decision_tenant_select" in sql
+    assert "source_object_preview_decision_tenant_insert" in sql
+    assert "source_object_preview_decision_no_update" in sql
+    assert "source_object_preview_decision_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "grant select, insert on table collabio.source_object_preview_decision_evidence to collabio_app" in sql
+    assert "grant select on table collabio.source_object_preview_decision_evidence to collabio_worker" in sql
+    assert "source_text" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_renderer_evidence_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0032").sql())
+    table = table_body(get_migration("0032").sql(), "collabio.source_object_preview_renderer_evidence")
+
+    for column in [
+        "tenant_id",
+        "source_object_id",
+        "source_version_id",
+        "source_object_type",
+        "source_manifest_hash",
+        "source_content_hash",
+        "source_acl_version",
+        "preview_slot_id",
+        "preview_policy_id",
+        "gate_id",
+        "parser_profile_id",
+        "sanitizer_profile_id",
+        "worker_profile_id",
+        "worker_queue_id",
+        "worker_job_id",
+        "worker_idempotency_key_hash",
+        "worker_queue_binding_ref",
+        "parser_sanitizer_evidence_ref",
+        "backup_coverage_evidence_ref",
+        "restore_evidence_ref",
+        "sandbox_boundaries",
+        "renderer_sandbox_evidence_hash",
+        "renderer_sandbox_evidence_ref",
+    ]:
+        assert column in table
+    assert "worker_queue_id = 'source-preview-renderer-runs'" in table
+    assert "content_rendered = false" in table
+    assert "content_included = false" in table
+    assert "rendering_allowed = false" in table
+    assert "output_persisted = false" in table
+    assert "external_fetch_allowed = false" in table
+    assert "temporary_workspace_destroyed = true" in table
+    assert "raw_source_content_returned=false" in table
+    assert "rendered_content_included=false" in table
+    assert "renderer_sandbox_evidence_ref = 'renderer-sandbox:' || renderer_sandbox_evidence_hash" in table
+    assert "source_object_preview_decision_renderer_verified_requires_ref" in sql
+    assert "renderer_sandbox_evidence_verified = false" in sql
+    assert "source_object_preview_renderer_tenant_select" in sql
+    assert "source_object_preview_renderer_tenant_insert" in sql
+    assert "source_object_preview_renderer_no_update" in sql
+    assert "source_object_preview_renderer_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_app" in sql
+    assert "grant select, insert on table collabio.source_object_preview_renderer_evidence to collabio_worker" in sql
+    assert "source_text" not in sql
+    assert "rendered_html" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_source_object_preview_renderer_release_gate_migration_is_metadata_only_and_rls_guarded() -> None:
+    sql = normalized(get_migration("0033").sql())
+    table = table_body(get_migration("0033").sql(), "collabio.source_object_preview_renderer_release_gate_evidence")
+
+    for column in [
+        "tenant_id",
+        "api_smoke_report_hash",
+        "recovery_drill_report_hash",
+        "api_smoke_checked_at_utc",
+        "recovery_drill_checked_at_utc",
+        "evaluated_at_utc",
+        "freshness_window_hours",
+        "api_smoke_fresh",
+        "recovery_drill_fresh",
+        "api_smoke_passed",
+        "recovery_drill_ready",
+        "recovery_drill_bound",
+        "tenant_ready",
+        "metadata_only_boundary_verified",
+        "renderer_connection_allowed",
+        "viewer_connection_allowed",
+        "content_release_workflow_allowed",
+        "blocking_reasons",
+        "gate_status",
+        "gate_evidence",
+        "evidence_hash",
+    ]:
+        assert column in table
+    assert "source_object_preview_renderer_release_gate.v1" in table
+    assert "source_object_preview_renderer_api_smoke_report_hash" in table
+    assert "source_object_preview_renderer_recovery_drill_report_hash" in table
+    assert "gate_status in ('ready', 'blocked')" in table
+    assert "jsonb_array_length(blocking_reasons) = 0" in table
+    assert "source_object_preview_renderer_release_gate_tenant_select" in sql
+    assert "source_object_preview_renderer_release_gate_tenant_insert" in sql
+    assert "source_object_preview_renderer_release_gate_no_update" in sql
+    assert "source_object_preview_renderer_release_gate_no_hard_delete" in sql
+    assert "enable row level security" in sql
+    assert "force row level security" in sql
+    assert (
+        "grant select, insert on table collabio.source_object_preview_renderer_release_gate_evidence to collabio_app"
+        in sql
+    )
+    assert (
+        "grant select, insert on table collabio.source_object_preview_renderer_release_gate_evidence to collabio_worker"
+        in sql
+    )
+    assert "source_text" not in sql
+    assert "rendered_html" not in sql
+    assert "mail_body" not in sql
+    assert "attachment_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+
+
+def test_crm_erp_legacy_staging_metadata_profiles_migration_declares_contract_and_rls() -> None:
+    migration = get_migration("0039")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.staging_metadata_profiles")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "object_id",
+        "object_type",
+        "owner_principal_id",
+        "created_by",
+        "created_at_utc",
+        "updated_at_utc",
+        "classification",
+        "retention_policy_id",
+        "legal_hold_state",
+        "lifecycle_state",
+        "kms_key_ref",
+        "audit_chain_ref",
+        "source_system",
+        "source_system_ref",
+        "source_table_ref",
+        "target_object_type",
+        "target_schema_version",
+        "row_object_id_template",
+        "metadata_contract",
+        "required_metadata_fields",
+        "metadata_field_sources",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "plan_manifest_hash",
+    ]:
+        assert column in table
+    assert "persistent_object_metadata.v1" in table
+    assert "legacy.sql_staging_metadata_profile" in table
+    assert "crm_erp_legacy_staging_metadata_profile.v1" in table
+    assert "source_system = 'legacy_sql'" in table
+    assert "row_object_id_template like '%{source_row_hash}%'" in table
+    assert "required_metadata_fields @> array" in table
+    assert "'classification'" in table
+    assert "metadata_field_sources ?& array" in table
+    assert "import_write_allowed boolean not null default false check (import_write_allowed = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "alter table crm_erp_legacy.staging_metadata_profiles enable row level security" in sql
+    assert "alter table crm_erp_legacy.staging_metadata_profiles force row level security" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_tenant_select" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_no_update" in sql
+    assert "create policy crm_erp_legacy_staging_metadata_profiles_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.staging_metadata_profiles to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.staging_metadata_profiles to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert "where module_id = 'crm_erp'" in sql
+    assert '"0039"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_dry_run_plans_migration_declares_gate_and_rls() -> None:
+    migration = get_migration("0040")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_dry_run_plans")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "readiness_evidence_hash",
+        "staging_metadata_plan_hash",
+        "table_count",
+        "planned_table_count",
+        "estimated_row_count_total",
+        "status",
+        "dry_run_execution_allowed",
+        "blocking_reasons",
+        "row_count_strategy",
+        "checksum_strategy",
+        "table_plans",
+        "required_audit_event_types",
+        "manifest_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "crm_erp_legacy_import_dry_run_plan.v1" in table
+    assert "ready_for_metadata_dry_run" in table
+    assert "blocked_by_readiness" in table
+    assert "exact_read_only_count_query" in table
+    assert "sha256_canonical_row_hash_manifest" in table
+    assert "jsonb_array_length(table_plans) = planned_table_count" in table
+    assert "legacy_sql.import_dry_run.started" in table
+    assert "legacy_sql.import_dry_run.table_validated" in table
+    assert "legacy_sql.import_dry_run.completed" in table
+    assert "legacy_sql.import_dry_run.blocked" in table
+    assert "dry_run_required boolean not null default true check (dry_run_required)" in table
+    assert "import_write_allowed boolean not null default false check (import_write_allowed = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "alter table crm_erp_legacy.import_dry_run_plans enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_dry_run_plans force row level security" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_no_update" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_plans_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_plans to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_plans to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert "where module_id = 'crm_erp'" in sql
+    assert '"0040"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_dry_run_results_migration_declares_store_and_rls() -> None:
+    migration = get_migration("0041")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_dry_run_results")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "dry_run_plan_hash",
+        "discovery_manifest_hash",
+        "mapping_manifest_hash",
+        "readiness_evidence_hash",
+        "staging_metadata_plan_hash",
+        "status",
+        "table_result_count",
+        "expected_table_count",
+        "table_results",
+        "blocking_reasons",
+        "row_count_strategy",
+        "checksum_strategy",
+        "audit_event_types",
+        "metadata_only_ok",
+        "dry_run_execution_attempted",
+        "dry_run_execution_completed",
+        "result_evidence",
+        "result_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "legacy_sql_import_dry_run_result.v1" in table
+    assert "completed_metadata_only" in table
+    assert "blocked_by_plan" in table
+    assert "exact_read_only_count_query" in table
+    assert "sha256_canonical_row_hash_manifest" in table
+    assert "jsonb_array_length(table_results) = table_result_count" in table
+    assert "metadata_only_ok boolean not null default true check (metadata_only_ok)" in table
+    assert "real_connection_used boolean not null default false check (real_connection_used = false)" in table
+    assert "raw_data_import_allowed boolean not null default false check (raw_data_import_allowed = false)" in table
+    assert "import_write_executed boolean not null default false check (import_write_executed = false)" in table
+    assert "destructive_actions_executed boolean not null default false check" in table
+    assert "not (result_evidence ? 'connection_secret_ref')" in table
+    assert "not (result_evidence ? 'raw_payload')" in table
+    assert "alter table crm_erp_legacy.import_dry_run_results enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_dry_run_results force row level security" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_no_update" in sql
+    assert "create policy crm_erp_legacy_import_dry_run_results_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_results to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_dry_run_results to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0041"' in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_write_approval_gates_migration_declares_gate_and_rls() -> None:
+    migration = get_migration("0042")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_write_approval_gates")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "dry_run_plan_hash",
+        "dry_run_result_hash",
+        "dry_run_worker_report_hash",
+        "approval_review_evidence_hash",
+        "change_control_evidence_hash",
+        "restore_drill_evidence_hash",
+        "gate_status",
+        "human_approval_record_allowed",
+        "future_import_write_execution_gate_required",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "blocking_reasons",
+        "gate_evidence",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "legacy_sql_import_write_approval_gate.v1" in table
+    assert "ready_for_human_approval_record" in table
+    assert "blocked" in table
+    assert "future_import_write_execution_gate_required boolean not null default true" in table
+    assert "import_write_execution_allowed boolean not null default false check" in table
+    assert "raw_data_access_allowed boolean not null default false check" in table
+    assert "import_write_payload_allowed boolean not null default false check" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "external_side_effect_allowed boolean not null default false check" in table
+    assert "not (gate_evidence ? 'connection_secret_ref')" in table
+    assert "not (gate_evidence ? 'raw_payload')" in table
+    assert "not (gate_evidence ? 'import_write_payload')" in table
+    assert "alter table crm_erp_legacy.import_write_approval_gates enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_write_approval_gates force row level security" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_gates_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_gates_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_gates_no_update" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_gates_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_gates to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_gates to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0042"' in sql
+    assert "import write execution" in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_import_write_approval_records_migration_declares_store_and_rls() -> None:
+    migration = get_migration("0043")
+    sql = normalized(migration.sql())
+    table = table_body(migration.sql(), "crm_erp_legacy.import_write_approval_records")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "dry_run_result_hash",
+        "approval_request_boundary_evidence_hash",
+        "approval_gate_evidence_hash",
+        "approval_request_hash",
+        "persistence_plan_evidence_hash",
+        "approval_record_ref",
+        "approval_ticket_ref",
+        "human_confirmation_reference",
+        "idempotency_key_hash",
+        "approved_by",
+        "approved_at_utc",
+        "record_status",
+        "future_import_write_execution_gate_required",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "approval_record",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in table
+    assert "legacy_sql_import_write_approval_record.v1" in table
+    assert "approval_record ?& array" in table
+    assert "approved_at_utc" in table
+    assert "approved_for_future_import_write_gate" in table
+    assert "unique (tenant_id, approval_request_boundary_evidence_hash)" in table
+    assert "unique (tenant_id, idempotency_key_hash)" in table
+    assert "unique (tenant_id, approval_record_ref)" in table
+    assert "future_import_write_execution_gate_required boolean not null default true" in table
+    assert "import_write_execution_allowed boolean not null default false check" in table
+    assert "raw_data_access_allowed boolean not null default false check" in table
+    assert "import_write_payload_allowed boolean not null default false check" in table
+    assert "destructive_actions_allowed boolean not null default false check" in table
+    assert "external_side_effect_allowed boolean not null default false check" in table
+    assert "not (approval_record ? 'connection_secret_ref')" in table
+    assert "not (approval_record ? 'raw_payload')" in table
+    assert "not (approval_record ? 'sample_values')" in table
+    assert "not (approval_record ? 'import_write_payload')" in table
+    assert "alter table crm_erp_legacy.import_write_approval_records enable row level security" in sql
+    assert "alter table crm_erp_legacy.import_write_approval_records force row level security" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_tenant_select" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_tenant_insert" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_no_update" in sql
+    assert "create policy crm_erp_legacy_import_write_approval_records_no_hard_delete" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_records to collabio_app" in sql
+    assert "grant select, insert on table crm_erp_legacy.import_write_approval_records to collabio_worker" in sql
+    assert "update collabio.module_catalog" in sql
+    assert '"0043"' in sql
+    assert "import write execution remains forbidden" in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
+
+
+def test_crm_erp_legacy_migration_run_registry_migration_declares_metadata_only_state_and_rls() -> None:
+    migration = get_migration("0044")
+    sql = normalized(migration.sql())
+    run_table = table_body(migration.sql(), "crm_erp_legacy.migration_runs")
+    report_table = table_body(migration.sql(), "crm_erp_legacy.migration_reports")
+
+    assert migration.module_id == "crm_erp"
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "migration_run_ref",
+        "approval_record_hash",
+        "approval_gate_evidence_hash",
+        "dry_run_result_hash",
+        "idempotency_key_hash",
+        "run_creation_enabled",
+        "run_execution_allowed",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "metadata_only_report_required",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "migration_run",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in run_table
+    for column in [
+        "tenant_id",
+        "module_id",
+        "source_system_ref",
+        "migration_run_hash",
+        "migration_report_ref",
+        "idempotency_key_hash",
+        "report_status",
+        "planned_table_count",
+        "table_result_count",
+        "row_count_manifest_hash",
+        "checksum_manifest_hash",
+        "restore_evidence_hash",
+        "audit_event_id",
+        "audit_chain_ref",
+        "metadata_only_ok",
+        "report_retrieval_enabled",
+        "run_execution_completed",
+        "import_write_execution_allowed",
+        "raw_data_access_allowed",
+        "import_write_payload_allowed",
+        "destructive_actions_allowed",
+        "external_side_effect_allowed",
+        "migration_report",
+        "evidence_hash",
+        "schema_version",
+    ]:
+        assert column in report_table
+    assert "legacy_sql_migration_run_registry_entry.v1" in run_table
+    assert "legacy_sql_migration_report_metadata.v1" in report_table
+    assert "migration_run ?& array" in run_table
+    assert "migration_report ?& array" in report_table
+    assert "unique (tenant_id, idempotency_key_hash)" in run_table
+    assert "unique (tenant_id, migration_run_ref)" in run_table
+    assert "unique (tenant_id, idempotency_key_hash)" in report_table
+    assert "unique (tenant_id, migration_report_ref)" in report_table
+    for table_name in ["migration_runs", "migration_reports"]:
+        assert f"alter table crm_erp_legacy.{table_name} enable row level security" in sql
+        assert f"alter table crm_erp_legacy.{table_name} force row level security" in sql
+        assert f"crm_erp_legacy_{table_name}_tenant_select" in sql
+        assert f"crm_erp_legacy_{table_name}_tenant_insert" in sql
+        assert f"crm_erp_legacy_{table_name}_no_update" in sql
+        assert f"crm_erp_legacy_{table_name}_no_hard_delete" in sql
+        assert f"grant select, insert on table crm_erp_legacy.{table_name} to collabio_app" in sql
+        assert f"grant select, insert on table crm_erp_legacy.{table_name} to collabio_worker" in sql
+    assert "run_creation_enabled boolean not null default false check" in run_table
+    assert "run_execution_allowed boolean not null default false check" in run_table
+    assert "report_retrieval_enabled boolean not null default false check" in report_table
+    assert "run_execution_completed boolean not null default false check" in report_table
+    assert "metadata_only_ok boolean not null default true check" in report_table
+    assert "import_write_execution_allowed boolean not null default false check" in run_table
+    assert "import_write_execution_allowed boolean not null default false check" in report_table
+    assert "not (migration_run ? 'connection_secret_ref')" in run_table
+    assert "not (migration_report ? 'connection_secret_ref')" in report_table
+    assert "not (migration_run ? 'raw_payload')" in run_table
+    assert "not (migration_report ? 'raw_payload')" in report_table
+    assert "update collabio.module_catalog" in sql
+    assert '"0044"' in sql
+    assert "import write execution remains forbidden" in sql
+    assert "raw legacy rows" in sql
+    assert "sample values" in sql
+    assert "secret references" in sql
+    assert "raw_payload text" not in sql
+    assert "content_bytes" not in sql
+    assert "prompt_text" not in sql
+    assert "output_text" not in sql
 
 
 def test_pgvector_embedding_schema_does_not_store_source_text_or_generated_answers() -> None:

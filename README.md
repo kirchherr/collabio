@@ -64,14 +64,24 @@ docker compose run --rm test
 docker compose run --rm migrate
 docker compose run --rm backup
 docker compose run --rm backup-verify
+docker compose run --rm source-object-runtime-bootstrap
+docker compose run --rm backend-storage-foundation-gate
+docker compose run --rm postgres-restore-drill
+docker compose run --rm backend-foundation-completion-gate
+docker compose --profile restore-drill run --rm business-backend-release-gate
+docker compose --profile restore-drill run --rm productivity-pilot-preflight-gate
 docker compose up api
 ```
 
 The `quality` service is the local and CI gate. It runs Ruff, Ruff format check, Mypy, and Pytest in the development container.
 
-The Compose stack includes PostgreSQL 18 with pgvector on host port `5433`. `migrate` applies packaged SQL migrations with the owner DSN; application and integration tests use the non-owner `collabio_app` role to exercise RLS.
+The Compose stack includes PostgreSQL 18 with pgvector on configurable host port `SUITE_POSTGRES_PORT` (default `5433`). Published ports bind to loopback by default; `SUITE_BIND_ADDRESS` must be set explicitly for reviewed network exposure. Runtime state uses `postgres18_data`; tests and Quality use the isolated `postgres-test` service and `postgres18_test_data` volume.
 
-Local database backups are written to `./backups/` and verified by checksum plus `pg_restore --list`.
+Local database backups are written to `./backups/`. `postgres-restore-drill` verifies the checksum and restore catalog, recreates an isolated PostgreSQL target, and compares migrations, schema, exact row counts, RLS policies, roles, and grants without emitting row content.
+
+MinIO is part of the default API foundation on configurable ports `SUITE_MINIO_API_PORT`/`SUITE_MINIO_CONSOLE_PORT` (defaults `29000`/`29001`). API startup requires bucket-profile evidence plus a successful `persistent_source_object_runtime_report.v1` covering fresh-instance reads and tenant-scoped content reconciliation.
+
+The opt-in `restore-drill` profile adds independent MinIO and PostgreSQL targets. MinIO uses configurable ports `SUITE_MINIO_RESTORE_API_PORT`/`SUITE_MINIO_RESTORE_CONSOLE_PORT` (defaults `29100`/`29101`); PostgreSQL uses `SUITE_POSTGRES_RESTORE_PORT` (default `55433`). `backend-storage-foundation-gate` proves exact-version object recovery. `backend-foundation-completion-gate` binds that evidence to isolated PostgreSQL recovery plus Tenant/IAM, append-only Audit, Module Registry, migration catalog, persistent SourceObject controls, and the complete productivity-pilot evidence chain. All gate output is metadata-only. `business-backend-release-gate` additionally binds the green foundation hash to the live API/OpenAPI contract, installed module and migration catalog, PostgreSQL backend configuration, and restored write controls for CRM onboarding, Tasks, and Time Tracking without activating tenants or executing business writes. `productivity-pilot-preflight-gate` then checks explicitly selected tenant module states, safe feature scope, monitoring, and non-destructive rollback contracts and persists ready evidence. `POST /v1/platform/productivity-pilot/admissions` records tenant-admin confirmation against that authoritative evidence with append-only RLS storage. `POST /v1/platform/productivity-pilot/traffic-scope-enforcements` binds the exact seven-operation tenant route scope and activates default deny. `POST /v1/platform/productivity-pilot/start-authorizations` can open only that scope for at most eight hours under a distinct security-admin, full-window monitoring/rollback evidence, automatic expiry, and the default-closed `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED` deployment switch.
 
 API:
 
@@ -84,6 +94,8 @@ Health endpoint:
 ```text
 GET /health
 ```
+
+For a Docker runtime on a separate Linux host, use the SSH-only operating model in `docs/operations/REMOTE_DEVELOPMENT_HOST.md`.
 
 ## Security posture
 

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Collabio Workspace</title>
+    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=165" />
+  </head>
+  <body>
+    <div class="workspace-shell">
+      <aside class="workspace-sidebar" aria-label="Workspace Navigation">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">C</div>
+          <div>
+            <div class="brand-name">Collabio</div>
+            <div class="brand-meta">Compliance Suite</div>
+          </div>
+        </div>
+
+        <nav class="nav-stack" aria-label="Bereiche">
+          <a class="nav-item active" href="/workspace">
+            <span class="nav-icon" aria-hidden="true">M</span>
+            Module
+          </a>
+          <a class="nav-item" href="/docs" aria-disabled="true">
+            <span class="nav-icon" aria-hidden="true">D</span>
+            Dokumente
+          </a>
+          <a class="nav-item" href="/mail" aria-disabled="true">
+            <span class="nav-icon" aria-hidden="true">@</span>
+            Mail
+          </a>
+        </nav>
+      </aside>
+
+      <main class="workspace-main">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow">Tenant Workspace</p>
+            <h1>Module-Cockpit</h1>
+          </div>
+          <div class="workspace-actions">
+            <button class="action-button quiet" type="button" id="snapshot-button">Snapshot</button>
+            <button class="icon-button" type="button" id="refresh-button" title="Aktualisieren" aria-label="Aktualisieren">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 1-2.34-5.66" />
+                <path d="M20 4v7h-7" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="tenant-band" aria-label="Tenant Kontext">
+          <label>
+            Tenant
+            <input id="tenant-id" autocomplete="off" value="tenant-demo" />
+          </label>
+          <label>
+            User
+            <input id="user-id" autocomplete="off" value="user-demo" />
+          </label>
+          <label>
+            Rollen
+            <input id="role-ids" autocomplete="off" value="tenant-admin" />
+          </label>
+          <label class="wide-field">
+            Lesbare Objekte
+            <input
+              id="readable-object-ids"
+              autocomplete="off"
+              value="doc-1,mail-1,kb-article-backup-runbook-demo,kb-article-version-backup-runbook-v1-demo,kb-article-security-baseline-demo,kb-article-version-security-baseline-v1-demo,crm-account-acme-demo,crm-contact-ada-demo,crm-activity-followup-demo,crm-note-acme-demo,erp-product-standard-widget-demo,erp-order-acme-widget-demo,erp-invoice-acme-widget-demo"
+            />
+          </label>
+        </section>
+
+        <div class="status-line" id="status-line" role="status">Bereit</div>
+
+        <section class="mvp-readiness-panel" id="mvp-readiness-panel" aria-label="MVP Readiness" aria-live="polite"></section>
+
+        <section class="readiness-band" aria-label="Flow Readiness">
+          <div class="readiness-metric">
+            <span>Metadata ready</span>
+            <strong id="metadata-ready-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Preview pending</span>
+            <strong id="preview-pending-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Preview blocked</span>
+            <strong id="preview-blocked-count">0</strong>
+          </div>
+          <div class="readiness-metric">
+            <span>Evidence complete</span>
+            <strong id="preview-evidence-complete-count">0</strong>
+          </div>
+        </section>
+
+        <section class="crm-search-band" aria-label="CRM ERP Suche">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CRM/ERP</p>
+              <h2>ACL-first Suche</h2>
+            </div>
+            <span class="count-pill" id="crm-search-count">0</span>
+          </div>
+          <div class="crm-search-readiness" id="crm-search-readiness" aria-live="polite">
+            <div class="empty-state compact">Search-Readiness wird geladen ...</div>
+          </div>
+          <form class="crm-search-controls" id="crm-search-form">
+            <label class="crm-search-query">
+              Query
+              <input id="crm-search-query" autocomplete="off" value="acme widget" />
+            </label>
+            <label>
+              Limit
+              <input id="crm-search-top-k" autocomplete="off" inputmode="numeric" value="10" />
+            </label>
+            <button class="action-button primary" type="submit" id="crm-search-button">Suchen</button>
+          </form>
+          <div class="crm-search-meta" id="crm-search-meta">metadata_only | content_included=false | ai_used=false</div>
+          <div class="crm-search-results" id="crm-search-results" aria-live="polite">
+            <div class="empty-state compact">Noch keine Suche ausgefuehrt.</div>
+          </div>
+        </section>
+
+        <section class="work-band" aria-label="Arbeitskorb">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Arbeitskorb</p>
+              <h2>Nächste Schritte</h2>
+            </div>
+            <span class="count-pill" id="work-item-count">0</span>
+          </div>
+          <div class="work-evidence-panel" id="work-evidence-panel" aria-live="polite"></div>
+          <div class="work-item-list" id="work-item-list" aria-live="polite"></div>
+        </section>
+
+        <section class="module-band" aria-label="Module">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Module</p>
+              <h2>Status und nächste Aktion</h2>
+            </div>
+            <span class="count-pill" id="module-count">0</span>
+          </div>
+          <div class="module-grid" id="module-grid" aria-live="polite"></div>
+        </section>
+
+        <section class="flow-band" aria-label="SourceObject Flows">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SourceObjects</p>
+              <h2>Autorisierte Flows</h2>
+            </div>
+            <span class="count-pill" id="flow-count">0</span>
+          </div>
+          <div class="flow-table-wrap">
+            <table class="flow-table">
+              <thead>
+                <tr>
+                  <th>Quelle</th>
+                  <th>Titel</th>
+                  <th>Typ</th>
+                  <th>Klassifikation</th>
+                  <th>Retention</th>
+                  <th>Evidence / Readiness</th>
+                </tr>
+              </thead>
+              <tbody id="flow-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="detail-band" aria-label="SourceObject Detail">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Metadata</p>
+              <h2>Detailansicht</h2>
+            </div>
+            <span class="count-pill">metadata_only</span>
+          </div>
+          <div class="detail-panel empty-state" id="source-detail-panel">
+            Wähle einen autorisierten Flow aus.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/workspace/assets/workspace.js?v=165" defer></script>
+  </body>
+</html>

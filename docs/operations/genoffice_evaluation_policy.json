@@ -1,0 +1,76 @@
+{
+  "schema_version": "genoffice_evaluation_policy.v1",
+  "status": "evaluation_only",
+  "adapter_id": "genoffice-docx-quick-edit-evaluation.v1",
+  "use_case": "collabio_native_docx_quick_edit",
+  "upstream": {
+    "repository_url": "https://github.com/genspark-ai/genoffice",
+    "commit": "fd33934dab1fdf8666af3f88b9794e7b4e19474a",
+    "source_archive_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040",
+    "root_license_spdx": "Apache-2.0",
+    "enterprise_tree": "ee/**",
+    "enterprise_tree_included": false,
+    "trademark_use_allowed": false,
+    "mutable_ref_allowed": false
+  },
+  "source_scope": {
+    "selected_import_candidates": [
+      "packages/docx-engine/**"
+    ],
+    "reference_only_candidates": [
+      "packages/pptx-engine/**",
+      "packages/pptx-render/**",
+      "apps/sheets/native/xlsx-engine/**"
+    ],
+    "prohibited_scopes": [
+      "ee/**",
+      "apps/shell/**",
+      "packages/ai-provider/**",
+      "packages/ai-search/**"
+    ],
+    "source_import_allowed": false
+  },
+  "separation": {
+    "preview_adapter_id": "canonical-pdf-libreoffice-pdfjs.v1",
+    "quick_edit_strategy": "collabio_native_candidate_version",
+    "full_collaboration_strategy": "separate_wopi_adapter",
+    "ai_strategy": "local_llm_gateway_draft_only"
+  },
+  "execution": {
+    "metadata_only": true,
+    "content_access_allowed": false,
+    "engine_execution_allowed": false,
+    "editor_session_allowed": false,
+    "candidate_write_allowed": false,
+    "persistent_state_allowed": false,
+    "external_network_allowed": false,
+    "cloud_ai_allowed": false,
+    "production_use_allowed": false,
+    "legal_review_complete": false,
+    "supply_chain_review_complete": false,
+    "fidelity_review_complete": false,
+    "security_review_complete": false,
+    "recovery_review_complete": false
+  },
+  "required_gates": [
+    "legal_notice_trademark_and_enterprise_tree_review",
+    "exact_upstream_commit_and_source_scope_manifest",
+    "dependency_lock_sbom_vulnerability_and_license_review",
+    "reproducible_build_and_provenance",
+    "malicious_ooxml_and_archive_expansion_corpus",
+    "macro_ole_external_relationship_and_template_policy",
+    "signed_document_preservation_and_derived_version_policy",
+    "word_libreoffice_genoffice_fidelity_golden_corpus",
+    "safe_export_and_high_fidelity_export_modes",
+    "isolated_no_egress_non_root_worker",
+    "cpu_memory_wallclock_input_output_and_part_limits",
+    "source_blind_candidate_revalidation",
+    "canonical_pdf_preview_before_commit",
+    "authoritative_acl_and_tenant_revalidation_before_commit",
+    "human_confirmed_new_source_object_version",
+    "append_only_edit_receipt_and_engine_hash_binding",
+    "draft_journal_candidate_version_and_receipt_recovery_drill",
+    "wopi_collaboration_kept_outside_quick_edit_adapter",
+    "local_llm_gateway_only_with_draft_only_typed_tools"
+  ]
+}

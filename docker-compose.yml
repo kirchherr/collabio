@@ -1,6 +1,92 @@
 services:
+  dependency-lock-runtime:
+    profiles: ["tooling"]
+    image: ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:2f78017b6eb469a2f838c7dd77cc3018a9f86489f68af399526b5721a23d6d78
+    entrypoint: ["/usr/local/bin/uv"]
+    command:
+      - --quiet
+      - pip
+      - compile
+      - requirements.txt
+      - --universal
+      - --python-version
+      - "3.12"
+      - --generate-hashes
+      - --custom-compile-command
+      - "sh docker/regenerate-dependency-locks.sh"
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./requirements.txt:/workspace/requirements.txt:ro
+
+  dependency-lock-dev:
+    profiles: ["tooling"]
+    image: ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:2f78017b6eb469a2f838c7dd77cc3018a9f86489f68af399526b5721a23d6d78
+    entrypoint: ["/usr/local/bin/uv"]
+    command:
+      - --quiet
+      - pip
+      - compile
+      - requirements-dev.txt
+      - --universal
+      - --python-version
+      - "3.12"
+      - --generate-hashes
+      - --custom-compile-command
+      - "sh docker/regenerate-dependency-locks.sh"
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+
+  dependency-lock-preview:
+    profiles: ["tooling"]
+    image: ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:2f78017b6eb469a2f838c7dd77cc3018a9f86489f68af399526b5721a23d6d78
+    entrypoint: ["/usr/local/bin/uv"]
+    command:
+      - --quiet
+      - pip
+      - compile
+      - requirements-preview.txt
+      - --universal
+      - --python-version
+      - "3.12"
+      - --generate-hashes
+      - --custom-compile-command
+      - "sh docker/regenerate-dependency-locks.sh"
+    working_dir: /workspace
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+    volumes:
+      - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
+
   postgres:
     image: pgvector/pgvector:0.8.2-pg18-bookworm
+    restart: unless-stopped
     environment:
       POSTGRES_DB: collabio
       POSTGRES_USER: collabio_owner
@@ -11,10 +97,331 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "5433:5432"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres18_data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
+  postgres-test:
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio_test
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres18_test_data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
+  postgres-restore:
+    profiles: ["restore-drill"]
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio_restore
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio_restore"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_POSTGRES_RESTORE_PORT:-55433}:5432"
+    volumes:
+      - postgres18_restore_data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-collabio-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+    ports:
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_API_PORT:-29000}:9000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_CONSOLE_PORT:-29001}:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-restore:
+    profiles: ["restore-drill"]
+    image: ${MINIO_IMAGE:-minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      MINIO_ROOT_PASSWORD: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+    ports:
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_RESTORE_API_PORT:-29100}:9000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_MINIO_RESTORE_CONSOLE_PORT:-29101}:9001"
+    volumes:
+      - minio_restore_data:/data
+
+  audit-worm-snapshot:
+    profiles: ["audit-worm"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.audit_worm_snapshot_worker
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_AUDIT_WORM_SNAPSHOT_ENABLED: ${SUITE_AUDIT_WORM_SNAPSHOT_ENABLED:-0}
+      SUITE_AUDIT_WORM_TENANT_ID: ${SUITE_AUDIT_WORM_TENANT_ID:-}
+      SUITE_AUDIT_WORM_CREATED_BY: ${SUITE_AUDIT_WORM_CREATED_BY:-}
+      SUITE_AUDIT_DATABASE_DSN: ${SUITE_AUDIT_DATABASE_DSN:-}
+      SUITE_AUDIT_SIGNING_KMS_KEY_REF: ${SUITE_AUDIT_SIGNING_KMS_KEY_REF:-}
+      SUITE_AUDIT_SIGNING_PROVIDER_KEY_ID: ${SUITE_AUDIT_SIGNING_PROVIDER_KEY_ID:-}
+      SUITE_AUDIT_SIGNING_ALGORITHM: ${SUITE_AUDIT_SIGNING_ALGORITHM:-ecdsa-sha256}
+      SUITE_AUDIT_SIGNING_PROVIDER_PROFILE: ${SUITE_AUDIT_SIGNING_PROVIDER_PROFILE:-openbao-transit}
+      SUITE_OPENBAO_ADDR: ${SUITE_OPENBAO_ADDR:-}
+      SUITE_OPENBAO_TOKEN_FILE: ${SUITE_OPENBAO_TOKEN_FILE:-}
+      SUITE_OPENBAO_NAMESPACE: ${SUITE_OPENBAO_NAMESPACE:-}
+      SUITE_OPENBAO_TLS_CA_FILE: ${SUITE_OPENBAO_TLS_CA_FILE:-}
+      SUITE_OPENBAO_CLIENT_CERT_FILE: ${SUITE_OPENBAO_CLIENT_CERT_FILE:-}
+      SUITE_OPENBAO_CLIENT_KEY_FILE: ${SUITE_OPENBAO_CLIENT_KEY_FILE:-}
+      SUITE_AUDIT_STORAGE_KMS_KEY_REF: ${SUITE_AUDIT_STORAGE_KMS_KEY_REF:-}
+      SUITE_AUDIT_STORAGE_PROVIDER_KEY_ID: ${SUITE_AUDIT_STORAGE_PROVIDER_KEY_ID:-}
+      SUITE_AUDIT_WORM_STORAGE_PROVIDER: ${SUITE_AUDIT_WORM_STORAGE_PROVIDER:-ceph-rgw}
+      SUITE_AUDIT_WORM_BUCKET_ID: ${SUITE_AUDIT_WORM_BUCKET_ID:-evidence-records}
+      SUITE_AUDIT_WORM_RETENTION_POLICY_ID: ${SUITE_AUDIT_WORM_RETENTION_POLICY_ID:-audit-security-10y-v1}
+      SUITE_AUDIT_WORM_RETENTION_DAYS: ${SUITE_AUDIT_WORM_RETENTION_DAYS:-3650}
+      SUITE_AUDIT_WORM_LEGAL_HOLD: ${SUITE_AUDIT_WORM_LEGAL_HOLD:-0}
+      SUITE_S3_ENDPOINT_URL: ${SUITE_S3_ENDPOINT_URL:-}
+      SUITE_S3_ACCESS_KEY_ID: ${SUITE_S3_ACCESS_KEY_ID:-}
+      SUITE_S3_SECRET_ACCESS_KEY: ${SUITE_S3_SECRET_ACCESS_KEY:-}
+      SUITE_S3_REGION: ${SUITE_S3_REGION:-us-east-1}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+  audit-worm-verify:
+    profiles: ["audit-worm-verify"]
+    build:
+      context: .
+      target: runtime
+    entrypoint: ["python", "-m", "suite.operations.audit_worm_verify"]
+    command: ["--help"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+  audit-worm-provider-acceptance:
+    profiles: ["audit-worm-provider-acceptance"]
+    build:
+      context: .
+      target: runtime
+    entrypoint: ["python", "-m", "suite.operations.audit_worm_provider_acceptance"]
+    command: ["--help"]
+    environment:
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_ENABLED: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_ENABLED:-0}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_S3_ENDPOINT_URL:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_ADDR: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_ADDR:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TOKEN_FILE: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TOKEN_FILE:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_NAMESPACE: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_NAMESPACE:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TLS_CA_FILE: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_TLS_CA_FILE:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_CERT_FILE: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_CERT_FILE:-}
+      SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_KEY_FILE: ${SUITE_AUDIT_WORM_PROVIDER_ACCEPTANCE_OPENBAO_CLIENT_KEY_FILE:-}
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+  self-hosted-provider-preflight:
+    profiles: ["self-hosted-provider-preflight"]
+    build:
+      context: .
+      target: runtime
+    entrypoint: ["python", "-m", "suite.operations.self_hosted_provider_stack"]
+    command: ["--help"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+
+  object-storage-profile-check:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.s3_provider_profile_check
+    depends_on:
+      - minio
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_S3_BOOTSTRAP_BUCKETS: "1"
+      SUITE_S3_PROFILE_CHECK_RETRIES: "30"
+    volumes:
+      - ./app:/workspace/app
+      - ./docs:/workspace/docs:ro
+
+  object-storage-restore-profile-check:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.s3_provider_profile_check
+    depends_on:
+      - minio-restore
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
+      SUITE_S3_BOOTSTRAP_BUCKETS: "1"
+      SUITE_S3_PROFILE_CHECK_RETRIES: "30"
+    volumes:
+      - ./app:/workspace/app
+      - ./docs:/workspace/docs:ro
+
+  source-object-runtime-bootstrap:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.persistent_source_object_runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
+      SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH: ${SUITE_SOURCE_OBJECT_RUNTIME_RESTORE_DRILL_REPORT_HASH:-sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  crm-runtime-bootstrap:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.crm_runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_CRM_REPOSITORY_BACKEND: postgres
+      SUITE_CRM_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_CRM_RUNTIME_SEED_DEMO: ${SUITE_CRM_RUNTIME_SEED_DEMO:-1}
+    volumes:
+      - ./app:/workspace/app:ro
+
+  backend-storage-foundation-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.storage.backend_storage_foundation_gate
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      object-storage-restore-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_RESTORE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
+      SUITE_RESTORE_S3_PROFILE_CHECK_RETRIES: "30"
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
 
   migrate:
     build:
@@ -65,6 +472,251 @@ services:
     volumes:
       - ./backups:/backups
 
+  postgres-backup-restore-loader:
+    profiles: ["restore-drill"]
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    depends_on:
+      backup:
+        condition: service_completed_successfully
+      postgres-restore:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: collabio_owner
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "set -eu;
+      latest=$$(ls -1t /backups/*.dump | head -n 1);
+      sha256sum -c $${latest}.sha256;
+      pg_restore --list $${latest} > /dev/null;
+      dropdb -h postgres-restore -U collabio_owner --if-exists --force collabio_restore;
+      createdb -h postgres-restore -U collabio_owner -O collabio_owner collabio_restore;
+      pg_restore -h postgres-restore -U collabio_owner -d collabio_restore --exit-on-error $${latest};
+      digest=$$(sha256sum $${latest} | cut -d ' ' -f 1);
+      printf 'sha256:%s' $${digest} > /backups/postgres-restore-receipt.sha256.tmp;
+      mv /backups/postgres-restore-receipt.sha256.tmp /backups/postgres-restore-receipt.sha256;
+      echo Restored $${latest} into isolated PostgreSQL target"
+    volumes:
+      - ./backups:/backups
+
+  postgres-restore-drill:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.postgres_restore_drill
+    depends_on:
+      postgres-backup-restore-loader:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_restore
+      SUITE_POSTGRES_BACKUP_DIRECTORY: /backups
+      SUITE_POSTGRES_RESTORE_RECEIPT_PATH: /backups/postgres-restore-receipt.sha256
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups:ro
+
+  backend-foundation-completion-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.backend_foundation_completion_gate
+    depends_on:
+      postgres-backup-restore-loader:
+        condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      object-storage-restore-profile-check:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_ENV: dev
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_restore
+      SUITE_POSTGRES_BACKUP_DIRECTORY: /backups
+      SUITE_POSTGRES_RESTORE_RECEIPT_PATH: /backups/postgres-restore-receipt.sha256
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_S3_PROVIDER_PROFILE_ID: minio-compose-object-storage
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+      SUITE_RESTORE_S3_PROVIDER_PROFILE_ID: minio-compose-restore-target
+      SUITE_RESTORE_S3_PROFILE_CHECK_RETRIES: "30"
+      SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO: ${SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO:-1}
+      SUITE_SOURCE_OBJECT_RESTORE_DRILL_TENANT_IDS: ${SUITE_SOURCE_OBJECT_RUNTIME_TENANT_IDS:-tenant-demo,tenant-other}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+
+  derived-preview-recovery-drill:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.derived_preview_recovery_drill
+    depends_on:
+      backend-foundation-completion-gate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_DERIVED_PREVIEW_RECOVERY_REPORT_PATH: /backups/derived-preview-recovery-drill.json
+      SUITE_DERIVED_PREVIEW_PRODUCTION_ADMISSION_EVALUATION_ENABLED: "0"
+      SUITE_DERIVED_PREVIEW_RESTORE_TARGET_DSN: postgresql://collabio_app:collabio_app@postgres-restore:5432/collabio_restore
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_RESTORE_S3_ENDPOINT_URL: http://minio-restore:9000
+      SUITE_RESTORE_S3_ACCESS_KEY_ID: ${MINIO_RESTORE_ROOT_USER:-collabio-restore}
+      SUITE_RESTORE_S3_SECRET_ACCESS_KEY: ${MINIO_RESTORE_ROOT_PASSWORD:-collabio-restore-secret}
+      SUITE_RESTORE_S3_REGION: us-east-1
+      SUITE_RESTORE_S3_STORAGE_PROVIDER: minio-restore-target
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+
+  business-backend-release-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.business_backend_release_gate
+    depends_on:
+      backend-foundation-completion-gate:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_RELEASE_API_BASE_URL: http://api:8000
+      SUITE_RELEASE_API_RETRIES: "60"
+      SUITE_CRM_ONBOARDING_BACKEND: postgres
+      SUITE_TASKS_ACTIVITIES_BACKEND: postgres
+      SUITE_TIME_TRACKING_BACKEND: postgres
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups
+
+  production-continuity-attestation-ceremony:
+    profiles: ["production-continuity"]
+    build:
+      context: .
+      target: dev
+    entrypoint: ["python", "-m", "suite.operations.production_continuity_attestation_ceremony"]
+    command: ["--help"]
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  production-continuity-deployment-gate:
+    profiles: ["production-continuity"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.production_continuity_deployment_gate
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
+      SUITE_PRODUCTION_CONTINUITY_EVIDENCE_PATH: /evidence/production-continuity.json
+      SUITE_PRODUCTION_CONTINUITY_ATTESTATION_PATH: /evidence/production-continuity.dsse.json
+      SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: /trust/production-continuity-signers.json
+      SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: /backups/production-continuity-deployment-gate.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+
+  productivity-pilot-preflight-gate:
+    profiles: ["restore-drill"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.productivity_pilot_preflight
+    depends_on:
+      business-backend-release-gate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_BUSINESS_BACKEND_RELEASE_GATE_REPORT_PATH: /backups/business-backend-release-gate.json
+      SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
+      SUITE_PRODUCTIVITY_PILOT_TENANT_IDS: ${SUITE_PRODUCTIVITY_PILOT_TENANT_IDS:-tenant-demo}
+      SUITE_PRODUCTIVITY_PILOT_EVIDENCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+      SUITE_POSTGRES_RESTORE_SOURCE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups:ro
   rich-document-parser:
     build:
       context: .
@@ -102,32 +754,3346 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
 
+  legacy-sql-readiness-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_readiness_smoke --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-import-dry-run-worker:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_import_dry_run_worker --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-import-write-approval-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_import_write_approval_gate --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-discovery-intake:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_discovery_intake_operations --once
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-evidence-ledger-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_evidence_ledger_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-evidence-ledger-drill-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-host-profile-release-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_host_profile_release_gate_smoke --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-host-profile-release-gate-smoke-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-host-profile-adapter-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_host_profile_adapter --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-host-profile-adapter-smoke-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-metadata-worker-queue-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_metadata_worker_queue --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-metadata-worker-queue-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-metadata-worker-lease-consumer-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_metadata_worker_lease_consumer --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-metadata-worker-lease-consumer-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-sandbox-profile-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_sandbox_profile --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-sandbox-profile-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-sandbox-enablement-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_sandbox_enablement_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-sandbox-enablement-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_SANDBOX_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-provider-attestation-adapter-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_provider_attestation_adapter --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-provider-attestation-adapter-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_LEGACY_SQL_CONNECTOR_PROVIDER_ATTESTATION_RESTORE_HASH: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-connection-preflight-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_connection_preflight_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-connection-preflight-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      SUITE_LEGACY_SQL_CONNECTOR_CONNECTION_PREFLIGHT_ENABLEMENT_RESTORE_HASH: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      SUITE_LEGACY_SQL_CONNECTOR_CONNECTION_PREFLIGHT_RESTORE_HASH: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-real-connection-executor-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_real_connection_executor --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-real-connection-executor-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_ENABLEMENT_RESTORE_HASH: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_PREFLIGHT_RESTORE_HASH: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_RESTORE_HASH: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-real-connection-executor-policy-store-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_real_connection_executor --policy-store-once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-real-connection-executor-policy-store-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  legacy-sql-connector-execution-readiness-review-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_execution_readiness_review_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-execution-readiness-review-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_LEGACY_SQL_CONNECTOR_EXECUTION_READINESS_RESTORE_DRILL_HASH: "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+      SUITE_LEGACY_SQL_CONNECTOR_EXECUTION_READINESS_BACKUP_VERIFY_HASH: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-materialization-plan-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_materialization_plan_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-materialization-plan-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-socket-secret-implementation-adr-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_socket_secret_implementation_adr_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-socket-secret-implementation-adr-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-runtime-pr-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_runtime_pr_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-runtime-pr-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-runtime-merge-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_runtime_merge_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-runtime-merge-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-runtime-activation-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_runtime_activation_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-runtime-activation-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-live-connection-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_live_connection_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-live-connection-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-metadata-connection-probe-gate-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_metadata_connection_probe_gate --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-metadata-connection-probe-gate-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-metadata-connection-probe-skeleton-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_metadata_connection_probe_skeleton --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-metadata-connection-probe-skeleton-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  legacy-sql-connector-metadata-connection-probe-live-adapter-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.legacy_sql_connector_metadata_connection_probe_live_adapter --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-legacy-sql-connector-metadata-connection-probe-live-adapter-data
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DRILL_BACKENDS: jsonl,postgres
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_RESTORE_HASH: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      SUITE_LEGACY_SQL_EVIDENCE_LEDGER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_CONNECTOR_KIND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_SOURCE_REF: legacy-sql:production-postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_HOST_PROFILE_REF: legacy-host:postgres-production-metadata
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_HOST_PROFILE_RELEASE_GATE_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_BACKEND: postgres
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_METADATA_WORKER_QUEUE_RESTORE_HASH: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_BACKEND: postgres
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_ENABLEMENT_RESTORE_HASH: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_PREFLIGHT_RESTORE_HASH: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      SUITE_LEGACY_SQL_CONNECTOR_REAL_CONNECTION_EXECUTOR_POLICY_STORE_RESTORE_HASH: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      SUITE_LEGACY_SQL_CONNECTOR_METADATA_CONNECTION_PROBE_LIVE_ADAPTER_SECRET_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+  kb-runtime-reconciler:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.knowledge_base_runtime_reconciliation_service --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /workspace/data
+      SUITE_AUDIT_LOGGER_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: postgres
+      SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_KB_RUNTIME_RECONCILIATION_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_KB_RUNTIME_RECONCILIATION_MAX_ATTEMPTS: "2"
+      SUITE_KB_RUNTIME_RECONCILIATION_RETRY_BACKOFF_SECONDS: "0"
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs:/workspace/docs:ro
+
+  module-registry-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.module_registry_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_MODULE_REGISTRY_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_MODULE_REGISTRY_WORKER_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
+    volumes:
+      - ./app:/workspace/app:ro
+
+  preview-renderer-drill:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.source_object_preview_renderer_operations --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /workspace/data
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_TICKETS_REPOSITORY_BACKEND: postgres
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS: ${SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS:-tenant-demo}
+    volumes:
+      - ./app:/workspace/app:ro
+
+  preview-renderer-smoke:
+    build:
+      context: .
+      target: dev
+    command: python -m suite.platform.source_object_preview_renderer_smoke --once
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_DATA_DIR: /tmp/collabio-preview-renderer-smoke-data
+      SUITE_AUDIT_LOGGER_BACKEND: postgres
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID: ${SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID:-tenant-demo}
+      SUITE_PREVIEW_RENDERER_DRILL_TENANT_IDS: ${SUITE_PREVIEW_RENDERER_SMOKE_TENANT_ID:-tenant-demo}
+    volumes:
+      - ./app:/workspace/app:ro
+
+  preview-malware-signature-updater:
+    profiles: ["preview-malware", "preview-proof"]
+    image: ${SUITE_CLAMAV_IMAGE:-clamav/clamav:1.5@sha256:78810772a92b4a9168115bc6b2e0ffd702640893b9577f8c3d0432762d2655c4}
+    user: "clamav"
+    entrypoint: ["freshclam"]
+    command: ["--verbose"]
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /var/log/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+    volumes:
+      - clamav_database:/var/lib/clamav
+    networks:
+      - preview_malware_updates
+
+  preview-malware-scanner:
+    profiles: ["preview-malware", "preview-proof"]
+    image: ${SUITE_CLAMAV_IMAGE:-clamav/clamav:1.5@sha256:78810772a92b4a9168115bc6b2e0ffd702640893b9577f8c3d0432762d2655c4}
+    depends_on:
+      preview-malware-signature-updater:
+        condition: service_completed_successfully
+    user: "clamav"
+    entrypoint: ["/init-unprivileged"]
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /run/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+      - /var/log/clamav:size=16m,noexec,nosuid,nodev,uid=100,gid=101,mode=0700
+    environment:
+      CLAMD_STARTUP_TIMEOUT: "300"
+      CLAMAV_NO_FRESHCLAMD: "true"
+    volumes:
+      - clamav_database:/var/lib/clamav
+    networks:
+      - preview_malware
+
+  preview-malware-scanner-smoke:
+    profiles: ["preview-malware", "preview-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.preview_malware_scanner_smoke
+    depends_on:
+      preview-malware-scanner:
+        condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_MALWARE_SCANNER_BACKEND: clamd
+      SUITE_PREVIEW_CLAMD_HOST: preview-malware-scanner
+      SUITE_PREVIEW_CLAMD_PORT: "3310"
+      SUITE_PREVIEW_MALWARE_SCANNER_PROFILE_REF: clamav:1.5-instream.v1
+      SUITE_PREVIEW_MALWARE_SMOKE_REPORT_PATH: /backups/preview-malware-scanner-smoke.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/backups
+    networks:
+      - preview_malware
+
+  preview-conversion-proof-runtime-preflight:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --engine-self-test
+      - --report
+      - /job/proof-output/runtime-engine-self-test.json
+    runtime: runsc
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,mode=0700
+    volumes:
+      - preview_conversion_proof_output:/job/proof-output
+
+  preview-conversion-proof-stager:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["stage"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      preview-conversion-proof-runtime-preflight:
+        condition: service_completed_successfully
+      preview-malware-scanner-smoke:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_PROOF_RUNTIME_REPORT_PATH: /job/proof-output/runtime-engine-self-test.json
+      SUITE_PREVIEW_MALWARE_SCANNER_BACKEND: clamd
+      SUITE_PREVIEW_CLAMD_HOST: preview-malware-scanner
+      SUITE_PREVIEW_CLAMD_PORT: "3310"
+      SUITE_PREVIEW_MALWARE_SCANNER_PROFILE_REF: clamav:1.5-instream.v1
+      SUITE_PREVIEW_MALWARE_SMOKE_REPORT_PATH: /backups/preview-malware-scanner-smoke.json
+      SUITE_BACKEND_FOUNDATION_GATE_REPORT_PATH: /backups/backend-foundation-completion-gate.json
+      SUITE_PREVIEW_PROOF_STAGE_REPORT_PATH: /backups/preview-conversion-non-empty-stage.json
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+    networks:
+      - default
+      - preview_malware
+    volumes:
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
+
+  preview-conversion-proof-cdr-renderer:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --render-cdr-bundle
+      - --request
+      - /job/proof-control/request.json
+      - --input-dir
+      - /job/proof-input
+      - --cdr-dir
+      - /job/proof-cdr
+    depends_on:
+      preview-conversion-proof-stager:
+        condition: service_completed_successfully
+    runtime: runsc
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: runsc
+    volumes:
+      - preview_conversion_proof_control:/job/proof-control:ro
+      - preview_conversion_proof_input:/job/proof-input:ro
+      - preview_conversion_proof_cdr:/job/proof-cdr
+
+  preview-conversion-proof-worker:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --rebuild-cdr-bundle
+      - --request
+      - /job/proof-control/request.json
+      - --cdr-dir
+      - /job/proof-cdr
+      - --output-dir
+      - /job/proof-output
+    depends_on:
+      preview-conversion-proof-cdr-renderer:
+        condition: service_completed_successfully
+    runtime: runsc
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: runsc
+    volumes:
+      - preview_conversion_proof_control:/job/proof-control:ro
+      - preview_conversion_proof_cdr:/job/proof-cdr:ro
+      - preview_conversion_proof_output:/job/proof-output
+
+  preview-conversion-proof-importer:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["import"]
+    depends_on:
+      preview-conversion-proof-worker:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      object-storage-profile-check:
+        condition: service_completed_successfully
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_RUN_ID: ${SUITE_PREVIEW_PROOF_RUN_ID:-invalid}
+      SUITE_PREVIEW_PROOF_REPORT_PATH: /backups/preview-conversion-non-empty-proof.json
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+    volumes:
+      - ./docs:/workspace/docs:ro
+      - ./backups:/backups
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
+
+  preview-conversion-proof-cleanup:
+    profiles: ["preview-proof"]
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    entrypoint: ["python", "-m", "suite.operations.preview_conversion_non_empty_proof"]
+    command: ["cleanup"]
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PROOF_INPUT_DIR: /job/proof-input
+      SUITE_PREVIEW_PROOF_OUTPUT_DIR: /job/proof-output
+      SUITE_PREVIEW_PROOF_CONTROL_DIR: /job/proof-control
+      SUITE_PREVIEW_PROOF_CDR_DIR: /job/proof-cdr
+    volumes:
+      - preview_conversion_proof_input:/job/proof-input
+      - preview_conversion_proof_output:/job/proof-output
+      - preview_conversion_proof_control:/job/proof-control
+      - preview_conversion_proof_cdr:/job/proof-cdr
+
+  preview-conversion-production-admission-gate:
+    profiles:
+      - preview-production-admission
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.preview_conversion_production_admission
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_PREVIEW_PRODUCTION_EVIDENCE_PATH: /evidence/preview-conversion-production-evidence.json
+      SUITE_PREVIEW_PRODUCTION_EXECUTION_GATE_PATH: /evidence/preview-conversion-execution-gate.json
+      SUITE_PREVIEW_PRODUCTION_RECOVERY_REPORT_PATH: /evidence/derived-preview-recovery-drill.json
+      SUITE_PREVIEW_PRODUCTION_ATTESTATION_PATH: /evidence/preview-conversion-production-attestation.dsse.json
+      SUITE_PREVIEW_PRODUCTION_SIGNER_POLICY_PATH: /trust/preview-conversion-signers.json
+      SUITE_PREVIEW_PRODUCTION_GATE_REPORT_PATH: /backups/preview-conversion-production-admission-gate.json
+      SUITE_PREVIEW_PRODUCTION_MAX_EVIDENCE_AGE_HOURS: ${SUITE_PREVIEW_PRODUCTION_MAX_EVIDENCE_AGE_HOURS:-24}
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./backups:/evidence:ro
+      - ./backups:/backups
+      - ./security:/trust:ro
+
+  preview-conversion-engine-smoke:
+    build:
+      context: .
+      target: preview-renderer
+    command: --engine-self-test
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=256m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+
+  preview-conversion-cdr-renderer:
+    profiles:
+      - preview-execution
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --render-cdr-bundle
+      - --request
+      - /job/control/request.json
+      - --input-dir
+      - /job/input
+      - --production-admission-required
+      - --production-admission
+      - /evidence/preview-conversion-production-admission-gate.json
+      - --production-evidence
+      - /evidence/preview-conversion-production-evidence.json
+      - --production-recovery-report
+      - /evidence/derived-preview-recovery-drill.json
+      - --production-attestation
+      - /evidence/preview-conversion-production-attestation.dsse.json
+      - --production-signer-policy
+      - /trust/preview-conversion-signers.json
+      - --cdr-dir
+      - /job/cdr
+    runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: ${SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS:-runsc}
+    volumes:
+      - preview_conversion_control:/job/control:ro
+      - preview_conversion_input:/job/input:ro
+      - preview_conversion_cdr:/job/cdr
+      - ./backups:/evidence:ro
+      - ./security:/trust:ro
+
+  preview-conversion-worker:
+    profiles:
+      - preview-execution
+    image: ${SUITE_PREVIEW_CONVERTER_IMAGE:-collabio/preview-renderer:dev}
+    build:
+      context: .
+      target: preview-renderer
+    command:
+      - --rebuild-cdr-bundle
+      - --request
+      - /job/control/request.json
+      - --cdr-dir
+      - /job/cdr
+      - --production-admission-required
+      - --production-admission
+      - /evidence/preview-conversion-production-admission-gate.json
+      - --production-evidence
+      - /evidence/preview-conversion-production-evidence.json
+      - --production-recovery-report
+      - /evidence/derived-preview-recovery-drill.json
+      - --production-attestation
+      - /evidence/preview-conversion-production-attestation.dsse.json
+      - --production-signer-policy
+      - /trust/preview-conversion-signers.json
+      - --output-dir
+      - /job/output
+    depends_on:
+      preview-conversion-cdr-renderer:
+        condition: service_completed_successfully
+    runtime: ${SUITE_PREVIEW_SANDBOX_RUNTIME:-runsc}
+    network_mode: "none"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: "2.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=512m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=10002,gid=10002,mode=0700
+    environment:
+      SUITE_PREVIEW_CONVERTER_IMAGE_REF: ${SUITE_PREVIEW_CONVERTER_IMAGE_REF:-invalid-unpinned-image}
+      SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS: ${SUITE_PREVIEW_SANDBOX_RUNTIME_CLASS:-runsc}
+    volumes:
+      - preview_conversion_control:/job/control:ro
+      - preview_conversion_cdr:/job/cdr:ro
+      - preview_conversion_output:/job/output
+      - ./backups:/evidence:ro
+      - ./security:/trust:ro
+
+  genoffice-docx-source-admission:
+    profiles: ["office-source-admission"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_source_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-source-admission-report.json
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_EVIDENCE_HOST_DIR:-./backups/genoffice-source-admission}
+        target: /evidence
+
+  genoffice-vendored-provenance-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_vendored_provenance_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_EMF_CONVERTER_REGISTRY_METADATA_PATH: /source/emf-converter-2.0.2-metadata.json
+      SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_PATH: /source/emf-converter-2.0.2.tgz
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_EMF_CONVERTER_REGISTRY_METADATA_HOST_PATH:-./backups/upstream/emf-converter-2.0.2-metadata.json}:/source/emf-converter-2.0.2-metadata.json:ro
+      - ${SUITE_EMF_CONVERTER_PACKAGE_ARCHIVE_HOST_PATH:-./backups/upstream/emf-converter-2.0.2.tgz}:/source/emf-converter-2.0.2.tgz:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-npm-provenance-verifier:
+    profiles: ["office-supply-chain"]
+    image: node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        test "$$(node --version)" = "v24.18.0"
+        test "$$(npm --version)" = "11.16.0"
+        cp /fixture/package.json /fixture/package-lock.json /work/
+        npm ci --ignore-scripts --no-audit --no-fund --cache /tmp/npm-cache
+        npm audit signatures --json --include-attestations > /evidence/genoffice-emf-converter-npm-verification.json.tmp
+        node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' /evidence/genoffice-emf-converter-npm-verification.json.tmp
+        mv /evidence/genoffice-emf-converter-npm-verification.json.tmp /evidence/genoffice-emf-converter-npm-verification.json
+        printf 'image=node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d\nnode_version=v24.18.0\nnpm_version=11.16.0\nstatus=verified\n' > /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp
+        mv /evidence/genoffice-emf-converter-npm-verification-receipt.txt.tmp /evidence/genoffice-emf-converter-npm-verification-receipt.txt
+    working_dir: /work
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=128m,noexec,nosuid,nodev
+      - /work:size=32m,mode=1777,noexec,nosuid,nodev
+    environment:
+      HOME: /tmp/home
+      NPM_CONFIG_CACHE: /tmp/npm-cache
+      NPM_CONFIG_FUND: "false"
+      NPM_CONFIG_IGNORE_SCRIPTS: "true"
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+      NPM_CONFIG_USERCONFIG: /dev/null
+    volumes:
+      - ./security/genoffice/npm-verification:/fixture:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+    networks:
+      - genoffice_provenance_verification
+
+  genoffice-npm-provenance-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_npm_provenance_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_NPM_VERIFICATION_PATH: /evidence/genoffice-emf-converter-npm-verification.json
+      SUITE_GENOFFICE_NPM_VERIFICATION_RECEIPT_PATH: /evidence/genoffice-emf-converter-npm-verification-receipt.txt
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-license-material-collector:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_license_material_collector
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+    networks:
+      - genoffice_license_material_download
+
+  genoffice-legal-review-dossier:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_legal_review_dossier
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_LEGAL_DECISION_SCHEMA_PATH: /evidence/genoffice-legal-decision-record.schema.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-third-party-notice-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_third_party_notice
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_DIRECTORY: /evidence/license-materials
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-schema:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_MODE: schema
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_PATH: /evidence/genoffice-internal-oss-decision.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_PATH: /evidence/genoffice-internal-oss-signer-policy.schema.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-signer-policy-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: policy
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_ID: "${SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_ID:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_EFFECTIVE_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_EFFECTIVE_AT_UTC:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNER_ID: "${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_KEY_ID: "${SUITE_GENOFFICE_PRODUCT_OWNER_KEY_ID:-}"
+      SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_PATH: /keys/product-owner.ed25519.pub
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNER_ID: "${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_KEY_ID: "${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_KEY_ID:-}"
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_PATH: /keys/security-compliance-owner.ed25519.pub
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_PRODUCT_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.ed25519.pub}
+        target: /keys/product-owner.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.ed25519.pub}
+        target: /keys/security-compliance-owner.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-signing-request:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: request
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID: "${SUITE_GENOFFICE_INTERNAL_OSS_DECISION_ID:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_DECIDED_AT_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_PREPARED_AT_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_INTERNAL_OSS_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_INTERNAL_OSS_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-internal-oss-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-envelope-assembler:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_CEREMONY_MODE: assemble
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNING_REQUEST_PATH: /evidence/genoffice-internal-oss-signing-request.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/product-owner.signature-response.json
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/security-compliance-owner.signature-response.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH: /evidence/genoffice-internal-oss-decision.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/product-owner.signature-response.json}
+        target: /approvals/product-owner.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/security-compliance-owner.signature-response.json}
+        target: /approvals/security-compliance-owner.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-internal-oss-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_internal_oss_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_INTERNAL_OSS_MODE: verify
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_PATH: /evidence/genoffice-internal-oss-decision.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_PATH: /evidence/genoffice-internal-oss-signer-policy.json
+      SUITE_GENOFFICE_INTERNAL_OSS_DECISION_SCHEMA_PATH: /evidence/genoffice-internal-oss-decision.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_SIGNER_POLICY_SCHEMA_PATH: /evidence/genoffice-internal-oss-signer-policy.schema.json
+      SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH: /evidence/genoffice-internal-oss-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-schema:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: schema
+      SUITE_GENOFFICE_SOLO_FOUNDER_SCHEMA_OUTPUT_DIR: /evidence
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-policy-builder:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: policy
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_EFFECTIVE_AT_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_EFFECTIVE_AT_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNER_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_SIGNER_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_KEY_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_KEY_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_PUBLIC_KEY_PATH: /keys/solo-founder.ed25519.pub
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOLO_FOUNDER_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-supply-chain/approvals/solo-founder.ed25519.pub}
+        target: /keys/solo-founder.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-signing-request:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: request
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_ID: "${SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_ID:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_ISSUED_AT_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_SOLO_FOUNDER_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_SOLO_FOUNDER_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_SOLO_FOUNDER_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_SOLO_FOUNDER_REQUEST_PATH: /evidence/genoffice-solo-founder-exception-request.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-solo-founder-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-solo-founder-exception-verifier:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_solo_founder_exception
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOLO_FOUNDER_MODE: verify
+      SUITE_GENOFFICE_LEGAL_DOSSIER_REPORT_PATH: /evidence/genoffice-legal-review-dossier-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_REPORT_PATH: /evidence/genoffice-third-party-notice-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /evidence/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_REQUEST_PATH: /evidence/genoffice-solo-founder-exception-request.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_RESPONSE_PATH: /approvals/solo-founder.signature-response.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /evidence/genoffice-solo-founder-exception-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOLO_FOUNDER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-supply-chain/approvals/solo-founder.signature-response.json}
+        target: /approvals/solo-founder.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence
+
+  genoffice-development-build-context:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_development_build_context
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SOURCE_DATE_EPOCH: "${SUITE_GENOFFICE_SOURCE_DATE_EPOCH:-0}"
+      SUITE_GENOFFICE_SOURCE_ARCHIVE_PATH: /source/genoffice.tar.gz
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+      SUITE_GENOFFICE_NPM_PROVENANCE_ADMISSION_REPORT_PATH: /evidence/genoffice-npm-provenance-admission-report.json
+      SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE: "${SUITE_GENOFFICE_DEVELOPMENT_AUTHORIZATION_MODE:-solo_founder_development_exception}"
+      SUITE_GENOFFICE_INTERNAL_OSS_ADMISSION_REPORT_PATH: /evidence/genoffice-internal-oss-admission-report.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /evidence/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_THIRD_PARTY_NOTICE_PATH: /evidence/GENOFFICE_THIRD_PARTY_NOTICES.txt
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH: /output/genoffice-development-build-context.tar
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH: /output/genoffice-development-build-context-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SOURCE_ARCHIVE_HOST_PATH:-./backups/upstream/genoffice-fd33934dab1fdf8666af3f88b9794e7b4e19474a.tar.gz}
+        target: /source/genoffice.tar.gz
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}:/evidence:ro
+      - ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}:/output
+
+  genoffice-docx-prebuild-sbom:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_prebuild_sbom
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /evidence/genoffice-docx-prebuild.cdx.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ./docs/operations/genoffice_docx_source_admission_report.json
+        target: /source/genoffice-docx-source-admission-report.json
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-docx-sbom-validator:
+    profiles: ["office-supply-chain"]
+    image: cyclonedx/cyclonedx-cli@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        /cyclonedx validate --input-file /evidence/genoffice-docx-prebuild.cdx.json --input-format json --input-version v1_6 --fail-on-errors
+        digest=$$(sha256sum /evidence/genoffice-docx-prebuild.cdx.json | cut -d ' ' -f 1)
+        printf 'schema=cyclonedx-1.6\nvalidator=cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e\nsbom_sha256=%s\nstatus=valid\n' "$${digest}" > /evidence/genoffice-docx-prebuild-schema-validation.txt.tmp
+        mv /evidence/genoffice-docx-prebuild-schema-validation.txt.tmp /evidence/genoffice-docx-prebuild-schema-validation.txt
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-trivy-db-update:
+    profiles: ["office-supply-chain"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    command:
+      - image
+      - --download-db-only
+      - --cache-dir
+      - /trivy-cache
+      - --no-progress
+      - --skip-version-check
+      - --disable-telemetry
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=256m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+    networks:
+      - genoffice_supply_chain_updates
+
+  genoffice-docx-sbom-vulnerability-scan:
+    profiles: ["office-supply-chain"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - sbom
+      - --cache-dir
+      - /trivy-cache
+      - --skip-db-update
+      - --skip-java-db-update
+      - --skip-vex-repo-update
+      - --offline-scan
+      - --skip-version-check
+      - --disable-telemetry
+      - --scanners
+      - vuln
+      - --format
+      - json
+      - --output
+      - /evidence/genoffice-docx-prebuild-vulnerability-report.json
+      - /evidence/genoffice-docx-prebuild.cdx.json
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-docx-supply-chain-admission:
+    profiles: ["office-supply-chain"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_supply_chain_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /source/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_VENDORED_PROVENANCE_REPORT_PATH: /evidence/genoffice-vendored-provenance-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /evidence/genoffice-docx-prebuild.cdx.json
+      SUITE_GENOFFICE_SBOM_SCHEMA_VALIDATION_RECEIPT_PATH: /evidence/genoffice-docx-prebuild-schema-validation.txt
+      SUITE_GENOFFICE_VULNERABILITY_REPORT_PATH: /evidence/genoffice-docx-prebuild-vulnerability-report.json
+      SUITE_GENOFFICE_TRIVY_DB_METADATA_PATH: /trivy-cache/db/metadata.json
+      SUITE_GENOFFICE_SUPPLY_CHAIN_ADMISSION_REPORT_PATH: /evidence/genoffice-docx-supply-chain-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/source/genoffice-docx-source-admission-report.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /evidence
+
+  genoffice-docx-worker-candidate:
+    profiles: ["office-worker-build"]
+    image: ${SUITE_GENOFFICE_WORKER_IMAGE:-collabio/genoffice-docx-worker:development-candidate}
+    build:
+      context: .
+      dockerfile: docker/genoffice-worker/Dockerfile
+      network: none
+      args:
+        SOURCE_DATE_EPOCH: "${SUITE_GENOFFICE_SOURCE_DATE_EPOCH:-0}"
+        GENOFFICE_CONTEXT_SHA256: "${SUITE_GENOFFICE_CONTEXT_SHA256:-}"
+        GENOFFICE_CONTEXT_REPORT_SHA256: "${SUITE_GENOFFICE_CONTEXT_REPORT_SHA256:-}"
+        GENOFFICE_AUTHORIZATION_REPORT_SHA256: "${SUITE_GENOFFICE_AUTHORIZATION_REPORT_SHA256:-}"
+      additional_contexts:
+        genoffice_context: ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}
+        genoffice_dependencies: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+    network_mode: "none"
+    user: "10003:10003"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700
+
+  genoffice-worker-image-build-evidence:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: evidence
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_REPORT_PATH: /context/genoffice-development-build-context-report.json
+      SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_PATH: /context/genoffice-development-build-context.tar
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_LICENSE_MATERIAL_REPORT_PATH: /evidence/genoffice-license-material-collection-report.json
+      SUITE_GENOFFICE_WORKER_DOCKERFILE_PATH: /inputs/Dockerfile
+      SUITE_GENOFFICE_WORKER_INSPECT_A_PATH: /evidence/genoffice-worker-image-inspect-a.json
+      SUITE_GENOFFICE_WORKER_INSPECT_B_PATH: /evidence/genoffice-worker-image-inspect-b.json
+      SUITE_GENOFFICE_WORKER_IMAGE_ARCHIVE_PATH: /evidence/genoffice-worker-image.tar
+      SUITE_GENOFFICE_WORKER_IMAGE_REF_A: "${SUITE_GENOFFICE_WORKER_IMAGE_REF_A:-}"
+      SUITE_GENOFFICE_WORKER_IMAGE_REF_B: "${SUITE_GENOFFICE_WORKER_IMAGE_REF_B:-}"
+      SUITE_GENOFFICE_WORKER_OBSERVED_AT_UTC: "${SUITE_GENOFFICE_WORKER_OBSERVED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ./docker/genoffice-worker/Dockerfile
+        target: /inputs/Dockerfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_DEVELOPMENT_BUILD_CONTEXT_HOST_DIR:-./backups/genoffice-development-build-context}
+        target: /context
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-raw-sbom:
+    profiles: ["office-worker-build"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - image
+      - --input
+      - /evidence/genoffice-worker-image.tar
+      - --cache-dir
+      - /tmp/trivy-cache
+      - --format
+      - cyclonedx
+      - --output
+      - /evidence/genoffice-worker-image.raw.cdx.json
+      - --skip-version-check
+      - --disable-telemetry
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 1g
+    tmpfs:
+      - /tmp:size=512m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-sbom:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: sbom
+      SUITE_GENOFFICE_WORKER_RAW_SBOM_PATH: /evidence/genoffice-worker-image.raw.cdx.json
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_SOURCE_ADMISSION_REPORT_PATH: /inputs/genoffice-docx-source-admission-report.json
+      SUITE_GENOFFICE_PREBUILD_SBOM_PATH: /inputs/genoffice-docx-prebuild.cdx.json
+      SUITE_GENOFFICE_WORKER_SBOM_PATH: /evidence/genoffice-worker-image.cdx.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations/genoffice_docx_source_admission_report.json:/inputs/genoffice-docx-source-admission-report.json:ro
+      - ./docs/operations/genoffice_docx_prebuild.cdx.json:/inputs/genoffice-docx-prebuild.cdx.json:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-sbom-validator:
+    profiles: ["office-worker-build"]
+    image: cyclonedx/cyclonedx-cli@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        /cyclonedx validate --input-file /evidence/genoffice-worker-image.cdx.json --input-format json --input-version v1_6 --fail-on-errors
+        digest=$$(sha256sum /evidence/genoffice-worker-image.cdx.json | cut -d ' ' -f 1)
+        printf 'schema=cyclonedx-1.6\nvalidator=cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e\nsbom_sha256=%s\nstatus=valid\n' "$${digest}" > /evidence/genoffice-worker-image-schema-validation.txt.tmp
+        mv /evidence/genoffice-worker-image-schema-validation.txt.tmp /evidence/genoffice-worker-image-schema-validation.txt
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-vulnerability-scan:
+    profiles: ["office-worker-build"]
+    image: aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+    command:
+      - image
+      - --input
+      - /evidence/genoffice-worker-image.tar
+      - --cache-dir
+      - /trivy-cache
+      - --cache-backend
+      - memory
+      - --skip-db-update
+      - --skip-java-db-update
+      - --skip-vex-repo-update
+      - --offline-scan
+      - --skip-version-check
+      - --disable-telemetry
+      - --scanners
+      - vuln
+      - --format
+      - json
+      - --output
+      - /evidence/genoffice-worker-image-vulnerability-report.json
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "1.0"
+    mem_limit: 1g
+    tmpfs:
+      - /tmp:size=512m,noexec,nosuid,nodev
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-build-signing-request:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: request
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_WORKER_SBOM_PATH: /evidence/genoffice-worker-image.cdx.json
+      SUITE_GENOFFICE_WORKER_SBOM_SCHEMA_RECEIPT_PATH: /evidence/genoffice-worker-image-schema-validation.txt
+      SUITE_GENOFFICE_WORKER_VULNERABILITY_REPORT_PATH: /evidence/genoffice-worker-image-vulnerability-report.json
+      SUITE_GENOFFICE_TRIVY_DB_METADATA_PATH: /trivy-cache/db/metadata.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /authorization/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_WORKER_ATTESTATION_ID: "${SUITE_GENOFFICE_WORKER_ATTESTATION_ID:-}"
+      SUITE_GENOFFICE_WORKER_ISSUED_AT_UTC: "${SUITE_GENOFFICE_WORKER_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_WORKER_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_WORKER_SIGNING_REQUEST_PATH: /evidence/genoffice-worker-build-signing-request.json
+      SUITE_GENOFFICE_WORKER_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-worker-build-signature-message.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_TRIVY_CACHE_HOST_DIR:-./backups/genoffice-trivy-cache}
+        target: /trivy-cache
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-admission-verifier:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    cpus: "0.5"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: verify
+      SUITE_GENOFFICE_WORKER_BUILD_EVIDENCE_PATH: /evidence/genoffice-worker-image-build-evidence.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_POLICY_PATH: /authorization/genoffice-solo-founder-policy.json
+      SUITE_GENOFFICE_SOLO_FOUNDER_EXCEPTION_REPORT_PATH: /authorization/genoffice-solo-founder-exception-report.json
+      SUITE_GENOFFICE_WORKER_SIGNING_REQUEST_PATH: /evidence/genoffice-worker-build-signing-request.json
+      SUITE_GENOFFICE_WORKER_SIGNATURE_RESPONSE_PATH: /approvals/genoffice-worker-build-signature-response.json
+      SUITE_GENOFFICE_WORKER_VERIFIED_AT_UTC: "${SUITE_GENOFFICE_WORKER_VERIFIED_AT_UTC:-}"
+      SUITE_GENOFFICE_WORKER_ADMISSION_REPORT_PATH: /evidence/genoffice-worker-image-admission-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_SUPPLY_CHAIN_EVIDENCE_HOST_DIR:-./backups/genoffice-supply-chain}
+        target: /authorization
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-worker-build/approvals/genoffice-worker-build-signature-response.json}
+        target: /approvals/genoffice-worker-build-signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-worker-image-admission-schema:
+    profiles: ["office-worker-build"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_worker_image_admission
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_WORKER_ADMISSION_MODE: schema
+      SUITE_GENOFFICE_WORKER_SCHEMA_OUTPUT_DIR: /evidence
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-runtime-proof-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: "${SUITE_GENOFFICE_RUNTIME_PROOF_MODE:-schema}"
+      SUITE_GENOFFICE_RUNTIME_SCHEMA_OUTPUT_DIR: /schemas
+      SUITE_GENOFFICE_RUNTIME_CORPUS_OUTPUT_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_MANIFEST_PATH: /corpus/genoffice-synthetic-corpus-manifest.json
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+      SUITE_GENOFFICE_WORKER_ADMISSION_REPORT_PATH: /worker/genoffice-worker-image-admission-report.json
+      SUITE_GENOFFICE_RUNTIME_SIGNER_POLICY_PATH: /evidence/genoffice-runtime-signer-policy.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ID: "${SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ID:-}"
+      SUITE_GENOFFICE_RUNTIME_ISSUED_AT_UTC: "${SUITE_GENOFFICE_RUNTIME_ISSUED_AT_UTC:-}"
+      SUITE_GENOFFICE_RUNTIME_VALID_UNTIL_UTC: "${SUITE_GENOFFICE_RUNTIME_VALID_UNTIL_UTC:-}"
+      SUITE_GENOFFICE_RUNTIME_RISK_ACCEPTANCE_REF: "${SUITE_GENOFFICE_RUNTIME_RISK_ACCEPTANCE_REF:-}"
+      SUITE_GENOFFICE_RUNTIME_CHANGE_CONTROL_REF: "${SUITE_GENOFFICE_RUNTIME_CHANGE_CONTROL_REF:-}"
+      SUITE_GENOFFICE_RUNTIME_SIGNING_REQUEST_PATH: /evidence/genoffice-runtime-signing-request.json
+      SUITE_GENOFFICE_RUNTIME_SIGNATURE_MESSAGE_PATH: /evidence/genoffice-runtime-signature-message.json
+      SUITE_GENOFFICE_PRODUCT_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/product-owner-signature-response.json
+      SUITE_GENOFFICE_SECURITY_COMPLIANCE_OWNER_SIGNATURE_RESPONSE_PATH: /approvals/security-compliance-owner-signature-response.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_ENVELOPE_PATH: /evidence/genoffice-runtime-authorization-envelope.json
+      SUITE_GENOFFICE_RUNTIME_AUTHORIZATION_REPORT_PATH: /evidence/genoffice-runtime-authorization-report.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./docs/operations:/schemas
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
+      - type: bind
+        source: ${SUITE_GENOFFICE_WORKER_BUILD_HOST_DIR:-./backups/genoffice-worker-build}
+        target: /worker
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_APPROVALS_HOST_DIR:-./backups/genoffice-runtime-proof/approvals}
+        target: /approvals
+        read_only: true
+
+  genoffice-runtime-sandbox-probe:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    runtime: runsc-kvm
+    network_mode: "none"
+    user: "10003:10003"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /scratch:size=64m,noexec,nosuid,nodev,uid=10003,gid=10003,mode=0700
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: sandbox-probe
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_CORPUS_MANIFEST_PATH: /corpus/genoffice-synthetic-corpus-manifest.json
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
+        read_only: true
+        bind:
+          create_host_path: false
+
+  genoffice-runtime-proof-access-preparer:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_runtime_proof_authorization
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 128m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_RUNTIME_PROOF_MODE: access-prep
+      SUITE_GENOFFICE_RUNTIME_PROOF_SOURCE_UID: ${SUITE_RUNTIME_UID:-1000}
+      SUITE_GENOFFICE_RUNTIME_CORPUS_DIR: /corpus
+      SUITE_GENOFFICE_RUNTIME_EVIDENCE_DIR: /evidence
+      SUITE_GENOFFICE_RUNTIME_SANDBOX_PROFILE_PATH: /evidence/genoffice-runtime-sandbox-profile.json
+      SUITE_GENOFFICE_RUNTIME_DOCKER_INSPECT_PATH: /evidence/genoffice-runtime-sandbox-probe.inspect.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_CORPUS_HOST_DIR:-./backups/genoffice-runtime-proof/corpus}
+        target: /corpus
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_RUNTIME_EVIDENCE_HOST_DIR:-./backups/genoffice-runtime-proof/evidence}
+        target: /evidence
+        bind:
+          create_host_path: false
+
+  genoffice-quick-edit-preflight-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_quick_edit_preflight
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_QUICK_EDIT_PREFLIGHT_MODE: "${SUITE_GENOFFICE_QUICK_EDIT_PREFLIGHT_MODE:-schema}"
+      SUITE_GENOFFICE_QUICK_EDIT_SCHEMA_OUTPUT_DIR: /bundle
+      SUITE_GENOFFICE_QUICK_EDIT_BUNDLE_OUTPUT_DIR: /bundle
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_QUICK_EDIT_BUNDLE_HOST_DIR:-./backups/genoffice-quick-edit-preflight}
+        target: /bundle
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-study-control:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_study
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_STUDY_MODE: "${SUITE_GENOFFICE_FIDELITY_STUDY_MODE:-schema}"
+      SUITE_GENOFFICE_FIDELITY_STUDY_OUTPUT_DIR: /bundle
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_STUDY_HOST_DIR:-./backups/genoffice-docx-fidelity-study}
+        target: /bundle
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-libreoffice-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_libreoffice_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice-schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-libreoffice-prepare:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_libreoffice_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: prepare
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_FIXTURE_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_FIXTURE_ID:-invalid}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/assignment}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-libreoffice-image:
+    profiles: ["office-worker-runtime-proof"]
+    image: collabio/genoffice-docx-fidelity-libreoffice:dev
+    build:
+      context: .
+      target: libreoffice-fidelity-runner
+    command: []
+
+  genoffice-docx-fidelity-libreoffice-runner:
+    profiles: ["office-worker-runtime-proof"]
+    image: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    command: []
+    runtime: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SANDBOX_RUNTIME:-runsc-kvm}
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    cpus: "2.0"
+    mem_limit: 2048m
+    tmpfs:
+      - /job/tmp:size=768m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+      - /tmp:size=64m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+    environment:
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_MODE: run
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_RUNNER_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_INPUT_DIR: /job/input
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_DIR: /job/output
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/assignment}
+        target: /job/input
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-libreoffice/output}
+        target: /job/output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-word-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_word_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-word/schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-word-prepare:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_word_runner
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: prepare
+      SUITE_GENOFFICE_FIDELITY_WORD_FIXTURE_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_FIXTURE_ID:-invalid}
+      SUITE_GENOFFICE_FIDELITY_WORD_HOST_REPORT_PATH: /inputs/host-readiness-report.json
+      SUITE_GENOFFICE_FIDELITY_WORD_RUNNER_SCRIPT_PATH: /inputs/Invoke-CollabioWordFidelity.ps1
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_HOST_REPORT_PATH:-./backups/genoffice-docx-fidelity-word/host-readiness-report.json}
+        target: /inputs/host-readiness-report.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./tools/windows/Invoke-CollabioWordFidelity.ps1
+        target: /inputs/Invoke-CollabioWordFidelity.ps1
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/assignment}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-word-collector-image:
+    profiles: ["office-worker-runtime-proof"]
+    image: collabio/genoffice-docx-fidelity-word-collector:dev
+    build:
+      context: .
+      target: word-fidelity-collector
+    command: []
+
+  genoffice-docx-fidelity-word-collector:
+    profiles: ["office-worker-runtime-proof"]
+    image: ${SUITE_GENOFFICE_FIDELITY_WORD_COLLECTOR_IMAGE_REF:-sha256:0000000000000000000000000000000000000000000000000000000000000000}
+    command: []
+    runtime: ${SUITE_GENOFFICE_FIDELITY_WORD_SANDBOX_RUNTIME:-runsc-kvm}
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    cpus: "1.0"
+    mem_limit: 1024m
+    tmpfs:
+      - /job/tmp:size=384m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+      - /tmp:size=32m,noexec,nosuid,nodev,uid=${SUITE_RUNTIME_UID:-1000},gid=${SUITE_RUNTIME_GID:-1000},mode=0700
+    environment:
+      SUITE_GENOFFICE_FIDELITY_WORD_MODE: collect
+      SUITE_GENOFFICE_FIDELITY_WORD_INPUT_DIR: /job/input
+      SUITE_GENOFFICE_FIDELITY_WORD_HANDOFF_DIR: /job/handoff
+      SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_DIR: /job/output
+    volumes:
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_ASSIGNMENT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/assignment}
+        target: /job/input
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_HANDOFF_HOST_DIR:-./backups/genoffice-docx-fidelity-word/interactive-handoff}
+        target: /job/handoff
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-word/output}
+        target: /job/output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-evidence-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_evidence
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence-schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-evidence-verifier:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_evidence
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    cpus: "0.5"
+    mem_limit: 768m
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_MODE: verify
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_ROOT: /evidence
+      SUITE_GENOFFICE_FIDELITY_INPUT_DIR: /inputs
+      SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_BUNDLE_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/bundle}
+        target: /evidence
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_EVIDENCE_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-evidence/output}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-schema:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: schema
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_DIR: /output
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_SCHEMA_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/schema}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-policy:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: policy
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_ID: ${SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_EFFECTIVE_AT_UTC: ${SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_EFFECTIVE_AT_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_WORD_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_WORD_PUBLIC_KEY_PATH: /keys/word.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_PUBLIC_KEY_PATH: /keys/libreoffice.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_SIGNER_ID: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_SIGNER_ID:-}
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_KEY_ID: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_KEY_ID:-}
+      SUITE_GENOFFICE_FIDELITY_GENOFFICE_PUBLIC_KEY_PATH: /keys/genoffice.ed25519.pub
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /output/genoffice-docx-fidelity-result-signer-policy.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_WORD_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/word.ed25519.pub}
+        target: /keys/word.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_LIBREOFFICE_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/libreoffice.ed25519.pub}
+        target: /keys/libreoffice.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_GENOFFICE_PUBLIC_KEY_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/keys/genoffice.ed25519.pub}
+        target: /keys/genoffice.ed25519.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-request:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: request
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /inputs/genoffice-docx-fidelity-result-signer-policy.json
+      SUITE_GENOFFICE_FIDELITY_STUDY_PLAN_PATH: /inputs/genoffice-docx-fidelity-study-plan.json
+      SUITE_GENOFFICE_FIDELITY_RESULT_PAYLOAD_PATH: /inputs/result-payload.json
+      SUITE_GENOFFICE_FIDELITY_PREPARED_AT_UTC: ${SUITE_GENOFFICE_FIDELITY_PREPARED_AT_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_VALID_UNTIL_UTC: ${SUITE_GENOFFICE_FIDELITY_VALID_UNTIL_UTC:-}
+      SUITE_GENOFFICE_FIDELITY_SIGNING_REQUEST_PATH: /output/result-signing-request.json
+      SUITE_GENOFFICE_FIDELITY_SIGNATURE_MESSAGE_PATH: /output/result-signature-message.bin
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
+  genoffice-docx-fidelity-ceremony-assemble:
+    profiles: ["office-worker-runtime-proof"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.operations.genoffice_docx_fidelity_ceremony
+    network_mode: "none"
+    user: "${SUITE_RUNTIME_UID:-1000}:${SUITE_RUNTIME_GID:-1000}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 16
+    cpus: "0.25"
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_GENOFFICE_FIDELITY_CEREMONY_MODE: assemble
+      SUITE_GENOFFICE_FIDELITY_SIGNER_POLICY_PATH: /inputs/genoffice-docx-fidelity-result-signer-policy.json
+      SUITE_GENOFFICE_FIDELITY_STUDY_PLAN_PATH: /inputs/genoffice-docx-fidelity-study-plan.json
+      SUITE_GENOFFICE_FIDELITY_SIGNING_REQUEST_PATH: /inputs/result-signing-request.json
+      SUITE_GENOFFICE_FIDELITY_SIGNATURE_RESPONSE_PATH: /approvals/result.signature-response.json
+      SUITE_GENOFFICE_FIDELITY_SIGNED_RESULT_PATH: /output/signed-result-envelope.json
+    volumes:
+      - ./app:/workspace/app:ro
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_INPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_SIGNATURE_RESPONSE_HOST_PATH:-./backups/genoffice-docx-fidelity-ceremony/approvals/result.signature-response.json}
+        target: /approvals/result.signature-response.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SUITE_GENOFFICE_FIDELITY_CEREMONY_OUTPUT_HOST_DIR:-./backups/genoffice-docx-fidelity-ceremony/output}
+        target: /output
+        bind:
+          create_host_path: false
+
   api:
     build:
       context: .
       target: dev
+    restart: unless-stopped
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      source-object-runtime-bootstrap:
+        condition: service_completed_successfully
+      crm-runtime-bootstrap:
+        condition: service_completed_successfully
     environment:
       PYTHONPATH: /workspace/app
+      SUITE_CRM_REPOSITORY_BACKEND: postgres
+      SUITE_CRM_ONBOARDING_BACKEND: postgres
+      SUITE_TASKS_ACTIVITIES_BACKEND: postgres
+      SUITE_TIME_TRACKING_BACKEND: postgres
       SUITE_DATA_DIR: /workspace/data
       SUITE_AUDIT_LOGGER_BACKEND: postgres
       SUITE_AUTHZ_ADMIN_STORE_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: postgres
+      SUITE_KB_RUNTIME_RECONCILIATION_STORE_BACKEND: postgres
       SUITE_SOURCE_OBJECT_WRITE_RECEIPT_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_BACKEND: postgres
+      SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_WORKSPACE_SOURCE_OBJECT_CONTENT_STORE_BACKEND: s3-compatible
+      SUITE_STORAGE_POLICY_PATH: /workspace/docs/storage_adapter_policy.json
+      SUITE_RETENTION_POLICY_PATH: /workspace/docs/retention_manifest_policy.json
+      SUITE_S3_ENDPOINT_URL: http://minio:9000
+      SUITE_S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-collabio-minio}
+      SUITE_S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-collabio-minio-secret}
+      SUITE_S3_REGION: us-east-1
+      SUITE_S3_STORAGE_PROVIDER: minio
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_DECISION_LEDGER_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_RENDERER_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_EXECUTION_GATE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_EXECUTION_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_DERIVED_PREVIEW_RECEIPT_STORE_BACKEND: postgres
+      SUITE_DERIVED_PREVIEW_RECEIPT_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_BACKEND: postgres
+      SUITE_PREVIEW_CONVERSION_JOB_EVIDENCE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_RENDERER_RELEASE_GATE_STORE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_BACKEND: postgres
+      SUITE_SOURCE_PREVIEW_CONTENT_RELEASE_RECEIPT_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
+      SUITE_TICKETS_REPOSITORY_BACKEND: postgres
+      SUITE_TICKETS_TENANT_APPROVAL_RECORD_BACKEND: postgres
+      SUITE_TICKETS_APPROVAL_RECORD_BACKEND: postgres
+      SUITE_TICKETS_PILOT_RECEIPT_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_PREFLIGHT_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_ADMISSION_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_WINDOW_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_DOMAIN_RECEIPT_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_CLOSURE_REPORT_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_PARTICIPANT_DIRECTORY_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_REAL_USER_ADMISSION_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_REAL_USER_RUNTIME_WINDOW_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_REAL_USER_CLOSURE_REPORT_STORE_BACKEND: postgres
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: ${SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED:-0}
+      SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH: ${SUITE_PRODUCTION_CONTINUITY_GATE_REPORT_PATH:-/workspace/backups/production-continuity-deployment-gate.json}
+      SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH: ${SUITE_PRODUCTION_CONTINUITY_SIGNER_POLICY_PATH:-}
+      SUITE_BACKUP_FAILOVER_POLICY_PATH: /workspace/docs/operations/backup_failover_policy.json
+      SUITE_PRODUCTIVITY_PILOT_POLICY_PATH: /workspace/docs/operations/productivity_pilot_policy.json
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
       SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
     ports:
-      - "8000:8000"
+      - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_API_PORT:-8000}:8000"
     volumes:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./data:/workspace/data
+      - ./docs:/workspace/docs:ro
+      - ./backups:/workspace/backups:ro
 
   test:
     build:
@@ -135,24 +4101,36 @@ services:
       target: dev
     command: pytest -q
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
-      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
-      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
-      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
-      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
-      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres-test:5432/collabio_test
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres-test:5432/collabio_test
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres-test:5432/collabio_test
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.dockerignore:/workspace/.dockerignore:ro
+      - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./.github:/workspace/.github:ro
+      - ./Dockerfile:/workspace/Dockerfile:ro
+      - ./security:/workspace/security:ro
       - ./docs:/workspace/docs
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+      - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
+      - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
+      - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./infra:/workspace/infra:ro
+      - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -172,6 +4150,8 @@ services:
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
@@ -187,6 +4167,8 @@ services:
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
       - ./pyproject.toml:/workspace/pyproject.toml
 
   quality:
@@ -195,26 +4177,63 @@ services:
       target: dev
     command: sh -lc "ruff check . && ruff format --check . && mypy app tests && pytest -q"
     depends_on:
-      postgres:
+      postgres-test:
         condition: service_healthy
     environment:
       PYTHONPATH: /workspace/app
       SUITE_DATA_DIR: /tmp/collabio-test-data
-      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres:5432/collabio
-      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres:5432/collabio
-      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres:5432/collabio
-      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres:5432/collabio
-      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres:5432/collabio
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@postgres-test:5432/collabio_test
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@postgres-test:5432/collabio_test
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@postgres-test:5432/collabio_test
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@postgres-test:5432/collabio_test
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@postgres-test:5432/collabio_test
     volumes:
+      - ./.dockerignore:/workspace/.dockerignore:ro
+      - ./.gitattributes:/workspace/.gitattributes:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
+      - ./.github:/workspace/.github:ro
+      - ./Dockerfile:/workspace/Dockerfile:ro
+      - ./security:/workspace/security:ro
       - ./docs:/workspace/docs
       - ./ARCHITECTURE_DECISIONS:/workspace/ARCHITECTURE_DECISIONS:ro
       - ./COMPLIANCE_MATRIX.md:/workspace/COMPLIANCE_MATRIX.md:ro
       - ./DATA_CLASSIFICATION.md:/workspace/DATA_CLASSIFICATION.md:ro
       - ./RETENTION_POLICIES.yaml:/workspace/RETENTION_POLICIES.yaml:ro
+      - ./requirements.txt:/workspace/requirements.txt:ro
+      - ./requirements-dev.txt:/workspace/requirements-dev.txt:ro
+      - ./requirements-preview.txt:/workspace/requirements-preview.txt:ro
+      - ./docker/regenerate-dependency-locks.sh:/workspace/docker/regenerate-dependency-locks.sh:ro
+      - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
+      - ./infra:/workspace/infra:ro
+      - ./tools:/workspace/tools:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
+networks:
+  genoffice_license_material_download:
+    internal: false
+  genoffice_provenance_verification:
+    internal: false
+  genoffice_supply_chain_updates:
+    internal: false
+  preview_malware:
+    internal: true
+  preview_malware_updates:
+    internal: false
+
 volumes:
   postgres18_data:
+  postgres18_test_data:
+  postgres18_restore_data:
+  minio_data:
+  minio_restore_data:
+  clamav_database:
+  preview_conversion_input:
+  preview_conversion_output:
+  preview_conversion_proof_input:
+  preview_conversion_proof_output:
+  preview_conversion_proof_control:
+  preview_conversion_proof_cdr:
+  preview_conversion_control:
+  preview_conversion_cdr:

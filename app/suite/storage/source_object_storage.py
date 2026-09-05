@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Protocol, cast
+from enum import StrEnum
+from typing import Any, Protocol, cast, runtime_checkable
 
 import psycopg
 from pydantic import BaseModel, Field
@@ -39,6 +41,11 @@ class SourceObjectStorageError(ValueError):
     pass
 
 
+class SourceObjectContentRecoveryStatus(StrEnum):
+    READY = "ready"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
+
+
 class StoredSourceObjectContent(BaseModel):
     tenant_id: str
     object_id: str
@@ -50,6 +57,43 @@ class StoredSourceObjectContent(BaseModel):
     stored_at_utc: str
     content_hash: str
     content_byte_length: int = Field(ge=0)
+
+
+class SourceObjectContentRecoveryEvidence(BaseModel):
+    tenant_id: str
+    storage_provider: str
+    checked_at_utc: str
+    restore_drill_report_hash: str
+    reconciliation_status: SourceObjectContentRecoveryStatus
+    stored_object_count: int = Field(ge=0)
+    storage_manifest_count: int = Field(ge=0)
+    verified_content_count: int = Field(ge=0)
+    orphaned_content_count: int = Field(ge=0)
+    missing_content_count: int = Field(ge=0)
+    orphaned_content_ref_hashes: tuple[str, ...] = ()
+    missing_storage_manifest_hashes: tuple[str, ...] = ()
+    source_content_recovery_required: bool
+    api_wiring_allowed: bool
+    evidence_hash: str
+    schema_version: str = "source_object_content_recovery_evidence.v1"
+
+
+class SourceObjectContentReconciliationAction(StrEnum):
+    READY_FOR_API_WIRING = "ready_for_api_wiring"
+    MANUAL_RECONCILIATION_REQUIRED = "manual_reconciliation_required"
+
+
+class SourceObjectContentReconciliationRun(BaseModel):
+    tenant_id: str
+    checked_at_utc: str
+    restore_drill_report_hash: str
+    evidence_hash: str
+    reconciliation_status: SourceObjectContentRecoveryStatus
+    orphaned_content_count: int = Field(ge=0)
+    missing_content_count: int = Field(ge=0)
+    api_wiring_allowed: bool
+    recommended_action: SourceObjectContentReconciliationAction
+    schema_version: str = "source_object_content_reconciliation_run.v1"
 
 
 class SourceObjectContentStore(Protocol):
@@ -64,6 +108,94 @@ class SourceObjectContentStore(Protocol):
     def get(self, *, manifest: StorageObjectManifest) -> bytes: ...
 
 
+@runtime_checkable
+class SourceObjectContentRecoveryInventory(Protocol):
+    def list_stored_objects(self, *, tenant_id: str) -> tuple[StoredSourceObjectContent, ...]: ...
+
+
+class SourceObjectContentRecoveryEvidenceBuilder(Protocol):
+    def build_content_recovery_evidence(
+        self,
+        *,
+        tenant_id: str,
+        restore_drill_report_hash: str,
+        checked_at_utc: str | None = None,
+    ) -> SourceObjectContentRecoveryEvidence: ...
+
+
+class SourceObjectContentReconciliationWorker:
+    def __init__(self, evidence_builder: SourceObjectContentRecoveryEvidenceBuilder) -> None:
+        self.evidence_builder = evidence_builder
+
+    def run(
+        self,
+        *,
+        tenant_id: str,
+        restore_drill_report_hash: str,
+        checked_at_utc: str | None = None,
+    ) -> SourceObjectContentReconciliationRun:
+        evidence = self.evidence_builder.build_content_recovery_evidence(
+            tenant_id=tenant_id,
+            restore_drill_report_hash=restore_drill_report_hash,
+            checked_at_utc=checked_at_utc,
+        )
+        return SourceObjectContentReconciliationRun(
+            tenant_id=evidence.tenant_id,
+            checked_at_utc=evidence.checked_at_utc,
+            restore_drill_report_hash=evidence.restore_drill_report_hash,
+            evidence_hash=evidence.evidence_hash,
+            reconciliation_status=evidence.reconciliation_status,
+            orphaned_content_count=evidence.orphaned_content_count,
+            missing_content_count=evidence.missing_content_count,
+            api_wiring_allowed=evidence.api_wiring_allowed,
+            recommended_action=(
+                SourceObjectContentReconciliationAction.READY_FOR_API_WIRING
+                if evidence.api_wiring_allowed
+                else SourceObjectContentReconciliationAction.MANUAL_RECONCILIATION_REQUIRED
+            ),
+        )
+
+
+def stored_source_object_content_ref_payload(content: StoredSourceObjectContent) -> dict[str, Any]:
+    return {
+        "tenant_id": content.tenant_id,
+        "object_id": content.object_id,
+        "version_id": content.version_id,
+        "bucket_id": content.bucket_id,
+        "object_key": content.object_key,
+        "object_version_id": content.object_version_id,
+        "storage_provider": content.storage_provider,
+        "content_hash": content.content_hash,
+        "content_byte_length": content.content_byte_length,
+    }
+
+
+def build_stored_source_object_content_ref_hash(content: StoredSourceObjectContent) -> str:
+    payload = json.dumps(
+        stored_source_object_content_ref_payload(content),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return sha256_bytes(payload)
+
+
+def source_object_content_recovery_evidence_payload(
+    evidence: SourceObjectContentRecoveryEvidence,
+) -> dict[str, Any]:
+    return evidence.model_dump(mode="json", exclude={"evidence_hash"})
+
+
+def build_source_object_content_recovery_evidence_hash(
+    evidence: SourceObjectContentRecoveryEvidence,
+) -> str:
+    payload = json.dumps(
+        source_object_content_recovery_evidence_payload(evidence),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return sha256_bytes(payload)
+
+
 class InMemorySourceObjectContentStore:
     def __init__(
         self,
@@ -72,6 +204,7 @@ class InMemorySourceObjectContentStore:
         storage_provider: str = "in-memory",
     ) -> None:
         self._objects: dict[tuple[str, str, str, str], bytes] = {}
+        self._stored_objects: dict[tuple[str, str, str, str], StoredSourceObjectContent] = {}
         self.stored_at_clock = stored_at_clock or self._now_utc
         self.storage_provider = storage_provider
 
@@ -101,7 +234,7 @@ class InMemorySourceObjectContentStore:
         if key in self._objects and self._objects[key] != content:
             raise SourceObjectStorageError("content object version already exists with different bytes")
         self._objects[key] = content
-        return StoredSourceObjectContent(
+        stored_content = StoredSourceObjectContent(
             tenant_id=record.metadata.tenant_id,
             object_id=record.metadata.object_id,
             version_id=record.metadata.version_id,
@@ -113,6 +246,8 @@ class InMemorySourceObjectContentStore:
             content_hash=record.metadata.content_hash,
             content_byte_length=len(content),
         )
+        self._stored_objects[key] = stored_content
+        return stored_content
 
     def get(self, *, manifest: StorageObjectManifest) -> bytes:
         key = (manifest.tenant_id, manifest.bucket_id, manifest.object_key, manifest.object_version_id)
@@ -131,6 +266,16 @@ class InMemorySourceObjectContentStore:
         if len(content) != manifest.content_byte_length:
             raise SourceObjectStorageError("content_byte_length does not match storage manifest")
         return content
+
+    def list_stored_objects(self, *, tenant_id: str) -> tuple[StoredSourceObjectContent, ...]:
+        return tuple(
+            stored_object
+            for (stored_tenant_id, _, _, _), stored_object in sorted(
+                self._stored_objects.items(),
+                key=lambda item: item[0],
+            )
+            if stored_tenant_id == tenant_id
+        )
 
     def _object_version_id(self, *, bucket_id: str, object_key: str, content_hash: str) -> str:
         digest = sha256_bytes(f"{bucket_id}\x1f{object_key}\x1f{content_hash}".encode()).removeprefix("sha256:")
@@ -167,40 +312,80 @@ class PgSourceObjectRepository:
         record: SourceObjectRecord,
         source_object_write_receipt_hash: str | None,
     ) -> None:
-        self.write_guard.validate_before_write(record)
-        retention_manifest = build_retention_manifest(record, self.retention_policy)
-        bucket_profile = self.storage_policy.bucket(retention_manifest.storage_bucket_id)
-        object_key = build_storage_object_key(record)
-        stored_content = self.content_store.put(
-            record=record,
-            bucket_id=bucket_profile.bucket_id,
-            object_key=object_key,
-        )
-        storage_manifest = build_storage_object_manifest(
-            record=record,
-            retention_manifest=retention_manifest,
-            bucket_profile=bucket_profile,
-            object_version_id=stored_content.object_version_id,
-            stored_at_utc=stored_content.stored_at_utc,
-            object_key=stored_content.object_key,
-            storage_provider=stored_content.storage_provider,
-        )
-        self._require_stored_content_matches_manifest(stored_content, storage_manifest)
-
         try:
             with psycopg.connect(self.database_dsn) as connection:
-                self._set_tenant(connection, record.metadata.tenant_id)
-                self._insert_storage_manifest(connection, storage_manifest)
-                self._insert_source_metadata(
+                self.add_with_receipt_in_transaction(
                     connection,
                     record=record,
-                    retention_manifest=retention_manifest,
-                    storage_manifest=storage_manifest,
                     source_object_write_receipt_hash=source_object_write_receipt_hash,
                 )
                 connection.commit()
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("source object version already exists") from exc
+
+    def add_with_receipt_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None:
+        retention_manifest, storage_manifest = self._prepare_storage_metadata(record)
+        self._set_tenant(connection, record.metadata.tenant_id)
+        try:
+            self._insert_storage_manifest(connection, storage_manifest)
+            self._insert_source_metadata(
+                connection,
+                record=record,
+                retention_manifest=retention_manifest,
+                storage_manifest=storage_manifest,
+                source_object_write_receipt_hash=source_object_write_receipt_hash,
+            )
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object version already exists") from exc
+
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            row = connection.execute(
+                """
+                SELECT
+                    tenant_id,
+                    object_id,
+                    object_type,
+                    version_id,
+                    title,
+                    owner_principal_id,
+                    created_by,
+                    created_at_utc,
+                    updated_at_utc,
+                    classification,
+                    retention_policy_id,
+                    legal_hold_state,
+                    kms_key_ref,
+                    manifest_hash,
+                    audit_chain_ref,
+                    source_system,
+                    source_schema_version,
+                    mime_type,
+                    acl_hash,
+                    acl_version,
+                    content_hash,
+                    content_byte_length,
+                    lifecycle_state,
+                    parent_object_id,
+                    thread_id,
+                    parser_profile_id
+                FROM collabio.source_object_metadata
+                WHERE tenant_id = %s
+                  AND object_id = %s
+                  AND version_id = %s
+                """,
+                (tenant_id, object_id, version_id),
+            ).fetchone()
+        if row is None:
+            raise KeyError("source object version not found")
+        return self._metadata_from_row(row)
 
     def get(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectRecord:
         with psycopg.connect(self.database_dsn) as connection:
@@ -276,6 +461,77 @@ class PgSourceObjectRepository:
         if row is None:
             raise KeyError("source object not found")
         return self.get(tenant_id=tenant_id, object_id=object_id, version_id=str(row[0]))
+
+    def build_content_recovery_evidence(
+        self,
+        *,
+        tenant_id: str,
+        restore_drill_report_hash: str,
+        checked_at_utc: str | None = None,
+    ) -> SourceObjectContentRecoveryEvidence:
+        if not isinstance(self.content_store, SourceObjectContentRecoveryInventory):
+            raise SourceObjectStorageError("content store does not expose recovery inventory")
+
+        stored_objects = self.content_store.list_stored_objects(tenant_id=tenant_id)
+        stored_by_key = {self._stored_content_key(stored_content): stored_content for stored_content in stored_objects}
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            storage_manifests = self._list_storage_manifests(connection, tenant_id=tenant_id)
+
+        verified_manifest_hashes: list[str] = []
+        missing_storage_manifest_hashes: list[str] = []
+        manifest_keys: set[tuple[str, str, str, str]] = set()
+        for manifest in storage_manifests:
+            manifest_key = self._storage_manifest_key(manifest)
+            manifest_keys.add(manifest_key)
+            if manifest_key not in stored_by_key:
+                missing_storage_manifest_hashes.append(manifest.manifest_hash)
+                continue
+            try:
+                self.content_store.get(manifest=manifest)
+            except (KeyError, SourceObjectStorageError):
+                missing_storage_manifest_hashes.append(manifest.manifest_hash)
+                continue
+            verified_manifest_hashes.append(manifest.manifest_hash)
+
+        orphaned_content_ref_hashes = tuple(
+            sorted(
+                build_stored_source_object_content_ref_hash(stored_content)
+                for key, stored_content in stored_by_key.items()
+                if key not in manifest_keys
+            )
+        )
+        missing_hashes = tuple(sorted(set(missing_storage_manifest_hashes)))
+        reconciliation_required = bool(orphaned_content_ref_hashes or missing_hashes)
+        draft = SourceObjectContentRecoveryEvidence(
+            tenant_id=tenant_id,
+            storage_provider=self._recovery_storage_provider(stored_objects, storage_manifests),
+            checked_at_utc=checked_at_utc or datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            restore_drill_report_hash=restore_drill_report_hash,
+            reconciliation_status=(
+                SourceObjectContentRecoveryStatus.RECONCILIATION_REQUIRED
+                if reconciliation_required
+                else SourceObjectContentRecoveryStatus.READY
+            ),
+            stored_object_count=len(stored_objects),
+            storage_manifest_count=len(storage_manifests),
+            verified_content_count=len(set(verified_manifest_hashes)),
+            orphaned_content_count=len(orphaned_content_ref_hashes),
+            missing_content_count=len(missing_hashes),
+            orphaned_content_ref_hashes=orphaned_content_ref_hashes,
+            missing_storage_manifest_hashes=missing_hashes,
+            source_content_recovery_required=reconciliation_required,
+            api_wiring_allowed=not reconciliation_required,
+            evidence_hash="sha256:" + "0" * 64,
+        )
+        return draft.model_copy(update={"evidence_hash": build_source_object_content_recovery_evidence_hash(draft)})
+
+    def list_storage_manifests(self, *, tenant_id: str) -> tuple[StorageObjectManifest, ...]:
+        if not tenant_id.strip():
+            raise ValueError("tenant_id must not be empty")
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            return self._list_storage_manifests(connection, tenant_id=tenant_id)
 
     def _insert_source_metadata(
         self,
@@ -359,6 +615,107 @@ class PgSourceObjectRepository:
                 source_object_write_receipt_hash,
             ),
         )
+
+    def _list_storage_manifests(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        tenant_id: str,
+    ) -> tuple[StorageObjectManifest, ...]:
+        rows = connection.execute(
+            """
+            SELECT
+                schema_version,
+                tenant_id,
+                object_id,
+                object_type,
+                source_version_id,
+                bucket_id,
+                object_key,
+                object_version_id,
+                storage_provider,
+                stored_at_utc,
+                classification,
+                lifecycle_state,
+                retention_policy_id,
+                legal_hold_state,
+                kms_key_ref,
+                source_manifest_hash,
+                content_hash,
+                content_byte_length,
+                retention_manifest_hash,
+                retention_policy_snapshot_hash,
+                object_lock_mode,
+                object_lock_retain_until_utc,
+                object_lock_legal_hold,
+                worm_required,
+                audit_chain_ref,
+                manifest_hash
+            FROM collabio.source_object_storage_manifests
+            WHERE tenant_id = %s
+            ORDER BY manifest_hash
+            """,
+            (tenant_id,),
+        ).fetchall()
+        return tuple(self._storage_manifest_from_row(cast(tuple[Any, ...], row)) for row in rows)
+
+    def _prepare_storage_metadata(
+        self,
+        record: SourceObjectRecord,
+    ) -> tuple[RetentionManifest, StorageObjectManifest]:
+        self.write_guard.validate_before_write(record)
+        retention_manifest = build_retention_manifest(record, self.retention_policy)
+        bucket_profile = self.storage_policy.bucket(retention_manifest.storage_bucket_id)
+        object_key = build_storage_object_key(record)
+        stored_content = self.content_store.put(
+            record=record,
+            bucket_id=bucket_profile.bucket_id,
+            object_key=object_key,
+        )
+        storage_manifest = build_storage_object_manifest(
+            record=record,
+            retention_manifest=retention_manifest,
+            bucket_profile=bucket_profile,
+            object_version_id=stored_content.object_version_id,
+            stored_at_utc=stored_content.stored_at_utc,
+            object_key=stored_content.object_key,
+            storage_provider=stored_content.storage_provider,
+        )
+        self._require_stored_content_matches_manifest(stored_content, storage_manifest)
+        return retention_manifest, storage_manifest
+
+    def _stored_content_key(self, stored_content: StoredSourceObjectContent) -> tuple[str, str, str, str]:
+        return (
+            stored_content.tenant_id,
+            stored_content.bucket_id,
+            stored_content.object_key,
+            stored_content.object_version_id,
+        )
+
+    def _storage_manifest_key(self, manifest: StorageObjectManifest) -> tuple[str, str, str, str]:
+        return (
+            manifest.tenant_id,
+            manifest.bucket_id,
+            manifest.object_key,
+            manifest.object_version_id,
+        )
+
+    def _recovery_storage_provider(
+        self,
+        stored_objects: tuple[StoredSourceObjectContent, ...],
+        storage_manifests: tuple[StorageObjectManifest, ...],
+    ) -> str:
+        providers = sorted(
+            {
+                *(stored_object.storage_provider for stored_object in stored_objects),
+                *(manifest.storage_provider for manifest in storage_manifests),
+            }
+        )
+        if not providers:
+            if isinstance(self.content_store, InMemorySourceObjectContentStore):
+                return self.content_store.storage_provider
+            return "unknown"
+        return ",".join(providers)
 
     def _insert_storage_manifest(
         self,

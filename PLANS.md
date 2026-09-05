@@ -94,14 +94,38 @@ Current sprint:
 84. [x] PostgreSQL-backed Knowledge Base article/version/source-evidence/restore-evidence transaction adapter for guarded create/edit writes.
 85. [x] Durable metadata-only source-object write receipts with PostgreSQL/RLS store, API execution evidence, and backup/failover coverage.
 86. [x] PostgreSQL/RLS source-object metadata and storage-manifest bridge with explicit content-store interface.
+87. [x] Coordinated Knowledge Base write unit-of-work that binds source-object receipts, source metadata, storage manifests, article/version metadata, source-version evidence, and restore evidence.
+88. [x] Shared PostgreSQL metadata transaction for Knowledge Base write unit-of-work across receipts, source metadata/storage manifests, and article/version/source/restore evidence.
+89. [x] Content-store recovery evidence for Knowledge Base writes with inventory comparison, orphan detection, restore-drill hash, and API-wiring gate signal.
+90. [x] S3/MinIO-compatible content-store adapter port with Object-Lock/WORM capability checks, metadata-only orphan-reconciliation worker output, and clean recovery-evidence gate for `PostgresKnowledgeBaseWriteUnitOfWork`.
+91. [x] Knowledge Base production write deployment gate that requires clean source-content recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence before Postgres UoW API wiring can be enabled.
+92. [x] Concrete boto3/MinIO-compatible SDK client behind `S3CompatibleObjectStoreClient`, Compose `object-storage` profile, bucket bootstrap, and provider-profile evidence check service.
+93. [x] Default API runtime on PostgreSQL source manifests plus S3-compatible exact-version content, with isolated test database and metadata-only runtime report.
+94. [x] Exact-version restore drill to an independently addressed MinIO target with source/target version reads, manifest/content verification, Object Lock, Legal Hold, and metadata-only report.
+95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
+96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
+97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
+98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
+99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
+100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
+101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
+102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
+103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, and a PostgreSQL source metadata/storage-manifest bridge. The next narrow step is the Knowledge Base write unit-of-work:
+Collect the accountable real-user pilot evidence without opening live traffic:
 
-- Add a coordinated commit contract that binds source-object receipt, source metadata, storage manifest, article/version metadata, source-version evidence, and restore evidence.
-- Wire API execution to PostgreSQL-backed writes only when the source-object bridge and KB transaction adapter are configured together.
-- Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
+- Read `GET /v1/platform/productivity-pilot/real-user-readiness` first and work only on the reported current lifecycle gap.
+- Accept named principals, purpose, lawful basis, IAM roles, privacy and workforce evidence only from accountable tenant owners; do not fabricate placeholders.
+- Refresh preflight, backup, isolated restore, foundation, business-release, production-continuity, monitoring, rollback, admission, and start evidence as one new chain.
+- Collect actual production topology, PITR, offsite, promotion and cross-site drill evidence from accountable operations owners; the gate must remain blocked without it.
+- Use the Security-Admin requirements and gate-status read APIs to verify the current policy contract and fail-closed state; do not add an evidence upload API.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until the new chain and the hash-only closure path pass together.
+- Require explicit human four-eyes approvals before any later live pilot window.
+- While accountable real-user evidence is pending, advance the designated Tickets test-tenant pilot only through `GET /v1/platform/modules/families/tickets-incidents/controlled-pilot/status`; never fabricate or infer its exact human confirmations.
+- Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.
+- Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
 
 ## Module Expansion Stance
 
