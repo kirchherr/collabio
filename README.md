@@ -11,6 +11,14 @@ Initial containerized MVP foundation for a self-hosted enterprise work suite wit
 
 The first implementation is intentionally small and testable. It establishes the security contracts before adding product features.
 
+Current continuation handoff for a new development chat:
+
+```text
+docs/CURRENT_HANDOFF.md
+```
+
+Read it together with `AGENTS.md` before changing code or operating `dev001`.
+
 Merged master roadmap:
 
 ```text
