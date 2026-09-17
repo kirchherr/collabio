@@ -24,9 +24,11 @@ acquire `build.lock` before `docker.lock` whenever both apply.
 - Database host/name: `work-e2e-postgres/collabio_work_e2e` only.
 - Runtime policy: production pilot switch remains closed; the second API process proves the ordinary fail-closed path.
 
-The image follows the official Playwright Docker guidance: package and image versions match, the browser process runs
-as non-root `pwuser`, and Chromium receives dedicated shared memory. The container additionally has a read-only root,
-no Linux capabilities, no-new-privileges, bounded CPU/memory/PIDs and no external network.
+The image follows the official Playwright Docker guidance: package and image versions match, the browser image defaults
+to non-root `pwuser`, and Chromium receives dedicated shared memory. Compose maps the process to the fixed non-root
+`extern` UID/GID `1000:1000` so the checked-in artifact directory remains writable without broad permissions. The
+container additionally has a read-only root, no Linux capabilities, no-new-privileges, bounded CPU/memory/PIDs and no
+external network. The bind mount refuses automatic host-path creation.
 
 ## Preflight
 
@@ -39,7 +41,8 @@ ss -ltnH
 ```
 
 Confirm that no previous `collabio-work-e2e-*` container is running. Do not stop, recreate or remove regular Collabio,
-Webcut, Tricert or provider resources.
+Webcut, Tricert or provider resources. Verify that `/home/extern/collabio/e2e/work/artifacts` remains owned by
+`1000:1000`; do not make it world-writable.
 
 ## Run
 

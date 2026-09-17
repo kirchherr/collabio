@@ -72,6 +72,8 @@ def test_work_e2e_compose_profile_has_no_host_ports_and_keeps_runtime_switch_clo
     assert "SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: \"0\"" in profile
     assert "ports:" not in profile
     assert "./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro" in profile
+    assert 'user: "1000:1000"' in profile
+    assert "create_host_path: false" in profile
     assert "work_e2e_internal" in profile
     assert "cap_drop:" in profile
     assert "no-new-privileges:true" in profile

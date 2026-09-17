@@ -4295,6 +4295,7 @@ services:
       work-e2e-blocked-api:
         condition: service_healthy
     init: true
+    user: "1000:1000"
     read_only: true
     cap_drop:
       - ALL
@@ -4302,14 +4303,18 @@ services:
       - no-new-privileges:true
     shm_size: 1024m
     tmpfs:
-      - /tmp:size=512m,nosuid,nodev
-      - /home/pwuser:size=128m,nosuid,nodev
+      - /tmp:size=512m,uid=1000,gid=1000,mode=1770,nosuid,nodev
+      - /home/pwuser:size=128m,uid=1000,gid=1000,mode=0700,nosuid,nodev
     environment:
       WORK_E2E_BASE_URL: http://work-e2e-api:8000
       WORK_E2E_BLOCKED_BASE_URL: http://work-e2e-blocked-api:8000
       WORK_E2E_ARTIFACT_DIR: /artifacts
     volumes:
-      - ./e2e/work/artifacts:/artifacts
+      - type: bind
+        source: ./e2e/work/artifacts
+        target: /artifacts
+        bind:
+          create_host_path: false
     mem_limit: 2048m
     pids_limit: 512
     cpus: 2
