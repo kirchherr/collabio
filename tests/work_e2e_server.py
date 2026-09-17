@@ -38,7 +38,10 @@ from suite.platform.time_tracking_module import (
     default_time_tracking_enabled_features,
 )
 from suite.storage.source_objects import sha256_bytes
-from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
+from suite.testing.work_e2e_guard import (
+    WORK_E2E_TENANT_ID,
+    require_isolated_work_e2e_environment,
+)
 
 
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
