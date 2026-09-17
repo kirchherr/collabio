@@ -21,6 +21,8 @@ dist/
 *.egg-info/
 
 node_modules/
+e2e/work/artifacts/*
+!e2e/work/artifacts/.gitkeep
 
 data/
 tmp/

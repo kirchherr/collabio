@@ -4096,6 +4096,226 @@ services:
       - ./docs:/workspace/docs:ro
       - ./backups:/workspace/backups:ro
 
+  work-e2e-postgres:
+    profiles: ["work-e2e"]
+    image: pgvector/pgvector:0.8.2-pg18-bookworm
+    environment:
+      POSTGRES_DB: collabio_work_e2e
+      POSTGRES_USER: collabio_owner
+      POSTGRES_PASSWORD: collabio_owner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collabio_owner -d collabio_work_e2e"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql:size=1024m
+    volumes:
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1024m
+    cpus: 2
+    networks:
+      - work_e2e_internal
+
+  work-e2e-migrate:
+    profiles: ["work-e2e"]
+    build:
+      context: .
+      target: dev
+    command: python -m suite.persistence.migrator
+    depends_on:
+      work-e2e-postgres:
+        condition: service_healthy
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_WORKER_DATABASE_DSN: postgresql://collabio_worker:collabio_worker@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_AUDIT_DATABASE_DSN: postgresql://collabio_audit_writer:collabio_audit_writer@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@work-e2e-postgres:5432/collabio_work_e2e
+    volumes:
+      - ./app:/workspace/app:ro
+    networks:
+      - work_e2e_internal
+
+  work-e2e-seed:
+    profiles: ["work-e2e"]
+    build:
+      context: .
+      target: dev
+    command: python /workspace/tests/work_e2e_seed.py
+    depends_on:
+      work-e2e-migrate:
+        condition: service_completed_successfully
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app
+      SUITE_WORK_E2E_MODE: isolated-compose-test
+      SUITE_WORK_E2E_TENANT_ID: tenant-work-e2e
+      SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: "0"
+      SUITE_ENV: dev
+      SUITE_AUTH_MODE: dev
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_DATA_DIR: /tmp/collabio-work-e2e-seed
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@work-e2e-postgres:5432/collabio_work_e2e
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./tests:/workspace/tests:ro
+    networks:
+      - work_e2e_internal
+
+  work-e2e-api:
+    profiles: ["work-e2e"]
+    build:
+      context: .
+      target: dev
+    command: uvicorn work_e2e_server:app --app-dir /workspace/tests --host 0.0.0.0 --port 8000
+    depends_on:
+      work-e2e-seed:
+        condition: service_completed_successfully
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=256m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app:/workspace/tests
+      SUITE_WORK_E2E_MODE: isolated-compose-test
+      SUITE_WORK_E2E_TENANT_ID: tenant-work-e2e
+      SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: "1"
+      SUITE_ENV: dev
+      SUITE_AUTH_MODE: dev
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_DATA_DIR: /tmp/collabio-work-e2e-api
+      SUITE_TASKS_ACTIVITIES_BACKEND: postgres
+      SUITE_TIME_TRACKING_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_BACKEND: memory
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@work-e2e-postgres:5432/collabio_work_e2e
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./tests:/workspace/tests:ro
+      - ./docs:/workspace/docs:ro
+    mem_limit: 1024m
+    pids_limit: 256
+    cpus: 2
+    networks:
+      - work_e2e_internal
+
+  work-e2e-blocked-api:
+    profiles: ["work-e2e"]
+    build:
+      context: .
+      target: dev
+    command: uvicorn work_e2e_server:app --app-dir /workspace/tests --host 0.0.0.0 --port 8000
+    depends_on:
+      work-e2e-seed:
+        condition: service_completed_successfully
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=256m,noexec,nosuid,nodev
+    environment:
+      PYTHONPATH: /workspace/app:/workspace/tests
+      SUITE_WORK_E2E_MODE: isolated-compose-test
+      SUITE_WORK_E2E_TENANT_ID: tenant-work-e2e
+      SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: "0"
+      SUITE_ENV: dev
+      SUITE_AUTH_MODE: dev
+      SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_DATA_DIR: /tmp/collabio-work-e2e-blocked-api
+      SUITE_TASKS_ACTIVITIES_BACKEND: postgres
+      SUITE_TIME_TRACKING_BACKEND: postgres
+      SUITE_MODULE_REGISTRY_BACKEND: memory
+      SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
+      SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@work-e2e-postgres:5432/collabio_work_e2e
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - ./app:/workspace/app:ro
+      - ./tests:/workspace/tests:ro
+      - ./docs:/workspace/docs:ro
+    mem_limit: 1024m
+    pids_limit: 256
+    cpus: 2
+    networks:
+      - work_e2e_internal
+
+  work-e2e:
+    profiles: ["work-e2e"]
+    build:
+      context: ./e2e/work
+    depends_on:
+      work-e2e-api:
+        condition: service_healthy
+      work-e2e-blocked-api:
+        condition: service_healthy
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 1024m
+    tmpfs:
+      - /tmp:size=512m,nosuid,nodev
+      - /home/pwuser:size=128m,nosuid,nodev
+    environment:
+      WORK_E2E_BASE_URL: http://work-e2e-api:8000
+      WORK_E2E_BLOCKED_BASE_URL: http://work-e2e-blocked-api:8000
+      WORK_E2E_ARTIFACT_DIR: /artifacts
+    volumes:
+      - ./e2e/work/artifacts:/artifacts
+    mem_limit: 2048m
+    pids_limit: 512
+    cpus: 2
+    networks:
+      - work_e2e_internal
+
   test:
     build:
       context: .
@@ -4212,6 +4432,8 @@ services:
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
 networks:
+  work_e2e_internal:
+    internal: true
   genoffice_license_material_download:
     internal: false
   genoffice_provenance_verification:
