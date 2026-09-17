@@ -50,6 +50,8 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     preview_requirements = PREVIEW_REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
 
     assert re.fullmatch(r"FROM python:3\.12-alpine@sha256:[a-f0-9]{64} AS base", base_image)
+    assert "ARG LIBUUID_VERSION=2.42.3-r1" in dockerfile
+    assert 'RUN apk add --no-cache "libuuid=${LIBUUID_VERSION}"' in dockerfile
     assert 'package-ecosystem: "docker"' in dependabot
     assert 'directory: "/"' in dependabot
     assert 'interval: "weekly"' in dependabot

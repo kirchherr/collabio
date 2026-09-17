@@ -6,6 +6,9 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_ROOT_USER_ACTION=ignore
 
+ARG LIBUUID_VERSION=2.42.3-r1
+RUN apk add --no-cache "libuuid=${LIBUUID_VERSION}"
+
 WORKDIR /workspace
 
 COPY requirements.lock .
