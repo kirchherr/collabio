@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Workspace</title>
-    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=166" />
+    <link rel="stylesheet" href="/workspace/assets/workspace.css?v=167" />
   </head>
   <body>
     <div class="workspace-shell">
@@ -40,6 +40,9 @@
             <h1>Module-Cockpit</h1>
           </div>
           <div class="workspace-actions">
+            <button class="action-button primary foundation-workflow-launch" type="button" id="foundation-workflow-button" disabled>
+              Foundation-Abschluss
+            </button>
             <button class="action-button quiet" type="button" id="snapshot-button">Snapshot</button>
             <button class="icon-button" type="button" id="refresh-button" title="Aktualisieren" aria-label="Aktualisieren">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -194,6 +197,37 @@
       </main>
     </div>
 
-    <script src="/workspace/assets/workspace.js?v=166" defer></script>
+    <dialog
+      class="foundation-workflow-dialog"
+      id="foundation-workflow-dialog"
+      aria-labelledby="foundation-workflow-title"
+    >
+      <div class="foundation-workflow-shell">
+        <header class="foundation-workflow-header">
+          <div>
+            <p class="eyebrow">Kontrollierter Tenant-Workflow</p>
+            <h2 id="foundation-workflow-title">Foundation-Abschluss</h2>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            id="foundation-workflow-close"
+            title="Schliessen"
+            aria-label="Schliessen"
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </header>
+        <div class="foundation-workflow-content" id="foundation-workflow-content" aria-live="polite"></div>
+        <footer class="foundation-workflow-footer">
+          <button class="action-button quiet" type="button" id="foundation-workflow-cancel">Abbrechen</button>
+          <button class="action-button primary" type="button" id="foundation-workflow-run" disabled>
+            Workflow ausfuehren
+          </button>
+        </footer>
+      </div>
+    </dialog>
+
+    <script src="/workspace/assets/workspace.js?v=167" defer></script>
   </body>
 </html>

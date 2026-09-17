@@ -749,6 +749,10 @@ def test_workspace_shell_serves_static_module_cockpit_ui() -> None:
     assert "work-item-list" in response.text
     assert "work-evidence-panel" in response.text
     assert "mvp-readiness-panel" in response.text
+    assert "foundation-workflow-button" in response.text
+    assert "foundation-workflow-dialog" in response.text
+    assert "foundation-workflow-content" in response.text
+    assert "foundation-workflow-run" in response.text
     assert "snapshot-button" in response.text
     assert "crm-search-form" in response.text
     assert "crm-search-readiness" in response.text
@@ -781,6 +785,12 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert ".foundation-gap-evidence-brief" in css_response.text
     assert ".foundation-gap-confirmation-brief" in css_response.text
     assert ".foundation-gap-content-release-brief" in css_response.text
+    assert ".foundation-workflow-dialog" in css_response.text
+    assert ".foundation-workflow-summary" in css_response.text
+    assert ".foundation-workflow-task" in css_response.text
+    assert ".foundation-workflow-confirmation" in css_response.text
+    assert ".workflow-completed" in css_response.text
+    assert ".workflow-failed" in css_response.text
     assert ".workspace-actions" in css_response.text
     assert ".work-item-list" in css_response.text
     assert ".work-evidence-panel" in css_response.text
@@ -837,13 +847,28 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "evidence_required_now" in js_response.text
     assert "policy_blocking_reasons" in js_response.text
     assert "executeFoundationGapAction" in js_response.text
-    assert "executeFoundationModuleActions" in js_response.text
+    assert "buildFoundationCompletionPlan" in js_response.text
+    assert "openFoundationCompletionWorkflow" in js_response.text
+    assert "runFoundationCompletionWorkflow" in js_response.text
+    assert "fetchFoundationWorkflowCockpit" in js_response.text
+    assert "const completionCockpit = await fetchFoundationWorkflowCockpit(context)" in js_response.text
+    assert "applyCockpit(completionCockpit)" in js_response.text
+    assert "foundationWorkItemSafetyIssue" in js_response.text
+    assert "Tenant-ID fehlt im aktuellen Kontext" in js_response.text
+    assert "Der Foundation-Plan ist veraltet" in js_response.text
+    assert "TENANT ${context.tenantId} FOUNDATION ${tasks.length}" in js_response.text
+    assert '["provision", "enable"]' in js_response.text
     assert "complete_module_activation_work_items" in js_response.text
-    assert "Module Actions" in js_response.text
-    assert "No domain data, persistent tasks, automations or content release requested." in js_response.text
+    assert "Im Workflow pruefen" in js_response.text
+    assert (
+        "No domain data, persistent tasks, automations, content release, destructive or external action requested."
+        in js_response.text
+    )
     assert "data-foundation-gap-id" in js_response.text
     assert "data-foundation-gap-action" in js_response.text
-    assert "Pending Decisions" in js_response.text
+    assert "data-workflow-gap-id" in js_response.text
+    assert "foundation-workflow-acknowledgement" in js_response.text
+    assert "foundation-workflow-confirmation" in js_response.text
     assert "skipConfirmation" in js_response.text
     assert "mvpReadinessTagList" in js_response.text
     assert "foundation_gaps" in js_response.text

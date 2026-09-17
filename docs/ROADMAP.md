@@ -1461,6 +1461,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      hash-only Grund/Confirmation, Audit, Restore-Vertrag und Cockpit-Bedienpfad umgesetzt. Der Entscheid erlaubt
      weder Admission noch Modulaktivierung, Traffic oder Pilotstart. Die vorbereitende Kette 183-239 bleibt
      eingefrorene Read-only-Kompatibilitaet und erzeugt keine weiteren Roadmap-Schritte.
+242. [x] Offene MVP-Foundation-Aktionen als zusammenhaengenden Bedienpfad operationalisiert: Preview-Decisions und
+     Modulstatuswechsel werden tenant-spezifisch vorab aufgelistet, metadata-only und rollenbasiert validiert, mit
+     exakter Tenant-Bestaetigung sowie unmittelbar frischem Cockpit-Abgleich ausgefuehrt und pro Aufgabe sichtbar
+     fortgeschrieben. Neue Module folgen kontrolliert `provision -> enable`; Teilfehler erzwingen einen frischen Plan.
+     Content-Release, Fachmodul-Daten, Automationen sowie externe oder destruktive Aktionen bleiben ausgeschlossen.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 

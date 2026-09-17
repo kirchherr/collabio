@@ -8,6 +8,12 @@ const fields = {
 const statusLine = document.querySelector("#status-line");
 const mvpReadinessPanel = document.querySelector("#mvp-readiness-panel");
 const pilotDecisionPanel = document.querySelector("#pilot-decision-panel");
+const foundationWorkflowButton = document.querySelector("#foundation-workflow-button");
+const foundationWorkflowDialog = document.querySelector("#foundation-workflow-dialog");
+const foundationWorkflowContent = document.querySelector("#foundation-workflow-content");
+const foundationWorkflowClose = document.querySelector("#foundation-workflow-close");
+const foundationWorkflowCancel = document.querySelector("#foundation-workflow-cancel");
+const foundationWorkflowRun = document.querySelector("#foundation-workflow-run");
 const snapshotButton = document.querySelector("#snapshot-button");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
@@ -58,6 +64,11 @@ let selectedFlowId = "";
 let detailLoadToken = 0;
 let crmSearchReadinessState = null;
 let currentPilotDecisionContext = null;
+let foundationWorkflowState = null;
+const foundationWorkflowGapIds = new Set([
+  "preview_decisions_pending",
+  "module_activation_work_items_open",
+]);
 const pilotDecisionConfirmationStatement =
   "I explicitly record this tenant-scoped MVP pilot decision against the supplied evidence context. " +
   "This stores decision evidence only; it does not admit users, activate modules, authorize traffic, " +
@@ -117,10 +128,7 @@ async function loadCockpit() {
     if (!response.ok) {
       throw new Error(body.detail || `HTTP ${response.status}`);
     }
-    currentCockpit = body;
-    renderCockpit(body);
-    loadCrmErpSearchReadiness();
-    loadPilotDecisionState();
+    applyCockpit(body);
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
     currentCockpit = {
@@ -140,6 +148,13 @@ async function loadCockpit() {
   } finally {
     refreshButton.disabled = false;
   }
+}
+
+function applyCockpit(body) {
+  currentCockpit = body;
+  renderCockpit(body);
+  loadCrmErpSearchReadiness();
+  loadPilotDecisionState();
 }
 
 async function loadPilotDecisionState() {
@@ -641,83 +656,490 @@ async function executeGuidedPreviewDecision(flow, options = {}) {
   }
 }
 
-async function executeFoundationGapAction(action) {
-  if (action.next_action === "complete_module_activation_work_items") {
-    await executeFoundationModuleActions(action);
+function executeFoundationGapAction(action) {
+  if (["resolve_preview_decision_work_items", "complete_module_activation_work_items"].includes(action.next_action)) {
+    openFoundationCompletionWorkflow(action.gap_id);
     return;
   }
-  if (action.next_action !== "resolve_preview_decision_work_items") {
-    setStatus("Foundation-Gap-Aktion ist aktuell nur als Review-Hinweis verfuegbar.");
-    return;
-  }
-  const pendingItems = (currentCockpit.work_items || []).filter((item) =>
-    (action.covered_by_work_item_ids || []).includes(item.work_item_id)
-    && item.action === "request_preview_decision"
-    && item.primary_action_hint?.ui_action === "guided_preview_decision"
-  );
-  const flows = pendingItems
-    .map((item) => (currentCockpit.source_object_flows || []).find((flow) => flow.flow_id === item.flow_id))
-    .filter(Boolean);
-  if (!flows.length) {
-    setStatus("Keine pending Preview-Decisions im aktuellen Cockpit.", true);
-    return;
-  }
-  const context = readContext();
-  const confirmationText = `${flows.length} metadata-only Preview-Decisions fuer Tenant ${context.tenantId} anfordern?\n\nEs werden keine Inhalte gerendert, keine Rohdaten freigegeben und content_release_allowed bleibt blockiert.`;
-  if (!window.confirm(confirmationText)) {
-    setStatus("Foundation-Gap-Aktion abgebrochen.");
-    return;
-  }
-  for (const flow of flows) {
-    const result = await executeGuidedPreviewDecision(flow, { skipConfirmation: true, reloadAfter: false });
-    if (!result) {
-      return;
-    }
-  }
-  await loadCockpit();
-  setStatus(`Preview-Decision-Gap aktualisiert: ${flows.length} Decision(s) metadata-only angefordert.`);
+  setStatus("Foundation-Gap-Aktion ist aktuell nur als Review-Hinweis verfuegbar.");
 }
 
-async function executeFoundationModuleActions(action) {
-  if (!canUseAnyRole(action.required_roles || [])) {
-    setStatus("Erforderliche Rolle fehlt im aktuellen Kontext.", true);
-    return;
-  }
-  const moduleItems = (currentCockpit.work_items || []).filter((item) =>
-    (action.covered_by_work_item_ids || []).includes(item.work_item_id)
-    && item.scope === "module"
-    && ["module_provision", "module_enable"].includes(item.primary_action_hint?.ui_action)
+function renderFoundationWorkflowLaunch(cockpit) {
+  const plan = buildFoundationCompletionPlan(cockpit, readContext());
+  const hasTargetGaps = plan.targetGapIds.length > 0;
+  foundationWorkflowButton.disabled = !hasTargetGaps;
+  foundationWorkflowButton.textContent = hasTargetGaps
+    ? `Foundation-Abschluss (${plan.tasks.length})`
+    : "Foundation abgeschlossen";
+  foundationWorkflowButton.title = hasTargetGaps
+    ? `${plan.targetGapIds.length} Foundation-Gap(s), ${plan.tasks.length} kontrollierte Aufgabe(n)`
+    : "Keine offenen Preview-Decision- oder Modulaktivierungs-Gaps";
+}
+
+function buildFoundationCompletionPlan(cockpit, context) {
+  const actions = (cockpit.foundation_gap_actions || []).filter((action) =>
+    foundationWorkflowGapIds.has(action.gap_id),
   );
-  const jobs = moduleItems.map((item) => {
-    const module = (currentCockpit.modules || []).find((candidate) => candidate.module_id === item.module_id);
-    const moduleAction = module ? moduleActionFor(module) : null;
-    if (!module || !moduleAction || moduleAction.apiAction !== item.primary_action_hint?.api_action) {
-      return null;
+  const workItems = cockpit.work_items || [];
+  const flows = cockpit.source_object_flows || [];
+  const modules = cockpit.modules || [];
+  const tasks = [];
+  const blockers = [];
+  if (!context.tenantId) {
+    blockers.push("Tenant-ID fehlt im aktuellen Kontext.");
+  }
+  if (!context.userId) {
+    blockers.push("User-ID fehlt im aktuellen Kontext.");
+  }
+
+  for (const action of actions) {
+    if (action.status !== "ready") {
+      blockers.push(`${action.gap_id}: Status ${action.status || "unknown"} ist nicht ausfuehrbar.`);
+      continue;
     }
-    return { module, action: moduleAction };
-  }).filter(Boolean);
-  if (!jobs.length) {
-    setStatus("Keine aktuellen Modulaktivierungs-Aktionen im Foundation-Gap.", true);
+    const coveredIds = new Set(action.covered_by_work_item_ids || []);
+    const coveredItems = workItems.filter((item) => coveredIds.has(item.work_item_id));
+    if (!coveredIds.size) {
+      blockers.push(`${action.gap_id}: Keine ausfuehrbaren Work-Items im aktuellen Cockpit.`);
+    }
+    for (const workItemId of coveredIds) {
+      if (!coveredItems.some((item) => item.work_item_id === workItemId)) {
+        blockers.push(`${action.gap_id}: Work-Item ${workItemId} fehlt im aktuellen Cockpit.`);
+      }
+    }
+
+    if (action.gap_id === "preview_decisions_pending") {
+      for (const item of coveredItems) {
+        const hint = item.primary_action_hint || {};
+        const safetyIssue = foundationWorkItemSafetyIssue(item, hint);
+        const flow = flows.find((candidate) => candidate.flow_id === item.flow_id);
+        const slot = flow ? previewSlotForFlow(flow) : null;
+        if (
+          safetyIssue
+          || item.action !== "request_preview_decision"
+          || hint.ui_action !== "guided_preview_decision"
+          || !flow
+          || !slot?.slot_id
+          || !slot?.gate?.policy_id
+        ) {
+          blockers.push(`${action.gap_id}: ${safetyIssue || `Work-Item ${item.work_item_id} ist veraltet.`}`);
+          continue;
+        }
+        tasks.push({
+          id: `preview:${flow.flow_id}`,
+          gapId: action.gap_id,
+          phase: "preview",
+          title: flow.title || flow.source_object_id,
+          subject: `${flow.source_object_id}:${flow.source_version_id}`,
+          flowId: flow.flow_id,
+          requiredRoles: [...new Set([...(hint.required_roles || []), ...(action.required_roles || [])])],
+          operations: ["Renderer-Sandbox-Evidence", "Preview-Decision-Ledger"],
+        });
+      }
+    }
+
+    if (action.gap_id === "module_activation_work_items_open") {
+      for (const item of coveredItems) {
+        const hint = item.primary_action_hint || {};
+        const safetyIssue = foundationWorkItemSafetyIssue(item, hint);
+        const module = modules.find((candidate) => candidate.module_id === item.module_id);
+        const firstAction = module ? moduleActionFor(module) : null;
+        if (
+          safetyIssue
+          || item.scope !== "module"
+          || !["module_provision", "module_enable"].includes(hint.ui_action)
+          || !module
+          || !firstAction
+          || !["provision", "enable"].includes(firstAction.apiAction)
+          || firstAction.apiAction !== hint.api_action
+        ) {
+          blockers.push(`${action.gap_id}: ${safetyIssue || `Work-Item ${item.work_item_id} ist veraltet.`}`);
+          continue;
+        }
+        const transitions = module.status === "available"
+          ? ["provision", "enable"]
+          : ["enable"];
+        tasks.push({
+          id: `module:${module.module_id}`,
+          gapId: action.gap_id,
+          phase: "module",
+          title: module.display_name,
+          subject: `${module.module_id}:${module.status}`,
+          moduleId: module.module_id,
+          initialStatus: module.status,
+          requiredRoles: [...new Set([...(hint.required_roles || []), ...(action.required_roles || [])])],
+          transitions,
+          operations: transitions.map((transition) => transition === "provision" ? "Provisionieren" : "Aktivieren"),
+        });
+      }
+    }
+  }
+
+  tasks.sort((left, right) => {
+    const phaseOrder = { preview: 0, module: 1 };
+    return phaseOrder[left.phase] - phaseOrder[right.phase] || left.id.localeCompare(right.id);
+  });
+  for (const task of tasks) {
+    if (!contextHasAnyRole(context, task.requiredRoles)) {
+      blockers.push(`${task.id}: Erforderliche Rolle fehlt (${task.requiredRoles.join(",")}).`);
+    }
+  }
+
+  const targetGapIds = actions.map((action) => action.gap_id).sort();
+  const confirmationPhrase = `TENANT ${context.tenantId} FOUNDATION ${tasks.length}`;
+  const uniqueBlockers = [...new Set(blockers)].sort();
+  const key = JSON.stringify({
+    tenantId: context.tenantId,
+    userId: context.userId,
+    roleIds: normalizedContextValues(context.roleIds),
+    readableObjectIds: normalizedContextValues(context.readableObjectIds),
+    targetGapIds,
+    blockers: uniqueBlockers,
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      operations: task.operations,
+      requiredRoles: [...task.requiredRoles].sort(),
+    })),
+  });
+  return {
+    tenantId: context.tenantId,
+    userId: context.userId,
+    targetGapIds,
+    tasks,
+    blockers: uniqueBlockers,
+    confirmationPhrase,
+    key,
+  };
+}
+
+function foundationWorkItemSafetyIssue(item, hint) {
+  if (hint.metadata_only !== true || hint.content_included === true) {
+    return `Work-Item ${item.work_item_id} ist nicht metadata-only.`;
+  }
+  if (hint.persistent_task_created === true || hint.destructive === true || hint.external_side_effect === true) {
+    return `Work-Item ${item.work_item_id} verletzt die sichere Foundation-Grenze.`;
+  }
+  return "";
+}
+
+function normalizedContextValues(value) {
+  return String(value || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .sort();
+}
+
+function contextHasAnyRole(context, requiredRoles) {
+  if (!requiredRoles.length) {
+    return true;
+  }
+  const roles = new Set(normalizedContextValues(context.roleIds));
+  return requiredRoles.some((role) => roles.has(role));
+}
+
+function openFoundationCompletionWorkflow(focusGapId = "") {
+  const plan = buildFoundationCompletionPlan(currentCockpit, readContext());
+  foundationWorkflowState = {
+    plan,
+    acknowledged: false,
+    confirmationValue: "",
+    running: false,
+    completed: false,
+    requiresReopen: false,
+    error: "",
+    remainingGapIds: [],
+    taskStates: Object.fromEntries(plan.tasks.map((task) => [task.id, { status: "pending", detail: "" }])),
+  };
+  renderFoundationCompletionWorkflow();
+  if (!foundationWorkflowDialog.open) {
+    foundationWorkflowDialog.showModal();
+  }
+  const focusedTask = focusGapId
+    ? foundationWorkflowContent.querySelector(`[data-workflow-gap-id="${CSS.escape(focusGapId)}"]`)
+    : null;
+  focusedTask?.scrollIntoView({ block: "center" });
+  foundationWorkflowContent.querySelector("#foundation-workflow-confirmation")?.focus();
+}
+
+function renderFoundationCompletionWorkflow() {
+  const state = foundationWorkflowState;
+  if (!state) {
+    foundationWorkflowContent.innerHTML = "";
     return;
   }
-  const context = readContext();
-  const confirmationText = `${jobs.length} Modul-Foundation-Aktion(en) fuer Tenant ${context.tenantId} ausfuehren?\n\nNur aktuelle Provisioning-/Enablement-Gaps werden ausgefuehrt. Keine Fachmodul-Daten, keine Tickets, keine Automationen und kein Content-Release.`;
-  if (!window.confirm(confirmationText)) {
-    setStatus("Foundation-Gap-Aktion abgebrochen.");
-    return;
-  }
-  for (const job of jobs) {
-    const result = await executeModuleAction(job.module, job.action, {
-      skipConfirmation: true,
-      reloadAfter: false,
-      reason: `Workspace foundation gap controlled ${job.action.apiAction} for ${job.module.module_id}; explicit browser confirmation captured once for module activation gap. No domain data, persistent tasks, automations or content release requested.`,
+  const { plan } = state;
+  const previewTasks = plan.tasks.filter((task) => task.phase === "preview");
+  const moduleTasks = plan.tasks.filter((task) => task.phase === "module");
+  const completedCount = Object.values(state.taskStates).filter((taskState) => taskState.status === "completed").length;
+  const progressLabel = state.completed
+    ? "abgeschlossen"
+    : state.requiresReopen
+      ? "unterbrochen"
+      : state.running
+        ? "in_arbeit"
+        : "bereit";
+  foundationWorkflowContent.innerHTML = [
+    '<div class="foundation-workflow-summary">',
+    foundationWorkflowMetric("Tenant", plan.tenantId || "n/a"),
+    foundationWorkflowMetric("Foundation-Gaps", plan.targetGapIds.length),
+    foundationWorkflowMetric("Aufgaben", plan.tasks.length),
+    foundationWorkflowMetric("Fortschritt", `${completedCount}/${plan.tasks.length}`),
+    '</div>',
+    '<div class="foundation-workflow-boundary">',
+    '<strong>Ausfuehrungsgrenze</strong>',
+    '<span>Metadata-only Preview-Evidence und Modulstatuswechsel. Kein Content-Release, keine Fachmodul-Daten, keine Automationen, keine externen oder destruktiven Aktionen.</span>',
+    '</div>',
+    foundationWorkflowBlockers(plan.blockers),
+    foundationWorkflowPhase("1", "Preview-Entscheidungen", previewTasks, state.taskStates),
+    foundationWorkflowPhase("2", "Modulaktivierung", moduleTasks, state.taskStates),
+    foundationWorkflowResult(state, progressLabel),
+    state.completed || state.requiresReopen || state.running || !plan.tasks.length
+      ? ""
+      : foundationWorkflowConfirmation(plan, state),
+  ].join("");
+
+  const confirmationInput = foundationWorkflowContent.querySelector("#foundation-workflow-confirmation");
+  const acknowledgement = foundationWorkflowContent.querySelector("#foundation-workflow-acknowledgement");
+  if (confirmationInput) {
+    confirmationInput.value = state.confirmationValue;
+    confirmationInput.addEventListener("input", () => {
+      state.confirmationValue = confirmationInput.value;
+      syncFoundationWorkflowControls();
     });
-    if (!result) {
-      return;
-    }
   }
-  await loadCockpit();
-  setStatus(`Modulaktivierungs-Gap aktualisiert: ${jobs.length} Modulaktion(en) ausgefuehrt.`);
+  if (acknowledgement) {
+    acknowledgement.checked = state.acknowledged;
+    acknowledgement.addEventListener("change", () => {
+      state.acknowledged = acknowledgement.checked;
+      syncFoundationWorkflowControls();
+    });
+  }
+  syncFoundationWorkflowControls();
+}
+
+function foundationWorkflowMetric(label, value) {
+  return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function foundationWorkflowBlockers(blockers) {
+  if (!blockers.length) {
+    return "";
+  }
+  return [
+    '<section class="foundation-workflow-blockers" aria-label="Ausfuehrungsblocker">',
+    '<strong>Ausfuehrung blockiert</strong>',
+    '<ul>',
+    blockers.map((blocker) => `<li>${escapeHtml(blocker)}</li>`).join(""),
+    '</ul>',
+    '</section>',
+  ].join("");
+}
+
+function foundationWorkflowPhase(number, title, tasks, taskStates) {
+  if (!tasks.length) {
+    return "";
+  }
+  return [
+    '<section class="foundation-workflow-phase">',
+    `<div class="foundation-workflow-phase-heading"><span>${escapeHtml(number)}</span><h3>${escapeHtml(title)}</h3></div>`,
+    '<ol class="foundation-workflow-task-list">',
+    tasks.map((task) => foundationWorkflowTask(task, taskStates[task.id])).join(""),
+    '</ol>',
+    '</section>',
+  ].join("");
+}
+
+function foundationWorkflowTask(task, taskState) {
+  const status = taskState?.status || "pending";
+  const labels = {
+    pending: "ausstehend",
+    running: "laeuft",
+    completed: "erledigt",
+    failed: "fehlgeschlagen",
+  };
+  return [
+    `<li class="foundation-workflow-task task-${escapeHtml(status)}" data-workflow-gap-id="${escapeHtml(task.gapId)}">`,
+    '<div class="foundation-workflow-task-copy">',
+    `<strong>${escapeHtml(task.title)}</strong>`,
+    `<code>${escapeHtml(task.subject)}</code>`,
+    `<span>${task.operations.map((operation) => escapeHtml(operation)).join(" &rarr; ")}</span>`,
+    taskState?.detail ? `<code class="foundation-workflow-task-detail">${escapeHtml(taskState.detail)}</code>` : "",
+    '</div>',
+    `<span class="status-pill workflow-${escapeHtml(status)}">${labels[status] || escapeHtml(status)}</span>`,
+    '</li>',
+  ].join("");
+}
+
+function foundationWorkflowResult(state, progressLabel) {
+  if (!state.error && !state.completed && !state.running) {
+    return "";
+  }
+  const remaining = state.remainingGapIds.length
+    ? `<code>remaining=${escapeHtml(state.remainingGapIds.join(","))}</code>`
+    : "";
+  return [
+    `<div class="foundation-workflow-result result-${escapeHtml(progressLabel)}">`,
+    `<strong>${escapeHtml(progressLabel)}</strong>`,
+    state.error ? `<span>${escapeHtml(state.error)}</span>` : "",
+    remaining,
+    '</div>',
+  ].join("");
+}
+
+function foundationWorkflowConfirmation(plan, state) {
+  return [
+    '<section class="foundation-workflow-confirmation">',
+    '<label class="foundation-workflow-check">',
+    '<input type="checkbox" id="foundation-workflow-acknowledgement" />',
+    '<span>Ich bestaetige die aufgefuehrten Preview-Entscheidungen und Modulstatuswechsel fuer diesen Tenant.</span>',
+    '</label>',
+    '<label for="foundation-workflow-confirmation">Bestaetigung exakt eingeben</label>',
+    `<code>${escapeHtml(plan.confirmationPhrase)}</code>`,
+    '<input id="foundation-workflow-confirmation" autocomplete="off" spellcheck="false" />',
+    `<span class="foundation-workflow-confirmation-state" id="foundation-workflow-confirmation-state">${state.confirmationValue === plan.confirmationPhrase ? "Bestaetigung stimmt ueberein." : "Ausfuehrung bleibt gesperrt."}</span>`,
+    '</section>',
+  ].join("");
+}
+
+function syncFoundationWorkflowControls() {
+  const state = foundationWorkflowState;
+  if (!state) {
+    foundationWorkflowRun.disabled = true;
+    return;
+  }
+  const ready = state.acknowledged
+    && state.confirmationValue === state.plan.confirmationPhrase
+    && state.plan.tasks.length > 0
+    && state.plan.blockers.length === 0
+    && !state.running
+    && !state.completed
+    && !state.requiresReopen;
+  foundationWorkflowRun.disabled = !ready;
+  foundationWorkflowRun.hidden = state.completed || state.requiresReopen;
+  foundationWorkflowRun.textContent = state.running ? "Workflow laeuft ..." : "Workflow ausfuehren";
+  foundationWorkflowClose.disabled = state.running;
+  foundationWorkflowCancel.disabled = state.running;
+  foundationWorkflowCancel.textContent = state.completed || state.requiresReopen ? "Schliessen" : "Abbrechen";
+  const confirmationState = foundationWorkflowContent.querySelector("#foundation-workflow-confirmation-state");
+  if (confirmationState) {
+    confirmationState.textContent = state.confirmationValue === state.plan.confirmationPhrase
+      ? "Bestaetigung stimmt ueberein."
+      : "Ausfuehrung bleibt gesperrt.";
+  }
+}
+
+async function fetchFoundationWorkflowCockpit(context) {
+  const response = await fetch("/v1/platform/cockpit", {
+    headers: headersForContext(context),
+  });
+  const body = await readJson(response);
+  if (!response.ok) {
+    throw new Error(body.detail || `HTTP ${response.status}`);
+  }
+  return body;
+}
+
+async function runFoundationCompletionWorkflow() {
+  const state = foundationWorkflowState;
+  if (!state || foundationWorkflowRun.disabled) {
+    return;
+  }
+  state.running = true;
+  state.error = "";
+  let activeTask = null;
+  let executionStarted = false;
+  renderFoundationCompletionWorkflow();
+  setStatus("Foundation-Plan wird unmittelbar vor Ausfuehrung erneut validiert ...");
+  try {
+    const context = readContext();
+    const freshCockpit = await fetchFoundationWorkflowCockpit(context);
+    const freshPlan = buildFoundationCompletionPlan(freshCockpit, context);
+    if (freshPlan.key !== state.plan.key) {
+      applyCockpit(freshCockpit);
+      throw new Error("Der Foundation-Plan ist veraltet. Cockpit wurde aktualisiert; Workflow erneut oeffnen.");
+    }
+    state.plan = freshPlan;
+    currentCockpit = freshCockpit;
+
+    for (const task of state.plan.tasks) {
+      activeTask = task;
+      executionStarted = true;
+      state.taskStates[task.id] = { status: "running", detail: task.operations.join(" -> ") };
+      renderFoundationCompletionWorkflow();
+
+      if (task.phase === "preview") {
+        const flow = (freshCockpit.source_object_flows || []).find((candidate) => candidate.flow_id === task.flowId);
+        const result = flow
+          ? await executeGuidedPreviewDecision(flow, { skipConfirmation: true, reloadAfter: false })
+          : null;
+        if (!result) {
+          throw new Error(`Preview-Aufgabe ${task.subject} konnte nicht abgeschlossen werden.`);
+        }
+        state.taskStates[task.id] = {
+          status: "completed",
+          detail: result.decision_ledger_ref || result.preview_decision_evidence_hash || "Decision gespeichert",
+        };
+      } else {
+        let module = (freshCockpit.modules || []).find((candidate) => candidate.module_id === task.moduleId);
+        const auditRefs = [];
+        if (!module) {
+          throw new Error(`Modul ${task.moduleId} fehlt im frischen Cockpit.`);
+        }
+        for (const transition of task.transitions) {
+          const action = moduleActionFor(module);
+          if (!action || action.apiAction !== transition || !["provision", "enable"].includes(transition)) {
+            throw new Error(`Modul ${task.moduleId} ist nicht mehr im erwarteten Zustand.`);
+          }
+          const result = await executeModuleAction(module, action, {
+            skipConfirmation: true,
+            reloadAfter: false,
+            reason: `Workspace foundation completion ${transition} for ${task.moduleId}; exact tenant confirmation captured before execution. No domain data, persistent tasks, automations, content release, destructive or external action requested.`,
+          });
+          if (!result) {
+            throw new Error(`Modulaktion ${task.moduleId}:${transition} konnte nicht abgeschlossen werden.`);
+          }
+          auditRefs.push(result.audit_chain_ref || `${transition}:recorded`);
+          module = { ...module, ...result };
+          state.taskStates[task.id] = {
+            status: "running",
+            detail: auditRefs.join(" | "),
+          };
+          renderFoundationCompletionWorkflow();
+        }
+        state.taskStates[task.id] = { status: "completed", detail: auditRefs.join(" | ") };
+      }
+      renderFoundationCompletionWorkflow();
+    }
+
+    const completionCockpit = await fetchFoundationWorkflowCockpit(context);
+    applyCockpit(completionCockpit);
+    state.remainingGapIds = (completionCockpit.foundation_gap_actions || [])
+      .map((action) => action.gap_id)
+      .filter((gapId) => foundationWorkflowGapIds.has(gapId));
+    if (state.remainingGapIds.length) {
+      throw new Error("Nicht alle Ziel-Gaps wurden geschlossen. Den aktualisierten Stand vor einer Fortsetzung pruefen.");
+    }
+    state.completed = true;
+    setStatus(`Foundation-Abschluss fuer Tenant ${state.plan.tenantId} ausgefuehrt; Content-Release bleibt policy-gesteuert.`);
+  } catch (error) {
+    if (activeTask && state.taskStates[activeTask.id]?.status === "running") {
+      state.taskStates[activeTask.id] = {
+        status: "failed",
+        detail: error.message || "Ausfuehrung fehlgeschlagen",
+      };
+    }
+    state.error = error.message || "Foundation-Workflow konnte nicht abgeschlossen werden.";
+    state.requiresReopen = true;
+    setStatus(state.error, true);
+    if (executionStarted) {
+      await loadCockpit();
+    }
+  } finally {
+    state.running = false;
+    renderFoundationCompletionWorkflow();
+  }
 }
 
 function renderCockpit(cockpit) {
@@ -746,6 +1168,7 @@ function renderCockpit(cockpit) {
   }
   renderModules(modules);
   renderMvpReadinessSummary(mvpSummary, foundationGapActions, mvpDecision);
+  renderFoundationWorkflowLaunch(cockpit);
   renderWorkItemOperationalSummary(workSummary);
   renderWorkItems(workItems);
   renderFlows(flows);
@@ -904,7 +1327,7 @@ function foundationGapActionButton(action) {
     return [
       '<div class="foundation-gap-controls">',
       '<button class="action-button primary" type="button" data-foundation-gap-action="'
-        + escapeHtml(action.gap_id) + '">Pending Decisions</button>',
+        + escapeHtml(action.gap_id) + '">Im Workflow pruefen</button>',
       '</div>',
     ].join("");
   }
@@ -913,7 +1336,7 @@ function foundationGapActionButton(action) {
     return [
       '<div class="foundation-gap-controls">',
       '<button class="action-button primary" type="button" data-foundation-gap-action="'
-        + escapeHtml(action.gap_id) + '"' + disabled + '>Module Actions</button>',
+        + escapeHtml(action.gap_id) + '"' + disabled + '>Im Workflow pruefen</button>',
       '</div>',
     ].join("");
   }
@@ -1387,11 +1810,7 @@ function canUseAdminActions() {
 }
 
 function canUseAnyRole(requiredRoles) {
-  if (!requiredRoles.length) {
-    return true;
-  }
-  const roles = new Set(readContext().roleIds.split(",").map((role) => role.trim()).filter(Boolean));
-  return requiredRoles.some((role) => roles.has(role));
+  return contextHasAnyRole(readContext(), requiredRoles);
 }
 
 function approvalReferenceFor(module, action) {
@@ -1532,6 +1951,20 @@ restoreContext();
 snapshotButton.addEventListener("click", downloadMvpSnapshot);
 crmSearchForm.addEventListener("submit", runCrmErpSearch);
 refreshButton.addEventListener("click", loadCockpit);
+foundationWorkflowButton.addEventListener("click", () => openFoundationCompletionWorkflow());
+foundationWorkflowRun.addEventListener("click", runFoundationCompletionWorkflow);
+foundationWorkflowClose.addEventListener("click", closeFoundationCompletionWorkflow);
+foundationWorkflowCancel.addEventListener("click", closeFoundationCompletionWorkflow);
+foundationWorkflowDialog.addEventListener("cancel", (event) => {
+  if (foundationWorkflowState?.running) {
+    event.preventDefault();
+    return;
+  }
+  foundationWorkflowState = null;
+});
+foundationWorkflowDialog.addEventListener("close", () => {
+  foundationWorkflowState = null;
+});
 mvpReadinessPanel.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-foundation-gap-action]");
   if (!button) {
@@ -1544,6 +1977,13 @@ mvpReadinessPanel.addEventListener("click", (event) => {
     executeFoundationGapAction(action);
   }
 });
+
+function closeFoundationCompletionWorkflow() {
+  if (foundationWorkflowState?.running) {
+    return;
+  }
+  foundationWorkflowDialog.close();
+}
 pilotDecisionPanel.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-pilot-decision]");
   if (button?.dataset.pilotDecision) {
