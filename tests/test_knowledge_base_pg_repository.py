@@ -61,6 +61,7 @@ def source_record_for_pg_write(
     version_id: str,
     title: str,
     text: str,
+    created_by: str | None = None,
 ) -> SourceObjectRecord:
     content = text.encode("utf-8")
     draft = SourceObjectMetadata(
@@ -70,7 +71,7 @@ def source_record_for_pg_write(
         version_id=version_id,
         title=title,
         owner_principal_id=f"user-{tenant_id}",
-        created_by=f"tenant-admin-{tenant_id}",
+        created_by=created_by or f"tenant-admin-{tenant_id}",
         created_at_utc="2026-06-12T09:00:00Z",
         updated_at_utc="2026-06-12T09:00:00Z",
         classification=DataClass.INTERNAL,
@@ -233,6 +234,7 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
         version_id="v2",
         title="Postgres Runbook v2",
         text="Postgres runbook source content v2.",
+        created_by=f"second-editor-{tenant_id}",
     )
     edit_command = KnowledgeBaseWriteApprovalCommand(
         approval_reference=f"approval:kb-pg-edit-{suffix}",
@@ -240,7 +242,7 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
         operation=KnowledgeBaseWriteOperation.EDIT,
         article_object_id=article_object_id,
         article_key=article_key,
-        title="Postgres Runbook",
+        title="Updated Postgres Runbook",
         proposed_version_object_id=edit_source.metadata.object_id,
         proposed_version_label=edit_source.metadata.version_id,
         proposed_source_object_id=edit_source.metadata.object_id,
@@ -267,10 +269,14 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
 
     assert edited_article.object_id == article_object_id
     assert edited_article.current_version_label == "v2"
+    assert edited_article.title == "Updated Postgres Runbook"
+    assert edited_article.created_by == create_source.metadata.created_by
     assert edited_article.current_source_manifest_hash == edit_source.metadata.manifest_hash
     records = repository.list_articles(tenant_id=tenant_id)
     assert len(records) == 1
     assert records[0].current_version_object_id == edit_source.metadata.object_id
+    assert records[0].title == "Updated Postgres Runbook"
+    assert records[0].created_by == create_source.metadata.created_by
     assert table_count(live_database, tenant_id=tenant_id, table="articles") == 1
     assert table_count(live_database, tenant_id=tenant_id, table="article_versions") == 2
     assert table_count(live_database, tenant_id=tenant_id, table="source_version_evidence") == 2
@@ -279,6 +285,14 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
 
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)
+        version_authors = connection.execute(
+            "SELECT object_id, created_by FROM knowledge_base.article_versions WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchall()
+        assert set(version_authors) == {
+            (create_source.metadata.object_id, create_source.metadata.created_by),
+            (edit_source.metadata.object_id, edit_source.metadata.created_by),
+        }
         grants = connection.execute(
             """
             SELECT acl_subject_type, acl_subject_id, permission, acl_version, audit_chain_ref

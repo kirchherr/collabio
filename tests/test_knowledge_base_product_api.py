@@ -23,7 +23,7 @@ from suite.platform.knowledge_base_runtime import (
 )
 from suite.platform.modules import default_module_registry
 from suite.storage.source_object_storage import SourceObjectStorageError
-from suite.storage.source_objects import SourceObjectRecord, sha256_bytes
+from suite.storage.source_objects import SourceObjectMetadata, SourceObjectRecord, sha256_bytes
 
 ARTICLE_ID = "kb-article-backup-runbook-demo"
 VERSION_ID = "kb-article-version-backup-runbook-v1-demo"
@@ -238,6 +238,43 @@ def test_guard_and_execution_reject_tampered_security_metadata(
         response = harness.client.post(f"{BASE}/{path}", headers=harness.headers, json=payload)
         assert response.status_code == 400
         assert "security metadata" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("owner_principal_id", "other"), ("created_by", "other"), ("acl_hash", "sha256:" + "f" * 64)],
+)
+def test_guard_rejects_rehashed_security_metadata_even_with_valid_approval_lineage(
+    harness: ProductHarness, field: str, value: str
+) -> None:
+    prepared = harness.post(f"{BASE}/prepare-write", {"operation": "create", "title": "Title", "body": BODY})
+    proposed = prepared["proposed_source_record"]
+    proposed["metadata"][field] = value
+    metadata = SourceObjectMetadata.model_validate(proposed["metadata"])
+    proposed["metadata"]["manifest_hash"] = build_source_object_manifest_hash(metadata)
+    command = prepared["write_command"]
+    command["proposed_source_manifest_hash"] = proposed["metadata"]["manifest_hash"]
+    dry_run = harness.post(f"{BASE}/write-dry-run", command)
+    approval = harness.post(
+        f"{BASE}/write-approvals/approve",
+        {
+            "dry_run_write_approval_evidence_hash": dry_run["write_approval_evidence_hash"],
+            "approval_reference": "approval:canonical-tamper-test",
+            "reason": "test untrusted canonicalized browser metadata",
+        },
+    )
+    response = harness.client.post(
+        f"{BASE}/source-object-write-guard",
+        headers=harness.headers,
+        json={
+            "approved_write_approval_evidence_hash": approval["approved_write_approval_evidence_hash"],
+            "proposed_source_record": proposed,
+        },
+    )
+    assert response.status_code == 400
+    assert "security metadata" in response.json()["detail"]
+    article_ids = {article.object_id for article in harness.service.repository.list_articles(tenant_id="tenant-demo")}
+    assert command["article_object_id"] not in article_ids
 
 
 @pytest.mark.parametrize("error_type", [SourceObjectStorageError, psycopg.OperationalError])

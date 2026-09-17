@@ -1978,7 +1978,9 @@ class PgKnowledgeBaseArticleRepository:
                 key=lambda record: (record.title.lower(), record.object_id),
             )
 
-        self._insert_article_version(connection, article=updated_article)
+        self._insert_article_version(
+            connection, article=updated_article, created_by=source_record.metadata.created_by
+        )
         if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
             self._update_article_current_version(connection, article=updated_article)
 
@@ -2197,6 +2199,7 @@ class PgKnowledgeBaseArticleRepository:
         connection: psycopg.Connection[Any],
         *,
         article: KnowledgeBaseArticleRecord,
+        created_by: str,
     ) -> None:
         connection.execute(
             """
@@ -2233,7 +2236,7 @@ class PgKnowledgeBaseArticleRepository:
                 article.current_version_object_id,
                 KB_ARTICLE_VERSION_OBJECT_TYPE,
                 article.owner_principal_id,
-                article.created_by,
+                created_by,
                 article.updated_at_utc,
                 article.updated_at_utc,
                 article.data_classification,
