@@ -4440,6 +4440,7 @@ services:
       - ./docker/genoffice-worker:/workspace/docker/genoffice-worker:ro
       - ./infra:/workspace/infra:ro
       - ./tools:/workspace/tools:ro
+      - ./e2e:/workspace/e2e:ro
       - ./pyproject.toml:/workspace/pyproject.toml
       - ./docker-compose.yml:/workspace/docker-compose.yml:ro
 
