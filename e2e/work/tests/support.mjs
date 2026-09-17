@@ -5,6 +5,10 @@ export const BLOCKED_BASE_URL = process.env.WORK_E2E_BLOCKED_BASE_URL || "http:/
 export const ARTIFACT_DIR = process.env.WORK_E2E_ARTIFACT_DIR || "/tmp/work-e2e-artifacts";
 export const TENANT_ID = "tenant-work-e2e";
 export const USER_ID = "work-user-e2e";
+export const HTTP_LOCKED_CONSOLE_ERROR =
+  "Failed to load resource: the server responded with a status of 423 (Locked)";
+export const HTTP_UNAVAILABLE_CONSOLE_ERROR =
+  "Failed to load resource: the server responded with a status of 503 (Service Unavailable)";
 
 export const resources = {
   tasks: {
@@ -160,7 +164,7 @@ export async function installContext(page, overrides = {}) {
   }, context);
 }
 
-export function monitorPage(page, ...baseUrls) {
+export function monitorPage(page, { baseUrls, expectedConsoleErrors = [] }) {
   const allowedHosts = new Set(baseUrls.map((value) => new URL(value).host));
   const consoleErrors = [];
   const pageErrors = [];
@@ -178,7 +182,13 @@ export function monitorPage(page, ...baseUrls) {
     }
   });
   return () => {
-    expect(consoleErrors, "browser console errors").toEqual([]);
+    const unexpectedConsoleErrors = [...consoleErrors];
+    for (const expectedError of expectedConsoleErrors) {
+      const index = unexpectedConsoleErrors.indexOf(expectedError);
+      expect(index, `expected browser console error: ${expectedError}`).toBeGreaterThanOrEqual(0);
+      unexpectedConsoleErrors.splice(index, 1);
+    }
+    expect(unexpectedConsoleErrors, "unexpected browser console errors").toEqual([]);
     expect(pageErrors, "uncaught page errors").toEqual([]);
     expect(externalRequests, "unexpected browser network requests").toEqual([]);
   };

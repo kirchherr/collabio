@@ -5,6 +5,7 @@ import { test, expect } from "@playwright/test";
 import {
   ARTIFACT_DIR,
   BASE_URL,
+  HTTP_LOCKED_CONSOLE_ERROR,
   USER_ID,
   installContext,
   monitorPage,
@@ -18,7 +19,10 @@ test("reassignment and correction-resubmission complete through the real API", a
   const taskTitle = `E2E Aufgabe ${run}`;
   const projectReference = `project:e2e-${run}`;
   await installContext(page);
-  const assertClean = monitorPage(page, BASE_URL);
+  const assertClean = monitorPage(page, {
+    baseUrls: [BASE_URL],
+    expectedConsoleErrors: [HTTP_LOCKED_CONSOLE_ERROR],
+  });
 
   await page.goto(`${BASE_URL}/work`);
   await waitForWorkspace(page, 6);

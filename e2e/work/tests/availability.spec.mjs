@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 import {
   BASE_URL,
+  HTTP_LOCKED_CONSOLE_ERROR,
+  HTTP_UNAVAILABLE_CONSOLE_ERROR,
   availabilityItem,
   installContext,
   installResourceRoutes,
@@ -15,7 +17,13 @@ for (const [key, resource] of Object.entries(resources)) {
   for (const kind of ["ready", "empty", "blocked", "unavailable"]) {
     test(`${resource.label} degrades independently as ${kind}`, async ({ page }) => {
       await installContext(page);
-      const assertClean = monitorPage(page, BASE_URL);
+      const expectedConsoleErrors = [];
+      if (kind === "blocked") {
+        expectedConsoleErrors.push(HTTP_LOCKED_CONSOLE_ERROR);
+      } else if (kind === "unavailable") {
+        expectedConsoleErrors.push(HTTP_UNAVAILABLE_CONSOLE_ERROR);
+      }
+      const assertClean = monitorPage(page, { baseUrls: [BASE_URL], expectedConsoleErrors });
       const states = { [key]: { kind } };
       if (key === "timeApprovals" && kind === "ready") {
         states.timeEntries = { kind: "ready" };

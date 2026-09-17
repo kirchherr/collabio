@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import {
   BLOCKED_BASE_URL,
+  HTTP_LOCKED_CONSOLE_ERROR,
   installContext,
   monitorPage,
   resources,
@@ -10,7 +11,10 @@ import {
 
 test("the ordinary Work API remains fail-closed without pilot authorization", async ({ page }) => {
   await installContext(page);
-  const assertClean = monitorPage(page, BLOCKED_BASE_URL);
+  const assertClean = monitorPage(page, {
+    baseUrls: [BLOCKED_BASE_URL],
+    expectedConsoleErrors: Array(Object.keys(resources).length).fill(HTTP_LOCKED_CONSOLE_ERROR),
+  });
   const statuses = new Map();
   page.on("response", (response) => {
     const path = new URL(response.url()).pathname;

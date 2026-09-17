@@ -32,6 +32,9 @@ from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_wo
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
 app = cast(FastAPI, main_module.app)
+catalog_entries = tuple(default_module_catalog_entries())
+catalog_registry = InMemoryModuleRegistry(catalog_entries=list(catalog_entries))
+migration_manifest = tuple(app.state.migration_manifest)
 
 
 def _enabled_state(module_id: str, enabled_features: dict[str, bool]) -> TenantModuleState:
@@ -46,6 +49,10 @@ def _enabled_state(module_id: str, enabled_features: dict[str, bool]) -> TenantM
         enabled_at_utc=now,
         changed_by="work-e2e-harness",
         audit_chain_ref="audit:work-e2e-module-state",
+        migration_evidence=catalog_registry.migration_evidence_for_module(
+            module_id=module_id,
+            migration_manifest_entries=migration_manifest,
+        ),
     )
 
 
@@ -56,7 +63,7 @@ time_features[TIME_ENTRIES_WRITE_FEATURE_ID] = True
 time_features[TIME_APPROVALS_WRITE_FEATURE_ID] = True
 
 app.state.module_registry = InMemoryModuleRegistry(
-    catalog_entries=list(default_module_catalog_entries()),
+    catalog_entries=list(catalog_entries),
     tenant_modules=[
         _enabled_state("crm_erp", default_crm_erp_subfeature_enabled_features()),
         _enabled_state("knowledge_base", default_knowledge_base_enabled_features()),

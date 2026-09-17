@@ -15,7 +15,7 @@ import {
 
 test("Work remains readable and contained at the configured viewport", async ({ page }, testInfo) => {
   await installContext(page);
-  const assertClean = monitorPage(page, BASE_URL);
+  const assertClean = monitorPage(page, { baseUrls: [BASE_URL] });
   await installResourceRoutes(
     page,
     Object.fromEntries(Object.keys(resources).map((key) => [key, { kind: "ready" }])),
