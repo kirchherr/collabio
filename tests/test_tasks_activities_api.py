@@ -125,3 +125,83 @@ def test_tasks_api_creates_replays_and_reads_only_authorized_objects() -> None:
     assert [item["object_id"] for item in items.json()["items"]] == [PAYLOAD["task_object_id"]]
     assert [item["object_id"] for item in activities.json()["activities"]] == [PAYLOAD["activity_object_id"]]
     assert hidden_activities.json()["activities"] == []
+
+
+def test_tasks_api_commits_append_only_lifecycle_transitions() -> None:
+    reset_runtime()
+    enable_tasks_features()
+    created = client.post("/v1/tasks/items", headers=ADMIN_HEADERS, json=PAYLOAD)
+    assert created.status_code == 200, created.text
+    readable = {
+        **ADMIN_HEADERS,
+        "X-Readable-Object-Ids": f"{PAYLOAD['task_object_id']},{PAYLOAD['activity_object_id']}",
+    }
+    transition_payload = {
+        "mutation_reference": "request:api-task-start-v1",
+        "transition_object_id": "task-transition-start-v1",
+        "activity_object_id": "task-activity-start-v1",
+        "activity_number": "TASK-ACT-API-START-001",
+        "expected_state": "assigned",
+        "target_state": "in_progress",
+        "transition_kind": "started",
+        "activity_summary": "Task work started",
+        "source_system": "native",
+    }
+    transitioned = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/transitions",
+        headers=readable,
+        json=transition_payload,
+    )
+    replay = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/transitions",
+        headers=readable,
+        json=transition_payload,
+    )
+    assert transitioned.status_code == 200, transitioned.text
+    body = transitioned.json()
+    assert body["task"]["lifecycle_state"] == "in_progress"
+    assert body["transition"]["sequence_no"] == 1
+    assert body["transition"]["previous_transition_hash"] == "sha256:" + "0" * 64
+    assert body["transition"]["confirmation_statement_hash"] is None
+    assert body["transition_content_included"] is False
+    assert replay.json()["idempotent_replay"] is True
+
+    stale = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/transitions",
+        headers=readable,
+        json={
+            **transition_payload,
+            "mutation_reference": "request:api-task-stale-v1",
+            "transition_object_id": "task-transition-stale-v1",
+            "activity_object_id": "task-activity-stale-v1",
+            "activity_number": "TASK-ACT-API-STALE-001",
+        },
+    )
+    assert stale.status_code == 409
+    assert "expected assigned, current in_progress" in stale.json()["detail"]
+
+    cancelled = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/transitions",
+        headers=readable,
+        json={
+            "mutation_reference": "request:api-task-cancel-v1",
+            "transition_object_id": "task-transition-cancel-v1",
+            "activity_object_id": "task-activity-cancel-v1",
+            "activity_number": "TASK-ACT-API-CANCEL-001",
+            "expected_state": "in_progress",
+            "target_state": "cancelled",
+            "transition_kind": "cancelled",
+            "activity_summary": "Task cancelled by operator",
+            "human_confirmation_statement": (
+                f"I explicitly confirm task {PAYLOAD['task_object_id']} transition to cancelled."
+            ),
+            "source_system": "native",
+        },
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["transition"]["sequence_no"] == 2
+    assert cancelled.json()["transition"]["confirmation_statement_hash"].startswith("sha256:")
+
+    listed = client.get("/v1/tasks/items", headers=readable)
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["lifecycle_state"] == "cancelled"

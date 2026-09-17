@@ -112,13 +112,15 @@ Current sprint:
 102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
 103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
 104. [x] First end-user Work surface over the existing guarded Tasks, Time, Tickets, Knowledge Base, and CRM APIs, with partial-failure isolation and explicit business mutations.
+105. [x] Append-only task lifecycle workflow with atomic status activities, optimistic state checks, database-enforced hash-chain continuity, exact destructive confirmation, restore coverage, API, and Work UI actions.
+106. [x] Append-only time-entry submission and maker-checker approval workflow with database-enforced chain integrity, hash-only exact confirmation, restore coverage, API, and Work UI actions.
 
 ## Next Engineering Step
 
 Complete the first daily-work product loop while accountable pilot evidence remains a separate human lane:
 
-- Verify `/work` against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable.
-- Add the next productive backend depth as complete workflows, starting with append-only task lifecycle transitions and time-entry approval decisions rather than more preparation boundaries.
+- Verify the expanded `/work` workflow against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable.
+- Close the next coherent daily-work loop with versioned time-entry correction/resubmission and append-only task reassignment/due-date changes; do not add another preparation-only boundary.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Read `GET /v1/platform/productivity-pilot/real-user-readiness` before any pilot action and work only on its reported lifecycle gap.
 - Accept named principals, purpose, lawful basis, IAM roles, privacy, workforce, production topology, PITR, offsite, promotion, and cross-site evidence only from accountable owners; never fabricate placeholders.

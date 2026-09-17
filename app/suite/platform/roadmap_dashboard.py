@@ -1186,20 +1186,22 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="tasks_activities_runtime",
                     title="Tasks and Activities Runtime",
                     summary=(
-                        "Task, initiale Aktivitaet, autoritative ACLs und ein metadata-only Receipt werden "
-                        "tenant-sicher und atomar in PostgreSQL angelegt und ACL-geprueft gelesen."
+                        "Task und initiale Aktivitaet werden tenant-sicher und atomar angelegt; Statuswechsel "
+                        "erzeugen eine fortlaufend verkettete Aktivitaets- und Transitionsevidenz."
                     ),
                     status=RoadmapCapabilityStatus.OPERATIONAL,
                     capability_type="productive_business_write_workflow",
                     evidence_refs=(
                         "app/suite/platform/tasks_activities_service.py",
                         "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+                        "app/suite/persistence/migrations/0077_tasks_lifecycle_transitions.sql",
                         "tests/test_tasks_activities_productive_slice.py",
                         "tests/test_tasks_activities_api.py",
                         "docs/modules/TASKS_ACTIVITIES_PRODUCTIVE_VERTICAL_SLICE.md",
                     ),
                     api_routes=(
                         "/v1/tasks/items",
+                        "/v1/tasks/items/{task_object_id}/transitions",
                         "/v1/tasks/activities",
                     ),
                     guardrails=(
@@ -1210,6 +1212,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "task_activity_acl_and_receipt_one_transaction",
                         "actor_and_assignee_bound_idempotency",
                         "append_only_business_rows_and_metadata_receipt",
+                        "append_only_hash_chained_lifecycle_transitions",
+                        "database_enforced_transition_chain",
+                        "exact_confirmation_for_cancel_and_archive",
                         "linked_task_acl_required_for_activity_read",
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
@@ -1220,8 +1225,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_id="time_tracking_runtime",
                     title="Time Tracking Runtime",
                     summary=(
-                        "Zeiteintrag, initialer Freigabestatus, autoritative ACLs und metadata-only Receipt werden "
-                        "tenant-sicher und atomar in PostgreSQL angelegt und ACL-geprueft gelesen."
+                        "Zeiteintrag und initiale Freigabe werden atomar angelegt; Einreichung und "
+                        "Vier-Augen-Entscheidung werden append-only und hash-verkettet fortgeschrieben."
                     ),
                     status=RoadmapCapabilityStatus.OPERATIONAL,
                     capability_type="productive_business_write_workflow",
@@ -1229,6 +1234,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/time_tracking_module.py",
                         "app/suite/platform/time_tracking_service.py",
                         "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+                        "app/suite/persistence/migrations/0078_time_approval_decisions.sql",
                         "tests/test_time_tracking_productive_slice.py",
                         "tests/test_time_tracking_api.py",
                         "docs/modules/TIME_TRACKING_MODULE_CHARTER.md",
@@ -1236,6 +1242,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     api_routes=(
                         "/v1/time-tracking/entries",
                         "/v1/time-tracking/approvals",
+                        "/v1/time-tracking/approvals/{approval_object_id}/transitions",
                     ),
                     guardrails=(
                         "tenant_module_and_feature_gates_required",
@@ -1245,10 +1252,13 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "entry_approval_acl_and_receipt_one_transaction",
                         "actor_and_worker_bound_idempotency",
                         "append_only_business_rows_and_metadata_receipt",
+                        "append_only_hash_chained_approval_decisions",
+                        "database_enforced_maker_checker_separation",
+                        "exact_confirmation_for_final_decisions",
                         "linked_entry_acl_required_for_approval_read",
                         "partial_write_rollback_proven",
                         "restore_control_verification_required",
-                        "approval_decisions_and_payroll_exports_deferred",
+                        "payroll_exports_and_entry_corrections_deferred",
                     ),
                     next_action="real_user_productivity_pilot_admission",
                 ),
@@ -1492,12 +1502,14 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/persistence/migrations/0049_lms_dry_run_execution_job_outbox.sql",
                         "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
                         "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+                        "app/suite/persistence/migrations/0077_tasks_lifecycle_transitions.sql",
                         "app/suite/platform/tasks_activities_service.py",
                         "tests/test_tasks_activities_productive_slice.py",
                         "tests/test_tasks_activities_api.py",
                         "app/suite/platform/time_tracking_module.py",
                         "app/suite/platform/time_tracking_service.py",
                         "app/suite/persistence/migrations/0060_time_tracking_productive_slice.sql",
+                        "app/suite/persistence/migrations/0078_time_approval_decisions.sql",
                         "tests/test_time_tracking_module_foundation.py",
                         "tests/test_time_tracking_productive_slice.py",
                         "tests/test_time_tracking_api.py",
@@ -1668,11 +1680,13 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tasks_activities_catalog_readiness_ready",
                         "tasks_activities_catalog_package_installed",
                         "tasks_activities_atomic_write_operational",
+                        "tasks_activities_lifecycle_transitions_operational",
                         "tasks_activities_authoritative_acl_reads_operational",
                         "tasks_activities_restore_controls_required",
                         "time_tracking_foundation_contract_ready",
                         "time_tracking_catalog_package_installed",
                         "time_tracking_atomic_write_operational",
+                        "time_tracking_approval_decisions_operational",
                         "time_tracking_authoritative_acl_reads_operational",
                         "time_tracking_restore_controls_required",
                         "tickets_incidents_foundation_contract_ready",

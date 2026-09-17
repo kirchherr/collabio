@@ -88,6 +88,7 @@ TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.items",
     "tasks.activities",
     "tasks.creation_receipts",
+    "tasks.lifecycle_transitions",
 }
 TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
     "tasks.items": {"tasks_items_no_update", "tasks_items_no_hard_delete"},
@@ -99,11 +100,19 @@ TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
         "tasks_creation_receipts_no_update",
         "tasks_creation_receipts_no_hard_delete",
     },
+    "tasks.lifecycle_transitions": {
+        "tasks_lifecycle_transitions_no_update",
+        "tasks_lifecycle_transitions_no_hard_delete",
+    },
+}
+TASKS_ACTIVITIES_APPEND_ONLY_TRIGGERS_BY_TABLE = {
+    "tasks.lifecycle_transitions": {"tasks_lifecycle_transitions_validate_append"},
 }
 TIME_TRACKING_WRITE_TABLES = {
     "time_tracking.entries",
     "time_tracking.approvals",
     "time_tracking.entry_creation_receipts",
+    "time_tracking.approval_decisions",
 }
 TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
     "time_tracking.entries": {"time_entries_no_update", "time_entries_no_hard_delete"},
@@ -112,6 +121,13 @@ TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
         "time_entry_receipts_no_update",
         "time_entry_receipts_no_hard_delete",
     },
+    "time_tracking.approval_decisions": {
+        "time_approval_decisions_no_update",
+        "time_approval_decisions_no_hard_delete",
+    },
+}
+TIME_TRACKING_APPEND_ONLY_TRIGGERS_BY_TABLE = {
+    "time_tracking.approval_decisions": {"time_approval_decisions_validate_append"},
 }
 PRODUCTIVITY_PILOT_CONTROL_TABLES = {
     "collabio.mvp_pilot_decision_records",
@@ -467,12 +483,22 @@ def build_postgres_database_snapshot(
         }
         for table_name in TASKS_ACTIVITIES_WRITE_TABLES
     }
+    tasks_trigger_names_by_table = {
+        table_name: {
+            str(row.get("trigger_name", "")) for row in normalized["triggers"] if _qualified_name(row) == table_name
+        }
+        for table_name in TASKS_ACTIVITIES_WRITE_TABLES
+    }
     tasks_activities_write_verified = (
         table_names >= TASKS_ACTIVITIES_WRITE_TABLES
         and forced_rls_tables >= TASKS_ACTIVITIES_WRITE_TABLES
         and all(
             tasks_policy_names_by_table[table_name] >= expected_policies
             for table_name, expected_policies in TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        and all(
+            tasks_trigger_names_by_table[table_name] >= expected_triggers
+            for table_name, expected_triggers in TASKS_ACTIVITIES_APPEND_ONLY_TRIGGERS_BY_TABLE.items()
         )
         and all(
             {"SELECT", "INSERT"} <= privileges and not ({"UPDATE", "DELETE"} & privileges)
@@ -505,12 +531,22 @@ def build_postgres_database_snapshot(
         }
         for table_name in TIME_TRACKING_WRITE_TABLES
     }
+    time_tracking_trigger_names_by_table = {
+        table_name: {
+            str(row.get("trigger_name", "")) for row in normalized["triggers"] if _qualified_name(row) == table_name
+        }
+        for table_name in TIME_TRACKING_WRITE_TABLES
+    }
     time_tracking_write_verified = (
         table_names >= TIME_TRACKING_WRITE_TABLES
         and forced_rls_tables >= TIME_TRACKING_WRITE_TABLES
         and all(
             time_tracking_policy_names_by_table[table_name] >= expected_policies
             for table_name, expected_policies in TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE.items()
+        )
+        and all(
+            time_tracking_trigger_names_by_table[table_name] >= expected_triggers
+            for table_name, expected_triggers in TIME_TRACKING_APPEND_ONLY_TRIGGERS_BY_TABLE.items()
         )
         and all(
             {"SELECT", "INSERT"} <= privileges and not ({"UPDATE", "DELETE"} & privileges)

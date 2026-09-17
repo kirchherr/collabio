@@ -138,7 +138,9 @@ def test_productivity_pilot_preflight_blocks_missing_and_forbidden_features() ->
 
 def test_productivity_pilot_preflight_blocks_release_scope_and_tenant_selection_gaps() -> None:
     policy = _policy()
-    mismatched_policy = policy.model_copy(update={"allowed_api_operations": policy.allowed_api_operations[:-1]})
+    mismatched_policy = policy.model_copy(
+        update={"allowed_api_operations": (*policy.allowed_api_operations, "GET /v1/not-released")}
+    )
 
     gate = build_productivity_pilot_preflight_gate(
         business_gate=_business_gate(ready=False),

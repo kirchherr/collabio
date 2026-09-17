@@ -783,12 +783,12 @@ h2 {
 }
 
 .task-columns {
-  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px;
+  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 38px;
   gap: 14px;
 }
 
 .time-columns {
-  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px;
+  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 38px;
   gap: 14px;
 }
 
@@ -803,12 +803,12 @@ h2 {
 }
 
 .task-row {
-  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px;
+  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 38px;
   gap: 14px;
 }
 
 .time-row {
-  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px;
+  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 38px;
   gap: 14px;
 }
 

@@ -3,6 +3,7 @@ from pathlib import Path
 from suite.ai_control_plane.models import DataClass
 from suite.platform.time_tracking_module import (
     TIME_APPROVALS_READ_FEATURE_ID,
+    TIME_APPROVALS_WRITE_FEATURE_ID,
     TIME_COMPLIANCE_EVIDENCE_FEATURE_ID,
     TIME_ENTRIES_READ_FEATURE_ID,
     TIME_ENTRIES_WRITE_FEATURE_ID,
@@ -24,12 +25,13 @@ def test_time_tracking_registry_declares_guarded_first_slice() -> None:
         TIME_ENTRIES_READ_FEATURE_ID,
         TIME_APPROVALS_READ_FEATURE_ID,
         TIME_ENTRIES_WRITE_FEATURE_ID,
+        TIME_APPROVALS_WRITE_FEATURE_ID,
         TIME_COMPLIANCE_EVIDENCE_FEATURE_ID,
         TIME_EXPORT_FEATURE_ID,
     )
-    assert len(registry.features) == 5
+    assert len(registry.features) == 6
     assert sum(feature.default_enabled for feature in registry.features) == 2
-    assert sum(feature.requires_approval for feature in registry.features) == 3
+    assert sum(feature.requires_approval for feature in registry.features) == 4
     assert registry.enabled_feature_defaults == default_time_tracking_enabled_features()
     assert registry.manifest_hash.startswith("sha256:")
 
@@ -37,6 +39,10 @@ def test_time_tracking_registry_declares_guarded_first_slice() -> None:
     assert write.compliance_relevant is True
     assert write.dependency_feature_ids == (TIME_ENTRIES_READ_FEATURE_ID, TIME_APPROVALS_READ_FEATURE_ID)
     assert "atomic_entry_approval_acl_receipt_write" in write.evidence_required
+
+    approval_write = registry.feature(TIME_APPROVALS_WRITE_FEATURE_ID)
+    assert approval_write.compliance_relevant is True
+    assert "maker_checker_separation" in approval_write.evidence_required
 
 
 def test_time_tracking_object_rules_bind_personal_records_to_continuity() -> None:
@@ -69,6 +75,10 @@ def test_time_tracking_charter_documents_first_slice_and_deferred_effects() -> N
         "payroll",
         "human confirmation",
         "POST /v1/time-tracking/entries",
+        "POST /v1/time-tracking/approvals/{approval_object_id}/transitions",
+        "time_tracking.approvals.write",
+        "0078_time_approval_decisions.sql",
+        "maker-checker",
         "time_tracking_records",
     ):
         assert expected in charter

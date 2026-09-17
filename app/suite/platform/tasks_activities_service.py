@@ -29,7 +29,9 @@ TASK_ACTIVITY_OBJECT_TYPE = "task.activity"
 TASK_ITEM_SCHEMA_VERSION = "task_item.v1"
 TASK_ACTIVITY_SCHEMA_VERSION = "task_activity.v1"
 TASK_CREATION_RECEIPT_SCHEMA_VERSION = "task_creation_receipt.v1"
+TASK_LIFECYCLE_TRANSITION_SCHEMA_VERSION = "task_lifecycle_transition.v1"
 TASKS_OPERATOR_ROLES = frozenset({"tenant-admin", "tenant_admin", "task-manager", "task-operator"})
+ZERO_HASH = "sha256:" + "0" * 64
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
 SOURCE_SYSTEM_PATTERN = re.compile(r"^[a-z][a-z0-9_+.-]*$")
 
@@ -46,6 +48,10 @@ class TasksActivitiesAssignmentError(ValueError):
     pass
 
 
+class TasksActivitiesNotFound(LookupError):
+    pass
+
+
 class TaskPriority(StrEnum):
     LOW = "low"
     NORMAL = "normal"
@@ -59,6 +65,15 @@ class TaskActivityType(StrEnum):
     STATUS_CHANGED = "status_changed"
     DUE_DATE_CHANGED = "due_date_changed"
     COMPLETED = "completed"
+
+
+class TaskTransitionKind(StrEnum):
+    STARTED = "started"
+    BLOCKED = "blocked"
+    RESUMED = "resumed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    ARCHIVED = "archived"
 
 
 class CreateTaskCommand(BaseModel):
@@ -128,6 +143,73 @@ class CreateTaskCommand(BaseModel):
     def require_unique_object_ids(self) -> CreateTaskCommand:
         if self.task_object_id == self.activity_object_id:
             raise ValueError("task and activity object IDs must differ")
+        return self
+
+
+class TransitionTaskCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mutation_reference: str = Field(min_length=3, max_length=300)
+    transition_object_id: str = Field(min_length=1, max_length=200)
+    activity_object_id: str = Field(min_length=1, max_length=200)
+    activity_number: str = Field(min_length=1, max_length=100)
+    expected_state: TasksActivitiesLifecycleState
+    target_state: TasksActivitiesLifecycleState
+    transition_kind: TaskTransitionKind
+    activity_summary: str = Field(min_length=1, max_length=400)
+    human_confirmation_statement: str | None = Field(default=None, max_length=500)
+    source_system: str = "native"
+
+    @field_validator("mutation_reference")
+    @classmethod
+    def require_mutation_reference(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("mutation_reference must be a namespaced reference")
+        return normalized
+
+    @field_validator("transition_object_id", "activity_object_id", "activity_number", "activity_summary")
+    @classmethod
+    def require_single_line_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("task transition fields must be non-empty single-line values")
+        return normalized
+
+    @field_validator("human_confirmation_statement")
+    @classmethod
+    def normalize_confirmation(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("human confirmation must be a non-empty single-line value")
+        return normalized
+
+    @field_validator("source_system")
+    @classmethod
+    def require_source_system(cls, value: str) -> str:
+        normalized = value.strip()
+        if not SOURCE_SYSTEM_PATTERN.fullmatch(normalized):
+            raise ValueError("source_system must be lowercase and non-empty")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_transition_shape(self) -> TransitionTaskCommand:
+        if self.transition_object_id == self.activity_object_id:
+            raise ValueError("transition and activity object IDs must differ")
+        if self.expected_state == self.target_state:
+            raise ValueError("task transition must change lifecycle state")
+        expected_targets = {
+            TaskTransitionKind.STARTED: TasksActivitiesLifecycleState.IN_PROGRESS,
+            TaskTransitionKind.BLOCKED: TasksActivitiesLifecycleState.BLOCKED,
+            TaskTransitionKind.RESUMED: TasksActivitiesLifecycleState.IN_PROGRESS,
+            TaskTransitionKind.COMPLETED: TasksActivitiesLifecycleState.COMPLETED,
+            TaskTransitionKind.CANCELLED: TasksActivitiesLifecycleState.CANCELLED,
+            TaskTransitionKind.ARCHIVED: TasksActivitiesLifecycleState.ARCHIVED,
+        }
+        if expected_targets[self.transition_kind] != self.target_state:
+            raise ValueError("task transition kind and target state do not match")
         return self
 
 
@@ -228,6 +310,49 @@ class TaskCreationReceipt(BaseModel):
     schema_version: str = TASK_CREATION_RECEIPT_SCHEMA_VERSION
 
 
+class TaskLifecycleTransitionRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    task_object_id: str
+    activity_object_id: str
+    mutation_reference: str
+    command_hash: str
+    sequence_no: int = Field(ge=1)
+    previous_transition_hash: str
+    from_state: TasksActivitiesLifecycleState
+    to_state: TasksActivitiesLifecycleState
+    transition_kind: TaskTransitionKind
+    transitioned_by: str
+    transitioned_at_utc: datetime
+    confirmation_statement_hash: str | None = None
+    audit_chain_ref: str
+    transition_hash: str
+    source_system: str = "native"
+    schema_version: str = TASK_LIFECYCLE_TRANSITION_SCHEMA_VERSION
+
+    @model_validator(mode="after")
+    def require_append_only_evidence(self) -> TaskLifecycleTransitionRecord:
+        hashes = (self.command_hash, self.previous_transition_hash, self.transition_hash)
+        if any(not re.fullmatch(r"sha256:[a-f0-9]{64}", value) for value in hashes):
+            raise ValueError("task transition hashes must use sha256")
+        if self.confirmation_statement_hash is not None and not re.fullmatch(
+            r"sha256:[a-f0-9]{64}", self.confirmation_statement_hash
+        ):
+            raise ValueError("task transition confirmation hash must use sha256")
+        if self.from_state == self.to_state:
+            raise ValueError("task transition states must differ")
+        if self.transition_kind in {TaskTransitionKind.CANCELLED, TaskTransitionKind.ARCHIVED}:
+            if self.confirmation_statement_hash is None:
+                raise ValueError("destructive task transitions require confirmation evidence")
+        elif self.confirmation_statement_hash is not None:
+            raise ValueError("non-destructive task transitions must not carry confirmation evidence")
+        if not REF_PATTERN.fullmatch(self.audit_chain_ref):
+            raise ValueError("task transition audit reference must be namespaced")
+        return self
+
+
 class TaskItemView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -311,6 +436,42 @@ class TaskCreationResponse(BaseModel):
     audit_event_id: str
 
 
+class TaskLifecycleTransitionView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    object_id: str
+    task_object_id: str
+    activity_object_id: str
+    mutation_reference: str
+    sequence_no: int
+    previous_transition_hash: str
+    from_state: TasksActivitiesLifecycleState
+    to_state: TasksActivitiesLifecycleState
+    transition_kind: TaskTransitionKind
+    transitioned_by: str
+    transitioned_at_utc: datetime
+    confirmation_statement_hash: str | None
+    audit_chain_ref: str
+    transition_hash: str
+    source_system: str
+    schema_version: str
+
+
+class TaskLifecycleTransitionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = TASKS_ACTIVITIES_MODULE_ID
+    feature_id: str = TASKS_WORKFLOW_WRITE_FEATURE_ID
+    task: TaskItemView
+    activity: TaskActivityView
+    transition: TaskLifecycleTransitionView
+    idempotent_replay: bool
+    atomic_transaction_committed: bool = True
+    transition_content_included: bool = False
+    audit_event_id: str
+
+
 class TasksActivitiesStore(Protocol):
     def list_items(self, *, tenant_id: str) -> Sequence[TaskItemRecord]: ...
 
@@ -323,6 +484,15 @@ class TasksActivitiesStore(Protocol):
         user_id: str,
         command: CreateTaskCommand,
     ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskCreationReceipt, bool]: ...
+
+    def transition_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: TransitionTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskLifecycleTransitionRecord, bool]: ...
 
 
 TaskRecord = TypeVar("TaskRecord", TaskItemRecord, TaskActivityRecord)
@@ -442,14 +612,204 @@ def _build_records_and_receipt(
     return task, activity, receipt
 
 
+TASK_TRANSITION_GRAPH = frozenset(
+    {
+        (
+            TasksActivitiesLifecycleState.ASSIGNED,
+            TaskTransitionKind.STARTED,
+            TasksActivitiesLifecycleState.IN_PROGRESS,
+        ),
+        (
+            TasksActivitiesLifecycleState.ASSIGNED,
+            TaskTransitionKind.BLOCKED,
+            TasksActivitiesLifecycleState.BLOCKED,
+        ),
+        (
+            TasksActivitiesLifecycleState.ASSIGNED,
+            TaskTransitionKind.COMPLETED,
+            TasksActivitiesLifecycleState.COMPLETED,
+        ),
+        (
+            TasksActivitiesLifecycleState.IN_PROGRESS,
+            TaskTransitionKind.BLOCKED,
+            TasksActivitiesLifecycleState.BLOCKED,
+        ),
+        (
+            TasksActivitiesLifecycleState.IN_PROGRESS,
+            TaskTransitionKind.COMPLETED,
+            TasksActivitiesLifecycleState.COMPLETED,
+        ),
+        (
+            TasksActivitiesLifecycleState.BLOCKED,
+            TaskTransitionKind.RESUMED,
+            TasksActivitiesLifecycleState.IN_PROGRESS,
+        ),
+        *(
+            (state, TaskTransitionKind.CANCELLED, TasksActivitiesLifecycleState.CANCELLED)
+            for state in (
+                TasksActivitiesLifecycleState.ASSIGNED,
+                TasksActivitiesLifecycleState.IN_PROGRESS,
+                TasksActivitiesLifecycleState.BLOCKED,
+            )
+        ),
+        (
+            TasksActivitiesLifecycleState.COMPLETED,
+            TaskTransitionKind.ARCHIVED,
+            TasksActivitiesLifecycleState.ARCHIVED,
+        ),
+        (
+            TasksActivitiesLifecycleState.CANCELLED,
+            TaskTransitionKind.ARCHIVED,
+            TasksActivitiesLifecycleState.ARCHIVED,
+        ),
+    }
+)
+
+
+def task_transition_confirmation_statement(*, task_object_id: str, target_state: TasksActivitiesLifecycleState) -> str:
+    return f"I explicitly confirm task {task_object_id} transition to {target_state.value}."
+
+
+def _transition_command_hash(
+    command: TransitionTaskCommand,
+    *,
+    task_object_id: str,
+    user_id: str,
+) -> str:
+    return _stable_hash(
+        {
+            "command": command.model_dump(mode="json"),
+            "task_object_id": task_object_id,
+            "transitioned_by": user_id,
+        }
+    )
+
+
+def _require_task_transition(
+    *,
+    task_object_id: str,
+    current_state: TasksActivitiesLifecycleState,
+    command: TransitionTaskCommand,
+) -> str | None:
+    if command.expected_state != current_state:
+        raise TasksActivitiesConflict(
+            f"task lifecycle changed: expected {command.expected_state.value}, current {current_state.value}"
+        )
+    edge = (current_state, command.transition_kind, command.target_state)
+    if edge not in TASK_TRANSITION_GRAPH:
+        raise TasksActivitiesConflict(
+            f"task transition {current_state.value}->{command.target_state.value} is not allowed"
+        )
+    destructive = command.target_state in {
+        TasksActivitiesLifecycleState.CANCELLED,
+        TasksActivitiesLifecycleState.ARCHIVED,
+    }
+    if not destructive:
+        if command.human_confirmation_statement is not None:
+            raise TasksActivitiesConflict("non-destructive task transition must not include human confirmation")
+        return None
+    expected_confirmation = task_transition_confirmation_statement(
+        task_object_id=task_object_id,
+        target_state=command.target_state,
+    )
+    if command.human_confirmation_statement != expected_confirmation:
+        raise TasksActivitiesConflict("exact human confirmation required for destructive task transition")
+    return _stable_hash(expected_confirmation)
+
+
+def _build_task_transition(
+    *,
+    tenant_id: str,
+    user_id: str,
+    task: TaskItemRecord,
+    command: TransitionTaskCommand,
+    previous: TaskLifecycleTransitionRecord | None,
+    transitioned_at_utc: datetime,
+) -> tuple[TaskItemRecord, TaskActivityRecord, TaskLifecycleTransitionRecord]:
+    current_state = previous.to_state if previous is not None else task.lifecycle_state
+    confirmation_hash = _require_task_transition(
+        task_object_id=task.object_id,
+        current_state=current_state,
+        command=command,
+    )
+    command_hash = _transition_command_hash(command, task_object_id=task.object_id, user_id=user_id)
+    sequence_no = 1 if previous is None else previous.sequence_no + 1
+    previous_hash = ZERO_HASH if previous is None else previous.transition_hash
+    transition_payload: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "object_id": command.transition_object_id,
+        "task_object_id": task.object_id,
+        "activity_object_id": command.activity_object_id,
+        "mutation_reference": command.mutation_reference,
+        "command_hash": command_hash,
+        "sequence_no": sequence_no,
+        "previous_transition_hash": previous_hash,
+        "from_state": current_state,
+        "to_state": command.target_state,
+        "transition_kind": command.transition_kind,
+        "transitioned_by": user_id,
+        "transitioned_at_utc": transitioned_at_utc,
+        "confirmation_statement_hash": confirmation_hash,
+        "audit_chain_ref": task.audit_chain_ref,
+        "source_system": command.source_system,
+        "schema_version": TASK_LIFECYCLE_TRANSITION_SCHEMA_VERSION,
+    }
+    transition = TaskLifecycleTransitionRecord(
+        **transition_payload,
+        transition_hash=_stable_hash(transition_payload),
+    )
+    activity = TaskActivityRecord(
+        tenant_id=tenant_id,
+        object_id=command.activity_object_id,
+        owner_principal_id=user_id,
+        created_by=user_id,
+        created_at_utc=transitioned_at_utc,
+        updated_at_utc=transitioned_at_utc,
+        retention_policy_id=task.retention_policy_id,
+        legal_hold_state=task.legal_hold_state,
+        lifecycle_state=TasksActivitiesLifecycleState.COMPLETED,
+        kms_key_ref=task.kms_key_ref,
+        audit_chain_ref=task.audit_chain_ref,
+        source_system=command.source_system,
+        task_object_id=task.object_id,
+        activity_number=command.activity_number,
+        activity_type=(
+            TaskActivityType.COMPLETED
+            if command.target_state == TasksActivitiesLifecycleState.COMPLETED
+            else TaskActivityType.STATUS_CHANGED
+        ),
+        summary=command.activity_summary,
+        occurred_at_utc=transitioned_at_utc,
+    )
+    transitioned_task = task.model_copy(
+        update={
+            "lifecycle_state": command.target_state,
+            "updated_at_utc": transitioned_at_utc,
+        }
+    )
+    return transitioned_task, activity, transition
+
+
 class InMemoryTasksActivitiesStore:
     def __init__(self) -> None:
         self._items: dict[tuple[str, str], TaskItemRecord] = {}
         self._activities: dict[tuple[str, str], TaskActivityRecord] = {}
         self._receipts: dict[tuple[str, str], TaskCreationReceipt] = {}
+        self._transitions: dict[tuple[str, str], TaskLifecycleTransitionRecord] = {}
+        self._transition_mutations: dict[tuple[str, str], TaskLifecycleTransitionRecord] = {}
 
     def list_items(self, *, tenant_id: str) -> Sequence[TaskItemRecord]:
-        return tuple(item for (stored_tenant, _), item in self._items.items() if stored_tenant == tenant_id)
+        items: list[TaskItemRecord] = []
+        for (stored_tenant, _), item in self._items.items():
+            if stored_tenant != tenant_id:
+                continue
+            latest = self._latest_transition(tenant_id=tenant_id, task_object_id=item.object_id)
+            if latest is not None:
+                item = item.model_copy(
+                    update={"lifecycle_state": latest.to_state, "updated_at_utc": latest.transitioned_at_utc}
+                )
+            items.append(item)
+        return tuple(items)
 
     def list_activities(self, *, tenant_id: str) -> Sequence[TaskActivityRecord]:
         return tuple(
@@ -490,6 +850,58 @@ class InMemoryTasksActivitiesStore:
         self._receipts[key] = receipt
         return task, activity, receipt, False
 
+    def transition_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: TransitionTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskLifecycleTransitionRecord, bool]:
+        mutation_key = (tenant_id, command.mutation_reference)
+        existing = self._transition_mutations.get(mutation_key)
+        if existing is not None:
+            command_hash = _transition_command_hash(command, task_object_id=task_object_id, user_id=user_id)
+            if existing.command_hash != command_hash:
+                raise TasksActivitiesConflict(
+                    "mutation_reference already belongs to a different task transition command"
+                )
+            replayed_task = self._items[(tenant_id, existing.task_object_id)].model_copy(
+                update={
+                    "lifecycle_state": existing.to_state,
+                    "updated_at_utc": existing.transitioned_at_utc,
+                }
+            )
+            return replayed_task, self._activities[(tenant_id, existing.activity_object_id)], existing, True
+        task = self._items.get((tenant_id, task_object_id))
+        if task is None:
+            raise TasksActivitiesNotFound("task item not found")
+        if (tenant_id, command.transition_object_id) in self._transitions:
+            raise TasksActivitiesConflict("task transition object already exists")
+        if (tenant_id, command.activity_object_id) in self._activities:
+            raise TasksActivitiesConflict("task activity object already exists")
+        previous = self._latest_transition(tenant_id=tenant_id, task_object_id=task_object_id)
+        transitioned_task, activity, transition = _build_task_transition(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            task=task,
+            command=command,
+            previous=previous,
+            transitioned_at_utc=utc_now(),
+        )
+        self._activities[(tenant_id, activity.object_id)] = activity
+        self._transitions[(tenant_id, transition.object_id)] = transition
+        self._transition_mutations[mutation_key] = transition
+        return transitioned_task, activity, transition, False
+
+    def _latest_transition(self, *, tenant_id: str, task_object_id: str) -> TaskLifecycleTransitionRecord | None:
+        matches = [
+            transition
+            for (stored_tenant, _), transition in self._transitions.items()
+            if stored_tenant == tenant_id and transition.task_object_id == task_object_id
+        ]
+        return max(matches, key=lambda item: item.sequence_no, default=None)
+
 
 class PgTasksActivitiesStore:
     def __init__(self, *, read_database_dsn: str, write_database_dsn: str) -> None:
@@ -499,11 +911,23 @@ class PgTasksActivitiesStore:
         self.write_database_dsn = write_database_dsn
 
     def list_items(self, *, tenant_id: str) -> Sequence[TaskItemRecord]:
-        return self._list_records(
+        items = self._list_records(
             tenant_id=tenant_id,
             table="tasks.items",
             order_by="due_at_utc NULLS LAST, created_at_utc DESC, object_id",
             record_type=TaskItemRecord,
+        )
+        latest = self._list_latest_transitions(tenant_id=tenant_id)
+        return tuple(
+            item.model_copy(
+                update={
+                    "lifecycle_state": latest[item.object_id].to_state,
+                    "updated_at_utc": latest[item.object_id].transitioned_at_utc,
+                }
+            )
+            if item.object_id in latest
+            else item
+            for item in items
         )
 
     def list_activities(self, *, tenant_id: str) -> Sequence[TaskActivityRecord]:
@@ -569,6 +993,75 @@ class PgTasksActivitiesStore:
         except psycopg.errors.UniqueViolation as exc:
             raise TasksActivitiesConflict("task IDs, numbers or ACL entries already exist") from exc
 
+    def transition_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: TransitionTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskLifecycleTransitionRecord, bool]:
+        command_hash = _transition_command_hash(command, task_object_id=task_object_id, user_id=user_id)
+        try:
+            with psycopg.connect(self.write_database_dsn, row_factory=dict_row) as connection:
+                connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+                connection.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"{tenant_id}:task-transition:{task_object_id}",),
+                )
+                existing = self._load_transition_by_mutation(
+                    connection,
+                    tenant_id=tenant_id,
+                    mutation_reference=command.mutation_reference,
+                )
+                if existing is not None:
+                    if existing.command_hash != command_hash:
+                        raise TasksActivitiesConflict(
+                            "mutation_reference already belongs to a different task transition command"
+                        )
+                    replayed_task = self._load_task(
+                        connection,
+                        tenant_id=tenant_id,
+                        object_id=existing.task_object_id,
+                    )
+                    return (
+                        replayed_task.model_copy(
+                            update={
+                                "lifecycle_state": existing.to_state,
+                                "updated_at_utc": existing.transitioned_at_utc,
+                            }
+                        ),
+                        self._load_activity(
+                            connection,
+                            tenant_id=tenant_id,
+                            object_id=existing.activity_object_id,
+                        ),
+                        existing,
+                        True,
+                    )
+                task = self._load_task_optional(connection, tenant_id=tenant_id, object_id=task_object_id)
+                if task is None:
+                    raise TasksActivitiesNotFound("task item not found")
+                previous = self._load_latest_transition(
+                    connection,
+                    tenant_id=tenant_id,
+                    task_object_id=task_object_id,
+                )
+                transitioned_task, activity, transition = _build_task_transition(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    task=task,
+                    command=command,
+                    previous=previous,
+                    transitioned_at_utc=utc_now(),
+                )
+                self._insert_activity(connection, activity)
+                self._insert_activity_acls(connection, task=task, activity=activity)
+                self._insert_transition(connection, transition)
+                return transitioned_task, activity, transition, False
+        except psycopg.errors.UniqueViolation as exc:
+            raise TasksActivitiesConflict("task transition IDs, activity number, or ACL entries already exist") from exc
+
     def _list_records(
         self,
         *,
@@ -586,6 +1079,22 @@ class PgTasksActivitiesStore:
                 (tenant_id,),
             ).fetchall()
         return tuple(record_type.model_validate(row) for row in rows)
+
+    def _list_latest_transitions(self, *, tenant_id: str) -> dict[str, TaskLifecycleTransitionRecord]:
+        if not tenant_id.strip():
+            raise ValueError("tenant_id must not be empty")
+        with psycopg.connect(self.read_database_dsn, row_factory=dict_row) as connection:
+            connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+            rows = connection.execute(
+                """
+                SELECT DISTINCT ON (task_object_id) *
+                FROM tasks.lifecycle_transitions
+                WHERE tenant_id = %s
+                ORDER BY task_object_id, sequence_no DESC
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return {str(row["task_object_id"]): TaskLifecycleTransitionRecord.model_validate(row) for row in rows}
 
     @staticmethod
     def _active_tenant_principal_exists(
@@ -688,6 +1197,58 @@ class PgTasksActivitiesStore:
             )
 
     @staticmethod
+    def _insert_activity_acls(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        task: TaskItemRecord,
+        activity: TaskActivityRecord,
+    ) -> None:
+        grants = [(activity.created_by, "admin")]
+        if task.assigned_principal_id != activity.created_by:
+            grants.append((task.assigned_principal_id, "read"))
+        for subject_id, permission in grants:
+            connection.execute(
+                """
+                INSERT INTO collabio.object_acl_entries (
+                    tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
+                    permission, acl_version, status, audit_chain_ref
+                ) VALUES (%s, %s, %s, 'user', %s, %s, 1, 'active', %s)
+                """,
+                (
+                    task.tenant_id,
+                    activity.object_id,
+                    activity.object_type,
+                    subject_id,
+                    permission,
+                    task.audit_chain_ref,
+                ),
+            )
+
+    @staticmethod
+    def _insert_transition(
+        connection: psycopg.Connection[dict[str, Any]],
+        transition: TaskLifecycleTransitionRecord,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO tasks.lifecycle_transitions (
+                tenant_id, object_id, task_object_id, activity_object_id, mutation_reference,
+                command_hash, sequence_no, previous_transition_hash, from_state, to_state,
+                transition_kind, transitioned_by, transitioned_at_utc, confirmation_statement_hash,
+                audit_chain_ref, transition_hash, source_system
+            ) VALUES (
+                %(tenant_id)s, %(object_id)s, %(task_object_id)s, %(activity_object_id)s,
+                %(mutation_reference)s, %(command_hash)s, %(sequence_no)s,
+                %(previous_transition_hash)s, %(from_state)s, %(to_state)s,
+                %(transition_kind)s, %(transitioned_by)s, %(transitioned_at_utc)s,
+                %(confirmation_statement_hash)s, %(audit_chain_ref)s, %(transition_hash)s,
+                %(source_system)s
+            )
+            """,
+            transition.model_dump(exclude={"schema_version"}),
+        )
+
+    @staticmethod
     def _insert_receipt(
         connection: psycopg.Connection[dict[str, Any]],
         receipt: TaskCreationReceipt,
@@ -750,6 +1311,19 @@ class PgTasksActivitiesStore:
         return TaskItemRecord.model_validate(row)
 
     @staticmethod
+    def _load_task_optional(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        object_id: str,
+    ) -> TaskItemRecord | None:
+        row = connection.execute(
+            "SELECT * FROM tasks.items WHERE tenant_id = %s AND object_id = %s",
+            (tenant_id, object_id),
+        ).fetchone()
+        return None if row is None else TaskItemRecord.model_validate(row)
+
+    @staticmethod
     def _load_activity(
         connection: psycopg.Connection[dict[str, Any]],
         *,
@@ -763,6 +1337,40 @@ class PgTasksActivitiesStore:
         if row is None:
             raise RuntimeError("task creation receipt points to a missing activity")
         return TaskActivityRecord.model_validate(row)
+
+    @staticmethod
+    def _load_transition_by_mutation(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        mutation_reference: str,
+    ) -> TaskLifecycleTransitionRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM tasks.lifecycle_transitions
+            WHERE tenant_id = %s AND mutation_reference = %s
+            """,
+            (tenant_id, mutation_reference),
+        ).fetchone()
+        return None if row is None else TaskLifecycleTransitionRecord.model_validate(row)
+
+    @staticmethod
+    def _load_latest_transition(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        task_object_id: str,
+    ) -> TaskLifecycleTransitionRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM tasks.lifecycle_transitions
+            WHERE tenant_id = %s AND task_object_id = %s
+            ORDER BY sequence_no DESC
+            LIMIT 1
+            """,
+            (tenant_id, task_object_id),
+        ).fetchone()
+        return None if row is None else TaskLifecycleTransitionRecord.model_validate(row)
 
 
 def task_item_view(record: TaskItemRecord) -> TaskItemView:
@@ -780,6 +1388,10 @@ def task_activity_view(record: TaskActivityRecord) -> TaskActivityView:
             }
         )
     )
+
+
+def task_transition_view(record: TaskLifecycleTransitionRecord) -> TaskLifecycleTransitionView:
+    return TaskLifecycleTransitionView(**record.model_dump(exclude={"tenant_id", "command_hash"}))
 
 
 class TasksActivitiesService:
@@ -823,6 +1435,53 @@ class TasksActivitiesService:
             activity=task_activity_view(activity),
             receipt=receipt,
             acl_grant_count=len(receipt.acl_manifest),
+            idempotent_replay=replayed,
+            audit_event_id=event.event_id,
+        )
+
+    def transition_task(
+        self,
+        *,
+        user_context: UserContext,
+        task_object_id: str,
+        command: TransitionTaskCommand,
+    ) -> TaskLifecycleTransitionResponse:
+        if user_context.role_ids.isdisjoint(TASKS_OPERATOR_ROLES):
+            raise PermissionError("Tasks & Activities operator role required")
+        if task_object_id not in user_context.readable_object_ids:
+            raise PermissionError("Task object write access required")
+        task, activity, transition, replayed = self.store.transition_task(
+            tenant_id=user_context.tenant_id,
+            user_id=user_context.user_id,
+            task_object_id=task_object_id,
+            command=command,
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type=("tasks.task.transition.replayed" if replayed else "tasks.task.transition.committed"),
+            source_object_ids=[task.object_id, activity.object_id, transition.object_id],
+            metadata={
+                "module_id": TASKS_ACTIVITIES_MODULE_ID,
+                "feature_id": TASKS_WORKFLOW_WRITE_FEATURE_ID,
+                "mutation_reference": transition.mutation_reference,
+                "command_hash": transition.command_hash,
+                "transition_hash": transition.transition_hash,
+                "sequence_no": transition.sequence_no,
+                "from_state": transition.from_state,
+                "to_state": transition.to_state,
+                "transition_kind": transition.transition_kind,
+                "confirmation_evidence_present": transition.confirmation_statement_hash is not None,
+                "atomic_transaction_committed": True,
+                "idempotent_replay": replayed,
+                "result_contract": "append_only_task_lifecycle_transition",
+                "transition_content_included": False,
+            },
+        )
+        return TaskLifecycleTransitionResponse(
+            tenant_id=user_context.tenant_id,
+            task=task_item_view(task),
+            activity=task_activity_view(activity),
+            transition=task_transition_view(transition),
             idempotent_replay=replayed,
             audit_event_id=event.event_id,
         )

@@ -30,9 +30,11 @@ from suite.operations.postgres_restore_drill import (
     SERVICE_ROLES,
     SOURCE_OBJECT_TABLES,
     TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE,
+    TASKS_ACTIVITIES_APPEND_ONLY_TRIGGERS_BY_TABLE,
     TASKS_ACTIVITIES_WRITE_TABLES,
     TENANT_IAM_TABLES,
     TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE,
+    TIME_TRACKING_APPEND_ONLY_TRIGGERS_BY_TABLE,
     TIME_TRACKING_WRITE_TABLES,
     PostgresBackupArtifactEvidence,
     PostgresDatabaseSnapshot,
@@ -58,7 +60,9 @@ def _snapshot(
     database_hash: str,
     changed_row_count: bool = False,
     tasks_controls: bool = True,
+    tasks_transition_trigger: bool = True,
     time_controls: bool = True,
+    time_decision_trigger: bool = True,
     pilot_controls: bool = True,
     traffic_scope_controls: bool = True,
     start_authorization_controls: bool = True,
@@ -174,9 +178,31 @@ def _snapshot(
             "table_name": table_name.split(".", 1)[1],
             "trigger_name": trigger_name,
         }
-        for table_name, trigger_names in sorted(PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE.items())
+        for table_name, trigger_names in sorted(TASKS_ACTIVITIES_APPEND_ONLY_TRIGGERS_BY_TABLE.items())
         for trigger_name in sorted(trigger_names)
     ]
+    triggers.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "trigger_name": trigger_name,
+        }
+        for table_name, trigger_names in sorted(TIME_TRACKING_APPEND_ONLY_TRIGGERS_BY_TABLE.items())
+        for trigger_name in sorted(trigger_names)
+    )
+    if not tasks_transition_trigger:
+        triggers = [row for row in triggers if row["trigger_name"] != "tasks_lifecycle_transitions_validate_append"]
+    if not time_decision_trigger:
+        triggers = [row for row in triggers if row["trigger_name"] != "time_approval_decisions_validate_append"]
+    triggers.extend(
+        {
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
+            "trigger_name": trigger_name,
+        }
+        for table_name, trigger_names in sorted(PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE.items())
+        for trigger_name in sorted(trigger_names)
+    )
     triggers.extend(
         {
             "schema_name": table_name.split(".", 1)[0],
@@ -452,6 +478,24 @@ def test_postgres_restore_drill_blocks_unsafe_time_tracking_application_grant() 
     assert report.restore_ready is False
     assert report.time_tracking_write_controls_verified is False
     assert "time_tracking_write_controls_not_verified" in report.blocking_reasons
+
+
+def test_postgres_restore_drill_blocks_missing_task_transition_trigger() -> None:
+    source = _snapshot(
+        database_hash="sha256:" + "1" * 64,
+        tasks_transition_trigger=False,
+    )
+
+    assert source.tasks_activities_write_controls_verified is False
+
+
+def test_postgres_restore_drill_blocks_missing_time_decision_trigger() -> None:
+    source = _snapshot(
+        database_hash="sha256:" + "1" * 64,
+        time_decision_trigger=False,
+    )
+
+    assert source.time_tracking_write_controls_verified is False
 
 
 def test_postgres_restore_drill_blocks_unsafe_productivity_pilot_application_grant() -> None:

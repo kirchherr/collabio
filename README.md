@@ -97,6 +97,11 @@ http://localhost:8000/workspace
 http://localhost:8000/roadmap
 ```
 
+`/work` composes the guarded domain APIs directly. Task lifecycle changes append a status activity
+and a hash-chained transition; time submissions and final approval decisions use an append-only
+maker-checker chain. These newer mutation routes are not part of the historical seven-operation
+productivity pilot and remain fail-closed until its traffic policy is explicitly expanded.
+
 Health endpoint:
 
 ```text

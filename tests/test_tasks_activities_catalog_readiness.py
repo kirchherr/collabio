@@ -46,6 +46,7 @@ def test_tasks_activities_catalog_readiness_declares_metadata_only_registration_
     assert "catalog_package_status_installed_confirmed" in response.required_catalog_evidence
     assert "catalog_registration_migration_0050_recorded" in response.required_catalog_evidence
     assert "productive_storage_migration_0059_recorded" in response.required_catalog_evidence
+    assert "append_only_lifecycle_migration_0077_recorded" in response.required_catalog_evidence
     assert "no_runtime_activation_confirmed" in response.required_catalog_evidence
     assert "app/suite/platform/tasks_activities_catalog_readiness.py" in response.evidence_refs
     assert response.next_action == "provision_tasks_activities_for_tenant_before_runtime_use"

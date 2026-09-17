@@ -328,7 +328,7 @@ def build_productivity_pilot_preflight_gate(
         )
 
     released_operations = {operation for item in business_gate.slices for operation in item.required_api_operations}
-    route_scope_verified = released_operations == set(policy.allowed_api_operations)
+    route_scope_verified = set(policy.allowed_api_operations).issubset(released_operations)
     monitoring_verified = bool(policy.monitoring_controls) and all(
         item.required_before_start and not item.destructive_action_allowed for item in policy.monitoring_controls
     )

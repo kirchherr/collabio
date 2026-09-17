@@ -10,6 +10,7 @@ import pytest
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
+from suite.platform.tasks_activities_module import TasksActivitiesLifecycleState
 from suite.platform.tasks_activities_service import (
     CreateTaskCommand,
     InMemoryTasksActivitiesStore,
@@ -17,6 +18,9 @@ from suite.platform.tasks_activities_service import (
     TaskPriority,
     TasksActivitiesConflict,
     TasksActivitiesService,
+    TaskTransitionKind,
+    TransitionTaskCommand,
+    task_transition_confirmation_statement,
 )
 
 
@@ -64,6 +68,34 @@ def task_command(suffix: str, *, mutation_reference: str | None = None) -> Creat
 def first_int(row: tuple[Any, ...] | None) -> int:
     assert row is not None
     return int(row[0])
+
+
+def transition_command(
+    suffix: str,
+    *,
+    expected_state: TasksActivitiesLifecycleState,
+    target_state: TasksActivitiesLifecycleState,
+    transition_kind: TaskTransitionKind,
+    task_object_id: str,
+) -> TransitionTaskCommand:
+    return TransitionTaskCommand(
+        mutation_reference=f"request:task-transition-{suffix}",
+        transition_object_id=f"task-transition-{suffix}",
+        activity_object_id=f"task-transition-activity-{suffix}",
+        activity_number=f"TASK-TRANSITION-ACT-{suffix}",
+        expected_state=expected_state,
+        target_state=target_state,
+        transition_kind=transition_kind,
+        activity_summary=f"Task transition {transition_kind.value}",
+        human_confirmation_statement=(
+            task_transition_confirmation_statement(
+                task_object_id=task_object_id,
+                target_state=target_state,
+            )
+            if target_state in {TasksActivitiesLifecycleState.CANCELLED, TasksActivitiesLifecycleState.ARCHIVED}
+            else None
+        ),
+    )
 
 
 def test_task_creation_enforces_role_idempotency_and_authoritative_read_filter() -> None:
@@ -221,3 +253,75 @@ def test_postgres_task_creation_rolls_back_all_surfaces_on_activity_collision(
         )
 
     assert (task_count, acl_count, receipt_count) == (0, 0, 0)
+
+
+def test_postgres_task_lifecycle_is_derived_from_append_only_transition_chain(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-task-transitions-{suffix}"
+    user_id = f"operator-{suffix}"
+    command = task_command(suffix)
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+    store.create_task(tenant_id=tenant_id, user_id=user_id, command=command)
+    start = transition_command(
+        f"start-{suffix}",
+        expected_state=TasksActivitiesLifecycleState.ASSIGNED,
+        target_state=TasksActivitiesLifecycleState.IN_PROGRESS,
+        transition_kind=TaskTransitionKind.STARTED,
+        task_object_id=command.task_object_id,
+    )
+    started, _, first_transition, first_replay = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=start,
+    )
+    _, _, replayed_transition, replayed = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=start,
+    )
+    complete = transition_command(
+        f"complete-{suffix}",
+        expected_state=TasksActivitiesLifecycleState.IN_PROGRESS,
+        target_state=TasksActivitiesLifecycleState.COMPLETED,
+        transition_kind=TaskTransitionKind.COMPLETED,
+        task_object_id=command.task_object_id,
+    )
+    completed, activity, second_transition, second_replay = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=complete,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        transition_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.lifecycle_transitions WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        stored_state = connection.execute(
+            "SELECT lifecycle_state FROM tasks.items WHERE tenant_id = %s AND object_id = %s",
+            (tenant_id, command.task_object_id),
+        ).fetchone()
+
+    assert first_replay is False
+    assert replayed is True
+    assert second_replay is False
+    assert started.lifecycle_state == TasksActivitiesLifecycleState.IN_PROGRESS
+    assert first_transition.sequence_no == 1
+    assert replayed_transition.transition_hash == first_transition.transition_hash
+    assert second_transition.sequence_no == 2
+    assert second_transition.previous_transition_hash == first_transition.transition_hash
+    assert completed.lifecycle_state == TasksActivitiesLifecycleState.COMPLETED
+    assert activity.activity_type.value == "completed"
+    assert transition_count == 2
+    assert stored_state == ("assigned",)
+    assert store.list_items(tenant_id=tenant_id)[0].lifecycle_state == TasksActivitiesLifecycleState.COMPLETED

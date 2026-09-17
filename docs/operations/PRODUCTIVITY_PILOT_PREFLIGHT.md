@@ -20,6 +20,11 @@ The preflight never starts a pilot. A green result means the selected tenants an
 
 Changes to the policy alter its canonical SHA-256 and require review.
 
+The seven-operation list is an explicit subset of the released backend contract. Preflight requires
+every listed operation to exist in the release, but newer released routes do not enter the pilot
+implicitly. They remain denied by the exact traffic-scope allowlist until the policy is deliberately
+revised and re-approved.
+
 ## Run
 
 Use the isolated restore profile and select tenants explicitly:

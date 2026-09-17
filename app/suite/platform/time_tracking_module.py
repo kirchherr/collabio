@@ -13,6 +13,7 @@ TIME_TRACKING_MODULE_ID = "time_tracking"
 TIME_ENTRIES_READ_FEATURE_ID = "time_tracking.entries.read"
 TIME_APPROVALS_READ_FEATURE_ID = "time_tracking.approvals.read"
 TIME_ENTRIES_WRITE_FEATURE_ID = "time_tracking.entries.write"
+TIME_APPROVALS_WRITE_FEATURE_ID = "time_tracking.approvals.write"
 TIME_COMPLIANCE_EVIDENCE_FEATURE_ID = "time_tracking.compliance_evidence.read"
 TIME_EXPORT_FEATURE_ID = "time_tracking.exports.execute"
 TIME_TRACKING_CONTINUITY_DOMAIN = "time_tracking_records"
@@ -307,6 +308,25 @@ def build_default_time_tracking_subfeature_registry() -> TimeTrackingSubfeatureR
                     "atomic_entry_approval_acl_receipt_write",
                     "worker_principal_validation",
                     "duration_validation",
+                    "backup_restore_evidence",
+                ),
+            ),
+            TimeTrackingSubfeatureDefinition(
+                feature_id=TIME_APPROVALS_WRITE_FEATURE_ID,
+                display_name="Time approval decisions",
+                area=TimeTrackingSubfeatureArea.APPROVALS,
+                default_enabled=False,
+                requires_approval=True,
+                compliance_relevant=True,
+                object_types=TIME_TRACKING_OBJECT_TYPES,
+                data_classes=(DataClass.PERSONAL,),
+                retention_policy_ids=retention_ids,
+                worker_surfaces=("normal_api", "compliance_worker"),
+                dependency_feature_ids=(TIME_ENTRIES_READ_FEATURE_ID, TIME_APPROVALS_READ_FEATURE_ID),
+                evidence_required=(
+                    "append_only_decision_hash_chain",
+                    "maker_checker_separation",
+                    "exact_human_confirmation",
                     "backup_restore_evidence",
                 ),
             ),

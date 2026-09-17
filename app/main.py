@@ -944,9 +944,12 @@ from suite.platform.tasks_activities_service import (
     TaskActivitiesResponse,
     TaskCreationResponse,
     TaskItemsResponse,
+    TaskLifecycleTransitionResponse,
     TasksActivitiesAssignmentError,
     TasksActivitiesConflict,
+    TasksActivitiesNotFound,
     TasksActivitiesService,
+    TransitionTaskCommand,
     build_default_tasks_activities_store,
 )
 from suite.platform.tenant_policies import InMemoryTenantPolicyRepository, JsonFileTenantPolicyRepository
@@ -1105,18 +1108,22 @@ from suite.platform.tickets_incidents_tenant_admin_activation_approval_record im
 )
 from suite.platform.time_tracking_module import (
     TIME_APPROVALS_READ_FEATURE_ID,
+    TIME_APPROVALS_WRITE_FEATURE_ID,
     TIME_ENTRIES_READ_FEATURE_ID,
     TIME_ENTRIES_WRITE_FEATURE_ID,
     TIME_TRACKING_MODULE_ID,
 )
 from suite.platform.time_tracking_service import (
     CreateTimeEntryCommand,
+    TimeApprovalDecisionResponse,
     TimeApprovalsResponse,
     TimeEntriesResponse,
     TimeEntryCreationResponse,
     TimeTrackingAssignmentError,
     TimeTrackingConflict,
+    TimeTrackingNotFound,
     TimeTrackingService,
+    TransitionTimeApprovalCommand,
     build_default_time_tracking_store,
 )
 from suite.platform.workspace_source_objects import (
@@ -22144,6 +22151,59 @@ def build_app() -> FastAPI:
         except TasksActivitiesAssignmentError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    @app.post(
+        "/v1/tasks/items/{task_object_id}/transitions",
+        response_model=TaskLifecycleTransitionResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
+    def transition_task_item(
+        task_object_id: str,
+        command: TransitionTaskCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        write_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_WORKFLOW_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        items_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ITEMS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+        activities_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TASKS_ACTIVITIES_MODULE_ID,
+                    feature_id=TASKS_ACTIVITY_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TaskLifecycleTransitionResponse:
+        del write_gate, items_gate, activities_gate
+        tasks_service = cast(TasksActivitiesService, request.app.state.tasks_activities_service)
+        try:
+            return tasks_service.transition_task(
+                user_context=context.user_context,
+                task_object_id=task_object_id,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except TasksActivitiesNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except TasksActivitiesConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
     @app.get(
         "/v1/tasks/items",
         response_model=TaskItemsResponse,
@@ -22235,6 +22295,59 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
         except TimeTrackingAssignmentError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.post(
+        "/v1/time-tracking/approvals/{approval_object_id}/transitions",
+        response_model=TimeApprovalDecisionResponse,
+        dependencies=[Depends(require_productivity_pilot_traffic_scope)],
+    )
+    def transition_time_approval(
+        approval_object_id: str,
+        command: TransitionTimeApprovalCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        write_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_APPROVALS_WRITE_FEATURE_ID,
+                )
+            ),
+        ],
+        entries_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_ENTRIES_READ_FEATURE_ID,
+                )
+            ),
+        ],
+        approvals_gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(
+                    module_id=TIME_TRACKING_MODULE_ID,
+                    feature_id=TIME_APPROVALS_READ_FEATURE_ID,
+                )
+            ),
+        ],
+    ) -> TimeApprovalDecisionResponse:
+        del write_gate, entries_gate, approvals_gate
+        service = cast(TimeTrackingService, request.app.state.time_tracking_service)
+        try:
+            return service.transition_approval(
+                user_context=context.user_context,
+                approval_object_id=approval_object_id,
+                command=command,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except TimeTrackingNotFound as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except TimeTrackingConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     @app.get(
         "/v1/time-tracking/entries",

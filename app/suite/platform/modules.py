@@ -1671,30 +1671,30 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
         ModuleCatalogEntry(
             module_id="tasks_activities",
             display_name="Tasks and Activities",
-            module_version="0.2.0",
+            module_version="0.3.0",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
             status=ModuleStatus.INSTALLED,
             description=(
-                "Optional governed tasks and activities module with a tenant-gated productive task and initial "
-                "activity slice. Workflow transitions, notifications, integrations, RAG, and AI remain separate "
-                "gates."
+                "Optional governed tasks and activities module with tenant-gated task creation, append-only "
+                "lifecycle transitions and authoritative activity history. Notifications, integrations, RAG, "
+                "and AI remain separate gates."
             ),
             manifest_hash="sha256:tasks-activities-module-manifest",
-            required_migration_versions=("0050", "0059"),
+            required_migration_versions=("0050", "0059", "0077"),
         ),
         ModuleCatalogEntry(
             module_id="time_tracking",
             display_name="Time Tracking",
-            module_version="0.1.0",
+            module_version="0.2.0",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
             status=ModuleStatus.INSTALLED,
             description=(
-                "Optional governed Time Tracking module with tenant-gated time-entry creation, initial approval "
-                "state and authoritative ACL reads. Corrections, approval decisions, payroll exports and "
-                "automation remain separate gates."
+                "Optional governed Time Tracking module with tenant-gated entry creation, append-only submission "
+                "and maker-checker approval decisions. Corrections, payroll exports and automation remain "
+                "separate gates."
             ),
             manifest_hash="sha256:time-tracking-module-manifest",
-            required_migration_versions=("0060",),
+            required_migration_versions=("0060", "0078"),
         ),
         ModuleCatalogEntry(
             module_id="tickets_incidents",

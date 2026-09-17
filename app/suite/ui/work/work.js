@@ -32,14 +32,18 @@ const elements = {
 
 const dialogs = {
   task: document.querySelector("#task-dialog"),
+  taskTransition: document.querySelector("#task-transition-dialog"),
   time: document.querySelector("#time-dialog"),
+  timeApproval: document.querySelector("#time-approval-dialog"),
   ticket: document.querySelector("#ticket-dialog"),
   ticketTransition: document.querySelector("#ticket-transition-dialog"),
 };
 
 const forms = {
   task: document.querySelector("#task-form"),
+  taskTransition: document.querySelector("#task-transition-form"),
   time: document.querySelector("#time-form"),
+  timeApproval: document.querySelector("#time-approval-form"),
   ticket: document.querySelector("#ticket-form"),
   ticketTransition: document.querySelector("#ticket-transition-form"),
 };
@@ -126,6 +130,28 @@ const ticketTransitions = {
   resolved: ["open"],
   cancelled: ["open"],
   archived: [],
+};
+
+const taskTransitions = {
+  assigned: [
+    { target: "in_progress", kind: "started" },
+    { target: "blocked", kind: "blocked" },
+    { target: "completed", kind: "completed" },
+  ],
+  in_progress: [
+    { target: "blocked", kind: "blocked" },
+    { target: "completed", kind: "completed" },
+  ],
+  blocked: [{ target: "in_progress", kind: "resumed" }],
+};
+
+const timeApprovalTransitions = {
+  not_submitted: [{ target: "submitted", action: "submit" }],
+  submitted: [
+    { target: "approved", action: "approve" },
+    { target: "rejected", action: "reject" },
+    { target: "correction_requested", action: "request_correction" },
+  ],
 };
 
 const state = {
@@ -377,6 +403,9 @@ function renderTasks() {
       return filterMatches(item.title, item.task_number, item.assigned_principal_id, item.priority);
     });
     elements.taskList.innerHTML = items.length ? items.map(taskRow).join("") : emptyState("Keine Aufgaben im Filter.");
+    elements.taskList.querySelectorAll("[data-task-transition]").forEach((button) => {
+      button.addEventListener("click", () => openTaskTransition(button.dataset.taskTransition));
+    });
   }
 
   const activityResource = state.resources.taskActivities;
@@ -417,6 +446,9 @@ function renderTime() {
   elements.timeEntryList.innerHTML = entries.length
     ? entries.map((entry) => timeRow(entry, approvals.get(entry.object_id))).join("")
     : emptyState("Keine Zeiteintraege im Filter.");
+  elements.timeEntryList.querySelectorAll("[data-time-approval]").forEach((button) => {
+    button.addEventListener("click", () => openTimeApproval(button.dataset.timeApproval));
+  });
 }
 
 function renderTickets() {
@@ -539,12 +571,14 @@ function todayTicketRow(ticket) {
 }
 
 function taskRow(item) {
+  const canTransition = (taskTransitions[item.lifecycle_state] || []).length > 0;
   return `
     <article class="data-row task-row">
       <div class="row-primary"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.task_number)} · ${escapeHtml(item.assigned_principal_id)}</small></div>
       ${priorityPill(item.priority)}
       <span class="date-cell">${escapeHtml(item.due_at_utc ? formatDateTime(item.due_at_utc) : "Ohne Termin")}</span>
       ${statusPill(item.lifecycle_state)}
+      <button class="icon-button row-action" type="button" data-task-transition="${escapeHtml(item.object_id)}" title="Status aendern" aria-label="Status von ${escapeHtml(item.task_number)} aendern" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
     </article>
   `;
 }
@@ -560,6 +594,7 @@ function activityRow(item) {
 
 function timeRow(entry, approval) {
   const approvalState = approval?.approval_state || "not_submitted";
+  const canTransition = Boolean(approval) && (timeApprovalTransitions[approvalState] || []).length > 0;
   const assignment = [entry.project_reference, entry.cost_center_reference].filter(Boolean).join(" · ") || entry.worker_principal_id;
   return `
     <article class="data-row time-row">
@@ -568,6 +603,7 @@ function timeRow(entry, approval) {
       <span class="muted">${escapeHtml(assignment)}</span>
       <span class="duration-cell">${escapeHtml(formatDuration(entry.duration_minutes))}</span>
       ${statusPill(approvalState)}
+      <button class="icon-button row-action" type="button" data-time-approval="${escapeHtml(approval?.object_id || "")}" title="Freigabe bearbeiten" aria-label="Freigabe von ${escapeHtml(entry.entry_number)} bearbeiten" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
     </article>
   `;
 }
@@ -926,6 +962,146 @@ async function submitTicket(event) {
   }
 }
 
+function openTaskTransition(taskObjectId) {
+  const task = resourceItems("tasks").find((item) => item.object_id === taskObjectId);
+  if (!task) {
+    return;
+  }
+  forms.taskTransition.reset();
+  clearFormMessage(forms.taskTransition);
+  forms.taskTransition.elements.task_object_id.value = task.object_id;
+  forms.taskTransition.elements.expected_state.value = task.lifecycle_state;
+  forms.taskTransition.elements.transition.innerHTML = (taskTransitions[task.lifecycle_state] || [])
+    .map(
+      (transition) =>
+        `<option value="${escapeHtml(`${transition.target}|${transition.kind}`)}">${escapeHtml(statusLabels[transition.target] || humanize(transition.target))}</option>`,
+    )
+    .join("");
+  forms.taskTransition.elements.activity_summary.value = `${task.task_number}: Status aktualisiert`;
+  document.querySelector("#task-transition-title").textContent = task.task_number;
+  dialogs.taskTransition.showModal();
+}
+
+async function submitTaskTransition(event) {
+  event.preventDefault();
+  clearFormMessage(forms.taskTransition);
+  const values = new FormData(forms.taskTransition);
+  const taskObjectId = String(values.get("task_object_id") || "");
+  const expectedState = String(values.get("expected_state") || "");
+  const [targetState, transitionKind] = String(values.get("transition") || "").split("|");
+  if (!targetState || !transitionKind) {
+    setFormMessage(forms.taskTransition, "Bitte einen Zielstatus waehlen.");
+    return;
+  }
+  if (
+    !window.confirm(
+      `Aufgabenstatus von ${statusLabels[expectedState] || expectedState} auf ${statusLabels[targetState] || targetState} aendern?`,
+    )
+  ) {
+    return;
+  }
+  const activityId = generatedId("task-activity");
+  const payload = {
+    mutation_reference: `request:${generatedId("work-task-transition")}`,
+    transition_object_id: generatedId("task-transition"),
+    activity_object_id: activityId,
+    activity_number: shortNumber("TASK-ACT"),
+    expected_state: expectedState,
+    target_state: targetState,
+    transition_kind: transitionKind,
+    activity_summary: String(values.get("activity_summary") || "").trim(),
+    source_system: "native",
+  };
+  setFormBusy(forms.taskTransition, true);
+  try {
+    await apiRequest(`/v1/tasks/items/${encodeURIComponent(taskObjectId)}/transitions`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    rememberReadableObjectIds([activityId]);
+    setFormMessage(forms.taskTransition, "Aufgabenstatus aktualisiert.", true);
+    await refreshAll();
+    window.setTimeout(() => dialogs.taskTransition.close(), 350);
+  } catch (error) {
+    setFormMessage(
+      forms.taskTransition,
+      error instanceof Error ? error.message : "Aufgabenstatus konnte nicht aktualisiert werden.",
+    );
+  } finally {
+    setFormBusy(forms.taskTransition, false);
+  }
+}
+
+function openTimeApproval(approvalObjectId) {
+  const approval = resourceItems("timeApprovals").find((item) => item.object_id === approvalObjectId);
+  if (!approval) {
+    return;
+  }
+  forms.timeApproval.reset();
+  clearFormMessage(forms.timeApproval);
+  forms.timeApproval.elements.approval_object_id.value = approval.object_id;
+  forms.timeApproval.elements.expected_state.value = approval.approval_state;
+  forms.timeApproval.elements.decision.innerHTML = (timeApprovalTransitions[approval.approval_state] || [])
+    .map(
+      (transition) =>
+        `<option value="${escapeHtml(`${transition.target}|${transition.action}`)}">${escapeHtml(statusLabels[transition.target] || humanize(transition.target))}</option>`,
+    )
+    .join("");
+  document.querySelector("#time-approval-title").textContent = approval.approval_number;
+  dialogs.timeApproval.showModal();
+}
+
+async function submitTimeApproval(event) {
+  event.preventDefault();
+  clearFormMessage(forms.timeApproval);
+  const values = new FormData(forms.timeApproval);
+  const approvalObjectId = String(values.get("approval_object_id") || "");
+  const expectedState = String(values.get("expected_state") || "");
+  const [targetState, action] = String(values.get("decision") || "").split("|");
+  if (!targetState || !action) {
+    setFormMessage(forms.timeApproval, "Bitte eine Freigabeaktion waehlen.");
+    return;
+  }
+  const isDecision = action !== "submit";
+  const confirmationStatement = isDecision
+    ? `I explicitly confirm time approval ${approvalObjectId} decision ${targetState}.`
+    : null;
+  if (
+    isDecision &&
+    !window.confirm(
+      `Diese Entscheidung wird unveraenderlich protokolliert. Bestaetigen Sie exakt:\n\n${confirmationStatement}`,
+    )
+  ) {
+    return;
+  }
+  const payload = {
+    mutation_reference: `request:${generatedId("work-time-decision")}`,
+    decision_object_id: generatedId("time-decision"),
+    expected_state: expectedState,
+    target_state: targetState,
+    action,
+    human_confirmation_statement: confirmationStatement,
+    source_system: "native",
+  };
+  setFormBusy(forms.timeApproval, true);
+  try {
+    await apiRequest(`/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    setFormMessage(forms.timeApproval, isDecision ? "Freigabe entschieden." : "Zeit eingereicht.", true);
+    await refreshAll();
+    window.setTimeout(() => dialogs.timeApproval.close(), 350);
+  } catch (error) {
+    setFormMessage(
+      forms.timeApproval,
+      error instanceof Error ? error.message : "Freigabeaktion konnte nicht abgeschlossen werden.",
+    );
+  } finally {
+    setFormBusy(forms.timeApproval, false);
+  }
+}
+
 function openTicketTransition(ticketId) {
   const ticket = resourceItems("tickets").find((item) => item.ticket_id === ticketId);
   if (!ticket) {
@@ -1038,7 +1214,9 @@ elements.globalFilter.addEventListener("input", () => {
   renderAll();
 });
 forms.task.addEventListener("submit", submitTask);
+forms.taskTransition.addEventListener("submit", submitTaskTransition);
 forms.time.addEventListener("submit", submitTime);
+forms.timeApproval.addEventListener("submit", submitTimeApproval);
 forms.ticket.addEventListener("submit", submitTicket);
 forms.ticketTransition.addEventListener("submit", submitTicketTransition);
 

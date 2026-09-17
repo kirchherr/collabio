@@ -138,7 +138,7 @@
           </div>
           <section class="content-section" aria-label="Aufgabenliste">
             <div class="table-head task-columns" aria-hidden="true">
-              <span>Aufgabe</span><span>Prioritaet</span><span>Faellig</span><span>Status</span>
+              <span>Aufgabe</span><span>Prioritaet</span><span>Faellig</span><span>Status</span><span></span>
             </div>
             <div class="row-list" id="task-list"></div>
           </section>
@@ -156,7 +156,7 @@
           <div class="metric-strip" id="time-metrics"></div>
           <section class="content-section" aria-label="Zeiteintraege">
             <div class="table-head time-columns" aria-hidden="true">
-              <span>Datum</span><span>Zeitraum</span><span>Zuordnung</span><span>Dauer</span><span>Freigabe</span>
+              <span>Datum</span><span>Zeitraum</span><span>Zuordnung</span><span>Dauer</span><span>Freigabe</span><span></span>
             </div>
             <div class="row-list" id="time-entry-list"></div>
           </section>
@@ -231,6 +231,33 @@
       </form>
     </dialog>
 
+    <dialog class="editor-dialog compact-dialog" id="task-transition-dialog" aria-labelledby="task-transition-title">
+      <form method="dialog" class="editor-form" id="task-transition-form">
+        <header><div><p class="eyebrow">Aufgabenstatus</p><h2 id="task-transition-title">Aufgabe aktualisieren</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <input name="task_object_id" type="hidden" />
+        <input name="expected_state" type="hidden" />
+        <div class="form-grid">
+          <label class="full">Neuer Status<select name="transition" required></select></label>
+          <label class="full">Aktivitaet<input name="activity_summary" maxlength="400" required /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Status aendern</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog compact-dialog" id="time-approval-dialog" aria-labelledby="time-approval-title">
+      <form method="dialog" class="editor-form" id="time-approval-form">
+        <header><div><p class="eyebrow">Zeitfreigabe</p><h2 id="time-approval-title">Eintrag bearbeiten</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <input name="approval_object_id" type="hidden" />
+        <input name="expected_state" type="hidden" />
+        <div class="form-grid">
+          <label class="full">Aktion<select name="decision" required></select></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Ausfuehren</button></footer>
+      </form>
+    </dialog>
+
     <dialog class="editor-dialog" id="ticket-dialog" aria-labelledby="ticket-dialog-title">
       <form method="dialog" class="editor-form" id="ticket-form">
         <header><div><p class="eyebrow">Service</p><h2 id="ticket-dialog-title">Neues Ticket</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
@@ -259,6 +286,6 @@
       </form>
     </dialog>
 
-    <script src="/work/assets/work.js?v=2" defer></script>
+    <script src="/work/assets/work.js?v=3" defer></script>
   </body>
 </html>

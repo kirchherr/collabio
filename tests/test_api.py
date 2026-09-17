@@ -936,7 +936,9 @@ def test_work_shell_serves_productivity_workspace_with_guarded_domain_actions() 
     assert "today-metrics" in response.text
     assert "availability-grid" in response.text
     assert "task-dialog" in response.text
+    assert "task-transition-dialog" in response.text
     assert "time-dialog" in response.text
+    assert "time-approval-dialog" in response.text
     assert "ticket-dialog" in response.text
     assert "ticket-transition-dialog" in response.text
     assert "Module-Cockpit" in response.text
@@ -968,6 +970,8 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert 'path: "/v1/crm/accounts"' in js_response.text
     assert 'apiRequest("/v1/tasks/items"' in js_response.text
     assert 'apiRequest("/v1/time-tracking/entries"' in js_response.text
+    assert "/v1/tasks/items/${encodeURIComponent(taskObjectId)}/transitions" in js_response.text
+    assert "/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions" in js_response.text
     assert 'apiRequest("/v1/tickets"' in js_response.text
     assert "/v1/work/overview" not in js_response.text
     assert "Promise.allSettled" in js_response.text
@@ -980,6 +984,8 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert "rememberReadableObjectIds" in js_response.text
     assert "task_object_id" in js_response.text
     assert "approval_object_id" in js_response.text
+    assert "Bestaetigen Sie exakt" in js_response.text
+    assert "I explicitly confirm time approval" in js_response.text
     assert "created_event_summary_redacted" in js_response.text
     assert "kms:${context.tenantId}:tickets" in js_response.text
     assert "localStorage" in js_response.text
@@ -2054,7 +2060,7 @@ def test_tasks_activities_catalog_readiness_returns_metadata_only_registration_b
         "compliance_relevant_feature_count": 2,
         "object_type_count": 2,
         "personal_object_type_count": 2,
-        "required_catalog_evidence_count": 8,
+        "required_catalog_evidence_count": 9,
     }
     assert "productive_storage_migration_0059_recorded" in body["required_catalog_evidence"]
     assert "catalog_package_status_installed_confirmed" in body["required_catalog_evidence"]
@@ -2083,7 +2089,7 @@ def test_tasks_activities_catalog_readiness_returns_metadata_only_registration_b
     assert event.metadata["catalog_registration_ready"] is False
     assert event.metadata["feature_count"] == 6
     assert event.metadata["object_type_count"] == 2
-    assert event.metadata["required_catalog_evidence_count"] == 8
+    assert event.metadata["required_catalog_evidence_count"] == 9
     assert event.metadata["content_included"] is False
     assert event.metadata["module_activation_executed"] is False
     assert event.metadata["persistent_task_created"] is False

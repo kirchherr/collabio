@@ -1,7 +1,7 @@
 # Tasks & Activities Module Charter
 
-Status: operational first productive slice
-Date: 2026-07-30
+Status: operational task lifecycle slice
+Date: 2026-09-17
 Module ID: `tasks_activities`
 Module kind: `business_domain`
 Owner: platform/product
@@ -13,7 +13,13 @@ Tasks & Activities is a native optional suite module for assigned work, follow-u
 
 The module is optional in normal use. Compliance obligations for existing task and activity records, Legal Hold, retention, backup, restore, export, and audit remain mandatory.
 
-The first productive slice is intentionally small: atomic task creation with one initial activity, authoritative ACL grants, an append-only metadata receipt, and ACL-filtered reads. It does not include later status transitions, comments, file attachments, notifications, workflow automations, calendar sync, email send, RAG, AI assist, voice commands, or external integrations.
+The productive scope includes atomic task creation with one initial activity, authoritative ACL grants,
+an append-only metadata receipt, ACL-filtered reads, and controlled lifecycle transitions. Every
+transition atomically appends a status activity and a per-task hash-chain record; the base task row
+remains immutable. Cancellation and archival require an exact human confirmation whose hash, never
+the raw statement, is persisted. Comments, file attachments, notifications, workflow automations,
+calendar sync, email send, RAG, AI assist, voice commands, and external integrations remain outside
+this slice.
 
 ## 2. Lifecycle And Activation
 
@@ -41,7 +47,7 @@ Disabled stops normal task and activity browsing. Disabled does not stop retenti
 | `tasks_activities.tasks.items.read` | on | no | Assigned task metadata and lifecycle state |
 | `tasks_activities.tasks.activities.read` | on | no | Activity-log metadata for authorized objects and readable linked tasks |
 | `tasks_activities.tasks.compliance_evidence.read` | off | yes | Compliance read path for held or retained task/activity evidence |
-| `tasks_activities.tasks.workflow.write` | off | yes | Atomic task, initial activity, ACL and receipt creation |
+| `tasks_activities.tasks.workflow.write` | off | yes | Atomic creation plus append-only lifecycle transitions and activity evidence |
 | `tasks_activities.tasks.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
 | `tasks_activities.tasks.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
 
@@ -61,6 +67,7 @@ Tenant Context
 Productive API:
 
 - `POST /v1/tasks/items`
+- `POST /v1/tasks/items/{task_object_id}/transitions`
 - `GET /v1/tasks/items`
 - `GET /v1/tasks/activities`
 
@@ -71,7 +78,12 @@ Compliance-only later:
 - activity evidence export
 - decommission precheck
 
-The business routes require a provisioned and enabled tenant module. Creation additionally requires `tasks_activities.tasks.workflow.write`, both read dependencies, and an operator role. The catalog-readiness endpoint remains metadata-only and performs no tenant provisioning or activation.
+The business routes require a provisioned and enabled tenant module. Creation and transitions
+additionally require `tasks_activities.tasks.workflow.write`, both read dependencies, an operator
+role, and authoritative task access. Transition commands use optimistic expected-state checks and
+an allowed state graph. The catalog-readiness endpoint remains metadata-only and performs no tenant
+provisioning or activation. The transition route is outside the currently approved seven-operation
+productivity pilot and therefore remains fail-closed until a fresh traffic-scope approval includes it.
 
 `GET /v1/platform/modules/families/tasks-activities/catalog-readiness` remains the metadata-only package and tenant-state discovery boundary.
 
@@ -85,6 +97,11 @@ First planned object types:
 | `task.activity` | `personal` | `rp-standard` | actor, related task, linked business object | tenant + class | yes |
 
 Every object must carry the required metadata from `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`, including tenant, object ID, object type, owner, classification, retention policy, Legal Hold state, lifecycle state, KMS key reference, audit-chain reference, source system, and schema version.
+
+`tasks.lifecycle_transitions` is internal compliance evidence linked to `task.task` and the appended
+`task.activity`. Its tenant-local sequence and previous-hash pointer are enforced by a PostgreSQL
+trigger in addition to service validation. Current task state is a projection of the latest valid
+transition; `tasks.items.lifecycle_state` is not updated.
 
 The canonical first object-rule contract lives in `app/suite/platform/tasks_activities_module.py`.
 
@@ -118,8 +135,9 @@ Required evidence:
 - disabled-state restore check
 - Legal Hold restore check
 - restore evidence hash for `task_activity_records`
-- exact task, activity, ACL and creation-receipt row counts
-- Forced RLS and append-only policy verification on all three Tasks tables
+- exact task, activity, transition, ACL and creation-receipt row counts
+- Forced RLS and append-only policy verification on all four Tasks tables
+- presence of the database transition-chain validation trigger after restore
 - `collabio_authz_admin` write-without-update/delete and `collabio_app` read-only grants
 - source/target equality through `postgres_restore_drill_report.v1`
 
@@ -127,7 +145,12 @@ New task comments, file attachments, automation rules, notification queues, cale
 
 ## 8. Migrations And Imports
 
-`0050_tasks_activities_catalog_registration.sql` introduced the metadata-only package entry. `0059_tasks_activities_productive_slice.sql` creates the governed `tasks.items`, `tasks.activities`, and `tasks.creation_receipts` tables with Forced RLS, append-only policies, minimal service-role grants, and updates the package to `installed`. Neither migration creates tenant module state or enables a feature.
+`0050_tasks_activities_catalog_registration.sql` introduced the metadata-only package entry.
+`0059_tasks_activities_productive_slice.sql` creates the governed `tasks.items`, `tasks.activities`,
+and `tasks.creation_receipts` tables with Forced RLS, append-only policies, minimal service-role
+grants, and updates the package to `installed`. `0077_tasks_lifecycle_transitions.sql` adds the
+append-only transition chain and database validation trigger and advances the package contract to
+`0.3.0`. None of these migrations creates tenant module state or enables a feature.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import or workflow activation.
 
@@ -146,9 +169,9 @@ Decommissioning requires:
 
 Missing or blocked evidence leaves the module in `decommission_blocked`.
 
-## 10. Explicit Non-Goals For The First Slice
+## 10. Explicit Non-Goals For The Current Slice
 
-- task updates and lifecycle transitions after creation
+- reassignment or due-date correction after creation
 - comments
 - attachments
 - notifications

@@ -42,6 +42,7 @@
         "time_tracking.approvals.read"
       ],
       "forbidden_feature_ids": [
+        "time_tracking.approvals.write",
         "time_tracking.compliance_evidence.read",
         "time_tracking.exports.execute"
       ]

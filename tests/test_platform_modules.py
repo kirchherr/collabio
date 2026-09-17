@@ -930,9 +930,9 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
     assert lms_catalog.status == ModuleStatus.NOT_INSTALLED
     assert lms_catalog.required_migration_versions == ("0045", "0046", "0047", "0048", "0049")
     assert tasks_catalog.status == ModuleStatus.INSTALLED
-    assert tasks_catalog.required_migration_versions == ("0050", "0059")
+    assert tasks_catalog.required_migration_versions == ("0050", "0059", "0077")
     assert time_tracking_catalog.status == ModuleStatus.INSTALLED
-    assert time_tracking_catalog.required_migration_versions == ("0060",)
+    assert time_tracking_catalog.required_migration_versions == ("0060", "0078")
     assert tickets_catalog.status == ModuleStatus.NOT_INSTALLED
     assert tickets_catalog.required_migration_versions == ("0051", "0052", "0053", "0054", "0074")
     assert module_ids >= {"crm_erp", "knowledge_base"}

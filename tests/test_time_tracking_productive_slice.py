@@ -14,9 +14,12 @@ from suite.platform.time_tracking_service import (
     CreateTimeEntryCommand,
     InMemoryTimeTrackingStore,
     PgTimeTrackingStore,
+    TimeApprovalAction,
     TimeApprovalState,
     TimeTrackingConflict,
     TimeTrackingService,
+    TransitionTimeApprovalCommand,
+    time_approval_confirmation_statement,
 )
 
 
@@ -61,6 +64,31 @@ def entry_command(suffix: str, *, mutation_reference: str | None = None) -> Crea
 def first_int(row: tuple[Any, ...] | None) -> int:
     assert row is not None
     return int(row[0])
+
+
+def decision_command(
+    suffix: str,
+    *,
+    expected_state: TimeApprovalState,
+    target_state: TimeApprovalState,
+    action: TimeApprovalAction,
+    approval_object_id: str,
+) -> TransitionTimeApprovalCommand:
+    return TransitionTimeApprovalCommand(
+        mutation_reference=f"request:time-decision-{suffix}",
+        decision_object_id=f"time-decision-{suffix}",
+        expected_state=expected_state,
+        target_state=target_state,
+        action=action,
+        human_confirmation_statement=(
+            None
+            if action == TimeApprovalAction.SUBMIT
+            else time_approval_confirmation_statement(
+                approval_object_id=approval_object_id,
+                target_state=target_state,
+            )
+        ),
+    )
 
 
 def test_time_entry_creation_enforces_role_idempotency_and_authoritative_reads() -> None:
@@ -192,3 +220,86 @@ def test_postgres_time_entry_creation_rolls_back_on_approval_collision(live_data
         )
 
     assert (entry_count, acl_count, receipt_count) == (0, 0, 0)
+
+
+def test_postgres_time_approval_decisions_are_derived_from_append_only_chain(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-time-decisions-{suffix}"
+    worker_id = f"worker-{suffix}"
+    approver_id = f"approver-{suffix}"
+    command = entry_command(suffix)
+    store = PgTimeTrackingStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+    store.create_entry(tenant_id=tenant_id, user_id=worker_id, command=command)
+    submit = decision_command(
+        f"submit-{suffix}",
+        expected_state=TimeApprovalState.NOT_SUBMITTED,
+        target_state=TimeApprovalState.SUBMITTED,
+        action=TimeApprovalAction.SUBMIT,
+        approval_object_id=command.approval_object_id,
+    )
+    _, submitted, first_decision, first_replay = store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        approval_object_id=command.approval_object_id,
+        command=submit,
+    )
+    _, _, replayed_decision, replayed = store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        approval_object_id=command.approval_object_id,
+        command=submit,
+    )
+    approve = decision_command(
+        f"approve-{suffix}",
+        expected_state=TimeApprovalState.SUBMITTED,
+        target_state=TimeApprovalState.APPROVED,
+        action=TimeApprovalAction.APPROVE,
+        approval_object_id=command.approval_object_id,
+    )
+    approved_entry, approved, second_decision, second_replay = store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=approver_id,
+        approval_object_id=command.approval_object_id,
+        command=approve,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        decision_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM time_tracking.approval_decisions WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        stored_state = connection.execute(
+            """
+            SELECT entry.lifecycle_state, approval.approval_state
+            FROM time_tracking.entries AS entry
+            JOIN time_tracking.approvals AS approval
+              ON approval.tenant_id = entry.tenant_id
+             AND approval.entry_object_id = entry.object_id
+            WHERE entry.tenant_id = %s AND entry.object_id = %s
+            """,
+            (tenant_id, command.entry_object_id),
+        ).fetchone()
+
+    assert first_replay is False
+    assert replayed is True
+    assert second_replay is False
+    assert submitted.approval_state == TimeApprovalState.SUBMITTED
+    assert first_decision.sequence_no == 1
+    assert replayed_decision.decision_hash == first_decision.decision_hash
+    assert second_decision.sequence_no == 2
+    assert second_decision.previous_decision_hash == first_decision.decision_hash
+    assert second_decision.confirmation_statement_hash is not None
+    assert approved.approval_state == TimeApprovalState.APPROVED
+    assert approved.approver_principal_id == approver_id
+    assert approved_entry.lifecycle_state.value == "approved"
+    assert decision_count == 2
+    assert stored_state == ("recorded", "not_submitted")
+    assert store.list_entries(tenant_id=tenant_id)[0].lifecycle_state.value == "approved"
+    assert store.list_approvals(tenant_id=tenant_id)[0].approval_state == TimeApprovalState.APPROVED

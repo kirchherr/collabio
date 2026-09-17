@@ -701,6 +701,26 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:mvp-pilot-decision-capture",
         ),
     ),
+    SqlMigration(
+        version="0077",
+        name="tasks_lifecycle_transitions",
+        resource_name="0077_tasks_lifecycle_transitions.sql",
+        module_id="tasks_activities",
+        evidence_refs=(
+            "doc:tasks-activities-productive-slice",
+            "test:tasks-lifecycle-transitions",
+        ),
+    ),
+    SqlMigration(
+        version="0078",
+        name="time_approval_decisions",
+        resource_name="0078_time_approval_decisions.sql",
+        module_id="time_tracking",
+        evidence_refs=(
+            "doc:time-tracking-module-charter",
+            "test:time-approval-decisions",
+        ),
+    ),
 )
 
 

@@ -161,6 +161,7 @@ def build_tasks_activities_catalog_readiness_response(
             "catalog_package_status_installed_confirmed",
             "catalog_registration_migration_0050_recorded",
             "productive_storage_migration_0059_recorded",
+            "append_only_lifecycle_migration_0077_recorded",
         )
     required_catalog_evidence = (
         "module_charter_reviewed",
@@ -204,6 +205,7 @@ def build_tasks_activities_catalog_readiness_response(
             "app/suite/persistence/migrations/0050_tasks_activities_catalog_registration.sql",
             "docs/operations/BACKUP_FAILOVER.md",
             "app/suite/persistence/migrations/0059_tasks_activities_productive_slice.sql",
+            "app/suite/persistence/migrations/0077_tasks_lifecycle_transitions.sql",
             "app/suite/platform/tasks_activities_service.py",
             "tests/test_tasks_activities_productive_slice.py",
             "tests/test_tasks_activities_catalog_readiness.py",

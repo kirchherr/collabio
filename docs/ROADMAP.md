@@ -1472,6 +1472,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      ausdruecklich ausgeloeste Task-, Zeit- und Ticket-Workflows sind ohne neuen Sammel-Endpunkt umgesetzt; partielle
      Sperren bleiben pro Bereich sichtbar und koennen keine andere Fachgrenze umgehen. Wissens- und CRM-Pfade bleiben
      read-only, destruktive Tickettransitionen werden in dieser Oberflaeche nicht angeboten.
+244. [x] Aufgaben-Lebenszyklus als vollstaendigen append-only Produktzug geschlossen: erlaubte Statusmatrix,
+     optimistische Zustandspruefung, atomare Statusaktivitaet, tenant-lokale Hash-Kette, PostgreSQL-Trigger,
+     hash-only Bestaetigung fuer Abbruch/Archivierung, ACL-/Rollen-Gates, Restore-Nachweis und Bedienpfad in `/work`.
+     Die neue Route bleibt ausserhalb des historisch freigegebenen Sieben-Operationen-Piloten fail-closed.
+245. [x] Zeiterfassungs-Freigabezug geschlossen: Einreichung sowie Genehmigung, Ablehnung oder Korrekturanforderung
+     werden append-only projiziert; Service und PostgreSQL erzwingen Vier-Augen-Trennung, exakte Human-Bestaetigung
+     wird nur gehasht gespeichert, und Restore-Gate sowie `/work` fuehren den neuen Zustand mit. Auch diese Route
+     erweitert den laufenden Pilotumfang nicht ohne neue ausdrueckliche Freigabe.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 
@@ -1484,6 +1492,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
 - [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
 - [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
+- [x] Task-Status und Time-Approval als append-only, datenbankseitig validierte Workflows mit UI-Aktionen operationalisiert; Basisdatensaetze bleiben unveraendert.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 
@@ -1788,6 +1797,8 @@ Enthaelt:
 - [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
 - [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
 - [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
+- [x] Task-Lifecycle mit Migration `0077` geschlossen: atomare Aktivitaet plus hash-verkettete Transition, optimistische Zustandskontrolle, exakte Bestaetigung fuer Abbruch/Archivierung und Restore-Triggernachweis.
+- [x] Time-Approval mit Migration `0078` geschlossen: Einreichung und finale Vier-Augen-Entscheidung als hash-verkettete Evidenz, hash-only Human-Bestaetigung und Restore-Triggernachweis.
 - [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
 - [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
 - [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.

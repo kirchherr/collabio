@@ -7,8 +7,8 @@
 The package currently contains:
 
 - CRM atomic account onboarding (`0057`)
-- Tasks and Activities (`0050`, `0059`)
-- Time Tracking (`0060`)
+- Tasks and Activities creation and lifecycle transitions (`0050`, `0059`, `0077`)
+- Time Tracking creation, submission, and maker-checker decisions (`0060`, `0078`)
 
 ## Run
 
@@ -32,6 +32,10 @@ Compose first rebuilds `backend_foundation_completion_gate.v1` and writes its ca
 Any missing route, module entry, migration, PostgreSQL backend, restore control, API health signal, or valid foundation hash blocks release. The command exits with status `2` when blocked.
 
 The evidence is metadata-only. It does not activate a tenant, create a business row, execute a write flow, or include source content. Tenant selection, production traffic, monitoring, rollback authorization, HA promotion, PITR and cross-site failover remain separate pilot and deployment decisions.
+
+The release route set may be broader than an existing pilot policy. Pilot preflight therefore proves
+that every policy-allowed route is present in the released API, while traffic enforcement continues
+to default-deny every released route that the policy does not explicitly list.
 
 ## Current Runtime Proof
 
