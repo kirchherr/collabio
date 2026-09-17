@@ -62,7 +62,9 @@ def test_work_e2e_guard_fails_closed_outside_synthetic_boundary(key: str, value:
 
 def test_work_e2e_compose_profile_has_no_host_ports_and_keeps_runtime_switch_closed() -> None:
     compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    profile = compose[compose.index("  work-e2e-postgres:") : compose.index("  test:")]
+    profile_start = compose.index("\n  work-e2e-postgres:\n")
+    profile_end = compose.index("\n  test:\n", profile_start)
+    profile = compose[profile_start:profile_end]
 
     assert 'profiles: ["work-e2e"]' in profile
     assert "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: \"0\"" in profile
