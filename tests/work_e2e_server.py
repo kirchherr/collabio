@@ -97,9 +97,7 @@ synthetic_policy = base_policy.model_copy(
         "raw_audio_storage_allowed": False,
     }
 )
-app.state.tenant_policy_repository = InMemoryTenantPolicyRepository(
-    policies={WORK_E2E_TENANT_ID: synthetic_policy}
-)
+app.state.tenant_policy_repository = InMemoryTenantPolicyRepository(policies={WORK_E2E_TENANT_ID: synthetic_policy})
 
 
 def _allow_isolated_synthetic_traffic() -> ProductivityPilotTrafficDecision:
@@ -179,12 +177,8 @@ def _install_closed_runtime_fixture() -> None:
         allowed_api_operations=allowed_operations,
         monitoring_evidence=monitoring_evidence,
         rollback_evidence=rollback_evidence,
-        monitoring_evidence_manifest_hash=build_productivity_pilot_control_evidence_manifest_hash(
-            monitoring_evidence
-        ),
-        rollback_evidence_manifest_hash=build_productivity_pilot_control_evidence_manifest_hash(
-            rollback_evidence
-        ),
+        monitoring_evidence_manifest_hash=build_productivity_pilot_control_evidence_manifest_hash(monitoring_evidence),
+        rollback_evidence_manifest_hash=build_productivity_pilot_control_evidence_manifest_hash(rollback_evidence),
         command_hash=_synthetic_hash("start-command"),
         idempotency_key_hash=_synthetic_hash("start-idempotency"),
         human_confirmation_statement_hash=_synthetic_hash("start-confirmation"),

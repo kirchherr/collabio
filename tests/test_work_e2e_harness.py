@@ -71,11 +71,11 @@ def test_work_e2e_compose_profile_has_no_host_ports_and_keeps_runtime_switch_clo
     profile = compose[profile_start:profile_end]
 
     assert 'profiles: ["work-e2e"]' in profile
-    assert "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: \"0\"" in profile
+    assert 'SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"' in profile
     assert "SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory" in profile
     assert "SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory" in profile
-    assert "SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: \"1\"" in profile
-    assert "SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: \"0\"" in profile
+    assert 'SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: "1"' in profile
+    assert 'SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: "0"' in profile
     assert "ports:" not in profile
     assert "./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro" in profile
     assert 'user: "1000:1000"' in profile
