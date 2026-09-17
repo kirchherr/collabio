@@ -4,7 +4,7 @@ This file tracks the active implementation sequence. The canonical roadmap is `d
 
 ## Current Journey
 
-Theme: Build proof capability before product surface.
+Theme: Turn the proven foundation into coherent product workflows without weakening its gates.
 
 Current sprint:
 
@@ -111,21 +111,19 @@ Current sprint:
 101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
 102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
 103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
+104. [x] First end-user Work surface over the existing guarded Tasks, Time, Tickets, Knowledge Base, and CRM APIs, with partial-failure isolation and explicit business mutations.
 
 ## Next Engineering Step
 
-Collect the accountable real-user pilot evidence without opening live traffic:
+Complete the first daily-work product loop while accountable pilot evidence remains a separate human lane:
 
-- Read `GET /v1/platform/productivity-pilot/real-user-readiness` first and work only on the reported current lifecycle gap.
-- Accept named principals, purpose, lawful basis, IAM roles, privacy and workforce evidence only from accountable tenant owners; do not fabricate placeholders.
-- Refresh preflight, backup, isolated restore, foundation, business-release, production-continuity, monitoring, rollback, admission, and start evidence as one new chain.
-- Collect actual production topology, PITR, offsite, promotion and cross-site drill evidence from accountable operations owners; the gate must remain blocked without it.
-- Use the Security-Admin requirements and gate-status read APIs to verify the current policy contract and fail-closed state; do not add an evidence upload API.
-- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until the new chain and the hash-only closure path pass together.
-- Require explicit human four-eyes approvals before any later live pilot window.
-- While accountable real-user evidence is pending, advance the designated Tickets test-tenant pilot only through `GET /v1/platform/modules/families/tickets-incidents/controlled-pilot/status`; never fabricate or infer its exact human confirmations.
-- Keep the green `backend_foundation_completion_gate.v1` in the release path and extend continuity expectations whenever durable state changes.
-- Keep productive Legacy SQL writes, rich Office/Mail clients, RAG provider execution, and new automation deferred until the current business slice needs them.
+- Verify `/work` against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable.
+- Add the next productive backend depth as complete workflows, starting with append-only task lifecycle transitions and time-entry approval decisions rather than more preparation boundaries.
+- Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
+- Read `GET /v1/platform/productivity-pilot/real-user-readiness` before any pilot action and work only on its reported lifecycle gap.
+- Accept named principals, purpose, lawful basis, IAM roles, privacy, workforce, production topology, PITR, offsite, promotion, and cross-site evidence only from accountable owners; never fabricate placeholders.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until a new evidence chain, four-eyes approvals, and the hash-only closure path pass together.
+- Keep productive Legacy SQL writes, Office/Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
 
 ## Module Expansion Stance
 

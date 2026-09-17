@@ -919,6 +919,74 @@ def test_workspace_shell_assets_are_served_and_call_cockpit_api_with_safe_action
     assert "Welcome message source" not in js_response.text
 
 
+def test_work_shell_serves_productivity_workspace_with_guarded_domain_actions() -> None:
+    response = client.get("/work")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Collabio Arbeit" in response.text
+    assert "/work/assets/work.css" in response.text
+    assert "/work/assets/work.js" in response.text
+    assert 'data-view="today"' in response.text
+    assert 'data-view="tasks"' in response.text
+    assert 'data-view="time"' in response.text
+    assert 'data-view="tickets"' in response.text
+    assert 'data-view="knowledge"' in response.text
+    assert 'data-view="crm"' in response.text
+    assert "today-metrics" in response.text
+    assert "availability-grid" in response.text
+    assert "task-dialog" in response.text
+    assert "time-dialog" in response.text
+    assert "ticket-dialog" in response.text
+    assert "ticket-transition-dialog" in response.text
+    assert "Module-Cockpit" in response.text
+    assert "Board pack draft source content" not in response.text
+    assert "Welcome message source" not in response.text
+
+
+def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_bypass() -> None:
+    css_response = client.get("/work/assets/work.css")
+    js_response = client.get("/work/assets/work.js")
+
+    assert css_response.status_code == 200
+    assert ".app-shell" in css_response.text
+    assert ".metric-strip" in css_response.text
+    assert ".today-layout" in css_response.text
+    assert ".availability-grid" in css_response.text
+    assert ".editor-dialog" in css_response.text
+    assert ".segmented-control" in css_response.text
+    assert "@media (max-width: 820px)" in css_response.text
+    assert "gradient" not in css_response.text.lower()
+
+    assert js_response.status_code == 200
+    assert 'path: "/v1/tasks/items"' in js_response.text
+    assert 'path: "/v1/tasks/activities"' in js_response.text
+    assert 'path: "/v1/time-tracking/entries"' in js_response.text
+    assert 'path: "/v1/time-tracking/approvals"' in js_response.text
+    assert 'path: "/v1/tickets"' in js_response.text
+    assert 'path: "/v1/kb/articles"' in js_response.text
+    assert 'path: "/v1/crm/accounts"' in js_response.text
+    assert 'apiRequest("/v1/tasks/items"' in js_response.text
+    assert 'apiRequest("/v1/time-tracking/entries"' in js_response.text
+    assert 'apiRequest("/v1/tickets"' in js_response.text
+    assert "/v1/work/overview" not in js_response.text
+    assert "Promise.allSettled" in js_response.text
+    assert "X-Tenant-Id" in js_response.text
+    assert "X-User-Id" in js_response.text
+    assert "X-Role-Ids" in js_response.text
+    assert "X-Readable-Object-Ids" in js_response.text
+    assert "escapeHtml" in js_response.text
+    assert "window.confirm" in js_response.text
+    assert "rememberReadableObjectIds" in js_response.text
+    assert "task_object_id" in js_response.text
+    assert "approval_object_id" in js_response.text
+    assert "created_event_summary_redacted" in js_response.text
+    assert "kms:${context.tenantId}:tickets" in js_response.text
+    assert "localStorage" in js_response.text
+    assert "Board pack draft source content" not in js_response.text
+    assert "Welcome message source" not in js_response.text
+
+
 def test_roadmap_shell_serves_static_foundation_overview_ui() -> None:
     response = client.get("/roadmap")
 

@@ -1439,6 +1439,7 @@ def build_app() -> FastAPI:
     app = FastAPI(title="Compliance-First Enterprise Suite", version="0.1.0")
     workspace_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "workspace"
     roadmap_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "roadmap"
+    work_ui_dir = Path(__file__).resolve().parent / "suite" / "ui" / "work"
     app.mount(
         "/workspace/assets",
         StaticFiles(directory=workspace_ui_dir),
@@ -1448,6 +1449,11 @@ def build_app() -> FastAPI:
         "/roadmap/assets",
         StaticFiles(directory=roadmap_ui_dir),
         name="roadmap-assets",
+    )
+    app.mount(
+        "/work/assets",
+        StaticFiles(directory=work_ui_dir),
+        name="work-assets",
     )
 
     data_dir = suite_data_dir()
@@ -2527,6 +2533,10 @@ def build_app() -> FastAPI:
     @app.get("/roadmap", response_class=FileResponse)
     def roadmap_shell() -> FileResponse:
         return FileResponse(roadmap_ui_dir / "index.html")
+
+    @app.get("/work", response_class=FileResponse)
+    def work_shell() -> FileResponse:
+        return FileResponse(work_ui_dir / "index.html")
 
     @app.get("/v1/platform/modules", response_model=PlatformModulesResponse)
     def list_platform_modules(

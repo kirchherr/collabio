@@ -1466,6 +1466,12 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      exakter Tenant-Bestaetigung sowie unmittelbar frischem Cockpit-Abgleich ausgefuehrt und pro Aufgabe sichtbar
      fortgeschrieben. Neue Module folgen kontrolliert `provision -> enable`; Teilfehler erzwingen einen frischen Plan.
      Content-Release, Fachmodul-Daten, Automationen sowie externe oder destruktive Aktionen bleiben ausgeschlossen.
+243. [x] Ersten echten Endnutzer-Arbeitsbereich auf das abgenommene Backend gesetzt: `/work` komponiert Aufgaben,
+     Aktivitaeten, Zeiterfassung, Tickets, Wissensartikel und CRM-Accounts ausschliesslich ueber deren bestehende
+     tenant-, ACL-, Modul- und Pilot-gepruefte Fach-APIs. Tagesuebersicht, Fachfilter, responsive Ansichten sowie
+     ausdruecklich ausgeloeste Task-, Zeit- und Ticket-Workflows sind ohne neuen Sammel-Endpunkt umgesetzt; partielle
+     Sperren bleiben pro Bereich sichtbar und koennen keine andere Fachgrenze umgehen. Wissens- und CRM-Pfade bleiben
+     read-only, destruktive Tickettransitionen werden in dieser Oberflaeche nicht angeboten.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 

@@ -89,6 +89,14 @@ API:
 http://localhost:8000
 ```
 
+Product surfaces:
+
+```text
+http://localhost:8000/work
+http://localhost:8000/workspace
+http://localhost:8000/roadmap
+```
+
 Health endpoint:
 
 ```text

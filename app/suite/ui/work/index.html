@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Collabio Arbeit</title>
+    <link rel="stylesheet" href="/work/assets/work.css?v=2" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="app-sidebar" aria-label="Arbeitsbereiche">
+        <a class="brand" href="/work" aria-label="Collabio Arbeit">
+          <span class="brand-mark" aria-hidden="true">C</span>
+          <span>
+            <strong>Collabio</strong>
+            <small>Arbeit</small>
+          </span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Navigation">
+          <button class="nav-button active" type="button" data-view="today">
+            <span class="nav-symbol" aria-hidden="true">01</span><span>Heute</span>
+          </button>
+          <button class="nav-button" type="button" data-view="tasks">
+            <span class="nav-symbol" aria-hidden="true">02</span><span>Aufgaben</span>
+          </button>
+          <button class="nav-button" type="button" data-view="time">
+            <span class="nav-symbol" aria-hidden="true">03</span><span>Zeit</span>
+          </button>
+          <button class="nav-button" type="button" data-view="tickets">
+            <span class="nav-symbol" aria-hidden="true">04</span><span>Tickets</span>
+          </button>
+          <button class="nav-button" type="button" data-view="knowledge">
+            <span class="nav-symbol" aria-hidden="true">05</span><span>Wissen</span>
+          </button>
+          <button class="nav-button" type="button" data-view="crm">
+            <span class="nav-symbol" aria-hidden="true">06</span><span>Kontakte</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-links">
+          <a href="/workspace">Module-Cockpit</a>
+          <a href="/roadmap">Roadmap</a>
+        </div>
+
+        <div class="tenant-chip">
+          <span class="tenant-state" id="tenant-state" aria-hidden="true"></span>
+          <span>
+            <small>Tenant</small>
+            <strong id="tenant-label">tenant-demo</strong>
+          </span>
+        </div>
+      </aside>
+
+      <main class="app-main">
+        <header class="app-header">
+          <div class="header-copy">
+            <p class="eyebrow" id="view-eyebrow">Persoenlicher Arbeitsbereich</p>
+            <h1 id="view-title">Heute</h1>
+          </div>
+          <div class="header-actions">
+            <label class="global-search">
+              <span class="visually-hidden">Aktuelle Ansicht filtern</span>
+              <input id="global-filter" type="search" autocomplete="off" placeholder="Filtern" />
+            </label>
+            <button class="icon-button" id="context-button" type="button" title="Kontext" aria-label="Kontext">
+              <span aria-hidden="true">ID</span>
+            </button>
+            <button class="icon-button" id="refresh-button" type="button" title="Aktualisieren" aria-label="Aktualisieren">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 1-2.34-5.66" />
+                <path d="M20 4v7h-7" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="context-panel" id="context-panel" aria-label="Entwicklungskontext" hidden>
+          <form id="context-form" class="context-form">
+            <label>Tenant<input id="tenant-id" autocomplete="off" value="tenant-demo" /></label>
+            <label>User<input id="user-id" autocomplete="off" value="user-demo" /></label>
+            <label>Rollen<input id="role-ids" autocomplete="off" value="tenant-admin" /></label>
+            <label class="wide-field">
+              Lesbare Objekte
+              <input id="readable-object-ids" autocomplete="off" />
+            </label>
+            <button class="button secondary" type="submit">Kontext anwenden</button>
+          </form>
+        </section>
+
+        <div class="sync-line" id="sync-line" role="status">Bereit</div>
+
+        <section class="view-panel active" data-view-panel="today" aria-labelledby="view-title">
+          <div class="metric-strip" id="today-metrics"></div>
+          <div class="today-layout">
+            <section class="content-section today-focus" aria-labelledby="today-focus-title">
+              <div class="section-header">
+                <div><p class="eyebrow">Prioritaet</p><h2 id="today-focus-title">Anstehend</h2></div>
+                <button class="button primary" type="button" data-open-dialog="task-dialog">Neue Aufgabe</button>
+              </div>
+              <div class="row-list" id="today-task-list"></div>
+            </section>
+            <section class="content-section today-side" aria-labelledby="today-time-title">
+              <div class="section-header">
+                <div><p class="eyebrow">Heute</p><h2 id="today-time-title">Zeit</h2></div>
+                <button class="icon-button small" type="button" data-open-dialog="time-dialog" title="Zeit erfassen" aria-label="Zeit erfassen">
+                  <span aria-hidden="true">+</span>
+                </button>
+              </div>
+              <div class="row-list compact" id="today-time-list"></div>
+            </section>
+            <section class="content-section today-side" aria-labelledby="today-ticket-title">
+              <div class="section-header">
+                <div><p class="eyebrow">Service</p><h2 id="today-ticket-title">Offene Tickets</h2></div>
+                <button class="icon-button small" type="button" data-open-dialog="ticket-dialog" title="Ticket anlegen" aria-label="Ticket anlegen">
+                  <span aria-hidden="true">+</span>
+                </button>
+              </div>
+              <div class="row-list compact" id="today-ticket-list"></div>
+            </section>
+          </div>
+          <section class="availability-section" aria-labelledby="availability-title">
+            <div class="section-header">
+              <div><p class="eyebrow">Laufzeit</p><h2 id="availability-title">Bereiche</h2></div>
+            </div>
+            <div class="availability-grid" id="availability-grid"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view-panel="tasks" aria-labelledby="view-title">
+          <div class="section-toolbar">
+            <div class="segmented-control" role="group" aria-label="Aufgabenfilter">
+              <button class="active" type="button" data-task-filter="active">Aktiv</button>
+              <button type="button" data-task-filter="all">Alle</button>
+              <button type="button" data-task-filter="completed">Erledigt</button>
+            </div>
+            <button class="button primary" type="button" data-open-dialog="task-dialog">Neue Aufgabe</button>
+          </div>
+          <section class="content-section" aria-label="Aufgabenliste">
+            <div class="table-head task-columns" aria-hidden="true">
+              <span>Aufgabe</span><span>Prioritaet</span><span>Faellig</span><span>Status</span>
+            </div>
+            <div class="row-list" id="task-list"></div>
+          </section>
+          <section class="content-section activity-section" aria-labelledby="task-activity-title">
+            <div class="section-header"><div><p class="eyebrow">Verlauf</p><h2 id="task-activity-title">Aktivitaeten</h2></div></div>
+            <div class="timeline" id="task-activity-list"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view-panel="time" aria-labelledby="view-title">
+          <div class="section-toolbar">
+            <div class="period-label" id="time-period-label"></div>
+            <button class="button primary" type="button" data-open-dialog="time-dialog">Zeit erfassen</button>
+          </div>
+          <div class="metric-strip" id="time-metrics"></div>
+          <section class="content-section" aria-label="Zeiteintraege">
+            <div class="table-head time-columns" aria-hidden="true">
+              <span>Datum</span><span>Zeitraum</span><span>Zuordnung</span><span>Dauer</span><span>Freigabe</span>
+            </div>
+            <div class="row-list" id="time-entry-list"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view-panel="tickets" aria-labelledby="view-title">
+          <div class="section-toolbar">
+            <div class="segmented-control" role="group" aria-label="Ticketfilter">
+              <button class="active" type="button" data-ticket-filter="open">Offen</button>
+              <button type="button" data-ticket-filter="all">Alle</button>
+              <button type="button" data-ticket-filter="resolved">Erledigt</button>
+            </div>
+            <button class="button primary" type="button" data-open-dialog="ticket-dialog">Neues Ticket</button>
+          </div>
+          <section class="content-section" aria-label="Ticketliste">
+            <div class="table-head ticket-columns" aria-hidden="true">
+              <span>Ticket</span><span>Prioritaet</span><span>Status</span><span>SLA</span><span></span>
+            </div>
+            <div class="row-list" id="ticket-list"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view-panel="knowledge" aria-labelledby="view-title">
+          <div class="section-toolbar">
+            <div class="period-label">Autorisierte Artikel</div>
+          </div>
+          <section class="content-section" aria-label="Wissensartikel">
+            <div class="knowledge-grid" id="knowledge-list"></div>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view-panel="crm" aria-labelledby="view-title">
+          <div class="section-toolbar">
+            <div class="period-label">Autorisierte Accounts</div>
+          </div>
+          <section class="content-section" aria-label="CRM Accounts">
+            <div class="table-head crm-columns" aria-hidden="true">
+              <span>Account</span><span>Nummer</span><span>Art</span><span>Status</span>
+            </div>
+            <div class="row-list" id="crm-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="editor-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
+      <form method="dialog" class="editor-form" id="task-form">
+        <header><div><p class="eyebrow">Aufgaben</p><h2 id="task-dialog-title">Neue Aufgabe</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <div class="form-grid">
+          <label class="full">Titel<input name="title" maxlength="240" required /></label>
+          <label>Prioritaet<select name="priority"><option value="normal">Normal</option><option value="high">Hoch</option><option value="urgent">Dringend</option><option value="low">Niedrig</option></select></label>
+          <label>Faellig<input name="due_at_utc" type="datetime-local" /></label>
+          <label class="full">Zustaendig<input name="assigned_principal_id" autocomplete="off" /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Aufgabe anlegen</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="time-dialog" aria-labelledby="time-dialog-title">
+      <form method="dialog" class="editor-form" id="time-form">
+        <header><div><p class="eyebrow">Zeiterfassung</p><h2 id="time-dialog-title">Zeit erfassen</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <div class="form-grid">
+          <label>Beginn<input name="started_at_utc" type="datetime-local" required /></label>
+          <label>Ende<input name="ended_at_utc" type="datetime-local" required /></label>
+          <label>Projekt<input name="project_reference" autocomplete="off" placeholder="project:..." /></label>
+          <label>Kostenstelle<input name="cost_center_reference" autocomplete="off" placeholder="cost-center:..." /></label>
+          <label class="full">Mitarbeiter<input name="worker_principal_id" autocomplete="off" /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Zeit speichern</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="ticket-dialog" aria-labelledby="ticket-dialog-title">
+      <form method="dialog" class="editor-form" id="ticket-form">
+        <header><div><p class="eyebrow">Service</p><h2 id="ticket-dialog-title">Neues Ticket</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <div class="form-grid">
+          <label class="full">Betreff<input name="subject_redacted" maxlength="240" required /></label>
+          <label>Prioritaet<select name="priority"><option value="normal">Normal</option><option value="high">Hoch</option><option value="urgent">Dringend</option><option value="low">Niedrig</option></select></label>
+          <label>Zustaendig<input name="owner_principal_id" autocomplete="off" /></label>
+          <label class="full">Ereignisnotiz<input name="event_summary_redacted" maxlength="400" value="Ticket im Arbeitsbereich angelegt" required /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Ticket anlegen</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog compact-dialog" id="ticket-transition-dialog" aria-labelledby="ticket-transition-title">
+      <form method="dialog" class="editor-form" id="ticket-transition-form">
+        <header><div><p class="eyebrow">Statuswechsel</p><h2 id="ticket-transition-title">Ticket aktualisieren</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <input name="ticket_id" type="hidden" />
+        <input name="expected_status" type="hidden" />
+        <div class="form-grid">
+          <label class="full">Neuer Status<select name="new_status" required></select></label>
+          <label class="full">Ereignisnotiz<input name="event_summary_redacted" maxlength="400" required /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Status aendern</button></footer>
+      </form>
+    </dialog>
+
+    <script src="/work/assets/work.js?v=2" defer></script>
+  </body>
+</html>
