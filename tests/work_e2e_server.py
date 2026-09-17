@@ -43,7 +43,6 @@ from suite.testing.work_e2e_guard import (
     require_isolated_work_e2e_environment,
 )
 
-
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
 app = cast(FastAPI, main_module.app)
