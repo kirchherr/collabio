@@ -21191,7 +21191,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseProductWritePreparation:
         del gate
@@ -21201,9 +21203,13 @@ def build_app() -> FastAPI:
         except KnowledgeBaseWriteConflictError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
         except (SourceObjectStorageError, PsycopgError) as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable"
+            ) from exc
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -21214,7 +21220,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseArticleEditContent:
         del gate
@@ -21222,11 +21230,17 @@ def build_app() -> FastAPI:
             articles = knowledge_base_article_service_for_context(request=request, context=context)
             return articles.read_edit_content(article_object_id=article_object_id, user_context=context.user_context)
         except (SourceObjectStorageError, PsycopgError) as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable"
+            ) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge Base source validation failed") from exc
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge Base source validation failed"
+            ) from exc
 
     @app.post(
         "/v1/admin/kb/articles/source-object-write-guard", response_model=KnowledgeBaseSourceObjectWriteGuardDecision
@@ -21237,7 +21251,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseSourceObjectWriteGuardDecision:
         del gate
@@ -21272,9 +21288,13 @@ def build_app() -> FastAPI:
             )
             return decision
         except (SourceObjectStorageError, PsycopgError) as exc:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base write is unavailable") from exc
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base write is unavailable"
+            ) from exc
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -21285,7 +21305,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseWriteDryRunResponse:
         del gate
@@ -21301,7 +21323,9 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT
+                if "expected current article version" in str(exc)
+                else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
 
@@ -21315,7 +21339,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseWriteApprovalTransitionResponse:
         del gate
@@ -21333,7 +21359,9 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT
+                if "expected current article version" in str(exc)
+                else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
 
@@ -21347,7 +21375,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
         del gate
@@ -21365,7 +21395,9 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT
+                if "expected current article version" in str(exc)
+                else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
 
@@ -21379,7 +21411,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseWriteExecutionSkeletonResponse:
         del gate
@@ -21397,7 +21431,9 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT
+                if "expected current article version" in str(exc)
+                else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
 
@@ -21411,7 +21447,9 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)
+            ),
         ],
     ) -> KnowledgeBaseWriteExecutionResponse:
         del gate
@@ -21434,7 +21472,9 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT
+                if "expected current article version" in str(exc)
+                else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
 

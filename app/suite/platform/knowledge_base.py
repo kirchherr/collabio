@@ -1978,9 +1978,7 @@ class PgKnowledgeBaseArticleRepository:
                 key=lambda record: (record.title.lower(), record.object_id),
             )
 
-        self._insert_article_version(
-            connection, article=updated_article, created_by=source_record.metadata.created_by
-        )
+        self._insert_article_version(connection, article=updated_article, created_by=source_record.metadata.created_by)
         if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
             self._update_article_current_version(connection, article=updated_article)
 
@@ -2844,9 +2842,7 @@ class KnowledgeBaseArticleService:
         if operation == KnowledgeBaseWriteOperation.EDIT:
             self._authorized_article(user_context=user_context, article_object_id=article_object_id)
 
-    def _authorized_article(
-        self, *, user_context: UserContext, article_object_id: str
-    ) -> KnowledgeBaseArticleRecord:
+    def _authorized_article(self, *, user_context: UserContext, article_object_id: str) -> KnowledgeBaseArticleRecord:
         article = next(
             (
                 record
@@ -3013,11 +3009,7 @@ class KnowledgeBaseArticleService:
             audit_chain_ref=f"audit:kb-write-{proposal_id}",
             source_system=current_source.source_system if current_source else "collabio",
             mime_type="text/plain",
-            acl_hash=(
-                current_source.acl_hash
-                if current_source
-                else knowledge_base_product_acl_hash(user_context)
-            ),
+            acl_hash=(current_source.acl_hash if current_source else knowledge_base_product_acl_hash(user_context)),
             acl_version=current_source.acl_version if current_source else 1,
             content_hash=sha256_bytes(content),
             content_byte_length=len(content),

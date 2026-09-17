@@ -305,9 +305,12 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
             ("group", "readers", "read", 2, f"audit:pg-edit-{suffix}"),
         }
         set_tenant(connection, f"tenant-other-{suffix}")
-        assert connection.execute(
-            "SELECT object_id FROM collabio.object_acl_entries WHERE tenant_id = %s", (tenant_id,)
-        ).fetchall() == []
+        assert (
+            connection.execute(
+                "SELECT object_id FROM collabio.object_acl_entries WHERE tenant_id = %s", (tenant_id,)
+            ).fetchall()
+            == []
+        )
 
     with pytest.raises(ValueError, match="expected current"):
         repository.apply_write(

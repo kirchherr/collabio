@@ -211,26 +211,44 @@ def test_every_product_stage_rechecks_current_policy_and_acl(harness: ProductHar
     response = harness.client.get(f"{BASE}/{ARTICLE_ID}/edit-content", headers=harness.headers)
     assert response.status_code == (404 if block == "acl" else 403)
     assert len(harness.service.write_approval_ledger.list_evidence(tenant_id="tenant-demo")) == before
-    article = next(a for a in harness.service.repository.list_articles(tenant_id="tenant-demo") if a.object_id == ARTICLE_ID)
+    article = next(
+        a for a in harness.service.repository.list_articles(tenant_id="tenant-demo") if a.object_id == ARTICLE_ID
+    )
     assert article.current_version_object_id == VERSION_ID
 
 
 @pytest.mark.parametrize(
-    "extra", [{"tenant_id": "tenant-other"}, {"retention_policy_id": "forever"}, {"acl_version": 9}, {"owner_principal_id": "other"}, {"proposed_content_hash": "sha256:" + "a" * 64}]
+    "extra",
+    [
+        {"tenant_id": "tenant-other"},
+        {"retention_policy_id": "forever"},
+        {"acl_version": 9},
+        {"owner_principal_id": "other"},
+        {"proposed_content_hash": "sha256:" + "a" * 64},
+    ],
 )
 def test_product_prepare_rejects_security_metadata(harness: ProductHarness, extra: dict[str, Any]) -> None:
     response = harness.client.post(
-        f"{BASE}/prepare-write", headers=harness.headers,
+        f"{BASE}/prepare-write",
+        headers=harness.headers,
         json={"operation": "create", "title": "Title", "body": BODY, **extra},
     )
     assert response.status_code == 422
     assert harness.service.write_approval_ledger.list_evidence(tenant_id="tenant-demo") == ()
 
 
-@pytest.mark.parametrize("field,value", [("tenant_id", "tenant-other"), ("owner_principal_id", "other"), ("created_by", "other"), ("kms_key_ref", "kms:foreign"), ("acl_version", 2), ("mime_type", "text/html")])
-def test_guard_and_execution_reject_tampered_security_metadata(
-    harness: ProductHarness, field: str, value: Any
-) -> None:
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("tenant_id", "tenant-other"),
+        ("owner_principal_id", "other"),
+        ("created_by", "other"),
+        ("kms_key_ref", "kms:foreign"),
+        ("acl_version", 2),
+        ("mime_type", "text/html"),
+    ],
+)
+def test_guard_and_execution_reject_tampered_security_metadata(harness: ProductHarness, field: str, value: Any) -> None:
     stages = staged_write(harness)
     for path in ("source-object-write-guard", "write-approvals/execute"):
         payload = json.loads(json.dumps(stages[path]))
@@ -279,19 +297,28 @@ def test_guard_rejects_rehashed_security_metadata_even_with_valid_approval_linea
 
 @pytest.mark.parametrize("error_type", [SourceObjectStorageError, psycopg.OperationalError])
 def test_product_storage_failure_is_redacted_and_does_not_report_commit(
-    harness: ProductHarness, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, error_type: type[Exception]
+    harness: ProductHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    error_type: type[Exception],
 ) -> None:
     stages = staged_write(harness)
+
     def fail_commit(**kwargs: Any) -> None:
         raise error_type(BODY)
+
     monkeypatch.setattr(harness.service.write_unit_of_work, "commit", fail_commit)
-    response = harness.client.post(f"{BASE}/write-approvals/execute", headers=harness.headers, json=stages["write-approvals/execute"])
+    response = harness.client.post(
+        f"{BASE}/write-approvals/execute", headers=harness.headers, json=stages["write-approvals/execute"]
+    )
     assert response.status_code == 503
     assert response.json() == {"detail": "Knowledge Base storage unavailable"}
     assert BODY not in caplog.text
     article_ids = {article.object_id for article in harness.service.repository.list_articles(tenant_id="tenant-demo")}
     assert stages["write-dry-run"]["article_object_id"] not in article_ids
-    assert not any(event.event_type == "knowledge_base.write_approval.executed" for event in harness.service.audit_logger.events)
+    assert not any(
+        event.event_type == "knowledge_base.write_approval.executed" for event in harness.service.audit_logger.events
+    )
 
 
 def test_product_read_capability_and_cross_tenant_evidence_are_authoritative(harness: ProductHarness) -> None:
@@ -301,11 +328,21 @@ def test_product_read_capability_and_cross_tenant_evidence_are_authoritative(har
     unknown = harness.client.get(f"{BASE}/kb-article-other-tenant/edit-content", headers=harness.headers)
     assert unknown.status_code == 404
     stages = staged_write(harness)
-    foreign_evidence = {**stages["source-object-write-guard"], "approved_write_approval_evidence_hash": "sha256:" + "f" * 64}
-    assert harness.client.post(f"{BASE}/source-object-write-guard", headers=harness.headers, json=foreign_evidence).status_code == 404
+    foreign_evidence = {
+        **stages["source-object-write-guard"],
+        "approved_write_approval_evidence_hash": "sha256:" + "f" * 64,
+    }
+    assert (
+        harness.client.post(
+            f"{BASE}/source-object-write-guard", headers=harness.headers, json=foreign_evidence
+        ).status_code
+        == 404
+    )
 
 
 def test_product_execute_requires_explicit_confirmation_reference(harness: ProductHarness) -> None:
     payload = staged_write(harness)["write-approvals/execute"]
     del payload["human_confirmation_reference"]
-    assert harness.client.post(f"{BASE}/write-approvals/execute", headers=harness.headers, json=payload).status_code == 422
+    assert (
+        harness.client.post(f"{BASE}/write-approvals/execute", headers=harness.headers, json=payload).status_code == 422
+    )
