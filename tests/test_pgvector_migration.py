@@ -107,6 +107,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0073",
         "0074",
         "0075",
+        "0076",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -166,7 +167,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     assert [migration.version for migration in time_tracking_migrations] == ["0060"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "core"
-    assert manifest[-1].name == "audit_worm_snapshots_v2"
+    assert manifest[-1].name == "mvp_pilot_decision_records"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)

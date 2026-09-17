@@ -204,6 +204,7 @@ input:focus-visible {
 
 .tenant-band,
 .mvp-readiness-panel,
+.pilot-decision-band,
 .readiness-band,
 .work-band,
 .crm-search-band,
@@ -256,6 +257,93 @@ input {
   display: grid;
   gap: 12px;
   padding: 16px 18px;
+}
+
+.pilot-decision-band {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.pilot-decision-evidence {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pilot-decision-current {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pilot-decision-current code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.decision-value {
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.decision-go {
+  color: var(--green);
+}
+
+.decision-defer {
+  color: var(--amber);
+}
+
+.decision-no_go,
+.decision-no-go {
+  color: var(--red);
+}
+
+.pilot-decision-form {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(170px, 220px) minmax(170px, 220px) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.pilot-decision-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(68px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.decision-button {
+  min-height: 38px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  padding: 0 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.decision-button:last-child {
+  border-right: 0;
+}
+
+.decision-button:hover:not(:disabled) {
+  background: var(--surface-quiet);
+}
+
+.decision-button:disabled {
+  color: #8a9296;
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .mvp-readiness-header {
@@ -1160,6 +1248,7 @@ input {
 
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .pilot-decision-evidence,
   .crm-search-readiness-grid,
   .crm-search-result-grid,
   .work-evidence-grid,
@@ -1197,6 +1286,15 @@ input {
   .module-row:nth-child(2n) {
     border-right: 0;
   }
+
+  .pilot-decision-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pilot-decision-reason,
+  .pilot-decision-segmented {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1222,6 +1320,7 @@ input {
   .readiness-band,
   .mvp-readiness-grid,
   .mvp-readiness-tags,
+  .pilot-decision-evidence,
   .crm-search-readiness-grid,
   .crm-search-result-grid,
   .work-evidence-grid,
@@ -1279,5 +1378,15 @@ input {
 
   h1 {
     font-size: 26px;
+  }
+
+  .pilot-decision-form,
+  .pilot-decision-current {
+    grid-template-columns: 1fr;
+  }
+
+  .pilot-decision-reason,
+  .pilot-decision-segmented {
+    grid-column: auto;
   }
 }

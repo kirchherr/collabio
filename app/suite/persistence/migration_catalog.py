@@ -691,6 +691,16 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:audit-worm-snapshot-v2",
         ),
     ),
+    SqlMigration(
+        version="0076",
+        name="mvp_pilot_decision_records",
+        resource_name="0076_mvp_pilot_decision_records.sql",
+        module_id="core",
+        evidence_refs=(
+            "doc:mvp-pilot-decision-capture",
+            "test:mvp-pilot-decision-capture",
+        ),
+    ),
 )
 
 

@@ -19,6 +19,7 @@ from suite.operations.postgres_restore_drill import (
     MODULE_REGISTRY_TABLES,
     PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE,
+    PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE,
     PRODUCTIVITY_PILOT_CONTROL_TABLES,
     PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_START_AUTHORIZATION_APPEND_ONLY_TRIGGERS_BY_TABLE,
@@ -255,22 +256,15 @@ def _snapshot(
         }
         for table_name in sorted(TIME_TRACKING_WRITE_TABLES)
     )
-    grants.append(
-        {
-            "schema_name": "collabio",
-            "table_name": "productivity_pilot_preflight_reports",
-            "grantee": "collabio_authz_admin",
-            "privilege_type": "SELECT",
-        }
-    )
     grants.extend(
         {
-            "schema_name": "collabio",
-            "table_name": "productivity_pilot_admission_records",
+            "schema_name": table_name.split(".", 1)[0],
+            "table_name": table_name.split(".", 1)[1],
             "grantee": "collabio_authz_admin",
             "privilege_type": privilege,
         }
-        for privilege in ("INSERT", "SELECT")
+        for table_name, privileges in sorted(PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE.items())
+        for privilege in sorted(privileges)
     )
     grants.extend(
         {

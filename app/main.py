@@ -431,6 +431,15 @@ from suite.platform.modules import (
     build_default_module_registry,
     tenant_module_admin_view,
 )
+from suite.platform.mvp_pilot_decisions import (
+    MvpPilotDecisionCommand,
+    MvpPilotDecisionConflict,
+    MvpPilotDecisionContext,
+    MvpPilotDecisionRecord,
+    MvpPilotDecisionService,
+    build_default_mvp_pilot_decision_store,
+    build_mvp_pilot_decision_context,
+)
 from suite.platform.office_edit_adapter import (
     OfficeEditAdapterEvaluationBlocked,
     OfficeEditAdapterEvaluationRequest,
@@ -1722,6 +1731,11 @@ def build_app() -> FastAPI:
         closure_report_store=productivity_pilot_real_user_closure_report_store,
         runtime_enabled=productivity_pilot_runtime_enabled(),
     )
+    mvp_pilot_decision_store = build_default_mvp_pilot_decision_store()
+    mvp_pilot_decision_service = MvpPilotDecisionService(
+        store=mvp_pilot_decision_store,
+        audit_logger=audit_logger,
+    )
     authz_admin_store = build_default_authz_admin_store()
     legacy_sql_import_write_approval_gate_store = build_default_legacy_sql_import_write_approval_gate_store()
     legacy_sql_import_write_approval_record_store = build_default_legacy_sql_import_write_approval_record_store()
@@ -1749,6 +1763,102 @@ def build_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    def current_mvp_pilot_decision_context(
+        *,
+        request: Request,
+        context: TenantRequestContext,
+    ) -> MvpPilotDecisionContext:
+        module_registry: InMemoryModuleRegistry = request.app.state.module_registry
+        workspace_sources = cast(SourceObjectRepository, request.app.state.workspace_source_object_repository)
+        workspace_source_catalog = cast(
+            WorkspaceSourceObjectCatalog,
+            request.app.state.workspace_source_object_catalog,
+        )
+        knowledge_base_articles = knowledge_base_article_service_for_context(request=request, context=context)
+        cockpit_response = build_product_cockpit_response(
+            user_context=context.user_context,
+            module_registry=module_registry,
+            workspace_source_repository=workspace_sources,
+            workspace_source_refs=workspace_source_catalog.list_refs(),
+            knowledge_base_article_service=knowledge_base_articles,
+            preview_decision_ledger=request.app.state.source_object_preview_decision_ledger,
+            audit_logger=audit_logger,
+        )
+        snapshot_response = build_product_cockpit_mvp_snapshot_response(
+            user_context=context.user_context,
+            cockpit_response=cockpit_response,
+            audit_logger=audit_logger,
+        )
+        return build_mvp_pilot_decision_context(
+            user_context=context.user_context,
+            snapshot=snapshot_response,
+        )
+
+    @app.get(
+        "/v1/platform/cockpit/mvp-pilot-decision-context",
+        response_model=MvpPilotDecisionContext,
+    )
+    def get_mvp_pilot_decision_context(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> MvpPilotDecisionContext:
+        return current_mvp_pilot_decision_context(request=request, context=context)
+
+    @app.post(
+        "/v1/platform/cockpit/mvp-pilot-decision-capture-submit",
+        response_model=MvpPilotDecisionRecord,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def capture_mvp_pilot_decision(
+        command: MvpPilotDecisionCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> MvpPilotDecisionRecord:
+        decision_context = current_mvp_pilot_decision_context(request=request, context=context)
+        service: MvpPilotDecisionService = request.app.state.mvp_pilot_decision_service
+        try:
+            response = service.capture(
+                user_context=context.user_context,
+                command=command,
+                decision_context=decision_context,
+            )
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        except MvpPilotDecisionConflict as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        audit_logger.record(
+            user_context=context.user_context,
+            event_type="platform.mvp_pilot_decision.recorded",
+            metadata={
+                "surface": "platform_api",
+                "decision_id": response.decision_id,
+                "decision_context_hash": response.decision_context_hash,
+                "go_no_go_decision": response.go_no_go_decision.value,
+                "decision_reason_hash": response.decision_reason_hash,
+                "command_hash": response.command_hash,
+                "evidence_hash": response.evidence_hash,
+                "idempotent_replay": response.idempotent_replay,
+                "pilot_admission_allowed": response.pilot_admission_allowed,
+                "pilot_start_allowed": response.pilot_start_allowed,
+                "module_activation_executed": response.module_activation_executed,
+                "traffic_authorized": response.traffic_authorized,
+                "external_side_effect_executed": response.external_side_effect_executed,
+                "content_included": response.content_included,
+            },
+        )
+        return response
+
+    @app.get(
+        "/v1/platform/cockpit/mvp-pilot-decisions/current",
+        response_model=MvpPilotDecisionRecord | None,
+    )
+    def get_current_mvp_pilot_decision(
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+    ) -> MvpPilotDecisionRecord | None:
+        service: MvpPilotDecisionService = request.app.state.mvp_pilot_decision_service
+        return service.latest(tenant_id=context.user_context.tenant_id)
 
     @app.post(
         "/v1/platform/productivity-pilot/real-user-nominations",
@@ -22664,6 +22774,8 @@ def build_app() -> FastAPI:
     app.state.productivity_pilot_real_user_closure_report_store = productivity_pilot_real_user_closure_report_store
     app.state.productivity_pilot_real_user_closure_service = productivity_pilot_real_user_closure_service
     app.state.productivity_pilot_real_user_readiness_service = productivity_pilot_real_user_readiness_service
+    app.state.mvp_pilot_decision_store = mvp_pilot_decision_store
+    app.state.mvp_pilot_decision_service = mvp_pilot_decision_service
     app.state.rag_pipeline = rag_pipeline
     app.state.source_object_preview_content_release_receipt_store = source_object_preview_content_release_receipt_store
     app.state.source_object_preview_decision_ledger = source_object_preview_decision_ledger

@@ -7,6 +7,7 @@ const fields = {
 
 const statusLine = document.querySelector("#status-line");
 const mvpReadinessPanel = document.querySelector("#mvp-readiness-panel");
+const pilotDecisionPanel = document.querySelector("#pilot-decision-panel");
 const snapshotButton = document.querySelector("#snapshot-button");
 const refreshButton = document.querySelector("#refresh-button");
 const moduleGrid = document.querySelector("#module-grid");
@@ -56,6 +57,11 @@ let currentCockpit = {
 let selectedFlowId = "";
 let detailLoadToken = 0;
 let crmSearchReadinessState = null;
+let currentPilotDecisionContext = null;
+const pilotDecisionConfirmationStatement =
+  "I explicitly record this tenant-scoped MVP pilot decision against the supplied evidence context. " +
+  "This stores decision evidence only; it does not admit users, activate modules, authorize traffic, " +
+  "start the pilot, or execute external or destructive actions.";
 
 function readContext() {
   return {
@@ -114,6 +120,7 @@ async function loadCockpit() {
     currentCockpit = body;
     renderCockpit(body);
     loadCrmErpSearchReadiness();
+    loadPilotDecisionState();
     setStatus(`Stand: ${new Date().toLocaleTimeString("de-DE")} | Audit ${body.audit_event_id}`);
   } catch (error) {
     currentCockpit = {
@@ -126,10 +133,173 @@ async function loadCockpit() {
       foundation_gap_actions: [],
     };
     renderCockpit(currentCockpit);
+    currentPilotDecisionContext = null;
+    renderPilotDecisionError("Pilot-Entscheidungskontext konnte nicht geladen werden.");
     renderCrmErpSearchReadinessError(error.message || "Cockpit konnte nicht geladen werden.");
     setStatus(error.message || "Cockpit konnte nicht geladen werden.", true);
   } finally {
     refreshButton.disabled = false;
+  }
+}
+
+async function loadPilotDecisionState() {
+  const context = readContext();
+  pilotDecisionPanel.innerHTML = '<div class="empty-state compact">Pilot-Entscheidung wird geladen ...</div>';
+  try {
+    const [contextResponse, currentResponse] = await Promise.all([
+      fetch("/v1/platform/cockpit/mvp-pilot-decision-context", {
+        headers: headersForContext(context),
+      }),
+      fetch("/v1/platform/cockpit/mvp-pilot-decisions/current", {
+        headers: headersForContext(context),
+      }),
+    ]);
+    const contextBody = await readJson(contextResponse);
+    const currentBody = await readJson(currentResponse);
+    if (!contextResponse.ok) {
+      throw new Error(contextBody.detail || `HTTP ${contextResponse.status}`);
+    }
+    if (!currentResponse.ok) {
+      throw new Error(currentBody.detail || `HTTP ${currentResponse.status}`);
+    }
+    currentPilotDecisionContext = contextBody;
+    renderPilotDecision(contextBody, currentBody);
+  } catch (error) {
+    currentPilotDecisionContext = null;
+    renderPilotDecisionError(error.message || "Pilot-Entscheidung konnte nicht geladen werden.");
+  }
+}
+
+function renderPilotDecision(context, currentDecision) {
+  const canGo = context.go_decision_allowed === true;
+  const latest = currentDecision
+    ? `<div class="pilot-decision-current">
+        <span>Aktueller Entscheid</span>
+        <strong class="decision-value decision-${escapeHtml(currentDecision.go_no_go_decision)}">${escapeHtml(currentDecision.go_no_go_decision)}</strong>
+        <code>${escapeHtml(currentDecision.evidence_hash)}</code>
+        <span>${escapeHtml(currentDecision.decided_by)} | ${escapeHtml(formatPilotTimestamp(currentDecision.decided_at))}</span>
+      </div>`
+    : '<div class="pilot-decision-current"><span>Aktueller Entscheid</span><strong>nicht erfasst</strong></div>';
+  pilotDecisionPanel.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Human Gate</p>
+        <h2>MVP Pilot-Entscheidung</h2>
+      </div>
+      <span class="status-pill ${canGo ? "status-enabled" : "readiness-blocked"}">${canGo ? "go_verfuegbar" : "go_blockiert"}</span>
+    </div>
+    <div class="pilot-decision-evidence">
+      ${detailItem("Scope", context.decision_scope)}
+      ${detailItem("Readiness", context.mvp_readiness_decision)}
+      ${detailItem("Module Gate", context.module_gate_status)}
+      ${detailItem("Content Gate", context.content_gate_status)}
+      ${detailItem("Context Hash", context.context_hash)}
+      ${detailItem("Naechste Aktion", context.next_foundation_action)}
+    </div>
+    ${latest}
+    <div class="pilot-decision-form">
+      <label class="pilot-decision-reason">
+        Entscheidungsgrund
+        <input id="pilot-decision-reason" autocomplete="off" maxlength="1000" value="Metadata-only scope and current evidence reviewed." />
+      </label>
+      <label>
+        Change
+        <input id="pilot-decision-change-ref" autocomplete="off" value="change:mvp-pilot-review" />
+      </label>
+      <label>
+        Freigabe
+        <input id="pilot-decision-confirmation-ref" autocomplete="off" value="approval:mvp-pilot-review" />
+      </label>
+      <div class="pilot-decision-segmented" role="group" aria-label="Pilot Entscheidung">
+        <button class="decision-button decision-go" type="button" data-pilot-decision="go" ${canGo ? "" : "disabled"}>Go</button>
+        <button class="decision-button decision-defer" type="button" data-pilot-decision="defer">Defer</button>
+        <button class="decision-button decision-no-go" type="button" data-pilot-decision="no_go">No-Go</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPilotDecisionError(message) {
+  pilotDecisionPanel.innerHTML = `
+    <div class="section-heading">
+      <div><p class="eyebrow">Human Gate</p><h2>MVP Pilot-Entscheidung</h2></div>
+      <span class="status-pill readiness-blocked">nicht_verfuegbar</span>
+    </div>
+    <div class="empty-state compact error-copy">${escapeHtml(message)}</div>
+  `;
+}
+
+function formatPilotTimestamp(value) {
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.valueOf()) ? String(value || "n/a") : timestamp.toLocaleString("de-DE");
+}
+
+async function submitPilotDecision(decision) {
+  if (!currentPilotDecisionContext) {
+    setStatus("Pilot-Entscheidungskontext fehlt.", true);
+    return;
+  }
+  if (decision === "go" && currentPilotDecisionContext.go_decision_allowed !== true) {
+    setStatus("Go ist durch den aktuellen Evidenzkontext blockiert.", true);
+    return;
+  }
+  const reason = document.querySelector("#pilot-decision-reason")?.value.trim() || "";
+  const changeRequestRef = document.querySelector("#pilot-decision-change-ref")?.value.trim() || "";
+  const confirmationReference = document.querySelector("#pilot-decision-confirmation-ref")?.value.trim() || "";
+  if (!reason || !changeRequestRef || !confirmationReference) {
+    setStatus("Entscheidungsgrund, Change und Freigabe sind erforderlich.", true);
+    return;
+  }
+  const context = readContext();
+  const confirmation = [
+    pilotDecisionConfirmationStatement,
+    "",
+    `Entscheidung: ${decision}`,
+    `Tenant: ${context.tenantId}`,
+    `Evidence: ${currentPilotDecisionContext.context_hash}`,
+  ].join("\n");
+  if (!window.confirm(confirmation)) {
+    setStatus("Pilot-Entscheidung abgebrochen.");
+    return;
+  }
+  const stamp = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  const payload = {
+    tenant_id: context.tenantId,
+    decision_id: `mvp-pilot-decision-${stamp}`,
+    decision_capture_submit_contract_id: "mvp_pilot_decision_capture_submit_contract.v1",
+    decision_context_hash: currentPilotDecisionContext.context_hash,
+    go_no_go_decision: decision,
+    decision_reason: reason,
+    human_confirmation_statement: pilotDecisionConfirmationStatement,
+    human_confirmation_reference: confirmationReference,
+    change_request_ref: changeRequestRef,
+    confirmed_by: context.userId,
+    confirmed_at: new Date().toISOString(),
+    confirmation_role_ids: context.roleIds.split(",").map((value) => value.trim()).filter(Boolean),
+    idempotency_key: `request:mvp-pilot-decision-${stamp}`,
+  };
+  const buttons = pilotDecisionPanel.querySelectorAll("button[data-pilot-decision]");
+  buttons.forEach((button) => {
+    button.disabled = true;
+  });
+  try {
+    const response = await fetch("/v1/platform/cockpit/mvp-pilot-decision-capture-submit", {
+      method: "POST",
+      headers: {
+        ...headersForContext(context),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const body = await readJson(response);
+    if (!response.ok) {
+      throw new Error(body.detail || `HTTP ${response.status}`);
+    }
+    setStatus(`Pilot-Entscheidung ${body.go_no_go_decision} gespeichert | Evidence ${body.evidence_hash}`);
+    await loadPilotDecisionState();
+  } catch (error) {
+    setStatus(error.message || "Pilot-Entscheidung konnte nicht gespeichert werden.", true);
+    await loadPilotDecisionState();
   }
 }
 
@@ -1372,6 +1542,12 @@ mvpReadinessPanel.addEventListener("click", (event) => {
   );
   if (action) {
     executeFoundationGapAction(action);
+  }
+});
+pilotDecisionPanel.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-pilot-decision]");
+  if (button?.dataset.pilotDecision) {
+    submitPilotDecision(button.dataset.pilotDecision);
   }
 });
 moduleGrid.addEventListener("click", (event) => {

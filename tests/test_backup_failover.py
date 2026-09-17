@@ -125,6 +125,7 @@ def test_backup_failover_policy_declares_practical_targets_and_drills() -> None:
         "productivity_pilot_real_user_runtime_window.v1",
         "productivity_pilot_real_user_runtime_observation.v1",
         "productivity_pilot_closure_report.v1",
+        "mvp_pilot_decision_record.v1",
         "preview_conversion_execution_gate_hash_check",
         "preview_conversion_job_evidence_hash_check",
         "preview_cdr_manifest_hash_check",
@@ -600,6 +601,8 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert "source object write receipts" in policy.domain("postgres_metadata").state_artifacts
     assert "source object preview decision evidence" in policy.domain("postgres_metadata").state_artifacts
     assert "source object storage manifests" in policy.domain("postgres_metadata").state_artifacts
+    assert "MVP pilot decision context hashes" in policy.domain("postgres_metadata").state_artifacts
+    assert "collabio.mvp_pilot_decision_records" in policy.domain("postgres_metadata").state_artifacts
     assert policy.domain("office_documents").criticality == "critical"
     assert policy.domain("mail_messages_threads").criticality == "critical"
     assert policy.domain("module_registry_state").criticality == "critical"

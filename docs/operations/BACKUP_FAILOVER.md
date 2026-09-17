@@ -289,6 +289,12 @@ observation, and closure ledgers. Every read revalidates hashes and current-cycl
 prior-cycle evidence is not promoted and invalid evidence fails closed. See
 `docs/operations/PRODUCTIVITY_PILOT_REAL_USER_READINESS.md`.
 
+Migration 0076 adds the tenant-scoped append-only `collabio.mvp_pilot_decision_records` ledger. Restore
+verification covers forced RLS, no-update/no-delete policies, the append-only trigger, least-privilege
+grants, exact row recovery, decision/context hashes, and absence of reason or confirmation plaintext.
+A restored `go` record is evidence only and never reopens admission, module activation, traffic, or pilot
+start. See `docs/operations/MVP_PILOT_DECISION_CAPTURE.md`.
+
 The 2026-07-31 technical proof restored 63 migrations and 70 tables, including exactly one metadata-only start authorization row with evidence hash `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7` on both source and isolated target. PostgreSQL restore report `sha256:0cec6b8bfea24eae57708ef3242b77f1866abb86666bdf67f25f45c1b3dc789f` and backend completion gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c` were green. The deployment switch was closed after the request proof.
 
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:

@@ -114,12 +114,17 @@ TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
     },
 }
 PRODUCTIVITY_PILOT_CONTROL_TABLES = {
+    "collabio.mvp_pilot_decision_records",
     "collabio.productivity_pilot_preflight_reports",
     "collabio.productivity_pilot_admission_records",
     "collabio.productivity_pilot_real_user_nominations",
     "collabio.productivity_pilot_real_user_admissions",
 }
 PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE = {
+    "collabio.mvp_pilot_decision_records": {
+        "mvp_pilot_decision_records_no_update",
+        "mvp_pilot_decision_records_no_hard_delete",
+    },
     "collabio.productivity_pilot_preflight_reports": {
         "productivity_pilot_preflight_reports_no_update",
         "productivity_pilot_preflight_reports_no_hard_delete",
@@ -138,6 +143,9 @@ PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE = {
     },
 }
 PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE = {
+    "collabio.mvp_pilot_decision_records": {
+        "mvp_pilot_decision_records_append_only",
+    },
     "collabio.productivity_pilot_preflight_reports": {
         "productivity_pilot_preflight_reports_append_only",
     },
@@ -150,6 +158,13 @@ PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     "collabio.productivity_pilot_real_user_admissions": {
         "productivity_pilot_real_user_admissions_append_only",
     },
+}
+PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE = {
+    "collabio.mvp_pilot_decision_records": {"SELECT", "INSERT"},
+    "collabio.productivity_pilot_preflight_reports": {"SELECT"},
+    "collabio.productivity_pilot_admission_records": {"SELECT", "INSERT"},
+    "collabio.productivity_pilot_real_user_nominations": {"SELECT", "INSERT"},
+    "collabio.productivity_pilot_real_user_admissions": {"SELECT", "INSERT"},
 }
 PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES = {
     "collabio.productivity_pilot_traffic_scope_enforcements",
@@ -545,9 +560,10 @@ def build_postgres_database_snapshot(
             productivity_pilot_trigger_names_by_table[table_name] >= expected_triggers
             for table_name, expected_triggers in PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE.items()
         )
-        and productivity_pilot_authz_privileges_by_table["collabio.productivity_pilot_preflight_reports"] == {"SELECT"}
-        and productivity_pilot_authz_privileges_by_table["collabio.productivity_pilot_admission_records"]
-        == {"SELECT", "INSERT"}
+        and all(
+            productivity_pilot_authz_privileges_by_table[table_name] == expected_privileges
+            for table_name, expected_privileges in PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE.items()
+        )
         and all(not privileges for privileges in productivity_pilot_app_privileges_by_table.values())
     )
     productivity_pilot_traffic_policy_names_by_table = {

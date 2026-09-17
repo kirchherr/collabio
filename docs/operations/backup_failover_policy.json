@@ -87,7 +87,7 @@
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
       "recovery_strategy": "PITR or latest verified logical dump; run migration checksum verification after restore",
-      "state_artifacts": ["schema migrations", "policy registries", "source object metadata", "source object storage manifests", "source object write receipts", "source object preview decision evidence", "source object preview renderer sandbox evidence", "source object preview renderer release gate evidence", "source object preview conversion execution gate evidence", "source object preview conversion job evidence", "preview CDR profile and manifest hashes", "source object derived preview lineage receipts", "source object derived preview recovery drill reports", "source object preview content release receipts", "legal hold decisions", "retention manifest re-evaluation evidence", "domain tables", "metadata tables"]
+      "state_artifacts": ["schema migrations", "policy registries", "source object metadata", "source object storage manifests", "source object write receipts", "source object preview decision evidence", "source object preview renderer sandbox evidence", "source object preview renderer release gate evidence", "source object preview conversion execution gate evidence", "source object preview conversion job evidence", "preview CDR profile and manifest hashes", "source object derived preview lineage receipts", "source object derived preview recovery drill reports", "source object preview content release receipts", "MVP pilot decision context hashes", "collabio.mvp_pilot_decision_records", "legal hold decisions", "retention manifest re-evaluation evidence", "domain tables", "metadata tables"]
     },
     {
       "domain_id": "audit_evidence",
@@ -360,6 +360,7 @@
         "productivity_pilot_real_user_runtime_window.v1",
         "productivity_pilot_real_user_runtime_observation.v1",
         "productivity_pilot_closure_report.v1",
+        "mvp_pilot_decision_record.v1",
         "preview_conversion_execution_gate_hash_check",
         "preview_conversion_job_evidence_hash_check",
         "preview_cdr_manifest_hash_check",
