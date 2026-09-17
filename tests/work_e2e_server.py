@@ -2,20 +2,33 @@ from __future__ import annotations
 
 import importlib
 import os
+from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
+from suite.ai_control_plane.models import UserContext
 from suite.operations.productivity_pilot_preflight import ProductivityPilotControl
+from suite.platform.context import TenantRequestContext
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
-from suite.platform.knowledge_base import default_knowledge_base_enabled_features
+from suite.platform.knowledge_base import (
+    KB_ARTICLES_WRITE_FEATURE_ID,
+    default_knowledge_base_enabled_features,
+)
+from suite.platform.knowledge_base_runtime import (
+    KnowledgeBaseArticleServiceResolver,
+    KnowledgeBaseRuntimeActivationCommand,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleStatus,
     TenantModuleState,
     default_module_catalog_entries,
 )
+from suite.platform.principal_store import PgPrincipalDirectory
 from suite.platform.productivity_pilot_start_authorization import (
     ProductivityPilotControlEvidence,
     ProductivityPilotStartAuthorization,
@@ -37,6 +50,10 @@ from suite.platform.time_tracking_module import (
     TIME_ENTRIES_WRITE_FEATURE_ID,
     default_time_tracking_enabled_features,
 )
+from suite.storage.adapter_policy import ObjectLockMode
+from suite.storage.s3_compatible_content_store import S3CompatibleObjectWriteResult
+from suite.storage.s3_sdk_client import Boto3S3CompatibleObjectStoreClient, build_boto3_s3_compatible_client
+from suite.storage.source_object_storage import SourceObjectStorageError
 from suite.storage.source_objects import sha256_bytes
 from suite.testing.work_e2e_guard import (
     WORK_E2E_TENANT_ID,
@@ -75,12 +92,14 @@ task_features[TASKS_WORKFLOW_WRITE_FEATURE_ID] = True
 time_features = default_time_tracking_enabled_features()
 time_features[TIME_ENTRIES_WRITE_FEATURE_ID] = True
 time_features[TIME_APPROVALS_WRITE_FEATURE_ID] = True
+knowledge_features = default_knowledge_base_enabled_features()
+knowledge_features[KB_ARTICLES_WRITE_FEATURE_ID] = allow_synthetic_traffic
 
 app.state.module_registry = InMemoryModuleRegistry(
     catalog_entries=list(catalog_entries),
     tenant_modules=[
         _enabled_state("crm_erp", default_crm_erp_subfeature_enabled_features()),
-        _enabled_state("knowledge_base", default_knowledge_base_enabled_features()),
+        _enabled_state("knowledge_base", knowledge_features),
         _enabled_state("tasks_activities", task_features),
         _enabled_state("time_tracking", time_features),
     ],
@@ -116,6 +135,109 @@ def _allow_isolated_synthetic_traffic() -> ProductivityPilotTrafficDecision:
 
 def _synthetic_hash(label: str) -> str:
     return sha256_bytes(f"work-e2e:{label}".encode())
+
+
+_fail_storage_write: ContextVar[bool] = ContextVar("work_e2e_fail_storage_write", default=False)
+
+
+class FailureInjectableObjectStoreClient(Boto3S3CompatibleObjectStoreClient):
+    """Exercise the real UoW rollback without a production failure-control API."""
+
+    def put_object(
+        self,
+        *,
+        bucket_id: str,
+        object_key: str,
+        body: bytes,
+        metadata: dict[str, str],
+        object_lock_mode: ObjectLockMode,
+        legal_hold: bool,
+    ) -> S3CompatibleObjectWriteResult:
+        if _fail_storage_write.get():
+            raise SourceObjectStorageError("synthetic Work E2E object-store write failure")
+        return super().put_object(
+            bucket_id=bucket_id,
+            object_key=object_key,
+            body=body,
+            metadata=metadata,
+            object_lock_mode=object_lock_mode,
+            legal_hold=legal_hold,
+        )
+
+
+@app.middleware("http")
+async def _isolated_storage_failure(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    token = _fail_storage_write.set(
+        allow_synthetic_traffic
+        and request.headers.get("X-Tenant-Id") == WORK_E2E_TENANT_ID
+        and request.url.path == "/v1/admin/kb/articles/write-approvals/execute"
+        and request.headers.get("X-Work-E2E-Fail-Storage") == "1"
+    )
+    try:
+        return await call_next(request)
+    finally:
+        _fail_storage_write.reset(token)
+
+
+def _install_synthetic_knowledge_runtime() -> None:
+    resolver = cast(KnowledgeBaseArticleServiceResolver, app.state.knowledge_base_article_service_resolver)
+    client = build_boto3_s3_compatible_client(
+        endpoint_url=os.environ["SUITE_S3_ENDPOINT_URL"],
+        access_key_id=os.environ["SUITE_S3_ACCESS_KEY_ID"],
+        secret_access_key=os.environ["SUITE_S3_SECRET_ACCESS_KEY"],
+        storage_provider="minio",
+    )
+    resolver.object_store_client = FailureInjectableObjectStoreClient(
+        sdk_client=client.sdk_client,
+        storage_provider="minio",
+    )
+    # This in-memory restore reference is only a fixture for the synthetic tenant.
+    # Provider capabilities and empty content inventory are checked against real MinIO/PG.
+    resolver.activate_postgres_s3_runtime(
+        command=KnowledgeBaseRuntimeActivationCommand(
+            provider_profile_id="work-e2e-synthetic-minio",
+            restore_drill_report_hash=_synthetic_hash("empty-restore-fixture-not-production-evidence"),
+            approval_reference="test-fixture:work-e2e-runtime",
+            reason="isolated synthetic browser proof only",
+            human_confirmation=True,
+        ),
+        user_context=UserContext(
+            tenant_id=WORK_E2E_TENANT_ID,
+            user_id="work-e2e-harness",
+            role_ids={"tenant-admin"},
+        ),
+        audit_chain_ref="test-fixture:work-e2e-runtime",
+    )
+
+
+def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
+    context = cast(
+        TenantRequestContext,
+        main_module.get_dev_header_tenant_request_context(
+            request=request,
+            tenant_id=request.headers.get("X-Tenant-Id"),
+            user_id=request.headers.get("X-User-Id"),
+            role_ids=request.headers.get("X-Role-Ids"),
+            readable_object_ids=request.headers.get("X-Readable-Object-Ids"),
+        ),
+    )
+    if not request.url.path.startswith(("/v1/kb/", "/v1/admin/kb/")):
+        return context
+    # Knowledge Base visibility comes from fresh transactional ACLs, never browser-supplied IDs.
+    directory = PgPrincipalDirectory(database_dsn=os.environ["SUITE_DATABASE_DSN"])
+    readable = directory.readable_object_ids(
+        tenant_id=context.user_context.tenant_id,
+        user_id=context.user_context.user_id,
+        role_ids=context.user_context.role_ids,
+        group_ids=set(),
+    )
+    return context.model_copy(
+        update={"user_context": context.user_context.model_copy(update={"readable_object_ids": readable})}
+    )
+
+
+_install_synthetic_knowledge_runtime()
+app.dependency_overrides[main_module.get_tenant_request_context] = _synthetic_authorized_context
 
 
 def _install_closed_runtime_fixture() -> None:

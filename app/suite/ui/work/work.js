@@ -27,6 +27,15 @@ const elements = {
   timeEntryList: document.querySelector("#time-entry-list"),
   ticketList: document.querySelector("#ticket-list"),
   knowledgeList: document.querySelector("#knowledge-list"),
+  knowledgeCreate: document.querySelector("#knowledge-create"),
+  knowledgeResult: document.querySelector("#knowledge-result"),
+  knowledgeEvidence: document.querySelector("#knowledge-evidence"),
+  knowledgeVersion: document.querySelector("#knowledge-version"),
+  knowledgePreview: document.querySelector("#knowledge-preview"),
+  knowledgeApprove: document.querySelector("#knowledge-approve"),
+  knowledgeExecute: document.querySelector("#knowledge-execute"),
+  knowledgeConfirmation: document.querySelector("#knowledge-confirmation"),
+  knowledgeConfirm: document.querySelector("#knowledge-confirm"),
   crmList: document.querySelector("#crm-list"),
 };
 
@@ -39,6 +48,7 @@ const dialogs = {
   timeApproval: document.querySelector("#time-approval-dialog"),
   ticket: document.querySelector("#ticket-dialog"),
   ticketTransition: document.querySelector("#ticket-transition-dialog"),
+  knowledge: document.querySelector("#knowledge-dialog"),
 };
 
 const forms = {
@@ -50,6 +60,7 @@ const forms = {
   timeApproval: document.querySelector("#time-approval-form"),
   ticket: document.querySelector("#ticket-form"),
   ticketTransition: document.querySelector("#ticket-transition-form"),
+  knowledge: document.querySelector("#knowledge-form"),
 };
 
 const storageKey = "collabio.workspace.context";
@@ -165,6 +176,7 @@ const state = {
   taskFilter: "active",
   ticketFilter: "open",
   loading: false,
+  knowledgeEditor: null,
   resources: Object.fromEntries(
     Object.keys(resourceDefinitions).map((key) => [key, { status: "idle", items: [], detail: "" }]),
   ),
@@ -269,6 +281,7 @@ async function loadResource(key) {
       items,
       detail: "",
       auditEventId: body.audit_event_id || "",
+      canWrite: key === "knowledge" && body.can_write === true,
     };
   } catch (error) {
     const status = error instanceof ApiError && [403, 404, 423].includes(error.status) ? "blocked" : "error";
@@ -485,6 +498,7 @@ function renderTickets() {
 
 function renderKnowledge() {
   const resource = state.resources.knowledge;
+  elements.knowledgeCreate.hidden = resource.status !== "ready" || !resource.canWrite;
   if (resource.status !== "ready") {
     elements.knowledgeList.innerHTML = resourceState("knowledge");
     return;
@@ -495,6 +509,9 @@ function renderKnowledge() {
   elements.knowledgeList.innerHTML = items.length
     ? items.map(knowledgeItem).join("")
     : emptyState("Keine Wissensartikel im Filter.");
+  elements.knowledgeList.querySelectorAll("[data-knowledge-edit]").forEach((button) => {
+    button.addEventListener("click", () => openKnowledgeEditor(button.dataset.knowledgeEdit));
+  });
 }
 
 function renderCrm() {
@@ -648,6 +665,7 @@ function knowledgeItem(item) {
     <article class="knowledge-item">
       <div><span class="status-pill ${statusClass(item.status)}">${escapeHtml(statusLabels[item.status] || humanize(item.status))}</span><h3>${escapeHtml(item.title)}</h3></div>
       <div class="knowledge-meta"><span>${escapeHtml(item.article_key)}</span><span>${escapeHtml(item.current_version_label)}</span><span>${escapeHtml(formatDate(item.updated_at_utc))}</span></div>
+      ${state.resources.knowledge.canWrite ? `<button class="button secondary knowledge-edit" type="button" data-knowledge-edit="${escapeHtml(item.object_id)}" aria-label="Artikel ${escapeHtml(item.title)} bearbeiten">Artikel bearbeiten</button>` : ""}
     </article>
   `;
 }
@@ -835,7 +853,7 @@ function clearFormMessage(form) {
 }
 
 function setFormBusy(form, busy) {
-  form.querySelectorAll("button, input, select").forEach((control) => {
+  form.querySelectorAll("button, input, select, textarea").forEach((control) => {
     control.disabled = busy;
   });
 }
@@ -873,6 +891,276 @@ function rememberReadableObjectIds(objectIds) {
   objectIds.filter(Boolean).forEach((objectId) => current.add(objectId));
   fields.readableObjectIds.value = [...current].join(",");
   persistContext();
+}
+
+function knowledgeSessionIsCurrent(editor) {
+  return state.knowledgeEditor === editor && dialogs.knowledge.open &&
+    editor.context === JSON.stringify(readContext());
+}
+
+function renderKnowledgeEditor() {
+  const editor = state.knowledgeEditor;
+  if (!editor) {
+    return;
+  }
+  const locked = ["loading", "unavailable", "saved", "uncertain"].includes(editor.stage);
+  setFormBusy(forms.knowledge, editor.busy);
+  forms.knowledge.elements.title.disabled = editor.busy || locked;
+  forms.knowledge.elements.content_text.disabled = editor.busy || locked;
+  elements.knowledgePreview.hidden = editor.stage !== "draft";
+  elements.knowledgeApprove.hidden = editor.stage !== "preview";
+  elements.knowledgeConfirmation.hidden = editor.stage !== "approved";
+  elements.knowledgeExecute.hidden = editor.stage !== "approved";
+  elements.knowledgeExecute.disabled = editor.busy || !elements.knowledgeConfirm.checked;
+  elements.knowledgeEvidence.hidden = !["preview", "approved", "saved"].includes(editor.stage);
+  forms.knowledge.querySelectorAll("[data-knowledge-step]").forEach((step) => {
+    step.classList.toggle("active", step.dataset.knowledgeStep === editor.stage);
+  });
+  if (editor.stage === "preview" || editor.stage === "approved") {
+    const command = editor.prepared.write_command;
+    elements.knowledgeEvidence.innerHTML = `
+      <strong>${editor.stage === "approved" ? "Aenderung freigegeben" : "Vorschau geprueft"}</strong>
+      <p>${editor.operation === "create" ? "Neuer interner Artikel" : `Bearbeitung ab ${escapeHtml(editor.versionLabel)}`} → ${escapeHtml(command.proposed_version_label)}</p>
+      <p>${editor.stage === "approved" ? "Quelle, Freigabe und Wiederherstellungsnachweis sind geprueft. Die abschliessende Bestaetigung steht aus." : "Titel und Inhalt sind an diese Vorschau gebunden. Bitte pruefen und die Aenderung freigeben."}</p>
+      <p>Der Artikel ist noch nicht gespeichert. RAG und Suche bleiben ausgeschaltet.</p>
+    `;
+  }
+}
+
+async function openKnowledgeEditor(articleObjectId = null) {
+  if (!state.resources.knowledge.canWrite || state.knowledgeEditor?.busy) {
+    return;
+  }
+  forms.knowledge.reset();
+  clearFormMessage(forms.knowledge);
+  elements.knowledgeEvidence.replaceChildren();
+  const editor = {
+    operation: articleObjectId ? "edit" : "create",
+    articleObjectId,
+    expectedVersion: null,
+    versionLabel: "",
+    context: JSON.stringify(readContext()),
+    stage: articleObjectId ? "loading" : "draft",
+    busy: Boolean(articleObjectId),
+  };
+  state.knowledgeEditor = editor;
+  document.querySelector("#knowledge-dialog-title").textContent = articleObjectId ? "Artikel bearbeiten" : "Neuer Artikel";
+  elements.knowledgeVersion.textContent = articleObjectId ? "Autorisierte aktuelle Version wird geladen ..." : "Die Artikelkennung wird beim Pruefen vergeben.";
+  renderKnowledgeEditor();
+  dialogs.knowledge.showModal();
+  if (!articleObjectId) {
+    return;
+  }
+  try {
+    const result = await apiRequest(`/v1/admin/kb/articles/${encodeURIComponent(articleObjectId)}/edit-content`);
+    if (!knowledgeSessionIsCurrent(editor)) {
+      return;
+    }
+    if (!result.article?.current_version_object_id || typeof result.body !== "string") {
+      throw new ApiError("Unvollstaendige Artikelversion", 502);
+    }
+    editor.expectedVersion = result.article.current_version_object_id;
+    editor.versionLabel = result.article.current_version_label;
+    forms.knowledge.elements.title.value = result.article.title;
+    forms.knowledge.elements.content_text.value = result.body;
+    elements.knowledgeVersion.textContent = `Geladene Version: ${editor.versionLabel}. Beim Speichern wird diese Version erneut geprueft.`;
+    editor.stage = "draft";
+  } catch (error) {
+    if (knowledgeSessionIsCurrent(editor)) {
+      editor.stage = "unavailable";
+      setFormMessage(forms.knowledge, knowledgeErrorMessage(error));
+    }
+  } finally {
+    if (knowledgeSessionIsCurrent(editor)) {
+      editor.busy = false;
+      renderKnowledgeEditor();
+    }
+  }
+}
+
+function invalidateKnowledgePreview() {
+  const editor = state.knowledgeEditor;
+  if (!editor || editor.busy || ["conflict", "uncertain", "saved"].includes(editor.stage)) {
+    return;
+  }
+  editor.stage = "draft";
+  editor.prepared = null;
+  editor.dryRun = null;
+  editor.approval = null;
+  editor.refresh = null;
+  editor.guard = null;
+  elements.knowledgeConfirm.checked = false;
+  clearFormMessage(forms.knowledge);
+  renderKnowledgeEditor();
+}
+
+function knowledgeErrorMessage(error) {
+  if (error instanceof ApiError && (error.status === 409 || /current.version|version.mismatch|stale|conflict/i.test(error.message))) {
+    return "Versionskonflikt: Der Artikel oder seine Nachweise wurden inzwischen geaendert. Ihr Entwurf bleibt hier erhalten. Schliessen Sie nach dem Sichern Ihres Entwurfs diesen Dialog und laden Sie den Artikel erneut; es wurde nichts ueberschrieben.";
+  }
+  if (error instanceof ApiError && [401, 403, 404, 423].includes(error.status)) {
+    return "Wissensartikel gesperrt: Rolle, Zugriffsrechte, Modul oder Schreibfunktion erlauben diese Aktion derzeit nicht. Ihr Entwurf bleibt hier erhalten.";
+  }
+  if (error instanceof ApiError && [400, 422].includes(error.status)) {
+    return "Die Artikelangaben oder die gebundene Freigabe sind ungueltig. Bitte pruefen Sie Titel und Inhalt und erstellen Sie eine neue Vorschau.";
+  }
+  return "Die Knowledge Base ist derzeit nicht verfuegbar. Ihr Entwurf bleibt hier erhalten. Bitte versuchen Sie es spaeter erneut.";
+}
+
+function handleKnowledgeFailure(editor, error, duringExecution = false) {
+  if (!knowledgeSessionIsCurrent(editor)) {
+    return;
+  }
+  const conflict = error instanceof ApiError && (error.status === 409 || /current.version|version.mismatch|stale|conflict/i.test(error.message));
+  const uncertain = duringExecution && (!(error instanceof ApiError) || error.status < 400 || error.status >= 500);
+  editor.stage = conflict ? "conflict" : uncertain ? "uncertain" : "draft";
+  elements.knowledgeConfirm.checked = false;
+  setFormMessage(forms.knowledge, uncertain
+    ? "Speicherung konnte nicht bestaetigt werden. Ihr Entwurf bleibt hier erhalten. Aktualisieren Sie die Artikelliste und laden Sie den Artikel erneut, bevor Sie eine weitere Speicherung starten."
+    : knowledgeErrorMessage(error));
+}
+
+async function knowledgePost(path, payload, editor) {
+  if (!knowledgeSessionIsCurrent(editor)) {
+    throw new ApiError("Kontext wurde geaendert", 403);
+  }
+  return apiRequest(`/v1/admin/kb/articles/${path}`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+async function previewKnowledge(event) {
+  event.preventDefault();
+  const editor = state.knowledgeEditor;
+  if (!editor || editor.busy || editor.stage !== "draft" || !forms.knowledge.reportValidity()) {
+    return;
+  }
+  const payload = {
+    operation: editor.operation,
+    title: forms.knowledge.elements.title.value.trim(),
+    body: forms.knowledge.elements.content_text.value,
+  };
+  if (editor.operation === "edit") {
+    payload.article_object_id = editor.articleObjectId;
+    payload.expected_current_version_object_id = editor.expectedVersion;
+  }
+  editor.busy = true;
+  clearFormMessage(forms.knowledge);
+  renderKnowledgeEditor();
+  try {
+    const prepared = await knowledgePost("prepare-write", payload, editor);
+    if (!prepared.write_command || !prepared.proposed_source_record || prepared.rag_indexing_allowed !== false || prepared.search_indexing_allowed !== false) {
+      throw new ApiError("Unvollstaendige Schreibvorschau", 502);
+    }
+    const dryRun = await knowledgePost("write-dry-run", prepared.write_command, editor);
+    if (!knowledgeSessionIsCurrent(editor)) {
+      return;
+    }
+    editor.prepared = prepared;
+    editor.dryRun = dryRun;
+    editor.stage = "preview";
+  } catch (error) {
+    handleKnowledgeFailure(editor, error);
+  } finally {
+    if (knowledgeSessionIsCurrent(editor)) {
+      editor.busy = false;
+      renderKnowledgeEditor();
+    }
+  }
+}
+
+async function approveKnowledge() {
+  const editor = state.knowledgeEditor;
+  if (!editor || editor.busy || editor.stage !== "preview") {
+    return;
+  }
+  editor.busy = true;
+  clearFormMessage(forms.knowledge);
+  renderKnowledgeEditor();
+  try {
+    const approval = await knowledgePost("write-approvals/approve", {
+      dry_run_write_approval_evidence_hash: editor.dryRun.write_approval_evidence_hash,
+      approval_reference: `approval:${generatedId("work-kb")}`,
+      reason: "User approved the reviewed Knowledge Base draft in Collabio Work",
+    }, editor);
+    const refresh = await knowledgePost("write-approvals/refresh-preview", {
+      approved_write_approval_evidence_hash: approval.approved_write_approval_evidence_hash,
+      preview_reference: `preview:${generatedId("work-kb")}`,
+      reason: "Refresh source and restore evidence for the approved Work draft",
+    }, editor);
+    const guard = await knowledgePost("source-object-write-guard", {
+      approved_write_approval_evidence_hash: approval.approved_write_approval_evidence_hash,
+      proposed_source_record: editor.prepared.proposed_source_record,
+    }, editor);
+    if (!knowledgeSessionIsCurrent(editor)) {
+      return;
+    }
+    if (!guard.allowed || !guard.source_authority_verified || guard.rag_indexing_allowed !== false) {
+      throw new ApiError("Schreibpruefung hat die Aenderung gesperrt", 423);
+    }
+    editor.approval = approval;
+    editor.refresh = refresh;
+    editor.guard = guard;
+    editor.stage = "approved";
+  } catch (error) {
+    handleKnowledgeFailure(editor, error);
+  } finally {
+    if (knowledgeSessionIsCurrent(editor)) {
+      editor.busy = false;
+      renderKnowledgeEditor();
+    }
+  }
+}
+
+async function executeKnowledge() {
+  const editor = state.knowledgeEditor;
+  if (!editor || editor.busy || editor.stage !== "approved" || !elements.knowledgeConfirm.checked) {
+    return;
+  }
+  editor.busy = true;
+  clearFormMessage(forms.knowledge);
+  renderKnowledgeEditor();
+  let executionSent = false;
+  try {
+    const command = {
+      approved_write_approval_evidence_hash: editor.approval.approved_write_approval_evidence_hash,
+      source_object_write_guard_decision: editor.guard,
+      refresh_preview_command_hash: editor.refresh.preview_command_hash,
+      projected_restore_evidence_preview_hash: editor.refresh.projected_restore_evidence_preview_hash,
+      execution_reference: `execution:${generatedId("work-kb")}`,
+      human_confirmation_reference: `human-confirmation:${generatedId("work-kb")}`,
+      reason: "User explicitly confirmed saving the reviewed Knowledge Base article in Collabio Work",
+    };
+    const skeleton = await knowledgePost("write-approvals/execution-skeleton", command, editor);
+    executionSent = true;
+    const result = await knowledgePost("write-approvals/execute", {
+      ...command,
+      execution_skeleton_command_hash: skeleton.execution_command_hash,
+      execution_plan_hash: skeleton.execution_plan_hash,
+      proposed_source_record: editor.prepared.proposed_source_record,
+    }, editor);
+    if (!knowledgeSessionIsCurrent(editor)) {
+      return;
+    }
+    if (!result.write_unit_of_work_committed || !result.source_object_write_receipt_persisted || !result.restore_evidence_refreshed || result.rag_indexing_allowed !== false || result.search_indexing_allowed !== false) {
+      throw new ApiError("Unvollstaendige Speicherbestaetigung", 502);
+    }
+    editor.stage = "saved";
+    const evidence = `<strong>Artikel gespeichert</strong><p>Inhalt, Freigabe, Schreibbeleg und Wiederherstellungsnachweis sind verbunden. RAG und Suche bleiben ausgeschaltet.</p><dl><dt>Artikel</dt><dd>${escapeHtml(result.article_object_id)}</dd><dt>Version</dt><dd>${escapeHtml(result.current_source_version_id)}</dd><dt>Auditbeleg</dt><dd>${escapeHtml(result.audit_event_id)}</dd></dl>`;
+    elements.knowledgeEvidence.innerHTML = evidence;
+    elements.knowledgeResult.innerHTML = evidence;
+    elements.knowledgeResult.hidden = false;
+    setFormMessage(forms.knowledge, "Artikel gespeichert. Sie koennen den Dialog schliessen.", true);
+    rememberReadableObjectIds([result.article_object_id, result.current_version_object_id]);
+    editor.context = JSON.stringify(readContext());
+    await loadResource("knowledge");
+    renderAll();
+  } catch (error) {
+    handleKnowledgeFailure(editor, error, executionSent);
+  } finally {
+    if (knowledgeSessionIsCurrent(editor)) {
+      editor.busy = false;
+      renderKnowledgeEditor();
+    }
+  }
 }
 
 async function submitTask(event) {
@@ -1321,7 +1609,7 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
 
 document.querySelectorAll(".editor-dialog").forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) {
+    if (event.target === dialog && !(dialog === dialogs.knowledge && state.knowledgeEditor?.busy)) {
       dialog.close();
     }
   });
@@ -1353,6 +1641,9 @@ elements.contextButton.addEventListener("click", () => {
 
 elements.contextForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  dialogs.knowledge.close();
+  elements.knowledgeResult.hidden = true;
+  elements.knowledgeResult.replaceChildren();
   persistContext();
   elements.contextPanel.hidden = true;
   refreshAll();
@@ -1371,6 +1662,23 @@ forms.timeCorrection.addEventListener("submit", submitTimeCorrection);
 forms.timeApproval.addEventListener("submit", submitTimeApproval);
 forms.ticket.addEventListener("submit", submitTicket);
 forms.ticketTransition.addEventListener("submit", submitTicketTransition);
+elements.knowledgeCreate.addEventListener("click", () => openKnowledgeEditor());
+forms.knowledge.addEventListener("submit", previewKnowledge);
+forms.knowledge.elements.title.addEventListener("input", invalidateKnowledgePreview);
+forms.knowledge.elements.content_text.addEventListener("input", invalidateKnowledgePreview);
+elements.knowledgeApprove.addEventListener("click", approveKnowledge);
+elements.knowledgeExecute.addEventListener("click", executeKnowledge);
+elements.knowledgeConfirm.addEventListener("change", renderKnowledgeEditor);
+dialogs.knowledge.addEventListener("cancel", (event) => {
+  if (state.knowledgeEditor?.busy) {
+    event.preventDefault();
+  }
+});
+dialogs.knowledge.addEventListener("close", () => {
+  state.knowledgeEditor = null;
+  forms.knowledge.reset();
+  elements.knowledgeEvidence.replaceChildren();
+});
 
 restoreContext();
 setView(window.location.hash.replace(/^#/, ""), false);

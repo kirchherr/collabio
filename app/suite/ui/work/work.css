@@ -54,7 +54,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   color: inherit;
   font: inherit;
   letter-spacing: 0;
@@ -63,14 +64,16 @@ select {
 button,
 a,
 input,
-select {
+select,
+textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid rgba(23, 105, 170, 0.25);
   outline-offset: 2px;
 }
@@ -383,7 +386,8 @@ h2 {
 
 .context-form input,
 .editor-form input,
-.editor-form select {
+.editor-form select,
+.editor-form textarea {
   width: 100%;
   min-width: 0;
   min-height: 38px;
@@ -392,6 +396,13 @@ h2 {
   background: var(--paper);
   border: 1px solid var(--line-strong);
   border-radius: 5px;
+}
+
+.editor-form textarea {
+  resize: vertical;
+  min-height: 180px;
+  line-height: 1.6;
+  font: inherit;
 }
 
 .sync-line {
@@ -926,6 +937,99 @@ h2 {
   margin-top: 22px;
   color: var(--muted);
   font-size: 10px;
+}
+
+.knowledge-edit {
+  justify-self: start;
+  margin-top: 16px;
+}
+
+.knowledge-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.knowledge-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 14px 18px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.knowledge-steps .active {
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+
+.knowledge-policy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.knowledge-evidence,
+.knowledge-result {
+  margin: 0 18px 16px;
+  padding: 14px;
+  color: var(--ink);
+  background: var(--green-soft);
+  border: 1px solid #bfd9c7;
+  border-radius: 5px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-evidence p,
+.knowledge-result p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.knowledge-result {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.knowledge-evidence dl,
+.knowledge-result dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  font-size: 11px;
+}
+
+.knowledge-evidence dd,
+.knowledge-result dd {
+  margin: 0;
+}
+
+.editor-form .knowledge-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 18px 16px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.knowledge-confirmation input {
+  flex: 0 0 18px;
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+
+.knowledge-dialog footer {
+  flex-wrap: wrap;
+}
+
+.knowledge-dialog [hidden],
+#knowledge-create[hidden],
+#knowledge-result[hidden] {
+  display: none;
 }
 
 .empty-state,

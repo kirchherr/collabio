@@ -4119,6 +4119,28 @@ services:
     networks:
       - work_e2e_internal
 
+  work-e2e-minio:
+    profiles: ["work-e2e"]
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data --console-address ":9001"
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /data:size=512m,uid=1000,gid=1000,mode=0700,nosuid,nodev
+      - /tmp:size=64m,uid=1000,gid=1000,mode=1770,nosuid,nodev
+    environment:
+      MINIO_ROOT_USER: work-e2e-minio
+      MINIO_ROOT_PASSWORD: work-e2e-synthetic-secret
+    mem_limit: 768m
+    pids_limit: 256
+    cpus: 2
+    networks:
+      - work_e2e_internal
+
   work-e2e-migrate:
     profiles: ["work-e2e"]
     build:
@@ -4155,6 +4177,8 @@ services:
       target: dev
     command: python /workspace/tests/work_e2e_seed.py
     depends_on:
+      work-e2e-minio:
+        condition: service_started
       work-e2e-migrate:
         condition: service_completed_successfully
     user: "1000:1000"
@@ -4176,12 +4200,18 @@ services:
       SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
       SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-seed
+      SUITE_S3_ENDPOINT_URL: http://work-e2e-minio:9000
+      SUITE_S3_ACCESS_KEY_ID: work-e2e-minio
+      SUITE_S3_SECRET_ACCESS_KEY: work-e2e-synthetic-secret
+      SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: memory
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
       SUITE_AUTHZ_ADMIN_DATABASE_DSN: postgresql://collabio_authz_admin:collabio_authz_admin@work-e2e-postgres:5432/collabio_work_e2e
     volumes:
       - ./app:/workspace/app:ro
       - ./tests:/workspace/tests:ro
+      - ./docs:/workspace/docs:ro
     networks:
       - work_e2e_internal
 
@@ -4213,6 +4243,11 @@ services:
       SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
       SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-api
+      SUITE_S3_ENDPOINT_URL: http://work-e2e-minio:9000
+      SUITE_S3_ACCESS_KEY_ID: work-e2e-minio
+      SUITE_S3_SECRET_ACCESS_KEY: work-e2e-synthetic-secret
+      SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: memory
       SUITE_TASKS_ACTIVITIES_BACKEND: postgres
       SUITE_TIME_TRACKING_BACKEND: postgres
       SUITE_MODULE_REGISTRY_BACKEND: memory
@@ -4266,6 +4301,11 @@ services:
       SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
       SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-blocked-api
+      SUITE_S3_ENDPOINT_URL: http://work-e2e-minio:9000
+      SUITE_S3_ACCESS_KEY_ID: work-e2e-minio
+      SUITE_S3_SECRET_ACCESS_KEY: work-e2e-synthetic-secret
+      SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: postgres
+      SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND: memory
       SUITE_TASKS_ACTIVITIES_BACKEND: postgres
       SUITE_TIME_TRACKING_BACKEND: postgres
       SUITE_MODULE_REGISTRY_BACKEND: memory

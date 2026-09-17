@@ -309,6 +309,12 @@ start. See `docs/operations/MVP_PILOT_DECISION_CAPTURE.md`.
 
 The 2026-07-31 technical proof restored 63 migrations and 70 tables, including exactly one metadata-only start authorization row with evidence hash `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7` on both source and isolated target. PostgreSQL restore report `sha256:0cec6b8bfea24eae57708ef3242b77f1866abb86666bdf67f25f45c1b3dc789f` and backend completion gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c` were green. The deployment switch was closed after the request proof.
 
+Knowledge Base migration `0082` binds creator article grants and inherited version ACLs to the metadata transaction.
+Restore `collabio.object_acl_entries` with the article/version records; verify the
+`knowledge_base_article_versions_bind_acls` trigger, active-only inheritance, audit references and tenant isolation.
+The PostgreSQL foundation gate includes this trigger in authoritative IAM verification. A missing trigger closes
+the gate; restoration must never recreate access from owner fields or browser claims.
+
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 
 ```bash

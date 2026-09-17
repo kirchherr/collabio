@@ -16,6 +16,9 @@ from suite.operations.postgres_restore_drill import (
     AUDIT_TABLES,
     CRM_ATOMIC_RECEIPT_POLICIES,
     CRM_ATOMIC_WRITE_TABLES,
+    KB_ACL_TABLES,
+    KB_ACL_TRIGGER,
+    KB_ARTICLE_ACL_TRIGGER,
     MODULE_REGISTRY_TABLES,
     PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE,
@@ -66,9 +69,11 @@ def _snapshot(
     pilot_controls: bool = True,
     traffic_scope_controls: bool = True,
     start_authorization_controls: bool = True,
+    kb_acl_trigger: bool = True,
 ) -> PostgresDatabaseSnapshot:
     table_names = sorted(
         TENANT_IAM_TABLES
+        | KB_ACL_TABLES
         | AUDIT_TABLES
         | MODULE_REGISTRY_TABLES
         | SOURCE_OBJECT_TABLES
@@ -223,6 +228,13 @@ def _snapshot(
         )
         for trigger_name in sorted(trigger_names)
     )
+    if kb_acl_trigger:
+        triggers.append(
+            {"schema_name": "knowledge_base", "table_name": "article_versions", "trigger_name": KB_ACL_TRIGGER}
+        )
+        triggers.append(
+            {"schema_name": "knowledge_base", "table_name": "articles", "trigger_name": KB_ARTICLE_ACL_TRIGGER}
+        )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
     grants = [
         {
@@ -372,6 +384,11 @@ def _snapshot(
         roles=roles,
         grants=grants,
     )
+
+
+def test_restore_iam_requires_knowledge_base_version_acl_trigger() -> None:
+    assert _snapshot(database_hash="sha256:" + "b" * 64).tenant_iam_controls_verified is True
+    assert _snapshot(database_hash="sha256:" + "b" * 64, kb_acl_trigger=False).tenant_iam_controls_verified is False
 
 
 def _backup_evidence() -> PostgresBackupArtifactEvidence:

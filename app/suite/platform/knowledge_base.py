@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
+from uuid import uuid4
 
 import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -471,6 +472,7 @@ class KnowledgeBaseArticlesResponse(BaseModel):
     source_version_evidence_hashes: list[str]
     restore_evidence_hash: str
     audit_event_id: str
+    can_write: bool = False
 
 
 class KnowledgeBaseEvidenceResponse(BaseModel):
@@ -581,6 +583,65 @@ class KnowledgeBaseWriteApprovalCommand(BaseModel):
         if self.operation == KnowledgeBaseWriteOperation.CREATE and self.expected_current_version_object_id is not None:
             raise ValueError("create dry-run must not include expected_current_version_object_id")
         return self
+
+
+class KnowledgeBaseProductWriteCommand(BaseModel):
+    """User-editable fields only; security metadata and canonical hashes belong to the server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: KnowledgeBaseWriteOperation
+    title: str = Field(min_length=1, max_length=240)
+    body: str = Field(min_length=1, max_length=100_000)
+    article_object_id: str | None = Field(default=None, min_length=1, max_length=200)
+    expected_current_version_object_id: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @field_validator("title", "body")
+    @classmethod
+    def require_content(cls, value: str) -> str:
+        if not value.strip() or "\x00" in value:
+            raise ValueError("article title and body must be non-empty text without null characters")
+        return value
+
+    @model_validator(mode="after")
+    def require_operation_target(self) -> KnowledgeBaseProductWriteCommand:
+        if self.operation == KnowledgeBaseWriteOperation.CREATE:
+            if self.article_object_id is not None or self.expected_current_version_object_id is not None:
+                raise ValueError("create article identifiers are assigned by the server")
+        elif not self.article_object_id or not self.expected_current_version_object_id:
+            raise ValueError("edit requires article_object_id and expected_current_version_object_id")
+        return self
+
+
+class KnowledgeBaseProductWritePreparation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    write_command: KnowledgeBaseWriteApprovalCommand
+    proposed_source_record: SourceObjectRecord
+    rag_indexing_allowed: bool = False
+    search_indexing_allowed: bool = False
+    audit_event_id: str
+
+
+class KnowledgeBaseArticleEditContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    article: KnowledgeBaseArticleView
+    body: str
+    audit_event_id: str
+
+
+class KnowledgeBaseProductSourceGuardCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approved_write_approval_evidence_hash: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    proposed_source_record: SourceObjectRecord
+
+
+class KnowledgeBaseWriteConflictError(ValueError):
+    pass
 
 
 class KnowledgeBaseWriteDryRunResponse(BaseModel):
@@ -1676,6 +1737,7 @@ def build_edited_article_from_write_evidence(
         raise ValueError("expected current article version does not match approved evidence")
     return existing_article.model_copy(
         update={
+            "title": evidence.title,
             "updated_at_utc": metadata.updated_at_utc,
             "current_version_object_id": evidence.proposed_version_object_id,
             "current_version_label": evidence.proposed_version_label,
@@ -2199,7 +2261,8 @@ class PgKnowledgeBaseArticleRepository:
         result = connection.execute(
             """
             UPDATE knowledge_base.articles
-            SET updated_at_utc = %s,
+            SET title = %s,
+                updated_at_utc = %s,
                 audit_chain_ref = %s,
                 current_version_object_id = %s,
                 current_version_label = %s,
@@ -2209,6 +2272,7 @@ class PgKnowledgeBaseArticleRepository:
               AND object_id = %s
             """,
             (
+                article.title,
                 article.updated_at_utc,
                 article.audit_chain_ref,
                 article.current_version_object_id,
@@ -2753,6 +2817,249 @@ class KnowledgeBaseArticleService:
             article_repository=self.repository,
             source_repository=self.source_repository,
             source_object_write_receipt_store=self.source_object_write_receipt_store,
+        )
+
+    def require_write_access(
+        self,
+        *,
+        user_context: UserContext,
+        command: KnowledgeBaseWriteApprovalCommand | None = None,
+        evidence_hash: str | None = None,
+    ) -> None:
+        """Revalidate the authenticated actor and current object ACL at every HTTP write stage."""
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        if command is not None:
+            operation = command.operation
+            article_object_id = command.article_object_id
+        elif evidence_hash is not None:
+            evidence = self.write_approval_ledger.get(tenant_id=user_context.tenant_id, evidence_hash=evidence_hash)
+            operation = evidence.operation
+            article_object_id = evidence.article_object_id
+        else:
+            raise ValueError("write command or approval evidence is required")
+        if operation == KnowledgeBaseWriteOperation.EDIT:
+            self._authorized_article(user_context=user_context, article_object_id=article_object_id)
+
+    def _authorized_article(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> KnowledgeBaseArticleRecord:
+        article = next(
+            (
+                record
+                for record in self.repository.list_articles(tenant_id=user_context.tenant_id)
+                if record.tenant_id == user_context.tenant_id and record.object_id == article_object_id
+            ),
+            None,
+        )
+        if article is None or not {
+            article.object_id,
+            article.current_version_object_id,
+            article.current_source_object_id,
+        }.issubset(user_context.readable_object_ids):
+            raise LookupError("Knowledge Base article is unavailable")
+        return article
+
+    def require_product_source_metadata(
+        self,
+        *,
+        user_context: UserContext,
+        evidence_hash: str,
+        proposed_source_record: SourceObjectRecord,
+    ) -> None:
+        """Opaque browser payloads are untrusted: rederive all writable security fields."""
+        evidence = self.write_approval_ledger.get(tenant_id=user_context.tenant_id, evidence_hash=evidence_hash)
+        current: SourceObjectMetadata | None = None
+        if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            article = self._authorized_article(user_context=user_context, article_object_id=evidence.article_object_id)
+            source = self.source_repository.get(
+                tenant_id=user_context.tenant_id,
+                object_id=article.current_source_object_id,
+                version_id=article.current_source_version_id,
+            )
+            build_knowledge_base_source_version_evidence(article, source)
+            current = source.metadata
+        metadata = proposed_source_record.metadata
+        if metadata.object_id == evidence.article_object_id:
+            raise ValueError("Knowledge Base source and article identifiers must differ")
+        try:
+            self.source_repository.latest(tenant_id=user_context.tenant_id, object_id=metadata.object_id)
+        except KeyError:
+            pass
+        else:
+            raise ValueError("Knowledge Base proposed source identifier already exists")
+        expected = {
+            "tenant_id": user_context.tenant_id,
+            "object_id": evidence.proposed_version_object_id,
+            "object_type": SourceObjectType.WIKI,
+            "title": evidence.title,
+            "owner_principal_id": current.owner_principal_id if current else user_context.user_id,
+            "created_by": user_context.user_id,
+            "classification": DataClass.INTERNAL,
+            "retention_policy_id": "rp-standard",
+            "legal_hold_state": LegalHoldState.NONE,
+            "kms_key_ref": current.kms_key_ref if current else f"kms://{user_context.tenant_id}/internal/v1",
+            "source_system": current.source_system if current else "collabio",
+            "schema_version": "source_object.v1",
+            "mime_type": "text/plain",
+            "acl_hash": current.acl_hash if current else knowledge_base_product_acl_hash(user_context),
+            "acl_version": current.acl_version if current else 1,
+            "lifecycle_state": SourceLifecycleState.SAVED_VERSION,
+            "parent_object_id": None,
+            "thread_id": None,
+            "parser_profile_id": None,
+        }
+        if any(getattr(metadata, field) != value for field, value in expected.items()):
+            raise ValueError("Knowledge Base source security metadata does not match the authorized write policy")
+        if (
+            proposed_source_record.content_bytes is not None
+            or len(proposed_source_record.text) > 100_000
+            or not proposed_source_record.text.strip()
+            or "\x00" in proposed_source_record.text
+        ):
+            raise ValueError("Knowledge Base source content is outside the editor contract")
+
+    def read_edit_content(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> KnowledgeBaseArticleEditContent:
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        article = self._authorized_article(user_context=user_context, article_object_id=article_object_id)
+        source = self.source_repository.get(
+            tenant_id=user_context.tenant_id,
+            object_id=article.current_source_object_id,
+            version_id=article.current_source_version_id,
+        )
+        evidence = build_knowledge_base_source_version_evidence(article, source)
+        if source.metadata.mime_type != "text/plain":
+            raise ValueError("Knowledge Base editor requires a text source")
+        content = source_object_content_bytes(source)
+        if len(content) > 400_000:
+            raise ValueError("Knowledge Base source exceeds the editor size limit")
+        body = content.decode("utf-8")
+        if len(body) > 100_000:
+            raise ValueError("Knowledge Base source exceeds the editor size limit")
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.edit_content_read",
+            source_object_ids=knowledge_base_audit_source_object_ids([article]),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "result_contract": "metadata_only",
+                "source_version_evidence_hash": evidence.evidence_hash,
+            },
+        )
+        return KnowledgeBaseArticleEditContent(
+            tenant_id=user_context.tenant_id,
+            article=knowledge_base_article_view(article).model_copy(
+                update={"source_version_evidence_hash": evidence.evidence_hash}
+            ),
+            body=body,
+            audit_event_id=event.event_id,
+        )
+
+    def prepare_product_write(
+        self, *, command: KnowledgeBaseProductWriteCommand, user_context: UserContext
+    ) -> KnowledgeBaseProductWritePreparation:
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        proposal_id = uuid4().hex
+        article_object_id = f"kb-article-{proposal_id}"
+        article_key = f"KB-{proposal_id.upper()}"
+        version_label = "v1"
+        current_source: SourceObjectMetadata | None = None
+        if command.operation == KnowledgeBaseWriteOperation.EDIT:
+            article = self._authorized_article(
+                user_context=user_context, article_object_id=str(command.article_object_id)
+            )
+            if article.current_version_object_id != command.expected_current_version_object_id:
+                raise KnowledgeBaseWriteConflictError("expected current article version does not match")
+            source_record = self.source_repository.get(
+                tenant_id=user_context.tenant_id,
+                object_id=article.current_source_object_id,
+                version_id=article.current_source_version_id,
+            )
+            build_knowledge_base_source_version_evidence(article, source_record)
+            current_source = source_record.metadata
+            if article.legal_hold_state != "none" or current_source.legal_hold_state != LegalHoldState.NONE:
+                raise ValueError("Legal Hold blocks this Knowledge Base edit")
+            if article.status != KnowledgeBaseArticleStatus.PUBLISHED:
+                raise ValueError("Only published Knowledge Base articles can be edited")
+            article_object_id = article.object_id
+            article_key = article.article_key
+            match = re.fullmatch(r"v([0-9]{1,9})", article.current_version_label)
+            version_label = f"v{int(match.group(1)) + 1}" if match else f"v-{proposal_id}"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        version_object_id = f"kb-article-version-{proposal_id}"
+        content = command.body.encode("utf-8")
+        metadata = SourceObjectMetadata(
+            tenant_id=user_context.tenant_id,
+            object_id=version_object_id,
+            object_type=SourceObjectType.WIKI,
+            version_id=version_label,
+            title=command.title.strip(),
+            owner_principal_id=current_source.owner_principal_id if current_source else user_context.user_id,
+            created_by=user_context.user_id,
+            created_at_utc=now,
+            updated_at_utc=now,
+            classification=DataClass.INTERNAL,
+            retention_policy_id="rp-standard",
+            legal_hold_state=LegalHoldState.NONE,
+            kms_key_ref=current_source.kms_key_ref if current_source else f"kms://{user_context.tenant_id}/internal/v1",
+            manifest_hash=ZERO_HASH,
+            audit_chain_ref=f"audit:kb-write-{proposal_id}",
+            source_system=current_source.source_system if current_source else "collabio",
+            mime_type="text/plain",
+            acl_hash=(
+                current_source.acl_hash
+                if current_source
+                else knowledge_base_product_acl_hash(user_context)
+            ),
+            acl_version=current_source.acl_version if current_source else 1,
+            content_hash=sha256_bytes(content),
+            content_byte_length=len(content),
+            lifecycle_state=SourceLifecycleState.SAVED_VERSION,
+        )
+        metadata = metadata.model_copy(update={"manifest_hash": build_source_object_manifest_hash(metadata)})
+        proposed_source = SourceObjectRecord(metadata=metadata, text=command.body)
+        SourceObjectWriteGuard().validate_before_write(proposed_source)
+        write_command = KnowledgeBaseWriteApprovalCommand(
+            approval_reference=f"approval:kb-write-{proposal_id}",
+            reason="Prepare an explicitly confirmed Knowledge Base write from Work",
+            operation=command.operation,
+            article_object_id=article_object_id,
+            article_key=article_key,
+            title=metadata.title,
+            proposed_version_object_id=version_object_id,
+            proposed_version_label=version_label,
+            proposed_source_object_id=version_object_id,
+            proposed_source_version_id=version_label,
+            proposed_source_manifest_hash=metadata.manifest_hash,
+            proposed_content_hash=metadata.content_hash,
+            proposed_acl_version=metadata.acl_version,
+            expected_current_version_object_id=command.expected_current_version_object_id,
+            source_system=metadata.source_system,
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.write_prepared",
+            source_object_ids=[article_object_id, version_object_id],
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "operation": command.operation,
+                "result_contract": "metadata_only",
+                "proposed_source_manifest_hash": metadata.manifest_hash,
+                "proposed_content_hash": metadata.content_hash,
+                "persistence_allowed": False,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
+        )
+        return KnowledgeBaseProductWritePreparation(
+            tenant_id=user_context.tenant_id,
+            write_command=write_command,
+            proposed_source_record=proposed_source,
+            audit_event_id=event.event_id,
         )
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
@@ -3615,6 +3922,10 @@ class KnowledgeBaseArticleService:
             version_id=record.current_source_version_id,
         )
         return build_knowledge_base_source_version_evidence(record, source_record)
+
+
+def knowledge_base_product_acl_hash(user_context: UserContext) -> str:
+    return stable_hash(canonical_json({"tenant_id": user_context.tenant_id, "owner": user_context.user_id}))
 
 
 def default_knowledge_base_enabled_features() -> dict[str, bool]:

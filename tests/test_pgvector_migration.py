@@ -113,6 +113,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0079",
         "0080",
         "0081",
+        "0082",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -167,6 +168,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0025",
         "0028",
         "0029",
+        "0082",
     ]
     assert [migration.version for migration in lms_migrations] == ["0045", "0046", "0047", "0048", "0049"]
     assert [migration.version for migration in tasks_activities_migrations] == [

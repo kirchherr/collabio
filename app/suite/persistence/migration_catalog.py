@@ -751,6 +751,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:task-mutation-serialization",
         ),
     ),
+    SqlMigration(
+        version="0082",
+        name="knowledge_base_version_acls",
+        resource_name="0082_knowledge_base_version_acls.sql",
+        module_id="knowledge_base",
+        evidence_refs=("doc:knowledge-base-module-charter", "test:knowledge-base-version-acls"),
+    ),
 )
 
 

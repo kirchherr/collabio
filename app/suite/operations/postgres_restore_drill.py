@@ -84,6 +84,10 @@ CRM_ATOMIC_RECEIPT_POLICIES = {
     "crm_account_onboarding_receipts_no_update",
     "crm_account_onboarding_receipts_no_hard_delete",
 }
+KB_ACL_TABLES = {"knowledge_base.articles", "knowledge_base.article_versions"}
+KB_ACL_TRIGGER = "knowledge_base_article_versions_bind_acls"
+KB_ARTICLE_ACL_TRIGGER = "knowledge_base_articles_bind_acl"
+
 TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.items",
     "tasks.activities",
@@ -439,7 +443,19 @@ def build_postgres_database_snapshot(
         for table_name in AUDIT_TABLES
     }
 
-    tenant_iam_verified = table_names >= TENANT_IAM_TABLES and forced_rls_tables >= TENANT_IAM_TABLES
+    # KB version grants are a durable part of authoritative IAM, including after restore.
+    tenant_iam_verified = (
+        table_names >= TENANT_IAM_TABLES | KB_ACL_TABLES
+        and forced_rls_tables >= TENANT_IAM_TABLES | KB_ACL_TABLES
+        and any(
+            _qualified_name(row) == "knowledge_base.article_versions" and row.get("trigger_name") == KB_ACL_TRIGGER
+            for row in normalized["triggers"]
+        )
+        and any(
+            _qualified_name(row) == "knowledge_base.articles" and row.get("trigger_name") == KB_ARTICLE_ACL_TRIGGER
+            for row in normalized["triggers"]
+        )
+    )
     audit_verified = (
         table_names >= AUDIT_TABLES
         and forced_rls_tables >= AUDIT_TABLES

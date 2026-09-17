@@ -6,6 +6,7 @@ from typing import Annotated, cast
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from psycopg import Error as PsycopgError
 
 from suite.ai_control_plane.audit import build_default_audit_logger, canonical_json, stable_hash
 from suite.ai_control_plane.models import (
@@ -157,16 +158,23 @@ from suite.platform.erp_suppliers import (
 )
 from suite.platform.knowledge_base import (
     KB_ARTICLES_FEATURE_ID,
+    KB_ARTICLES_WRITE_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
     InMemoryKnowledgeBaseArticleRepository,
+    KnowledgeBaseArticleEditContent,
     KnowledgeBaseArticleService,
     KnowledgeBaseArticlesResponse,
     KnowledgeBaseEvidenceRefreshPreviewCommand,
     KnowledgeBaseEvidenceRefreshPreviewResponse,
     KnowledgeBaseEvidenceResponse,
+    KnowledgeBaseProductSourceGuardCommand,
+    KnowledgeBaseProductWriteCommand,
+    KnowledgeBaseProductWritePreparation,
+    KnowledgeBaseSourceObjectWriteGuardDecision,
     KnowledgeBaseWriteApprovalCommand,
     KnowledgeBaseWriteApprovalTransitionCommand,
     KnowledgeBaseWriteApprovalTransitionResponse,
+    KnowledgeBaseWriteConflictError,
     KnowledgeBaseWriteDryRunResponse,
     KnowledgeBaseWriteExecutionCommand,
     KnowledgeBaseWriteExecutionResponse,
@@ -1154,6 +1162,7 @@ from suite.rag.repositories import (
 from suite.rag.source_indexing import InMemoryEmbeddingModelVersionRegistry
 from suite.search.keyword import InMemoryKeywordIndex, KeywordSearchService
 from suite.search.models import KeywordSearchQuery, KeywordSearchResponse
+from suite.storage.source_object_storage import SourceObjectStorageError
 from suite.storage.source_objects import SourceObjectRepository, build_default_source_object_write_receipt_store
 from suite.voice.models import VoiceTranscriptRequest, VoiceTranscriptResponse
 from suite.voice.privacy import VoicePrivacyGuard
@@ -21175,6 +21184,100 @@ def build_app() -> FastAPI:
         articles = knowledge_base_article_service_for_context(request=request, context=context)
         return articles.read_compliance_evidence(user_context=context.user_context)
 
+    @app.post("/v1/admin/kb/articles/prepare-write", response_model=KnowledgeBaseProductWritePreparation)
+    def prepare_knowledge_base_product_write(
+        command: KnowledgeBaseProductWriteCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+        ],
+    ) -> KnowledgeBaseProductWritePreparation:
+        del gate
+        try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            return articles.prepare_product_write(command=command, user_context=context.user_context)
+        except KnowledgeBaseWriteConflictError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/v1/admin/kb/articles/{article_object_id}/edit-content", response_model=KnowledgeBaseArticleEditContent)
+    def read_knowledge_base_article_edit_content(
+        article_object_id: str,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+        ],
+    ) -> KnowledgeBaseArticleEditContent:
+        del gate
+        try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            return articles.read_edit_content(article_object_id=article_object_id, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge Base source validation failed") from exc
+
+    @app.post(
+        "/v1/admin/kb/articles/source-object-write-guard", response_model=KnowledgeBaseSourceObjectWriteGuardDecision
+    )
+    def evaluate_knowledge_base_source_object_write_guard(
+        command: KnowledgeBaseProductSourceGuardCommand,
+        request: Request,
+        context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
+        ],
+    ) -> KnowledgeBaseSourceObjectWriteGuardDecision:
+        del gate
+        try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(
+                user_context=context.user_context, evidence_hash=command.approved_write_approval_evidence_hash
+            )
+            articles.require_product_source_metadata(
+                user_context=context.user_context,
+                evidence_hash=command.approved_write_approval_evidence_hash,
+                proposed_source_record=command.proposed_source_record,
+            )
+            decision = articles.evaluate_source_object_write_guard(
+                user_context=context.user_context,
+                write_approval_evidence_hash=command.approved_write_approval_evidence_hash,
+                proposed_source_record=command.proposed_source_record,
+            )
+            articles.audit_logger.record(
+                user_context=context.user_context,
+                event_type="knowledge_base.article.source_guard_evaluated",
+                source_object_ids=[decision.article_object_id, decision.proposed_source_object_id],
+                metadata={
+                    "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                    "result_contract": "metadata_only",
+                    "allowed": decision.allowed,
+                    "source_object_write_guard_ref": decision.source_object_write_guard_ref,
+                    "approved_write_approval_evidence_hash": command.approved_write_approval_evidence_hash,
+                    "rag_indexing_allowed": False,
+                    "search_indexing_allowed": False,
+                },
+            )
+            return decision
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable") from exc
+        except LookupError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base write is unavailable") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     @app.post("/v1/admin/kb/articles/write-dry-run", response_model=KnowledgeBaseWriteDryRunResponse)
     def dry_run_knowledge_base_article_write(
         command: KnowledgeBaseWriteApprovalCommand,
@@ -21182,17 +21285,25 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseWriteDryRunResponse:
         del gate
-        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(user_context=context.user_context, command=command)
             return articles.dry_run_write_approval(command=command, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     @app.post(
         "/v1/admin/kb/articles/write-approvals/approve",
@@ -21204,17 +21315,27 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseWriteApprovalTransitionResponse:
         del gate
-        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(
+                user_context=context.user_context, evidence_hash=command.dry_run_write_approval_evidence_hash
+            )
             return articles.approve_write_approval(command=command, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     @app.post(
         "/v1/admin/kb/articles/write-approvals/refresh-preview",
@@ -21226,17 +21347,27 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseEvidenceRefreshPreviewResponse:
         del gate
-        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(
+                user_context=context.user_context, evidence_hash=command.approved_write_approval_evidence_hash
+            )
             return articles.preview_write_evidence_refresh(command=command, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     @app.post(
         "/v1/admin/kb/articles/write-approvals/execution-skeleton",
@@ -21248,17 +21379,27 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseWriteExecutionSkeletonResponse:
         del gate
-        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(
+                user_context=context.user_context, evidence_hash=command.approved_write_approval_evidence_hash
+            )
             return articles.prepare_write_execution_skeleton(command=command, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     @app.post(
         "/v1/admin/kb/articles/write-approvals/execute",
@@ -21270,17 +21411,32 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, compliance=True)),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_WRITE_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseWriteExecutionResponse:
         del gate
-        articles = knowledge_base_article_service_for_context(request=request, context=context)
         try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            articles.require_write_access(
+                user_context=context.user_context, evidence_hash=command.approved_write_approval_evidence_hash
+            )
+            articles.require_product_source_metadata(
+                user_context=context.user_context,
+                evidence_hash=command.approved_write_approval_evidence_hash,
+                proposed_source_record=command.proposed_source_record,
+            )
             return articles.execute_write(command=command, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+            ) from exc
         except LookupError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT if "expected current article version" in str(exc) else status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
 
     @app.post(
         "/v1/admin/crm-erp/legacy-sql/migration-api-plan",
@@ -22921,7 +23077,15 @@ def build_app() -> FastAPI:
     ) -> KnowledgeBaseArticlesResponse:
         del gate
         articles = knowledge_base_article_service_for_context(request=request, context=context)
-        return articles.list_articles(user_context=context.user_context)
+        response = articles.list_articles(user_context=context.user_context)
+        registry = cast(InMemoryModuleRegistry, request.app.state.module_registry)
+        module_state = registry.get_tenant_module(context.user_context.tenant_id, KNOWLEDGE_BASE_MODULE_ID)
+        return response.model_copy(
+            update={
+                "can_write": "tenant-admin" in context.user_context.role_ids
+                and module_state.feature_enabled(KB_ARTICLES_WRITE_FEATURE_ID)
+            }
+        )
 
     @app.post("/v1/voice/transcripts", response_model=VoiceTranscriptResponse)
     def voice_transcript(

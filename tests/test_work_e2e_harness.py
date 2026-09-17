@@ -8,6 +8,7 @@ from suite.testing.work_e2e_guard import (
     WORK_E2E_DATABASE_HOST,
     WORK_E2E_DATABASE_NAME,
     WORK_E2E_MODE,
+    WORK_E2E_S3_ENDPOINT,
     WORK_E2E_TENANT_ID,
     require_isolated_work_e2e_environment,
 )
@@ -32,6 +33,9 @@ def valid_environment() -> dict[str, str]:
         "SUITE_MIGRATION_DATABASE_DSN": owner_dsn,
         "SUITE_DATABASE_DSN": app_dsn,
         "SUITE_AUTHZ_ADMIN_DATABASE_DSN": admin_dsn,
+        "SUITE_S3_ENDPOINT_URL": WORK_E2E_S3_ENDPOINT,
+        "SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND": "postgres",
+        "SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND": "memory",
     }
 
 
@@ -55,6 +59,12 @@ def test_work_e2e_guard_accepts_only_explicit_isolated_configuration() -> None:
         ("SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND", "postgres"),
         ("SUITE_DATA_DIR", "/workspace/data"),
         ("SUITE_DATABASE_DSN", "postgresql://app:secret@postgres:5432/collabio"),
+        ("SUITE_S3_ENDPOINT_URL", "http://minio:9000"),
+        ("SUITE_S3_ENDPOINT_URL", "https://external.invalid"),
+        ("SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND", "memory"),
+        ("SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND", "postgres"),
+        ("SUITE_KB_RUNTIME_DATABASE_DSN", "postgresql://app:secret@postgres:5432/collabio"),
+        ("SUITE_KB_WRITE_APPROVAL_LEDGER_DSN", "postgresql://app:secret@postgres:5432/collabio"),
     ),
 )
 def test_work_e2e_guard_fails_closed_outside_synthetic_boundary(key: str, value: str) -> None:
@@ -81,6 +91,10 @@ def test_work_e2e_compose_profile_has_no_host_ports_and_keeps_runtime_switch_clo
     assert 'user: "1000:1000"' in profile
     assert "create_host_path: false" in profile
     assert "work_e2e_internal" in profile
+    assert "work-e2e-minio:" in profile
+    assert "SUITE_S3_ENDPOINT_URL: http://work-e2e-minio:9000" in profile
+    assert "/data:size=512m,uid=1000,gid=1000" in profile
+    assert "minio_data" not in profile
     assert "cap_drop:" in profile
     assert "no-new-privileges:true" in profile
 

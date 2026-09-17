@@ -205,6 +205,28 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
     assert table_count(live_database, tenant_id=tenant_id, table="source_version_evidence") == 1
     assert table_count(live_database, tenant_id=tenant_id, table="restore_evidence") == 1
 
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        set_tenant(connection, tenant_id)
+        grants = connection.execute(
+            "SELECT object_id, acl_subject_id, permission FROM collabio.object_acl_entries WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchall()
+        assert set(grants) == {
+            (article_object_id, create_source.metadata.created_by, "admin"),
+            (create_source.metadata.object_id, create_source.metadata.created_by, "admin"),
+        }
+        connection.execute(
+            """
+            INSERT INTO collabio.object_acl_entries (
+                tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
+                permission, acl_version, status, revoked_at_utc, audit_chain_ref
+            ) VALUES
+                (%s, %s, 'kb.article', 'group', 'readers', 'read', 2, 'active', NULL, 'audit:acl-test'),
+                (%s, %s, 'kb.article', 'user', 'revoked-user', 'read', 2, 'revoked', now(), 'audit:acl-test')
+            """,
+            (tenant_id, article_object_id, tenant_id, article_object_id),
+        )
+
     edit_source = source_record_for_pg_write(
         tenant_id=tenant_id,
         object_id=f"kb-article-version-{suffix}-v2",
@@ -254,3 +276,30 @@ def test_pg_knowledge_base_article_repository_commits_create_edit_and_evidence_a
     assert table_count(live_database, tenant_id=tenant_id, table="source_version_evidence") == 2
     assert table_count(live_database, tenant_id=tenant_id, table="restore_evidence") == 2
     assert repository.list_articles(tenant_id=f"tenant-other-{suffix}") == ()
+
+    with psycopg.connect(live_database.app_dsn) as connection:
+        set_tenant(connection, tenant_id)
+        grants = connection.execute(
+            """
+            SELECT acl_subject_type, acl_subject_id, permission, acl_version, audit_chain_ref
+            FROM collabio.object_acl_entries WHERE tenant_id = %s AND object_id = %s
+            """,
+            (tenant_id, edit_source.metadata.object_id),
+        ).fetchall()
+        assert set(grants) == {
+            ("user", create_source.metadata.created_by, "admin", 1, f"audit:pg-edit-{suffix}"),
+            ("group", "readers", "read", 2, f"audit:pg-edit-{suffix}"),
+        }
+        set_tenant(connection, f"tenant-other-{suffix}")
+        assert connection.execute(
+            "SELECT object_id FROM collabio.object_acl_entries WHERE tenant_id = %s", (tenant_id,)
+        ).fetchall() == []
+
+    with pytest.raises(ValueError, match="expected current"):
+        repository.apply_write(
+            tenant_id=tenant_id,
+            evidence=edit_evidence,
+            source_record=edit_source,
+            audit_chain_ref=f"audit:pg-stale-{suffix}",
+        )
+    assert table_count(live_database, tenant_id=tenant_id, table="article_versions") == 2

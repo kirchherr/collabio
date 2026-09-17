@@ -926,7 +926,7 @@ def test_pg_module_registry_reads_seeded_catalog_and_demo_tenant_state(live_data
         "0044",
         "0057",
     )
-    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
+    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0026", "0027", "0028", "0029", "0082")
     assert lms_catalog.status == ModuleStatus.NOT_INSTALLED
     assert lms_catalog.required_migration_versions == ("0045", "0046", "0047", "0048", "0049")
     assert tasks_catalog.status == ModuleStatus.INSTALLED

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 import psycopg
 
+from suite.storage.adapter_policy import load_storage_adapter_policy
+from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 
 SYNTHETIC_PRINCIPALS = (
@@ -16,6 +19,16 @@ SYNTHETIC_PRINCIPALS = (
 
 def main() -> int:
     require_isolated_work_e2e_environment(os.environ)
+    client = build_boto3_s3_compatible_client(
+        endpoint_url=os.environ["SUITE_S3_ENDPOINT_URL"],
+        access_key_id=os.environ["SUITE_S3_ACCESS_KEY_ID"],
+        secret_access_key=os.environ["SUITE_S3_SECRET_ACCESS_KEY"],
+        storage_provider="minio",
+    )
+    wait_for_s3_compatible_client(
+        client=client,
+        storage_policy=load_storage_adapter_policy(Path("/workspace/docs/storage_adapter_policy.json")),
+    )
     database_dsn = os.environ["SUITE_MIGRATION_DATABASE_DSN"]
     with psycopg.connect(database_dsn) as connection:
         for user_id in SYNTHETIC_PRINCIPALS:

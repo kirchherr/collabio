@@ -379,7 +379,7 @@ def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
         version_id="v2",
         title="Backup Restore Runbook v2",
         owner_principal_id="user-demo",
-        created_by="tenant-admin-demo",
+        created_by="user-demo",
         created_at_utc="2026-06-12T09:00:00Z",
         updated_at_utc="2026-06-12T09:00:00Z",
         classification=DataClass.INTERNAL,
@@ -390,7 +390,7 @@ def knowledge_base_source_record_for_api_write() -> SourceObjectRecord:
         audit_chain_ref="audit:kb-article-version-backup-runbook-v2-demo",
         source_system="collabio",
         mime_type="text/plain",
-        acl_hash="sha256:" + "a" * 64,
+        acl_hash=stable_hash("tenant-demo:kb-article-version-backup-runbook-v1-demo:acl"),
         acl_version=1,
         content_hash=sha256_bytes(content),
         content_byte_length=len(content),
@@ -943,6 +943,9 @@ def test_work_shell_serves_productivity_workspace_with_guarded_domain_actions() 
     assert "time-correction-dialog" in response.text
     assert "ticket-dialog" in response.text
     assert "ticket-transition-dialog" in response.text
+    assert "knowledge-dialog" in response.text
+    assert "knowledge-create" in response.text
+    assert "knowledge-confirm" in response.text
     assert "Module-Cockpit" in response.text
     assert "Board pack draft source content" not in response.text
     assert "Welcome message source" not in response.text
@@ -977,6 +980,11 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert "/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions" in js_response.text
     assert "/v1/time-tracking/entries/${encodeURIComponent(entryObjectId)}/corrections" in js_response.text
     assert 'apiRequest("/v1/tickets"' in js_response.text
+    assert "/v1/admin/kb/articles/prepare-write" in js_response.text
+    assert "/v1/admin/kb/articles/source-object-write-guard" in js_response.text
+    assert "/v1/admin/kb/articles/write-approvals/execute" in js_response.text
+    assert "body.can_write === true" in js_response.text
+    assert "crypto.subtle.digest" not in js_response.text
     assert "/v1/work/overview" not in js_response.text
     assert "Promise.allSettled" in js_response.text
     assert "X-Tenant-Id" in js_response.text
@@ -35862,12 +35870,13 @@ def test_knowledge_base_runtime_reconcile_endpoint_requires_active_runtime() -> 
 
 def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persist() -> None:
     reset_module_registry()
+    admin_headers = {**DEMO_ADMIN_HEADERS, "X-Readable-Object-Ids": DEMO_KB_ARTICLE_HEADERS["X-Readable-Object-Ids"]}
     starting_event_count = len(app.state.audit_logger.events)
     write_approval_ledger = app.state.knowledge_base_article_service.write_approval_ledger
     starting_ledger_count = len(write_approval_ledger.list_evidence(tenant_id="tenant-demo"))
     provision_response = client.post(
         "/v1/admin/tenant-modules/knowledge_base/provision",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json={"approval_reference": "approval:module-provision", "reason": "prepare knowledge base write dry-run"},
     )
     assert provision_response.status_code == 200
@@ -35879,7 +35888,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
         "operation": "edit",
         "article_object_id": "kb-article-backup-runbook-demo",
         "article_key": "KB-BACKUP-001",
-        "title": "Backup Restore Runbook",
+        "title": proposed_source_record.metadata.title,
         "proposed_version_object_id": "kb-article-version-backup-runbook-v2-demo",
         "proposed_version_label": "v2",
         "proposed_source_object_id": "kb-article-version-backup-runbook-v2-demo",
@@ -35892,12 +35901,22 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     normal_response = client.get("/v1/kb/articles", headers=DEMO_KB_ARTICLE_HEADERS)
     assert normal_response.status_code == 403
+    enable_response = client.post(
+        "/v1/admin/tenant-modules/knowledge_base/enable",
+        headers=admin_headers,
+        json={
+            "approval_reference": "approval:synthetic-kb-write-test",
+            "reason": "enable isolated API test writes",
+            "enabled_features": {"knowledge_base.articles.read": True, "knowledge_base.articles.write": True},
+        },
+    )
+    assert enable_response.status_code == 200
 
     non_admin_response = client.post("/v1/admin/kb/articles/write-dry-run", headers=DEMO_HEADERS, json=payload)
     assert non_admin_response.status_code == 403
     assert non_admin_response.json()["detail"] == "Tenant admin role required"
 
-    response = client.post("/v1/admin/kb/articles/write-dry-run", headers=DEMO_ADMIN_HEADERS, json=payload)
+    response = client.post("/v1/admin/kb/articles/write-dry-run", headers=admin_headers, json=payload)
 
     assert response.status_code == 200
     body = response.json()
@@ -35948,7 +35967,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     approval_response = client.post(
         "/v1/admin/kb/articles/write-approvals/approve",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json=approval_payload,
     )
     assert approval_response.status_code == 200
@@ -35997,7 +36016,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     refresh_response = client.post(
         "/v1/admin/kb/articles/write-approvals/refresh-preview",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json=refresh_payload,
     )
     assert refresh_response.status_code == 200
@@ -36082,7 +36101,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     execution_response = client.post(
         "/v1/admin/kb/articles/write-approvals/execution-skeleton",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json=execution_payload,
     )
     assert execution_response.status_code == 200
@@ -36144,7 +36163,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     write_response = client.post(
         "/v1/admin/kb/articles/write-approvals/execute",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json=write_payload,
     )
     assert write_response.status_code == 200
@@ -36190,7 +36209,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert "prompt_text" not in write_body_text
     assert "output_text" not in write_body_text
 
-    after_response = client.get("/v1/admin/kb/evidence", headers=DEMO_ADMIN_HEADERS)
+    after_response = client.get("/v1/admin/kb/evidence", headers=admin_headers)
     assert after_response.status_code == 200
     after_body = after_response.json()
     assert {evidence["source_version_id"] for evidence in after_body["source_version_evidence"]} == {"v1", "v2"}
@@ -36198,7 +36217,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
 
     invalid_body_response = client.post(
         "/v1/admin/kb/articles/write-dry-run",
-        headers=DEMO_ADMIN_HEADERS,
+        headers=admin_headers,
         json={**payload, "article_body": "must not be accepted"},
     )
     assert invalid_body_response.status_code == 422

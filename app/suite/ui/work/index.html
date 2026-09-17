@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Arbeit</title>
-    <link rel="stylesheet" href="/work/assets/work.css?v=3" />
+    <link rel="stylesheet" href="/work/assets/work.css?v=4" />
   </head>
   <body>
     <div class="app-shell">
@@ -182,7 +182,9 @@
         <section class="view-panel" data-view-panel="knowledge" aria-labelledby="view-title">
           <div class="section-toolbar">
             <div class="period-label">Autorisierte Artikel</div>
+            <button class="button primary" id="knowledge-create" type="button" hidden>Neuer Artikel</button>
           </div>
+          <div class="knowledge-result" id="knowledge-result" role="status" hidden></div>
           <section class="content-section" aria-label="Wissensartikel">
             <div class="knowledge-grid" id="knowledge-list"></div>
           </section>
@@ -320,6 +322,33 @@
       </form>
     </dialog>
 
-    <script src="/work/assets/work.js?v=4" defer></script>
+    <dialog class="editor-dialog knowledge-dialog" id="knowledge-dialog" aria-labelledby="knowledge-dialog-title">
+      <form method="dialog" class="editor-form" id="knowledge-form">
+        <header><div><p class="eyebrow">Knowledge Base</p><h2 id="knowledge-dialog-title">Neuer Artikel</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <div class="knowledge-steps" aria-label="Speicherschritte">
+          <span data-knowledge-step="draft">1. Entwurf</span><span data-knowledge-step="preview">2. Pruefen und freigeben</span><span data-knowledge-step="approved">3. Bestaetigen</span>
+        </div>
+        <div class="form-grid">
+          <p class="knowledge-policy full">Interner Artikel · Aufbewahrung: rp-standard. RAG und Suchindex bleiben ausgeschaltet.</p>
+          <label class="full">Titel<input name="title" maxlength="240" autocomplete="off" required /></label>
+          <label class="full">Artikelinhalt<textarea name="content_text" rows="10" maxlength="100000" required></textarea></label>
+          <p class="knowledge-policy full" id="knowledge-version"></p>
+        </div>
+        <section class="knowledge-evidence" id="knowledge-evidence" aria-label="Pruefergebnis" aria-live="polite" hidden></section>
+        <label class="knowledge-confirmation" id="knowledge-confirmation" hidden>
+          <input id="knowledge-confirm" type="checkbox" />
+          <span>Ich bestaetige, dass dieser gepruefte Artikel verbindlich gespeichert und die Freigabe protokolliert werden soll.</span>
+        </label>
+        <div class="form-message" data-form-message role="status" aria-live="polite"></div>
+        <footer>
+          <button class="button secondary" type="button" data-close-dialog>Schliessen</button>
+          <button class="button primary" id="knowledge-preview" type="submit">Vorschau pruefen</button>
+          <button class="button primary" id="knowledge-approve" type="button" hidden>Aenderung freigeben</button>
+          <button class="button primary" id="knowledge-execute" type="button" hidden disabled>Verbindlich speichern</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <script src="/work/assets/work.js?v=5" defer></script>
   </body>
 </html>

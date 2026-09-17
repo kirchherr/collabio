@@ -1632,7 +1632,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
         ModuleCatalogEntry(
             module_id="knowledge_base",
             display_name="Knowledge Base",
-            module_version="0.1.0",
+            module_version="0.2.0",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
             status=ModuleStatus.INSTALLED,
             description="Optional governed knowledge base module.",
@@ -1652,6 +1652,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "0027",
                 "0028",
                 "0029",
+                "0082",
             ),
         ),
         ModuleCatalogEntry(
