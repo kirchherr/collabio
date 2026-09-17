@@ -7,8 +7,8 @@
 The package currently contains:
 
 - CRM atomic account onboarding (`0057`)
-- Tasks and Activities creation and lifecycle transitions (`0050`, `0059`, `0077`)
-- Time Tracking creation, submission, and maker-checker decisions (`0060`, `0078`)
+- Tasks and Activities creation, serialized lifecycle transitions, reassignment, and due-date amendments (`0050`, `0059`, `0077`, `0079`, `0081`)
+- Time Tracking creation, submission, maker-checker decisions, correction, and bound resubmission (`0060`, `0078`, `0080`)
 
 ## Run
 
@@ -39,11 +39,14 @@ to default-deny every released route that the policy does not explicitly list.
 
 ## Current Runtime Proof
 
-The isolated development proof on 2026-07-30 passed all `3/3` slices:
+The isolated development proof on 2026-09-17 passed all `3/3` slices with 81 migrations and 89
+tables restored to independent PostgreSQL/Object Storage targets:
 
-- backend foundation gate: `sha256:673e3f4bd669f0b749b153262278b748e58054798c0d40d19f4eeefc7b5b7feb`
-- business backend release gate: `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`
-- module catalog manifest: `sha256:d5d815a69b37a430d92a8d2a8d9614b3f1933bb2bfd9399663fad6384b621b9f`
+- backup: `sha256:060a533512494089917ad8adb0eb52926c906c9c7ac09ac65126ee4507c45857`
+- PostgreSQL restore drill: `sha256:ae43607cf60f1e775873cf928758c9a74dd41a0e9a572bb7925f9b95550317cb`
+- backend foundation gate: `sha256:9df727336638f1ed9ce5cfb784f3147c7745b1cc2db3e20c8cb938a526bda8f5`
+- business backend release gate: `sha256:14a680363d1d2c8d6be29c8796f3bbb63577e8a7eaaf2deb68845ea0e8ea1300`
+- module catalog manifest: `sha256:1acb727cddf3d42a7055bf3f16783eea05e502e7b70178370da418394dff03e8`
 
 These hashes prove that run only; every release or recovery must generate fresh evidence.
 

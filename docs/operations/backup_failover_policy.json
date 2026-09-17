@@ -287,11 +287,11 @@
     },
     {
       "domain_id": "task_activity_records",
-      "description": "Tasks, activities, assignments, workflow transitions, due dates, responsibility records, and activity audit references.",
+      "description": "Tasks, activities, append-only assignment and due-date amendments, workflow transitions, responsibility records, assignment ACL handover evidence, and activity audit references.",
       "primary_target_id": "postgres_primary",
       "criticality": "important",
-      "recovery_strategy": "restore task and activity state; verify workflow transitions, assignments, idempotency, and authorization boundaries before workers resume",
-      "state_artifacts": ["tasks", "activities", "assignments", "workflow transitions", "due dates", "activity audit references"]
+      "recovery_strategy": "restore task and activity state; verify transition and amendment hash chains, assignment ACL handovers, idempotency, and authorization boundaries before workers resume",
+      "state_artifacts": ["tasks", "activities", "assignments", "workflow transitions", "assignment and due-date amendments", "task amendment hashes", "assignment ACL handover evidence", "due dates", "activity audit references"]
     },
     {
       "domain_id": "service_ticket_records",
@@ -303,11 +303,11 @@
     },
     {
       "domain_id": "time_tracking_records",
-      "description": "Time entries, corrections, approvals, export metadata, payroll/ERP bridge state, and retention evidence.",
+      "description": "Time entries, append-only correction revisions, correction-request-bound resubmissions, approvals, export metadata, payroll/ERP bridge state, and retention evidence.",
       "primary_target_id": "postgres_primary",
       "criticality": "critical",
-      "recovery_strategy": "restore time records with approval and correction evidence; verify export metadata, retention mapping, and tenant isolation before exports resume",
-      "state_artifacts": ["time entries", "corrections", "time approvals", "export metadata", "payroll bridge state", "ERP bridge state", "retention evidence"]
+      "recovery_strategy": "restore time records with approval and correction evidence; verify decision and correction hash chains, exact correction-request/resubmission bindings, export metadata, retention mapping, and tenant isolation before exports resume",
+      "state_artifacts": ["time entries", "time entry correction revisions", "time correction hashes", "correction-request decision bindings", "resubmission correction bindings", "time approvals", "export metadata", "payroll bridge state", "ERP bridge state", "retention evidence"]
     }
   ],
   "targets": [

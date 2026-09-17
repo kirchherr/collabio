@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Arbeit</title>
-    <link rel="stylesheet" href="/work/assets/work.css?v=2" />
+    <link rel="stylesheet" href="/work/assets/work.css?v=3" />
   </head>
   <body>
     <div class="app-shell">
@@ -245,6 +245,22 @@
       </form>
     </dialog>
 
+    <dialog class="editor-dialog" id="task-amendment-dialog" aria-labelledby="task-amendment-title">
+      <form method="dialog" class="editor-form" id="task-amendment-form">
+        <header><div><p class="eyebrow">Aufgabenplanung</p><h2 id="task-amendment-title">Aufgabe anpassen</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <input name="task_object_id" type="hidden" />
+        <input name="expected_assigned_principal_id" type="hidden" />
+        <input name="expected_due_at_utc" type="hidden" />
+        <div class="form-grid">
+          <label class="full">Zustaendig<input name="target_assigned_principal_id" autocomplete="off" required /></label>
+          <label class="full">Faellig<input name="target_due_at_utc" type="datetime-local" /></label>
+          <label class="full">Aktivitaet<input name="activity_summary" maxlength="400" required /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Aenderung speichern</button></footer>
+      </form>
+    </dialog>
+
     <dialog class="editor-dialog compact-dialog" id="time-approval-dialog" aria-labelledby="time-approval-title">
       <form method="dialog" class="editor-form" id="time-approval-form">
         <header><div><p class="eyebrow">Zeitfreigabe</p><h2 id="time-approval-title">Eintrag bearbeiten</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
@@ -255,6 +271,24 @@
         </div>
         <div class="form-message" data-form-message></div>
         <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Ausfuehren</button></footer>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="time-correction-dialog" aria-labelledby="time-correction-title">
+      <form method="dialog" class="editor-form" id="time-correction-form">
+        <header><div><p class="eyebrow">Zeitkorrektur</p><h2 id="time-correction-title">Zeiteintrag korrigieren</h2></div><button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button></header>
+        <input name="entry_object_id" type="hidden" />
+        <input name="expected_revision_no" type="hidden" />
+        <div class="form-grid">
+          <label>Arbeitstag<input name="work_date" type="date" required /></label>
+          <span></span>
+          <label>Beginn<input name="started_at_utc" type="datetime-local" required /></label>
+          <label>Ende<input name="ended_at_utc" type="datetime-local" required /></label>
+          <label>Projekt<input name="project_reference" autocomplete="off" placeholder="project:..." /></label>
+          <label>Kostenstelle<input name="cost_center_reference" autocomplete="off" placeholder="cost-center:..." /></label>
+        </div>
+        <div class="form-message" data-form-message></div>
+        <footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Korrektur speichern</button></footer>
       </form>
     </dialog>
 
@@ -286,6 +320,6 @@
       </form>
     </dialog>
 
-    <script src="/work/assets/work.js?v=3" defer></script>
+    <script src="/work/assets/work.js?v=4" defer></script>
   </body>
 </html>

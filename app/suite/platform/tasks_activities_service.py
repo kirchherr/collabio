@@ -30,6 +30,7 @@ TASK_ITEM_SCHEMA_VERSION = "task_item.v1"
 TASK_ACTIVITY_SCHEMA_VERSION = "task_activity.v1"
 TASK_CREATION_RECEIPT_SCHEMA_VERSION = "task_creation_receipt.v1"
 TASK_LIFECYCLE_TRANSITION_SCHEMA_VERSION = "task_lifecycle_transition.v1"
+TASK_AMENDMENT_SCHEMA_VERSION = "task_amendment.v1"
 TASKS_OPERATOR_ROLES = frozenset({"tenant-admin", "tenant_admin", "task-manager", "task-operator"})
 ZERO_HASH = "sha256:" + "0" * 64
 REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
@@ -213,6 +214,70 @@ class TransitionTaskCommand(BaseModel):
         return self
 
 
+class AmendTaskCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mutation_reference: str = Field(min_length=3, max_length=300)
+    amendment_object_id: str = Field(min_length=1, max_length=200)
+    activity_object_id: str = Field(min_length=1, max_length=200)
+    activity_number: str = Field(min_length=1, max_length=100)
+    expected_assigned_principal_id: str = Field(min_length=1, max_length=200)
+    target_assigned_principal_id: str = Field(min_length=1, max_length=200)
+    expected_due_at_utc: datetime | None
+    target_due_at_utc: datetime | None
+    activity_summary: str = Field(min_length=1, max_length=400)
+    source_system: str = "native"
+
+    @field_validator("mutation_reference")
+    @classmethod
+    def require_mutation_reference(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("mutation_reference must be a namespaced reference")
+        return normalized
+
+    @field_validator(
+        "amendment_object_id",
+        "activity_object_id",
+        "activity_number",
+        "expected_assigned_principal_id",
+        "target_assigned_principal_id",
+        "activity_summary",
+    )
+    @classmethod
+    def require_single_line_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("task amendment fields must be non-empty single-line values")
+        return normalized
+
+    @field_validator("expected_due_at_utc", "target_due_at_utc")
+    @classmethod
+    def require_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("task amendment due dates must include a timezone")
+        return None if value is None else value.astimezone(UTC)
+
+    @field_validator("source_system")
+    @classmethod
+    def require_source_system(cls, value: str) -> str:
+        normalized = value.strip()
+        if not SOURCE_SYSTEM_PATTERN.fullmatch(normalized):
+            raise ValueError("source_system must be lowercase and non-empty")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_amendment_shape(self) -> AmendTaskCommand:
+        if self.amendment_object_id == self.activity_object_id:
+            raise ValueError("amendment and activity object IDs must differ")
+        if (
+            self.expected_assigned_principal_id == self.target_assigned_principal_id
+            and self.expected_due_at_utc == self.target_due_at_utc
+        ):
+            raise ValueError("task amendment must change assignment or due date")
+        return self
+
+
 class TaskItemRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -353,6 +418,48 @@ class TaskLifecycleTransitionRecord(BaseModel):
         return self
 
 
+class TaskAmendmentRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    task_object_id: str
+    activity_object_id: str
+    mutation_reference: str
+    command_hash: str
+    sequence_no: int = Field(ge=1)
+    previous_amendment_hash: str
+    from_assigned_principal_id: str
+    to_assigned_principal_id: str
+    from_due_at_utc: datetime | None
+    to_due_at_utc: datetime | None
+    assignment_changed: bool
+    due_date_changed: bool
+    amended_by: str
+    amended_at_utc: datetime
+    audit_chain_ref: str
+    amendment_hash: str
+    source_system: str = "native"
+    schema_version: str = TASK_AMENDMENT_SCHEMA_VERSION
+
+    @model_validator(mode="after")
+    def require_append_only_evidence(self) -> TaskAmendmentRecord:
+        hashes = (self.command_hash, self.previous_amendment_hash, self.amendment_hash)
+        if any(not re.fullmatch(r"sha256:[a-f0-9]{64}", value) for value in hashes):
+            raise ValueError("task amendment hashes must use sha256")
+        if self.assignment_changed != (self.from_assigned_principal_id != self.to_assigned_principal_id):
+            raise ValueError("task amendment assignment change marker is inconsistent")
+        if self.due_date_changed != (self.from_due_at_utc != self.to_due_at_utc):
+            raise ValueError("task amendment due-date change marker is inconsistent")
+        if not self.assignment_changed and not self.due_date_changed:
+            raise ValueError("task amendment must change assignment or due date")
+        if not REF_PATTERN.fullmatch(self.audit_chain_ref):
+            raise ValueError("task amendment audit reference must be namespaced")
+        if self.schema_version != TASK_AMENDMENT_SCHEMA_VERSION:
+            raise ValueError("task amendment schema version is inconsistent")
+        return self
+
+
 class TaskItemView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -472,6 +579,45 @@ class TaskLifecycleTransitionResponse(BaseModel):
     audit_event_id: str
 
 
+class TaskAmendmentView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    object_id: str
+    task_object_id: str
+    activity_object_id: str
+    mutation_reference: str
+    sequence_no: int
+    previous_amendment_hash: str
+    from_assigned_principal_id: str
+    to_assigned_principal_id: str
+    from_due_at_utc: datetime | None
+    to_due_at_utc: datetime | None
+    assignment_changed: bool
+    due_date_changed: bool
+    amended_by: str
+    amended_at_utc: datetime
+    audit_chain_ref: str
+    amendment_hash: str
+    source_system: str
+    schema_version: str
+
+
+class TaskAmendmentResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = TASKS_ACTIVITIES_MODULE_ID
+    feature_id: str = TASKS_WORKFLOW_WRITE_FEATURE_ID
+    task: TaskItemView
+    activity: TaskActivityView
+    amendment: TaskAmendmentView
+    idempotent_replay: bool
+    atomic_transaction_committed: bool = True
+    assignment_acl_rebound: bool
+    audit_content_included: bool = False
+    audit_event_id: str
+
+
 class TasksActivitiesStore(Protocol):
     def list_items(self, *, tenant_id: str) -> Sequence[TaskItemRecord]: ...
 
@@ -493,6 +639,15 @@ class TasksActivitiesStore(Protocol):
         task_object_id: str,
         command: TransitionTaskCommand,
     ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskLifecycleTransitionRecord, bool]: ...
+
+    def amend_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: AmendTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskAmendmentRecord, bool]: ...
 
 
 TaskRecord = TypeVar("TaskRecord", TaskItemRecord, TaskActivityRecord)
@@ -790,6 +945,117 @@ def _build_task_transition(
     return transitioned_task, activity, transition
 
 
+def _amendment_command_hash(
+    command: AmendTaskCommand,
+    *,
+    task_object_id: str,
+    user_id: str,
+) -> str:
+    return _stable_hash(
+        {
+            "command": command.model_dump(mode="json"),
+            "task_object_id": task_object_id,
+            "amended_by": user_id,
+        }
+    )
+
+
+def _apply_task_amendment(
+    *,
+    task: TaskItemRecord,
+    amendment: TaskAmendmentRecord,
+) -> TaskItemRecord:
+    return task.model_copy(
+        update={
+            "assigned_principal_id": amendment.to_assigned_principal_id,
+            "due_at_utc": amendment.to_due_at_utc,
+            "updated_at_utc": max(task.updated_at_utc, amendment.amended_at_utc),
+        }
+    )
+
+
+def _build_task_amendment(
+    *,
+    tenant_id: str,
+    user_id: str,
+    task: TaskItemRecord,
+    command: AmendTaskCommand,
+    previous: TaskAmendmentRecord | None,
+    current_lifecycle_state: TasksActivitiesLifecycleState,
+    amended_at_utc: datetime,
+) -> tuple[TaskItemRecord, TaskActivityRecord, TaskAmendmentRecord]:
+    if current_lifecycle_state in {
+        TasksActivitiesLifecycleState.COMPLETED,
+        TasksActivitiesLifecycleState.CANCELLED,
+        TasksActivitiesLifecycleState.ARCHIVED,
+    }:
+        raise TasksActivitiesConflict("terminal tasks cannot be reassigned or rescheduled")
+    if command.expected_assigned_principal_id != task.assigned_principal_id:
+        raise TasksActivitiesConflict(
+            "task assignment changed: expected "
+            f"{command.expected_assigned_principal_id}, current {task.assigned_principal_id}"
+        )
+    if command.expected_due_at_utc != task.due_at_utc:
+        raise TasksActivitiesConflict("task due date changed since it was loaded")
+
+    assignment_changed = command.target_assigned_principal_id != task.assigned_principal_id
+    due_date_changed = command.target_due_at_utc != task.due_at_utc
+    if not assignment_changed and not due_date_changed:
+        raise TasksActivitiesConflict("task amendment must change assignment or due date")
+
+    command_hash = _amendment_command_hash(
+        command,
+        task_object_id=task.object_id,
+        user_id=user_id,
+    )
+    amendment_payload: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "object_id": command.amendment_object_id,
+        "task_object_id": task.object_id,
+        "activity_object_id": command.activity_object_id,
+        "mutation_reference": command.mutation_reference,
+        "command_hash": command_hash,
+        "sequence_no": 1 if previous is None else previous.sequence_no + 1,
+        "previous_amendment_hash": ZERO_HASH if previous is None else previous.amendment_hash,
+        "from_assigned_principal_id": task.assigned_principal_id,
+        "to_assigned_principal_id": command.target_assigned_principal_id,
+        "from_due_at_utc": task.due_at_utc,
+        "to_due_at_utc": command.target_due_at_utc,
+        "assignment_changed": assignment_changed,
+        "due_date_changed": due_date_changed,
+        "amended_by": user_id,
+        "amended_at_utc": amended_at_utc,
+        "audit_chain_ref": task.audit_chain_ref,
+        "source_system": command.source_system,
+        "schema_version": TASK_AMENDMENT_SCHEMA_VERSION,
+    }
+    amendment = TaskAmendmentRecord(
+        **amendment_payload,
+        amendment_hash=_stable_hash(amendment_payload),
+    )
+    activity = TaskActivityRecord(
+        tenant_id=tenant_id,
+        object_id=command.activity_object_id,
+        owner_principal_id=user_id,
+        created_by=user_id,
+        created_at_utc=amended_at_utc,
+        updated_at_utc=amended_at_utc,
+        retention_policy_id=task.retention_policy_id,
+        legal_hold_state=task.legal_hold_state,
+        lifecycle_state=TasksActivitiesLifecycleState.COMPLETED,
+        kms_key_ref=task.kms_key_ref,
+        audit_chain_ref=task.audit_chain_ref,
+        source_system=command.source_system,
+        task_object_id=task.object_id,
+        activity_number=command.activity_number,
+        activity_type=(TaskActivityType.ASSIGNED if assignment_changed else TaskActivityType.DUE_DATE_CHANGED),
+        summary=command.activity_summary,
+        occurred_at_utc=amended_at_utc,
+    )
+    amended_task = _apply_task_amendment(task=task, amendment=amendment)
+    return amended_task, activity, amendment
+
+
 class InMemoryTasksActivitiesStore:
     def __init__(self) -> None:
         self._items: dict[tuple[str, str], TaskItemRecord] = {}
@@ -797,16 +1063,27 @@ class InMemoryTasksActivitiesStore:
         self._receipts: dict[tuple[str, str], TaskCreationReceipt] = {}
         self._transitions: dict[tuple[str, str], TaskLifecycleTransitionRecord] = {}
         self._transition_mutations: dict[tuple[str, str], TaskLifecycleTransitionRecord] = {}
+        self._amendments: dict[tuple[str, str], TaskAmendmentRecord] = {}
+        self._amendment_mutations: dict[tuple[str, str], TaskAmendmentRecord] = {}
 
     def list_items(self, *, tenant_id: str) -> Sequence[TaskItemRecord]:
         items: list[TaskItemRecord] = []
         for (stored_tenant, _), item in self._items.items():
             if stored_tenant != tenant_id:
                 continue
+            latest_amendment = self._latest_amendment(
+                tenant_id=tenant_id,
+                task_object_id=item.object_id,
+            )
+            if latest_amendment is not None:
+                item = _apply_task_amendment(task=item, amendment=latest_amendment)
             latest = self._latest_transition(tenant_id=tenant_id, task_object_id=item.object_id)
             if latest is not None:
                 item = item.model_copy(
-                    update={"lifecycle_state": latest.to_state, "updated_at_utc": latest.transitioned_at_utc}
+                    update={
+                        "lifecycle_state": latest.to_state,
+                        "updated_at_utc": max(item.updated_at_utc, latest.transitioned_at_utc),
+                    }
                 )
             items.append(item)
         return tuple(items)
@@ -881,6 +1158,12 @@ class InMemoryTasksActivitiesStore:
         if (tenant_id, command.activity_object_id) in self._activities:
             raise TasksActivitiesConflict("task activity object already exists")
         previous = self._latest_transition(tenant_id=tenant_id, task_object_id=task_object_id)
+        latest_amendment = self._latest_amendment(
+            tenant_id=tenant_id,
+            task_object_id=task_object_id,
+        )
+        if latest_amendment is not None:
+            task = _apply_task_amendment(task=task, amendment=latest_amendment)
         transitioned_task, activity, transition = _build_task_transition(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -894,11 +1177,80 @@ class InMemoryTasksActivitiesStore:
         self._transition_mutations[mutation_key] = transition
         return transitioned_task, activity, transition, False
 
+    def amend_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: AmendTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskAmendmentRecord, bool]:
+        mutation_key = (tenant_id, command.mutation_reference)
+        existing = self._amendment_mutations.get(mutation_key)
+        if existing is not None:
+            command_hash = _amendment_command_hash(
+                command,
+                task_object_id=task_object_id,
+                user_id=user_id,
+            )
+            if existing.command_hash != command_hash:
+                raise TasksActivitiesConflict(
+                    "mutation_reference already belongs to a different task amendment command"
+                )
+            replayed_task = self._items[(tenant_id, existing.task_object_id)]
+            return (
+                _apply_task_amendment(task=replayed_task, amendment=existing),
+                self._activities[(tenant_id, existing.activity_object_id)],
+                existing,
+                True,
+            )
+        task = self._items.get((tenant_id, task_object_id))
+        if task is None:
+            raise TasksActivitiesNotFound("task item not found")
+        if (tenant_id, command.amendment_object_id) in self._amendments:
+            raise TasksActivitiesConflict("task amendment object already exists")
+        if (tenant_id, command.activity_object_id) in self._activities:
+            raise TasksActivitiesConflict("task activity object already exists")
+        previous = self._latest_amendment(tenant_id=tenant_id, task_object_id=task_object_id)
+        if previous is not None:
+            task = _apply_task_amendment(task=task, amendment=previous)
+        latest_transition = self._latest_transition(
+            tenant_id=tenant_id,
+            task_object_id=task_object_id,
+        )
+        current_state = latest_transition.to_state if latest_transition is not None else task.lifecycle_state
+        amended_task, activity, amendment = _build_task_amendment(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            task=task,
+            command=command,
+            previous=previous,
+            current_lifecycle_state=current_state,
+            amended_at_utc=utc_now(),
+        )
+        self._activities[(tenant_id, activity.object_id)] = activity
+        self._amendments[(tenant_id, amendment.object_id)] = amendment
+        self._amendment_mutations[mutation_key] = amendment
+        return amended_task, activity, amendment, False
+
     def _latest_transition(self, *, tenant_id: str, task_object_id: str) -> TaskLifecycleTransitionRecord | None:
         matches = [
             transition
             for (stored_tenant, _), transition in self._transitions.items()
             if stored_tenant == tenant_id and transition.task_object_id == task_object_id
+        ]
+        return max(matches, key=lambda item: item.sequence_no, default=None)
+
+    def _latest_amendment(
+        self,
+        *,
+        tenant_id: str,
+        task_object_id: str,
+    ) -> TaskAmendmentRecord | None:
+        matches = [
+            amendment
+            for (stored_tenant, _), amendment in self._amendments.items()
+            if stored_tenant == tenant_id and amendment.task_object_id == task_object_id
         ]
         return max(matches, key=lambda item: item.sequence_no, default=None)
 
@@ -917,18 +1269,23 @@ class PgTasksActivitiesStore:
             order_by="due_at_utc NULLS LAST, created_at_utc DESC, object_id",
             record_type=TaskItemRecord,
         )
-        latest = self._list_latest_transitions(tenant_id=tenant_id)
-        return tuple(
-            item.model_copy(
-                update={
-                    "lifecycle_state": latest[item.object_id].to_state,
-                    "updated_at_utc": latest[item.object_id].transitioned_at_utc,
-                }
-            )
-            if item.object_id in latest
-            else item
-            for item in items
-        )
+        latest_transitions = self._list_latest_transitions(tenant_id=tenant_id)
+        latest_amendments = self._list_latest_amendments(tenant_id=tenant_id)
+        projected: list[TaskItemRecord] = []
+        for item in items:
+            amendment = latest_amendments.get(item.object_id)
+            if amendment is not None:
+                item = _apply_task_amendment(task=item, amendment=amendment)
+            transition = latest_transitions.get(item.object_id)
+            if transition is not None:
+                item = item.model_copy(
+                    update={
+                        "lifecycle_state": transition.to_state,
+                        "updated_at_utc": max(item.updated_at_utc, transition.transitioned_at_utc),
+                    }
+                )
+            projected.append(item)
+        return tuple(projected)
 
     def list_activities(self, *, tenant_id: str) -> Sequence[TaskActivityRecord]:
         return self._list_records(
@@ -1007,7 +1364,7 @@ class PgTasksActivitiesStore:
                 connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
                 connection.execute(
                     "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                    (f"{tenant_id}:task-transition:{task_object_id}",),
+                    (f"{tenant_id}:task:{task_object_id}",),
                 )
                 existing = self._load_transition_by_mutation(
                     connection,
@@ -1042,6 +1399,13 @@ class PgTasksActivitiesStore:
                 task = self._load_task_optional(connection, tenant_id=tenant_id, object_id=task_object_id)
                 if task is None:
                     raise TasksActivitiesNotFound("task item not found")
+                latest_amendment = self._load_latest_amendment(
+                    connection,
+                    tenant_id=tenant_id,
+                    task_object_id=task_object_id,
+                )
+                if latest_amendment is not None:
+                    task = _apply_task_amendment(task=task, amendment=latest_amendment)
                 previous = self._load_latest_transition(
                     connection,
                     tenant_id=tenant_id,
@@ -1061,6 +1425,106 @@ class PgTasksActivitiesStore:
                 return transitioned_task, activity, transition, False
         except psycopg.errors.UniqueViolation as exc:
             raise TasksActivitiesConflict("task transition IDs, activity number, or ACL entries already exist") from exc
+
+    def amend_task(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        task_object_id: str,
+        command: AmendTaskCommand,
+    ) -> tuple[TaskItemRecord, TaskActivityRecord, TaskAmendmentRecord, bool]:
+        command_hash = _amendment_command_hash(
+            command,
+            task_object_id=task_object_id,
+            user_id=user_id,
+        )
+        try:
+            with psycopg.connect(self.write_database_dsn, row_factory=dict_row) as connection:
+                connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+                connection.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"{tenant_id}:task:{task_object_id}",),
+                )
+                existing = self._load_amendment_by_mutation(
+                    connection,
+                    tenant_id=tenant_id,
+                    mutation_reference=command.mutation_reference,
+                )
+                if existing is not None:
+                    if existing.command_hash != command_hash:
+                        raise TasksActivitiesConflict(
+                            "mutation_reference already belongs to a different task amendment command"
+                        )
+                    replayed_task = self._load_task(
+                        connection,
+                        tenant_id=tenant_id,
+                        object_id=existing.task_object_id,
+                    )
+                    return (
+                        _apply_task_amendment(task=replayed_task, amendment=existing),
+                        self._load_activity(
+                            connection,
+                            tenant_id=tenant_id,
+                            object_id=existing.activity_object_id,
+                        ),
+                        existing,
+                        True,
+                    )
+                task = self._load_task_optional(
+                    connection,
+                    tenant_id=tenant_id,
+                    object_id=task_object_id,
+                )
+                if task is None:
+                    raise TasksActivitiesNotFound("task item not found")
+                previous = self._load_latest_amendment(
+                    connection,
+                    tenant_id=tenant_id,
+                    task_object_id=task_object_id,
+                )
+                if previous is not None:
+                    task = _apply_task_amendment(task=task, amendment=previous)
+                latest_transition = self._load_latest_transition(
+                    connection,
+                    tenant_id=tenant_id,
+                    task_object_id=task_object_id,
+                )
+                current_state = latest_transition.to_state if latest_transition is not None else task.lifecycle_state
+                if (
+                    command.target_assigned_principal_id != task.assigned_principal_id
+                    and not self._active_tenant_principal_exists(
+                        connection,
+                        tenant_id=tenant_id,
+                        user_id=command.target_assigned_principal_id,
+                    )
+                ):
+                    raise TasksActivitiesAssignmentError("target assigned principal is not an active tenant member")
+                amended_task, activity, amendment = _build_task_amendment(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    task=task,
+                    command=command,
+                    previous=previous,
+                    current_lifecycle_state=current_state,
+                    amended_at_utc=utc_now(),
+                )
+                self._insert_activity(connection, activity)
+                self._insert_activity_acls(
+                    connection,
+                    task=amended_task,
+                    activity=activity,
+                )
+                if amendment.assignment_changed:
+                    self._rebind_assignment_acl(
+                        connection,
+                        task=task,
+                        target_assignee_id=amendment.to_assigned_principal_id,
+                    )
+                self._insert_amendment(connection, amendment)
+                return amended_task, activity, amendment, False
+        except psycopg.errors.UniqueViolation as exc:
+            raise TasksActivitiesConflict("task amendment IDs, activity number, or ACL versions already exist") from exc
 
     def _list_records(
         self,
@@ -1095,6 +1559,22 @@ class PgTasksActivitiesStore:
                 (tenant_id,),
             ).fetchall()
         return {str(row["task_object_id"]): TaskLifecycleTransitionRecord.model_validate(row) for row in rows}
+
+    def _list_latest_amendments(self, *, tenant_id: str) -> dict[str, TaskAmendmentRecord]:
+        if not tenant_id.strip():
+            raise ValueError("tenant_id must not be empty")
+        with psycopg.connect(self.read_database_dsn, row_factory=dict_row) as connection:
+            connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+            rows = connection.execute(
+                """
+                SELECT DISTINCT ON (task_object_id) *
+                FROM tasks.amendments
+                WHERE tenant_id = %s
+                ORDER BY task_object_id, sequence_no DESC
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return {str(row["task_object_id"]): TaskAmendmentRecord.model_validate(row) for row in rows}
 
     @staticmethod
     def _active_tenant_principal_exists(
@@ -1249,6 +1729,91 @@ class PgTasksActivitiesStore:
         )
 
     @staticmethod
+    def _rebind_assignment_acl(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        task: TaskItemRecord,
+        target_assignee_id: str,
+    ) -> None:
+        if task.assigned_principal_id != task.created_by:
+            connection.execute(
+                """
+                UPDATE collabio.object_acl_entries
+                SET status = 'revoked', revoked_at_utc = now()
+                WHERE tenant_id = %s
+                  AND object_id = %s
+                  AND object_type = %s
+                  AND acl_subject_type = 'user'
+                  AND acl_subject_id = %s
+                  AND permission = 'write'
+                  AND status = 'active'
+                  AND audit_chain_ref = %s
+                """,
+                (
+                    task.tenant_id,
+                    task.object_id,
+                    task.object_type,
+                    task.assigned_principal_id,
+                    task.audit_chain_ref,
+                ),
+            )
+        if target_assignee_id == task.created_by:
+            return
+        connection.execute(
+            """
+            INSERT INTO collabio.object_acl_entries (
+                tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
+                permission, acl_version, status, audit_chain_ref
+            )
+            SELECT %s, %s, %s, 'user', %s, 'write',
+                   COALESCE(MAX(acl_version), 0) + 1, 'active', %s
+            FROM collabio.object_acl_entries
+            WHERE tenant_id = %s
+              AND object_id = %s
+              AND object_type = %s
+              AND acl_subject_type = 'user'
+              AND acl_subject_id = %s
+              AND permission = 'write'
+            """,
+            (
+                task.tenant_id,
+                task.object_id,
+                task.object_type,
+                target_assignee_id,
+                task.audit_chain_ref,
+                task.tenant_id,
+                task.object_id,
+                task.object_type,
+                target_assignee_id,
+            ),
+        )
+
+    @staticmethod
+    def _insert_amendment(
+        connection: psycopg.Connection[dict[str, Any]],
+        amendment: TaskAmendmentRecord,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO tasks.amendments (
+                tenant_id, object_id, task_object_id, activity_object_id, mutation_reference,
+                command_hash, sequence_no, previous_amendment_hash,
+                from_assigned_principal_id, to_assigned_principal_id,
+                from_due_at_utc, to_due_at_utc, assignment_changed, due_date_changed,
+                amended_by, amended_at_utc, audit_chain_ref, amendment_hash, source_system
+            ) VALUES (
+                %(tenant_id)s, %(object_id)s, %(task_object_id)s, %(activity_object_id)s,
+                %(mutation_reference)s, %(command_hash)s, %(sequence_no)s,
+                %(previous_amendment_hash)s, %(from_assigned_principal_id)s,
+                %(to_assigned_principal_id)s, %(from_due_at_utc)s, %(to_due_at_utc)s,
+                %(assignment_changed)s, %(due_date_changed)s, %(amended_by)s,
+                %(amended_at_utc)s, %(audit_chain_ref)s, %(amendment_hash)s, %(source_system)s
+            )
+            """,
+            amendment.model_dump(exclude={"schema_version"}),
+        )
+
+    @staticmethod
     def _insert_receipt(
         connection: psycopg.Connection[dict[str, Any]],
         receipt: TaskCreationReceipt,
@@ -1372,6 +1937,40 @@ class PgTasksActivitiesStore:
         ).fetchone()
         return None if row is None else TaskLifecycleTransitionRecord.model_validate(row)
 
+    @staticmethod
+    def _load_amendment_by_mutation(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        mutation_reference: str,
+    ) -> TaskAmendmentRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM tasks.amendments
+            WHERE tenant_id = %s AND mutation_reference = %s
+            """,
+            (tenant_id, mutation_reference),
+        ).fetchone()
+        return None if row is None else TaskAmendmentRecord.model_validate(row)
+
+    @staticmethod
+    def _load_latest_amendment(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        task_object_id: str,
+    ) -> TaskAmendmentRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM tasks.amendments
+            WHERE tenant_id = %s AND task_object_id = %s
+            ORDER BY sequence_no DESC
+            LIMIT 1
+            """,
+            (tenant_id, task_object_id),
+        ).fetchone()
+        return None if row is None else TaskAmendmentRecord.model_validate(row)
+
 
 def task_item_view(record: TaskItemRecord) -> TaskItemView:
     return TaskItemView(**record.model_dump(exclude={"tenant_id", "kms_key_ref"}))
@@ -1392,6 +1991,10 @@ def task_activity_view(record: TaskActivityRecord) -> TaskActivityView:
 
 def task_transition_view(record: TaskLifecycleTransitionRecord) -> TaskLifecycleTransitionView:
     return TaskLifecycleTransitionView(**record.model_dump(exclude={"tenant_id", "command_hash"}))
+
+
+def task_amendment_view(record: TaskAmendmentRecord) -> TaskAmendmentView:
+    return TaskAmendmentView(**record.model_dump(exclude={"tenant_id", "command_hash"}))
 
 
 class TasksActivitiesService:
@@ -1483,6 +2086,53 @@ class TasksActivitiesService:
             activity=task_activity_view(activity),
             transition=task_transition_view(transition),
             idempotent_replay=replayed,
+            audit_event_id=event.event_id,
+        )
+
+    def amend_task(
+        self,
+        *,
+        user_context: UserContext,
+        task_object_id: str,
+        command: AmendTaskCommand,
+    ) -> TaskAmendmentResponse:
+        if user_context.role_ids.isdisjoint(TASKS_OPERATOR_ROLES):
+            raise PermissionError("Tasks & Activities operator role required")
+        if task_object_id not in user_context.readable_object_ids:
+            raise PermissionError("Task object write access required")
+        task, activity, amendment, replayed = self.store.amend_task(
+            tenant_id=user_context.tenant_id,
+            user_id=user_context.user_id,
+            task_object_id=task_object_id,
+            command=command,
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type=("tasks.task.amendment.replayed" if replayed else "tasks.task.amendment.committed"),
+            source_object_ids=[task.object_id, activity.object_id, amendment.object_id],
+            metadata={
+                "module_id": TASKS_ACTIVITIES_MODULE_ID,
+                "feature_id": TASKS_WORKFLOW_WRITE_FEATURE_ID,
+                "mutation_reference": amendment.mutation_reference,
+                "command_hash": amendment.command_hash,
+                "amendment_hash": amendment.amendment_hash,
+                "sequence_no": amendment.sequence_no,
+                "assignment_changed": amendment.assignment_changed,
+                "due_date_changed": amendment.due_date_changed,
+                "assignment_acl_rebound": amendment.assignment_changed,
+                "atomic_transaction_committed": True,
+                "idempotent_replay": replayed,
+                "result_contract": "append_only_task_assignment_due_date_amendment",
+                "audit_content_included": False,
+            },
+        )
+        return TaskAmendmentResponse(
+            tenant_id=user_context.tenant_id,
+            task=task_item_view(task),
+            activity=task_activity_view(activity),
+            amendment=task_amendment_view(amendment),
+            idempotent_replay=replayed,
+            assignment_acl_rebound=amendment.assignment_changed,
             audit_event_id=event.event_id,
         )
 

@@ -1,6 +1,6 @@
 # Master Roadmap
 
-Stand: 2026-06-10
+Stand: 2026-09-17
 
 Diese Roadmap merged:
 
@@ -1781,7 +1781,7 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Backend-Fundament
 
 - [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
-- [x] Exakter Quell-/Zielvergleich fuer 59 Migrationen, 63 Tabellen, Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Exakter Quell-/Zielvergleich fuer aktuell 81 Migrationen und 89 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
 - [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.
@@ -1799,6 +1799,10 @@ Enthaelt:
 - [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
 - [x] Task-Lifecycle mit Migration `0077` geschlossen: atomare Aktivitaet plus hash-verkettete Transition, optimistische Zustandskontrolle, exakte Bestaetigung fuer Abbruch/Archivierung und Restore-Triggernachweis.
 - [x] Time-Approval mit Migration `0078` geschlossen: Einreichung und finale Vier-Augen-Entscheidung als hash-verkettete Evidenz, hash-only Human-Bestaetigung und Restore-Triggernachweis.
+- [x] Task-Neuzuweisung und Faelligkeitsaenderung mit Migration `0079` geschlossen: append-only Vorher/Nachher-Evidenz, optimistische Kontrolle, aktiver Zielprincipal, gezielte ACL-Umschreibung ohne Verlust manueller Grants, API und Work UI.
+- [x] Task-Mutationsrennen mit additiver Migration `0081` geschlossen: Lifecycle-Transitionen und Amendments verwenden denselben tenant- und task-gebundenen Advisory Lock; ein Datenbank-Trigger erzwingt die Serialisierung auch fuer direkte Schreiber und der Restore-Nachweis prueft beide Trigger.
+- [x] Zeiterfassungskorrektur und Neueinreichung mit Migration `0080` geschlossen: vollstaendige unveraenderliche Revision, Bindung an den exakten Korrekturauftrag sowie Revision/Hash-Bindung der Neueinreichung, API und Work UI.
+- [x] Runtime-Proof am 2026-09-17 nach dem vollstaendigen ersten Daily-Work-Loop und der Mutationsserialisierung gruen: 81 Migrationen, 89 Tabellen, Backup `sha256:060a533512494089917ad8adb0eb52926c906c9c7ac09ac65126ee4507c45857`, Restore `sha256:ae43607cf60f1e775873cf928758c9a74dd41a0e9a572bb7925f9b95550317cb`, Foundation `sha256:9df727336638f1ed9ce5cfb784f3147c7745b1cc2db3e20c8cb938a526bda8f5`, Business Gate `sha256:14a680363d1d2c8d6be29c8796f3bbb63577e8a7eaaf2deb68845ea0e8ea1300` und nicht-ausfuehrender Pilot-Preflight `sha256:c98754c0dcb114483bfcc7bab8404494b7b70cb576108e68cb321e502fef8789`.
 - [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
 - [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
 - [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.

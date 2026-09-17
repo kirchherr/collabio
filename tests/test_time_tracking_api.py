@@ -206,3 +206,106 @@ def test_time_tracking_api_submits_and_approves_with_maker_checker_evidence() ->
     assert body["decision"]["sequence_no"] == 2
     assert body["decision"]["confirmation_statement_hash"].startswith("sha256:")
     assert "human_confirmation_statement" not in body["decision"]
+
+
+def test_time_tracking_api_versions_correction_and_binds_resubmission() -> None:
+    reset_runtime()
+    enable_time_tracking_features()
+    created = client.post("/v1/time-tracking/entries", headers=ADMIN_HEADERS, json=PAYLOAD)
+    assert created.status_code == 200, created.text
+    readable = {
+        **ADMIN_HEADERS,
+        "X-Readable-Object-Ids": f"{PAYLOAD['entry_object_id']},{PAYLOAD['approval_object_id']}",
+    }
+    submitted = client.post(
+        f"/v1/time-tracking/approvals/{PAYLOAD['approval_object_id']}/transitions",
+        headers=readable,
+        json={
+            "mutation_reference": "request:api-time-submit-correction-v1",
+            "decision_object_id": "time-decision-submit-correction-v1",
+            "expected_state": "not_submitted",
+            "target_state": "submitted",
+            "action": "submit",
+            "source_system": "native",
+        },
+    )
+    assert submitted.status_code == 200, submitted.text
+
+    approver_headers = {
+        **readable,
+        "X-User-Id": "approver-demo",
+        "X-Role-Ids": "time-approver",
+    }
+    requested = client.post(
+        f"/v1/time-tracking/approvals/{PAYLOAD['approval_object_id']}/transitions",
+        headers=approver_headers,
+        json={
+            "mutation_reference": "request:api-time-request-correction-v1",
+            "decision_object_id": "time-decision-request-correction-v1",
+            "expected_state": "submitted",
+            "target_state": "correction_requested",
+            "action": "request_correction",
+            "human_confirmation_statement": (
+                f"I explicitly confirm time approval {PAYLOAD['approval_object_id']} decision correction_requested."
+            ),
+            "source_system": "native",
+        },
+    )
+    assert requested.status_code == 200, requested.text
+
+    correction_payload = {
+        "mutation_reference": "request:api-time-correction-v1",
+        "correction_object_id": "time-correction-api-v1",
+        "expected_revision_no": 0,
+        "expected_approval_state": "correction_requested",
+        "work_date": "2026-07-30",
+        "started_at_utc": "2026-07-30T08:15:00Z",
+        "ended_at_utc": "2026-07-30T12:45:00Z",
+        "project_reference": "project:customer-review",
+        "cost_center_reference": "cost-center:delivery",
+        "source_system": "native",
+    }
+    corrected = client.post(
+        f"/v1/time-tracking/entries/{PAYLOAD['entry_object_id']}/corrections",
+        headers=readable,
+        json=correction_payload,
+    )
+    replay = client.post(
+        f"/v1/time-tracking/entries/{PAYLOAD['entry_object_id']}/corrections",
+        headers=readable,
+        json=correction_payload,
+    )
+    assert corrected.status_code == 200, corrected.text
+    correction = corrected.json()
+    assert correction["entry"]["revision_no"] == 1
+    assert correction["entry"]["started_at_utc"] == "2026-07-30T08:15:00Z"
+    assert correction["entry"]["duration_minutes"] == 270
+    assert correction["approval"]["approval_state"] == "correction_requested"
+    assert correction["correction"]["revision_no"] == 1
+    assert correction["approval_resubmission_required"] is True
+    assert replay.status_code == 200
+    assert replay.json()["idempotent_replay"] is True
+
+    resubmitted = client.post(
+        f"/v1/time-tracking/approvals/{PAYLOAD['approval_object_id']}/transitions",
+        headers=readable,
+        json={
+            "mutation_reference": "request:api-time-resubmit-v1",
+            "decision_object_id": "time-decision-resubmit-v1",
+            "expected_state": "correction_requested",
+            "target_state": "submitted",
+            "action": "submit",
+            "source_system": "native",
+        },
+    )
+    assert resubmitted.status_code == 200, resubmitted.text
+    decision = resubmitted.json()["decision"]
+    assert decision["sequence_no"] == 3
+    assert decision["correction_revision_no"] == 1
+    assert decision["correction_hash"] == correction["correction"]["correction_hash"]
+
+    listed = client.get("/v1/time-tracking/entries", headers=readable)
+    assert listed.status_code == 200
+    entry = listed.json()["entries"][0]
+    assert entry["revision_no"] == 1
+    assert entry["lifecycle_state"] == "submitted"

@@ -937,8 +937,10 @@ def test_work_shell_serves_productivity_workspace_with_guarded_domain_actions() 
     assert "availability-grid" in response.text
     assert "task-dialog" in response.text
     assert "task-transition-dialog" in response.text
+    assert "task-amendment-dialog" in response.text
     assert "time-dialog" in response.text
     assert "time-approval-dialog" in response.text
+    assert "time-correction-dialog" in response.text
     assert "ticket-dialog" in response.text
     assert "ticket-transition-dialog" in response.text
     assert "Module-Cockpit" in response.text
@@ -971,7 +973,9 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert 'apiRequest("/v1/tasks/items"' in js_response.text
     assert 'apiRequest("/v1/time-tracking/entries"' in js_response.text
     assert "/v1/tasks/items/${encodeURIComponent(taskObjectId)}/transitions" in js_response.text
+    assert "/v1/tasks/items/${encodeURIComponent(taskObjectId)}/amendments" in js_response.text
     assert "/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions" in js_response.text
+    assert "/v1/time-tracking/entries/${encodeURIComponent(entryObjectId)}/corrections" in js_response.text
     assert 'apiRequest("/v1/tickets"' in js_response.text
     assert "/v1/work/overview" not in js_response.text
     assert "Promise.allSettled" in js_response.text

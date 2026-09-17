@@ -721,6 +721,36 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
             "test:time-approval-decisions",
         ),
     ),
+    SqlMigration(
+        version="0079",
+        name="task_assignment_due_date_amendments",
+        resource_name="0079_task_assignment_due_date_amendments.sql",
+        module_id="tasks_activities",
+        evidence_refs=(
+            "doc:tasks-activities-productive-slice",
+            "test:task-assignment-due-date-amendments",
+        ),
+    ),
+    SqlMigration(
+        version="0080",
+        name="time_entry_corrections_resubmission",
+        resource_name="0080_time_entry_corrections_resubmission.sql",
+        module_id="time_tracking",
+        evidence_refs=(
+            "doc:time-tracking-module-charter",
+            "test:time-entry-corrections-resubmission",
+        ),
+    ),
+    SqlMigration(
+        version="0081",
+        name="task_mutation_serialization",
+        resource_name="0081_task_mutation_serialization.sql",
+        module_id="tasks_activities",
+        evidence_refs=(
+            "doc:tasks-activities-productive-slice",
+            "test:task-mutation-serialization",
+        ),
+    ),
 )
 
 

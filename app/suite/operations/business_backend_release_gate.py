@@ -44,10 +44,11 @@ PRODUCTIVE_SLICES: tuple[ProductiveSliceDefinition, ...] = (
     ProductiveSliceDefinition(
         slice_id="tasks_activities",
         module_id="tasks_activities",
-        required_migration_versions=("0050", "0059", "0077"),
+        required_migration_versions=("0050", "0059", "0077", "0079", "0081"),
         required_api_operations=(
             "POST /v1/tasks/items",
             "POST /v1/tasks/items/{task_object_id}/transitions",
+            "POST /v1/tasks/items/{task_object_id}/amendments",
             "GET /v1/tasks/items",
             "GET /v1/tasks/activities",
         ),
@@ -57,10 +58,11 @@ PRODUCTIVE_SLICES: tuple[ProductiveSliceDefinition, ...] = (
     ProductiveSliceDefinition(
         slice_id="time_tracking",
         module_id="time_tracking",
-        required_migration_versions=("0060", "0078"),
+        required_migration_versions=("0060", "0078", "0080"),
         required_api_operations=(
             "POST /v1/time-tracking/entries",
             "POST /v1/time-tracking/approvals/{approval_object_id}/transitions",
+            "POST /v1/time-tracking/entries/{entry_object_id}/corrections",
             "GET /v1/time-tracking/entries",
             "GET /v1/time-tracking/approvals",
         ),

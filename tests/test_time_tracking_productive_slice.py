@@ -11,6 +11,7 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
 from suite.platform.time_tracking_service import (
+    CorrectTimeEntryCommand,
     CreateTimeEntryCommand,
     InMemoryTimeTrackingStore,
     PgTimeTrackingStore,
@@ -303,3 +304,147 @@ def test_postgres_time_approval_decisions_are_derived_from_append_only_chain(
     assert stored_state == ("recorded", "not_submitted")
     assert store.list_entries(tenant_id=tenant_id)[0].lifecycle_state.value == "approved"
     assert store.list_approvals(tenant_id=tenant_id)[0].approval_state == TimeApprovalState.APPROVED
+
+
+def test_postgres_time_correction_is_versioned_and_bound_to_resubmission(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-time-correction-{suffix}"
+    worker_id = f"worker-{suffix}"
+    approver_id = f"approver-{suffix}"
+    command = entry_command(suffix)
+    store = PgTimeTrackingStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+    store.create_entry(tenant_id=tenant_id, user_id=worker_id, command=command)
+    submit = decision_command(
+        f"submit-{suffix}",
+        expected_state=TimeApprovalState.NOT_SUBMITTED,
+        target_state=TimeApprovalState.SUBMITTED,
+        action=TimeApprovalAction.SUBMIT,
+        approval_object_id=command.approval_object_id,
+    )
+    store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        approval_object_id=command.approval_object_id,
+        command=submit,
+    )
+    request_correction = decision_command(
+        f"request-correction-{suffix}",
+        expected_state=TimeApprovalState.SUBMITTED,
+        target_state=TimeApprovalState.CORRECTION_REQUESTED,
+        action=TimeApprovalAction.REQUEST_CORRECTION,
+        approval_object_id=command.approval_object_id,
+    )
+    _, requested, request_decision, _ = store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=approver_id,
+        approval_object_id=command.approval_object_id,
+        command=request_correction,
+    )
+    resubmit = decision_command(
+        f"resubmit-{suffix}",
+        expected_state=TimeApprovalState.CORRECTION_REQUESTED,
+        target_state=TimeApprovalState.SUBMITTED,
+        action=TimeApprovalAction.SUBMIT,
+        approval_object_id=command.approval_object_id,
+    )
+    with pytest.raises(TimeTrackingConflict, match="requires a newer bound correction"):
+        store.transition_approval(
+            tenant_id=tenant_id,
+            user_id=worker_id,
+            approval_object_id=command.approval_object_id,
+            command=resubmit,
+        )
+
+    correction_command = CorrectTimeEntryCommand(
+        mutation_reference=f"request:time-correction-{suffix}",
+        correction_object_id=f"time-correction-{suffix}",
+        expected_revision_no=0,
+        expected_approval_state=TimeApprovalState.CORRECTION_REQUESTED,
+        work_date=date(2026, 7, 30),
+        started_at_utc=datetime(2026, 7, 30, 8, 15, tzinfo=UTC),
+        ended_at_utc=datetime(2026, 7, 30, 13, 0, tzinfo=UTC),
+        project_reference="project:customer-review",
+        cost_center_reference="cost-center:delivery",
+    )
+    corrected, correction_approval, correction, replayed = store.correct_entry(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        entry_object_id=command.entry_object_id,
+        command=correction_command,
+    )
+    _, _, replayed_correction, replayed_again = store.correct_entry(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        entry_object_id=command.entry_object_id,
+        command=correction_command,
+    )
+    resubmitted_entry, resubmitted, resubmit_decision, resubmitted_replay = store.transition_approval(
+        tenant_id=tenant_id,
+        user_id=worker_id,
+        approval_object_id=command.approval_object_id,
+        command=resubmit,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        correction_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM time_tracking.entry_corrections WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        decision_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM time_tracking.approval_decisions WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        stored_binding = connection.execute(
+            """
+            SELECT correction_revision_no, correction_hash, schema_version
+            FROM time_tracking.approval_decisions
+            WHERE tenant_id = %s AND object_id = %s
+            """,
+            (tenant_id, resubmit.decision_object_id),
+        ).fetchone()
+        immutable_base = connection.execute(
+            """
+            SELECT entry.started_at_utc, entry.ended_at_utc, approval.approval_state
+            FROM time_tracking.entries AS entry
+            JOIN time_tracking.approvals AS approval
+              ON approval.tenant_id = entry.tenant_id
+             AND approval.entry_object_id = entry.object_id
+            WHERE entry.tenant_id = %s AND entry.object_id = %s
+            """,
+            (tenant_id, command.entry_object_id),
+        ).fetchone()
+
+    assert requested.approval_state == TimeApprovalState.CORRECTION_REQUESTED
+    assert replayed is False
+    assert replayed_again is True
+    assert corrected.revision_no == 1
+    assert corrected.duration_minutes == 285
+    assert correction_approval.approval_state == TimeApprovalState.CORRECTION_REQUESTED
+    assert correction.correction_request_decision_hash == request_decision.decision_hash
+    assert replayed_correction.correction_hash == correction.correction_hash
+    assert resubmitted_replay is False
+    assert resubmitted.approval_state == TimeApprovalState.SUBMITTED
+    assert resubmitted_entry.revision_no == 1
+    assert resubmit_decision.correction_revision_no == 1
+    assert resubmit_decision.correction_hash == correction.correction_hash
+    assert correction_count == 1
+    assert decision_count == 3
+    assert stored_binding == (1, correction.correction_hash, "time_approval_decision.v2")
+    assert immutable_base == (
+        datetime(2026, 7, 30, 8, 0, tzinfo=UTC),
+        datetime(2026, 7, 30, 12, 30, tzinfo=UTC),
+        "not_submitted",
+    )
+    projected = store.list_entries(tenant_id=tenant_id)[0]
+    assert projected.revision_no == 1
+    assert projected.duration_minutes == 285
+    assert projected.lifecycle_state.value == "submitted"

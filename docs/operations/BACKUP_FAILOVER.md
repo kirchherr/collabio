@@ -80,17 +80,20 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - time entries, corrections, approvals, and export metadata
 
 The CRM runtime bootstrap is an explicit predecessor of both the API and PostgreSQL backup in Compose. This guarantees that the account, contact, activity, and note tables enter the same checksum, catalog, row-count, RLS, and independent-restore proof as the rest of the backend before the CRM read workflow is treated as operational.
-The Tasks & Activities runtime follows the same rule. Migrations `0059` and `0077` place task,
-activity, authoritative ACL, creation-receipt, and append-only lifecycle-transition state inside the
-PostgreSQL backup domain. The isolated restore drill verifies exact rows, Forced RLS, append-only
-policies, the transition-chain trigger, authz-admin insert-only writes, and application read-only
-grants before `restore_ready` can be true.
+The Tasks & Activities runtime follows the same rule. Migrations `0059`, `0077`, `0079`, and `0081` place
+task, activity, authoritative ACL, creation-receipt, append-only lifecycle-transition, and versioned
+assignment/due-date amendment state inside the PostgreSQL backup domain. The isolated restore drill
+verifies exact rows, Forced RLS, append-only policies, both chain triggers, the shared tenant/task
+mutation-serialization trigger, assignment ACL handover, authz-admin insert-only writes, and
+application read-only grants before `restore_ready` can be true. Every future task mutation must use
+the same serialization domain or add an explicitly restore-verified equivalent.
 The Time Tracking runtime is part of that release gate from its first productive change. Migrations
-`0060` and `0078` add entries, linked approval state, append-only approval decisions, authoritative
-ACLs, and metadata-only creation receipts to the `time_tracking_records` continuity domain. Source
-and isolated target must both prove exact rows, Forced RLS, append-only policies, the decision-chain
-and maker-checker trigger, authz-admin `SELECT`/`INSERT` only, and application read-only grants. Any
-missing trigger or unsafe application write grant blocks `restore_ready`.
+`0060`, `0078`, and `0080` add entries, linked approval state, append-only approval decisions,
+versioned corrections, exact correction-request/resubmission bindings, authoritative ACLs, and
+metadata-only creation receipts to the `time_tracking_records` continuity domain. Source and
+isolated target must both prove exact rows, Forced RLS, append-only policies, both chain triggers,
+authz-admin `SELECT`/`INSERT` only, and application read-only grants. Any missing trigger or unsafe
+application write grant blocks `restore_ready`.
 
 
 When a future feature introduces a new stateful subsystem, one of these domains must be updated or a new domain must be added in the same change.

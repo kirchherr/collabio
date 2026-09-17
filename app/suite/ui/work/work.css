@@ -783,12 +783,12 @@ h2 {
 }
 
 .task-columns {
-  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 38px;
+  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 72px;
   gap: 14px;
 }
 
 .time-columns {
-  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 38px;
+  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 72px;
   gap: 14px;
 }
 
@@ -803,12 +803,12 @@ h2 {
 }
 
 .task-row {
-  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 38px;
+  grid-template-columns: minmax(220px, 1fr) 110px 150px 120px 72px;
   gap: 14px;
 }
 
 .time-row {
-  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 38px;
+  grid-template-columns: 110px 150px minmax(180px, 1fr) 90px 130px 72px;
   gap: 14px;
 }
 
@@ -828,6 +828,13 @@ h2 {
   color: var(--muted);
   background: transparent;
   border-color: transparent;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
 }
 
 .activity-section {

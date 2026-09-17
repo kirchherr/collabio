@@ -1671,21 +1671,22 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
         ModuleCatalogEntry(
             module_id="tasks_activities",
             display_name="Tasks and Activities",
-            module_version="0.3.0",
+            module_version="0.4.1",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
             status=ModuleStatus.INSTALLED,
             description=(
                 "Optional governed tasks and activities module with tenant-gated task creation, append-only "
-                "lifecycle transitions and authoritative activity history. Notifications, integrations, RAG, "
-                "and AI remain separate gates."
+                "serialized lifecycle transitions, versioned assignment and due-date amendments, ACL rebinding "
+                "and authoritative activity history. Notifications, integrations, RAG, and AI remain separate "
+                "gates."
             ),
             manifest_hash="sha256:tasks-activities-module-manifest",
-            required_migration_versions=("0050", "0059", "0077"),
+            required_migration_versions=("0050", "0059", "0077", "0079", "0081"),
         ),
         ModuleCatalogEntry(
             module_id="time_tracking",
             display_name="Time Tracking",
-            module_version="0.2.0",
+            module_version="0.3.0",
             module_kind=ModuleKind.BUSINESS_DOMAIN,
             status=ModuleStatus.INSTALLED,
             description=(
@@ -1694,7 +1695,7 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
                 "separate gates."
             ),
             manifest_hash="sha256:time-tracking-module-manifest",
-            required_migration_versions=("0060", "0078"),
+            required_migration_versions=("0060", "0078", "0080"),
         ),
         ModuleCatalogEntry(
             module_id="tickets_incidents",

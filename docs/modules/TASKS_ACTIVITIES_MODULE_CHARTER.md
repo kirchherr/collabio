@@ -1,6 +1,6 @@
 # Tasks & Activities Module Charter
 
-Status: operational task lifecycle slice
+Status: operational assignment and task lifecycle slice
 Date: 2026-09-17
 Module ID: `tasks_activities`
 Module kind: `business_domain`
@@ -14,12 +14,14 @@ Tasks & Activities is a native optional suite module for assigned work, follow-u
 The module is optional in normal use. Compliance obligations for existing task and activity records, Legal Hold, retention, backup, restore, export, and audit remain mandatory.
 
 The productive scope includes atomic task creation with one initial activity, authoritative ACL grants,
-an append-only metadata receipt, ACL-filtered reads, and controlled lifecycle transitions. Every
-transition atomically appends a status activity and a per-task hash-chain record; the base task row
-remains immutable. Cancellation and archival require an exact human confirmation whose hash, never
-the raw statement, is persisted. Comments, file attachments, notifications, workflow automations,
-calendar sync, email send, RAG, AI assist, voice commands, and external integrations remain outside
-this slice.
+an append-only metadata receipt, ACL-filtered reads, controlled lifecycle transitions, and versioned
+assignment/due-date amendments. Every transition or amendment atomically appends an activity and a
+per-task hash-chain record; the base task row remains immutable. Reassignment validates an active
+tenant principal, revokes only the prior process-generated assignment grant, preserves independent
+manual grants, and grants the new assignee access in the same transaction. Cancellation and archival
+require an exact human confirmation whose hash, never the raw statement, is persisted. Comments, file
+attachments, notifications, workflow automations, calendar sync, email send, RAG, AI assist, voice
+commands, and external integrations remain outside this slice.
 
 ## 2. Lifecycle And Activation
 
@@ -68,6 +70,7 @@ Productive API:
 
 - `POST /v1/tasks/items`
 - `POST /v1/tasks/items/{task_object_id}/transitions`
+- `POST /v1/tasks/items/{task_object_id}/amendments`
 - `GET /v1/tasks/items`
 - `GET /v1/tasks/activities`
 
@@ -78,12 +81,14 @@ Compliance-only later:
 - activity evidence export
 - decommission precheck
 
-The business routes require a provisioned and enabled tenant module. Creation and transitions
+The business routes require a provisioned and enabled tenant module. Creation, transitions, and amendments
 additionally require `tasks_activities.tasks.workflow.write`, both read dependencies, an operator
-role, and authoritative task access. Transition commands use optimistic expected-state checks and
-an allowed state graph. The catalog-readiness endpoint remains metadata-only and performs no tenant
-provisioning or activation. The transition route is outside the currently approved seven-operation
-productivity pilot and therefore remains fail-closed until a fresh traffic-scope approval includes it.
+role, and authoritative task access. Transition commands use optimistic expected-state checks and an
+allowed state graph. Amendment commands compare the expected assignee and due date and are rejected
+for completed, cancelled, or archived tasks. The catalog-readiness endpoint remains metadata-only and
+performs no tenant provisioning or activation. The transition and amendment routes are outside the
+currently approved seven-operation productivity pilot and therefore remain fail-closed until a fresh
+traffic-scope approval includes them.
 
 `GET /v1/platform/modules/families/tasks-activities/catalog-readiness` remains the metadata-only package and tenant-state discovery boundary.
 
@@ -102,6 +107,11 @@ Every object must carry the required metadata from `docs/modules/MODULE_IMPLEMEN
 `task.activity`. Its tenant-local sequence and previous-hash pointer are enforced by a PostgreSQL
 trigger in addition to service validation. Current task state is a projection of the latest valid
 transition; `tasks.items.lifecycle_state` is not updated.
+
+`tasks.amendments` is the append-only source of truth for current assignment and due date after task
+creation. Its full before/after values, sequence and previous-hash pointer are database validated.
+Current assignment and due date are projections of the latest valid amendment; the base task row is
+not updated.
 
 The canonical first object-rule contract lives in `app/suite/platform/tasks_activities_module.py`.
 
@@ -135,9 +145,9 @@ Required evidence:
 - disabled-state restore check
 - Legal Hold restore check
 - restore evidence hash for `task_activity_records`
-- exact task, activity, transition, ACL and creation-receipt row counts
-- Forced RLS and append-only policy verification on all four Tasks tables
-- presence of the database transition-chain validation trigger after restore
+- exact task, activity, transition, amendment, ACL and creation-receipt row counts
+- Forced RLS and append-only policy verification on all five Tasks tables
+- presence of the database transition-, amendment-chain, and shared task-mutation serialization triggers after restore
 - `collabio_authz_admin` write-without-update/delete and `collabio_app` read-only grants
 - source/target equality through `postgres_restore_drill_report.v1`
 
@@ -150,7 +160,12 @@ New task comments, file attachments, automation rules, notification queues, cale
 and `tasks.creation_receipts` tables with Forced RLS, append-only policies, minimal service-role
 grants, and updates the package to `installed`. `0077_tasks_lifecycle_transitions.sql` adds the
 append-only transition chain and database validation trigger and advances the package contract to
-`0.3.0`. None of these migrations creates tenant module state or enables a feature.
+`0.3.0`. `0079_task_assignment_due_date_amendments.sql` adds append-only assignment/due-date
+amendments, database chain and ACL validation, and advances the package contract to `0.4.0`.
+`0081_task_mutation_serialization.sql` serializes lifecycle transitions and amendments on one
+tenant/task advisory-lock domain, enforces that boundary for direct PostgreSQL writers, and advances
+the package contract to `0.4.1`. None of these migrations creates tenant module state or enables a
+feature.
 
 Future imports must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import or workflow activation.
 
@@ -171,7 +186,7 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 
 ## 10. Explicit Non-Goals For The Current Slice
 
-- reassignment or due-date correction after creation
+- bulk reassignment and recurring-task scheduling
 - comments
 - attachments
 - notifications

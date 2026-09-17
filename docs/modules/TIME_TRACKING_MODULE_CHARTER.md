@@ -1,6 +1,6 @@
 # Time Tracking Module Charter
 
-Status: operational approval workflow slice
+Status: operational correction and approval workflow slice
 Date: 2026-09-17
 Module ID: `time_tracking`
 Module kind: `business_domain`
@@ -16,8 +16,10 @@ The productive scope creates one `time.entry` and one linked `time.approval` in 
 `not_submitted`. Entry, approval, authoritative ACL grants, and a metadata-only receipt commit in one
 transaction. A second append-only workflow submits that approval and records an approve, reject, or
 correction-request decision under maker-checker separation. Base entry and approval rows remain
-immutable; current state is projected from the latest hash-chained decision. Corrections, payroll
-effects, exports, and external integrations remain separate later slices.
+immutable; current state is projected from the latest hash-chained decision. A correction request may
+produce an append-only full entry revision, and resubmission is accepted only when it binds to the
+exact current request decision and latest correction hash. Payroll effects, exports, and external
+integrations remain separate later slices.
 
 ## Lifecycle And Feature Gates
 
@@ -46,6 +48,7 @@ authoritative object ACLs or later human confirmation of an export or payroll-re
 
 - `POST /v1/time-tracking/entries`
 - `POST /v1/time-tracking/approvals/{approval_object_id}/transitions`
+- `POST /v1/time-tracking/entries/{entry_object_id}/corrections`
 - `GET /v1/time-tracking/entries`
 - `GET /v1/time-tracking/approvals`
 
@@ -54,8 +57,11 @@ create for another active tenant principal. Reads return no approval unless both
 its linked entry are authorized. Submission requires a worker or delegated creator role. Final
 decisions require a time approver who is neither the worker nor the creator, plus the exact visible
 human confirmation; only its SHA-256 hash is stored. PostgreSQL independently enforces the linked
-entry, sequence, previous-hash pointer, and maker-checker invariant. The transition route remains
-outside the current seven-operation productivity pilot and is fail-closed until separately approved.
+entry, sequence, previous-hash pointer, and maker-checker invariant. Correction revisions require the
+current approval state `correction_requested`, an optimistic revision number, and an exact binding to
+the latest request decision. Resubmission carries the accepted revision and correction hash in its
+decision evidence. The transition and correction routes remain outside the current seven-operation
+productivity pilot and are fail-closed until separately approved.
 
 ## Data Contract
 
@@ -68,23 +74,26 @@ The first slice stores governed metadata only:
 - immutable creation receipt containing hashes and identifiers, never free-text work content
 - immutable approval decisions with tenant-local sequence, previous hash, actor, action, and
   hash-only confirmation evidence
+- immutable full entry corrections with revision, previous correction hash, and exact
+  correction-request decision hash
 
 Time records are personal data. They are not payroll truth until a later explicitly approved export
 or integration contract says so.
 
 ## Backup, Restore, And Failover
 
-The `time_tracking_records` domain includes entries, approval records, approval decisions, ACLs,
-receipts, tenant module state, and feature state. Restore readiness requires exact row counts, Forced
-RLS, append-only policies, the decision-chain validation trigger, minimal role grants, tenant
-isolation, Legal Hold preservation, and source/target equality.
+The `time_tracking_records` domain includes entries, approval records, approval decisions, entry
+corrections, ACLs, receipts, tenant module state, and feature state. Restore readiness requires exact
+row counts, Forced RLS, append-only policies, decision/correction chain validation triggers, exact
+resubmission bindings, minimal role grants, tenant isolation, Legal Hold preservation, and
+source/target equality.
 
 Any future correction, export, payroll bridge, notification, queue, search
 index, RAG index, or AI feature must extend backup and restore evidence in the same change.
 
 ## Explicit Non-Goals
 
-- entry correction or deletion
+- entry hard deletion or correction without a current correction request
 - payroll, invoicing, or ERP posting
 - CSV/PDF export
 - automatic timers or background capture
@@ -97,8 +106,10 @@ confirmation in addition to module and object authorization.
 
 `0060_time_tracking_productive_slice.sql` establishes entries, approvals, ACLs, and creation
 receipts. `0078_time_approval_decisions.sql` adds the append-only decision chain, database
-maker-checker validation, and module contract `0.2.0`. Neither migration provisions or enables the
-module for a tenant.
+maker-checker validation, and module contract `0.2.0`.
+`0080_time_entry_corrections_resubmission.sql` adds append-only full entry revisions, database-bound
+correction requests and resubmissions, and module contract `0.3.0`. None of these migrations
+provisions or enables the module for a tenant.
 
 ## Verification
 

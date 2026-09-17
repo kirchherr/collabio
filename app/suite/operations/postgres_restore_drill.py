@@ -89,6 +89,7 @@ TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.activities",
     "tasks.creation_receipts",
     "tasks.lifecycle_transitions",
+    "tasks.amendments",
 }
 TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
     "tasks.items": {"tasks_items_no_update", "tasks_items_no_hard_delete"},
@@ -104,15 +105,24 @@ TASKS_ACTIVITIES_APPEND_ONLY_POLICIES_BY_TABLE = {
         "tasks_lifecycle_transitions_no_update",
         "tasks_lifecycle_transitions_no_hard_delete",
     },
+    "tasks.amendments": {
+        "tasks_amendments_no_update",
+        "tasks_amendments_no_hard_delete",
+    },
 }
 TASKS_ACTIVITIES_APPEND_ONLY_TRIGGERS_BY_TABLE = {
-    "tasks.lifecycle_transitions": {"tasks_lifecycle_transitions_validate_append"},
+    "tasks.lifecycle_transitions": {
+        "tasks_lifecycle_transitions_serialize_task_mutations",
+        "tasks_lifecycle_transitions_validate_append",
+    },
+    "tasks.amendments": {"tasks_amendments_validate_append"},
 }
 TIME_TRACKING_WRITE_TABLES = {
     "time_tracking.entries",
     "time_tracking.approvals",
     "time_tracking.entry_creation_receipts",
     "time_tracking.approval_decisions",
+    "time_tracking.entry_corrections",
 }
 TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
     "time_tracking.entries": {"time_entries_no_update", "time_entries_no_hard_delete"},
@@ -125,9 +135,14 @@ TIME_TRACKING_APPEND_ONLY_POLICIES_BY_TABLE = {
         "time_approval_decisions_no_update",
         "time_approval_decisions_no_hard_delete",
     },
+    "time_tracking.entry_corrections": {
+        "time_entry_corrections_no_update",
+        "time_entry_corrections_no_hard_delete",
+    },
 }
 TIME_TRACKING_APPEND_ONLY_TRIGGERS_BY_TABLE = {
     "time_tracking.approval_decisions": {"time_approval_decisions_validate_append"},
+    "time_tracking.entry_corrections": {"time_entry_corrections_validate_append"},
 }
 PRODUCTIVITY_PILOT_CONTROL_TABLES = {
     "collabio.mvp_pilot_decision_records",

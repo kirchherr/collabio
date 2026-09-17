@@ -32,8 +32,10 @@ const elements = {
 
 const dialogs = {
   task: document.querySelector("#task-dialog"),
+  taskAmendment: document.querySelector("#task-amendment-dialog"),
   taskTransition: document.querySelector("#task-transition-dialog"),
   time: document.querySelector("#time-dialog"),
+  timeCorrection: document.querySelector("#time-correction-dialog"),
   timeApproval: document.querySelector("#time-approval-dialog"),
   ticket: document.querySelector("#ticket-dialog"),
   ticketTransition: document.querySelector("#ticket-transition-dialog"),
@@ -41,8 +43,10 @@ const dialogs = {
 
 const forms = {
   task: document.querySelector("#task-form"),
+  taskAmendment: document.querySelector("#task-amendment-form"),
   taskTransition: document.querySelector("#task-transition-form"),
   time: document.querySelector("#time-form"),
+  timeCorrection: document.querySelector("#time-correction-form"),
   timeApproval: document.querySelector("#time-approval-form"),
   ticket: document.querySelector("#ticket-form"),
   ticketTransition: document.querySelector("#ticket-transition-form"),
@@ -152,6 +156,7 @@ const timeApprovalTransitions = {
     { target: "rejected", action: "reject" },
     { target: "correction_requested", action: "request_correction" },
   ],
+  correction_requested: [{ target: "submitted", action: "submit" }],
 };
 
 const state = {
@@ -406,6 +411,9 @@ function renderTasks() {
     elements.taskList.querySelectorAll("[data-task-transition]").forEach((button) => {
       button.addEventListener("click", () => openTaskTransition(button.dataset.taskTransition));
     });
+    elements.taskList.querySelectorAll("[data-task-amendment]").forEach((button) => {
+      button.addEventListener("click", () => openTaskAmendment(button.dataset.taskAmendment));
+    });
   }
 
   const activityResource = state.resources.taskActivities;
@@ -448,6 +456,9 @@ function renderTime() {
     : emptyState("Keine Zeiteintraege im Filter.");
   elements.timeEntryList.querySelectorAll("[data-time-approval]").forEach((button) => {
     button.addEventListener("click", () => openTimeApproval(button.dataset.timeApproval));
+  });
+  elements.timeEntryList.querySelectorAll("[data-time-correction]").forEach((button) => {
+    button.addEventListener("click", () => openTimeCorrection(button.dataset.timeCorrection));
   });
 }
 
@@ -572,13 +583,17 @@ function todayTicketRow(ticket) {
 
 function taskRow(item) {
   const canTransition = (taskTransitions[item.lifecycle_state] || []).length > 0;
+  const canAmend = isActiveTask(item);
   return `
     <article class="data-row task-row">
       <div class="row-primary"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.task_number)} · ${escapeHtml(item.assigned_principal_id)}</small></div>
       ${priorityPill(item.priority)}
       <span class="date-cell">${escapeHtml(item.due_at_utc ? formatDateTime(item.due_at_utc) : "Ohne Termin")}</span>
       ${statusPill(item.lifecycle_state)}
-      <button class="icon-button row-action" type="button" data-task-transition="${escapeHtml(item.object_id)}" title="Status aendern" aria-label="Status von ${escapeHtml(item.task_number)} aendern" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
+      <div class="row-actions">
+        <button class="icon-button row-action" type="button" data-task-amendment="${escapeHtml(item.object_id)}" title="Zuweisung oder Termin aendern" aria-label="Zuweisung oder Termin von ${escapeHtml(item.task_number)} aendern" ${canAmend ? "" : "disabled"}><span aria-hidden="true">&#9998;</span></button>
+        <button class="icon-button row-action" type="button" data-task-transition="${escapeHtml(item.object_id)}" title="Status aendern" aria-label="Status von ${escapeHtml(item.task_number)} aendern" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
+      </div>
     </article>
   `;
 }
@@ -594,7 +609,11 @@ function activityRow(item) {
 
 function timeRow(entry, approval) {
   const approvalState = approval?.approval_state || "not_submitted";
-  const canTransition = Boolean(approval) && (timeApprovalTransitions[approvalState] || []).length > 0;
+  const canCorrect = approvalState === "correction_requested";
+  const canTransition =
+    Boolean(approval) &&
+    (timeApprovalTransitions[approvalState] || []).length > 0 &&
+    (!canCorrect || Number(entry.revision_no || 0) > 0);
   const assignment = [entry.project_reference, entry.cost_center_reference].filter(Boolean).join(" · ") || entry.worker_principal_id;
   return `
     <article class="data-row time-row">
@@ -603,7 +622,10 @@ function timeRow(entry, approval) {
       <span class="muted">${escapeHtml(assignment)}</span>
       <span class="duration-cell">${escapeHtml(formatDuration(entry.duration_minutes))}</span>
       ${statusPill(approvalState)}
-      <button class="icon-button row-action" type="button" data-time-approval="${escapeHtml(approval?.object_id || "")}" title="Freigabe bearbeiten" aria-label="Freigabe von ${escapeHtml(entry.entry_number)} bearbeiten" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
+      <div class="row-actions">
+        <button class="icon-button row-action" type="button" data-time-correction="${escapeHtml(entry.object_id)}" title="Zeiteintrag korrigieren" aria-label="${escapeHtml(entry.entry_number)} korrigieren" ${canCorrect ? "" : "disabled"}><span aria-hidden="true">&#9998;</span></button>
+        <button class="icon-button row-action" type="button" data-time-approval="${escapeHtml(approval?.object_id || "")}" title="Freigabe bearbeiten" aria-label="Freigabe von ${escapeHtml(entry.entry_number)} bearbeiten" ${canTransition ? "" : "disabled"}><span aria-hidden="true">›</span></button>
+      </div>
     </article>
   `;
 }
@@ -962,6 +984,73 @@ async function submitTicket(event) {
   }
 }
 
+function openTaskAmendment(taskObjectId) {
+  const task = resourceItems("tasks").find((item) => item.object_id === taskObjectId);
+  if (!task) {
+    return;
+  }
+  forms.taskAmendment.reset();
+  clearFormMessage(forms.taskAmendment);
+  forms.taskAmendment.elements.task_object_id.value = task.object_id;
+  forms.taskAmendment.elements.expected_assigned_principal_id.value = task.assigned_principal_id;
+  forms.taskAmendment.elements.expected_due_at_utc.value = task.due_at_utc || "";
+  forms.taskAmendment.elements.target_assigned_principal_id.value = task.assigned_principal_id;
+  forms.taskAmendment.elements.target_due_at_utc.value = task.due_at_utc
+    ? toLocalInputValue(new Date(task.due_at_utc))
+    : "";
+  forms.taskAmendment.elements.activity_summary.value = `${task.task_number}: Zuweisung oder Termin aktualisiert`;
+  document.querySelector("#task-amendment-title").textContent = task.task_number;
+  dialogs.taskAmendment.showModal();
+}
+
+async function submitTaskAmendment(event) {
+  event.preventDefault();
+  clearFormMessage(forms.taskAmendment);
+  const values = new FormData(forms.taskAmendment);
+  const taskObjectId = String(values.get("task_object_id") || "");
+  const expectedDue = optionalValue(values.get("expected_due_at_utc"));
+  const targetDue = optionalValue(values.get("target_due_at_utc"));
+  const targetAssignee = String(values.get("target_assigned_principal_id") || "").trim();
+  if (!targetAssignee) {
+    setFormMessage(forms.taskAmendment, "Bitte eine zustaendige Person angeben.");
+    return;
+  }
+  if (!window.confirm("Zuweisung und Termin als unveraenderliche Aufgabenaenderung speichern?")) {
+    return;
+  }
+  const activityId = generatedId("task-activity");
+  const payload = {
+    mutation_reference: `request:${generatedId("work-task-amendment")}`,
+    amendment_object_id: generatedId("task-amendment"),
+    activity_object_id: activityId,
+    activity_number: shortNumber("TASK-ACT"),
+    expected_assigned_principal_id: String(values.get("expected_assigned_principal_id") || ""),
+    target_assigned_principal_id: targetAssignee,
+    expected_due_at_utc: expectedDue,
+    target_due_at_utc: targetDue ? new Date(targetDue).toISOString() : null,
+    activity_summary: String(values.get("activity_summary") || "").trim(),
+    source_system: "native",
+  };
+  setFormBusy(forms.taskAmendment, true);
+  try {
+    await apiRequest(`/v1/tasks/items/${encodeURIComponent(taskObjectId)}/amendments`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    rememberReadableObjectIds([activityId]);
+    setFormMessage(forms.taskAmendment, "Aufgabe aktualisiert.", true);
+    await refreshAll();
+    window.setTimeout(() => dialogs.taskAmendment.close(), 350);
+  } catch (error) {
+    setFormMessage(
+      forms.taskAmendment,
+      error instanceof Error ? error.message : "Aufgabe konnte nicht aktualisiert werden.",
+    );
+  } finally {
+    setFormBusy(forms.taskAmendment, false);
+  }
+}
+
 function openTaskTransition(taskObjectId) {
   const task = resourceItems("tasks").find((item) => item.object_id === taskObjectId);
   if (!task) {
@@ -1049,6 +1138,67 @@ function openTimeApproval(approvalObjectId) {
     .join("");
   document.querySelector("#time-approval-title").textContent = approval.approval_number;
   dialogs.timeApproval.showModal();
+}
+
+function openTimeCorrection(entryObjectId) {
+  const entry = resourceItems("timeEntries").find((item) => item.object_id === entryObjectId);
+  const approval = resourceItems("timeApprovals").find((item) => item.entry_object_id === entryObjectId);
+  if (!entry || !approval || approval.approval_state !== "correction_requested") {
+    return;
+  }
+  forms.timeCorrection.reset();
+  clearFormMessage(forms.timeCorrection);
+  forms.timeCorrection.elements.entry_object_id.value = entry.object_id;
+  forms.timeCorrection.elements.expected_revision_no.value = String(entry.revision_no || 0);
+  forms.timeCorrection.elements.work_date.value = entry.work_date;
+  forms.timeCorrection.elements.started_at_utc.value = toLocalInputValue(new Date(entry.started_at_utc));
+  forms.timeCorrection.elements.ended_at_utc.value = toLocalInputValue(new Date(entry.ended_at_utc));
+  forms.timeCorrection.elements.project_reference.value = entry.project_reference || "";
+  forms.timeCorrection.elements.cost_center_reference.value = entry.cost_center_reference || "";
+  document.querySelector("#time-correction-title").textContent = entry.entry_number;
+  dialogs.timeCorrection.showModal();
+}
+
+async function submitTimeCorrection(event) {
+  event.preventDefault();
+  clearFormMessage(forms.timeCorrection);
+  const values = new FormData(forms.timeCorrection);
+  const entryObjectId = String(values.get("entry_object_id") || "");
+  const started = new Date(String(values.get("started_at_utc") || ""));
+  const ended = new Date(String(values.get("ended_at_utc") || ""));
+  if (Number.isNaN(started.getTime()) || Number.isNaN(ended.getTime()) || ended <= started) {
+    setFormMessage(forms.timeCorrection, "Der korrigierte Zeitraum ist ungueltig.");
+    return;
+  }
+  const payload = {
+    mutation_reference: `request:${generatedId("work-time-correction")}`,
+    correction_object_id: generatedId("time-correction"),
+    expected_revision_no: Number(values.get("expected_revision_no") || 0),
+    expected_approval_state: "correction_requested",
+    work_date: String(values.get("work_date") || ""),
+    started_at_utc: started.toISOString(),
+    ended_at_utc: ended.toISOString(),
+    project_reference: optionalValue(values.get("project_reference")),
+    cost_center_reference: optionalValue(values.get("cost_center_reference")),
+    source_system: "native",
+  };
+  setFormBusy(forms.timeCorrection, true);
+  try {
+    await apiRequest(`/v1/time-tracking/entries/${encodeURIComponent(entryObjectId)}/corrections`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    setFormMessage(forms.timeCorrection, "Korrektur gespeichert. Der Eintrag kann erneut eingereicht werden.", true);
+    await refreshAll();
+    window.setTimeout(() => dialogs.timeCorrection.close(), 650);
+  } catch (error) {
+    setFormMessage(
+      forms.timeCorrection,
+      error instanceof Error ? error.message : "Zeiteintrag konnte nicht korrigiert werden.",
+    );
+  } finally {
+    setFormBusy(forms.timeCorrection, false);
+  }
 }
 
 async function submitTimeApproval(event) {
@@ -1214,8 +1364,10 @@ elements.globalFilter.addEventListener("input", () => {
   renderAll();
 });
 forms.task.addEventListener("submit", submitTask);
+forms.taskAmendment.addEventListener("submit", submitTaskAmendment);
 forms.taskTransition.addEventListener("submit", submitTaskTransition);
 forms.time.addEventListener("submit", submitTime);
+forms.timeCorrection.addEventListener("submit", submitTimeCorrection);
 forms.timeApproval.addEventListener("submit", submitTimeApproval);
 forms.ticket.addEventListener("submit", submitTicket);
 forms.ticketTransition.addEventListener("submit", submitTicketTransition);

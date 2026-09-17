@@ -1,17 +1,20 @@
 # Tasks & Activities Productive Vertical Slice
 
-Status: operational
-Date: 2026-07-30
+Status: operational assignment and lifecycle workflow
+Date: 2026-09-17
 Module: `tasks_activities`
 
 ## Scope
 
-The first productive slice creates one assigned task and one initial activity. The task, activity,
-authoritative ACL grants, and metadata-only creation receipt commit in one PostgreSQL transaction.
+The productive slice creates one assigned task and one initial activity, then supports append-only
+lifecycle transitions and versioned assignment/due-date amendments. Each command commits its linked
+activity, authoritative ACL changes, and immutable evidence in one PostgreSQL transaction.
 
 Productive routes:
 
 - `POST /v1/tasks/items`
+- `POST /v1/tasks/items/{task_object_id}/transitions`
+- `POST /v1/tasks/items/{task_object_id}/amendments`
 - `GET /v1/tasks/items`
 - `GET /v1/tasks/activities`
 
@@ -43,6 +46,12 @@ earlier rows.
 Receipts contain identifiers, hashes, ACL references, and the shared audit-chain reference. Task
 titles and activity summaries are never copied into receipts or normal application logs.
 
+An amendment compares the caller's expected assignee and due date with the current projection. It
+stores complete before/after metadata in `tasks.amendments`, appends a linked activity, validates the
+target as an active tenant principal, revokes only the prior process-generated assignment ACL, and
+grants the target assignee access atomically. Independent manual ACLs are preserved. Terminal tasks
+cannot be reassigned or rescheduled.
+
 ## Read Contract
 
 Normal reads use the application database role under Forced RLS. Returned rows are intersected with
@@ -53,23 +62,28 @@ prevents activity metadata from revealing a task that is not authorized.
 
 ## Persistence Controls
 
-Migration `0059_tasks_activities_productive_slice.sql` creates:
+Migrations `0059`, `0077`, `0079`, and `0081` create and protect:
 
 - `tasks.items`
 - `tasks.activities`
 - `tasks.creation_receipts`
+- `tasks.lifecycle_transitions`
+- `tasks.amendments`
 
-All three tables are tenant scoped, Forced-RLS protected, and append-only in this slice. The
-`collabio_authz_admin` role receives only `SELECT` and `INSERT`; the application and worker roles
-receive only `SELECT`.
+All five tables are tenant scoped, Forced-RLS protected, and append-only. PostgreSQL validates both
+hash chains and the assignment ACL handover. Lifecycle transitions and amendments share one
+tenant/task advisory-lock domain, including direct database writes, so terminal-state checks and ACL
+handover cannot race. The `collabio_authz_admin` role receives only the writes required by the
+transaction; the application and worker roles remain read-only.
 
 ## Continuity
 
 The PostgreSQL backup and isolated restore drill verifies:
 
-- all three relations and exact row counts
+- all five relations and exact row counts
 - migration catalog equality
 - Forced RLS and append-only policies
+- transition/amendment chain triggers, shared task-mutation serialization, and assignment ACL evidence
 - minimal authz-admin and application grants
 - complete source/target state equality
 
@@ -77,7 +91,7 @@ A missing relation, policy, or safe role grant blocks `restore_ready`.
 
 ## Deliberately Deferred
 
-- status and due-date transitions after creation
+- bulk reassignment and recurring scheduling
 - comments and attachments
 - notifications, reminders, calendar, and mail effects
 - workflow automation and cross-module writes

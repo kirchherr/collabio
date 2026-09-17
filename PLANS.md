@@ -114,13 +114,15 @@ Current sprint:
 104. [x] First end-user Work surface over the existing guarded Tasks, Time, Tickets, Knowledge Base, and CRM APIs, with partial-failure isolation and explicit business mutations.
 105. [x] Append-only task lifecycle workflow with atomic status activities, optimistic state checks, database-enforced hash-chain continuity, exact destructive confirmation, restore coverage, API, and Work UI actions.
 106. [x] Append-only time-entry submission and maker-checker approval workflow with database-enforced chain integrity, hash-only exact confirmation, restore coverage, API, and Work UI actions.
+107. [x] Append-only task reassignment and due-date amendments with optimistic checks, active-principal validation, precise ACL rebinding, activity evidence, shared serialization with lifecycle transitions, restore coverage, API, and Work UI actions.
+108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
 
 ## Next Engineering Step
 
-Complete the first daily-work product loop while accountable pilot evidence remains a separate human lane:
+Validate and harden the completed first daily-work product loop while accountable pilot evidence remains a separate human lane:
 
-- Verify the expanded `/work` workflow against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable.
-- Close the next coherent daily-work loop with versioned time-entry correction/resubmission and append-only task reassignment/due-date changes; do not add another preparation-only boundary.
+- Exercise `/work` against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable, including reassignment and correction/resubmission.
+- Close only defects found in that end-to-end workflow before selecting the next user-visible product loop; do not add another preparation-only boundary.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Read `GET /v1/platform/productivity-pilot/real-user-readiness` before any pilot action and work only on its reported lifecycle gap.
 - Accept named principals, purpose, lawful basis, IAM roles, privacy, workforce, production topology, PITR, offsite, promotion, and cross-site evidence only from accountable owners; never fabricate placeholders.

@@ -12,6 +12,7 @@ from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
 from suite.platform.tasks_activities_module import TasksActivitiesLifecycleState
 from suite.platform.tasks_activities_service import (
+    AmendTaskCommand,
     CreateTaskCommand,
     InMemoryTasksActivitiesStore,
     PgTasksActivitiesStore,
@@ -325,3 +326,127 @@ def test_postgres_task_lifecycle_is_derived_from_append_only_transition_chain(
     assert transition_count == 2
     assert stored_state == ("assigned",)
     assert store.list_items(tenant_id=tenant_id)[0].lifecycle_state == TasksActivitiesLifecycleState.COMPLETED
+
+
+def test_postgres_task_amendment_rebinds_only_managed_assignment_acl(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-task-amendment-{suffix}"
+    operator_id = f"operator-{suffix}"
+    prior_assignee_id = f"assignee-prior-{suffix}"
+    target_assignee_id = f"assignee-target-{suffix}"
+    command = task_command(suffix).model_copy(update={"assigned_principal_id": prior_assignee_id})
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        for user_id in (prior_assignee_id, target_assignee_id):
+            issuer = f"https://issuer.example/{user_id}"
+            subject = f"subject-{user_id}"
+            connection.execute(
+                """
+                INSERT INTO collabio.tenant_principals (
+                    tenant_id, issuer, subject, user_id, audit_chain_ref
+                ) VALUES (%s, %s, %s, %s, %s)
+                """,
+                (tenant_id, issuer, subject, user_id, f"audit:principal-{user_id}"),
+            )
+            connection.execute(
+                """
+                INSERT INTO collabio.tenant_principal_memberships (
+                    tenant_id, issuer, subject, audit_chain_ref
+                ) VALUES (%s, %s, %s, %s)
+                """,
+                (tenant_id, issuer, subject, f"audit:membership-{user_id}"),
+            )
+
+    _, _, receipt, _ = store.create_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        command=command,
+    )
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO collabio.object_acl_entries (
+                tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
+                permission, acl_version, status, audit_chain_ref
+            ) VALUES (%s, %s, 'task.task', 'user', %s, 'write', 2, 'active', %s)
+            """,
+            (tenant_id, command.task_object_id, prior_assignee_id, "audit:manual-task-grant"),
+        )
+
+    amendment_command = AmendTaskCommand(
+        mutation_reference=f"request:task-amendment-{suffix}",
+        amendment_object_id=f"task-amendment-{suffix}",
+        activity_object_id=f"task-amendment-activity-{suffix}",
+        activity_number=f"TASK-AMENDMENT-ACT-{suffix}",
+        expected_assigned_principal_id=prior_assignee_id,
+        target_assigned_principal_id=target_assignee_id,
+        expected_due_at_utc=command.due_at_utc,
+        target_due_at_utc=datetime(2026, 8, 6, 12, tzinfo=UTC),
+        activity_summary="Task reassigned and rescheduled",
+    )
+    amended, activity, amendment, replayed = store.amend_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        task_object_id=command.task_object_id,
+        command=amendment_command,
+    )
+    replayed_task, _, replayed_amendment, replayed_again = store.amend_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        task_object_id=command.task_object_id,
+        command=amendment_command,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        amendment_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.amendments WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        assignment_acl_rows = connection.execute(
+            """
+            SELECT acl_subject_id, acl_version, status, audit_chain_ref
+            FROM collabio.object_acl_entries
+            WHERE tenant_id = %s
+              AND object_id = %s
+              AND permission = 'write'
+            ORDER BY acl_subject_id, acl_version
+            """,
+            (tenant_id, command.task_object_id),
+        ).fetchall()
+        activity_acl = connection.execute(
+            """
+            SELECT permission, status
+            FROM collabio.object_acl_entries
+            WHERE tenant_id = %s
+              AND object_id = %s
+              AND acl_subject_id = %s
+            """,
+            (tenant_id, activity.object_id, target_assignee_id),
+        ).fetchone()
+
+    assert replayed is False
+    assert replayed_again is True
+    assert amended.assigned_principal_id == target_assignee_id
+    assert amended.due_at_utc == datetime(2026, 8, 6, 12, tzinfo=UTC)
+    assert replayed_task == amended
+    assert amendment.sequence_no == 1
+    assert replayed_amendment.amendment_hash == amendment.amendment_hash
+    assert amendment.previous_amendment_hash == "sha256:" + "0" * 64
+    assert amendment_count == 1
+    assert assignment_acl_rows == [
+        (prior_assignee_id, 1, "revoked", receipt.audit_chain_ref),
+        (prior_assignee_id, 2, "active", "audit:manual-task-grant"),
+        (target_assignee_id, 1, "active", receipt.audit_chain_ref),
+    ]
+    assert activity_acl == ("read", "active")
+    projected = store.list_items(tenant_id=tenant_id)[0]
+    assert projected.assigned_principal_id == target_assignee_id
+    assert projected.due_at_utc == datetime(2026, 8, 6, 12, tzinfo=UTC)

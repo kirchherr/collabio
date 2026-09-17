@@ -30,7 +30,9 @@ TIME_APPROVAL_OBJECT_TYPE = "time.approval"
 TIME_ENTRY_SCHEMA_VERSION = "time_entry.v1"
 TIME_APPROVAL_SCHEMA_VERSION = "time_approval.v1"
 TIME_ENTRY_CREATION_RECEIPT_SCHEMA_VERSION = "time_entry_creation_receipt.v1"
-TIME_APPROVAL_DECISION_SCHEMA_VERSION = "time_approval_decision.v1"
+TIME_ENTRY_CORRECTION_SCHEMA_VERSION = "time_entry_correction.v1"
+TIME_APPROVAL_DECISION_SCHEMA_VERSION = "time_approval_decision.v2"
+TIME_APPROVAL_DECISION_SCHEMA_VERSIONS = frozenset({"time_approval_decision.v1", TIME_APPROVAL_DECISION_SCHEMA_VERSION})
 TIME_ENTRY_CREATOR_ROLES = frozenset({"tenant-admin", "tenant_admin", "time-manager", "time-worker"})
 TIME_DELEGATED_CREATOR_ROLES = frozenset({"tenant-admin", "tenant_admin", "time-manager"})
 TIME_APPROVER_ROLES = frozenset({"tenant-admin", "tenant_admin", "time-manager", "time-approver"})
@@ -214,6 +216,77 @@ class TransitionTimeApprovalCommand(BaseModel):
         return self
 
 
+class CorrectTimeEntryCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mutation_reference: str = Field(min_length=3, max_length=300)
+    correction_object_id: str = Field(min_length=1, max_length=200)
+    expected_revision_no: int = Field(ge=0)
+    expected_approval_state: TimeApprovalState
+    work_date: date
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    project_reference: str | None = Field(default=None, max_length=300)
+    cost_center_reference: str | None = Field(default=None, max_length=300)
+    source_system: str = "native"
+
+    @field_validator("mutation_reference")
+    @classmethod
+    def require_mutation_reference(cls, value: str) -> str:
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("mutation_reference must be a namespaced reference")
+        return normalized
+
+    @field_validator("correction_object_id")
+    @classmethod
+    def require_correction_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized or "\n" in normalized or "\r" in normalized:
+            raise ValueError("correction_object_id must be a non-empty single-line value")
+        return normalized
+
+    @field_validator("project_reference", "cost_center_reference")
+    @classmethod
+    def validate_optional_reference(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not REF_PATTERN.fullmatch(normalized):
+            raise ValueError("Time Tracking link references must be namespaced")
+        return normalized
+
+    @field_validator("started_at_utc", "ended_at_utc")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Time Tracking timestamps must include a timezone")
+        return value.astimezone(UTC)
+
+    @field_validator("source_system")
+    @classmethod
+    def require_source_system(cls, value: str) -> str:
+        normalized = value.strip()
+        if not SOURCE_SYSTEM_PATTERN.fullmatch(normalized):
+            raise ValueError("source_system must be lowercase and non-empty")
+        return normalized
+
+    @model_validator(mode="after")
+    def require_correction_shape(self) -> CorrectTimeEntryCommand:
+        if self.expected_approval_state != TimeApprovalState.CORRECTION_REQUESTED:
+            raise ValueError("time entry corrections require correction_requested approval state")
+        duration_seconds = (self.ended_at_utc - self.started_at_utc).total_seconds()
+        if duration_seconds <= 0 or duration_seconds > 24 * 60 * 60:
+            raise ValueError("Time entry duration must be greater than zero and no longer than 24 hours")
+        if duration_seconds % 60 != 0:
+            raise ValueError("Time entry duration must resolve to complete minutes")
+        return self
+
+    @property
+    def duration_minutes(self) -> int:
+        return int((self.ended_at_utc - self.started_at_utc).total_seconds() // 60)
+
+
 class TimeEntryRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -240,6 +313,7 @@ class TimeEntryRecord(BaseModel):
     duration_minutes: int = Field(gt=0, le=1440)
     project_reference: str | None = None
     cost_center_reference: str | None = None
+    revision_no: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def require_governed_metadata(self) -> TimeEntryRecord:
@@ -346,6 +420,8 @@ class TimeApprovalDecisionRecord(BaseModel):
     decided_by: str
     decided_at_utc: datetime
     confirmation_statement_hash: str | None = None
+    correction_revision_no: int | None = Field(default=None, ge=1)
+    correction_hash: str | None = None
     audit_chain_ref: str
     decision_hash: str
     source_system: str = "native"
@@ -365,8 +441,67 @@ class TimeApprovalDecisionRecord(BaseModel):
             raise ValueError("time approval decision requires sha256 confirmation evidence")
         if self.from_state == self.to_state:
             raise ValueError("time approval decision states must differ")
+        resubmission = (
+            self.from_state == TimeApprovalState.CORRECTION_REQUESTED and self.action == TimeApprovalAction.SUBMIT
+        )
+        if resubmission:
+            if self.correction_revision_no is None or self.correction_hash is None:
+                raise ValueError("time approval resubmission must bind the corrected entry revision")
+            if not re.fullmatch(r"sha256:[a-f0-9]{64}", self.correction_hash):
+                raise ValueError("time approval correction hash must use sha256")
+        elif self.correction_revision_no is not None or self.correction_hash is not None:
+            raise ValueError("only time approval resubmission may bind a corrected entry revision")
         if not REF_PATTERN.fullmatch(self.audit_chain_ref):
             raise ValueError("time approval decision audit reference must be namespaced")
+        if self.schema_version not in TIME_APPROVAL_DECISION_SCHEMA_VERSIONS:
+            raise ValueError("time approval decision schema version is unsupported")
+        return self
+
+
+class TimeEntryCorrectionRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    entry_object_id: str
+    approval_object_id: str
+    mutation_reference: str
+    command_hash: str
+    revision_no: int = Field(ge=1)
+    previous_correction_hash: str
+    correction_request_decision_hash: str
+    corrected_by: str
+    corrected_at_utc: datetime
+    work_date: date
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    duration_minutes: int = Field(gt=0, le=1440)
+    project_reference: str | None = None
+    cost_center_reference: str | None = None
+    audit_chain_ref: str
+    correction_hash: str
+    source_system: str = "native"
+    schema_version: str = TIME_ENTRY_CORRECTION_SCHEMA_VERSION
+
+    @model_validator(mode="after")
+    def require_append_only_evidence(self) -> TimeEntryCorrectionRecord:
+        hashes = (
+            self.command_hash,
+            self.previous_correction_hash,
+            self.correction_request_decision_hash,
+            self.correction_hash,
+        )
+        if any(not re.fullmatch(r"sha256:[a-f0-9]{64}", value) for value in hashes):
+            raise ValueError("time entry correction hashes must use sha256")
+        if self.ended_at_utc <= self.started_at_utc:
+            raise ValueError("time entry correction end must be after start")
+        expected_minutes = int((self.ended_at_utc - self.started_at_utc).total_seconds() // 60)
+        if expected_minutes != self.duration_minutes:
+            raise ValueError("time entry correction duration must match timestamps")
+        if not REF_PATTERN.fullmatch(self.audit_chain_ref):
+            raise ValueError("time entry correction audit reference must be namespaced")
+        if self.schema_version != TIME_ENTRY_CORRECTION_SCHEMA_VERSION:
+            raise ValueError("time entry correction schema version is inconsistent")
         return self
 
 
@@ -383,6 +518,7 @@ class TimeEntryView(BaseModel):
     duration_minutes: int
     project_reference: str | None
     cost_center_reference: str | None
+    revision_no: int
     owner_principal_id: str
     created_by: str
     created_at_utc: datetime
@@ -472,6 +608,8 @@ class TimeApprovalDecisionView(BaseModel):
     decided_by: str
     decided_at_utc: datetime
     confirmation_statement_hash: str | None
+    correction_revision_no: int | None
+    correction_hash: str | None
     audit_chain_ref: str
     decision_hash: str
     source_system: str
@@ -491,6 +629,46 @@ class TimeApprovalDecisionResponse(BaseModel):
     atomic_transaction_committed: bool = True
     decision_content_included: bool = False
     maker_checker_verified: bool
+    audit_event_id: str
+
+
+class TimeEntryCorrectionView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    object_id: str
+    entry_object_id: str
+    approval_object_id: str
+    mutation_reference: str
+    revision_no: int
+    previous_correction_hash: str
+    correction_request_decision_hash: str
+    corrected_by: str
+    corrected_at_utc: datetime
+    work_date: date
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    duration_minutes: int
+    project_reference: str | None
+    cost_center_reference: str | None
+    audit_chain_ref: str
+    correction_hash: str
+    source_system: str
+    schema_version: str
+
+
+class TimeEntryCorrectionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = TIME_TRACKING_MODULE_ID
+    feature_id: str = TIME_ENTRIES_WRITE_FEATURE_ID
+    entry: TimeEntryView
+    approval: TimeApprovalView
+    correction: TimeEntryCorrectionView
+    idempotent_replay: bool
+    atomic_transaction_committed: bool = True
+    approval_resubmission_required: bool = True
+    audit_content_included: bool = False
     audit_event_id: str
 
 
@@ -515,6 +693,15 @@ class TimeTrackingStore(Protocol):
         approval_object_id: str,
         command: TransitionTimeApprovalCommand,
     ) -> tuple[TimeEntryRecord, TimeApprovalRecord, TimeApprovalDecisionRecord, bool]: ...
+
+    def correct_entry(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        entry_object_id: str,
+        command: CorrectTimeEntryCommand,
+    ) -> tuple[TimeEntryRecord, TimeApprovalRecord, TimeEntryCorrectionRecord, bool]: ...
 
 
 TimeRecord = TypeVar("TimeRecord", TimeEntryRecord, TimeApprovalRecord)
@@ -641,6 +828,11 @@ def _build_records_and_receipt(
 TIME_APPROVAL_TRANSITION_GRAPH = frozenset(
     {
         (TimeApprovalState.NOT_SUBMITTED, TimeApprovalAction.SUBMIT, TimeApprovalState.SUBMITTED),
+        (
+            TimeApprovalState.CORRECTION_REQUESTED,
+            TimeApprovalAction.SUBMIT,
+            TimeApprovalState.SUBMITTED,
+        ),
         (TimeApprovalState.SUBMITTED, TimeApprovalAction.APPROVE, TimeApprovalState.APPROVED),
         (TimeApprovalState.SUBMITTED, TimeApprovalAction.REJECT, TimeApprovalState.REJECTED),
         (
@@ -669,6 +861,97 @@ def _approval_decision_command_hash(
             "decided_by": user_id,
         }
     )
+
+
+def _correction_command_hash(
+    command: CorrectTimeEntryCommand,
+    *,
+    entry_object_id: str,
+    user_id: str,
+) -> str:
+    return _stable_hash(
+        {
+            "command": command.model_dump(mode="json"),
+            "entry_object_id": entry_object_id,
+            "corrected_by": user_id,
+        }
+    )
+
+
+def _apply_time_entry_correction(
+    *,
+    entry: TimeEntryRecord,
+    correction: TimeEntryCorrectionRecord,
+) -> TimeEntryRecord:
+    return entry.model_copy(
+        update={
+            "work_date": correction.work_date,
+            "started_at_utc": correction.started_at_utc,
+            "ended_at_utc": correction.ended_at_utc,
+            "duration_minutes": correction.duration_minutes,
+            "project_reference": correction.project_reference,
+            "cost_center_reference": correction.cost_center_reference,
+            "revision_no": correction.revision_no,
+            "updated_at_utc": max(entry.updated_at_utc, correction.corrected_at_utc),
+        }
+    )
+
+
+def _build_time_entry_correction(
+    *,
+    tenant_id: str,
+    user_id: str,
+    entry: TimeEntryRecord,
+    approval: TimeApprovalRecord,
+    command: CorrectTimeEntryCommand,
+    previous: TimeEntryCorrectionRecord | None,
+    correction_request: TimeApprovalDecisionRecord,
+    corrected_at_utc: datetime,
+) -> tuple[TimeEntryRecord, TimeEntryCorrectionRecord]:
+    if correction_request.to_state != TimeApprovalState.CORRECTION_REQUESTED:
+        raise TimeTrackingConflict("time entry correction requires a current correction request")
+    current_revision = 0 if previous is None else previous.revision_no
+    if command.expected_revision_no != current_revision:
+        raise TimeTrackingConflict(
+            f"time entry revision changed: expected {command.expected_revision_no}, current {current_revision}"
+        )
+    if command.expected_approval_state != correction_request.to_state:
+        raise TimeTrackingConflict(
+            "time approval changed: expected "
+            f"{command.expected_approval_state.value}, current {correction_request.to_state.value}"
+        )
+    command_hash = _correction_command_hash(
+        command,
+        entry_object_id=entry.object_id,
+        user_id=user_id,
+    )
+    correction_payload: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "object_id": command.correction_object_id,
+        "entry_object_id": entry.object_id,
+        "approval_object_id": approval.object_id,
+        "mutation_reference": command.mutation_reference,
+        "command_hash": command_hash,
+        "revision_no": current_revision + 1,
+        "previous_correction_hash": ZERO_HASH if previous is None else previous.correction_hash,
+        "correction_request_decision_hash": correction_request.decision_hash,
+        "corrected_by": user_id,
+        "corrected_at_utc": corrected_at_utc,
+        "work_date": command.work_date,
+        "started_at_utc": command.started_at_utc,
+        "ended_at_utc": command.ended_at_utc,
+        "duration_minutes": command.duration_minutes,
+        "project_reference": command.project_reference,
+        "cost_center_reference": command.cost_center_reference,
+        "audit_chain_ref": entry.audit_chain_ref,
+        "source_system": command.source_system,
+        "schema_version": TIME_ENTRY_CORRECTION_SCHEMA_VERSION,
+    }
+    correction = TimeEntryCorrectionRecord(
+        **correction_payload,
+        correction_hash=_stable_hash(correction_payload),
+    )
+    return _apply_time_entry_correction(entry=entry, correction=correction), correction
 
 
 def _require_approval_transition(
@@ -709,7 +992,7 @@ def _apply_time_approval_decision(
     transitioned_entry = entry.model_copy(
         update={
             "lifecycle_state": lifecycle_state,
-            "updated_at_utc": decision.decided_at_utc,
+            "updated_at_utc": max(entry.updated_at_utc, decision.decided_at_utc),
         }
     )
     transitioned_approval = approval.model_copy(
@@ -732,6 +1015,7 @@ def _build_time_approval_decision(
     approval: TimeApprovalRecord,
     command: TransitionTimeApprovalCommand,
     previous: TimeApprovalDecisionRecord | None,
+    latest_correction: TimeEntryCorrectionRecord | None,
     decided_at_utc: datetime,
 ) -> tuple[TimeEntryRecord, TimeApprovalRecord, TimeApprovalDecisionRecord]:
     if command.action != TimeApprovalAction.SUBMIT and user_id in {
@@ -745,6 +1029,18 @@ def _build_time_approval_decision(
         current_state=current_state,
         command=command,
     )
+    correction_revision_no: int | None = None
+    correction_hash: str | None = None
+    if current_state == TimeApprovalState.CORRECTION_REQUESTED:
+        if (
+            previous is None
+            or latest_correction is None
+            or latest_correction.corrected_at_utc <= previous.decided_at_utc
+            or latest_correction.correction_request_decision_hash != previous.decision_hash
+        ):
+            raise TimeTrackingConflict("time approval resubmission requires a newer bound correction")
+        correction_revision_no = latest_correction.revision_no
+        correction_hash = latest_correction.correction_hash
     command_hash = _approval_decision_command_hash(
         command,
         approval_object_id=approval.object_id,
@@ -765,6 +1061,8 @@ def _build_time_approval_decision(
         "decided_by": user_id,
         "decided_at_utc": decided_at_utc,
         "confirmation_statement_hash": confirmation_hash,
+        "correction_revision_no": correction_revision_no,
+        "correction_hash": correction_hash,
         "audit_chain_ref": approval.audit_chain_ref,
         "source_system": command.source_system,
         "schema_version": TIME_APPROVAL_DECISION_SCHEMA_VERSION,
@@ -788,12 +1086,20 @@ class InMemoryTimeTrackingStore:
         self._receipts: dict[tuple[str, str], TimeEntryCreationReceipt] = {}
         self._decisions: dict[tuple[str, str], TimeApprovalDecisionRecord] = {}
         self._decision_mutations: dict[tuple[str, str], TimeApprovalDecisionRecord] = {}
+        self._corrections: dict[tuple[str, str], TimeEntryCorrectionRecord] = {}
+        self._correction_mutations: dict[tuple[str, str], TimeEntryCorrectionRecord] = {}
 
     def list_entries(self, *, tenant_id: str) -> Sequence[TimeEntryRecord]:
         entries: list[TimeEntryRecord] = []
         for (stored_tenant, _), entry in self._entries.items():
             if stored_tenant != tenant_id:
                 continue
+            latest_correction = self._latest_correction(
+                tenant_id=tenant_id,
+                entry_object_id=entry.object_id,
+            )
+            if latest_correction is not None:
+                entry = _apply_time_entry_correction(entry=entry, correction=latest_correction)
             latest = self._latest_decision(tenant_id=tenant_id, entry_object_id=entry.object_id)
             if latest is not None:
                 approval = next(
@@ -870,6 +1176,15 @@ class InMemoryTimeTrackingStore:
             if existing.command_hash != command_hash:
                 raise TimeTrackingConflict("mutation_reference already belongs to a different time approval decision")
             replayed_entry = self._entries[(tenant_id, existing.entry_object_id)]
+            latest_correction = self._latest_correction(
+                tenant_id=tenant_id,
+                entry_object_id=existing.entry_object_id,
+            )
+            if latest_correction is not None:
+                replayed_entry = _apply_time_entry_correction(
+                    entry=replayed_entry,
+                    correction=latest_correction,
+                )
             replayed_approval = self._approvals[(tenant_id, existing.approval_object_id)]
             replayed_entry, replayed_approval = _apply_time_approval_decision(
                 entry=replayed_entry,
@@ -881,6 +1196,12 @@ class InMemoryTimeTrackingStore:
         if approval is None:
             raise TimeTrackingNotFound("time approval not found")
         entry = self._entries[(tenant_id, approval.entry_object_id)]
+        latest_correction = self._latest_correction(
+            tenant_id=tenant_id,
+            entry_object_id=entry.object_id,
+        )
+        if latest_correction is not None:
+            entry = _apply_time_entry_correction(entry=entry, correction=latest_correction)
         if (tenant_id, command.decision_object_id) in self._decisions:
             raise TimeTrackingConflict("time approval decision object already exists")
         previous = self._latest_decision(tenant_id=tenant_id, approval_object_id=approval_object_id)
@@ -891,11 +1212,94 @@ class InMemoryTimeTrackingStore:
             approval=approval,
             command=command,
             previous=previous,
+            latest_correction=latest_correction,
             decided_at_utc=utc_now(),
         )
         self._decisions[(tenant_id, decision.object_id)] = decision
         self._decision_mutations[mutation_key] = decision
         return entry, approval, decision, False
+
+    def correct_entry(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        entry_object_id: str,
+        command: CorrectTimeEntryCommand,
+    ) -> tuple[TimeEntryRecord, TimeApprovalRecord, TimeEntryCorrectionRecord, bool]:
+        mutation_key = (tenant_id, command.mutation_reference)
+        existing = self._correction_mutations.get(mutation_key)
+        if existing is not None:
+            command_hash = _correction_command_hash(
+                command,
+                entry_object_id=entry_object_id,
+                user_id=user_id,
+            )
+            if existing.command_hash != command_hash:
+                raise TimeTrackingConflict(
+                    "mutation_reference already belongs to a different time entry correction command"
+                )
+            replayed_entry = _apply_time_entry_correction(
+                entry=self._entries[(tenant_id, existing.entry_object_id)],
+                correction=existing,
+            )
+            replayed_approval = self._approvals[(tenant_id, existing.approval_object_id)]
+            latest_decision = self._latest_decision(
+                tenant_id=tenant_id,
+                approval_object_id=replayed_approval.object_id,
+            )
+            if latest_decision is not None:
+                replayed_entry, replayed_approval = _apply_time_approval_decision(
+                    entry=replayed_entry,
+                    approval=replayed_approval,
+                    decision=latest_decision,
+                )
+            return replayed_entry, replayed_approval, existing, True
+        entry = self._entries.get((tenant_id, entry_object_id))
+        if entry is None:
+            raise TimeTrackingNotFound("time entry not found")
+        approval = next(
+            (
+                item
+                for (stored_tenant, _), item in self._approvals.items()
+                if stored_tenant == tenant_id and item.entry_object_id == entry_object_id
+            ),
+            None,
+        )
+        if approval is None:
+            raise TimeTrackingNotFound("time approval not found")
+        correction_request = self._latest_decision(
+            tenant_id=tenant_id,
+            approval_object_id=approval.object_id,
+        )
+        if correction_request is None:
+            raise TimeTrackingConflict("time entry correction requires a current correction request")
+        previous = self._latest_correction(
+            tenant_id=tenant_id,
+            entry_object_id=entry_object_id,
+        )
+        if previous is not None:
+            entry = _apply_time_entry_correction(entry=entry, correction=previous)
+        corrected_entry, correction = _build_time_entry_correction(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            entry=entry,
+            approval=approval,
+            command=command,
+            previous=previous,
+            correction_request=correction_request,
+            corrected_at_utc=utc_now(),
+        )
+        if (tenant_id, correction.object_id) in self._corrections:
+            raise TimeTrackingConflict("time entry correction object already exists")
+        self._corrections[(tenant_id, correction.object_id)] = correction
+        self._correction_mutations[mutation_key] = correction
+        corrected_entry, approval = _apply_time_approval_decision(
+            entry=corrected_entry,
+            approval=approval,
+            decision=correction_request,
+        )
+        return corrected_entry, approval, correction, False
 
     def _latest_decision(
         self,
@@ -913,6 +1317,19 @@ class InMemoryTimeTrackingStore:
         ]
         return max(matches, key=lambda item: item.sequence_no, default=None)
 
+    def _latest_correction(
+        self,
+        *,
+        tenant_id: str,
+        entry_object_id: str,
+    ) -> TimeEntryCorrectionRecord | None:
+        matches = [
+            correction
+            for (stored_tenant, _), correction in self._corrections.items()
+            if stored_tenant == tenant_id and correction.entry_object_id == entry_object_id
+        ]
+        return max(matches, key=lambda item: item.revision_no, default=None)
+
 
 class PgTimeTrackingStore:
     def __init__(self, *, read_database_dsn: str, write_database_dsn: str) -> None:
@@ -928,18 +1345,23 @@ class PgTimeTrackingStore:
             order_by="work_date DESC, started_at_utc DESC, object_id",
             record_type=TimeEntryRecord,
         )
-        latest = {item.entry_object_id: item for item in self._list_latest_decisions(tenant_id=tenant_id)}
-        return tuple(
-            entry.model_copy(
-                update={
-                    "lifecycle_state": TimeTrackingLifecycleState(latest[entry.object_id].to_state.value),
-                    "updated_at_utc": latest[entry.object_id].decided_at_utc,
-                }
-            )
-            if entry.object_id in latest
-            else entry
-            for entry in entries
-        )
+        latest_decisions = {item.entry_object_id: item for item in self._list_latest_decisions(tenant_id=tenant_id)}
+        latest_corrections = {item.entry_object_id: item for item in self._list_latest_corrections(tenant_id=tenant_id)}
+        projected: list[TimeEntryRecord] = []
+        for entry in entries:
+            correction = latest_corrections.get(entry.object_id)
+            if correction is not None:
+                entry = _apply_time_entry_correction(entry=entry, correction=correction)
+            decision = latest_decisions.get(entry.object_id)
+            if decision is not None:
+                entry = entry.model_copy(
+                    update={
+                        "lifecycle_state": TimeTrackingLifecycleState(decision.to_state.value),
+                        "updated_at_utc": max(entry.updated_at_utc, decision.decided_at_utc),
+                    }
+                )
+            projected.append(entry)
+        return tuple(projected)
 
     def list_approvals(self, *, tenant_id: str) -> Sequence[TimeApprovalRecord]:
         approvals = self._list_records(
@@ -1064,6 +1486,16 @@ class PgTimeTrackingStore:
                         tenant_id=tenant_id,
                         object_id=existing.entry_object_id,
                     )
+                    latest_correction = self._load_latest_correction(
+                        connection,
+                        tenant_id=tenant_id,
+                        entry_object_id=existing.entry_object_id,
+                    )
+                    if latest_correction is not None:
+                        replayed_entry = _apply_time_entry_correction(
+                            entry=replayed_entry,
+                            correction=latest_correction,
+                        )
                     replayed_approval = self._load_approval(
                         connection,
                         tenant_id=tenant_id,
@@ -1087,6 +1519,13 @@ class PgTimeTrackingStore:
                     tenant_id=tenant_id,
                     object_id=approval.entry_object_id,
                 )
+                latest_correction = self._load_latest_correction(
+                    connection,
+                    tenant_id=tenant_id,
+                    entry_object_id=entry.object_id,
+                )
+                if latest_correction is not None:
+                    entry = _apply_time_entry_correction(entry=entry, correction=latest_correction)
                 previous = self._load_latest_decision(
                     connection,
                     tenant_id=tenant_id,
@@ -1099,12 +1538,116 @@ class PgTimeTrackingStore:
                     approval=approval,
                     command=command,
                     previous=previous,
+                    latest_correction=latest_correction,
                     decided_at_utc=utc_now(),
                 )
                 self._insert_decision(connection, decision)
                 return entry, approval, decision, False
         except psycopg.errors.UniqueViolation as exc:
             raise TimeTrackingConflict("time approval decision ID or sequence already exists") from exc
+
+    def correct_entry(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        entry_object_id: str,
+        command: CorrectTimeEntryCommand,
+    ) -> tuple[TimeEntryRecord, TimeApprovalRecord, TimeEntryCorrectionRecord, bool]:
+        command_hash = _correction_command_hash(
+            command,
+            entry_object_id=entry_object_id,
+            user_id=user_id,
+        )
+        try:
+            with psycopg.connect(self.write_database_dsn, row_factory=dict_row) as connection:
+                connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+                connection.execute(
+                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                    (f"{tenant_id}:time-entry:{entry_object_id}",),
+                )
+                existing = self._load_correction_by_mutation(
+                    connection,
+                    tenant_id=tenant_id,
+                    mutation_reference=command.mutation_reference,
+                )
+                if existing is not None:
+                    if existing.command_hash != command_hash:
+                        raise TimeTrackingConflict(
+                            "mutation_reference already belongs to a different time entry correction command"
+                        )
+                    replayed_entry = _apply_time_entry_correction(
+                        entry=self._load_entry(
+                            connection,
+                            tenant_id=tenant_id,
+                            object_id=existing.entry_object_id,
+                        ),
+                        correction=existing,
+                    )
+                    replayed_approval = self._load_approval(
+                        connection,
+                        tenant_id=tenant_id,
+                        object_id=existing.approval_object_id,
+                    )
+                    latest_decision = self._load_latest_decision(
+                        connection,
+                        tenant_id=tenant_id,
+                        approval_object_id=replayed_approval.object_id,
+                    )
+                    if latest_decision is not None:
+                        replayed_entry, replayed_approval = _apply_time_approval_decision(
+                            entry=replayed_entry,
+                            approval=replayed_approval,
+                            decision=latest_decision,
+                        )
+                    return replayed_entry, replayed_approval, existing, True
+                entry = self._load_entry_optional(
+                    connection,
+                    tenant_id=tenant_id,
+                    object_id=entry_object_id,
+                )
+                if entry is None:
+                    raise TimeTrackingNotFound("time entry not found")
+                approval = self._load_approval_by_entry(
+                    connection,
+                    tenant_id=tenant_id,
+                    entry_object_id=entry_object_id,
+                )
+                if approval is None:
+                    raise TimeTrackingNotFound("time approval not found")
+                correction_request = self._load_latest_decision(
+                    connection,
+                    tenant_id=tenant_id,
+                    approval_object_id=approval.object_id,
+                )
+                if correction_request is None:
+                    raise TimeTrackingConflict("time entry correction requires a current correction request")
+                previous = self._load_latest_correction(
+                    connection,
+                    tenant_id=tenant_id,
+                    entry_object_id=entry_object_id,
+                )
+                if previous is not None:
+                    entry = _apply_time_entry_correction(entry=entry, correction=previous)
+                corrected_entry, correction = _build_time_entry_correction(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    entry=entry,
+                    approval=approval,
+                    command=command,
+                    previous=previous,
+                    correction_request=correction_request,
+                    corrected_at_utc=utc_now(),
+                )
+                self._insert_correction(connection, correction)
+                corrected_entry, approval = _apply_time_approval_decision(
+                    entry=corrected_entry,
+                    approval=approval,
+                    decision=correction_request,
+                )
+                return corrected_entry, approval, correction, False
+        except psycopg.errors.UniqueViolation as exc:
+            raise TimeTrackingConflict("time entry correction ID or revision already exists") from exc
 
     def _list_records(
         self,
@@ -1139,6 +1682,22 @@ class PgTimeTrackingStore:
                 (tenant_id,),
             ).fetchall()
         return tuple(TimeApprovalDecisionRecord.model_validate(row) for row in rows)
+
+    def _list_latest_corrections(self, *, tenant_id: str) -> tuple[TimeEntryCorrectionRecord, ...]:
+        if not tenant_id.strip():
+            raise ValueError("tenant_id must not be empty")
+        with psycopg.connect(self.read_database_dsn, row_factory=dict_row) as connection:
+            connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+            rows = connection.execute(
+                """
+                SELECT DISTINCT ON (entry_object_id) *
+                FROM time_tracking.entry_corrections
+                WHERE tenant_id = %s
+                ORDER BY entry_object_id, revision_no DESC
+                """,
+                (tenant_id,),
+            ).fetchall()
+        return tuple(TimeEntryCorrectionRecord.model_validate(row) for row in rows)
 
     @staticmethod
     def _active_tenant_principal_exists(
@@ -1278,16 +1837,45 @@ class PgTimeTrackingStore:
                 tenant_id, object_id, approval_object_id, entry_object_id, mutation_reference,
                 command_hash, sequence_no, previous_decision_hash, from_state, to_state,
                 action, decided_by, decided_at_utc, confirmation_statement_hash,
-                audit_chain_ref, decision_hash, source_system
+                correction_revision_no, correction_hash, audit_chain_ref, decision_hash, source_system,
+                schema_version
             ) VALUES (
                 %(tenant_id)s, %(object_id)s, %(approval_object_id)s, %(entry_object_id)s,
                 %(mutation_reference)s, %(command_hash)s, %(sequence_no)s,
                 %(previous_decision_hash)s, %(from_state)s, %(to_state)s, %(action)s,
                 %(decided_by)s, %(decided_at_utc)s, %(confirmation_statement_hash)s,
-                %(audit_chain_ref)s, %(decision_hash)s, %(source_system)s
+                %(correction_revision_no)s, %(correction_hash)s, %(audit_chain_ref)s,
+                %(decision_hash)s, %(source_system)s, %(schema_version)s
             )
             """,
-            decision.model_dump(exclude={"schema_version"}),
+            decision.model_dump(),
+        )
+
+    @staticmethod
+    def _insert_correction(
+        connection: psycopg.Connection[dict[str, Any]],
+        correction: TimeEntryCorrectionRecord,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO time_tracking.entry_corrections (
+                tenant_id, object_id, entry_object_id, approval_object_id, mutation_reference,
+                command_hash, revision_no, previous_correction_hash,
+                correction_request_decision_hash, corrected_by, corrected_at_utc,
+                work_date, started_at_utc, ended_at_utc, duration_minutes,
+                project_reference, cost_center_reference, audit_chain_ref,
+                correction_hash, source_system
+            ) VALUES (
+                %(tenant_id)s, %(object_id)s, %(entry_object_id)s, %(approval_object_id)s,
+                %(mutation_reference)s, %(command_hash)s, %(revision_no)s,
+                %(previous_correction_hash)s, %(correction_request_decision_hash)s,
+                %(corrected_by)s, %(corrected_at_utc)s, %(work_date)s,
+                %(started_at_utc)s, %(ended_at_utc)s, %(duration_minutes)s,
+                %(project_reference)s, %(cost_center_reference)s, %(audit_chain_ref)s,
+                %(correction_hash)s, %(source_system)s
+            )
+            """,
+            correction.model_dump(exclude={"schema_version"}),
         )
 
     @staticmethod
@@ -1326,6 +1914,19 @@ class PgTimeTrackingStore:
         return TimeEntryRecord.model_validate(row)
 
     @staticmethod
+    def _load_entry_optional(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        object_id: str,
+    ) -> TimeEntryRecord | None:
+        row = connection.execute(
+            "SELECT * FROM time_tracking.entries WHERE tenant_id = %s AND object_id = %s",
+            (tenant_id, object_id),
+        ).fetchone()
+        return None if row is None else TimeEntryRecord.model_validate(row)
+
+    @staticmethod
     def _load_approval(
         connection: psycopg.Connection[dict[str, Any]],
         *,
@@ -1350,6 +1951,22 @@ class PgTimeTrackingStore:
         row = connection.execute(
             "SELECT * FROM time_tracking.approvals WHERE tenant_id = %s AND object_id = %s",
             (tenant_id, object_id),
+        ).fetchone()
+        return None if row is None else TimeApprovalRecord.model_validate(row)
+
+    @staticmethod
+    def _load_approval_by_entry(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        entry_object_id: str,
+    ) -> TimeApprovalRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM time_tracking.approvals
+            WHERE tenant_id = %s AND entry_object_id = %s
+            """,
+            (tenant_id, entry_object_id),
         ).fetchone()
         return None if row is None else TimeApprovalRecord.model_validate(row)
 
@@ -1387,6 +2004,40 @@ class PgTimeTrackingStore:
         ).fetchone()
         return None if row is None else TimeApprovalDecisionRecord.model_validate(row)
 
+    @staticmethod
+    def _load_correction_by_mutation(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        mutation_reference: str,
+    ) -> TimeEntryCorrectionRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM time_tracking.entry_corrections
+            WHERE tenant_id = %s AND mutation_reference = %s
+            """,
+            (tenant_id, mutation_reference),
+        ).fetchone()
+        return None if row is None else TimeEntryCorrectionRecord.model_validate(row)
+
+    @staticmethod
+    def _load_latest_correction(
+        connection: psycopg.Connection[dict[str, Any]],
+        *,
+        tenant_id: str,
+        entry_object_id: str,
+    ) -> TimeEntryCorrectionRecord | None:
+        row = connection.execute(
+            """
+            SELECT * FROM time_tracking.entry_corrections
+            WHERE tenant_id = %s AND entry_object_id = %s
+            ORDER BY revision_no DESC
+            LIMIT 1
+            """,
+            (tenant_id, entry_object_id),
+        ).fetchone()
+        return None if row is None else TimeEntryCorrectionRecord.model_validate(row)
+
 
 def time_entry_view(record: TimeEntryRecord) -> TimeEntryView:
     return TimeEntryView(**record.model_dump(exclude={"tenant_id", "kms_key_ref"}))
@@ -1400,6 +2051,10 @@ def time_approval_view(record: TimeApprovalRecord) -> TimeApprovalView:
 
 def time_approval_decision_view(record: TimeApprovalDecisionRecord) -> TimeApprovalDecisionView:
     return TimeApprovalDecisionView(**record.model_dump(exclude={"tenant_id", "command_hash"}))
+
+
+def time_entry_correction_view(record: TimeEntryCorrectionRecord) -> TimeEntryCorrectionView:
+    return TimeEntryCorrectionView(**record.model_dump(exclude={"tenant_id", "command_hash"}))
 
 
 class TimeTrackingService:
@@ -1524,6 +2179,83 @@ class TimeTrackingService:
             decision=time_approval_decision_view(decision),
             idempotent_replay=replayed,
             maker_checker_verified=True,
+            audit_event_id=event.event_id,
+        )
+
+    def correct_entry(
+        self,
+        *,
+        user_context: UserContext,
+        entry_object_id: str,
+        command: CorrectTimeEntryCommand,
+    ) -> TimeEntryCorrectionResponse:
+        if entry_object_id not in user_context.readable_object_ids:
+            raise PermissionError("Time entry write access required")
+        entry = next(
+            (
+                item
+                for item in self.store.list_entries(tenant_id=user_context.tenant_id)
+                if item.object_id == entry_object_id
+            ),
+            None,
+        )
+        if entry is None:
+            raise TimeTrackingNotFound("time entry not found")
+        approval = next(
+            (
+                item
+                for item in self.store.list_approvals(tenant_id=user_context.tenant_id)
+                if item.entry_object_id == entry_object_id
+            ),
+            None,
+        )
+        if approval is None:
+            raise TimeTrackingNotFound("time approval not found")
+        if approval.object_id not in user_context.readable_object_ids:
+            raise PermissionError("Linked time approval write access required")
+        if user_context.role_ids.isdisjoint(TIME_ENTRY_CREATOR_ROLES):
+            raise PermissionError("Time Tracking creator role required for correction")
+        if user_context.user_id != approval.worker_principal_id and user_context.role_ids.isdisjoint(
+            TIME_DELEGATED_CREATOR_ROLES
+        ):
+            raise PermissionError("Time Tracking delegated correction role required")
+        if approval.approval_state != TimeApprovalState.CORRECTION_REQUESTED:
+            raise TimeTrackingConflict("time entry correction requires correction_requested approval state")
+        corrected_entry, approval, correction, replayed = self.store.correct_entry(
+            tenant_id=user_context.tenant_id,
+            user_id=user_context.user_id,
+            entry_object_id=entry_object_id,
+            command=command,
+        )
+        event_type = "time_tracking.entry.correction.committed"
+        if replayed:
+            event_type = "time_tracking.entry.correction.replayed"
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type=event_type,
+            source_object_ids=[corrected_entry.object_id, approval.object_id, correction.object_id],
+            metadata={
+                "module_id": TIME_TRACKING_MODULE_ID,
+                "feature_id": TIME_ENTRIES_WRITE_FEATURE_ID,
+                "mutation_reference": correction.mutation_reference,
+                "command_hash": correction.command_hash,
+                "correction_hash": correction.correction_hash,
+                "correction_request_decision_hash": correction.correction_request_decision_hash,
+                "revision_no": correction.revision_no,
+                "duration_minutes": correction.duration_minutes,
+                "approval_resubmission_required": True,
+                "atomic_transaction_committed": True,
+                "idempotent_replay": replayed,
+                "result_contract": "append_only_time_entry_correction",
+                "audit_content_included": False,
+            },
+        )
+        return TimeEntryCorrectionResponse(
+            tenant_id=user_context.tenant_id,
+            entry=time_entry_view(corrected_entry),
+            approval=time_approval_view(approval),
+            correction=time_entry_correction_view(correction),
+            idempotent_replay=replayed,
             audit_event_id=event.event_id,
         )
 

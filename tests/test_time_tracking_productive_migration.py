@@ -40,3 +40,22 @@ def test_time_approval_decision_migration_is_append_only_and_maker_checker_ready
     assert "alter table time_tracking.approval_decisions force row level security" in sql
     assert "grant select, insert on table time_tracking.approval_decisions to collabio_authz_admin" in sql
     assert '\'["0060", "0078"]\'::jsonb' in sql
+
+
+def test_time_correction_migration_binds_revision_to_resubmission() -> None:
+    migration = get_migration("0080")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "time_tracking"
+    assert "create table if not exists time_tracking.entry_corrections" in sql
+    assert "unique (tenant_id, entry_object_id, revision_no)" in sql
+    assert "correction_request_decision_hash" in sql
+    assert "correction_revision_no" in sql
+    assert "time_approval_decisions_correction_binding_check" in sql
+    assert "create trigger time_entry_corrections_validate_append" in sql
+    assert "time approval resubmission is not bound to the latest requested correction" in sql
+    assert "time_entry_corrections_no_update" in sql
+    assert "time_entry_corrections_no_hard_delete" in sql
+    assert "alter table time_tracking.entry_corrections force row level security" in sql
+    assert "grant select, insert on table time_tracking.entry_corrections to collabio_authz_admin" in sql
+    assert '\'["0060", "0078", "0080"]\'::jsonb' in sql

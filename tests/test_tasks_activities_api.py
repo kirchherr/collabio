@@ -205,3 +205,68 @@ def test_tasks_api_commits_append_only_lifecycle_transitions() -> None:
     listed = client.get("/v1/tasks/items", headers=readable)
     assert listed.status_code == 200
     assert listed.json()["items"][0]["lifecycle_state"] == "cancelled"
+
+
+def test_tasks_api_versions_assignment_and_due_date_amendments() -> None:
+    reset_runtime()
+    enable_tasks_features()
+    created = client.post("/v1/tasks/items", headers=ADMIN_HEADERS, json=PAYLOAD)
+    assert created.status_code == 200, created.text
+    readable = {
+        **ADMIN_HEADERS,
+        "X-Readable-Object-Ids": f"{PAYLOAD['task_object_id']},{PAYLOAD['activity_object_id']}",
+    }
+    amendment_payload = {
+        "mutation_reference": "request:api-task-amend-v1",
+        "amendment_object_id": "task-amendment-api-v1",
+        "activity_object_id": "task-activity-amend-api-v1",
+        "activity_number": "TASK-ACT-API-AMEND-001",
+        "expected_assigned_principal_id": "user-demo",
+        "target_assigned_principal_id": "user-next",
+        "expected_due_at_utc": PAYLOAD["due_at_utc"],
+        "target_due_at_utc": "2026-08-06T12:00:00Z",
+        "activity_summary": "Task reassigned and rescheduled",
+        "source_system": "native",
+    }
+    amended = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/amendments",
+        headers=readable,
+        json=amendment_payload,
+    )
+    replay = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/amendments",
+        headers=readable,
+        json=amendment_payload,
+    )
+
+    assert amended.status_code == 200, amended.text
+    body = amended.json()
+    assert body["task"]["assigned_principal_id"] == "user-next"
+    assert body["task"]["due_at_utc"] == "2026-08-06T12:00:00Z"
+    assert body["amendment"]["sequence_no"] == 1
+    assert body["amendment"]["assignment_changed"] is True
+    assert body["amendment"]["due_date_changed"] is True
+    assert body["assignment_acl_rebound"] is True
+    assert body["audit_content_included"] is False
+    assert replay.status_code == 200
+    assert replay.json()["idempotent_replay"] is True
+
+    stale = client.post(
+        f"/v1/tasks/items/{PAYLOAD['task_object_id']}/amendments",
+        headers=readable,
+        json={
+            **amendment_payload,
+            "mutation_reference": "request:api-task-amend-stale-v1",
+            "amendment_object_id": "task-amendment-api-stale-v1",
+            "activity_object_id": "task-activity-amend-api-stale-v1",
+            "activity_number": "TASK-ACT-API-AMEND-STALE-001",
+        },
+    )
+    assert stale.status_code == 409
+    assert "assignment changed" in stale.json()["detail"]
+
+    listed = client.get("/v1/tasks/items", headers=readable)
+    assert listed.status_code == 200
+    item = listed.json()["items"][0]
+    assert item["assigned_principal_id"] == "user-next"
+    assert item["due_at_utc"] == "2026-08-06T12:00:00Z"

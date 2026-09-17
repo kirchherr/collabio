@@ -40,3 +40,37 @@ def test_task_lifecycle_transition_migration_is_append_only_and_hash_chained() -
     assert "alter table tasks.lifecycle_transitions force row level security" in sql
     assert "grant select, insert on table tasks.lifecycle_transitions to collabio_authz_admin" in sql
     assert '\'["0050", "0059", "0077"]\'::jsonb' in sql
+
+
+def test_task_amendment_migration_versions_planning_and_assignment_acl() -> None:
+    migration = get_migration("0079")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "tasks_activities"
+    assert "create table if not exists tasks.amendments" in sql
+    assert "unique (tenant_id, task_object_id, sequence_no)" in sql
+    assert "previous_amendment_hash" in sql
+    assert "assignment_changed" in sql
+    assert "due_date_changed" in sql
+    assert "create trigger tasks_amendments_validate_append" in sql
+    assert "task amendment did not revoke the prior assignment acl" in sql
+    assert "task amendment target assignment acl is missing" in sql
+    assert "tasks_amendments_no_update" in sql
+    assert "tasks_amendments_no_hard_delete" in sql
+    assert "alter table tasks.amendments force row level security" in sql
+    assert "grant select, insert on table tasks.amendments to collabio_authz_admin" in sql
+    assert '\'["0050", "0059", "0077", "0079"]\'::jsonb' in sql
+
+
+def test_task_mutation_serialization_migration_unifies_transition_and_amendment_lock() -> None:
+    migration = get_migration("0081")
+    sql = normalized(migration.sql())
+
+    assert migration.module_id == "tasks_activities"
+    assert "create or replace function tasks.acquire_task_mutation_lock()" in sql
+    assert "new.tenant_id || ':task:' || new.task_object_id" in sql
+    assert ":task-transition:" not in sql
+    assert "create trigger tasks_lifecycle_transitions_serialize_task_mutations" in sql
+    assert "before insert on tasks.lifecycle_transitions" in sql
+    assert "module_version = '0.4.1'" in sql
+    assert '\'["0050", "0059", "0077", "0079", "0081"]\'::jsonb' in sql
