@@ -26,6 +26,8 @@ def valid_environment() -> dict[str, str]:
         "SUITE_ENV": "dev",
         "SUITE_AUTH_MODE": "dev",
         "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED": "0",
+        "SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND": "memory",
+        "SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND": "memory",
         "SUITE_DATA_DIR": "/tmp/collabio-work-e2e-api",
         "SUITE_MIGRATION_DATABASE_DSN": owner_dsn,
         "SUITE_DATABASE_DSN": app_dsn,
@@ -49,6 +51,8 @@ def test_work_e2e_guard_accepts_only_explicit_isolated_configuration() -> None:
         ("SUITE_ENV", "production"),
         ("SUITE_AUTH_MODE", "jwt"),
         ("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "1"),
+        ("SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND", "postgres"),
+        ("SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND", "postgres"),
         ("SUITE_DATA_DIR", "/workspace/data"),
         ("SUITE_DATABASE_DSN", "postgresql://app:secret@postgres:5432/collabio"),
     ),
@@ -68,6 +72,8 @@ def test_work_e2e_compose_profile_has_no_host_ports_and_keeps_runtime_switch_clo
 
     assert 'profiles: ["work-e2e"]' in profile
     assert "SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: \"0\"" in profile
+    assert "SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory" in profile
+    assert "SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory" in profile
     assert "SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: \"1\"" in profile
     assert "SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC: \"0\"" in profile
     assert "ports:" not in profile

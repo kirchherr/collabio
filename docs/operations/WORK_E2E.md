@@ -4,13 +4,16 @@
 
 This runbook verifies the first daily-work surface through a real browser, the real Collabio API routes and the real
 PostgreSQL task/time adapters. It covers every source independently in ready, empty, blocked and unavailable states,
-the closed productivity-pilot boundary, task reassignment, time correction and resubmission, and desktop/mobile
-containment.
+the closed productivity-pilot runtime boundary, task reassignment, time correction and resubmission, and
+desktop/mobile containment.
 
 The profile is test-only. It uses only tenant `tenant-work-e2e`, generated synthetic records and an ephemeral
 tmpfs-backed PostgreSQL instance. It publishes no host port, joins only the internal `work_e2e_internal` network and
 keeps `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0`. The isolated test override can admit only synthetic traffic in
-`tests/work_e2e_server.py`; it is not part of the product API image or normal runtime configuration.
+`tests/work_e2e_server.py`; it is not part of the product API image or normal runtime configuration. The separate
+blocked process installs only in-memory, synthetic, hash-valid scope/start fixtures so requests reach the real closed
+runtime switch. The guard requires both pilot stores to remain explicitly `memory`; those fixtures are neither durable
+pilot evidence nor tenant activation.
 
 Follow `/home/extern/AGENTS.md`, work in `dev001:/home/extern/collabio`, always use Compose project `collabio`, and
 acquire `build.lock` before `docker.lock` whenever both apply.

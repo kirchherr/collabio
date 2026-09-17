@@ -18,6 +18,12 @@ def require_isolated_work_e2e_environment(environ: Mapping[str, str]) -> bool:
         raise RuntimeError("Work E2E server requires development header authentication")
     if environ.get("SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED", "0") != "0":
         raise RuntimeError("Work E2E server must not enable the productivity pilot runtime switch")
+    for key in (
+        "SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND",
+        "SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND",
+    ):
+        if environ.get(key) != "memory":
+            raise RuntimeError(f"{key} must remain an isolated in-memory store")
     if environ.get("SUITE_WORK_E2E_TENANT_ID") != WORK_E2E_TENANT_ID:
         raise RuntimeError("Work E2E server is restricted to the synthetic tenant")
 

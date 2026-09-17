@@ -4173,6 +4173,8 @@ services:
       SUITE_ENV: dev
       SUITE_AUTH_MODE: dev
       SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
+      SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-seed
       SUITE_MIGRATION_DATABASE_DSN: postgresql://collabio_owner:collabio_owner@work-e2e-postgres:5432/collabio_work_e2e
       SUITE_DATABASE_DSN: postgresql://collabio_app:collabio_app@work-e2e-postgres:5432/collabio_work_e2e
@@ -4208,6 +4210,8 @@ services:
       SUITE_ENV: dev
       SUITE_AUTH_MODE: dev
       SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
+      SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-api
       SUITE_TASKS_ACTIVITIES_BACKEND: postgres
       SUITE_TIME_TRACKING_BACKEND: postgres
@@ -4259,6 +4263,8 @@ services:
       SUITE_ENV: dev
       SUITE_AUTH_MODE: dev
       SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED: "0"
+      SUITE_PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_STORE_BACKEND: memory
+      SUITE_PRODUCTIVITY_PILOT_START_AUTHORIZATION_STORE_BACKEND: memory
       SUITE_DATA_DIR: /tmp/collabio-work-e2e-blocked-api
       SUITE_TASKS_ACTIVITIES_BACKEND: postgres
       SUITE_TIME_TRACKING_BACKEND: postgres

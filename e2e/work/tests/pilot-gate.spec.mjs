@@ -2,7 +2,9 @@ import { test, expect } from "@playwright/test";
 
 import {
   BLOCKED_BASE_URL,
+  HTTP_FORBIDDEN_CONSOLE_ERROR,
   HTTP_LOCKED_CONSOLE_ERROR,
+  HTTP_NOT_FOUND_CONSOLE_ERROR,
   installContext,
   monitorPage,
   resources,
@@ -13,7 +15,11 @@ test("the ordinary Work API remains fail-closed without pilot authorization", as
   await installContext(page);
   const assertClean = monitorPage(page, {
     baseUrls: [BLOCKED_BASE_URL],
-    expectedConsoleErrors: Array(Object.keys(resources).length).fill(HTTP_LOCKED_CONSOLE_ERROR),
+    expectedConsoleErrors: [
+      ...Array(4).fill(HTTP_LOCKED_CONSOLE_ERROR),
+      ...Array(2).fill(HTTP_FORBIDDEN_CONSOLE_ERROR),
+      HTTP_NOT_FOUND_CONSOLE_ERROR,
+    ],
   });
   const statuses = new Map();
   page.on("response", (response) => {
@@ -31,8 +37,14 @@ test("the ordinary Work API remains fail-closed without pilot authorization", as
   await expect(page.locator(".availability-item").first()).toContainText(
     "Pilot-Laufzeit geschlossen",
   );
-  expect(Object.fromEntries(statuses)).toEqual(
-    Object.fromEntries(Object.keys(resources).map((key) => [key, 423])),
-  );
+  expect(Object.fromEntries(statuses)).toEqual({
+    tasks: 423,
+    taskActivities: 423,
+    timeEntries: 423,
+    timeApprovals: 423,
+    tickets: 404,
+    knowledge: 403,
+    crm: 403,
+  });
   assertClean();
 });

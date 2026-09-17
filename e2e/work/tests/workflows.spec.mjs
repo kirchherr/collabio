@@ -5,7 +5,7 @@ import { test, expect } from "@playwright/test";
 import {
   ARTIFACT_DIR,
   BASE_URL,
-  HTTP_LOCKED_CONSOLE_ERROR,
+  HTTP_NOT_FOUND_CONSOLE_ERROR,
   USER_ID,
   installContext,
   monitorPage,
@@ -21,7 +21,7 @@ test("reassignment and correction-resubmission complete through the real API", a
   await installContext(page);
   const assertClean = monitorPage(page, {
     baseUrls: [BASE_URL],
-    expectedConsoleErrors: [HTTP_LOCKED_CONSOLE_ERROR],
+    expectedConsoleErrors: [HTTP_NOT_FOUND_CONSOLE_ERROR],
   });
 
   await page.goto(`${BASE_URL}/work`);

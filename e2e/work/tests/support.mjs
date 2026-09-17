@@ -7,6 +7,10 @@ export const TENANT_ID = "tenant-work-e2e";
 export const USER_ID = "work-user-e2e";
 export const HTTP_LOCKED_CONSOLE_ERROR =
   "Failed to load resource: the server responded with a status of 423 (Locked)";
+export const HTTP_FORBIDDEN_CONSOLE_ERROR =
+  "Failed to load resource: the server responded with a status of 403 (Forbidden)";
+export const HTTP_NOT_FOUND_CONSOLE_ERROR =
+  "Failed to load resource: the server responded with a status of 404 (Not Found)";
 export const HTTP_UNAVAILABLE_CONSOLE_ERROR =
   "Failed to load resource: the server responded with a status of 503 (Service Unavailable)";
 
