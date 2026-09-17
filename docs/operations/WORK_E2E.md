@@ -13,7 +13,8 @@ keeps `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0`. The isolated test override c
 `tests/work_e2e_server.py`; it is not part of the product API image or normal runtime configuration. The separate
 blocked process installs only in-memory, synthetic, hash-valid scope/start fixtures so requests reach the real closed
 runtime switch. The guard requires both pilot stores to remain explicitly `memory`; those fixtures are neither durable
-pilot evidence nor tenant activation.
+pilot evidence nor tenant activation. The proof expects four in-policy task/time reads to return `423`, CRM to return
+`403` outside the route scope, inactive Tickets to return `404`, and the non-pilot Knowledge read to remain available.
 
 Follow `/home/extern/AGENTS.md`, work in `dev001:/home/extern/collabio`, always use Compose project `collabio`, and
 acquire `build.lock` before `docker.lock` whenever both apply.

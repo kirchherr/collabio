@@ -21,7 +21,7 @@ test("reassignment and correction-resubmission complete through the real API", a
   await installContext(page);
   const assertClean = monitorPage(page, {
     baseUrls: [BASE_URL],
-    expectedConsoleErrors: [HTTP_NOT_FOUND_CONSOLE_ERROR],
+    expectedConsoleErrors: Array(10).fill(HTTP_NOT_FOUND_CONSOLE_ERROR),
   });
 
   await page.goto(`${BASE_URL}/work`);

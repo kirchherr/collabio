@@ -11,13 +11,13 @@ import {
   waitForWorkspace,
 } from "./support.mjs";
 
-test("the ordinary Work API remains fail-closed without pilot authorization", async ({ page }) => {
+test("pilot-scoped Work APIs remain fail-closed when the runtime switch is disabled", async ({ page }) => {
   await installContext(page);
   const assertClean = monitorPage(page, {
     baseUrls: [BLOCKED_BASE_URL],
     expectedConsoleErrors: [
       ...Array(4).fill(HTTP_LOCKED_CONSOLE_ERROR),
-      ...Array(2).fill(HTTP_FORBIDDEN_CONSOLE_ERROR),
+      HTTP_FORBIDDEN_CONSOLE_ERROR,
       HTTP_NOT_FOUND_CONSOLE_ERROR,
     ],
   });
@@ -31,8 +31,8 @@ test("the ordinary Work API remains fail-closed without pilot authorization", as
   });
 
   await page.goto(`${BLOCKED_BASE_URL}/work`);
-  await waitForWorkspace(page, 0);
-  await expect(page.locator("#sync-line")).toContainText("7 gesperrt");
+  await waitForWorkspace(page, 1);
+  await expect(page.locator("#sync-line")).toContainText("6 gesperrt");
   await expect(page.locator(".availability-item")).toHaveCount(5);
   await expect(page.locator(".availability-item").first()).toContainText(
     "Pilot-Laufzeit geschlossen",
@@ -43,7 +43,7 @@ test("the ordinary Work API remains fail-closed without pilot authorization", as
     timeEntries: 423,
     timeApprovals: 423,
     tickets: 404,
-    knowledge: 403,
+    knowledge: 200,
     crm: 403,
   });
   assertClean();
