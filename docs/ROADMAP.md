@@ -1480,6 +1480,20 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      werden append-only projiziert; Service und PostgreSQL erzwingen Vier-Augen-Trennung, exakte Human-Bestaetigung
      wird nur gehasht gespeichert, und Restore-Gate sowie `/work` fuehren den neuen Zustand mit. Auch diese Route
      erweitert den laufenden Pilotumfang nicht ohne neue ausdrueckliche Freigabe.
+246. [x] Aufgaben-Neuzuweisung und Faelligkeitsaenderung als Produktzug geschlossen: optimistische Zustandskontrolle,
+     aktiver Zielprincipal, praezise ACL-Umschreibung, append-only Aktivitaetsnachweis und ein gemeinsamer
+     datenbankseitiger Mutation-Lock mit Lifecycle-Transitionen sind in API, Restore-Vertrag und `/work` gebunden.
+247. [x] Zeiterfassungskorrektur und Neueinreichung als Produktzug geschlossen: unveraenderliche Revisionen sind an
+     den exakten Korrekturauftrag und dessen Hash gebunden; PostgreSQL, API, Restore-Vertrag und `/work` pruefen die
+     Kette gemeinsam, ohne den Pilotumfang zu erweitern.
+248. [x] Ersten Daily-Work-Loop browserbasiert abgenommen: ein isoliertes, intern vernetztes und hostportfreies
+     Playwright-Profil prueft 28 Zustandsfaelle fuer sieben Fachquellen in ready/empty/blocked/unavailable sowie
+     Route-Policy, reale Task-Neuzuweisung mit Time-Correction/Resubmission und separate Desktop-/Mobile-Ansichten,
+     insgesamt 32 Faelle auf ephemerem PostgreSQL. Der Pilot-Kill-Switch blieb geschlossen; es gab keine
+     Tenant-Aktivierung oder dauerhaften Nutzdaten.
+249. [ ] Naechsten Produktzug schliessen: vorhandene guarded Knowledge-Base-Create/Edit-Vertraege in `/work` nutzbar
+     machen und Create, Edit, Konflikt, Blockade und partielle Fehler browserbasiert pruefen. Bestehende Approval-,
+     UoW-, Audit-, S3-/PostgreSQL- und Restore-Grenzen werden wiederverwendet; RAG/Indexing bleibt geschlossen.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 
@@ -1493,6 +1507,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
 - [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
 - [x] Task-Status und Time-Approval als append-only, datenbankseitig validierte Workflows mit UI-Aktionen operationalisiert; Basisdatensaetze bleiben unveraendert.
+- [x] Daily-Work-Oberflaeche mit 32 isolierten Browserfaellen ueber Desktop und Mobile abgenommen; alle sieben Fachquellen, partielle Fehler, Route-Policy, Neuzuweisung und Korrektur/Neueinreichung sind reproduzierbar geprueft.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 

@@ -116,16 +116,17 @@ Current sprint:
 106. [x] Append-only time-entry submission and maker-checker approval workflow with database-enforced chain integrity, hash-only exact confirmation, restore coverage, API, and Work UI actions.
 107. [x] Append-only task reassignment and due-date amendments with optimistic checks, active-principal validation, precise ACL rebinding, activity evidence, shared serialization with lifecycle transitions, restore coverage, API, and Work UI actions.
 108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
+109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
 
 ## Next Engineering Step
 
-Validate and harden the completed first daily-work product loop while accountable pilot evidence remains a separate human lane:
+Close the next coherent product loop instead of extending preparation-only boundaries:
 
-- Exercise `/work` against the real `dev001` API with each domain independently ready, empty, blocked, and unavailable, including reassignment and correction/resubmission.
-- Close only defects found in that end-to-end workflow before selecting the next user-visible product loop; do not add another preparation-only boundary.
+- Make guarded Knowledge Base create/edit usable in `/work` by reusing the existing approval ledger, PostgreSQL/S3 unit-of-work, fresh tenant/ACL/module checks, explicit user confirmation, audit receipts, and restore contract.
+- Prove create, edit, conflict, blocked, and partial-failure behavior in the same isolated browser harness; add infrastructure only when that workflow exposes a concrete gap.
+- Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
-- Read `GET /v1/platform/productivity-pilot/real-user-readiness` before any pilot action and work only on its reported lifecycle gap.
-- Accept named principals, purpose, lawful basis, IAM roles, privacy, workforce, production topology, PITR, offsite, promotion, and cross-site evidence only from accountable owners; never fabricate placeholders.
+- Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.
 - Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until a new evidence chain, four-eyes approvals, and the hash-only closure path pass together.
 - Keep productive Legacy SQL writes, Office/Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
 
