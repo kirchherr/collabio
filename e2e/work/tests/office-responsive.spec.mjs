@@ -27,5 +27,12 @@ test("Office native editor, confirmation and persisted document fit the viewport
   await expect(page.locator("#document-save")).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-editor-${testInfo.project.name}.png`, fullPage: true });
+  if (testInfo.project.name === "desktop-chromium") {
+    await page.setViewportSize({ width: 900, height: 900 });
+    await expect(page.locator("#document-reload")).toBeVisible();
+    await expect(page.locator("#document-reload")).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `${ARTIFACT_DIR}/office-editor-tablet-chromium.png`, fullPage: true });
+  }
   verifyBrowser();
 });

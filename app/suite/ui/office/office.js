@@ -627,7 +627,7 @@ async function loadHistory() {
     const result = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/versions`);
     if (!current()) return;
     if (result.tenant_id !== state.context.tenantId || result.object_id !== session.objectId || !Array.isArray(result.versions)) throw new ApiError(502);
-    $("history-status").textContent = "Gespeicherte Versionen öffnen Sie schreibgeschützt.";
+    $("history-status").textContent = "Frühere Versionen öffnen Sie schreibgeschützt.";
     result.versions.forEach((version) => {
       if (typeof version.version_id !== "string") throw new ApiError(502);
       const button = node("button", undefined, "version-entry");
