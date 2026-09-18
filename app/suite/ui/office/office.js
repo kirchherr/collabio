@@ -1,7 +1,7 @@
 import { Editor, Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 const $ = (id) => document.getElementById(id);
@@ -242,6 +242,23 @@ function moveToMatch(direction) {
   state.editor.view.dispatch(state.editor.state.tr.setMeta(searchKey, true));
 }
 
+function focusEditor(editor = state.editor) {
+  if (!editor || editor.isDestroyed) return;
+  // This vanilla workspace must be ready for input before the control event returns.
+  // Tiptap's focus command defers browser focus to requestAnimationFrame.
+  editor.view.focus();
+  editor.commands.scrollIntoView();
+}
+
+function formatEditor(command) {
+  const editor = state.editor;
+  if (!editor?.isEditable) return;
+  editor.view.focus();
+  command(editor.chain()).run();
+  focusEditor(editor);
+  updateEditorState();
+}
+
 function refreshDocumentTools() {
   const editor = state.editor;
   if (!editor) return;
@@ -255,7 +272,8 @@ function refreshDocumentTools() {
     const button = node("button", entry.textContent || "Ohne Überschrift", `outline-entry level-${entry.attrs.level}`);
     button.type = "button";
     button.addEventListener("click", () => {
-      editor.chain().focus().setTextSelection(position + 1).scrollIntoView().run();
+      editor.commands.setTextSelection(position + 1);
+      focusEditor(editor);
       if (window.matchMedia("(max-width: 1000px)").matches) toggleInspector(false);
     });
     $("document-outline").append(button);
@@ -525,7 +543,8 @@ function beginDraft(event) {
   $("documents-toggle").setAttribute("aria-expanded", "false");
   refreshDocumentTools();
   renderDocuments();
-  state.editor.commands.focus("end");
+  state.editor.view.dispatch(state.editor.state.tr.setSelection(Selection.atEnd(state.editor.state.doc)));
+  focusEditor();
 }
 
 function mutationReference() {
@@ -673,7 +692,7 @@ function toggleFind(show) {
   $("find-panel").hidden = !show;
   $("find-toggle").setAttribute("aria-expanded", String(show));
   if (show) { $("find-query").focus(); $("find-query").select(); }
-  else { $("find-query").value = ""; rebuildSearch(); state.editor?.commands.focus(); }
+  else { $("find-query").value = ""; rebuildSearch(); focusEditor(); }
 }
 
 $("document-new").addEventListener("click", showNewDocument);
@@ -709,21 +728,21 @@ $("find-query").addEventListener("keydown", (event) => {
   if (event.key === "Escape") { event.preventDefault(); toggleFind(false); }
 });
 document.querySelectorAll("[data-command]").forEach((button) => {
-  button.addEventListener("click", () => { state.editor?.chain().focus()[commandNames[button.dataset.command]]().run(); updateEditorState(); });
+  button.addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+  button.addEventListener("click", () => formatEditor((chain) => chain[commandNames[button.dataset.command]]()));
 });
 $("text-style").addEventListener("change", () => {
   const value = $("text-style").value;
-  if (value === "paragraph") state.editor?.chain().focus().setParagraph().run();
-  else state.editor?.chain().focus().setHeading({ level: Number(value.split("-")[1]) }).run();
+  if (value === "paragraph") formatEditor((chain) => chain.setParagraph());
+  else formatEditor((chain) => chain.setHeading({ level: Number(value.split("-")[1]) }));
 });
 $("insert-menu").addEventListener("change", () => {
   const command = $("insert-menu").value;
-  const editor = state.editor;
-  if (editor && command) {
-    if (command === "insertTable") editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-    else if (command === "horizontalRule") editor.chain().focus().setHorizontalRule().run();
-    else if (command === "codeBlock") editor.chain().focus().toggleCodeBlock().run();
-    else editor.chain().focus()[command]().run();
+  if (command) {
+    if (command === "insertTable") formatEditor((chain) => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }));
+    else if (command === "horizontalRule") formatEditor((chain) => chain.setHorizontalRule());
+    else if (command === "codeBlock") formatEditor((chain) => chain.toggleCodeBlock());
+    else formatEditor((chain) => chain[command]());
   }
   $("insert-menu").value = "";
 });

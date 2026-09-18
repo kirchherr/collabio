@@ -31,12 +31,27 @@ test("Office rich authoring saves confirmed native content and reopens from Post
   });
   await openOffice(page);
   await newOfficeDraft(page, "Synthetic Office rich document", { text: "Office overview" });
+  await page.evaluate(() => {
+    window.officeToolbarFocus = [];
+    const recordFocus = (event) => {
+      const control = event.target.closest("[data-command], #text-style, #insert-menu");
+      if (!control || (event.type === "click" && control.tagName !== "BUTTON") ||
+        (event.type === "change" && control.tagName !== "SELECT")) return;
+      window.officeToolbarFocus.push({
+        control: control.dataset.command || control.id,
+        editorFocused: document.activeElement === document.querySelector("#office-editor .tiptap"),
+      });
+    };
+    document.addEventListener("click", recordFocus);
+    document.addEventListener("change", recordFocus);
+  });
   await page.locator("#text-style").selectOption("heading-1");
   await officeEditor(page).press("Control+End");
   await officeEditor(page).press("Enter");
   await page.locator('[data-command="bold"]').click();
   await page.keyboard.type("Important decision");
-  await page.locator('[data-command="bold"]').click();
+  await page.locator('[data-command="bold"]').focus();
+  await page.locator('[data-command="bold"]').press("Enter");
   await officeEditor(page).press("Enter");
   await page.locator('[data-command="bulletList"]').click();
   await page.keyboard.type("First action");
@@ -44,6 +59,13 @@ test("Office rich authoring saves confirmed native content and reopens from Post
   await officeEditor(page).press("Enter");
   await page.locator("#insert-menu").selectOption("insertTable");
   await page.keyboard.type("Owner");
+  expect(await page.evaluate(() => window.officeToolbarFocus)).toEqual([
+    { control: "text-style", editorFocused: true },
+    { control: "bold", editorFocused: true },
+    { control: "bold", editorFocused: true },
+    { control: "bulletList", editorFocused: true },
+    { control: "insert-menu", editorFocused: true },
+  ]);
   await expect(officeEditor(page).locator("h1")).toHaveText("Office overview");
   await expect(officeEditor(page).locator("strong")).toContainText("Important decision");
   await expect(officeEditor(page).locator("ul")).toContainText("First action");
