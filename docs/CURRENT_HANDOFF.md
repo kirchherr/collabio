@@ -116,6 +116,8 @@ cancelled discard, no-op, source history and safe retry contracts remain intact.
   restrictions, literal hostile text, complete large result sets, no-op/delete/expansion limits and late context reads.
   Model proof reaches 100,000 matches and checks original Unicode positions, mark boundaries and resource preflight.
   Final desktop/tablet/mobile screenshots were visually reviewed.
+- Documentation closeout `d63139c` passed all 11 targeted module/KB/roadmap contracts in 61.97 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 11:32:44 UTC.
 - No schema or durable contract change; the item 252 migration/backup/restore/foundation/business evidence below
   remains retained, not rerun. No tenant/pilot/indexing/engine activation. Main code is `office-search.mjs` and the
   existing Office UI; tests are `office-search-model.spec.mjs`, `office-search.spec.mjs`, `office-search-responsive.spec.mjs`.
