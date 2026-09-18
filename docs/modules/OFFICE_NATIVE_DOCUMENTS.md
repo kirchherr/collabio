@@ -1,20 +1,21 @@
 # Native Office Documents
 
-Status: product foundation, version workflow, find/replace and contextual table editing complete; remote acceptance passed; foundation recovery retained
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing
+Status: Roadmap 252–256 complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions
 Module: `office_documents` / version 0.1.0
-Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`
 
 ## User workflow and scope
 
 `/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
 apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
-save a confirmed version, compare saved versions and take a historical version into a new local draft. Search covers
+save a confirmed version, compare saved versions, take a historical version into a new local draft and discuss an exact
+saved version through comments and replies. Search covers
 the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
 available. Formatting returns focus to the editor before immediate typing.
 
-This slice stores native structured documents. Roadmap 256 adds review discussions as described below; its acceptance
-is pending until the new remote checks and recovery complete. DOCX interchange, tracked changes, live collaboration, spreadsheets,
+This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
+evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
 ## Features and authoritative access
@@ -24,11 +25,14 @@ presentations and mail remain separate product work. Existing DOCX engine fideli
 | `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions and read discussions | false |
 | `office_documents.documents.write` | Create a document, save a successor or confirm a review action under current parent rights | false |
 
-The package is installed in the module catalog; no ordinary tenant is provisioned or enabled by migration 0083.
+The package is installed in the module catalog; migrations 0083 and 0084 neither provision nor enable an ordinary tenant.
 Every route requires tenant context, an enabled module and the read feature. Writes also require the write feature and
 explicit confirmation. Create requires `office-editor` or `tenant-admin`; save requires an explicit current write/admin
 ACL on object type `office.document`. Role membership does not replace object authorization. Current PostgreSQL ACLs
 and server-resolved ABAC scope are rechecked, including on replay and historical reads. JWT ignores browser grant headers.
+Review mutations require that same current parent write/admin access; ordinary readers can read discussions but cannot
+add, reply, resolve or reopen. The API supplies `can_create`, `can_comment` and `can_resolve`; the historical editor's
+read-only state does not itself determine permission to discuss an existing thread.
 
 | Route | Result |
 | --- | --- |
@@ -114,19 +118,41 @@ Read-only and historical content cannot be edited. Loading, saving, historical t
 block table changes. Pending table dialogs are invalidated when the document or context changes. Only the existing
 confirmed CAS save persists changes as a new version. No schema, dependency, endpoint or storage change is introduced.
 
-## Review discussions (Roadmap 256; acceptance pending)
+## Review discussions (Roadmap 256)
 
 The Comments inspector shows discussions for the opened saved version. Users may comment on that entire version
 or select text within one paragraph/inline run, including across formatting marks. The server derives the quotation
 from the exact saved source and validates UTF-16 positions; selections across hard breaks, paragraphs or cells are
 rejected. New anchors require a clean current saved version. No marker is added to document JSON or undo history.
 An active text highlight is shown only while the editor still displays that exact unchanged version.
+Comment and reply text is limited to 4,000 Unicode code points; selected quotations to 2,000. Bodies, quotations,
+authors and other display fields render as literal text, without interpreting markup, links or remote resources.
 
 Replies, resolving and reopening use their own explicit confirmation and thread revision, with current parent-document
 write/admin rights and the existing write feature. Historic document text stays read-only, but existing discussions
-can still receive authorized review actions. Discussions never move automatically to a newer text version. The UI
-paginates threads and events and protects memory-only comment drafts during document/context/version changes.
-Temporary failures preserve the exact mutation for retry; conflicts require refreshing current thread state.
+can still receive authorized review actions. A resolved thread must be reopened before another reply. Discussions
+never move automatically to a newer text version. Opening the newer version therefore shows its own discussions;
+the history view remains the explicit route to comments on an earlier version.
+
+The inspector has Gliederung, Versionen and Kommentare tabs. Desktop places the comments alongside the document;
+compact layouts use an explicitly opened, closable overlay. Each thread identifies its source version, quotation,
+status and revision. Opening a thread loads its contributions; locating a text anchor revalidates the exact saved
+content before selecting it. Threads and events load in pages of 20 with explicit controls for further pages;
+the API permits up to 50 entries per page. Loaded counts do not imply an unrequested complete history.
+
+A single memory-only composer holds the pending comment or reply. Each create, reply, resolve and reopen has a
+separate confirmation showing its action, version and content. Cancellation sends no mutation. Document save,
+version/context changes and closing a comment draft require a discard decision when text or an uncertain attempt
+would otherwise be lost. Editing the document invalidates a pending new anchor without silently deleting the comment
+text; existing discussions remain bound to their saved source. Loading, saving, takeover and uncertain document
+saves restrict comment actions, while current API capabilities govern discussion rights.
+
+An uncertain write preserves the entire command and mutation reference for an explicit retry. A 409 retains the
+comment draft and requires fresh thread or version state before another attempt. A successful mutation is acknowledged
+before its thread is refreshed, so a later read failure does not cause a duplicate write. Refresh clears old thread
+bodies before reading again. Closing, context/version changes and superseding requests invalidate late responses;
+authorization denial clears protected document and review state. Comment bodies, quotations and retry payloads are
+never saved in browser localStorage. Comment actions neither create a document version nor enter text undo history.
 
 Migration 0084 creates `office.review_threads` and append-only `office.review_events`. Event bodies and quotations
 live in bounded canonical COMMENT SourceObjects: object ID is the thread, version ID the event, parent the document.
@@ -163,6 +189,8 @@ source binding, document/review head guards and all associated function bodies a
 the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
 recovery proof must preserve native content, review events for all four operations, exact saved-version anchors,
 source/receipt hashes, historical reads and current ACL behavior.
+Roadmap 252's completed recovery below does not cover the new review tables. Roadmap 256 has separate verified
+backup, nonempty document/review restore and foundation evidence, recorded in its acceptance section below.
 
 ## Foundation acceptance evidence (Roadmap 252)
 
@@ -241,8 +269,64 @@ Results: `sha256:89c132f192d7a3302ab3a48dc201dfdc0f60c007e8334c993e79be9f7df9d2d
 `e2e/work/artifacts/roadmap-255/`. No new schema, storage format, dependency or endpoint; item 252 migration/backup/
 nonempty recovery/foundation/business evidence remains retained, not rerun. Live rollout is recorded in the operations log.
 
+## Review acceptance and recovery (Roadmap 256)
+
+Final Python quality on `2305a96` passed Ruff, formatting across 674 files, Mypy across 532 source files and full
+Pytest; only the known Starlette/AnyIO warning remains. All 269 focused restore/recovery/backup checks passed in
+23.40 seconds. The implementation had already passed ten focused review browser cases in 44.978 seconds.
+
+The full matrix on `7400b35` passed 152/152 checks in 432.486 seconds: 117 browser cases and 35 model cases, with zero
+skipped, unexpected or flaky results. All previous 142 checks remain green. The new review cases cover Unicode text
+anchors, real confirmed create/reply/resolve/reopen, immutable document versions, historical discussions, ordinary
+readers, forged/foreign/current-ACL denial, stale-revision draft preservation, identical storage-failure retries,
+late close/context responses, clean-source requirements and fresh feature checks. Final desktop, tablet and mobile
+screenshots were independently reviewed. The compact overlay deliberately scrolls; controls and literal text remain
+contained. The initial full run's two browser response-observation failures and the unchanged upstream-response
+buffering correction are retained in the operations log and ignored failed-run artifacts.
+
+Browser results: `sha256:96f4a596d21e395073967745c1811448fdbc2e04bc7f2f7e20ae4e4075fe156f`, under ignored
+`e2e/work/artifacts/roadmap-256/`. Final image hashes are recorded in the operations log.
+
+Independent restore review led to `1cf9ee9` and `552b6b6`: the verifier binds complete direct/effective Office grants,
+legitimate owner rights, permitted runtime privileges and all nine canonical review CHECK definitions. Its grant
+inventory includes unrelated grantees and MAINTAIN privileges. Thirty-seven added cases include three live PostgreSQL
+grant-tamper cases with cleanup. `2305a96` corrects an older hash fixture to target the runtime role explicitly.
+These changes strengthen proof verification; product/UI/schema behavior did not change after browser acceptance.
+
+A fresh nonempty PostgreSQL/S3 recovery on `2305a96` restored 57 documents, 93 exact versions, 30 documents with
+multiple versions and 129 total source objects. It verified nine review threads and 17 events, including three
+selected-text anchors, one historical thread and one complete create/reply/resolve/reopen lifecycle. Exact source,
+receipt and quotation bindings, current parent ACLs, foreign-tenant denial and read-only restored services passed;
+`recovery_ready=true`. The proof is synthetic and contains no bodies, tenant activation or engine admission.
+
+- Recovery report: `sha256:330a544deb64fbcb374d1c23732660cb7c2f80b8a2f2cc14289b8e2fa59fae92`, from
+  `e2e/work/artifacts/roadmap-256/office-native-review-recovery-proof.json`.
+- Verified synthetic backup: `sha256:3d9fe80e786c501967d30a5b1e75614cd55e60bfb46e815d926fcb2093e64af6`.
+- PostgreSQL restore: `sha256:b7b56185c4a93b64a8dd6742cf4ff2148b05f6940984731796fe0f6313b78de4`.
+- Exact-version storage restore: `sha256:796ea1bdda2a57739759d6092732750573eb2e2b0c315adc9d8e9c1765a2347f`.
+
+Migration 0084 has been applied to the main development database. The foundation check passed with 84 migrations
+and 93 tables, including the document/review controls. This evidence is separate from the retained migration 0083
+proof and does not grant production or real-user admission.
+
+Primary implementation is `office_reviews.py`, `office_review_repository.py`, the Office routes and UI, and migration
+0084. API/domain/PostgreSQL tests and `office-review.spec.mjs`, `office-review-responsive.spec.mjs` cover the new
+contract; `tests/office_recovery_proof.py` and the shared restore gate include review records. Ignored focused browser
+artifacts are under `e2e/work/artifacts/roadmap-256/focused/`.
+
 ## Continuing Office work
 
-Roadmap 255 / PLANS 116 is complete. Preserve the confirmed save and current access contracts when extending native
-editing and review workflows. Comments, tracked changes and live collaboration remain separate open work. Native Office
-continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.
+Roadmap 256 / PLANS 117 is complete with the verified quality, browser and recovery evidence above.
+Preserve confirmed document/review writes, exact version anchors, current access checks and
+memory-only drafts. Tracked changes and live collaboration remain future product work. Native Office continues before
+further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
+pilot, indexing and provider activation remain outside this implementation.
+
+The verified pre-/post-0084 backups, foundation and business release gates preceded the API-only rollout. Foundation
+hash `sha256:4ee5691940bec2e1b2b48623bf8a671e67efaaa8232057a01e913c3ab820b4ce` and business release hash
+`sha256:e8109c8e126d80fd4bd55f16a5c432e8841e5c44a374de654b8e1eaaa354faa4` passed without tenant activation.
+Live checks verified all nine Office operations, comment controls, existing editor workflows, local assets and
+no-store/CSP. The ordinary tenant remains unprovisioned with 404; Office features, KB write and pilot remain closed.
+At 2026-09-18 13:14:20 UTC, API `da71b8ef4e53` was healthy, Collabio was running only API/PostgreSQL/MinIO and exact
+test services were removed or stopped. Main storage and other projects were untouched. Backups, full hashes and
+the retained synthetic restore database are recorded in the operations log and current handoff.

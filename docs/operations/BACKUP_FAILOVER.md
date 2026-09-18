@@ -13,9 +13,12 @@ Native Office documents and reviews (migrations 0083/0084) belong to both Postgr
 current ACLs, module features, source metadata and write
 receipts together with the exact canonical JSON object versions. Restore validation pins forced RLS, column-level head
 update grants and the complete creator-ACL/source-binding/head-guard functions to the migration, so matching drift on both
-systems still blocks recovery. Review checks also pin exact saved-version anchors, thread head transitions and
+systems still blocks recovery. The Office ACL inventory includes every direct grantee, MAINTAIN, legitimate owner
+rights and effective column grants; unknown grantees and runtime grant options are rejected. The nine review state,
+event-chain, anchor and payload CHECK constraints are bound to their canonical definitions. Review checks also pin exact saved-version anchors, thread head transitions and
 COMMENT source/receipt bindings; quotations and discussion bodies require their exact S3 versions. The nonempty proof
-must restore creation, reply, resolve and reopen events as well as documents. The foundation gate requires this Office result explicitly. See
+must restore creation, reply, resolve and reopen events as well as documents. The foundation gate requires the Office
+schema/control result explicitly; the separate nonempty product proof is also required before rollout. See
 `docs/modules/OFFICE_NATIVE_DOCUMENTS.md` and the guarded nonempty proof in `docs/operations/WORK_E2E.md`.
 
 This model covers the whole suite trajectory:

@@ -48,10 +48,12 @@ Arbeitsweise:
 
 Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
 
-- Punkte 252 bis 254 sind abgeschlossen: native Formatierung, Gliederung, Suchen/Ersetzen, versioniertes Speichern,
-  Versionsvergleich und eine fruehere Fassung als neuer lokaler Entwurf mit frischem Head, aktuellen ACLs,
-  CAS und explizitem Speichern. Die 132 Pruefungen (97 Browserfaelle und 35 Modellfaelle) erhalten und native
-  Office-Bearbeitungs- und Review-Workflows weiter ausbauen; Kommentare und Live-Zusammenarbeit bleiben offen. Den bestehenden
+- Punkte 252 bis 256 sind abgeschlossen: native Formatierung, Gliederung, Suchen/Ersetzen, kontextbezogene Tabellen,
+  versioniertes Speichern, Versionsvergleich, eine fruehere Fassung als neuer lokaler Entwurf sowie Kommentare und
+  Diskussionen an gespeicherten Fassungen und Textstellen. Aktuelle ACLs, CAS, explizite Bestaetigung und unveraenderliche
+  Historie bleiben verbindlich. Die 152 Pruefungen (117 Browserfaelle und 35 Modellfaelle) und den nichtleeren
+  Review-Recovery-Nachweis erhalten. Native Office-Workflows weiter ausbauen; Aenderungsverfolgung und
+  Live-Zusammenarbeit bleiben kuenftige Arbeit. Den bestehenden
   DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness und source-blinder/CDR-Kandidatenpruefung
   als getrennten Pfad erhalten. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
   menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
@@ -1562,10 +1564,16 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      132 Pruefungen bleiben gruen. Desktop/Tablet/Mobile visuell geprueft; beim Wechsel auf Tabletbreite klappt die
      Gliederung ein und gibt die Tabelle frei. Bestehendes Schema, Recovery und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
 
-256. [ ] Kommentare und Dokumentpruefung im nativen Office: Diskussionen an exakte gespeicherte Fassungen und
-     serverseitig validierte Textstellen binden; bestaetigte Anlage, Antworten, Erledigen und Wiedereroeffnen mit
-     aktuellen Dokumentrechten, eigenen Revisionskonflikten und exakten Wiederholungen. Append-only Review-Ereignisse
-     mit PostgreSQL/S3-Belegen, Migration 0084, nichtleerem isoliertem Restore und responsivem Browsernachweis.
+256. [x] Kommentare und Dokumentpruefung im nativen Office abgeschlossen: Diskussionen an exakte gespeicherte
+     Fassungen und serverseitig validierte Textstellen gebunden; bestaetigte Anlage, Antworten, Erledigen und
+     Wiedereroeffnen mit aktuellen Dokumentrechten, eigenen Revisionskonflikten und exakten Wiederholungen.
+     Append-only Review-Ereignisse mit PostgreSQL/S3-Belegen und responsivem Browsernachweis. Volle Remote-Quality
+     auf `2305a96` gruen: Ruff/Formatierung fuer 674 Dateien, Mypy fuer 532 Dateien und vollstaendiges Pytest.
+     Alle 152 Pruefungen (117 Browserfaelle plus 35 Modellfaelle) auf `7400b35` in 432,486 Sekunden bestanden,
+     ohne uebersprungene, unerwartete oder flakige Faelle. Hauptmigration 0084 und Foundation mit 84 Migrationen
+     und 93 Tabellen gruen; nichtleerer isolierter Restore mit 57 Dokumenten, 93 Versionen, neun Diskussionen und
+     17 Review-Ereignissen bestanden. API-Rollout, Health und Cleanup am 2026-09-18 um 13:14:20 UTC gruen.
+     Keine reale Tenant-Aktivierung; Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
