@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import {
-  OFFICE_PATH, OFFICE_READER_ID, createOfficeVersionPair, holdOfficeRead,
+  OFFICE_PATH, OFFICE_READER_ID, captureOfficeResponse, createOfficeVersionPair, holdOfficeRead,
   loadOfficeComparison, newOfficeDraft, observeStaleOfficeContent, officeContent,
   officeContentPath, officeEditor, officeFeatures, officeVersions, openOffice,
   openOfficeComparison, openOfficeDocument, saveOffice, setOfficeAcl, setOfficeFeatures,
@@ -262,12 +262,18 @@ test("Office comparison storage failure clears its results and retries exact sou
   const pair = await createOfficeVersionPair(page, "Synthetic comparison retry");
   await comparePair(page, pair);
   const writes = collectWrites(page);
-  await page.route((url) => url.pathname === officeContentPath(pair.objectId) && url.searchParams.get("version_id") === pair.first.version.version_id, async (route) => {
-    await route.continue({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" } });
-  }, { times: 1 });
+  const captured = await captureOfficeResponse(page,
+    (url) => url.pathname === officeContentPath(pair.objectId) && url.searchParams.get("version_id") === pair.first.version.version_id,
+    { extraHeaders: { "X-Work-E2E-Fail-Storage": "1" } });
   const failed = page.waitForResponse((response) => new URL(response.url()).pathname === officeContentPath(pair.objectId) && response.status() === 503);
   await page.locator("#compare-load").click();
-  expect((await (await failed).json()).detail).toBe("Office storage unavailable");
+  const browserResponse = await failed;
+  const upstream = await captured.received;
+  expect(browserResponse.status()).toBe(503);
+  expect(browserResponse.headers()["cache-control"]).toContain("no-store");
+  expect(upstream.status).toBe(503);
+  expect(upstream.headers["cache-control"]).toContain("no-store");
+  expect(upstream.json.detail).toBe("Office storage unavailable");
   await expect(page.locator("#compare-dialog")).toBeVisible();
   await expect(page.locator("#compare-results")).toHaveText("");
   await expect(page.locator("#compare-status")).toContainText("Vergleich konnte nicht geladen werden");

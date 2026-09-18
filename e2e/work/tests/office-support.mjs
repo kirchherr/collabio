@@ -15,6 +15,22 @@ export const officeContentPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id
 export const officeEditor = (page) => page.locator("#office-editor .tiptap");
 export const textDocument = (text) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
+export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {} } = {}) {
+  let complete;
+  const received = new Promise((resolve) => { complete = resolve; });
+  await page.route(matches, async (route) => {
+    if (route.request().method() !== method) return route.fallback();
+    // Capture the real upstream bytes without depending on Chromium retaining a
+    // streamed no-store error body. Never generate a response or retry a write.
+    const response = await route.fetch({ headers: { ...route.request().headers(), ...extraHeaders }, maxRetries: 0, maxRedirects: 0 });
+    const body = await response.body();
+    const result = { status: response.status(), headers: response.headers(), json: JSON.parse(body.toString("utf8")) };
+    await route.fulfill({ response, body });
+    complete(result);
+  }, { times: 1 });
+  return { received };
+}
+
 export async function openOffice(page, { baseUrl = BASE_URL, userId = OFFICE_EDITOR_ID, roleIds = "office-editor", readableObjectIds = "" } = {}) {
   await installContext(page, { userId, roleIds, readableObjectIds });
   const pending = page.waitForResponse((response) => new URL(response.url()).pathname === OFFICE_PATH && response.request().method() === "GET");

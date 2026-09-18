@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 
 import { BASE_URL, TENANT_ID } from "./support.mjs";
-import { OFFICE_HEADERS, OFFICE_PATH, officeEditor } from "./office-support.mjs";
+import { OFFICE_HEADERS, OFFICE_PATH, captureOfficeResponse, officeEditor } from "./office-support.mjs";
 
 export const reviewPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/review-threads`;
 export const threadPath = (objectId, threadId) => `${reviewPath(objectId)}/${encodeURIComponent(threadId)}`;
@@ -50,12 +50,19 @@ export async function prepareComment(page, body, { selection = false } = {}) {
 export async function confirmComment(page, objectId, { threadId = null, status = 200 } = {}) {
   const path = threadId ? `${threadPath(objectId, threadId)}/events` : reviewPath(objectId);
   await page.locator("#comment-confirm-checkbox").check();
-  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST");
+  const captured = status === 409 ? await captureOfficeResponse(page, (url) => url.pathname === path, { method: "POST" }) : null;
+  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST")
+    .then(async (response) => ({ response, result: captured ? (await captured.received).json : await response.json() }));
   await page.locator("#comment-confirm-submit").click();
-  const response = await pending;
+  const { response, result } = await pending;
   expect(response.status()).toBe(status);
   expect(response.headers()["cache-control"]).toContain("no-store");
-  const result = await response.json();
+  if (captured) {
+    const upstream = await captured.received;
+    expect(upstream.status).toBe(status);
+    expect(upstream.headers["cache-control"]).toContain("no-store");
+    expect(result.detail).toBe("The document has a newer or conflicting saved version");
+  }
   await expect(page.locator("#comment-confirm-dialog")).toBeHidden();
   if (status === 200) {
     expect(result.tenant_id).toBe(TENANT_ID);
