@@ -1521,4 +1521,7 @@ window.addEventListener("beforeunload", (event) => {
 
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
+window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {
+  if (event.matches) toggleInspector(false);
+});
 loadDocuments();

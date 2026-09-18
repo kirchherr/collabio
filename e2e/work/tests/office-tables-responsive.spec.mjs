@@ -41,6 +41,11 @@ test("Office configurable table dialog, selected cells and contextual actions fi
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-tables-${testInfo.project.name}.png`, fullPage: true });
   if (testInfo.project.name === "desktop-chromium") {
     await page.setViewportSize({ width: 900, height: 900 });
+    await expect(page.locator("#document-inspector")).toBeHidden();
+    await expect(page.locator("#inspector-toggle")).toHaveAttribute("aria-expanded", "false");
+    for (const selectedCell of await table.locator(".selectedCell").all()) {
+      await expect(selectedCell).toBeInViewport();
+    }
     await expectReachableTableTools(page);
     await page.screenshot({ path: `${ARTIFACT_DIR}/office-tables-tablet-chromium.png`, fullPage: true });
   }
