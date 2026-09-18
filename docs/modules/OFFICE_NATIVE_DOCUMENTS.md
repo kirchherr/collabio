@@ -13,15 +13,16 @@ save a confirmed version, compare saved versions and take a historical version i
 the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
 available. Formatting returns focus to the editor before immediate typing.
 
-This slice stores native structured documents. DOCX interchange, tracked changes, comments, live collaboration, spreadsheets,
+This slice stores native structured documents. Roadmap 256 adds review discussions as described below; its acceptance
+is pending until the new remote checks and recovery complete. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
 ## Features and authoritative access
 
 | Feature | Normal behavior | Default |
 | --- | --- | --- |
-| `office_documents.documents.read` | List authorized documents, open exact content, read and compare saved versions | false |
-| `office_documents.documents.write` | Create a native document or explicitly save a successor | false |
+| `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions and read discussions | false |
+| `office_documents.documents.write` | Create a document, save a successor or confirm a review action under current parent rights | false |
 
 The package is installed in the module catalog; no ordinary tenant is provisioned or enabled by migration 0083.
 Every route requires tenant context, an enabled module and the read feature. Writes also require the write feature and
@@ -36,6 +37,10 @@ and server-resolved ABAC scope are rechecked, including on replay and historical
 | `GET /v1/office/documents/{object_id}/content` | Exact current or requested historical native content |
 | `GET /v1/office/documents/{object_id}/versions` | Authorized metadata-only version history |
 | `POST /v1/office/documents/{object_id}/versions` | Compare expected head and append a confirmed successor |
+| `GET /v1/office/documents/{object_id}/review-threads` | Paginated version-bound discussion metadata and current capabilities |
+| `POST /v1/office/documents/{object_id}/review-threads` | Confirm a discussion on the current saved version |
+| `GET /v1/office/documents/{object_id}/review-threads/{thread_id}` | Paginated immutable events and verified anchor quotation |
+| `POST /v1/office/documents/{object_id}/review-threads/{thread_id}/events` | Confirm reply, resolve or reopen against the expected thread revision |
 
 Content and error responses use `no-store`. Invalid JSON/schema errors do not echo submitted content. Storage/database
 failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after transient failures
@@ -109,6 +114,32 @@ Read-only and historical content cannot be edited. Loading, saving, historical t
 block table changes. Pending table dialogs are invalidated when the document or context changes. Only the existing
 confirmed CAS save persists changes as a new version. No schema, dependency, endpoint or storage change is introduced.
 
+## Review discussions (Roadmap 256; acceptance pending)
+
+The Comments inspector shows discussions for the opened saved version. Users may comment on that entire version
+or select text within one paragraph/inline run, including across formatting marks. The server derives the quotation
+from the exact saved source and validates UTF-16 positions; selections across hard breaks, paragraphs or cells are
+rejected. New anchors require a clean current saved version. No marker is added to document JSON or undo history.
+An active text highlight is shown only while the editor still displays that exact unchanged version.
+
+Replies, resolving and reopening use their own explicit confirmation and thread revision, with current parent-document
+write/admin rights and the existing write feature. Historic document text stays read-only, but existing discussions
+can still receive authorized review actions. Discussions never move automatically to a newer text version. The UI
+paginates threads and events and protects memory-only comment drafts during document/context/version changes.
+Temporary failures preserve the exact mutation for retry; conflicts require refreshing current thread state.
+
+Migration 0084 creates `office.review_threads` and append-only `office.review_events`. Event bodies and quotations
+live in bounded canonical COMMENT SourceObjects: object ID is the thread, version ID the event, parent the document.
+Each event binds source content/manifest/receipt hashes, author, time, ACL snapshot, actor-scoped mutation reference,
+command hash and resulting state. Quotes and bodies do not enter normal logs or audit metadata. The same tenant
+write lock as document saves serializes fresh ACL checks, document/thread CAS and source/receipt writes.
+
+New threads require the expected current document head; later events use the expected thread revision. An exact retry
+is authorized afresh before replay, even if its revision has since advanced. A reused reference with different content
+conflicts. Reads validate source metadata, canonical bytes and event/anchor bindings before returning content. There
+is no independent comment ACL, deletion/editing, automatic reanchoring, notification sending or new search index.
+See `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`.
+
 ## Records, retention and recovery
 
 Migration `0083_office_native_documents.sql` creates `office.documents` and `office.document_versions`. Heads carry
@@ -126,11 +157,12 @@ A creator ACL is inserted atomically with the head. Versions, source metadata, r
 transaction. A tenant advisory lock precedes S3 PUT and stale-head validation. An unexpected database failure after PUT
 can leave a detectable orphan object; PostgreSQL rollback is not a cross-system rollback claim.
 
-Backup covers both Office tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
+Backup covers all four Office document/review tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
 source metadata/receipts and exact S3 versions. Restore must validate forced RLS, append-only versions, creator ACL trigger,
-source binding, head guard and all associated function bodies against migration 0083, even when source and target have
+source binding, document/review head guards and all associated function bodies against migrations 0083/0084, even when source and target have
 the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
-recovery proof must preserve native content, source hashes, historical reads and current ACL behavior.
+recovery proof must preserve native content, review events for all four operations, exact saved-version anchors,
+source/receipt hashes, historical reads and current ACL behavior.
 
 ## Foundation acceptance evidence (Roadmap 252)
 

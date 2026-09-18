@@ -78,8 +78,16 @@ def office_storage_failure_modes(
     return (
         allow_synthetic_traffic
         and method == "POST"
-        and (path == "/v1/office/documents" or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None),
-        method == "GET" and re.fullmatch(r"/v1/office/documents/[^/]+/content", path) is not None,
+        and (
+            path == "/v1/office/documents"
+            or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None
+            or re.fullmatch(r"/v1/office/documents/[^/]+/review-threads(?:/[^/]+/events)?", path) is not None
+        ),
+        method == "GET"
+        and (
+            re.fullmatch(r"/v1/office/documents/[^/]+/content", path) is not None
+            or re.fullmatch(r"/v1/office/documents/[^/]+/review-threads/[^/]+", path) is not None
+        ),
     )
 
 

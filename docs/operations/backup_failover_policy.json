@@ -130,6 +130,8 @@
       "state_artifacts": [
         "draft state",
         "native office.documents heads and append-only office.document_versions with migration 0083",
+        "native office.review_threads heads and append-only office.review_events with migration 0084, exact saved-version text anchors and revision transitions",
+        "review COMMENT SourceObject bytes and exact S3 versions, parent-document ACL validation, source manifests, receipts and actor-bound retry hashes",
         "native document current ACLs, creator ACL bootstrap, source bindings and immutable source write receipts",
         "exact native document SourceObject JSON bytes, manifest hashes and S3 object versions",
         "native Office forced RLS, column-restricted head grants, trigger definitions and actor-bound idempotency",

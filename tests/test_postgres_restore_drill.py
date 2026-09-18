@@ -26,6 +26,7 @@ from suite.operations.postgres_restore_drill import (
     OFFICE_POLICY_DEFINITIONS,
     OFFICE_REQUIRED_CONSTRAINTS,
     OFFICE_TRIGGER_FUNCTIONS,
+    OFFICE_UPDATE_COLUMNS,
     PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE,
     PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE,
@@ -67,7 +68,7 @@ CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
 def _office_fixture() -> dict[str, list[dict[str, object]]]:
-    migration_sql = next(migration.sql() for migration in load_migrations() if migration.version == "0083")
+    migration_sql = "\n".join(migration.sql() for migration in load_migrations() if migration.module_id == "office_documents")
     triggers: list[dict[str, object]] = []
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
         function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
@@ -147,13 +148,14 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
         "column_grants": [
             {
                 "schema_name": "office",
-                "table_name": "documents",
+                "table_name": table_name.split(".")[1],
                 "grantee": "collabio_app",
                 "column_name": column,
                 "privilege_type": "UPDATE",
                 "is_grantable": "NO",
             }
-            for column in ("title", "current_version_id", "updated_at_utc")
+            for table_name, columns in OFFICE_UPDATE_COLUMNS.items()
+            for column in sorted(columns)
         ],
     }
 
@@ -623,6 +625,26 @@ def test_restore_requires_native_office_controls() -> None:
 
 
 @pytest.mark.parametrize(
+    ("table_name", "definition"),
+    [
+        (table, definition)
+        for table in ("office.review_threads", "office.review_events")
+        for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
+    ],
+)
+def test_restore_rejects_each_missing_review_identity_anchor_or_receipt_constraint(
+    table_name: str, definition: str,
+) -> None:
+    def remove(rows: dict[str, list[dict[str, object]]]) -> None:
+        rows["constraints"] = [
+            row for row in rows["constraints"]
+            if not (row["table_name"] == table_name.split(".")[1] and row["constraint_definition"] == definition)
+        ]
+
+    _assert_office_tamper_blocked(_office_tamper_report(remove))
+
+
+@pytest.mark.parametrize(
     "collection", ("schemas", "tables", "policies", "constraints", "triggers", "grants", "column_grants")
 )
 def test_restore_rejects_identically_missing_office_controls(collection: str) -> None:
@@ -633,7 +655,7 @@ def test_restore_rejects_identically_missing_office_controls(collection: str) ->
 
 
 @pytest.mark.parametrize(
-    "function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head")
+    "function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values())
 )
 @pytest.mark.parametrize(
     ("field", "value"),
@@ -664,7 +686,7 @@ def test_restore_rejects_identical_office_trigger_function_drift(function_name: 
 
 
 @pytest.mark.parametrize(
-    "function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head")
+    "function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values())
 )
 def test_restore_pins_each_office_function_security_mode(function_name: str) -> None:
     def flip_security(rows: dict[str, list[dict[str, object]]]) -> None:
@@ -674,7 +696,7 @@ def test_restore_pins_each_office_function_security_mode(function_name: str) -> 
     _assert_office_tamper_blocked(_office_tamper_report(flip_security))
 
 
-@pytest.mark.parametrize("table_name", ("documents", "document_versions"))
+@pytest.mark.parametrize("table_name", tuple(table.split(".")[1] for table in sorted(OFFICE_DOCUMENT_TABLES)))
 @pytest.mark.parametrize(
     ("field", "value"), (("rls_enabled", False), ("rls_forced", False), ("table_owner", "collabio_app"))
 )
@@ -713,6 +735,11 @@ def test_restore_rejects_additional_unreviewed_office_trigger_or_policy(collecti
         ("column_grants", "documents", "collabio_app", "UPDATE", "owner_principal_id"),
         ("column_grants", "document_versions", "collabio_app", "UPDATE", "content_hash"),
         ("column_grants", "documents", "PUBLIC", "UPDATE", "title"),
+        ("grants", "review_threads", "collabio_app", "UPDATE", ""),
+        ("grants", "review_events", "collabio_worker", "INSERT", ""),
+        ("grants", "review_events", "collabio_app", "DELETE", ""),
+        ("column_grants", "review_threads", "collabio_app", "UPDATE", "anchor_version_id"),
+        ("column_grants", "review_events", "collabio_app", "UPDATE", "content_hash"),
     ),
 )
 def test_restore_rejects_broadened_office_table_and_column_grants(

@@ -77,7 +77,7 @@ from work_e2e_controls import (
     permits_reader_acl_fixture,
     storage_failure_modes,
 )
-from work_e2e_office import build_synthetic_office_service
+from work_e2e_office import build_synthetic_office_review_service, build_synthetic_office_service
 
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
@@ -334,6 +334,9 @@ app.state.office_document_service = build_synthetic_office_service(
     database_dsn=os.environ["SUITE_DATABASE_DSN"],
     client=FailureInjectableObjectStoreClient(sdk_client=office_sdk_client.sdk_client, storage_provider="minio"),
     audit=app.state.audit_logger,
+)
+app.state.office_review_service = build_synthetic_office_review_service(
+    document_service=app.state.office_document_service, audit=app.state.audit_logger
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
 app.state.crm_account_service.repository = crm_repository

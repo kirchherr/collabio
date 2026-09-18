@@ -91,7 +91,11 @@ KB_ACL_TRIGGER_FUNCTIONS = {
     ("knowledge_base.articles", KB_ARTICLE_ACL_TRIGGER): "bind_article_acl",
     ("knowledge_base.article_versions", KB_ACL_TRIGGER): "bind_version_acls",
 }
-OFFICE_DOCUMENT_TABLES = {"office.documents", "office.document_versions"}
+OFFICE_DOCUMENT_TABLES = {"office.documents", "office.document_versions", "office.review_threads", "office.review_events"}
+OFFICE_UPDATE_COLUMNS = {
+    "office.documents": {"title", "current_version_id", "updated_at_utc"},
+    "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
+}
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ("office.documents", "office_documents_bind_creator_acl"): ("bind_document_creator_acl", "AFTER INSERT", True),
     ("office.document_versions", "office_versions_bind_source"): (
@@ -100,6 +104,15 @@ OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
         False,
     ),
     ("office.documents", "office_documents_guard_head"): ("guard_document_head", "BEFORE UPDATE", False),
+    ("office.review_threads", "office_review_threads_guard_insert"): (
+        "guard_review_thread_insert", "BEFORE INSERT", False,
+    ),
+    ("office.review_events", "office_review_events_bind_source"): (
+        "enforce_review_event_source_binding", "BEFORE INSERT", False,
+    ),
+    ("office.review_threads", "office_review_threads_guard_head"): (
+        "guard_review_thread_head", "BEFORE UPDATE", False,
+    ),
 }
 OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | None]] = {
     ("office.documents", "office_documents_tenant_select"): (
@@ -130,6 +143,24 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ),
     ("office.document_versions", "office_versions_no_update"): ("UPDATE", "false", None),
     ("office.document_versions", "office_versions_no_delete"): ("DELETE", "false", None),
+    ("office.review_threads", "office_review_threads_tenant_select"): (
+        "SELECT", "(tenant_id = collabio.current_tenant_id())", None,
+    ),
+    ("office.review_threads", "office_review_threads_tenant_insert"): (
+        "INSERT", None, "(tenant_id = collabio.current_tenant_id())",
+    ),
+    ("office.review_threads", "office_review_threads_tenant_update"): (
+        "UPDATE", "(tenant_id = collabio.current_tenant_id())", "(tenant_id = collabio.current_tenant_id())",
+    ),
+    ("office.review_threads", "office_review_threads_no_delete"): ("DELETE", "false", None),
+    ("office.review_events", "office_review_events_tenant_select"): (
+        "SELECT", "(tenant_id = collabio.current_tenant_id())", None,
+    ),
+    ("office.review_events", "office_review_events_tenant_insert"): (
+        "INSERT", None, "(tenant_id = collabio.current_tenant_id())",
+    ),
+    ("office.review_events", "office_review_events_no_update"): ("UPDATE", "false", None),
+    ("office.review_events", "office_review_events_no_delete"): ("DELETE", "false", None),
 }
 OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
     "office.documents": {
@@ -145,6 +176,29 @@ OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
         "FOREIGN KEY (tenant_id, object_id, previous_version_id) "
         "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
         "FOREIGN KEY (tenant_id, object_id, version_id) "
+        "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
+        "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
+    },
+    "office.review_threads": {
+        "PRIMARY KEY (tenant_id, thread_id)",
+        "UNIQUE (tenant_id, object_id, thread_id)",
+        "FOREIGN KEY (tenant_id, object_id, anchor_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, thread_id, current_event_id) "
+        "REFERENCES office.review_events(tenant_id, thread_id, event_id) DEFERRABLE INITIALLY DEFERRED",
+    },
+    "office.review_events": {
+        "PRIMARY KEY (tenant_id, thread_id, event_id)",
+        "UNIQUE (tenant_id, event_id)",
+        "UNIQUE (tenant_id, thread_id, revision)",
+        "UNIQUE (tenant_id, created_by, mutation_reference)",
+        "UNIQUE (tenant_id, source_write_receipt_hash)",
+        "FOREIGN KEY (tenant_id, object_id, thread_id) "
+        "REFERENCES office.review_threads(tenant_id, object_id, thread_id)",
+        "FOREIGN KEY (tenant_id, thread_id, previous_event_id) "
+        "REFERENCES office.review_events(tenant_id, thread_id, event_id)",
+        "FOREIGN KEY (tenant_id, thread_id, event_id) "
         "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
         "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
         "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
@@ -1417,7 +1471,7 @@ def _office_document_controls_verified(
             )
             if privileges != expected_privileges or any(row.get("is_grantable") != "NO" for row in matching):
                 return False
-    update_columns = set()
+    update_columns: dict[str, set[str]] = {table: set() for table in OFFICE_UPDATE_COLUMNS}
     for row in column_grants:
         table_name = _qualified_name(row)
         if table_name not in OFFICE_DOCUMENT_TABLES:
@@ -1425,19 +1479,19 @@ def _office_document_controls_verified(
         grantee, privilege = str(row.get("grantee")), row.get("privilege_type")
         if row.get("is_grantable") != "NO":
             return False
-        if grantee == "collabio_app" and privilege == "UPDATE" and table_name == "office.documents":
-            update_columns.add(str(row.get("column_name")))
+        if grantee == "collabio_app" and privilege == "UPDATE" and table_name in OFFICE_UPDATE_COLUMNS:
+            update_columns[table_name].add(str(row.get("column_name")))
         elif (grantee == "collabio_app" and privilege in {"SELECT", "INSERT"}) or (
             grantee == "collabio_worker" and privilege == "SELECT"
         ):
             continue
         else:
             return False
-    return update_columns == {"title", "current_version_id", "updated_at_utc"}
+    return update_columns == OFFICE_UPDATE_COLUMNS
 
 
 def _office_function_body(function_name: str, security_definer: bool) -> str:
-    migration = next(migration for migration in load_migrations() if migration.version == "0083")
+    migration_sql = "\n".join(migration.sql() for migration in load_migrations() if migration.module_id == "office_documents")
     security_clause = r"SECURITY DEFINER\s+" if security_definer else ""
     pattern = (
         rf"\bCREATE FUNCTION office\.{re.escape(function_name)}\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+"
@@ -1445,7 +1499,7 @@ def _office_function_body(function_name: str, security_definer: bool) -> str:
         + r"SET search_path = pg_catalog\s+"
         r"AS (?P<tag>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)(?P<body>.*?)(?P=tag);"
     )
-    matches = list(re.finditer(pattern, migration.sql(), flags=re.DOTALL))
+    matches = list(re.finditer(pattern, migration_sql, flags=re.DOTALL))
     if len(matches) != 1:
         raise ValueError("Office migration function cannot be verified")
     return _normalized_function_body(matches[0].group("body"))

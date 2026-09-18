@@ -132,7 +132,9 @@ After a green matrix, `office-native-recovery-proof` can verify a separately res
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.
 The dump, checksum and restore receipt must result from a real operator-run pg_dump/pg_restore under the host locks.
-Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs. Never run
+Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs.
+Roadmap 256 extends the proof to nonempty review creation, reply, resolve and reopen events, complete review metadata
+hashes and exact COMMENT source versions/receipts; parent ACL denial must still apply after restoration. Never run
 it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
 before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
 

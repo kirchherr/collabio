@@ -804,6 +804,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Der Schreibarbeitsplatz /office bietet native strukturierte Dokumente mit Formatierung, "
                         "Tabellen, Gliederung, Suchen/Ersetzen und Versionsgeschichte. Kontextaktionen bearbeiten "
                         "Tabellenzeilen, Spalten und Kopfzeilen; Entfernen verlangt eine Bestaetigung. "
+                        "Versionsgebundene Kommentare erlauben bestaetigte Antworten, Erledigen und Wiedereroeffnen; "
+                        "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -817,9 +819,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     capability_type="office_document_workspace",
                     evidence_refs=(
                         "app/suite/platform/office_documents.py",
+                        "app/suite/platform/office_reviews.py",
                         "app/suite/platform/office_api.py",
                         "app/suite/ui/office/index.html",
                         "app/suite/persistence/migrations/0083_office_native_documents.sql",
+                        "app/suite/persistence/migrations/0084_office_native_reviews.sql",
                         "tests/test_office_documents.py",
                         "tests/test_office_documents_pg.py",
                         "tests/test_office_documents_api.py",
@@ -834,11 +838,15 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-tables-responsive.spec.mjs",
                         "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/versions",
+                        "/v1/office/documents/{object_id}/review-threads",
+                        "/v1/office/documents/{object_id}/review-threads/{thread_id}",
+                        "/v1/office/documents/{object_id}/review-threads/{thread_id}/events",
                     ),
                     guardrails=(
                         "office_documents_module_enabled_required",
@@ -855,6 +863,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
                         "table_removal_requires_explicit_confirmation",
+                        "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
+                        "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
+                        "review_events_append_only_with_exact_comment_sources_and_receipts",
                         "actor_bound_exact_mutation_retry",
                         "postgresql_forced_rls_and_append_only_versions",
                         "tenant_write_lock_before_s3_put",

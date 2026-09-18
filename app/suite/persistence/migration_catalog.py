@@ -765,6 +765,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="office_documents",
         evidence_refs=("doc:office-native-documents", "test:office-native-documents"),
     ),
+    SqlMigration(
+        version="0084",
+        name="office_native_reviews",
+        resource_name="0084_office_native_reviews.sql",
+        module_id="office_documents",
+        evidence_refs=("doc:office-native-reviews", "test:office-native-reviews"),
+    ),
 )
 
 

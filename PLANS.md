@@ -131,6 +131,8 @@ Current sprint:
 
 116. [x] Complete contextual native Office table editing: configurable insertion, row/column operations, first-row headers, cell/row/column/table selection and bounded keyboard navigation. Validate prospective changes before dispatch, separate each edit in undo history, confirm removals and preserve current read-only/history/save-state boundaries. Full remote quality and all 142 checks (107 browser cases and 35 model cases) passed on `e3cf88c`, preserving the previous 132. Desktop/tablet/mobile reviewed; entering tablet width closes the inspector to keep the table visible. Existing schema, recovery and closed tenant/pilot/engine gates remain unchanged.
 
+117. [ ] Add version-bound native Office review discussions: confirmed create/reply/resolve/reopen, server-validated text anchors, fresh parent ACLs, thread revision conflicts and exact retries; durable PostgreSQL/S3 event evidence, migration 0084 and nonempty isolated recovery, with responsive browser acceptance.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

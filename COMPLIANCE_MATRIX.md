@@ -52,7 +52,9 @@ This matrix maps external requirements and internal controls to product capabili
 Native Office document authoring (Roadmap 252) maps to CM-001/002 (tenant and current object ACLs), CM-003/004/005/008
 (shared classification, retention, Legal Hold and KMS metadata), CM-007 (metadata-only audit and immutable receipts),
 CM-014 (pinned local editor bundle, integrity lock and license inventory), and CM-017/018/019/020 (module migration,
-immutable versions and PostgreSQL/S3 recovery). The concrete contract and test links are in
+immutable versions and PostgreSQL/S3 recovery). Version-bound reviews (Roadmap 256, migration 0084) extend the same
+controls to current parent-document ACLs, confirmed review mutations, append-only events, exact COMMENT source/receipt
+bindings and nonempty recovery of discussion history. The concrete contract and test links are in
 `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`. This is implementation evidence, not certification, legal approval or an
 authorization to activate real users. DOCX engines, indexing and AI remain subject to their separate controls.
 

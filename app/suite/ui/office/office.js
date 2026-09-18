@@ -16,7 +16,7 @@ const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
-  tableAction: null,
+  tableAction: null, review: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -175,7 +175,7 @@ function updateEditorState() {
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
   $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
-    !session.canWrite || session.conflict || (!session.uncertain && !isDirty());
+    !session.canWrite || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || (!session.uncertain && !isDirty());
   $("document-save").textContent = session?.uncertain ? "Speicherung prüfen" : "Version speichern";
   $("document-close").disabled = Boolean(session?.saving);
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
@@ -197,6 +197,7 @@ function updateEditorState() {
     $("text-style").value = level ? `heading-${level}` : "paragraph";
   }
   updateSearchControls();
+  updateReviewControls();
   const status = $("document-status");
   status.className = "document-status";
   if (!session) return;
@@ -637,6 +638,7 @@ function contentChanged(session) {
   $("save-confirm").checked = false;
   if (!session.conflict) notice();
   refreshDocumentTools();
+  clearReviewHighlight();
 }
 
 function mountEditor(content, session) {
@@ -649,7 +651,7 @@ function mountEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), SearchHighlights, NativeDocumentGuard,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), SearchHighlights, NativeDocumentGuard, ReviewHighlight,
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -681,6 +683,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  clearReview();
   closeTableDialogs();
   $("table-tools").hidden = true;
   $("table-info").textContent = "";
@@ -772,10 +775,14 @@ async function loadDocuments() {
   }
 }
 
-function confirmDiscard() {
-  if (state.session?.saving) return Promise.resolve(false);
-  if (!isDirty() && !state.session?.uncertain) return Promise.resolve(true);
+function confirmDiscard(scope = "all") {
+  if (state.session?.saving || state.review?.saving) return Promise.resolve(false);
+  const documentDraft = scope !== "comments" && (isDirty() || state.session?.uncertain);
+  if (!documentDraft && !hasReviewDraft()) return Promise.resolve(true);
   if (state.discardResolve) return Promise.resolve(false);
+  $("discard-message").textContent = hasReviewDraft()
+    ? `${documentDraft ? "Ihre Dokumentänderungen und " : "Ihre "}ungespeicherten Kommentarentwürfe gehen verloren.${state.review?.uncertain ? " Eine noch nicht bestätigte Kommentarspeicherung kann bereits erfolgt sein." : ""}`
+    : "Ihre ungespeicherten Änderungen gehen verloren.";
   $("discard-dialog").showModal();
   return new Promise((resolve) => { state.discardResolve = resolve; });
 }
@@ -805,6 +812,7 @@ function contentMatches(result, objectId, versionId = null) {
 }
 
 function acceptContent(result, session) {
+  clearReview();
   mountEditor(result.content, session);
   closeComparison();
   cancelRestore();
@@ -843,6 +851,7 @@ async function openDocument(objectId, versionId = null) {
     if (!contentMatches(result, objectId, versionId)) throw new ApiError(502);
     acceptContent(result, session);
     if ($("history-tab").getAttribute("aria-selected") === "true") loadHistory();
+    if (reviewPanelOpen()) loadReview();
   } catch (error) {
     if (!sessionCurrent(session)) return;
     state.editor?.destroy(); state.editor = null; $("office-editor").replaceChildren();
@@ -915,9 +924,13 @@ function mutationReference() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function showSave() {
+async function showSave() {
   const session = state.session;
   if (!session || !state.editor || $("document-save").disabled) return;
+  if (hasReviewDraft()) {
+    if (!(await confirmDiscard("comments")) || !sessionCurrent(session)) return;
+    clearReview();
+  }
   let snapshot;
   try { snapshot = draftSnapshot(); } catch { notice("Das Dokument überschreitet das unterstützte Format oder die Größenbegrenzung.", true); return; }
   if (!snapshot.title || snapshot.title.length > 200) { notice("Bitte geben Sie einen Titel mit 1 bis 200 Zeichen ein.", true); $("document-title").focus(); return; }
@@ -961,6 +974,7 @@ async function saveDocument(event) {
       : "");
     await loadDocuments();
     if (sessionCurrent(session) && $("history-tab").getAttribute("aria-selected") === "true") loadHistory();
+    if (sessionCurrent(session) && reviewPanelOpen()) loadReview();
   } catch (error) {
     if (!sessionCurrent(session)) return;
     $("save-dialog").close();
@@ -1297,6 +1311,7 @@ async function restoreVersion(versionId, comparison = null) {
     replacement.versions = session.versions;
     replacement.baseline = baseline;
     mountEditor(historicContent, replacement);
+    clearReview();
     closeComparison();
     cancelRestore();
     state.session = replacement;
@@ -1330,19 +1345,468 @@ async function restoreVersion(versionId, comparison = null) {
   }
 }
 
+const reviewKey = new PluginKey("officeReview");
+const reviewOperations = new Set(["create", "reply", "resolve", "reopen"]);
+const ReviewHighlight = Extension.create({
+  name: "officeReview",
+  addProseMirrorPlugins() {
+    return [new Plugin({ key: reviewKey, props: { decorations(editorState) {
+      const range = state.review?.highlight;
+      return range && range.to <= editorState.doc.content.size
+        ? DecorationSet.create(editorState.doc, [Decoration.inline(range.from, range.to, { class: "review-anchor-highlight" })])
+        : DecorationSet.empty;
+    } } })];
+  },
+});
+
+function reviewCurrent(review) {
+  return Boolean(review && state.review === review && sessionCurrent(review.session) &&
+    review.versionId === state.session.version?.version_id && review.context === state.context);
+}
+function reviewPanelOpen() {
+  return $("comments-tab").getAttribute("aria-selected") === "true" &&
+    !$("office-shell").classList.contains("inspector-hidden") && !$("office-shell").classList.contains("focus-mode");
+}
+function hasReviewDraft() { return Boolean(state.review?.uncertain || state.review?.composer?.body.trim()); }
+function reviewBase(review) { return `/v1/office/documents/${encodeURIComponent(review.session.objectId)}/review-threads`; }
+function reviewIdentity(result, review) {
+  return result?.tenant_id === review.context.tenantId && result.object_id === review.session.objectId &&
+    result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
+}
+function validReviewThread(thread, review) {
+  return thread && typeof thread.thread_id === "string" && thread.anchor_version_id === review.versionId &&
+    Number.isInteger(thread.revision) && thread.revision > 0 && ["open", "resolved"].includes(thread.status) &&
+    typeof thread.created_by === "string" && typeof thread.created_at_utc === "string" &&
+    typeof thread.can_comment === "boolean" && typeof thread.can_resolve === "boolean" &&
+    (thread.anchor === null || (Number.isInteger(thread.anchor?.from) && Number.isInteger(thread.anchor?.to) &&
+      thread.anchor.from >= 0 && thread.anchor.to > thread.anchor.from));
+}
+function validReviewEvent(event) {
+  return event && typeof event.event_id === "string" && Number.isInteger(event.revision) && event.revision > 0 &&
+    reviewOperations.has(event.operation) && typeof event.created_by === "string" && typeof event.created_at_utc === "string" &&
+    (["create", "reply"].includes(event.operation) ? typeof event.body === "string" && Array.from(event.body).length <= 4000 : event.body === null);
+}
+function clearReviewHighlight() {
+  if (!state.review?.highlight) return;
+  state.review.highlight = null;
+  state.editor?.view.dispatch(state.editor.state.tr.setMeta(reviewKey, true));
+}
+function closeReviewConfirmation() {
+  $("comment-confirm-dialog").close();
+  $("comment-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = false; });
+  $("comment-confirm-checkbox").checked = false;
+  $("comment-confirm-submit").disabled = true;
+  $("comment-confirm-summary").textContent = "";
+  $("comment-confirm-body").textContent = "";
+  $("comment-confirm-anchor").textContent = "";
+  $("comment-confirm-message").textContent = "";
+}
+function clearReview() {
+  const review = state.review;
+  clearReviewHighlight();
+  state.review = null;
+  review?.controller.abort();
+  closeReviewConfirmation();
+  $("comments-list").replaceChildren();
+  $("comments-status").textContent = "";
+  $("comments-version").textContent = "";
+  $("comments-hint").textContent = "";
+  $("comments-more").hidden = true;
+  $("comment-body").value = "";
+  $("comment-anchor").textContent = "";
+  $("comment-body-count").textContent = "";
+  $("comment-composer").hidden = true;
+  $("comment-new").disabled = true;
+  $("comment-selection").disabled = true;
+}
+function reviewReadFailure(error, review) {
+  if (!reviewCurrent(review)) return;
+  if (denied(error)) { officeAccessDenied(); return; }
+  $("comments-status").textContent = "Kommentare sind gerade nicht erreichbar. Ihr Kommentarentwurf bleibt erhalten. Bitte erneut aktualisieren.";
+}
+function reviewBusy(review = state.review) {
+  return !reviewCurrent(review) || review.saving || review.session.loading || review.session.saving ||
+    review.session.restoring || review.session.uncertain;
+}
+function canCreateReview(review = state.review) {
+  return !reviewBusy(review) && !review.uncertain && !review.loading && review.canCreate &&
+    !review.session.historical && !isDirty() && review.currentVersionId === review.versionId;
+}
+function selectedReviewAnchor() {
+  const editor = state.editor;
+  if (!editor) return null;
+  const { from, to, $from, $to, empty } = editor.state.selection;
+  if (empty || !($from.parent.isTextblock && $from.sameParent($to))) return null;
+  let valid = true;
+  editor.state.doc.nodesBetween(from, to, (entry) => { if (entry.type.name === "hardBreak") valid = false; });
+  const quote = editor.state.doc.textBetween(from, to, "", "");
+  if (!valid || !quote || Array.from(quote).length > 2000) return null;
+  return { anchor: { from, to }, quote };
+}
+function updateReviewControls() {
+  const review = state.review;
+  const busy = reviewBusy(review);
+  $("comments-toggle").disabled = !state.editor || !state.session?.objectId || Boolean(state.session?.loading);
+  $("comments-refresh").disabled = busy || Boolean(review?.loading || review?.uncertain);
+  $("comments-close").disabled = Boolean(review?.saving);
+  $("comment-new").disabled = !canCreateReview(review);
+  $("comment-selection").disabled = !canCreateReview(review) || !selectedReviewAnchor();
+  $("comments-more").disabled = busy || Boolean(review?.loading || review?.uncertain);
+  const composer = review?.composer;
+  $("comment-body").disabled = busy || Boolean(review?.uncertain);
+  $("comment-cancel").disabled = Boolean(review?.saving);
+  $("comment-prepare").textContent = review?.uncertain ? "Speicherung prüfen" : "Speicherung vorbereiten";
+  const bodyLength = Array.from(composer?.body || "").length;
+  $("comment-body-count").textContent = composer ? `${bodyLength} / 4.000 Zeichen` : "";
+  const thread = review?.detail?.thread;
+  const permitted = composer?.operation === "create" ? canCreateReview(review) && composer.documentRevision === review.session.revision :
+    Boolean(thread && thread.thread_id === composer?.threadId && review.detail.can_comment && thread.can_comment && thread.status === "open");
+  $("comment-prepare").disabled = busy || (!review?.uncertain && (review?.conflict || !permitted || !composer?.body.trim() || bodyLength > 4000));
+  if (!reviewCurrent(review)) return;
+  let hint = "Kommentare gehören genau zu dieser gespeicherten Fassung; sie wandern nicht in neue Versionen.";
+  if (review.session.loading || review.session.saving || review.session.restoring) hint = "Bitte warten Sie, bis der laufende Dokumentvorgang abgeschlossen ist.";
+  else if (review.session.uncertain) hint = "Prüfen Sie zuerst die noch nicht bestätigte Dokumentspeicherung.";
+  else if (review.uncertain) hint = "Speicherung noch nicht bestätigt. Prüfen Sie denselben Vorgang erneut; der Entwurf bleibt erhalten.";
+  else if (review.conflict) hint = "Laden Sie die Diskussion erneut, bevor Sie die Kommentaraktion wiederholen. Ihr Entwurf bleibt erhalten.";
+  else if (isDirty()) hint = "Ungespeicherte Dokumentänderungen: Neue Kommentare und Textmarkierungen sind erst nach dem Speichern verfügbar. Bestehende Diskussionen bleiben ihrer Fassung zugeordnet.";
+  else if (composer?.operation === "create" && composer.documentRevision !== review.session.revision) hint = "Die Dokumentauswahl hat sich seit Beginn dieses Kommentars geändert. Ihr Kommentartext bleibt erhalten; beginnen Sie einen neuen Kommentar zur gespeicherten Fassung.";
+  else if (review.session.historical || review.currentVersionId !== review.versionId) hint = "Frühere Fassung: Bestehende Diskussionen können bei entsprechender Berechtigung fortgesetzt werden. Neue Kommentare entstehen nur in der aktuellen Fassung.";
+  else if (!review.loading && !review.canCreate) hint = "Kommentare sind schreibgeschützt. Sie können freigegebene Diskussionen lesen.";
+  $("comments-hint").textContent = hint;
+  document.querySelectorAll("[data-review-action]").forEach((button) => {
+    const action = button.dataset.reviewAction;
+    button.disabled = busy || Boolean(review.uncertain) ||
+      (action === "reply" && (!thread?.can_comment || !review.detail?.can_comment || thread.status !== "open")) ||
+      (["resolve", "reopen"].includes(action) && (!thread?.can_resolve || !review.detail?.can_resolve)) ||
+      (action === "locate" && (isDirty() || !thread?.anchor));
+  });
+}
+
+async function loadReview(append = false) {
+  if (!reviewPanelOpen()) return;
+  const session = state.session;
+  if (!session?.objectId || !session.version || session.loading) {
+    $("comments-status").textContent = "Speichern Sie das Dokument zuerst, um Kommentare zu dieser Fassung anzulegen.";
+    return;
+  }
+  let review = state.review;
+  if (!reviewCurrent(review)) {
+    clearReview();
+    review = { session, context: state.context, versionId: session.version.version_id,
+      controller: new AbortController(), listRequest: 0, detailRequest: 0, threads: [], selectedId: null,
+      detail: null, nextCursor: null, loading: false, canCreate: false, currentVersionId: null,
+      composer: null, attempt: null, saving: false, uncertain: false, conflict: false, highlight: null };
+    state.review = review;
+  }
+  if (review.saving || review.uncertain || (append && !review.nextCursor)) return;
+  const request = ++review.listRequest;
+  const cursor = append ? review.nextCursor : null;
+  review.loading = true; review.canCreate = false;
+  if (!append) {
+    review.threads = []; review.detail = null; review.detailRequest += 1; review.nextCursor = null; review.selectedId = null;
+    clearReviewHighlight();
+    $("comments-list").replaceChildren();
+  }
+  $("comments-version").textContent = `${session.historical ? "Frühere Fassung" : "Geöffnete Fassung"} · ${dateLabel(session.version.created_at_utc)}`;
+  $("comments-version").title = review.versionId;
+  $("comments-status").textContent = "Kommentare werden geladen …";
+  updateReviewControls();
+  try {
+    const result = await api(`${reviewBase(review)}?anchor_version_id=${encodeURIComponent(review.versionId)}&limit=20${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`, { signal: review.controller.signal }, review.context);
+    if (!reviewCurrent(review) || review.listRequest !== request) return;
+    if (!reviewIdentity(result, review) || typeof result.current_version_id !== "string" || typeof result.can_create !== "boolean" ||
+        !Array.isArray(result.threads) || result.threads.length > 20 || result.threads.some((thread) => !validReviewThread(thread, review)) ||
+        !(result.next_cursor === null || typeof result.next_cursor === "string") || (cursor && result.next_cursor === cursor)) throw new ApiError(502);
+    const ids = new Set(review.threads.map((thread) => thread.thread_id));
+    for (const thread of result.threads) {
+      if (ids.has(thread.thread_id)) throw new ApiError(502);
+      ids.add(thread.thread_id);
+    }
+    review.threads.push(...result.threads);
+    review.currentVersionId = result.current_version_id;
+    review.canCreate = result.can_create;
+    if (review.composer?.operation === "create") review.conflict = false;
+    review.nextCursor = result.next_cursor;
+    $("comments-status").textContent = review.threads.length ? `${review.threads.length} Diskussionen geladen${review.nextCursor ? " · weitere verfügbar" : ""}.` : "Noch keine Kommentare zu dieser Fassung.";
+    renderReviewThreads(review);
+    return true;
+  } catch (error) {
+    if (reviewCurrent(review) && review.listRequest === request) reviewReadFailure(error, review);
+    return false;
+  }
+  finally {
+    if (reviewCurrent(review) && review.listRequest === request) { review.loading = false; updateReviewControls(); }
+  }
+}
+
+function renderReviewThreads(review) {
+  if (!reviewCurrent(review)) return;
+  $("comments-list").replaceChildren();
+  const threads = [...review.threads];
+  if (review.detail && !threads.some((entry) => entry.thread_id === review.detail.thread.thread_id)) threads.unshift(review.detail.thread);
+  threads.forEach((listed) => {
+    const thread = review.detail?.thread.thread_id === listed.thread_id ? review.detail.thread : listed;
+    const card = node("article", undefined, "review-thread");
+    card.dataset.threadId = thread.thread_id;
+    const open = node("button", `${thread.anchor ? "Textstelle" : "Dokumentfassung"} · ${thread.status === "open" ? "Offen" : "Erledigt"}`, "review-thread-open");
+    open.type = "button"; open.dataset.reviewAction = "open";
+    open.setAttribute("aria-expanded", String(review.selectedId === thread.thread_id));
+    open.addEventListener("click", () => loadReviewThread(thread.thread_id));
+    card.append(open, node("p", `${thread.created_by} · ${dateLabel(thread.created_at_utc)}`, "review-meta"));
+    if (review.selectedId === thread.thread_id && review.detail) renderReviewDetail(card, review);
+    $("comments-list").append(card);
+  });
+  $("comments-more").hidden = !review.nextCursor;
+  updateReviewControls();
+}
+
+async function loadReviewThread(threadId, append = false) {
+  const review = state.review;
+  if (!reviewCurrent(review) || review.saving || review.uncertain) return;
+  const prior = append ? review.detail : null;
+  if (append && (!prior || !prior.next_after_revision)) return;
+  const request = ++review.detailRequest;
+  review.selectedId = threadId;
+  if (!append) { review.detail = null; clearReviewHighlight(); renderReviewThreads(review); }
+  $("comments-status").textContent = "Diskussion wird geladen …";
+  try {
+    const after = prior?.next_after_revision || 0;
+    const result = await api(`${reviewBase(review)}/${encodeURIComponent(threadId)}?after_revision=${after}&limit=20`, { signal: review.controller.signal }, review.context);
+    if (!reviewCurrent(review) || review.detailRequest !== request || review.selectedId !== threadId) return;
+    if (!reviewIdentity(result, review) || typeof result.current_version_id !== "string" ||
+        !validReviewThread(result.thread, review) || result.thread.thread_id !== threadId ||
+        typeof result.can_comment !== "boolean" || typeof result.can_resolve !== "boolean" ||
+        !(result.quote === null || (typeof result.quote === "string" && Array.from(result.quote).length <= 2000)) ||
+        !Array.isArray(result.events) || result.events.length > 20 || result.events.some((event) => !validReviewEvent(event)) ||
+        !(result.next_after_revision === null || (Number.isInteger(result.next_after_revision) && result.next_after_revision > after))) throw new ApiError(502);
+    const events = [...(prior?.events || [])];
+    let last = after;
+    for (const event of result.events) {
+      if (event.revision <= last || event.revision > result.thread.revision) throw new ApiError(502);
+      last = event.revision; events.push(event);
+    }
+    review.detail = { ...result, events };
+    review.currentVersionId = result.current_version_id;
+    review.canCreate = review.canCreate && result.can_resolve;
+    if (review.composer?.threadId === threadId) review.conflict = false;
+    $("comments-status").textContent = `${events.length} Beiträge geladen${result.next_after_revision ? " · weitere verfügbar" : ""}.`;
+    renderReviewThreads(review);
+  } catch (error) {
+    if (reviewCurrent(review) && review.detailRequest === request) {
+      review.detail = null; renderReviewThreads(review); reviewReadFailure(error, review);
+    }
+  }
+}
+
+function renderReviewDetail(card, review) {
+  const detail = review.detail;
+  const thread = detail.thread;
+  const section = node("section", undefined, "review-detail"); section.id = "comment-thread-detail";
+  const quote = node("blockquote", detail.quote || "Kommentar zur gesamten gespeicherten Fassung."); quote.id = "comment-thread-quote";
+  section.append(quote, node("p", `Fassung vom ${dateLabel(review.session.version.created_at_utc)} · Revision ${thread.revision}`, "review-meta"));
+  const events = node("div"); events.id = "comment-events";
+  const labels = { create: "Kommentar", reply: "Antwort", resolve: "Diskussion erledigt", reopen: "Diskussion wieder geöffnet" };
+  detail.events.forEach((entry) => {
+    const event = node("article", undefined, "review-event"); event.dataset.revision = String(entry.revision);
+    event.append(node("strong", labels[entry.operation]), node("p", `${entry.created_by} · ${dateLabel(entry.created_at_utc)}`, "review-meta"));
+    if (entry.body !== null) event.append(node("p", entry.body, "review-event-body"));
+    events.append(event);
+  });
+  section.append(events);
+  if (detail.next_after_revision) {
+    const more = node("button", "Weitere Beiträge laden", "quiet-button"); more.id = "comment-events-more"; more.type = "button";
+    more.addEventListener("click", () => loadReviewThread(thread.thread_id, true)); section.append(more);
+  }
+  const actions = node("div", undefined, "review-actions");
+  for (const [action, label] of [["locate", "Textstelle anzeigen"], ["reply", "Antworten"],
+    [thread.status === "open" ? "resolve" : "reopen", thread.status === "open" ? "Erledigen" : "Wieder öffnen"]]) {
+    if (action === "locate" && !thread.anchor) continue;
+    const button = node("button", label, "quiet-button"); button.type = "button"; button.dataset.reviewAction = action;
+    button.addEventListener("click", () => {
+      if (action === "locate") locateReviewThread(review, thread);
+      else if (action === "reply") beginReviewComposer("reply", thread);
+      else prepareReviewOperation(action, thread);
+    });
+    actions.append(button);
+  }
+  section.append(actions); card.append(section);
+}
+
+async function locateReviewThread(review, thread) {
+  if (!reviewCurrent(review) || isDirty() || !thread.anchor || reviewBusy(review)) return;
+  try {
+    const fresh = await api(`/v1/office/documents/${encodeURIComponent(review.session.objectId)}/content?version_id=${encodeURIComponent(review.versionId)}`, { signal: review.controller.signal }, review.context);
+    if (!reviewCurrent(review) || isDirty() || review.detail?.thread.thread_id !== thread.thread_id) return;
+    const content = validatedContent(fresh, review.session.objectId, review.versionId);
+    const saved = state.editor.schema.nodeFromJSON(content);
+    if (!saved.eq(state.editor.state.doc) || thread.anchor.to > saved.content.size ||
+        saved.textBetween(thread.anchor.from, thread.anchor.to, "", "") !== review.detail.quote) throw new ApiError(502);
+    review.highlight = thread.anchor;
+    state.editor.commands.setTextSelection(thread.anchor);
+    state.editor.view.dispatch(state.editor.state.tr.setMeta(reviewKey, true));
+    focusEditor();
+    if (window.matchMedia("(max-width: 1000px)").matches) await hideInspectorWithReview();
+  } catch (error) { reviewReadFailure(error, review); }
+}
+
+async function beginReviewComposer(operation, thread = null, selection = null) {
+  const review = state.review;
+  if (reviewBusy(review) || review.uncertain || (operation === "create" && !canCreateReview(review))) return;
+  const documentRevision = review.session.revision;
+  if (!(await confirmDiscard("comments")) || !reviewCurrent(review) || reviewBusy(review)) return;
+  if (operation === "create" && (!canCreateReview(review) || review.session.revision !== documentRevision)) return;
+  if (operation === "reply" && (!thread?.can_comment || thread.status !== "open" || review.detail?.thread.thread_id !== thread.thread_id)) return;
+  review.attempt = null; review.conflict = false;
+  review.composer = { operation, threadId: thread?.thread_id || null, anchor: selection?.anchor || null,
+    quote: selection?.quote || (thread ? review.detail.quote : null), body: "", revision: 0, documentRevision: review.session.revision };
+  $("comment-composer-title").textContent = operation === "reply" ? "Antwort schreiben" : "Neuer Kommentar";
+  $("comment-anchor").textContent = review.composer.quote || "Zur gesamten gespeicherten Fassung.";
+  $("comment-body").value = "";
+  $("comment-composer").hidden = false;
+  updateReviewControls();
+  $("comment-body").focus();
+}
+
+function clearReviewComposer(review) {
+  review.composer = null; review.attempt = null; review.uncertain = false; review.conflict = false;
+  closeReviewConfirmation();
+  $("comment-composer").hidden = true;
+  $("comment-body").value = ""; $("comment-anchor").textContent = "";
+  updateReviewControls();
+}
+
+async function prepareReviewOperation(operation = null, thread = null) {
+  const review = state.review;
+  if (reviewBusy(review)) return;
+  if (!review.uncertain && operation) {
+    if (!(await confirmDiscard("comments")) || !reviewCurrent(review) || reviewBusy(review)) return;
+    const currentThread = review.detail?.thread;
+    if (!currentThread?.can_resolve || !review.detail?.can_resolve || currentThread.thread_id !== thread?.thread_id ||
+        (operation === "resolve" ? currentThread.status !== "open" : currentThread.status !== "resolved")) return;
+    clearReviewComposer(review);
+    review.composer = { operation, threadId: thread.thread_id, body: "", revision: 0 };
+  }
+  const composer = review.composer;
+  if (!composer) return;
+  if (!review.attempt) {
+    if (["create", "reply"].includes(composer.operation) && $("comment-prepare").disabled) return;
+    const payload = { mutation_reference: mutationReference(), human_confirmation: true };
+    if (composer.operation === "create") {
+      if (!canCreateReview(review) || composer.documentRevision !== review.session.revision) return;
+      Object.assign(payload, { anchor_version_id: review.versionId, expected_current_version_id: review.versionId,
+        anchor: composer.anchor, body: composer.body });
+    } else {
+      const currentThread = review.detail?.thread;
+      if (!currentThread || currentThread.thread_id !== composer.threadId) return;
+      Object.assign(payload, { operation: composer.operation, expected_revision: currentThread.revision,
+        ...(composer.operation === "reply" ? { body: composer.body } : {}) });
+    }
+    review.attempt = { operation: composer.operation, threadId: composer.threadId, composerRevision: composer.revision, payload };
+  }
+  const labels = { create: "Kommentar hinzufügen", reply: "Antwort hinzufügen", resolve: "Diskussion erledigen", reopen: "Diskussion wieder öffnen" };
+  $("comment-confirm-title").textContent = labels[review.attempt.operation];
+  $("comment-confirm-summary").textContent = `${labels[review.attempt.operation]} · gespeicherte Fassung vom ${dateLabel(review.session.version.created_at_utc)}.${review.uncertain ? " Derselbe Vorgang wird erneut geprüft." : ""}`;
+  $("comment-confirm-body").textContent = review.attempt.payload.body || "Der Diskussionsstatus wird verbindlich geändert; die Beiträge bleiben erhalten.";
+  $("comment-confirm-anchor").textContent = composer.quote || review.detail?.quote || "Zur gesamten gespeicherten Fassung.";
+  $("comment-confirm-checkbox").checked = false;
+  $("comment-confirm-submit").disabled = true;
+  $("comment-confirm-message").textContent = "";
+  $("comment-confirm-dialog").showModal();
+}
+
+async function saveReviewOperation(event) {
+  event.preventDefault();
+  const review = state.review;
+  if (reviewBusy(review) || !$("comment-confirm-checkbox").checked || !review.attempt ||
+      review.attempt.composerRevision !== review.composer?.revision) return;
+  if (!review.uncertain && review.attempt.operation === "create" &&
+      (!canCreateReview(review) || review.composer.documentRevision !== review.session.revision)) {
+    closeReviewConfirmation(); updateReviewControls(); return;
+  }
+  const attempt = review.attempt;
+  review.saving = true;
+  $("comment-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = true; });
+  $("comment-confirm-message").textContent = "Kommentaraktion wird gespeichert …";
+  updateEditorState();
+  try {
+    const path = `${reviewBase(review)}${attempt.threadId ? `/${encodeURIComponent(attempt.threadId)}/events` : ""}`;
+    const result = await api(path, { method: "POST", body: attempt.payload }, review.context);
+    if (!reviewCurrent(review)) return;
+    if (!reviewIdentity(result, review) || !validReviewThread(result.thread, review) || !validReviewEvent(result.event) ||
+        result.event.operation !== attempt.operation || (attempt.threadId && result.thread.thread_id !== attempt.threadId) ||
+        !Number.isInteger(result.applied_revision) || result.applied_revision !== result.event.revision ||
+        typeof result.replayed !== "boolean") throw new ApiError(502);
+    review.selectedId = result.thread.thread_id;
+    clearReviewComposer(review);
+    review.saving = false;
+    const labels = { create: "Kommentar gespeichert.", reply: "Antwort gespeichert.", resolve: "Diskussion erledigt.", reopen: "Diskussion wieder geöffnet." };
+    const success = labels[attempt.operation];
+    // The mutation is confirmed before refreshing. A failed refresh never turns
+    // a committed action into a retry with a new mutation reference.
+    const refreshed = await loadReview();
+    if (refreshed && reviewCurrent(review)) await loadReviewThread(result.thread.thread_id);
+    if (reviewCurrent(review)) $("comments-status").textContent = `${success} ${$("comments-status").textContent}`;
+  } catch (error) {
+    if (!reviewCurrent(review)) return;
+    closeReviewConfirmation();
+    if (denied(error)) { officeAccessDenied(); return; }
+    if (error instanceof ApiError && error.status === 409) {
+      review.attempt = null; review.conflict = true;
+      $("comments-status").textContent = "Die Diskussion oder Dokumentfassung hat sich geändert. Ihr Kommentarentwurf bleibt erhalten. Bitte laden Sie die Kommentare erneut.";
+    } else if (error instanceof ApiError && [400, 413, 422].includes(error.status)) {
+      review.attempt = null;
+      $("comments-status").textContent = "Der Kommentar konnte nicht gespeichert werden. Prüfen Sie Textlänge und Textauswahl; Ihr Entwurf bleibt erhalten.";
+    } else {
+      review.uncertain = true;
+      $("comments-status").textContent = "Speicherung noch nicht bestätigt. Prüfen Sie denselben Vorgang erneut; Ihr Kommentarentwurf bleibt erhalten.";
+      if (!["create", "reply"].includes(attempt.operation)) {
+        $("comment-composer-title").textContent = "Statusänderung prüfen";
+        $("comment-anchor").textContent = "Die Antwort auf die Statusänderung ist ausgeblieben.";
+        $("comment-body").value = "";
+        $("comment-composer").hidden = false;
+      }
+    }
+  } finally {
+    if (reviewCurrent(review)) {
+      $("comment-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = false; });
+      $("comment-confirm-submit").disabled = true;
+      review.saving = false; updateEditorState();
+    }
+  }
+}
+
+async function hideInspectorWithReview() {
+  const review = state.review;
+  if (review && (!(await confirmDiscard("comments")) || state.review !== review)) return;
+  if (review) clearReview();
+  toggleInspector(false);
+}
+
 function toggleInspector(show) {
   $("office-shell").classList.toggle("inspector-hidden", !show);
   $("inspector-toggle").setAttribute("aria-expanded", String(show));
 }
 
-function selectInspector(name) {
-  ["outline", "history"].forEach((candidate) => {
+async function selectInspector(name) {
+  const review = state.review;
+  if (name !== "comments" && review) {
+    if (!(await confirmDiscard("comments")) || state.review !== review) return;
+    clearReview();
+  }
+  ["outline", "history", "comments"].forEach((candidate) => {
     const active = name === candidate;
     $(`${candidate}-tab`).setAttribute("aria-selected", String(active));
     $(`${candidate}-tab`).tabIndex = active ? 0 : -1;
     $(`${candidate}-panel`).hidden = !active;
   });
+  $("document-inspector").classList.toggle("comments-active", name === "comments");
   if (name === "history") loadHistory();
+  if (name === "comments") {
+    $("office-shell").classList.remove("focus-mode");
+    $("focus-toggle").setAttribute("aria-pressed", "false");
+    toggleInspector(true);
+    if (!reviewCurrent(state.review)) loadReview();
+  }
 }
 
 function toggleFind(show, replacement = false) {
@@ -1393,12 +1857,57 @@ $("document-restore").addEventListener("click", () => {
 });
 $("outline-tab").addEventListener("click", () => selectInspector("outline"));
 $("history-tab").addEventListener("click", () => selectInspector("history"));
-$("inspector-toggle").addEventListener("click", () => toggleInspector($("office-shell").classList.contains("inspector-hidden")));
+$("comments-tab").addEventListener("click", () => selectInspector("comments"));
+$("comments-toggle").addEventListener("click", () => selectInspector("comments"));
+$("comments-close").addEventListener("click", async () => {
+  const review = state.review;
+  if (!(await confirmDiscard("comments")) || state.review !== review) return;
+  clearReview(); toggleInspector(false); $("comments-toggle").focus();
+});
+$("comments-refresh").addEventListener("click", () => loadReview());
+$("comments-more").addEventListener("click", () => loadReview(true));
+$("comment-new").addEventListener("click", () => beginReviewComposer("create"));
+$("comment-selection").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("comment-selection").addEventListener("click", () => {
+  const selection = selectedReviewAnchor();
+  if (selection) beginReviewComposer("create", null, selection);
+});
+$("comment-body").addEventListener("input", () => {
+  const review = state.review;
+  if (!reviewCurrent(review) || !review.composer || review.saving || review.uncertain) return;
+  review.composer.body = $("comment-body").value;
+  review.composer.revision += 1;
+  review.attempt = null;
+  closeReviewConfirmation();
+  updateReviewControls();
+});
+$("comment-prepare").addEventListener("click", () => prepareReviewOperation());
+$("comment-cancel").addEventListener("click", async () => {
+  const review = state.review;
+  if (!(await confirmDiscard("comments")) || !reviewCurrent(review)) return;
+  clearReviewComposer(review); $("comment-new").focus();
+});
+$("comment-confirm-checkbox").addEventListener("change", () => { $("comment-confirm-submit").disabled = !$("comment-confirm-checkbox").checked; });
+$("comment-confirm-form").addEventListener("submit", saveReviewOperation);
+$("comment-confirm-cancel").addEventListener("click", () => { if (!state.review?.saving) closeReviewConfirmation(); });
+$("comment-confirm-dialog").addEventListener("cancel", (event) => { event.preventDefault(); if (!state.review?.saving) closeReviewConfirmation(); });
+$("inspector-toggle").addEventListener("click", () => {
+  if (!$("office-shell").classList.contains("inspector-hidden")) hideInspectorWithReview();
+  else {
+    toggleInspector(true);
+    if ($("comments-tab").getAttribute("aria-selected") === "true" && !reviewCurrent(state.review)) loadReview();
+  }
+});
 $("documents-toggle").addEventListener("click", () => {
   const open = $("office-shell").classList.toggle("documents-open");
   $("documents-toggle").setAttribute("aria-expanded", String(open));
 });
-$("focus-toggle").addEventListener("click", () => {
+$("focus-toggle").addEventListener("click", async () => {
+  const review = state.review;
+  if (review && !$("office-shell").classList.contains("focus-mode")) {
+    if (!(await confirmDiscard("comments")) || state.review !== review) return;
+    clearReview();
+  }
   const active = $("office-shell").classList.toggle("focus-mode");
   $("focus-toggle").setAttribute("aria-pressed", String(active));
 });
@@ -1479,8 +1988,10 @@ document.querySelectorAll(".inspector-tabs [role=tab]").forEach((tab) => {
   tab.addEventListener("keydown", (event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const target = event.key === "Home" ? "outline" : event.key === "End" ? "history" :
-      tab.id === "outline-tab" ? "history" : "outline";
+    const tabs = ["outline", "history", "comments"];
+    const position = tabs.findIndex((name) => tab.id === `${name}-tab`);
+    const target = event.key === "Home" ? "outline" : event.key === "End" ? "comments" :
+      tabs[(position + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
     selectInspector(target); $(`${target}-tab`).focus();
   });
 });
@@ -1516,12 +2027,14 @@ document.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "h") { event.preventDefault(); toggleFind(true, true); }
 });
 window.addEventListener("beforeunload", (event) => {
-  if (isDirty() || state.session?.saving || state.session?.uncertain) { event.preventDefault(); event.returnValue = ""; }
+  if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
 
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {
-  if (event.matches) toggleInspector(false);
+  if (event.matches && !hasReviewDraft() && !state.review?.saving) {
+    clearReview(); toggleInspector(false);
+  }
 });
 loadDocuments();

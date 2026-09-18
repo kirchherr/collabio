@@ -48,8 +48,9 @@ Every module slice must move through these steps in order:
 No module may skip directly from idea to UI or worker execution.
 
 Native Office Documents applies the same contract in `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`: module and read/write
-features, strict object format, migration 0083, forced RLS, current typed ACLs, immutable source versions and receipts,
-explicit saves, recovery controls and isolated browser evidence. Engine admission and DOCX fidelity remain separate.
+features, strict object format, migrations 0083/0084, forced RLS, current typed ACLs, immutable document/review sources
+and receipts, explicit saves, version-bound review discussions, recovery controls and isolated browser evidence.
+Engine admission and DOCX fidelity remain separate.
 
 ## 3. Required Object Metadata
 

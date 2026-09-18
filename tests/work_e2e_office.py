@@ -5,6 +5,8 @@ from pathlib import Path
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.office_document_repository import PgOfficeDocumentRepository
 from suite.platform.office_documents import OfficeDocumentService
+from suite.platform.office_review_repository import PgOfficeReviewRepository
+from suite.platform.office_reviews import OfficeReviewService
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
 from suite.storage.s3_compatible_content_store import S3CompatibleSourceObjectContentStore
@@ -31,5 +33,16 @@ def build_synthetic_office_service(
             receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=database_dsn),
         ),
         source_repository=source_repository,
+        audit=audit,
+    )
+
+
+def build_synthetic_office_review_service(
+    *, document_service: OfficeDocumentService, audit: InMemoryAuditLogger
+) -> OfficeReviewService:
+    """Share the guarded real document database, source store and receipt transaction."""
+    return OfficeReviewService(
+        repository=PgOfficeReviewRepository(document_service=document_service),
+        source_repository=document_service.source_repository,
         audit=audit,
     )

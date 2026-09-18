@@ -8,11 +8,14 @@ The second rule is just as important: every new durable component must update th
 
 ## Scope
 
-Native Office documents (migration 0083) belong to both PostgreSQL and object-storage recovery. Preserve
-`office.documents`, append-only `office.document_versions`, current ACLs, module features, source metadata and write
+Native Office documents and reviews (migrations 0083/0084) belong to both PostgreSQL and object-storage recovery. Preserve
+`office.documents`, append-only `office.document_versions`, `office.review_threads`, append-only `office.review_events`,
+current ACLs, module features, source metadata and write
 receipts together with the exact canonical JSON object versions. Restore validation pins forced RLS, column-level head
 update grants and the complete creator-ACL/source-binding/head-guard functions to the migration, so matching drift on both
-systems still blocks recovery. The foundation gate requires this Office result explicitly. See
+systems still blocks recovery. Review checks also pin exact saved-version anchors, thread head transitions and
+COMMENT source/receipt bindings; quotations and discussion bodies require their exact S3 versions. The nonempty proof
+must restore creation, reply, resolve and reopen events as well as documents. The foundation gate requires this Office result explicitly. See
 `docs/modules/OFFICE_NATIVE_DOCUMENTS.md` and the guarded nonempty proof in `docs/operations/WORK_E2E.md`.
 
 This model covers the whole suite trajectory:

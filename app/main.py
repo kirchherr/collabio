@@ -449,7 +449,7 @@ from suite.platform.mvp_pilot_decisions import (
     build_default_mvp_pilot_decision_store,
     build_mvp_pilot_decision_context,
 )
-from suite.platform.office_api import build_office_document_service, register_office_routes
+from suite.platform.office_api import build_office_document_service, build_office_review_service, register_office_routes
 from suite.platform.office_documents import (
     OFFICE_DOCUMENTS_MODULE_ID,
     OFFICE_DOCUMENTS_READ_FEATURE_ID,
@@ -23285,6 +23285,9 @@ def build_app() -> FastAPI:
     app.state.workspace_source_object_repository = workspace_source_object_repository
     app.state.office_document_service = build_office_document_service(
         source_repository=workspace_source_object_repository, audit=audit_logger
+    )
+    app.state.office_review_service = build_office_review_service(
+        document_service=app.state.office_document_service, audit=audit_logger
     )
     register_office_routes(
         app,

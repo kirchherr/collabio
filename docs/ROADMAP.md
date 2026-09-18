@@ -1562,6 +1562,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      132 Pruefungen bleiben gruen. Desktop/Tablet/Mobile visuell geprueft; beim Wechsel auf Tabletbreite klappt die
      Gliederung ein und gibt die Tabelle frei. Bestehendes Schema, Recovery und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
 
+256. [ ] Kommentare und Dokumentpruefung im nativen Office: Diskussionen an exakte gespeicherte Fassungen und
+     serverseitig validierte Textstellen binden; bestaetigte Anlage, Antworten, Erledigen und Wiedereroeffnen mit
+     aktuellen Dokumentrechten, eigenen Revisionskonflikten und exakten Wiederholungen. Append-only Review-Ereignisse
+     mit PostgreSQL/S3-Belegen, Migration 0084, nichtleerem isoliertem Restore und responsivem Browsernachweis.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -1604,10 +1604,10 @@ def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
             status=ModuleStatus.INSTALLED,
             description=(
                 "Native structured documents with explicit version saves, authoritative ACL "
-                "and immutable source receipts."
+                "and immutable source receipts, with version-bound review discussions."
             ),
             manifest_hash="sha256:office-native-documents-module-manifest",
-            required_migration_versions=("0083",),
+            required_migration_versions=("0083", "0084"),
         ),
         ModuleCatalogEntry(
             module_id="crm_erp",
