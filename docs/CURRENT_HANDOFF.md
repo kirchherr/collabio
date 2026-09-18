@@ -60,7 +60,8 @@ Close coherent, user-visible product loops. Reuse the Platform Module System and
 audit, classification, retention, Legal Hold, KMS, backup, restore, failover and decommission contracts.
 Do not start preparation-only infrastructure chains without an immediate product or operating need.
 Prefer mature maintained open-source components behind provider-neutral interfaces, reviewing credible alternatives
-before adoption. Office and Mail retain their extension points; do not pull a full suite ahead of the agreed roadmap.
+before adoption. The user's priority is Office development before further CRM expansion. Continue the existing
+DOCX Quick Edit path; full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
 ## Last completed slice: Roadmap 251
@@ -239,10 +240,15 @@ Primary code and runbooks:
 ## Continuation point
 
 Item 251 is complete. Preserve the 60-case Work/KB/CRM regression matrix and the closed normal pilot boundary.
-The recommended next coherent product loop is CRM account onboarding in `/work` using the existing atomic
-`POST /v1/crm/account-onboardings` contract, with its role/feature gates, actor-bound idempotency, ACL/receipt
-transaction and restore coverage. This is a recommendation pending the user's next instruction; no new onboarding
-UI, real tenant activation, pilot opening or indexing has been authorized or implemented by item 251.
+On 2026-09-18 the user explicitly prioritized Office development ahead of further CRM work. Resume the existing
+DOCX Quick Edit spike with its synthetic corpus, isolated proof harness and source-blind/CDR candidate validation.
+Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
+authorization and executable-image admission must precede an engine proof. Productive saves and WOPI remain separate
+later release steps. The prohibition on Word/account/firewall interventions on the original workstation still applies.
+
+CRM account onboarding in `/work` through `POST /v1/crm/account-onboardings` and subsequent CRM mutations are deferred
+behind Office development. Preserve the completed CRM read workflow and its existing atomic backend contracts.
+This priority update changes the implementation order; it does not activate any engine, tenant, pilot or indexing.
 
 For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
 data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.

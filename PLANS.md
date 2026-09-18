@@ -6,6 +6,9 @@ This file tracks the active implementation sequence. The canonical roadmap is `d
 
 Theme: Turn the proven foundation into coherent product workflows without weakening its gates.
 
+User priority (2026-09-18): Office development comes before further CRM expansion. Resume the existing DOCX Quick
+Edit path; defer CRM account onboarding in `/work` and subsequent CRM mutations until after the Office work.
+
 Current sprint:
 
 1. [x] Research baseline, stack candidates, and ADR backlog.
@@ -126,7 +129,8 @@ Current sprint:
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. The recommended next product loop is guarded CRM account onboarding in `/work` through the existing atomic API; it remains a recommendation pending the user's next instruction.
+- Office is the next development priority: continue the existing DOCX Quick Edit spike using the synthetic corpus, stronger isolation and source-blind/CDR candidate validation. Real Word/GenOffice fidelity results, calibrated thresholds and human review remain separate prerequisites; productive saves and WOPI retain their own later release gates. Do not resume Word/account/firewall interventions on the original workstation.
+- Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.

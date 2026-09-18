@@ -44,6 +44,18 @@ Arbeitsweise:
 - Sicherheits-, Compliance-, Retention-, KMS-, Authz-, Audit-, AI- und RAG-Aenderungen brauchen bewusstere Reviews als normale UI-Aenderungen.
 - Forschungs- und Stack-Entscheidungen werden in `docs/RESEARCH_BASELINE.md`, `docs/OPEN_SOURCE_STACK.md` und `docs/ADR_BACKLOG.md` gepflegt.
 
+## Aktuelle Produktprioritaet
+
+Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
+
+- Als naechsten Office-Pfad den bestehenden DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness
+  und source-blinder/CDR-Kandidatenpruefung fortsetzen. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
+  menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
+  durch diese Priorisierung ersetzt. Produktiver Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
+- CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
+  CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
+- Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
+
 ## Globale Definition Of Done
 
 - [ ] `docker compose run --rm test` ist gruen.
@@ -1508,7 +1520,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Desktop/Mobile gegen isoliertes PostgreSQL geprueft. Volle Remote-Quality und alle 60 Browserfaelle sind gruen.
      Bestehende Pilot-Grenze bleibt geschlossen; keine neue Mutation, Migration oder reale Tenant-Aktivierung.
 
-## Aktueller Fokus: Persistente Backend-Runtime
+## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
 - [x] MinIO-Bucket-Bootstrap mit Versionierung, Object Lock und Legal-Hold-Providerprofil zum API-Startgate gemacht.
