@@ -323,7 +323,7 @@ test("Office rejects a table expansion beyond the total canonical byte limit des
   await page.locator("#document-close").click();
   await openOfficeDocument(page, first.document.object_id);
   await cell(page).click();
-  await expect(page.locator('#table-row-action option[value="deleteRow"]')).toBeDisabled();
+  await expect(page.locator('#table-row-action option[value="deleteRow"]')).toHaveJSProperty("disabled", true);
   await page.locator("#table-column-action").selectOption("addColumnAfter");
   await expect(page.locator("#table-message")).toContainText("höchstens 200 Zeilen und 20 Spalten");
   await shape(page, 1, 20);
