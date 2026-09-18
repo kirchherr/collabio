@@ -87,6 +87,10 @@ CRM_ATOMIC_RECEIPT_POLICIES = {
 KB_ACL_TABLES = {"knowledge_base.articles", "knowledge_base.article_versions"}
 KB_ACL_TRIGGER = "knowledge_base_article_versions_bind_acls"
 KB_ARTICLE_ACL_TRIGGER = "knowledge_base_articles_bind_acl"
+KB_ACL_TRIGGER_FUNCTIONS = {
+    ("knowledge_base.articles", KB_ARTICLE_ACL_TRIGGER): "bind_article_acl",
+    ("knowledge_base.article_versions", KB_ACL_TRIGGER): "bind_version_acls",
+}
 
 TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.items",
@@ -447,14 +451,7 @@ def build_postgres_database_snapshot(
     tenant_iam_verified = (
         table_names >= TENANT_IAM_TABLES | KB_ACL_TABLES
         and forced_rls_tables >= TENANT_IAM_TABLES | KB_ACL_TABLES
-        and any(
-            _qualified_name(row) == "knowledge_base.article_versions" and row.get("trigger_name") == KB_ACL_TRIGGER
-            for row in normalized["triggers"]
-        )
-        and any(
-            _qualified_name(row) == "knowledge_base.articles" and row.get("trigger_name") == KB_ARTICLE_ACL_TRIGGER
-            for row in normalized["triggers"]
-        )
+        and _knowledge_base_acl_controls_verified(normalized["triggers"])
     )
     audit_verified = (
         table_names >= AUDIT_TABLES
@@ -1051,14 +1048,39 @@ def inspect_postgres_database(database_dsn: str) -> PostgresDatabaseSnapshot:
             SELECT n.nspname AS schema_name,
                    c.relname AS table_name,
                    t.tgname AS trigger_name,
-                   pg_get_triggerdef(t.oid, true) AS trigger_definition
+                   t.tgenabled::text AS trigger_enabled,
+                   pg_get_triggerdef(t.oid, true) AS trigger_definition,
+                   fn.nspname AS function_schema,
+                   p.proname AS function_name,
+                   pg_get_userbyid(p.proowner) AS function_owner,
+                   p.prosecdef AS function_security_definer,
+                   p.proconfig AS function_config,
+                   p.proacl::text AS function_acl,
+                   l.lanname AS function_language,
+                   pg_get_function_identity_arguments(p.oid) AS function_identity_arguments,
+                   pg_get_function_result(p.oid) AS function_result,
+                   pg_get_functiondef(p.oid) AS function_definition,
+                   p.prosrc AS function_body,
+                   EXISTS (
+                       SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+                       WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+                   ) AS function_public_execute,
+                   EXISTS (
+                       SELECT 1 FROM pg_roles r
+                       WHERE r.rolname = ANY(%s)
+                         AND has_function_privilege(r.oid, p.oid, 'EXECUTE')
+                   ) AS function_runtime_execute
             FROM pg_trigger t
             JOIN pg_class c ON c.oid = t.tgrelid
             JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_proc p ON p.oid = t.tgfoid
+            JOIN pg_namespace fn ON fn.oid = p.pronamespace
+            JOIN pg_language l ON l.oid = p.prolang
             WHERE NOT t.tgisinternal
               AND n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
             ORDER BY n.nspname, c.relname, t.tgname
             """,
+            (sorted(SERVICE_ROLES),),
         )
         extensions = _fetch_rows(
             connection,
@@ -1201,6 +1223,60 @@ def _exact_row_counts(
             }
         )
     return tuple(counts)
+
+
+def _knowledge_base_acl_controls_verified(triggers: Sequence[Mapping[str, object]]) -> bool:
+    for (table_name, trigger_name), function_name in KB_ACL_TRIGGER_FUNCTIONS.items():
+        matching = [
+            row
+            for row in triggers
+            if _qualified_name(row) == table_name and row.get("trigger_name") == trigger_name
+        ]
+        if len(matching) != 1:
+            return False
+        row = matching[0]
+        expected_trigger = (
+            f"CREATE TRIGGER {trigger_name} AFTER INSERT ON {table_name} "
+            f"FOR EACH ROW EXECUTE FUNCTION knowledge_base.{function_name}()"
+        )
+        if (
+            row.get("trigger_enabled") != "O"
+            or row.get("trigger_definition") != expected_trigger
+            or row.get("function_schema") != "knowledge_base"
+            or row.get("function_name") != function_name
+            or row.get("function_owner") != "collabio_owner"
+            or row.get("function_security_definer") is not True
+            or row.get("function_config") != ["search_path=pg_catalog"]
+            or row.get("function_public_execute") is not False
+            or row.get("function_runtime_execute") is not False
+            or row.get("function_language") != "plpgsql"
+            or row.get("function_identity_arguments") != ""
+            or row.get("function_result") != "trigger"
+        ):
+            return False
+        body = row.get("function_body")
+        if not isinstance(body, str) or _normalized_function_body(body) != _knowledge_base_acl_function_body(function_name):
+            return False
+    return True
+
+
+def _knowledge_base_acl_function_body(function_name: str) -> str:
+    # Compare to authored SQL as well as source/target equality: identical drift on both DBs must fail.
+    migration = next(migration for migration in load_migrations() if migration.version == "0082")
+    pattern = (
+        rf"\bCREATE FUNCTION knowledge_base\.{re.escape(function_name)}\(\)\s+"
+        r"RETURNS trigger\s+LANGUAGE plpgsql\s+SECURITY DEFINER\s+SET search_path = pg_catalog\s+"
+        r"AS (?P<tag>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)(?P<body>.*?)(?P=tag);"
+    )
+    matches = list(re.finditer(pattern, migration.sql(), flags=re.DOTALL))
+    if len(matches) != 1:
+        raise ValueError("Knowledge Base ACL migration function cannot be verified")
+    return _normalized_function_body(matches[0].group("body"))
+
+
+def _normalized_function_body(body: str) -> str:
+    # Only normalize transport line endings and surrounding whitespace; preserve literals and comments.
+    return body.replace("\r\n", "\n").strip()
 
 
 def _migration_catalog_matches_code(rows: Sequence[Mapping[str, object]]) -> bool:

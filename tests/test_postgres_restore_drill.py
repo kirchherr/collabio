@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -48,8 +49,10 @@ from suite.operations.postgres_restore_drill import (
     build_postgres_restore_drill_report_hash,
     build_postgres_restore_target_isolation_ref_hash,
     discover_postgres_backup_artifact,
+    inspect_postgres_database,
 )
 from suite.persistence.migration_catalog import load_migrations
+from suite.persistence.migrator import apply_migrations
 from suite.storage.backend_storage_foundation_gate import (
     BackendStorageFoundationGate,
     build_backend_storage_foundation_gate_hash,
@@ -70,6 +73,7 @@ def _snapshot(
     traffic_scope_controls: bool = True,
     start_authorization_controls: bool = True,
     kb_acl_trigger: bool = True,
+    kb_trigger_overrides: dict[str, object] | None = None,
 ) -> PostgresDatabaseSnapshot:
     table_names = sorted(
         TENANT_IAM_TABLES
@@ -177,7 +181,7 @@ def _snapshot(
         )
         for policy_name in sorted(policy_names)
     )
-    triggers = [
+    triggers: list[dict[str, object]] = [
         {
             "schema_name": table_name.split(".", 1)[0],
             "table_name": table_name.split(".", 1)[1],
@@ -229,12 +233,39 @@ def _snapshot(
         for trigger_name in sorted(trigger_names)
     )
     if kb_acl_trigger:
-        triggers.append(
-            {"schema_name": "knowledge_base", "table_name": "article_versions", "trigger_name": KB_ACL_TRIGGER}
-        )
-        triggers.append(
-            {"schema_name": "knowledge_base", "table_name": "articles", "trigger_name": KB_ARTICLE_ACL_TRIGGER}
-        )
+        migration_sql = next(migration.sql() for migration in load_migrations() if migration.version == "0082")
+        for table_name, trigger_name, function_name in (
+            ("articles", KB_ARTICLE_ACL_TRIGGER, "bind_article_acl"),
+            ("article_versions", KB_ACL_TRIGGER, "bind_version_acls"),
+        ):
+            function_sql = migration_sql.split(f"CREATE FUNCTION knowledge_base.{function_name}()", 1)[1]
+            function_body = function_sql.split("AS $$", 1)[1].split("$$;", 1)[0]
+            triggers.append(
+                {
+                    "schema_name": "knowledge_base",
+                    "table_name": table_name,
+                    "trigger_name": trigger_name,
+                    "trigger_enabled": "O",
+                    "trigger_definition": (
+                        f"CREATE TRIGGER {trigger_name} AFTER INSERT ON knowledge_base.{table_name} "
+                        f"FOR EACH ROW EXECUTE FUNCTION knowledge_base.{function_name}()"
+                    ),
+                    "function_schema": "knowledge_base",
+                    "function_name": function_name,
+                    "function_owner": "collabio_owner",
+                    "function_security_definer": True,
+                    "function_config": ["search_path=pg_catalog"],
+                    "function_acl": "{collabio_owner=X/collabio_owner}",
+                    "function_language": "plpgsql",
+                    "function_identity_arguments": "",
+                    "function_result": "trigger",
+                    "function_definition": f"CREATE FUNCTION knowledge_base.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
+                    "function_body": function_body,
+                    "function_public_execute": False,
+                    "function_runtime_execute": False,
+                    **(kb_trigger_overrides or {}),
+                }
+            )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
     grants = [
         {
@@ -389,6 +420,73 @@ def _snapshot(
 def test_restore_iam_requires_knowledge_base_version_acl_trigger() -> None:
     assert _snapshot(database_hash="sha256:" + "b" * 64).tenant_iam_controls_verified is True
     assert _snapshot(database_hash="sha256:" + "b" * 64, kb_acl_trigger=False).tenant_iam_controls_verified is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("trigger_enabled", "D"),
+        ("trigger_enabled", "R"),
+        ("trigger_definition", "CREATE TRIGGER replaced BEFORE INSERT ON knowledge_base.articles"),
+        ("function_schema", "public"),
+        ("function_name", "replacement_function"),
+        ("function_owner", "collabio_app"),
+        ("function_security_definer", False),
+        ("function_config", ["search_path=public, pg_catalog"]),
+        ("function_config", None),
+        ("function_public_execute", True),
+        ("function_runtime_execute", True),
+        ("function_language", "sql"),
+        ("function_identity_arguments", "arg text"),
+        ("function_result", "text"),
+        ("function_body", "BEGIN RETURN NEW; END"),
+        ("function_body", None),
+    ),
+)
+def test_restore_blocks_identically_tampered_kb_trigger_functions(field: str, value: object) -> None:
+    source = _snapshot(database_hash="sha256:" + "b" * 64, kb_trigger_overrides={field: value})
+    target = _snapshot(database_hash="sha256:" + "c" * 64, kb_trigger_overrides={field: value})
+    report = build_postgres_restore_drill_report(
+        backup_evidence=_backup_evidence(),
+        source_snapshot=source,
+        target_snapshot=target,
+        target_isolation_ref_hash="sha256:" + "d" * 64,
+        checked_at_utc=CHECKED_AT,
+    )
+
+    assert report.source_target_state_verified is True
+    assert report.tenant_iam_controls_verified is False
+    assert report.restore_ready is False
+    assert "tenant_iam_controls_not_verified" in report.blocking_reasons
+
+
+@pytest.mark.parametrize("field", ("function_definition", "function_acl"))
+def test_restore_hashes_complete_trigger_function_definition_and_privileges(field: str) -> None:
+    source = _snapshot(database_hash="sha256:" + "b" * 64)
+    target = _snapshot(database_hash="sha256:" + "c" * 64, kb_trigger_overrides={field: "changed"})
+    report = build_postgres_restore_drill_report(
+        backup_evidence=_backup_evidence(),
+        source_snapshot=source,
+        target_snapshot=target,
+        target_isolation_ref_hash="sha256:" + "d" * 64,
+        checked_at_utc=CHECKED_AT,
+    )
+
+    assert source.relation_manifest_hash != target.relation_manifest_hash
+    assert report.source_target_state_verified is False
+    assert report.restore_ready is False
+
+
+def test_live_postgres_snapshot_verifies_authored_knowledge_base_acl_functions() -> None:
+    database_dsn = os.environ.get("SUITE_MIGRATION_DATABASE_DSN")
+    if not database_dsn:
+        pytest.skip("SUITE_MIGRATION_DATABASE_DSN is not configured")
+    apply_migrations(database_dsn)
+
+    snapshot = inspect_postgres_database(database_dsn)
+
+    assert snapshot.migration_catalog_verified is True
+    assert snapshot.tenant_iam_controls_verified is True
 
 
 def _backup_evidence() -> PostgresBackupArtifactEvidence:
