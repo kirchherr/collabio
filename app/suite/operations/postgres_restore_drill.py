@@ -91,7 +91,12 @@ KB_ACL_TRIGGER_FUNCTIONS = {
     ("knowledge_base.articles", KB_ARTICLE_ACL_TRIGGER): "bind_article_acl",
     ("knowledge_base.article_versions", KB_ACL_TRIGGER): "bind_version_acls",
 }
-OFFICE_DOCUMENT_TABLES = {"office.documents", "office.document_versions", "office.review_threads", "office.review_events"}
+OFFICE_DOCUMENT_TABLES = {
+    "office.documents",
+    "office.document_versions",
+    "office.review_threads",
+    "office.review_events",
+}
 OFFICE_UPDATE_COLUMNS = {
     "office.documents": {"title", "current_version_id", "updated_at_utc"},
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
@@ -105,13 +110,19 @@ OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ),
     ("office.documents", "office_documents_guard_head"): ("guard_document_head", "BEFORE UPDATE", False),
     ("office.review_threads", "office_review_threads_guard_insert"): (
-        "guard_review_thread_insert", "BEFORE INSERT", False,
+        "guard_review_thread_insert",
+        "BEFORE INSERT",
+        False,
     ),
     ("office.review_events", "office_review_events_bind_source"): (
-        "enforce_review_event_source_binding", "BEFORE INSERT", False,
+        "enforce_review_event_source_binding",
+        "BEFORE INSERT",
+        False,
     ),
     ("office.review_threads", "office_review_threads_guard_head"): (
-        "guard_review_thread_head", "BEFORE UPDATE", False,
+        "guard_review_thread_head",
+        "BEFORE UPDATE",
+        False,
     ),
 }
 OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | None]] = {
@@ -144,20 +155,30 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ("office.document_versions", "office_versions_no_update"): ("UPDATE", "false", None),
     ("office.document_versions", "office_versions_no_delete"): ("DELETE", "false", None),
     ("office.review_threads", "office_review_threads_tenant_select"): (
-        "SELECT", "(tenant_id = collabio.current_tenant_id())", None,
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
     ),
     ("office.review_threads", "office_review_threads_tenant_insert"): (
-        "INSERT", None, "(tenant_id = collabio.current_tenant_id())",
+        "INSERT",
+        None,
+        "(tenant_id = collabio.current_tenant_id())",
     ),
     ("office.review_threads", "office_review_threads_tenant_update"): (
-        "UPDATE", "(tenant_id = collabio.current_tenant_id())", "(tenant_id = collabio.current_tenant_id())",
+        "UPDATE",
+        "(tenant_id = collabio.current_tenant_id())",
+        "(tenant_id = collabio.current_tenant_id())",
     ),
     ("office.review_threads", "office_review_threads_no_delete"): ("DELETE", "false", None),
     ("office.review_events", "office_review_events_tenant_select"): (
-        "SELECT", "(tenant_id = collabio.current_tenant_id())", None,
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
     ),
     ("office.review_events", "office_review_events_tenant_insert"): (
-        "INSERT", None, "(tenant_id = collabio.current_tenant_id())",
+        "INSERT",
+        None,
+        "(tenant_id = collabio.current_tenant_id())",
     ),
     ("office.review_events", "office_review_events_no_update"): ("UPDATE", "false", None),
     ("office.review_events", "office_review_events_no_delete"): ("DELETE", "false", None),
@@ -1491,7 +1512,9 @@ def _office_document_controls_verified(
 
 
 def _office_function_body(function_name: str, security_definer: bool) -> str:
-    migration_sql = "\n".join(migration.sql() for migration in load_migrations() if migration.module_id == "office_documents")
+    migration_sql = "\n".join(
+        migration.sql() for migration in load_migrations() if migration.module_id == "office_documents"
+    )
     security_clause = r"SECURITY DEFINER\s+" if security_definer else ""
     pattern = (
         rf"\bCREATE FUNCTION office\.{re.escape(function_name)}\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+"

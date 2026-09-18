@@ -157,42 +157,62 @@ def verify_restored_reviews(
                 operations: list[str] = []
                 while True:
                     detail = reviews.detail(
-                        user_context=user, object_id=object_id, thread_id=thread.thread_id,
-                        after_revision=after_revision, limit=50,
+                        user_context=user,
+                        object_id=object_id,
+                        thread_id=thread.thread_id,
+                        after_revision=after_revision,
+                        limit=50,
                     )
                     snapshot = reviews.repository.detail(
-                        user=user, object_id=object_id, thread_id=thread.thread_id,
-                        after_revision=after_revision, limit=50,
+                        user=user,
+                        object_id=object_id,
+                        thread_id=thread.thread_id,
+                        after_revision=after_revision,
+                        limit=50,
                     )
                     if (
-                        detail.thread != thread or detail.quote != quote
-                        or detail.can_comment or detail.can_resolve
-                        or detail.rag_indexing_allowed or detail.search_indexing_allowed
+                        detail.thread != thread
+                        or detail.quote != quote
+                        or detail.can_comment
+                        or detail.can_resolve
+                        or detail.rag_indexing_allowed
+                        or detail.search_indexing_allowed
                         or snapshot.thread.anchor_content_hash != anchor_version.version.content_hash
                         or len(detail.events) != len(snapshot.events)
                     ):
                         raise ValueError("Office restored review anchor or permissions are invalid")
                     for view, event in zip(detail.events, snapshot.events, strict=True):
-                        record = sources.get(tenant_id=user.tenant_id, object_id=thread.thread_id, version_id=event.event_id)
+                        record = sources.get(
+                            tenant_id=user.tenant_id, object_id=thread.thread_id, version_id=event.event_id
+                        )
                         payload = json.loads(source_object_content_bytes(record).decode("utf-8"))
                         receipt = receipts.get(tenant_id=user.tenant_id, receipt_hash=event.source_write_receipt_hash)
                         expected_receipt = build_source_object_write_receipt(
-                            record=record, receipt_reference=receipt.receipt_reference,
-                            audit_chain_ref=receipt.audit_chain_ref, captured_at_utc=receipt.captured_at_utc,
+                            record=record,
+                            receipt_reference=receipt.receipt_reference,
+                            audit_chain_ref=receipt.audit_chain_ref,
+                            captured_at_utc=receipt.captured_at_utc,
                         )
                         if (
-                            event.event_id in seen_events or event.revision != after_revision + 1
+                            event.event_id in seen_events
+                            or event.revision != after_revision + 1
                             or event.previous_event_id != previous_event_id
-                            or event.thread_id != thread.thread_id or event.object_id != object_id
+                            or event.thread_id != thread.thread_id
+                            or event.object_id != object_id
                             or record.metadata.object_type != SourceObjectType.COMMENT
-                            or record.metadata.parent_object_id != object_id or record.metadata.thread_id != thread.thread_id
-                            or receipt != expected_receipt or receipt.receipt_hash != event.source_write_receipt_hash
-                            or receipt.content_hash != event.content_hash or receipt.manifest_hash != event.source_manifest_hash
+                            or record.metadata.parent_object_id != object_id
+                            or record.metadata.thread_id != thread.thread_id
+                            or receipt != expected_receipt
+                            or receipt.receipt_hash != event.source_write_receipt_hash
+                            or receipt.content_hash != event.content_hash
+                            or receipt.manifest_hash != event.source_manifest_hash
                             or stable_hash(canonical_json(payload)) != event.content_hash
                             or payload["anchor_version_id"] != thread.anchor_version_id
                             or payload["anchor_content_hash"] != anchor_version.version.content_hash
-                            or payload["quote"] != quote or view.body != payload["body"]
-                            or view.event_id != event.event_id or view.revision != event.revision
+                            or payload["quote"] != quote
+                            or view.body != payload["body"]
+                            or view.event_id != event.event_id
+                            or view.revision != event.revision
                             or view.operation != event.operation
                         ):
                             raise ValueError("Office restored review event, source or receipt binding is invalid")
@@ -209,20 +229,30 @@ def verify_restored_reviews(
                         operations.append(event.operation)
                         after_revision = event.revision
                         previous_event_id = event.event_id
-                        evidence.append({
-                            "object_id": object_id, "thread_id": thread.thread_id,
-                            "anchor_version_id": thread.anchor_version_id,
-                            "event_id": event.event_id, "revision": event.revision,
-                            "content_hash": event.content_hash, "receipt_hash": receipt.receipt_hash,
-                        })
+                        evidence.append(
+                            {
+                                "object_id": object_id,
+                                "thread_id": thread.thread_id,
+                                "anchor_version_id": thread.anchor_version_id,
+                                "event_id": event.event_id,
+                                "revision": event.revision,
+                                "content_hash": event.content_hash,
+                                "receipt_hash": receipt.receipt_hash,
+                            }
+                        )
                     if detail.next_after_revision is None:
-                        if (after_revision != thread.revision or previous_event_id != snapshot.thread.current_event_id
-                            or status != thread.status):
+                        if (
+                            after_revision != thread.revision
+                            or previous_event_id != snapshot.thread.current_event_id
+                            or status != thread.status
+                        ):
                             raise ValueError("Office restored review head does not match its complete event history")
                         break
                     if not detail.events or detail.next_after_revision != after_revision:
                         raise ValueError("Office restored review cursor is invalid")
-                complete_lifecycles += int(all(operation in operations for operation in ("create", "reply", "resolve", "reopen")))
+                complete_lifecycles += int(
+                    all(operation in operations for operation in ("create", "reply", "resolve", "reopen"))
+                )
             if listing.next_cursor is None:
                 break
             if not listing.threads or listing.next_cursor == after or listing.next_cursor not in seen_threads:
@@ -231,10 +261,14 @@ def verify_restored_reviews(
     if seen_threads != expected_thread_ids or seen_events != expected_event_ids:
         raise ValueError("Office review recovery did not read the complete database inventory")
     if complete_lifecycles < 1 or anchored_threads < 1 or historical_threads < 1 or denied_target is None:
-        raise ValueError("Office recovery requires nonempty anchored, historical and complete review lifecycle evidence")
+        raise ValueError(
+            "Office recovery requires nonempty anchored, historical and complete review lifecycle evidence"
+        )
     object_id, thread_id = denied_target
     for denied_user in (
-        UserContext(tenant_id="tenant-work-e2e-foreign", user_id=user.user_id, readable_object_ids={object_id, thread_id}),
+        UserContext(
+            tenant_id="tenant-work-e2e-foreign", user_id=user.user_id, readable_object_ids={object_id, thread_id}
+        ),
         UserContext(tenant_id=user.tenant_id, user_id="work-assignee-e2e", readable_object_ids={object_id, thread_id}),
     ):
         try:
@@ -245,9 +279,17 @@ def verify_restored_reviews(
             raise ValueError("Office restored review access did not deny an unauthorized reader")
     try:
         reviews.mutate(
-            user_context=user, object_id=object_id, thread_id=thread_id, write_enabled=True,
-            command=ReviewEventCommand(operation="reply", expected_revision=1, body="Must not persist",
-                mutation_reference="synthetic-recovery-write-denied", human_confirmation=True),
+            user_context=user,
+            object_id=object_id,
+            thread_id=thread_id,
+            write_enabled=True,
+            command=ReviewEventCommand(
+                operation="reply",
+                expected_revision=1,
+                body="Must not persist",
+                mutation_reference="synthetic-recovery-write-denied",
+                human_confirmation=True,
+            ),
         )
     except OfficeDocumentPermissionError:
         pass
@@ -255,10 +297,13 @@ def verify_restored_reviews(
         raise ValueError("Office review recovery accepted a mutation")
     return {
         "review_evidence_hash": stable_hash(canonical_json(evidence)),
-        "verified_review_thread_count": len(seen_threads), "verified_review_event_count": len(seen_events),
+        "verified_review_thread_count": len(seen_threads),
+        "verified_review_event_count": len(seen_events),
         "complete_review_lifecycle_count": complete_lifecycles,
-        "anchored_review_thread_count": anchored_threads, "historical_review_thread_count": historical_threads,
-        "review_receipt_bindings_verified": True, "review_authoritative_acl_verified": True,
+        "anchored_review_thread_count": anchored_threads,
+        "historical_review_thread_count": historical_threads,
+        "review_receipt_bindings_verified": True,
+        "review_authoritative_acl_verified": True,
         "review_read_only_verified": True,
     }
 
@@ -406,10 +451,14 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     review_evidence = verify_restored_reviews(
         documents=restored,
         reviews=OfficeReviewService(
-            repository=PgOfficeReviewRepository(document_service=restored), source_repository=restored_sources,
-            audit=InMemoryAuditLogger(), writes_available=False,
+            repository=PgOfficeReviewRepository(document_service=restored),
+            source_repository=restored_sources,
+            audit=InMemoryAuditLogger(),
+            writes_available=False,
         ),
-        sources=restored_sources, receipts=receipt_store, user=user,
+        sources=restored_sources,
+        receipts=receipt_store,
+        user=user,
         object_ids=tuple(document.object_id for document in documents),
         expected_thread_ids={row["thread_id"] for row in inventory["review_threads"]},
         expected_event_ids={row["event_id"] for row in inventory["review_events"]},

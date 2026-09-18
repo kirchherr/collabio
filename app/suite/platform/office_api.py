@@ -163,12 +163,20 @@ def _write_enabled(request: Request, context: TenantRequestContext) -> bool:
     return True
 
 
-def build_office_review_service(*, document_service: OfficeDocumentService, audit: InMemoryAuditLogger) -> OfficeReviewService:
-    repository = (PgOfficeReviewRepository(document_service=document_service)
-                  if isinstance(document_service.repository, PgOfficeDocumentRepository)
-                  else InMemoryOfficeReviewRepository(document_service=document_service))
-    return OfficeReviewService(repository=repository, source_repository=document_service.source_repository,
-                              audit=audit, writes_available=document_service.writes_available)
+def build_office_review_service(
+    *, document_service: OfficeDocumentService, audit: InMemoryAuditLogger
+) -> OfficeReviewService:
+    repository = (
+        PgOfficeReviewRepository(document_service=document_service)
+        if isinstance(document_service.repository, PgOfficeDocumentRepository)
+        else InMemoryOfficeReviewRepository(document_service=document_service)
+    )
+    return OfficeReviewService(
+        repository=repository,
+        source_repository=document_service.source_repository,
+        audit=audit,
+        writes_available=document_service.writes_available,
+    )
 
 
 def register_office_routes(
@@ -259,9 +267,14 @@ def register_office_routes(
         limit: int = Query(default=20, ge=1, le=50),
         anchor_version_id: str | None = Query(default=None, min_length=1, max_length=128),
     ) -> Any:
-        return request.app.state.office_review_service.list_threads(user_context=context.user_context,
-            object_id=object_id, after=after, limit=limit, anchor_version_id=anchor_version_id,
-            write_enabled=_write_enabled(request, context))
+        return request.app.state.office_review_service.list_threads(
+            user_context=context.user_context,
+            object_id=object_id,
+            after=after,
+            limit=limit,
+            anchor_version_id=anchor_version_id,
+            write_enabled=_write_enabled(request, context),
+        )
 
     @router.get("/{object_id}/review-threads/{thread_id}", response_model=ReviewDetailResponse)
     def review_thread_detail(
@@ -272,21 +285,33 @@ def register_office_routes(
         after_revision: int = Query(default=0, ge=0, le=2147483647),
         limit: int = Query(default=20, ge=1, le=50),
     ) -> Any:
-        return request.app.state.office_review_service.detail(user_context=context.user_context,
-            object_id=object_id, thread_id=thread_id, after_revision=after_revision, limit=limit,
-            write_enabled=_write_enabled(request, context))
+        return request.app.state.office_review_service.detail(
+            user_context=context.user_context,
+            object_id=object_id,
+            thread_id=thread_id,
+            after_revision=after_revision,
+            limit=limit,
+            write_enabled=_write_enabled(request, context),
+        )
 
-    @router.post("/{object_id}/review-threads", response_model=ReviewMutationResponse, dependencies=[Depends(write_gate)])
+    @router.post(
+        "/{object_id}/review-threads", response_model=ReviewMutationResponse, dependencies=[Depends(write_gate)]
+    )
     def create_review_thread(
         object_id: str,
         command: ReviewCreateCommand,
         request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
-        return request.app.state.office_review_service.mutate(user_context=context.user_context,
-            object_id=object_id, command=command, write_enabled=True)
+        return request.app.state.office_review_service.mutate(
+            user_context=context.user_context, object_id=object_id, command=command, write_enabled=True
+        )
 
-    @router.post("/{object_id}/review-threads/{thread_id}/events", response_model=ReviewMutationResponse, dependencies=[Depends(write_gate)])
+    @router.post(
+        "/{object_id}/review-threads/{thread_id}/events",
+        response_model=ReviewMutationResponse,
+        dependencies=[Depends(write_gate)],
+    )
     def append_review_event(
         object_id: str,
         thread_id: str,
@@ -294,7 +319,12 @@ def register_office_routes(
         request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
-        return request.app.state.office_review_service.mutate(user_context=context.user_context,
-            object_id=object_id, thread_id=thread_id, command=command, write_enabled=True)
+        return request.app.state.office_review_service.mutate(
+            user_context=context.user_context,
+            object_id=object_id,
+            thread_id=thread_id,
+            command=command,
+            write_enabled=True,
+        )
 
     app.include_router(router)

@@ -7,7 +7,11 @@ from office_recovery_proof import require_office_recovery_environment, verify_re
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json
 from suite.ai_control_plane.models import UserContext
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository
-from suite.platform.office_documents import OfficeDocumentCreateCommand, OfficeDocumentSaveCommand, OfficeDocumentService
+from suite.platform.office_documents import (
+    OfficeDocumentCreateCommand,
+    OfficeDocumentSaveCommand,
+    OfficeDocumentService,
+)
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository
 from suite.platform.office_reviews import OfficeReviewService, ReviewAnchor, ReviewCreateCommand, ReviewEventCommand
 from suite.storage.source_objects import InMemorySourceObjectRepository, InMemorySourceObjectWriteReceiptStore
@@ -71,8 +75,13 @@ class ReviewRecoveryFixture:
 
     def verify(self) -> dict[str, Any]:
         return verify_restored_reviews(
-            documents=self.documents, reviews=self.reviews, sources=self.sources, receipts=self.receipts,
-            user=self.user, object_ids=(self.object_id,), expected_thread_ids={self.thread_id},
+            documents=self.documents,
+            reviews=self.reviews,
+            sources=self.sources,
+            receipts=self.receipts,
+            user=self.user,
+            object_ids=(self.object_id,),
+            expected_thread_ids={self.thread_id},
             expected_event_ids=self.event_ids,
         )
 
@@ -84,46 +93,93 @@ def review_recovery_fixture(*, replies: int = 1) -> ReviewRecoveryFixture:
     audit = InMemoryAuditLogger()
     documents = OfficeDocumentService(repository=repository, source_repository=sources, audit=audit)
     user = UserContext(tenant_id="tenant-work-e2e", user_id="work-office-editor-e2e", role_ids={"office-editor"})
-    content = {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "😀 private anchor"}]}]}
+    content = {
+        "type": "doc",
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": "😀 private anchor"}]}],
+    }
     saved = documents.create(
-        user_context=user, write_enabled=True,
-        command=OfficeDocumentCreateCommand(title="Synthetic recovery", document=content,
-            mutation_reference="recovery-create-document", human_confirmation=True),
+        user_context=user,
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title="Synthetic recovery",
+            document=content,
+            mutation_reference="recovery-create-document",
+            human_confirmation=True,
+        ),
     )
     object_id = saved.document.object_id
     user = user.model_copy(update={"readable_object_ids": {object_id}})
     review_repository = InMemoryOfficeReviewRepository(document_service=documents)
     reviews = OfficeReviewService(repository=review_repository, source_repository=sources, audit=audit)
     created = reviews.mutate(
-        user_context=user, object_id=object_id, write_enabled=True,
-        command=ReviewCreateCommand(anchor_version_id=saved.version.version_id,
-            expected_current_version_id=saved.version.version_id, anchor=ReviewAnchor.model_validate({"from": 1, "to": 3}),
-            body="Private recovery comment", mutation_reference="recovery-create-review", human_confirmation=True),
+        user_context=user,
+        object_id=object_id,
+        write_enabled=True,
+        command=ReviewCreateCommand(
+            anchor_version_id=saved.version.version_id,
+            expected_current_version_id=saved.version.version_id,
+            anchor=ReviewAnchor.model_validate({"from": 1, "to": 3}),
+            body="Private recovery comment",
+            mutation_reference="recovery-create-review",
+            human_confirmation=True,
+        ),
     )
     thread_id = created.thread.thread_id
     current = created
     for number in range(replies):
         current = reviews.mutate(
-            user_context=user, object_id=object_id, thread_id=thread_id, write_enabled=True,
-            command=ReviewEventCommand(operation="reply", expected_revision=current.thread.revision,
-                body=f"Private recovery reply {number}", mutation_reference=f"recovery-reply-{number}", human_confirmation=True),
+            user_context=user,
+            object_id=object_id,
+            thread_id=thread_id,
+            write_enabled=True,
+            command=ReviewEventCommand(
+                operation="reply",
+                expected_revision=current.thread.revision,
+                body=f"Private recovery reply {number}",
+                mutation_reference=f"recovery-reply-{number}",
+                human_confirmation=True,
+            ),
         )
     status_operations: tuple[Literal["resolve", "reopen"], ...] = ("resolve", "reopen")
     for operation in status_operations:
         current = reviews.mutate(
-            user_context=user, object_id=object_id, thread_id=thread_id, write_enabled=True,
-            command=ReviewEventCommand(operation=operation, expected_revision=current.thread.revision,
-                mutation_reference=f"recovery-{operation}", human_confirmation=True),
+            user_context=user,
+            object_id=object_id,
+            thread_id=thread_id,
+            write_enabled=True,
+            command=ReviewEventCommand(
+                operation=operation,
+                expected_revision=current.thread.revision,
+                mutation_reference=f"recovery-{operation}",
+                human_confirmation=True,
+            ),
         )
     documents.save(
-        user_context=user, object_id=object_id, write_enabled=True,
-        command=OfficeDocumentSaveCommand(title="New current version", document=content,
-            expected_current_version_id=saved.version.version_id, mutation_reference="recovery-new-head", human_confirmation=True),
+        user_context=user,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            title="New current version",
+            document=content,
+            expected_current_version_id=saved.version.version_id,
+            mutation_reference="recovery-new-head",
+            human_confirmation=True,
+        ),
     )
     documents.writes_available = False
     reviews.writes_available = False
-    return ReviewRecoveryFixture(documents, repository, reviews, review_repository, sources, receipts,
-        user, object_id, thread_id, {event.event_id for event in review_repository.events.values()})
+    return ReviewRecoveryFixture(
+        documents,
+        repository,
+        reviews,
+        review_repository,
+        sources,
+        receipts,
+        user,
+        object_id,
+        thread_id,
+        {event.event_id for event in review_repository.events.values()},
+    )
 
 
 def test_review_recovery_reads_paginated_complete_lifecycle_and_emits_only_metadata() -> None:
@@ -144,7 +200,9 @@ def test_review_recovery_reads_paginated_complete_lifecycle_and_emits_only_metad
     assert len(fixture.review_repository.events) == 54
 
 
-@pytest.mark.parametrize("tamper", ["missing_event", "previous_event", "status", "anchor", "receipt", "source", "acl", "inventory"])
+@pytest.mark.parametrize(
+    "tamper", ["missing_event", "previous_event", "status", "anchor", "receipt", "source", "acl", "inventory"]
+)
 def test_review_recovery_rejects_lost_events_rebound_sources_and_permission_drift(tamper: str) -> None:
     fixture = review_recovery_fixture()
     event = next(event for event in fixture.review_repository.events.values() if event.operation == "reply")

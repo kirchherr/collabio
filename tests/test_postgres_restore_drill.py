@@ -68,7 +68,9 @@ CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
 def _office_fixture() -> dict[str, list[dict[str, object]]]:
-    migration_sql = "\n".join(migration.sql() for migration in load_migrations() if migration.module_id == "office_documents")
+    migration_sql = "\n".join(
+        migration.sql() for migration in load_migrations() if migration.module_id == "office_documents"
+    )
     triggers: list[dict[str, object]] = []
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
         function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
@@ -633,11 +635,13 @@ def test_restore_requires_native_office_controls() -> None:
     ],
 )
 def test_restore_rejects_each_missing_review_identity_anchor_or_receipt_constraint(
-    table_name: str, definition: str,
+    table_name: str,
+    definition: str,
 ) -> None:
     def remove(rows: dict[str, list[dict[str, object]]]) -> None:
         rows["constraints"] = [
-            row for row in rows["constraints"]
+            row
+            for row in rows["constraints"]
             if not (row["table_name"] == table_name.split(".")[1] and row["constraint_definition"] == definition)
         ]
 
@@ -654,9 +658,7 @@ def test_restore_rejects_identically_missing_office_controls(collection: str) ->
     _assert_office_tamper_blocked(_office_tamper_report(remove))
 
 
-@pytest.mark.parametrize(
-    "function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values())
-)
+@pytest.mark.parametrize("function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values()))
 @pytest.mark.parametrize(
     ("field", "value"),
     (
@@ -685,9 +687,7 @@ def test_restore_rejects_identical_office_trigger_function_drift(function_name: 
     _assert_office_tamper_blocked(_office_tamper_report(tamper))
 
 
-@pytest.mark.parametrize(
-    "function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values())
-)
+@pytest.mark.parametrize("function_name", tuple(definition[0] for definition in OFFICE_TRIGGER_FUNCTIONS.values()))
 def test_restore_pins_each_office_function_security_mode(function_name: str) -> None:
     def flip_security(rows: dict[str, list[dict[str, object]]]) -> None:
         function = next(row for row in rows["triggers"] if row["function_name"] == function_name)
