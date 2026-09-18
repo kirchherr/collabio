@@ -10,7 +10,7 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `d8d0386`; the commit containing this handoff is the continuation
+- Validated implementation: `e966989`; the commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
 - Generated `e2e/work/artifacts/` output is ignored and must not be committed.
@@ -23,12 +23,16 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final host verification at 2026-09-18 08:17:16 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final host verification at 2026-09-18 08:43:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated. Webcut remains `running(7)` and all three
 provider nodes remain unchanged (127.0.0.1:26443). Tricert was absent. Work-E2E containers were removed; postgres-test,
-postgres-restore and minio-restore are stopped. Live checks confirmed the new normal KB content route and existing
-authoring routes, the reader in `/work`, the disabled KB write feature in tenant-demo and the closed pilot switch.
-Bounded health retries covered startup connection resets; health and the cold OpenAPI check then passed.
+postgres-restore and minio-restore are stopped. Live checks confirmed the CRM workspace and KB content/authoring
+routes, CRM detail and KB reader in `/work`, the disabled KB write feature in tenant-demo and pilot runtime 0.
+Bounded health retries covered startup connection resets; health and the cold OpenAPI check then passed. The live
+CRM read returns 503 with the exact existing dependency error `Productivity pilot authorization evidence is invalid`,
+before reaching the CRM repository. The first smoke check expected 403/423 and failed; the repeated check explicitly
+verified this fail-closed evidence error. No pilot evidence was repaired or activated. The isolated blocked process
+with synthetic valid scope evidence separately proves its expected CRM 403; these are distinct checks.
 
 ## Non-negotiable boundaries
 
@@ -59,7 +63,37 @@ Prefer mature maintained open-source components behind provider-neutral interfac
 before adoption. Office and Mail retain their extension points; do not pull a full suite ahead of the agreed roadmap.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 250
+## Last completed slice: Roadmap 251
+
+Roadmap item 251 and PLANS item 112 are complete. The existing account workspace is available in `/work` as an
+account-detail dialog with associated contacts and activities. It reuses
+`GET /v1/crm/accounts/{account_object_id}/workspace`; no new CRM mutation or schema is added.
+
+- All three CRM feature gates and the existing pilot traffic-scope dependency remain mandatory. Account access is
+  checked before child queries; every child requires its own current ACL and a relation to the selected account.
+- Unreadable linked IDs remain redacted. JWT/OIDC ignores browser-provided grants. Contact names, email and phone
+  remain personal data; the API's metadata-only contract does not make these fields anonymous.
+- Successful responses and route-local errors are non-cacheable. Database failures return a constant 503 message;
+  audit metadata contains IDs/counts, never CRM field values or note bodies. The UI does not display notes.
+- Refresh clears old details before checking permissions again. Close/reopen and context changes invalidate late
+  responses. Fields render as literal text; empty contacts and activities have independent messages.
+- The guarded browser harness uses real PostgreSQL CRM rows and fresh database ACLs for the synthetic reader.
+  Its narrowly scoped ACL administration and request-local database failure controls exist only in test code.
+- Quality on `e966989` passed Ruff, formatting across 653 files, Mypy on 516 source files and full Pytest. Only the
+  existing Starlette/AnyIO deprecation warning remains.
+- All 60 browser cases passed in 130.014 seconds, with zero skipped, unexpected or flaky tests. The ten new CRM cases
+  cover child filtering/redaction, literal fields, empty children, missing/forged/foreign permissions, closed pilot,
+  account ACL revocation, disabled contacts feature, database failure/retry, late responses and desktop/mobile layout.
+  Both viewport screenshots passed visual review; the previous 50 Work/KB cases remain green.
+
+Current proof artifacts are ignored under `e2e/work/artifacts/roadmap-251/`:
+
+- `results.json`: `sha256:64a245368f0e6a4e3665c761550a34e3477ed27ad47eccd56e16680087575455`.
+- `work-crm-detail-complete.png`: `sha256:848fe140a83488d340c5f6e5c0f01a8aa58308c639da84d9448c672a3081e8f0`.
+- `work-crm-detail-desktop-chromium.png`: `sha256:5587442989c9c890d8250349e20e13beeb92f2e554640c2bd3e6b51088a77a23`.
+- `work-crm-detail-mobile-chromium.png`: `sha256:b1bf72c13d9928dd609f8f3f0ad27135c8c4e61603ef6469707e5f48cfd9c910`.
+
+## Previous slice: Roadmap 250
 
 Roadmap item 250 and PLANS item 111 are complete. Authorized ordinary readers can open published Knowledge Base
 articles in `/work` with `knowledge_base.articles.read`, without an admin role or write feature.
@@ -117,7 +151,7 @@ Security and durability:
 - Restore verification binds both KB ACL triggers and their complete function definitions, owners, signatures,
   security mode, search_path, enablement and grants to migration 0082 and compares source/restore snapshots.
 
-## Validation and recovery evidence
+## Retained Knowledge Base validation and recovery evidence
 
 On commit `d8d0386`, full quality passed: Ruff, formatting across 652 files, Mypy on 515 source files and full Pytest
 to 100 percent. Only the known Starlette/AnyIO deprecation warning remains. This includes the PostgreSQL concurrency,
@@ -126,7 +160,7 @@ The new normal-reader API and isolated-harness policy tests are included. After 
 passed all 11 targeted KB/module-contract/roadmap tests in 19.99 seconds; health remained ok at 08:19:34 UTC.
 Item 249 implementation quality, documentation checks and 41-case browser evidence remain in the operations log.
 
-Final browser report: 50/50 passed in 120.480 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
+Item 250 browser report: 50/50 passed in 120.480 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
 reader screenshots were visually checked. Ignored local artifacts are retained under `e2e/work/artifacts/roadmap-250/`:
 
 - `results.json`: `sha256:3dfb92a96f8cd61ec353c96e438ba94608476abc7321da223ea4f65f2b0f0a11`.
@@ -134,7 +168,7 @@ reader screenshots were visually checked. Ignored local artifacts are retained u
 - `work-knowledge-reader-desktop-chromium.png`: `sha256:4e61218844b82d6f320a53bdbe9a49485de77273f4128ed0c78e10818dadd07a`.
 - `work-knowledge-reader-mobile-chromium.png`: `sha256:9241af34e5fc7011298b80bbbf1544aca505d4828ff12529ec233873cb0c5ef6`.
 
-Retained item 249 post-migration recovery and release proofs on dev001 (not newly executed for item 250):
+Retained item 249 post-migration recovery and release proofs on dev001 (not newly executed for read-only items 250/251):
 
 - Backup `collabio-20260918T070901Z.dump`:
   `sha256:9de68a2febdaa66c5f880ee1478d03bf343bea9004da67ee1b34966a875fb253`.
@@ -149,13 +183,14 @@ is the separate API/PostgreSQL/browser matrix above. No new real-user pilot pref
 
 The isolated browser profile has tmpfs PostgreSQL and MinIO, internal networking, no host ports, tenant
 `tenant-work-e2e` only, memory-only synthetic runtime activation and the normal pilot switch closed.
-It ignores browser-supplied KB readable IDs and resolves current database ACLs on every KB request.
+It ignores browser-supplied KB/CRM readable IDs and resolves current database ACLs on every KB/CRM request.
 Its request-local storage failure injection is restricted to the exact synthetic tenant and execute or content-read route.
 No failure injection exists in production API code.
 
-The browser matrix is 50 tests: the previous 41 cases plus seven reader workflow/policy/race cases and two reader
-responsive runs. The original 28 independent source-state cases, closed-pilot route policy proof, real task/time
-workflow and guarded authoring remain intact. Artifacts and their hashes are development evidence only.
+The browser matrix is now 60 tests: the previous 41 cases, seven KB reader workflow/policy/race cases, two reader
+responsive runs, eight CRM detail cases and two CRM responsive runs. The original 28 independent source-state cases,
+closed-pilot route policy proof, real task/time workflow and guarded authoring remain intact. Artifacts and their
+hashes are development evidence only.
 
 Pre-0082 backup: `collabio-20260918T062951Z.dump`,
 `sha256:d2724821f35c11cb9de0b023696593f70ce9dab69dbb458d003d4860c373b0e5`, checksum/catalog verified.
@@ -163,6 +198,8 @@ Migration 0082 was the only new migration applied; 82 migrations and 89 tables w
 
 Primary code and runbooks:
 
+- `app/suite/platform/crm_workspace.py`, `crm_runtime.py`, `tests/test_crm_workspace_api.py`,
+  `tests/work_e2e_crm.py` and `docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md`.
 - `app/main.py`; `app/suite/platform/knowledge_base.py`; `knowledge_base_runtime.py`.
 - `app/suite/persistence/migrations/0082_knowledge_base_version_acls.sql`.
 - `app/suite/operations/postgres_restore_drill.py`.
@@ -178,12 +215,14 @@ Primary code and runbooks:
 
 ## Existing product and platform status
 
-- `/roadmap` presents capabilities; KB shows guarded authoring and ordinary reading with real API route paths.
+- `/roadmap` presents capabilities; KB shows guarded authoring and ordinary reading, and CRM includes Work account
+  details, with real API route paths.
 - `/workspace` provides the module cockpit and controlled foundation workflows.
 - `/work` provides Tasks/activity, Time, Tickets, KB and CRM with independent loading/error states and responsive UI.
 - Tasks include durable lifecycle, reassignment and due-date changes with append-only evidence and shared mutation
   serialization. Time includes submission, maker-checker decisions, correction and resubmission.
-- CRM has PostgreSQL/RLS accounts, contacts, activities and notes; Work currently uses account reads.
+- CRM has PostgreSQL/RLS accounts, contacts, activities and notes; Work exposes account details with authorized
+  contacts and activities through the existing account workspace.
 - ERP remains deliberately limited. LMS and later modules have contracts, not broad user-facing products.
 - AI/RAG/voice control planes exist; productive provider execution remains closed.
 - Office/Mail architecture, parser/CDR/preview and fidelity paths exist. LibreOffice evidence is ahead of
@@ -195,11 +234,11 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 250 is complete. The user authorized item 251: CRM account detail with associated contacts and activities in
-`/work`, reusing the existing account-workspace API, all three CRM feature gates, object ACLs and linked-object
-redaction. Prove empty/blocked/unavailable states, current database rights, safe refresh/context races and responsive
-behavior against isolated PostgreSQL. No new mutation workflow, real tenant activation, pilot opening or indexing
-is part of item 251.
+Item 251 is complete. Preserve the 60-case Work/KB/CRM regression matrix and the closed normal pilot boundary.
+The recommended next coherent product loop is CRM account onboarding in `/work` using the existing atomic
+`POST /v1/crm/account-onboardings` contract, with its role/feature gates, actor-bound idempotency, ACL/receipt
+transaction and restore coverage. This is a recommendation pending the user's next instruction; no new onboarding
+UI, real tenant activation, pilot opening or indexing has been authorized or implemented by item 251.
 
 For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
 data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.

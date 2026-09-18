@@ -119,14 +119,14 @@ Current sprint:
 109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
 110. [x] Guarded Knowledge Base create/edit in `/work` with server-prepared source metadata, authoritative ACLs, explicit approval/confirmation, tenant-serialized PostgreSQL/S3 writes, conflict/failure recovery, migration 0082 ACL restore verification, and 41 passing isolated browser cases; full remote quality and backup/restore/release gates passed with pilot and indexing closed.
 111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
-112. [ ] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling, with PostgreSQL/ACL browser proof and the existing pilot boundary closed.
+112. [x] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling; full remote quality and 60 isolated browser cases pass with current PostgreSQL ACLs and the existing pilot boundary closed.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- The user authorized Roadmap 251: CRM account detail with associated contacts and activities in `/work`, using the existing account-workspace API and its three required CRM features. Finish this read workflow and its isolated browser proof before expanding CRM mutations.
+- Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. The recommended next product loop is guarded CRM account onboarding in `/work` through the existing atomic API; it remains a recommendation pending the user's next instruction.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.

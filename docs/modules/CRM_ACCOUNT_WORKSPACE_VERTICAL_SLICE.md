@@ -1,6 +1,6 @@
 # CRM Account Workspace Vertical Slice
 
-Status: operational API; Work integration in progress
+Status: operational API and Work detail integration
 Date: 2026-09-18
 
 This slice moves CRM Accounts, Contacts, Activities, and Notes from isolated in-memory lists onto the shared PostgreSQL runtime and exposes one account-centered workflow. It remains metadata-only: note bodies and attachments are not released.
@@ -66,9 +66,18 @@ The read workflow remains the authoritative account-centered projection. The pro
 
 ## Verification
 
+Roadmap 251 passed full remote quality on `e966989` (Ruff, 653 formatted files, Mypy on 516 source files and full
+Pytest) and all 60 isolated browser cases in 130.014 seconds, with no skipped, unexpected or flaky results. The ten
+CRM cases cover current PostgreSQL ACLs, child filtering/redaction, feature/pilot denial, database failure/retry,
+literal rendering, context races and desktop/mobile containment. Screenshots passed visual review. Evidence hashes
+and the controlled development rollout are recorded in `docs/operations/DEV001_OPERATIONS_LOG.md`.
+
 - `tests/test_crm_runtime.py`
 - `tests/test_crm_workspace.py`
 - `tests/test_crm_workspace_api.py`
 - `tests/test_crm_accounts.py`
 - `tests/test_crm_contacts.py`
 - `tests/test_crm_activities.py`
+- `tests/test_work_e2e_harness.py`
+- `e2e/work/tests/crm.spec.mjs`
+- `e2e/work/tests/crm-responsive.spec.mjs`
