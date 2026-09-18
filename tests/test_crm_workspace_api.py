@@ -205,9 +205,7 @@ def test_workspace_returns_only_readable_relations_and_metadata_only_audit(
     event = events[0]
     assert event.event_id == body["audit_event_id"]
     assert event.input_hash is event.output_hash is None
-    assert set(event.source_object_ids) == {
-        "crm-account-acme-demo", "crm-activity-followup-demo", "crm-note-acme-demo"
-    }
+    assert set(event.source_object_ids) == {"crm-account-acme-demo", "crm-activity-followup-demo", "crm-note-acme-demo"}
     audit_json = event.model_dump_json()
     for private_value in (body["account"]["display_name"], body["activities"][0]["subject"], body["notes"][0]["title"]):
         assert private_value not in audit_json

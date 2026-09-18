@@ -206,12 +206,14 @@ async def _isolated_storage_failure(request: Request, call_next: RequestResponse
     )
     write_token = _fail_storage_write.set(fail_write)
     read_token = _fail_storage_read.set(fail_read)
-    crm_token = _fail_crm_read.set(crm_failure_requested(
-        tenant_id=request.headers.get("X-Tenant-Id"),
-        method=request.method,
-        path=request.url.path,
-        requested=request.headers.get("X-Work-E2E-Fail-CRM") == "1",
-    ))
+    crm_token = _fail_crm_read.set(
+        crm_failure_requested(
+            tenant_id=request.headers.get("X-Tenant-Id"),
+            method=request.method,
+            path=request.url.path,
+            requested=request.headers.get("X-Work-E2E-Fail-CRM") == "1",
+        )
+    )
     try:
         return await call_next(request)
     finally:
@@ -310,9 +312,7 @@ app.state.crm_account_workspace_service.account_repository = crm_repository
 app.state.crm_account_workspace_service.contact_repository = crm_repository
 app.state.crm_account_workspace_service.activity_repository = crm_repository
 app.state.crm_account_workspace_service.note_repository = crm_repository
-app.state.authz_admin_store = SyntheticReaderAclStore(
-    database_dsn=os.environ["SUITE_AUTHZ_ADMIN_DATABASE_DSN"]
-)
+app.state.authz_admin_store = SyntheticReaderAclStore(database_dsn=os.environ["SUITE_AUTHZ_ADMIN_DATABASE_DSN"])
 app.dependency_overrides[main_module.get_tenant_request_context] = _synthetic_authorized_context
 
 
