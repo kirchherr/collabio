@@ -122,8 +122,9 @@ Security and durability:
 On commit `d8d0386`, full quality passed: Ruff, formatting across 652 files, Mypy on 515 source files and full Pytest
 to 100 percent. Only the known Starlette/AnyIO deprecation warning remains. This includes the PostgreSQL concurrency,
 atomic ACL, API policy, storage-failure and restore-function tamper tests.
-The new normal-reader API and isolated-harness policy tests are included. Prior item 249 documentation checks passed
-on `1cf06d4`; its implementation quality and 41-case browser evidence remain in the operations log.
+The new normal-reader API and isolated-harness policy tests are included. After documentation closeout, `6b1b82f`
+passed all 11 targeted KB/module-contract/roadmap tests in 19.99 seconds; health remained ok at 08:19:34 UTC.
+Item 249 implementation quality, documentation checks and 41-case browser evidence remain in the operations log.
 
 Final browser report: 50/50 passed in 120.480 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
 reader screenshots were visually checked. Ignored local artifacts are retained under `e2e/work/artifacts/roadmap-250/`:
