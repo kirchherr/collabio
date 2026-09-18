@@ -217,7 +217,8 @@ class PgOfficeReviewRepository:
     ) -> ReviewThreadRecord:
         with connection.cursor(row_factory=dict_row) as cursor:
             row = cursor.execute(
-                f"SELECT {_THREAD_COLUMNS} FROM office.review_threads WHERE tenant_id=%s AND object_id=%s AND thread_id=%s",
+                f"SELECT {_THREAD_COLUMNS} FROM office.review_threads "
+                "WHERE tenant_id=%s AND object_id=%s AND thread_id=%s",
                 (user.tenant_id, object_id, thread_id),
             ).fetchone()
         if row is None:
@@ -228,7 +229,8 @@ class PgOfficeReviewRepository:
     def _event(connection: psycopg.Connection[Any], user: UserContext, thread: ReviewThreadRecord) -> ReviewEventRecord:
         with connection.cursor(row_factory=dict_row) as cursor:
             row = cursor.execute(
-                f"SELECT {_EVENT_COLUMNS} FROM office.review_events WHERE tenant_id=%s AND thread_id=%s AND event_id=%s",
+                f"SELECT {_EVENT_COLUMNS} FROM office.review_events "
+                "WHERE tenant_id=%s AND thread_id=%s AND event_id=%s",
                 (user.tenant_id, thread.thread_id, thread.current_event_id),
             ).fetchone()
         if row is None:
@@ -249,7 +251,8 @@ class PgOfficeReviewRepository:
             with connection.cursor(row_factory=dict_row) as cursor:
                 rows = cursor.execute(
                     f"SELECT {_THREAD_COLUMNS} FROM office.review_threads WHERE tenant_id=%s AND object_id=%s "
-                    "AND (%s::text IS NULL OR thread_id>%s) AND (%s::text IS NULL OR anchor_version_id=%s) ORDER BY thread_id LIMIT %s",
+                    "AND (%s::text IS NULL OR thread_id>%s) AND (%s::text IS NULL OR anchor_version_id=%s) "
+                    "ORDER BY thread_id LIMIT %s",
                     (user.tenant_id, object_id, after, after, anchor_version_id, anchor_version_id, limit + 1),
                 ).fetchall()
             return ReviewListSnapshot(
@@ -295,6 +298,7 @@ class PgOfficeReviewRepository:
         if (thread_id is None) != isinstance(command, ReviewCreateCommand):
             raise OfficeDocumentConflictError("Review operation is invalid")
         command_hash = review_command_hash(user, object_id, thread_id, command)
+        thread: ReviewThreadRecord | None
         try:
             with psycopg.connect(self.database_dsn) as connection, connection.transaction():
                 self.documents._set_tenant(connection, user.tenant_id)
@@ -304,7 +308,8 @@ class PgOfficeReviewRepository:
                 document = self.documents._authorized_document(connection, user, object_id, write=True)
                 with connection.cursor(row_factory=dict_row) as cursor:
                     replay = cursor.execute(
-                        f"SELECT {_EVENT_COLUMNS} FROM office.review_events WHERE tenant_id=%s AND created_by=%s AND mutation_reference=%s",
+                        f"SELECT {_EVENT_COLUMNS} FROM office.review_events "
+                        "WHERE tenant_id=%s AND created_by=%s AND mutation_reference=%s",
                         (user.tenant_id, user.user_id, command.mutation_reference),
                     ).fetchone()
                 if replay is not None:
@@ -345,7 +350,8 @@ class PgOfficeReviewRepository:
                 if thread is None:
                     values = result.thread.model_dump()
                     connection.execute(
-                        f"INSERT INTO office.review_threads ({_THREAD_COLUMNS}) VALUES ({','.join(['%s'] * len(values))})",
+                        f"INSERT INTO office.review_threads ({_THREAD_COLUMNS}) "
+                        f"VALUES ({','.join(['%s'] * len(values))})",
                         tuple(values.values()),
                     )
                 self.documents.receipt_store.append_in_transaction(connection, receipt)

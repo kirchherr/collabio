@@ -30,7 +30,8 @@ from suite.platform.office_api import build_office_review_service
 from suite.platform.office_documents import OFFICE_DOCUMENTS_MODULE_ID
 from suite.platform.office_reviews import OfficeReviewService
 from suite.storage.source_object_storage import SourceObjectStorageError
-from test_office_documents_api import OfficeApiHarness, create_document, enable_office, office_api  # noqa: F401
+from test_office_documents_api import OfficeApiHarness, create_document, enable_office
+from test_office_documents_api import office_api as office_api
 
 REVIEW_BODY = "PRIVATE REVIEW BODY <script>not executable</script>"
 

@@ -14,9 +14,10 @@ from suite.platform.office_documents import (
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
 )
-from suite.platform.office_reviews import OfficeReviewService, ReviewCreateCommand, ReviewEventCommand
+from suite.platform.office_reviews import ReviewCreateCommand, ReviewEventCommand
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore, SourceObjectStorageError
-from test_office_documents_pg import Database, command, database, editor, grant, service_for, set_tenant  # noqa: F401
+from test_office_documents_pg import Database, command, editor, grant, service_for, set_tenant
+from test_office_documents_pg import database as database
 
 
 def prepared(database: Database) -> tuple[Any, ...]:
@@ -68,12 +69,14 @@ def test_pg_review_complete_loop_is_reopenable_after_reconstructing_service(data
             object_id=object_id,
             thread_id=created.thread.thread_id,
             write_enabled=True,
-            command=ReviewEventCommand(
-                operation=operation,
-                expected_revision=revision,
-                mutation_reference=operation,
-                human_confirmation=True,
-                body="reply content" if operation == "reply" else None,
+            command=ReviewEventCommand.model_validate(
+                {
+                    "operation": operation,
+                    "expected_revision": revision,
+                    "mutation_reference": operation,
+                    "human_confirmation": True,
+                    "body": "reply content" if operation == "reply" else None,
+                }
             ),
         )
     detail = reviews.detail(
