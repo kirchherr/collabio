@@ -606,13 +606,11 @@ def test_backup_failover_policy_covers_future_suite_domains() -> None:
     assert policy.domain("office_documents").criticality == "critical"
     assert (
         "native office.review_threads heads and append-only office.review_events with migration 0084, "
-        "exact saved-version text anchors and revision transitions"
-        in policy.domain("office_documents").state_artifacts
+        "exact saved-version text anchors and revision transitions" in policy.domain("office_documents").state_artifacts
     )
     assert (
         "review COMMENT SourceObject bytes and exact S3 versions, parent-document ACL validation, "
-        "source manifests, receipts and actor-bound retry hashes"
-        in policy.domain("office_documents").state_artifacts
+        "source manifests, receipts and actor-bound retry hashes" in policy.domain("office_documents").state_artifacts
     )
     assert policy.domain("mail_messages_threads").criticality == "critical"
     assert policy.domain("module_registry_state").criticality == "critical"
