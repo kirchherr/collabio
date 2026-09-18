@@ -125,6 +125,8 @@ The inspector closes on entry to tablet width to avoid covering the table; expli
 - Proof includes real version saves/reopen/immutable history, preserved marks, structure and cell selections,
   isolated undo/redo, immediate focus, removal cancellation, keyboard-created rows, blocked final-row expansion,
   valid-dimension but excessive canonical bytes, reader/history, pending/uncertain saves with retry and context changes.
+- Documentation closeout `58b9f9e` passed all 11 targeted module/KB/roadmap contracts in 59.83 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 12:13:31 UTC.
 - No dependency, schema, API, storage or tenant activation change. Item 252 migration/backup/nonempty recovery/
   foundation/business proofs remain retained, not rerun. Primary implementation is the existing Office JS/HTML/CSS;
   tests are `office-tables.spec.mjs` and `office-tables-responsive.spec.mjs`.
