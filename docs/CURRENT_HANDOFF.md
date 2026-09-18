@@ -139,7 +139,7 @@ live collaboration was introduced. There are now nine Office API operations.
   unexpected or flaky; 117 browser cases plus 35 model cases. All prior 142 checks remain. Final screenshots were
   visually checked by root and an independent UI reviewer.
 - Independent restore review found omitted unrelated Office grants/MAINTAIN and unpinned review CHECKs. `1cf9ee9` and
-  `552b6b6` capture all direct/effective Office ACLs, exact owner/runtime rights and nine canonical state/anchor/byte
+  `552b6b6` capture all direct Office grantees and effective column grants, exact owner/runtime rights and nine canonical state/anchor/byte
   CHECKs. Thirty-seven regressions include three real PostgreSQL grant cases. One old fixture assumed the first grant
   belonged to the runtime; `2305a96` selects that role explicitly. All 269 focused restore/recovery/backup checks passed
   in 23.40 seconds. Full quality on `2305a96`: Ruff/format 674 files, Mypy 532 sources and full Pytest passed, with only

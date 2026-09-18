@@ -68,7 +68,7 @@ of distributed rollback.
 The completed migration 0083 recovery evidence cannot stand in for verification of the new migration 0084 tables and
 events. Review restore evidence must cover create, reply, resolve and reopen, exact source and receipt hashes,
 original saved-version anchors, event ordering and access under current parent ACLs.
-The hardened verifier also checks all direct/effective Office grantees, legitimate owner rights and runtime privileges,
+The hardened verifier also checks all direct Office grantees and effective column grants, legitimate owner rights and runtime privileges,
 including MAINTAIN, and pins all nine canonical review CHECK definitions. This prevents identical source/restore drift
 from passing merely because both databases contain the same broadened grants or weakened constraints.
 

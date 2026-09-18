@@ -287,7 +287,7 @@ buffering correction are retained in the operations log and ignored failed-run a
 Browser results: `sha256:96f4a596d21e395073967745c1811448fdbc2e04bc7f2f7e20ae4e4075fe156f`, under ignored
 `e2e/work/artifacts/roadmap-256/`. Final image hashes are recorded in the operations log.
 
-Independent restore review led to `1cf9ee9` and `552b6b6`: the verifier binds complete direct/effective Office grants,
+Independent restore review led to `1cf9ee9` and `552b6b6`: the verifier binds all direct Office grantees and effective column grants,
 legitimate owner rights, permitted runtime privileges and all nine canonical review CHECK definitions. Its grant
 inventory includes unrelated grantees and MAINTAIN privileges. Thirty-seven added cases include three live PostgreSQL
 grant-tamper cases with cleanup. `2305a96` corrects an older hash fixture to target the runtime role explicitly.
