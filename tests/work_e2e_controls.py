@@ -5,6 +5,7 @@ import re
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID
 
 WORK_E2E_READER_ID = "work-reader-e2e"
+WORK_E2E_OFFICE_EDITOR_ID = "work-office-editor-e2e"
 WORK_E2E_CRM_OBJECT_TYPES = {
     "crm-account-work-e2e-main": "crm.account",
     "crm-account-work-e2e-other": "crm.account",
@@ -66,4 +67,33 @@ def permits_reader_acl_fixture(
         and subject_type == "user"
         and subject_id == WORK_E2E_READER_ID
         and permission == "read"
+    )
+
+
+def office_storage_failure_modes(
+    *, tenant_id: str | None, method: str, path: str, requested: bool, allow_synthetic_traffic: bool
+) -> tuple[bool, bool]:
+    if tenant_id != WORK_E2E_TENANT_ID or not requested:
+        return False, False
+    return (
+        allow_synthetic_traffic and method == "POST" and (
+            path == "/v1/office/documents"
+            or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None
+        ),
+        method == "GET" and re.fullmatch(r"/v1/office/documents/[^/]+/content", path) is not None,
+    )
+
+
+def permits_office_acl_fixture(
+    *, tenant_id: str, object_id: str, object_type: str, subject_type: str, subject_id: str, permission: str
+) -> bool:
+    return (
+        tenant_id == WORK_E2E_TENANT_ID
+        and re.fullmatch(r"office-doc-[a-f0-9]{32}", object_id) is not None
+        and object_type == "office.document"
+        and subject_type == "user"
+        and (
+            (subject_id == WORK_E2E_READER_ID and permission == "read")
+            or (subject_id == WORK_E2E_OFFICE_EDITOR_ID and permission == "admin")
+        )
     )

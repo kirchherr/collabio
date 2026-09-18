@@ -423,6 +423,12 @@ from suite.platform.module_family_backlog import (
     build_module_family_backlog_response,
     build_module_family_next_slice_selection_response,
 )
+from suite.platform.office_api import build_office_document_service, register_office_routes
+from suite.platform.office_documents import (
+    OFFICE_DOCUMENTS_MODULE_ID,
+    OFFICE_DOCUMENTS_READ_FEATURE_ID,
+    OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
+)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -23277,6 +23283,19 @@ def build_app() -> FastAPI:
     app.state.voice_guard = voice_guard
     app.state.workspace_source_object_catalog = workspace_source_object_catalog
     app.state.workspace_source_object_repository = workspace_source_object_repository
+    app.state.office_document_service = build_office_document_service(
+        source_repository=workspace_source_object_repository, audit=audit_logger
+    )
+    register_office_routes(
+        app,
+        context_dependency=get_tenant_request_context,
+        read_gate=require_module_api_gate(
+            module_id=OFFICE_DOCUMENTS_MODULE_ID, feature_id=OFFICE_DOCUMENTS_READ_FEATURE_ID
+        ),
+        write_gate=require_module_api_gate(
+            module_id=OFFICE_DOCUMENTS_MODULE_ID, feature_id=OFFICE_DOCUMENTS_WRITE_FEATURE_ID
+        ),
+    )
 
     return app
 

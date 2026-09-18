@@ -1,0 +1,220 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, cast
+
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.routing import APIRoute
+from psycopg import Error as PsycopgError
+from starlette.datastructures import MutableHeaders
+from starlette.staticfiles import StaticFiles
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.platform.context import TenantRequestContext
+from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
+from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
+from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
+from suite.platform.office_documents import (
+    OFFICE_DOCUMENTS_MODULE_ID,
+    OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
+    OfficeDocumentConflictError,
+    OfficeDocumentContentResponse,
+    OfficeDocumentCreateCommand,
+    OfficeDocumentHistoryResponse,
+    OfficeDocumentListResponse,
+    OfficeDocumentNotFoundError,
+    OfficeDocumentPermissionError,
+    OfficeDocumentSaveCommand,
+    OfficeDocumentService,
+)
+from suite.storage.source_object_storage import PgSourceObjectRepository, SourceObjectStorageError
+from suite.storage.source_objects import (
+    InMemorySourceObjectRepository,
+    PgSourceObjectWriteReceiptStore,
+    SourceObjectRepository,
+)
+
+MAX_OFFICE_REQUEST_BYTES = 512_000
+OFFICE_CSP = (
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+    "connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+
+
+class OfficeBoundaryMiddleware:
+    """Bound JSON before parsing; protect Office errors and content from caching."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] != "http" or not (path == "/office" or path.startswith(("/office/", "/v1/office/"))):
+            await self.app(scope, receive, send)
+            return
+
+        async def protected_send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["Cache-Control"] = "no-store"
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["Referrer-Policy"] = "no-referrer"
+                headers["Content-Security-Policy"] = OFFICE_CSP
+            await send(message)
+
+        if path.startswith("/v1/office/") and scope.get("method") == "POST":
+            body = bytearray()
+            while True:
+                message = await receive()
+                if message["type"] == "http.disconnect":
+                    return
+                body.extend(message.get("body", b""))
+                if len(body) > MAX_OFFICE_REQUEST_BYTES:
+                    await JSONResponse({"detail": "Document request is too large"}, status_code=413)(
+                        scope, receive, protected_send
+                    )
+                    return
+                if not message.get("more_body", False):
+                    break
+            consumed = False
+
+            async def bounded_receive() -> Message:
+                nonlocal consumed
+                if consumed:
+                    return await receive()
+                consumed = True
+                return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+            await self.app(scope, bounded_receive, protected_send)
+        else:
+            await self.app(scope, receive, protected_send)
+
+
+class OfficeRoute(APIRoute):
+    def get_route_handler(self) -> Callable[[Request], Any]:
+        handler = super().get_route_handler()
+
+        async def guarded(request: Request) -> Any:
+            try:
+                return await handler(request)
+            except (RequestValidationError, RecursionError):
+                # FastAPI's default errors may echo whole document bodies.
+                return JSONResponse({"detail": "Invalid document request"}, status_code=422)
+            except OfficeDocumentNotFoundError:
+                return JSONResponse({"detail": "Document not found"}, status_code=404)
+            except OfficeDocumentPermissionError:
+                return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
+            except OfficeDocumentConflictError:
+                return JSONResponse({"detail": "The document has a newer or conflicting saved version"}, status_code=409)
+            except OfficeDocumentInvalidContentError:
+                return JSONResponse({"detail": "Document validation failed"}, status_code=400)
+            except (SourceObjectStorageError, PsycopgError):
+                return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
+
+        return guarded
+
+
+def build_office_document_service(
+    *, source_repository: SourceObjectRepository, audit: InMemoryAuditLogger
+) -> OfficeDocumentService:
+    if isinstance(source_repository, PgSourceObjectRepository):
+        repository = PgOfficeDocumentRepository(
+            database_dsn=source_repository.database_dsn,
+            source_repository=source_repository,
+            receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=source_repository.database_dsn),
+        )
+        return OfficeDocumentService(repository=repository, source_repository=source_repository, audit=audit)
+    if not isinstance(source_repository, InMemorySourceObjectRepository):
+        raise ValueError("Office requires an explicit supported source repository")
+    return OfficeDocumentService(
+        repository=InMemoryOfficeDocumentRepository(source_repository=source_repository),
+        source_repository=source_repository,
+        audit=audit,
+    )
+
+
+def _write_enabled(request: Request, context: TenantRequestContext) -> bool:
+    registry = cast(InMemoryModuleRegistry, request.app.state.module_registry)
+    try:
+        registry.require_module_gate(
+            tenant_id=context.user_context.tenant_id,
+            module_id=OFFICE_DOCUMENTS_MODULE_ID,
+            surface=ModuleGateSurface.NORMAL_API,
+            feature_id=OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
+        )
+    except (LookupError, ModuleLifecycleError):
+        return False
+    return True
+
+
+def register_office_routes(
+    app: FastAPI, *, context_dependency: Callable[..., Any], read_gate: Callable[..., Any],
+    write_gate: Callable[..., Any],
+) -> None:
+    app.add_middleware(OfficeBoundaryMiddleware)
+    ui_dir = Path(__file__).resolve().parent.parent / "ui" / "office"
+    app.mount("/office/assets", StaticFiles(directory=ui_dir), name="office-assets")
+
+    @app.get("/office", response_class=FileResponse)
+    def office_workspace() -> FileResponse:
+        return FileResponse(ui_dir / "index.html")
+
+    @app.get("/office/editor.js", response_class=FileResponse)
+    def office_editor_bundle() -> FileResponse:
+        bundle = Path("/opt/collabio-office/office.bundle.js")
+        if not bundle.is_file():
+            raise HTTPException(status_code=503, detail="Office editor build is unavailable")
+        return FileResponse(bundle, media_type="text/javascript")
+
+    @app.get("/office/licenses", response_class=FileResponse)
+    def office_component_licenses() -> FileResponse:
+        return FileResponse("/opt/collabio-office/THIRD_PARTY_NOTICES.txt", media_type="text/plain")
+
+    router = APIRouter(prefix="/v1/office/documents", route_class=OfficeRoute, dependencies=[Depends(read_gate)])
+
+    @router.get("", response_model=OfficeDocumentListResponse)
+    def list_documents(request: Request, context: TenantRequestContext = Depends(context_dependency)) -> Any:  # noqa: B008
+        return request.app.state.office_document_service.list_documents(
+            user_context=context.user_context, write_enabled=_write_enabled(request, context)
+        )
+
+    @router.post("", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])
+    def create_document(
+        command: OfficeDocumentCreateCommand, request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.create(
+            user_context=context.user_context, command=command, write_enabled=True
+        )
+
+    @router.get("/{object_id}/content", response_model=OfficeDocumentContentResponse)
+    def read_document(
+        object_id: str, request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        version_id: str | None = Query(default=None, min_length=1, max_length=128),
+    ) -> Any:
+        return request.app.state.office_document_service.read_content(
+            user_context=context.user_context, object_id=object_id, version_id=version_id,
+            write_enabled=_write_enabled(request, context),
+        )
+
+    @router.get("/{object_id}/versions", response_model=OfficeDocumentHistoryResponse)
+    def document_history(
+        object_id: str, request: Request, context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.history(user_context=context.user_context, object_id=object_id)
+
+    @router.post("/{object_id}/versions", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])
+    def save_document(
+        object_id: str, command: OfficeDocumentSaveCommand, request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.save(
+            user_context=context.user_context, object_id=object_id, command=command, write_enabled=True
+        )
+
+    app.include_router(router)

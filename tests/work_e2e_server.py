@@ -71,10 +71,13 @@ from suite.testing.work_e2e_guard import (
 )
 from work_e2e_controls import (
     crm_failure_requested,
+    office_storage_failure_modes,
     permits_crm_reader_acl_fixture,
+    permits_office_acl_fixture,
     permits_reader_acl_fixture,
     storage_failure_modes,
 )
+from work_e2e_office import build_synthetic_office_service
 
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
@@ -116,6 +119,10 @@ app.state.module_registry = InMemoryModuleRegistry(
     tenant_modules=[
         _enabled_state("crm_erp", default_crm_erp_subfeature_enabled_features()),
         _enabled_state("knowledge_base", knowledge_features),
+        _enabled_state("office_documents", {
+            "office_documents.documents.read": True,
+            "office_documents.documents.write": allow_synthetic_traffic,
+        }),
         _enabled_state("tasks_activities", task_features),
         _enabled_state("time_tracking", time_features),
     ],
@@ -204,8 +211,15 @@ async def _isolated_storage_failure(request: Request, call_next: RequestResponse
         requested=request.headers.get("X-Work-E2E-Fail-Storage") == "1",
         allow_synthetic_traffic=allow_synthetic_traffic,
     )
-    write_token = _fail_storage_write.set(fail_write)
-    read_token = _fail_storage_read.set(fail_read)
+    office_fail_write, office_fail_read = office_storage_failure_modes(
+        tenant_id=request.headers.get("X-Tenant-Id"),
+        method=request.method,
+        path=request.url.path,
+        requested=request.headers.get("X-Work-E2E-Fail-Storage") == "1",
+        allow_synthetic_traffic=allow_synthetic_traffic,
+    )
+    write_token = _fail_storage_write.set(fail_write or office_fail_write)
+    read_token = _fail_storage_read.set(fail_read or office_fail_read)
     crm_token = _fail_crm_read.set(
         crm_failure_requested(
             tenant_id=request.headers.get("X-Tenant-Id"),
@@ -238,7 +252,11 @@ class SyntheticReaderAclStore(InMemoryAuthzAdminStore):
             subject_id=command.acl_subject_id,
             permission=command.permission,
         )
-        if not (permits_reader_acl_fixture(**fields) or permits_crm_reader_acl_fixture(**fields)):
+        if not (
+            permits_reader_acl_fixture(**fields)
+            or permits_crm_reader_acl_fixture(**fields)
+            or permits_office_acl_fixture(**fields)
+        ):
             raise HTTPException(status_code=403, detail="Outside synthetic reader ACL fixture")
         return self.reader_acl_store.upsert_object_acl_entry(
             tenant_id=tenant_id, command=command, audit_chain_ref=audit_chain_ref
@@ -287,9 +305,9 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
             readable_object_ids=request.headers.get("X-Readable-Object-Ids"),
         ),
     )
-    if not request.url.path.startswith(("/v1/kb/", "/v1/admin/kb/", "/v1/crm/")):
+    if not request.url.path.startswith(("/v1/kb/", "/v1/admin/kb/", "/v1/crm/", "/v1/office/")):
         return context
-    # KB and CRM visibility comes from fresh database ACLs, never browser-supplied IDs.
+    # KB, CRM and Office visibility comes from fresh database ACLs, never browser-supplied IDs.
     directory = PgPrincipalDirectory(database_dsn=os.environ["SUITE_DATABASE_DSN"])
     readable = directory.readable_object_ids(
         tenant_id=context.user_context.tenant_id,
@@ -303,6 +321,17 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
 
 
 _install_synthetic_knowledge_runtime()
+office_sdk_client = build_boto3_s3_compatible_client(
+    endpoint_url=os.environ["SUITE_S3_ENDPOINT_URL"],
+    access_key_id=os.environ["SUITE_S3_ACCESS_KEY_ID"],
+    secret_access_key=os.environ["SUITE_S3_SECRET_ACCESS_KEY"],
+    storage_provider="minio",
+)
+app.state.office_document_service = build_synthetic_office_service(
+    database_dsn=os.environ["SUITE_DATABASE_DSN"],
+    client=FailureInjectableObjectStoreClient(sdk_client=office_sdk_client.sdk_client, storage_provider="minio"),
+    audit=app.state.audit_logger,
+)
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
 app.state.crm_account_service.repository = crm_repository
 app.state.crm_contact_service.repository = crm_repository

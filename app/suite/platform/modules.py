@@ -1597,6 +1597,19 @@ class ModuleWorkerGate:
 def default_module_catalog_entries() -> tuple[ModuleCatalogEntry, ...]:
     return (
         ModuleCatalogEntry(
+            module_id="office_documents",
+            display_name="Office Documents",
+            module_version="0.1.0",
+            module_kind=ModuleKind.BUSINESS_DOMAIN,
+            status=ModuleStatus.INSTALLED,
+            description=(
+                "Native structured documents with explicit version saves, authoritative ACL "
+                "and immutable source receipts."
+            ),
+            manifest_hash="sha256:office-native-documents-module-manifest",
+            required_migration_versions=("0083",),
+        ),
+        ModuleCatalogEntry(
             module_id="crm_erp",
             display_name="CRM/ERP",
             module_version="0.1.0",

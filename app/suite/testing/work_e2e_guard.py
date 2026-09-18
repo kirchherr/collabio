@@ -48,7 +48,13 @@ def require_isolated_work_e2e_environment(environ: Mapping[str, str]) -> bool:
             raise RuntimeError(f"{key} must use PostgreSQL")
         if parsed.hostname != WORK_E2E_DATABASE_HOST or parsed.path != f"/{WORK_E2E_DATABASE_NAME}":
             raise RuntimeError(f"{key} must address only the ephemeral Work E2E database")
-    for key in ("SUITE_KB_RUNTIME_DATABASE_DSN", "SUITE_KB_WRITE_APPROVAL_LEDGER_DSN"):
+    for key in (
+        "SUITE_KB_RUNTIME_DATABASE_DSN",
+        "SUITE_KB_WRITE_APPROVAL_LEDGER_DSN",
+        "SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN",
+        "SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN",
+        "SUITE_OFFICE_DOCUMENT_DATABASE_DSN",
+    ):
         if key in environ and environ[key] != environ["SUITE_DATABASE_DSN"]:
             raise RuntimeError(f"{key} must not override the isolated Work E2E database")
 

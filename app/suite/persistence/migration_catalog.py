@@ -758,6 +758,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="knowledge_base",
         evidence_refs=("doc:knowledge-base-module-charter", "test:knowledge-base-version-acls"),
     ),
+    SqlMigration(
+        version="0083",
+        name="office_native_documents",
+        resource_name="0083_office_native_documents.sql",
+        module_id="office_documents",
+        evidence_refs=("doc:office-native-documents", "test:office-native-documents"),
+    ),
 )
 
 

@@ -14,9 +14,12 @@ from suite.testing.work_e2e_guard import (
 )
 from work_e2e_controls import (
     WORK_E2E_CRM_OBJECT_TYPES,
+    WORK_E2E_OFFICE_EDITOR_ID,
     WORK_E2E_READER_ID,
     crm_failure_requested,
+    office_storage_failure_modes,
     permits_crm_reader_acl_fixture,
+    permits_office_acl_fixture,
     permits_reader_acl_fixture,
     storage_failure_modes,
 )
@@ -55,6 +58,17 @@ def test_work_e2e_guard_accepts_only_explicit_isolated_configuration() -> None:
     assert require_isolated_work_e2e_environment(blocked) is False
 
 
+def test_work_e2e_guard_accepts_only_same_database_source_receipt_and_office_overrides() -> None:
+    environment = valid_environment()
+    for key in (
+        "SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN",
+        "SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN",
+        "SUITE_OFFICE_DOCUMENT_DATABASE_DSN",
+    ):
+        environment[key] = environment["SUITE_DATABASE_DSN"]
+    assert require_isolated_work_e2e_environment(environment) is True
+
+
 @pytest.mark.parametrize(
     ("key", "value"),
     (
@@ -74,6 +88,9 @@ def test_work_e2e_guard_accepts_only_explicit_isolated_configuration() -> None:
         ("SUITE_KB_RUNTIME_ACTIVATION_STORE_BACKEND", "postgres"),
         ("SUITE_KB_RUNTIME_DATABASE_DSN", "postgresql://app:secret@postgres:5432/collabio"),
         ("SUITE_KB_WRITE_APPROVAL_LEDGER_DSN", "postgresql://app:secret@postgres:5432/collabio"),
+        ("SUITE_WORKSPACE_SOURCE_OBJECT_REPOSITORY_DSN", "postgresql://app:secret@postgres:5432/collabio"),
+        ("SUITE_SOURCE_OBJECT_WRITE_RECEIPT_DSN", "postgresql://app:secret@postgres:5432/collabio"),
+        ("SUITE_OFFICE_DOCUMENT_DATABASE_DSN", "postgresql://app:secret@postgres:5432/collabio"),
     ),
 )
 def test_work_e2e_guard_fails_closed_outside_synthetic_boundary(key: str, value: str) -> None:
@@ -252,3 +269,53 @@ def test_crm_reader_acl_fixture_rejects_arbitrary_objects_tenants_principals_and
         ("permission", "admin"),
     ):
         assert not permits_crm_reader_acl_fixture(**{**valid, key: value})
+
+
+@pytest.mark.parametrize("allow_traffic", (True, False))
+def test_office_failure_fixture_uses_exact_read_and_write_routes(allow_traffic: bool) -> None:
+    for method, path, expected in (
+        ("GET", "/v1/office/documents/office-doc-test/content", (False, True)),
+        ("POST", "/v1/office/documents", (allow_traffic, False)),
+        ("POST", "/v1/office/documents/office-doc-test/versions", (allow_traffic, False)),
+        ("GET", "/v1/office/documents", (False, False)),
+        ("GET", "/v1/office/documents/office-doc-test/versions", (False, False)),
+        ("POST", "/v1/office/documents/office-doc-test/content", (False, False)),
+        ("POST", "/v1/office/documents/nested/id/versions", (False, False)),
+        ("POST", "/v1/admin/kb/articles/write-approvals/execute", (False, False)),
+    ):
+        assert office_storage_failure_modes(
+            tenant_id=WORK_E2E_TENANT_ID, method=method, path=path,
+            requested=True, allow_synthetic_traffic=allow_traffic,
+        ) == expected
+        assert office_storage_failure_modes(
+            tenant_id="tenant-demo", method=method, path=path,
+            requested=True, allow_synthetic_traffic=allow_traffic,
+        ) == (False, False)
+        assert office_storage_failure_modes(
+            tenant_id=WORK_E2E_TENANT_ID, method=method, path=path,
+            requested=False, allow_synthetic_traffic=allow_traffic,
+        ) == (False, False)
+
+
+def test_office_acl_fixture_only_allows_known_reader_and_creator_permission_pairs() -> None:
+    fields = {
+        "tenant_id": WORK_E2E_TENANT_ID,
+        "object_id": "office-doc-" + "a" * 32,
+        "object_type": "office.document",
+        "subject_type": "user",
+        "subject_id": WORK_E2E_READER_ID,
+        "permission": "read",
+    }
+    assert permits_office_acl_fixture(**fields)
+    assert permits_office_acl_fixture(**{**fields, "subject_id": WORK_E2E_OFFICE_EDITOR_ID, "permission": "admin"})
+    for key, value in (
+        ("tenant_id", "tenant-demo"),
+        ("object_id", "office-doc-other"),
+        ("object_id", "kb-article-" + "a" * 32),
+        ("object_type", "document"),
+        ("subject_type", "role"),
+        ("subject_id", "work-user-e2e"),
+        ("permission", "write"),
+        ("permission", "admin"),
+    ):
+        assert not permits_office_acl_fixture(**{**fields, key: value})

@@ -1,3 +1,11 @@
+FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 AS office-frontend
+WORKDIR /office-build
+COPY frontend/office/package.json frontend/office/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY frontend/office/build.mjs ./
+COPY app/suite/ui/office/office.js ./src/office.js
+RUN npm run build
+
 FROM python:3.12-alpine@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -16,6 +24,8 @@ RUN python -m pip install --require-hashes --requirement requirements.lock
 
 FROM base AS dev
 
+COPY --from=office-frontend /office-build/dist /opt/collabio-office
+
 COPY requirements-dev.lock .
 COPY requirements-preview.lock .
 RUN python -m pip install --require-hashes --requirement requirements-dev.lock
@@ -32,6 +42,8 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS runtime
+
+COPY --from=office-frontend /office-build/dist /opt/collabio-office
 
 RUN addgroup -S -g 10001 collabio \
     && adduser -S -D -H -u 10001 -G collabio collabio \
