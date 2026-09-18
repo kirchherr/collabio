@@ -1,0 +1,366 @@
+{
+  "approved_usage_profile": "development_evaluation",
+  "collabio_brand_only": true,
+  "component_count": 23,
+  "components": [
+    {
+      "component_name": "GenOffice selected DOCX engine source",
+      "component_version": "62f4adf92ee3",
+      "declared_license_expression": "Apache-2.0",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:68e32334df324ef4fc79fad3a26487e5abac36055a484bb6c8d7ecf9d8350885"
+        },
+        {
+          "kind": "notice",
+          "source_path": "NOTICE",
+          "source_sha256": "sha256:df01475e39e3d292935a8aa965f45519250b2707d625e2506e7421cd702f0970"
+        }
+      ],
+      "selected_distribution_license_expression": "Apache-2.0",
+      "source_artifact_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040"
+    },
+    {
+      "component_name": "emf-converter",
+      "component_version": "2.0.2",
+      "declared_license_expression": "Apache-2.0",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "packages/docx-engine/src/vendor/emf-converter/LICENSE",
+          "source_sha256": "sha256:2c27550900d2cabf83527a04600ba8042e3ba89e70ec077ff220afa48c8230a7"
+        }
+      ],
+      "selected_distribution_license_expression": "Apache-2.0",
+      "source_artifact_sha256": "sha256:5ac1fdfa83034db3a8da06985b5f96e87a8eb0acfe3614f05b4fb3afe8e3dd04"
+    },
+    {
+      "component_name": "@nodable/entities",
+      "component_version": "3.0.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "supplemental/@nodable/entities@3.0.0/LICENSE",
+          "source_sha256": "sha256:750cb3fb6362804957ef52caaf9b5c824015be44d494637330d7cd8834d31d40"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:aac1b10aae6c2c7f1fe8f82f4ba7e665605441286acbcb50d8864be4eda2e6bf"
+    },
+    {
+      "component_name": "anynum",
+      "component_version": "1.0.1",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:705d5c67f0438588aded995c6f88fee65495d0bf6a785a5fa2c448a2fb1f341a"
+    },
+    {
+      "component_name": "core-util-is",
+      "component_version": "1.0.3",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:33b734d60042d0fe0c92dd1fc1e874193a1c899ec3e276a2eb935d2d0bf5b710"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:4430fdc71f2cf3b5e297113b9a692da2d6cff96cf84da00f0ecef5e5a6e74d0c"
+    },
+    {
+      "component_name": "fast-xml-builder",
+      "component_version": "1.3.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:bf856def127685974acc667fc4d0cb612b0cd48226cb0050aa909c66d614783a"
+    },
+    {
+      "component_name": "fast-xml-parser",
+      "component_version": "5.10.1",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:7883225d5e84a6bbb9b170c3d891b4bf6d6259cee869c86bd86381a927071745"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:96c5fb404c640da25ceac9cceebe599d703df1fb22887ef6c8d768bd56d1c6d6"
+    },
+    {
+      "component_name": "immediate",
+      "component_version": "3.0.6",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE.txt",
+          "source_sha256": "sha256:809e66de579fb7d92503848bbe6d1f348f4f6521a71e5d294fe7cc0c87a3b4ff"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:98c792f39650b00818c05dcc407902034dc4092f368596b37658d44f28739d11"
+    },
+    {
+      "component_name": "inherits",
+      "component_version": "2.0.4",
+      "declared_license_expression": "ISC",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:5ffe28e7ade7d8f10d85d5337a73fd793dac5c462fb9a28fbf8c5046c7fbca3b"
+        }
+      ],
+      "selected_distribution_license_expression": "ISC",
+      "source_artifact_sha256": "sha256:d94dbc6c1bb3c5ac0fb12a73ade187108fc60de273a1b754f55044eb5e24afaf"
+    },
+    {
+      "component_name": "is-unsafe",
+      "component_version": "2.0.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:99f1556cb178706d884881069f6bb8a2a50b241f86a88ea265aa6719014bef23"
+    },
+    {
+      "component_name": "isarray",
+      "component_version": "1.0.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "readme",
+          "source_path": "README.md",
+          "source_sha256": "sha256:ff138e683771b187f3629c383db72ee7d632009010a36d08e18e8d2a34222ec7"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:e23c76f14f5222e07e39d89858b61e8e33f96956de9e0df3659cbdf8db950c87"
+    },
+    {
+      "component_name": "jszip",
+      "component_version": "3.10.1",
+      "declared_license_expression": "(MIT OR GPL-3.0-or-later)",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE.markdown",
+          "source_sha256": "sha256:566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4"
+        },
+        {
+          "kind": "license",
+          "source_path": "lib/license_header.js",
+          "source_sha256": "sha256:27873abeec2df3693480a8d1b8fe17dd61bee843d1b39c1c9cfab57ffe93099e"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:5117f4a2a645aeb307bf3b829c575ad58135cc97e75291e594532ab5b5b21b23"
+    },
+    {
+      "component_name": "lie",
+      "component_version": "3.3.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "license.md",
+          "source_sha256": "sha256:5c81b0caa98593408b03125efa25efe622341ed87ae55561968828cd887d64a4"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:2db8461cd4a10e2fc3588c8c55da34d33465ff81cc19c72416bbcaec7ee6a36e"
+    },
+    {
+      "component_name": "pako",
+      "component_version": "1.0.11",
+      "declared_license_expression": "(MIT AND Zlib)",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539"
+        },
+        {
+          "kind": "readme",
+          "source_path": "README.md",
+          "source_sha256": "sha256:8174ca473d9df9da15064d199064e8e3ff88d46beb66b545e048756e6f0fb469"
+        },
+        {
+          "kind": "readme",
+          "source_path": "lib/zlib/README",
+          "source_sha256": "sha256:d8b499598e43d755ea8918448128259ff01820c50d94d5a48c8883d0a594ddb1"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT AND Zlib",
+      "source_artifact_sha256": "sha256:0d4028dc0352a740c30cbfd772917f2744986d42bfa0b06ec7642bffe7ad3941"
+    },
+    {
+      "component_name": "path-expression-matcher",
+      "component_version": "1.6.2",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:75486ea0af9309140ca6e2c401d7e67bea8f4892344e5707f6394dc5e83dfc44"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:a501b52ebf8236b2264e98b23000ca67e30d0d6cbb2815a041e8b2c0e3818a36"
+    },
+    {
+      "component_name": "process-nextick-args",
+      "component_version": "2.0.1",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "license.md",
+          "source_sha256": "sha256:ecdccbcf39024f624ded480c01c0b25458e1eca8f26ecf040933865ce56d9a4f"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:425bf8c725d23bc5ac76bcedd10d9cdbbd6354c7273dd7def44417cfbca8889b"
+    },
+    {
+      "component_name": "readable-stream",
+      "component_version": "2.3.8",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:1648613948f68ac9cbbe8f72a3f93a67ecdb862ffb57946a2c0bbb5a1479a532"
+    },
+    {
+      "component_name": "safe-buffer",
+      "component_version": "5.1.2",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:e09206c60fccafb952c854af7629cbb031a98d6da2e143fb3aa3c8a48402aa22"
+    },
+    {
+      "component_name": "setimmediate",
+      "component_version": "1.0.5",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE.txt",
+          "source_sha256": "sha256:c4b4ad3a5746f1f5249a6dd90396ec519264e1bb02e01e48a6522c48a3a97cb4"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:5cb9fc22698364ed42c02d6aa3dc50ffeafa68452ae84699672e3dfd74922c9e"
+    },
+    {
+      "component_name": "string_decoder",
+      "component_version": "1.1.1",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:11f2aafb37d06b3ee5bdaf06e9811141d0da05263c316f3d627f45c20d43261b"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:af8262434508fa8292407f7fef4690d19eabb73387ca230b41f2a1155216963a"
+    },
+    {
+      "component_name": "strnum",
+      "component_version": "2.4.1",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:2aa16be0f4fad003a352a955a43314e9d1d8deef7034060a82ac9c49f32b81e2"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:375915559b5736275bc523f73c64804c8c6904d0ee089303847ab8606b39b391"
+    },
+    {
+      "component_name": "util-deprecate",
+      "component_version": "1.0.2",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:0154425673db15cdfa80ecba2c9b1f1a867f7197a006764712849bfc3a93cbb7"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:79a1de983c1b393180c47456d6b73caab278a00ea6e37d5c6675f2dcdec2a3e5"
+    },
+    {
+      "component_name": "xml-naming",
+      "component_version": "0.3.0",
+      "declared_license_expression": "MIT",
+      "included_files": [
+        {
+          "kind": "license",
+          "source_path": "LICENSE",
+          "source_sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07"
+        }
+      ],
+      "selected_distribution_license_expression": "MIT",
+      "source_artifact_sha256": "sha256:da0925864bd4c04ef3384e89ef5d4774d82ed6d9fa241519b003ddbcc0effac8"
+    }
+  ],
+  "deterministic_render_verified": true,
+  "engine_execution_allowed": false,
+  "enterprise_scope_excluded": true,
+  "included_legal_file_count": 27,
+  "legal_dossier_report_hash": "sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a",
+  "license_material_collection_report_hash": "sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195",
+  "notice_artifact_sha256": "sha256:e6dada57493fc5161dc4c5364f36feab11298fc887f5253eb1f03b3920239162",
+  "notice_artifact_size_bytes": 97493,
+  "on_prem_distribution_allowed": false,
+  "production_use_allowed": false,
+  "report_hash": "sha256:878e93a174a9deeae9c137a0229210c45dd636c9763cda9d430d42e6ad07fdc7",
+  "schema_version": "genoffice_third_party_notice_report.v1",
+  "selected_source_scopes": [
+    "packages/docx-engine/**"
+  ],
+  "source_archive_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040",
+  "source_import_allowed": false
+}

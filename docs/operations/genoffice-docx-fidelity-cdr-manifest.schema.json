@@ -1,0 +1,162 @@
+{
+  "$defs": {
+    "PreviewCdrPageManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "height_pixels": {
+          "maximum": 4096,
+          "minimum": 1,
+          "title": "Height Pixels",
+          "type": "integer"
+        },
+        "page_number": {
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Page Number",
+          "type": "integer"
+        },
+        "rgb_byte_length": {
+          "maximum": 50331648,
+          "minimum": 3,
+          "title": "Rgb Byte Length",
+          "type": "integer"
+        },
+        "rgb_content_hash": {
+          "title": "Rgb Content Hash",
+          "type": "string"
+        },
+        "width_pixels": {
+          "maximum": 4096,
+          "minimum": 1,
+          "title": "Width Pixels",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "page_number",
+        "width_pixels",
+        "height_pixels",
+        "rgb_content_hash",
+        "rgb_byte_length"
+      ],
+      "title": "PreviewCdrPageManifest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "active_content_preserved": {
+      "const": false,
+      "default": false,
+      "title": "Active Content Preserved",
+      "type": "boolean"
+    },
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "cdr_profile_ref": {
+      "const": "collabio-pixel-cdr:raw-rgb.v1",
+      "default": "collabio-pixel-cdr:raw-rgb.v1",
+      "title": "Cdr Profile Ref",
+      "type": "string"
+    },
+    "document_content_in_manifest": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Manifest",
+      "type": "boolean"
+    },
+    "external_network_used": {
+      "const": false,
+      "default": false,
+      "title": "External Network Used",
+      "type": "boolean"
+    },
+    "font_baseline_report_hash": {
+      "title": "Font Baseline Report Hash",
+      "type": "string"
+    },
+    "manifest_hash": {
+      "title": "Manifest Hash",
+      "type": "string"
+    },
+    "page_count": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Page Count",
+      "type": "integer"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/PreviewCdrPageManifest"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "raster_dpi": {
+      "const": 144,
+      "default": 144,
+      "title": "Raster Dpi",
+      "type": "integer"
+    },
+    "rasterizer_engine": {
+      "title": "Rasterizer Engine",
+      "type": "string"
+    },
+    "rasterizer_version": {
+      "title": "Rasterizer Version",
+      "type": "string"
+    },
+    "raw_rgb_byte_length": {
+      "maximum": 536870912,
+      "minimum": 3,
+      "title": "Raw Rgb Byte Length",
+      "type": "integer"
+    },
+    "render_stage": {
+      "enum": [
+        "source_reference",
+        "roundtrip_candidate"
+      ],
+      "title": "Render Stage",
+      "type": "string"
+    },
+    "rendered_docx_sha256": {
+      "title": "Rendered Docx Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_cdr_manifest.v1",
+      "default": "genoffice_docx_fidelity_cdr_manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "tenant_identifier_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Identifier Included",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "render_stage",
+    "rendered_docx_sha256",
+    "rasterizer_engine",
+    "rasterizer_version",
+    "font_baseline_report_hash",
+    "page_count",
+    "raw_rgb_byte_length",
+    "pages",
+    "manifest_hash"
+  ],
+  "title": "GenOfficeDocxFidelityCdrManifest",
+  "type": "object"
+}

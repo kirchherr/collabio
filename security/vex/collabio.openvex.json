@@ -1,0 +1,22 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/kirchherr/collabio/security/vex/2026-08-06/cryptography-49.0.0",
+  "author": "Collabio Security Engineering",
+  "timestamp": "2026-08-06T12:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-69247"
+      },
+      "products": [
+        {
+          "@id": "pkg:pypi/cryptography@49.0.0"
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "Collabio uses cryptography for Ed25519 signatures only. The affected PKCS#7 EnvelopedData decryption API is prohibited by an architecture test and is not reachable from the application."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 # Knowledge Base Module Charter
 
-Status: proposed
-Date: 2026-06-12
+Status: guarded read/write implementation; tenant activation remains gated
+Date: 2026-09-18
 Module ID: `knowledge_base`
 Module kind: `business_domain`
 Owner: platform/product
@@ -14,6 +14,12 @@ Knowledge Base is a native optional suite module for governed internal articles,
 The module is optional in normal use, but compliance obligations for existing knowledge base data remain mandatory.
 
 This charter intentionally starts smaller than a full wiki. The first slices prove tenant-safe article metadata, source-version evidence, and restore evidence before article bodies, editing workflows, approvals, search indexing, or RAG are added.
+
+The current product boundary adds guarded tenant-admin create/edit in `/work`. It reuses the approval ledger and
+PostgreSQL/S3 unit of work, requires an explicit final save confirmation, and leaves RAG/search indexing disabled.
+The isolated browser proof is documented in `docs/operations/WORK_E2E.md`; it does not authorize real tenant activation.
+The normal reader in `KNOWLEDGE_BASE_READER_VERTICAL_SLICE.md` adds a separate `/work` article view for authorized
+non-admin users. Its content read uses the read feature alone and leaves the authoring gates unchanged.
 
 ## 2. Lifecycle And Activation
 
@@ -38,8 +44,8 @@ Disabled stops normal article browsing and editing. Disabled does not stop reten
 
 | Feature ID | Default | Requires approval | Notes |
 | --- | --- | --- | --- |
-| `knowledge_base.articles.read` | on | no | Metadata-only article list and current version references |
-| `knowledge_base.articles.write` | off | yes | Future authoring and approval workflow |
+| `knowledge_base.articles.read` | on | no | Metadata list and authorized published current-version plain-text reader |
+| `knowledge_base.articles.write` | off | yes | Guarded tenant-admin create/edit and approval workflow in `/work` |
 | `knowledge_base.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
 | `knowledge_base.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
 
@@ -57,7 +63,13 @@ Tenant Context
 Initial API:
 
 - `GET /v1/kb/articles`
+- `GET /v1/kb/articles/{article_object_id}/content`
+- `POST /v1/admin/kb/runtime/activate`
+- `POST /v1/admin/kb/runtime/reconcile`
 - `GET /v1/admin/kb/evidence`
+- `POST /v1/admin/kb/articles/prepare-write`
+- `GET /v1/admin/kb/articles/{article_object_id}/edit-content`
+- `POST /v1/admin/kb/articles/source-object-write-guard`
 - `POST /v1/admin/kb/articles/write-dry-run`
 - `POST /v1/admin/kb/articles/write-approvals/approve`
 - `POST /v1/admin/kb/articles/write-approvals/refresh-preview`
@@ -65,6 +77,33 @@ Initial API:
 - `POST /v1/admin/kb/articles/write-approvals/execute`
 
 `GET /v1/admin/kb/evidence` is a tenant-admin compliance API. It remains available through the compliance module gate while the module is disabled, suspended, or in an active decommission workflow. It returns source-version evidence and restore evidence only, not article bodies or source text.
+
+All article authoring and approval stages require the normal enabled module gate,
+`knowledge_base.articles.write`, tenant-admin, and fresh article/version/source authorization for edits. Disabled,
+suspended and decommission states permit no article mutation or edit-content access. Compliance evidence reads remain
+available under their separate existing gate; that access cannot authorize an article write.
+
+`POST /v1/admin/kb/articles/prepare-write` accepts only operation, title, body and exact article/current-version
+references for an edit. It creates the proposed `SourceObjectRecord` and approval command server-side, including
+canonical manifest/content hashes, internal classification, `rp-standard`, tenant KMS and ACL metadata. The browser
+cannot supply arbitrary security metadata or calculate the authoritative source guard. Preparation returns the proposed
+source only to the authorized requester and records metadata-only audit evidence.
+
+`GET /v1/admin/kb/articles/{article_object_id}/edit-content` returns the currently authorized article and its validated
+exact-version source text to the editor. `POST /v1/admin/kb/articles/source-object-write-guard` evaluates the proposed
+source against its approved ledger evidence using the existing authoritative guard. Neither endpoint skips the
+dry-run, approval, refresh-preview, execution-skeleton or final execute stages.
+
+`GET /v1/kb/articles` supplies an authoritative `can_write` capability for the UI. The editor carries evidence hashes
+between stages without asking users to copy them. Draft changes invalidate prior approvals; stale versions produce a
+visible conflict and preserve the local draft. A failed or uncertain save preserves the draft and requires reloading
+the authoritative article before another execution. Knowledge Base failure leaves other Work views available.
+
+`POST /v1/admin/kb/runtime/activate` is a tenant-admin compliance API for deployment activation. It requires explicit human confirmation, validates the configured S3-compatible provider profile, source-content recovery evidence, bound restore-drill hash, and `knowledge_base_production_write_deployment_gate.v1`, then persists metadata-only `knowledge_base_runtime_activation.v1` evidence for the current tenant. Request-time Knowledge Base service resolution uses this tenant-scoped activation; it does not use a process-wide runtime tenant.
+
+`POST /v1/admin/kb/runtime/reconcile` is a tenant-admin compliance API and worker trigger. It rebuilds provider-profile, source-content-recovery, and production-gate evidence for the current tenant's active runtime activation. If operational state drifts, it appends `knowledge_base_runtime_reconciliation_evidence.v1` and deactivates the runtime activation so the write path cannot continue on stale evidence.
+
+`docker compose run --rm kb-runtime-reconciler` runs the same reconciliation as a metadata-only compliance worker. `KnowledgeBaseRuntimeReconciliationTenantSelector` selects tenants from Knowledge Base module status plus active runtime activations, `KnowledgeBaseRuntimeReconciliationRunner` writes a `knowledge_base_runtime_reconciliation_run_report.v1` with retry contract, alert severity, selected/skipped tenants, restore-drill report hashes, and runbook evidence. The worker uses the compliance worker gate and does not expose source text, article bodies, prompts, outputs, embeddings, or raw object payloads.
 
 `POST /v1/admin/kb/articles/write-dry-run` validates a write/edit approval command, writes an audit event, and appends metadata-only approval evidence to the write-approval ledger. It does not persist article metadata, source objects, source text, article bodies, embeddings, or RAG index state. It returns command hashes and required evidence for the source-object write guard.
 
@@ -74,14 +113,21 @@ Initial API:
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` accepts approved write-approval evidence, a metadata-only source-object write-guard decision, the refresh-preview hashes, and an explicit human confirmation reference. It verifies that those inputs bind to the same tenant, article, proposed source version, and restore evidence, then returns an `execution_plan_hash`. It still sets `execution_allowed=false` and does not persist article metadata, source objects, source-version evidence, restore evidence, embeddings, indexes, or RAG state.
 
-`POST /v1/admin/kb/articles/write-approvals/execute` accepts the same approved evidence chain plus the authoritative proposed `SourceObjectRecord`. For edit/create operations it re-evaluates the source-object write guard against that record, verifies the skeleton `execution_plan_hash`, persists the source object, appends a metadata-only source-object write receipt, updates article/current-version metadata, refreshes source-version evidence and restore evidence, and returns `refreshed_restore_evidence_hash` plus `source_object_write_receipt_hash`. Create execution uses article key, title, proposed version label, and source system from trusted approval evidence instead of trusting execution-time metadata. It does not store source text in audit metadata, receipts, or responses, and it keeps search indexing, embeddings, and RAG state disabled.
+`POST /v1/admin/kb/articles/write-approvals/execute` accepts the same approved evidence chain plus the authoritative proposed `SourceObjectRecord`. For edit/create operations it re-evaluates the source-object write guard against that record, verifies the skeleton `execution_plan_hash`, and commits through `KnowledgeBaseWriteUnitOfWork`. The unit of work appends a metadata-only source-object write receipt, persists the source object/source metadata/storage manifest, updates article/current-version metadata, refreshes source-version evidence and restore evidence, and returns `refreshed_restore_evidence_hash` plus `source_object_write_receipt_hash` with `write_unit_of_work_committed=true` and `write_unit_of_work_contract`. Create execution uses article key, title, proposed version label, and source system from trusted approval evidence instead of trusting execution-time metadata. It does not store source text in audit metadata, receipts, or responses, and it keeps search indexing, embeddings, and RAG state disabled.
 
-`PgKnowledgeBaseArticleRepository` is the PostgreSQL transaction adapter for article/version/evidence metadata. Its `apply_write` transaction locks tenant articles, verifies create/edit preconditions, writes `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, and `knowledge_base.restore_evidence` together, and rolls the transaction back on conflicts. It deliberately does not store source text or article bodies. `PgSourceObjectWriteReceiptStore` supplies the durable metadata-only source-object write boundary, and `PgSourceObjectRepository` supplies the PostgreSQL source metadata/storage-manifest bridge. The remaining production step is one coordinated Knowledge Base write unit-of-work across those adapters and the production content store.
+`PgKnowledgeBaseArticleRepository` is the PostgreSQL transaction adapter for article/version/evidence metadata. Its `apply_write` transaction locks tenant articles, verifies create/edit preconditions, writes `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, and `knowledge_base.restore_evidence` together, and rolls the transaction back on conflicts. It deliberately does not store source text or article bodies. `PgSourceObjectWriteReceiptStore` supplies the durable metadata-only source-object write boundary, and `PgSourceObjectRepository` supplies the PostgreSQL source metadata/storage-manifest bridge. `PostgresKnowledgeBaseWriteUnitOfWork` coordinates those adapters inside one shared PostgreSQL metadata transaction with `write_unit_of_work_transaction_scope=shared_postgres_metadata_transaction`, and hash-binds source metadata to the persisted receipt. Because source bytes are still written through the content-store interface before metadata commit, the execution response keeps `source_content_recovery_required=true` until `source_object_content_recovery_evidence.v1` shows `api_wiring_allowed=true` for production API writes. When clean recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence are supplied through `knowledge_base_production_write_deployment_gate.v1`, execution returns `source_content_recovery_evidence_hash`, `production_write_deployment_gate_evidence_hash`, and `source_content_recovery_required=false`. `KnowledgeBaseArticleServiceResolver` selects the activated Postgres/S3 service per request tenant from persisted runtime activation evidence and falls back to the default service for tenants without activation.
 
-`KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for future article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
+`KnowledgeBaseSourceObjectWriteGuard` is the mandatory precondition for article/source mutations. It validates tenant-scoped ledger evidence, approval state, expected current version, source-object metadata guard results, proposed source-version evidence hash, current restore evidence hash, retention policy, and Legal Hold state before a write can be considered.
 
-Future workers:
+The PostgreSQL UoW serializes all writes for the tenant, including first creates, and rechecks the expected version and
+approved restore state under that transaction lock before content or receipt persistence. It validates the resulting
+source/restore evidence before commit and returns that transaction's snapshot. A later write cannot invalidate a
+completed response through a post-commit reread. PostgreSQL rollback and S3 orphan reconciliation remain distinct
+parts of the recovery contract.
 
+Current and future workers:
+
+- runtime reconciliation worker (`docker compose run --rm kb-runtime-reconciler`)
 - article source extraction worker
 - version approval worker
 - candidate-only search indexing worker
@@ -98,7 +144,10 @@ Destructive, external, or compliance-relevant actions require explicit human con
 
 Every object must carry the required metadata from `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`, including tenant, object ID, object type, owner, classification, retention policy, Legal Hold state, lifecycle state, KMS key reference, audit-chain reference, source system, and schema version.
 
-Article bodies are not stored in the first slice. Current article versions are references for future source-object retrieval and RAG citation, not permission to bypass ACL validation.
+Article bodies are not stored in the first slice, which remains the historical metadata-read baseline. The guarded
+authoring path now stores bodies through the versioned S3-compatible source adapter, never in article metadata tables,
+ordinary application logs, approval metadata, or audit metadata. Current article versions are exact source references;
+they do not permit bypassing ACL validation or enabling RAG citation before its independent gates pass.
 
 Current article versions must resolve to authoritative source-object records before the module can move toward authoring or RAG. The source-version evidence captures source object ID, source version ID, manifest hash, content hash, ACL version, classification, retention policy, Legal Hold state, and an evidence hash without storing article body text.
 
@@ -146,18 +195,31 @@ Initial migrations:
 - `0025_knowledge_base_write_approval_trusted_article_metadata.sql`
 - `0026_source_object_write_receipts.sql`
 - `0027_source_object_metadata_storage_bridge.sql`
+- `0028_knowledge_base_runtime_activation.sql`
+- `0029_knowledge_base_runtime_reconciliation.sql`
+- `0082_knowledge_base_version_acls.sql`
 
 The first migration creates `knowledge_base.articles` and `knowledge_base.article_versions` with RLS, no hard delete, required metadata, KMS references, audit-chain references, source-version references, and no body text columns.
 
 The second migration creates append-only tenant-scoped `knowledge_base.source_version_evidence` and `knowledge_base.restore_evidence` tables. These tables are RLS-protected, grant no hard delete, and are the required precondition for later write/edit or RAG expansion.
 
-The third migration creates append-only tenant-scoped `knowledge_base.write_approval_evidence`. Future article/source writes must first persist approval evidence in this ledger, pass the source-object write guard, and refresh source-version plus restore evidence.
+The third migration creates append-only tenant-scoped `knowledge_base.write_approval_evidence`. Article/source writes must first persist approval evidence in this ledger, pass the source-object write guard, and refresh source-version plus restore evidence.
 
 The fourth migration adds `transition_source_evidence_hash` so non-dry-run approval states must point back to the dry-run ledger evidence that was approved. This keeps state transitions append-only and auditable.
 
 The fifth migration adds trusted create metadata to `knowledge_base.write_approval_evidence`: article key, title, proposed version label, and source system. This prevents create execution from introducing caller-supplied article metadata after approval.
 
-The refresh-preview, execution-skeleton, and current in-memory execute endpoints are runtime-only until execution. `PgKnowledgeBaseArticleRepository` consumes the same approved evidence contract and persists article/version/source-version/restore metadata in one database transaction. `0026_source_object_write_receipts.sql` adds the durable metadata-only receipt boundary for the proposed source object before article/evidence metadata is committed. `0027_source_object_metadata_storage_bridge.sql` adds source metadata and storage-manifest persistence without storing content bodies. API wiring must not claim atomic source-object content persistence until the Knowledge Base write unit-of-work coordinates these adapters with the production content store.
+Migration `0082_knowledge_base_version_acls.sql` binds authorization to the article and version insert transactions.
+Article insertion grants the creating principal article administration; every version copies the article's active ACL
+entries. Tenant binding, object identity collisions and the presence of article ACLs fail closed. The database triggers do not
+give the application role general ACL mutation privileges. These ACL rows use the existing restore catalog and must
+remain bound to article/version/source evidence through backup, isolated restore and release gates.
+
+Restore snapshots include trigger enablement and function definitions, ownership, security mode, search path and
+execution privileges. Both Knowledge Base ACL functions must match their authored migration bodies and safe metadata;
+matching source and restored-target drift alone is insufficient for the tenant/IAM gate.
+
+Preparation, guard evaluation, refresh-preview and execution-skeleton do not persist article/source records. `PgKnowledgeBaseArticleRepository` consumes the same approved evidence contract and persists article/version/source-version/restore metadata in one database transaction. `0026_source_object_write_receipts.sql` adds the durable metadata-only receipt boundary for the proposed source object before article/evidence metadata is committed. `0027_source_object_metadata_storage_bridge.sql` adds source metadata and storage-manifest persistence without storing content bodies. `0028_knowledge_base_runtime_activation.sql` stores one active tenant-scoped `knowledge_base_runtime_activation.v1` record with provider-profile, source-content-recovery, and production-gate evidence JSON plus hashes. `0029_knowledge_base_runtime_reconciliation.sql` stores append-only reconciliation evidence and records runtime deactivation metadata when drift is detected. `KnowledgeBaseRuntimeReconciliationRunner` adds the worker runbook layer on top: tenant selection, retry attempts, alert severity, restore-drill hashes, and `knowledge_base_runtime_reconciliation_run_report.v1` stay metadata-only and can be used by scheduled jobs or incident runbooks. `PostgresKnowledgeBaseWriteUnitOfWork` now coordinates receipt, source metadata, storage manifest, article/version metadata, source-version evidence, and restore evidence in a shared PostgreSQL metadata transaction. `source_object_content_recovery_evidence.v1` verifies content-store inventory against storage manifests, records orphan/missing counts, binds a restore-drill report hash, and gates production API wiring through `source_content_recovery_evidence_hash`. `S3CompatibleSourceObjectContentStore` supplies the S3-compatible content-store adapter port with Object Lock/WORM capability checks; `Boto3S3CompatibleObjectStoreClient` supplies the concrete protocol binding behind that port. MinIO is the development provider and Ceph RGW plus OpenBao is the production reference. `s3_compatible_provider_profile_evidence.v1` proves provider capability readiness. `knowledge_base_production_write_deployment_gate.v1` requires clean recovery evidence, ready provider-profile evidence, and bound restore-drill evidence before `production_write_deployment_gate_evidence_hash` can unlock Postgres UoW API wiring. API wiring must not claim atomic source-object content persistence until this evidence is clean for the production content store.
 
 Legacy import is out of scope for the first slice. Future import must run metadata discovery, dry-run validation, row counts, checksums, quarantine, and approval before content import.
 
@@ -182,3 +244,6 @@ Missing or blocked evidence leaves the module in `decommission_blocked`.
 - `tests/test_api.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_knowledge_base_docs.py`
+- `tests/test_work_e2e_harness.py`
+- `e2e/work/tests/knowledge.spec.mjs`
+- `e2e/work/tests/knowledge-responsive.spec.mjs`

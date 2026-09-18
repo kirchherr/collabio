@@ -8,5 +8,6 @@ class TenantAiPolicyUpdate(BaseModel):
     rag_enabled: bool | None = None
     voice_enabled: bool | None = None
     external_ai_enabled: bool | None = None
+    content_preview_enabled: bool | None = None
     raw_audio_storage_allowed: bool | None = None
     allowed_model_ids: set[str] | None = None

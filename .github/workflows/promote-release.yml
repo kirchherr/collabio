@@ -1,0 +1,193 @@
+name: Promote release image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_digest:
+        description: Immutable sha256 digest produced by the release workflow
+        required: true
+        type: string
+      release_tag:
+        description: Existing v-prefixed release tag bound to the image
+        required: true
+        type: string
+      target_environment:
+        description: Protected promotion environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      change_reference:
+        description: Approved change, ticket, or release decision reference
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-promotion-${{ inputs.target_environment }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: promote-${{ inputs.target_environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.target_environment }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ghcr.io/${{ github.repository }}
+      IMAGE_DIGEST: ${{ inputs.image_digest }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+      CHANGE_REFERENCE: ${{ inputs.change_reference }}
+
+    steps:
+      - name: Enforce protected promotion environment
+        env:
+          PROMOTION_POLICY_CONFIGURED: ${{ vars.PROMOTION_POLICY_CONFIGURED }}
+        run: |
+          [[ "${GITHUB_REF}" == "refs/heads/main" ]]
+          [[ "${PROMOTION_POLICY_CONFIGURED}" == "true" ]]
+
+      - name: Validate promotion request
+        run: |
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+[.][0-9]+[.][0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          [[ "${CHANGE_REFERENCE}" =~ ^[0-9A-Za-z._:/-]{3,128}$ ]]
+          case "${TARGET_ENVIRONMENT}" in
+            staging|production) ;;
+            *) exit 1 ;;
+          esac
+          echo "IMMUTABLE_PROMOTION_TAG=${TARGET_ENVIRONMENT}-${RELEASE_TAG}" >> "${GITHUB_ENV}"
+          echo "CHANNEL_TAG=${TARGET_ENVIRONMENT}" >> "${GITHUB_ENV}"
+
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" --username "${GITHUB_ACTOR}" --password-stdin
+
+      - name: Require release tag to resolve to requested digest
+        run: |
+          docker pull "${IMAGE_NAME}:${RELEASE_TAG}"
+          RELEASE_REFERENCE="$(docker image inspect "${IMAGE_NAME}:${RELEASE_TAG}" --format '{{index .RepoDigests 0}}')"
+          RELEASE_DIGEST="${RELEASE_REFERENCE##*@}"
+          [[ "${RELEASE_DIGEST}" == "${IMAGE_DIGEST}" ]]
+          docker pull "${IMAGE_NAME}@${IMAGE_DIGEST}"
+
+      - name: Verify release provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify "oci://${IMAGE_NAME}@${IMAGE_DIGEST}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "github.com/${GITHUB_REPOSITORY}/.github/workflows/release-provenance.yml" \
+            --source-ref "refs/tags/${RELEASE_TAG}" \
+            --deny-self-hosted-runners
+
+      - name: Verify release CycloneDX SBOM attestation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify "oci://${IMAGE_NAME}@${IMAGE_DIGEST}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --predicate-type "https://cyclonedx.org/bom" \
+            --signer-workflow "github.com/${GITHUB_REPOSITORY}/.github/workflows/release-provenance.yml" \
+            --source-ref "refs/tags/${RELEASE_TAG}" \
+            --deny-self-hosted-runners
+
+      - name: Create promotion evidence directory
+        run: mkdir -p artifacts
+
+      - name: Require prior staging admission for production
+        if: inputs.target_environment == 'production'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify "oci://${IMAGE_NAME}@${IMAGE_DIGEST}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --predicate-type "https://github.com/${GITHUB_REPOSITORY}/attestations/image-promotion/v1" \
+            --signer-workflow "github.com/${GITHUB_REPOSITORY}/.github/workflows/promote-release.yml" \
+            --source-ref "refs/heads/main" \
+            --deny-self-hosted-runners \
+            --format json > artifacts/staging-admission-verification.json
+          jq --exit-status \
+            --arg digest "${IMAGE_DIGEST}" \
+            --arg release_tag "${RELEASE_TAG}" \
+            'any(.[].verificationResult.statement.predicate;
+              .target_environment == "staging"
+              and .image_digest == $digest
+              and .release_tag == $release_tag
+              and .decision == "admitted")' \
+            artifacts/staging-admission-verification.json
+
+      - name: Build metadata-only promotion admission
+        run: |
+          jq --null-input \
+            --arg schema_version "collabio_image_promotion_admission.v1" \
+            --arg image_name "${IMAGE_NAME}" \
+            --arg image_digest "${IMAGE_DIGEST}" \
+            --arg release_tag "${RELEASE_TAG}" \
+            --arg target_environment "${TARGET_ENVIRONMENT}" \
+            --arg immutable_tag "${IMMUTABLE_PROMOTION_TAG}" \
+            --arg channel_tag "${CHANNEL_TAG}" \
+            --arg change_reference "${CHANGE_REFERENCE}" \
+            --arg requested_by "${GITHUB_ACTOR}" \
+            --arg source_ref "${GITHUB_REF}" \
+            --arg workflow_run_id "${GITHUB_RUN_ID}" \
+            --arg admitted_at "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              schema_version: $schema_version,
+              decision: "admitted",
+              image_name: $image_name,
+              image_digest: $image_digest,
+              release_tag: $release_tag,
+              target_environment: $target_environment,
+              immutable_tag: $immutable_tag,
+              channel_tag: $channel_tag,
+              change_reference: $change_reference,
+              requested_by: $requested_by,
+              source_ref: $source_ref,
+              workflow_run_id: $workflow_run_id,
+              admitted_at: $admitted_at,
+              approval_evidence_system: "github_environment_deployment_record",
+              content_included: false,
+              secrets_included: false
+            }' > artifacts/promotion-admission.json
+
+      - name: Attest promotion admission
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ env.IMAGE_DIGEST }}
+          predicate-type: https://github.com/${{ github.repository }}/attestations/image-promotion/v1
+          predicate-path: artifacts/promotion-admission.json
+          push-to-registry: true
+
+      - name: Publish promotion tags
+        run: |
+          docker tag "${IMAGE_NAME}@${IMAGE_DIGEST}" "${IMAGE_NAME}:${IMMUTABLE_PROMOTION_TAG}"
+          docker tag "${IMAGE_NAME}@${IMAGE_DIGEST}" "${IMAGE_NAME}:${CHANNEL_TAG}"
+          docker push "${IMAGE_NAME}:${IMMUTABLE_PROMOTION_TAG}"
+          docker push "${IMAGE_NAME}:${CHANNEL_TAG}"
+          printf '%s@%s\n%s:%s\n%s:%s\n' \
+            "${IMAGE_NAME}" "${IMAGE_DIGEST}" \
+            "${IMAGE_NAME}" "${IMMUTABLE_PROMOTION_TAG}" \
+            "${IMAGE_NAME}" "${CHANNEL_TAG}" > artifacts/promoted-image.txt
+          sha256sum artifacts/promotion-admission.json artifacts/promoted-image.txt > artifacts/SHA256SUMS
+
+      - name: Upload promotion evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: collabio-promotion-${{ inputs.target_environment }}-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90

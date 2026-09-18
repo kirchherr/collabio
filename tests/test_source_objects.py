@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from suite.ai_control_plane.models import DataClass
+from suite.platform.persistent_metadata import PERSISTENT_OBJECT_REQUIRED_FIELDS
 from suite.rag.models import VectorEmbeddingRecord, VectorLifecycleState
 from suite.rag.source_indexing import (
     DeterministicHashEmbeddingProvider,
@@ -23,6 +24,7 @@ from suite.storage.source_objects import (
     SourceObjectResolver,
     SourceObjectType,
     SourceObjectWriteDeniedError,
+    SourceObjectWriteGuard,
     build_source_object_manifest_hash,
     build_source_object_write_receipt,
     build_source_object_write_receipt_hash,
@@ -180,12 +182,24 @@ def test_source_objects_carry_common_compliance_metadata(
     assert document.version_id == "v1"
     assert document.mime_type == mime_type
     assert document.classification == DataClass.INTERNAL
+    assert set(PERSISTENT_OBJECT_REQUIRED_FIELDS).issubset(SourceObjectWriteGuard.required_metadata_fields)
+    assert "manifest_hash" in SourceObjectWriteGuard.required_metadata_fields
+    assert "content_hash" in SourceObjectWriteGuard.required_metadata_fields
 
 
 @pytest.mark.parametrize("object_type", [SourceObjectType.ATTACHMENT, SourceObjectType.COMMENT])
 def test_attachment_and_comment_require_parent_object(object_type: SourceObjectType) -> None:
     with pytest.raises(ValueError, match="parent_object_id"):
         record_for(object_type=object_type, object_id=f"{object_type.value}-1")
+
+
+def test_source_object_write_guard_accepts_source_schema_version_alias() -> None:
+    record = record_for()
+    repository = InMemorySourceObjectRepository()
+
+    repository.add(record)
+
+    assert repository.latest(tenant_id="tenant-1", object_id="doc-1") == record
 
 
 @pytest.mark.parametrize(

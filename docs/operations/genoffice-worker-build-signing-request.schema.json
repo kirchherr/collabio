@@ -1,0 +1,393 @@
+{
+  "$defs": {
+    "GenOfficeWorkerBuildAttestationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "attestation_id": {
+          "title": "Attestation Id",
+          "type": "string"
+        },
+        "authoritative_image_sbom_verified": {
+          "const": true,
+          "default": true,
+          "title": "Authoritative Image Sbom Verified",
+          "type": "boolean"
+        },
+        "build_evidence_report_hash": {
+          "title": "Build Evidence Report Hash",
+          "type": "string"
+        },
+        "detached_build_attestation_required": {
+          "const": true,
+          "default": true,
+          "title": "Detached Build Attestation Required",
+          "type": "boolean"
+        },
+        "development_authorization_report_hash": {
+          "title": "Development Authorization Report Hash",
+          "type": "string"
+        },
+        "development_build_context_report_hash": {
+          "title": "Development Build Context Report Hash",
+          "type": "string"
+        },
+        "development_build_context_tar_sha256": {
+          "title": "Development Build Context Tar Sha256",
+          "type": "string"
+        },
+        "high_and_critical_findings_absent": {
+          "const": true,
+          "default": true,
+          "title": "High And Critical Findings Absent",
+          "type": "boolean"
+        },
+        "hosted_service_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Hosted Service Allowed",
+          "type": "boolean"
+        },
+        "image_archive_sha256": {
+          "title": "Image Archive Sha256",
+          "type": "string"
+        },
+        "image_config_digest": {
+          "title": "Image Config Digest",
+          "type": "string"
+        },
+        "image_name": {
+          "const": "collabio/genoffice-docx-worker",
+          "default": "collabio/genoffice-docx-worker",
+          "title": "Image Name",
+          "type": "string"
+        },
+        "issued_at_utc": {
+          "format": "date-time",
+          "title": "Issued At Utc",
+          "type": "string"
+        },
+        "on_prem_distribution_allowed": {
+          "const": false,
+          "default": false,
+          "title": "On Prem Distribution Allowed",
+          "type": "boolean"
+        },
+        "payload_hash": {
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "production_use_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Production Use Allowed",
+          "type": "boolean"
+        },
+        "raw_scanner_sbom_sha256": {
+          "title": "Raw Scanner Sbom Sha256",
+          "type": "string"
+        },
+        "reproducible_worker_build_verified": {
+          "const": true,
+          "default": true,
+          "title": "Reproducible Worker Build Verified",
+          "type": "boolean"
+        },
+        "sbom_schema_validation_passed": {
+          "const": true,
+          "default": true,
+          "title": "Sbom Schema Validation Passed",
+          "type": "boolean"
+        },
+        "sbom_schema_validation_receipt_hash": {
+          "title": "Sbom Schema Validation Receipt Hash",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "genoffice_worker_build_attestation_payload.v1",
+          "default": "genoffice_worker_build_attestation_payload.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "severity_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Severity Counts",
+          "type": "object"
+        },
+        "signer_policy_hash": {
+          "title": "Signer Policy Hash",
+          "type": "string"
+        },
+        "source_import_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Source Import Allowed",
+          "type": "boolean"
+        },
+        "tenant_content_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Tenant Content Allowed",
+          "type": "boolean"
+        },
+        "trivy_db_age_seconds_at_scan": {
+          "title": "Trivy Db Age Seconds At Scan",
+          "type": "integer"
+        },
+        "trivy_db_metadata_hash": {
+          "title": "Trivy Db Metadata Hash",
+          "type": "string"
+        },
+        "trivy_db_updated_at_utc": {
+          "format": "date-time",
+          "title": "Trivy Db Updated At Utc",
+          "type": "string"
+        },
+        "two_person_runtime_authorization_required": {
+          "const": true,
+          "default": true,
+          "title": "Two Person Runtime Authorization Required",
+          "type": "boolean"
+        },
+        "valid_until_utc": {
+          "format": "date-time",
+          "title": "Valid Until Utc",
+          "type": "string"
+        },
+        "vulnerability_count": {
+          "title": "Vulnerability Count",
+          "type": "integer"
+        },
+        "vulnerability_findings": {
+          "items": {
+            "$ref": "#/$defs/GenOfficeWorkerVulnerabilityFinding"
+          },
+          "title": "Vulnerability Findings",
+          "type": "array"
+        },
+        "vulnerability_report_hash": {
+          "title": "Vulnerability Report Hash",
+          "type": "string"
+        },
+        "vulnerability_review_complete": {
+          "const": true,
+          "default": true,
+          "title": "Vulnerability Review Complete",
+          "type": "boolean"
+        },
+        "worker_execution_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Worker Execution Allowed",
+          "type": "boolean"
+        },
+        "worker_sbom_component_count": {
+          "title": "Worker Sbom Component Count",
+          "type": "integer"
+        },
+        "worker_sbom_npm_component_count": {
+          "title": "Worker Sbom Npm Component Count",
+          "type": "integer"
+        },
+        "worker_sbom_os_component_count": {
+          "title": "Worker Sbom Os Component Count",
+          "type": "integer"
+        },
+        "worker_sbom_sha256": {
+          "title": "Worker Sbom Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attestation_id",
+        "issued_at_utc",
+        "valid_until_utc",
+        "image_config_digest",
+        "image_archive_sha256",
+        "build_evidence_report_hash",
+        "development_build_context_report_hash",
+        "development_build_context_tar_sha256",
+        "development_authorization_report_hash",
+        "signer_policy_hash",
+        "worker_sbom_sha256",
+        "raw_scanner_sbom_sha256",
+        "worker_sbom_component_count",
+        "worker_sbom_npm_component_count",
+        "worker_sbom_os_component_count",
+        "sbom_schema_validation_receipt_hash",
+        "vulnerability_report_hash",
+        "trivy_db_metadata_hash",
+        "vulnerability_count",
+        "severity_counts",
+        "vulnerability_findings",
+        "trivy_db_updated_at_utc",
+        "trivy_db_age_seconds_at_scan",
+        "payload_hash"
+      ],
+      "title": "GenOfficeWorkerBuildAttestationPayload",
+      "type": "object"
+    },
+    "GenOfficeWorkerBuildSigningAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "ed25519",
+          "default": "ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        },
+        "signer_role": {
+          "const": "founder_risk_owner",
+          "default": "founder_risk_owner",
+          "title": "Signer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "key_id"
+      ],
+      "title": "GenOfficeWorkerBuildSigningAssignment",
+      "type": "object"
+    },
+    "GenOfficeWorkerVulnerabilityFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "fixed_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fixed Version"
+        },
+        "installed_version": {
+          "title": "Installed Version",
+          "type": "string"
+        },
+        "package_name": {
+          "title": "Package Name",
+          "type": "string"
+        },
+        "package_purl": {
+          "title": "Package Purl",
+          "type": "string"
+        },
+        "primary_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary Url"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "vulnerability_id": {
+          "title": "Vulnerability Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "vulnerability_id",
+        "package_purl",
+        "package_name",
+        "installed_version",
+        "fixed_version",
+        "severity",
+        "primary_url"
+      ],
+      "title": "GenOfficeWorkerVulnerabilityFinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "content_included": {
+      "const": false,
+      "default": false,
+      "title": "Content Included",
+      "type": "boolean"
+    },
+    "payload": {
+      "$ref": "#/$defs/GenOfficeWorkerBuildAttestationPayload"
+    },
+    "prepared_at_utc": {
+      "format": "date-time",
+      "title": "Prepared At Utc",
+      "type": "string"
+    },
+    "private_key_ingestion_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Ingestion Allowed",
+      "type": "boolean"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_worker_build_signing_request.v1",
+      "default": "genoffice_worker_build_signing_request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets_included": {
+      "const": false,
+      "default": false,
+      "title": "Secrets Included",
+      "type": "boolean"
+    },
+    "signature_creation_performed": {
+      "const": false,
+      "default": false,
+      "title": "Signature Creation Performed",
+      "type": "boolean"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "signature_message_size_bytes": {
+      "title": "Signature Message Size Bytes",
+      "type": "integer"
+    },
+    "signing_assignment": {
+      "$ref": "#/$defs/GenOfficeWorkerBuildSigningAssignment"
+    },
+    "worker_admission_effective": {
+      "const": false,
+      "default": false,
+      "title": "Worker Admission Effective",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "prepared_at_utc",
+    "payload",
+    "signing_assignment",
+    "signature_message_sha256",
+    "signature_message_size_bytes",
+    "request_hash"
+  ],
+  "title": "GenOfficeWorkerBuildSigningRequest",
+  "type": "object"
+}

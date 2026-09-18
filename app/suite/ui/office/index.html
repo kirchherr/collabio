@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Office · Collabio</title>
+    <link rel="stylesheet" href="/office/assets/office.css?v=1" />
+  </head>
+  <body>
+    <a class="skip-link" href="#office-main">Zum Dokument</a>
+    <header class="app-bar">
+      <a class="brand" href="/work" aria-label="Zurück zu Collabio Arbeit"><span class="brand-mark" aria-hidden="true">C</span><span>Collabio <strong>Office</strong></span></a>
+      <div class="app-actions">
+        <button class="icon-button mobile-only" id="documents-toggle" type="button" aria-label="Dokumentliste öffnen" aria-expanded="false" aria-controls="documents-panel">☰</button>
+        <span class="tenant-label" id="tenant-label"></span>
+        <button class="quiet-button" id="context-toggle" type="button" aria-expanded="false" aria-controls="context-panel">Kontext</button>
+        <a class="quiet-button" href="/work">Arbeitsbereich ↗</a>
+      </div>
+    </header>
+    <section class="context-panel" id="context-panel" aria-label="Entwicklungskontext" hidden>
+      <form id="context-form">
+        <label>Tenant<input id="tenant-id" autocomplete="off" /></label>
+        <label>User<input id="user-id" autocomplete="off" /></label>
+        <label>Rollen<input id="role-ids" autocomplete="off" /></label>
+        <label>Lesbare Objekte<input id="readable-object-ids" autocomplete="off" /></label>
+        <button class="button primary" type="submit">Kontext anwenden</button>
+      </form>
+    </section>
+    <div class="office-shell" id="office-shell">
+      <aside class="documents-panel" id="documents-panel" aria-label="Dokumente">
+        <div class="panel-heading"><div><p class="eyebrow">Ihr Arbeitsraum</p><h1>Dokumente</h1></div><button class="icon-button" id="documents-refresh" type="button" aria-label="Dokumentliste aktualisieren" title="Liste aktualisieren">↻</button></div>
+        <button class="button primary new-document" id="document-new" type="button" disabled><span aria-hidden="true">＋</span> Neues Dokument</button>
+        <label class="list-search"><span class="visually-hidden">Dokumente durchsuchen</span><input type="search" id="documents-search" placeholder="Dokumente suchen" autocomplete="off" /></label>
+        <p class="list-status" id="documents-status" role="status">Dokumente werden geladen …</p>
+        <nav class="document-list" id="documents-list" aria-label="Dokument auswählen"></nav>
+        <p class="sidebar-note">Native Dokumente<br /><span>Text, Struktur und Tabellen an einem Ort.</span></p>
+      </aside>
+      <main id="office-main" class="document-main" tabindex="-1">
+        <section class="welcome" id="office-welcome">
+          <div class="welcome-mark" aria-hidden="true">Aa</div>
+          <p class="eyebrow">Raum für Ihre Gedanken</p>
+          <h2>Aus einer Idee wird<br />ein gutes Dokument.</h2>
+          <p>Öffnen Sie ein Dokument oder beginnen Sie mit einer leeren Seite, einer Besprechungsnotiz oder einem Projektbrief.</p>
+          <button class="button primary" id="welcome-new" type="button" disabled>Dokument erstellen</button>
+          <p class="format-note">Collabio-Dokumentformat · DOCX-Import und -Export werden in diesem Arbeitsbereich noch nicht unterstützt.</p>
+        </section>
+        <section class="document-workspace" id="document-workspace" aria-label="Dokument bearbeiten" hidden>
+          <header class="document-header">
+            <div class="document-heading"><p class="eyebrow" id="document-mode">Neues Dokument</p><label class="visually-hidden" for="document-title">Dokumenttitel</label><input id="document-title" maxlength="200" placeholder="Unbenanntes Dokument" autocomplete="off" /><p id="document-status" class="document-status" role="status" aria-live="polite"></p></div>
+            <div class="document-actions"><button class="quiet-button" id="document-reload" type="button">Neu laden</button><button class="button primary" id="document-save" type="button" disabled>Version speichern</button><button class="icon-button" id="document-close" type="button" aria-label="Dokument schließen" title="Dokument schließen">×</button></div>
+          </header>
+          <div class="document-notice" id="document-notice" role="status" hidden></div>
+          <div class="historical-actions" id="historical-actions" hidden><span>Mit dieser Fassung weiterarbeiten?</span><button class="button secondary" id="document-restore" type="button">Als Entwurf übernehmen</button></div>
+          <div class="format-toolbar" id="format-toolbar" role="toolbar" aria-label="Text formatieren">
+            <div class="tool-group"><button class="tool-button" type="button" data-command="undo" aria-label="Rückgängig" title="Rückgängig (Strg+Z)">↶</button><button class="tool-button" type="button" data-command="redo" aria-label="Wiederholen" title="Wiederholen (Strg+Umschalt+Z)">↷</button></div>
+            <div class="tool-group"><label class="visually-hidden" for="text-style">Absatzformat</label><select id="text-style"><option value="paragraph">Normaler Text</option><option value="heading-1">Überschrift 1</option><option value="heading-2">Überschrift 2</option><option value="heading-3">Überschrift 3</option></select></div>
+            <div class="tool-group"><button class="tool-button bold" type="button" data-command="bold" aria-label="Fett" aria-pressed="false" title="Fett (Strg+B)">B</button><button class="tool-button italic" type="button" data-command="italic" aria-label="Kursiv" aria-pressed="false" title="Kursiv (Strg+I)">I</button><button class="tool-button underline" type="button" data-command="underline" aria-label="Unterstrichen" aria-pressed="false" title="Unterstrichen (Strg+U)">U</button><button class="tool-button strike" type="button" data-command="strike" aria-label="Durchgestrichen" aria-pressed="false" title="Durchgestrichen">S</button><button class="tool-button" type="button" data-command="code" aria-label="Code im Text" aria-pressed="false" title="Code im Text">&lt;/&gt;</button></div>
+            <div class="tool-group"><button class="tool-button" type="button" data-command="bulletList" aria-label="Aufzählung" aria-pressed="false" title="Aufzählung">• ≡</button><button class="tool-button" type="button" data-command="orderedList" aria-label="Nummerierte Liste" aria-pressed="false" title="Nummerierte Liste">1. ≡</button><button class="tool-button" type="button" data-command="blockquote" aria-label="Zitat" aria-pressed="false" title="Zitat">❞</button></div>
+            <div class="tool-group"><label class="visually-hidden" for="insert-menu">Einfügen und Tabelle bearbeiten</label><select id="insert-menu"><option value="">Einfügen …</option><option value="insertTable">Tabelle (3 × 3)</option><option value="insertTableCustom">Tabelle mit eigener Größe …</option><option value="horizontalRule">Trennlinie</option><option value="codeBlock">Codeblock</option><optgroup label="Aktuelle Tabelle"><option value="addRowAfter">Zeile darunter</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteRow">Zeile entfernen</option><option value="deleteColumn">Spalte entfernen</option><option value="deleteTable">Tabelle entfernen</option></optgroup></select></div>
+            <div class="tool-group view-tools"><button class="tool-button" type="button" id="find-toggle" aria-label="Im Dokument suchen" title="Suchen (Strg+F)" aria-expanded="false" aria-controls="find-panel">⌕</button><button class="tool-button" type="button" id="comments-toggle" aria-label="Kommentare öffnen" title="Kommentare" aria-controls="comments-panel">▤</button><button class="tool-button" type="button" id="focus-toggle" aria-label="Fokusmodus" aria-pressed="false" title="Fokusmodus">⛶</button><button class="tool-button" type="button" id="inspector-toggle" aria-label="Gliederung, Versionen und Kommentare" aria-expanded="true" aria-controls="document-inspector" title="Dokumentinformationen">☷</button></div>
+          </div>
+          <section class="table-tools" id="table-tools" aria-label="Aktuelle Tabelle bearbeiten" hidden>
+            <div class="table-tools-heading"><strong>Tabelle</strong><span id="table-info"></span></div>
+            <div class="table-controls">
+              <label>Zeilen<select id="table-row-action"><option value="">Zeilen …</option><option value="addRowBefore">Zeile darüber</option><option value="addRowAfter">Zeile darunter</option><option value="deleteRow">Ausgewählte Zeilen entfernen …</option></select></label>
+              <label>Spalten<select id="table-column-action"><option value="">Spalten …</option><option value="addColumnBefore">Spalte links</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteColumn">Ausgewählte Spalten entfernen …</option></select></label>
+              <label>Auswahl<select id="table-select"><option value="">Auswählen …</option><option value="cell">Zelle</option><option value="row">Zeile</option><option value="column">Spalte</option><option value="table">Ganze Tabelle</option></select></label>
+              <button class="button secondary" id="table-header-toggle" type="button" aria-pressed="false">Kopfzeile</button>
+              <button class="quiet-button" id="table-delete" type="button">Tabelle entfernen …</button>
+            </div>
+            <p class="table-help">Kopfzeile formatiert die erste Zeile. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
+            <p id="table-message" role="status" aria-live="polite"></p>
+          </section>
+          <section class="find-panel" id="find-panel" aria-label="Suchen und Ersetzen" hidden>
+            <div class="find-row"><label class="find-field" for="find-query"><span>Suchen</span><input type="search" id="find-query" placeholder="Im Dokument suchen" maxlength="100000" autocomplete="off" /></label><output id="find-count" aria-live="polite">0 Treffer</output><button class="icon-button" id="find-previous" type="button" aria-label="Vorheriger Treffer" title="Vorheriger Treffer (Umschalt+Enter)">↑</button><button class="icon-button" id="find-next" type="button" aria-label="Nächster Treffer" title="Nächster Treffer (Enter)">↓</button><button class="icon-button" id="find-close" type="button" aria-label="Suche schließen" title="Suche schließen (Esc)">×</button></div>
+            <div class="find-options"><label><input id="find-case-sensitive" type="checkbox" />Groß-/Kleinschreibung</label><label><input id="find-whole-word" type="checkbox" />Ganze Wörter</label></div>
+            <div class="find-row replace-row"><label class="find-field" for="replace-query"><span>Ersetzen durch</span><input type="text" id="replace-query" placeholder="Ersatztext; leer zum Entfernen" maxlength="100000" autocomplete="off" /></label><button class="button secondary" id="replace-current" type="button" disabled>Treffer ersetzen</button><button class="button secondary" id="replace-all" type="button" disabled>Alle ersetzen</button></div>
+            <p class="find-help">Ersetzungen ändern nur Ihren Entwurf und lassen sich rückgängig machen. Gespeichert wird erst mit „Version speichern“.</p>
+            <p id="find-highlight-note" class="find-help" hidden></p><p id="find-message" role="status" aria-live="polite"></p>
+          </section>
+          <div class="editor-layout">
+            <div class="page-canvas" id="page-canvas"><div class="document-page"><div id="office-editor"></div></div></div>
+            <aside class="document-inspector" id="document-inspector" aria-label="Dokumentstruktur">
+              <div class="inspector-tabs" role="tablist" aria-label="Dokumentinformationen"><button id="outline-tab" type="button" role="tab" aria-selected="true" aria-controls="outline-panel">Gliederung</button><button id="history-tab" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1">Versionen</button><button id="comments-tab" type="button" role="tab" aria-selected="false" aria-controls="comments-panel" tabindex="-1">Kommentare</button></div>
+              <section id="outline-panel" role="tabpanel" aria-labelledby="outline-tab"><p class="inspector-hint" id="outline-empty">Überschriften machen Ihr Dokument übersichtlich.</p><nav id="document-outline" aria-label="Überschriften"></nav></section>
+              <section id="history-panel" role="tabpanel" aria-labelledby="history-tab" hidden><p class="inspector-hint" id="history-status" role="status"></p><div class="history-actions"><button class="quiet-button" id="history-refresh" type="button">Versionen aktualisieren</button><button class="button secondary" id="history-compare" type="button" disabled>Versionen vergleichen</button></div><div id="document-history"></div></section>
+              <section id="comments-panel" role="tabpanel" aria-labelledby="comments-tab" hidden>
+                <div class="review-heading"><strong>Zur gespeicherten Fassung</strong><button class="icon-button" id="comments-close" type="button" aria-label="Kommentare schließen">×</button></div>
+                <p class="inspector-hint" id="comments-version"></p>
+                <div class="review-actions"><button class="quiet-button" id="comments-refresh" type="button">Aktualisieren</button><button class="button secondary" id="comment-new" type="button" disabled>Fassung kommentieren</button><button class="button secondary" id="comment-selection" type="button" disabled>Auswahl kommentieren</button></div>
+                <p id="comments-status" role="status" aria-live="polite"></p><p class="review-hint" id="comments-hint"></p>
+                <section id="comment-composer" class="review-composer" aria-labelledby="comment-composer-title" hidden><h3 id="comment-composer-title">Neuer Kommentar</h3><blockquote id="comment-anchor"></blockquote><label for="comment-body">Kommentar<textarea id="comment-body" rows="5" maxlength="8000" autocomplete="off"></textarea></label><p id="comment-body-count" class="review-hint"></p><div class="review-actions"><button class="button primary" id="comment-prepare" type="button">Speicherung vorbereiten</button><button class="quiet-button" id="comment-cancel" type="button">Verwerfen</button></div><p class="review-hint">Der Kommentar wird separat gespeichert. Er ändert weder Dokumenttext noch Versionsgeschichte.</p></section>
+                <div id="comments-list"></div><button class="quiet-button" id="comments-more" type="button" hidden>Weitere Diskussionen laden</button>
+              </section>
+            </aside>
+          </div>
+          <footer class="document-footer"><span id="word-count">0 Wörter</span><span id="document-version">Noch nicht gespeichert</span><span class="keyboard-hint">Strg+S · Version speichern</span></footer>
+        </section>
+      </main>
+    </div>
+    <dialog class="office-dialog" id="new-document-dialog" aria-labelledby="new-document-title"><form method="dialog" id="new-document-form"><header><div><p class="eyebrow">Ein guter Anfang</p><h2 id="new-document-title">Neues Dokument</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Schließen">×</button></header><div class="dialog-body"><label>Titel<input name="title" maxlength="200" value="Unbenanntes Dokument" required autocomplete="off" /></label><fieldset class="template-options"><legend>Vorlage</legend><label><input type="radio" name="template" value="blank" checked /><span><strong>Leeres Dokument</strong><small>Platz für Ihre Ideen.</small></span></label><label><input type="radio" name="template" value="meeting" /><span><strong>Besprechungsnotiz</strong><small>Agenda, Entscheidungen und nächste Schritte.</small></span></label><label><input type="radio" name="template" value="brief" /><span><strong>Projektbrief</strong><small>Ziele, Rahmen und Meilensteine.</small></span></label></fieldset></div><footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Entwurf beginnen</button></footer></form></dialog>
+    <dialog class="office-dialog" id="save-dialog" aria-labelledby="save-dialog-title"><form method="dialog" id="save-form"><header><div><p class="eyebrow">Verbindlich speichern</p><h2 id="save-dialog-title">Neue Version speichern</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Schließen">×</button></header><div class="dialog-body"><p id="save-summary"></p><p class="muted">Die aktuelle Fassung wird als neue Version gespeichert. Bisherige Versionen bleiben erhalten.</p><label class="confirmation"><input id="save-confirm" type="checkbox" required /><span>Ich bestätige, dass diese Dokumentversion gespeichert werden soll.</span></label><p id="save-message" role="status"></p></div><footer><button class="button secondary" type="button" data-close-dialog>Weiter bearbeiten</button><button class="button primary" id="save-submit" type="submit" disabled>Version verbindlich speichern</button></footer></form></dialog>
+    <dialog class="office-dialog compact" id="discard-dialog" aria-labelledby="discard-title"><div><header><h2 id="discard-title">Entwurf verlassen?</h2></header><div class="dialog-body"><p id="discard-message">Ihre ungespeicherten Änderungen gehen verloren.</p></div><footer><button class="button secondary" id="discard-cancel" type="button">Weiter bearbeiten</button><button class="button danger" id="discard-confirm" type="button">Änderungen verwerfen</button></footer></div></dialog>
+    <dialog class="office-dialog" id="comment-confirm-dialog" aria-labelledby="comment-confirm-title"><form id="comment-confirm-form"><header><h2 id="comment-confirm-title">Kommentar speichern</h2></header><div class="dialog-body"><p id="comment-confirm-summary"></p><blockquote class="review-confirm-body" id="comment-confirm-anchor"></blockquote><p class="review-confirm-body" id="comment-confirm-body"></p><label class="confirmation"><input id="comment-confirm-checkbox" type="checkbox" required /><span>Ich bestätige, dass diese Kommentaraktion verbindlich gespeichert werden soll.</span></label><p id="comment-confirm-message" role="status"></p></div><footer><button class="button secondary" id="comment-confirm-cancel" type="button">Zurück</button><button class="button primary" id="comment-confirm-submit" type="submit" disabled>Verbindlich speichern</button></footer></form></dialog>
+    <dialog class="office-dialog compare-dialog" id="compare-dialog" aria-labelledby="compare-title">
+      <header><div><p class="eyebrow">Versionsgeschichte</p><h2 id="compare-title">Versionen vergleichen</h2></div><button class="icon-button" id="compare-close" type="button" aria-label="Vergleich schließen">×</button></header>
+      <div class="compare-body">
+        <p class="compare-hint">Vergleichen Sie zwei gespeicherte Fassungen. Formatierungen stehen in ⟦…⟧. Eine Übernahme erstellt zunächst nur einen Entwurf; gespeichert wird erst nach Ihrer Bestätigung.</p>
+        <div class="compare-controls"><label>Linke Fassung<select id="compare-left" disabled></select></label><label>Rechte Fassung<select id="compare-right" disabled></select></label><button class="button secondary" id="compare-load" type="button" disabled>Vergleich laden</button></div>
+        <p id="compare-status" role="status" aria-live="polite"></p>
+        <p id="compare-summary"></p>
+        <div id="compare-results" tabindex="-1" aria-label="Versionsunterschiede"></div>
+      </div>
+      <footer><div class="compare-pagination"><button class="quiet-button" id="compare-previous" type="button" disabled>Zurück</button><span id="compare-page" aria-live="polite"></span><button class="quiet-button" id="compare-next" type="button" disabled>Weiter</button></div><button class="button primary" id="compare-restore" type="button" disabled>Linke Fassung als Entwurf übernehmen</button></footer>
+    </dialog>
+    <dialog class="office-dialog" id="table-insert-dialog" aria-labelledby="table-insert-title">
+      <form id="table-insert-form"><header><h2 id="table-insert-title">Tabelle einfügen</h2><button class="icon-button" id="table-insert-close" type="button" aria-label="Tabelle einfügen schließen">×</button></header>
+        <div class="dialog-body"><p>Wählen Sie eine Größe. Zeilen und Spalten können Sie später ergänzen.</p><div class="table-size-fields"><label>Zeilen<input id="table-rows" type="number" min="1" max="200" step="1" value="3" required /></label><label>Spalten<input id="table-columns" type="number" min="1" max="20" step="1" value="3" required /></label></div><label class="confirmation"><input id="table-with-header" type="checkbox" checked /><span>Erste Zeile als Kopfzeile</span></label><p class="muted">Bis zu 200 Zeilen und 20 Spalten, innerhalb der Dokumentgröße. Die Tabelle wird zunächst nur in Ihren Entwurf eingefügt.</p><p id="table-insert-message" role="status"></p></div>
+        <footer><button class="button secondary" id="table-insert-cancel" type="button">Abbrechen</button><button class="button primary" id="table-insert-submit" type="submit">Tabelle einfügen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-remove-dialog" aria-labelledby="table-remove-title"><header><h2 id="table-remove-title">Tabelleninhalt entfernen?</h2></header><div class="dialog-body"><p id="table-remove-summary"></p></div><footer><button class="button secondary" id="table-remove-cancel" type="button">Behalten</button><button class="button danger" id="table-remove-confirm" type="button">Aus Entwurf entfernen</button></footer></dialog>
+    <script type="module" src="/office/editor.js?v=1"></script>
+  </body>
+</html>

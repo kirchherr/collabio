@@ -1,0 +1,248 @@
+# Native Office Documents
+
+Status: product foundation, version workflow, find/replace and contextual table editing complete; remote acceptance passed; foundation recovery retained
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing
+Module: `office_documents` / version 0.1.0
+Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
+
+## User workflow and scope
+
+`/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
+apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
+save a confirmed version, compare saved versions and take a historical version into a new local draft. Search covers
+the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
+available. Formatting returns focus to the editor before immediate typing.
+
+This slice stores native structured documents. Roadmap 256 adds review discussions as described below; its acceptance
+is pending until the new remote checks and recovery complete. DOCX interchange, tracked changes, live collaboration, spreadsheets,
+presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Features and authoritative access
+
+| Feature | Normal behavior | Default |
+| --- | --- | --- |
+| `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions and read discussions | false |
+| `office_documents.documents.write` | Create a document, save a successor or confirm a review action under current parent rights | false |
+
+The package is installed in the module catalog; no ordinary tenant is provisioned or enabled by migration 0083.
+Every route requires tenant context, an enabled module and the read feature. Writes also require the write feature and
+explicit confirmation. Create requires `office-editor` or `tenant-admin`; save requires an explicit current write/admin
+ACL on object type `office.document`. Role membership does not replace object authorization. Current PostgreSQL ACLs
+and server-resolved ABAC scope are rechecked, including on replay and historical reads. JWT ignores browser grant headers.
+
+| Route | Result |
+| --- | --- |
+| `GET /v1/office/documents` | Authorized heads and server-derived capabilities |
+| `POST /v1/office/documents` | Create document and first immutable version |
+| `GET /v1/office/documents/{object_id}/content` | Exact current or requested historical native content |
+| `GET /v1/office/documents/{object_id}/versions` | Authorized metadata-only version history |
+| `POST /v1/office/documents/{object_id}/versions` | Compare expected head and append a confirmed successor |
+| `GET /v1/office/documents/{object_id}/review-threads` | Paginated version-bound discussion metadata and current capabilities |
+| `POST /v1/office/documents/{object_id}/review-threads` | Confirm a discussion on the current saved version |
+| `GET /v1/office/documents/{object_id}/review-threads/{thread_id}` | Paginated immutable events and verified anchor quotation |
+| `POST /v1/office/documents/{object_id}/review-threads/{thread_id}/events` | Confirm reply, resolve or reopen against the expected thread revision |
+
+Content and error responses use `no-store`. Invalid JSON/schema errors do not echo submitted content. Storage/database
+failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after transient failures
+or stale-head conflicts, clears content when access is denied, preserves exact retry keys and drops late responses after
+closing or changing context. Only connection context,
+never content or credentials, is stored in browser localStorage.
+
+## Version comparison and local takeover
+
+Roadmap 253 extends the existing five APIs without another persistence model. Users explicitly select two saved
+versions in the history dialog and load their comparison. Both exact source versions are read through the normal
+authoritative content route; no stored browser copy substitutes for a new authorization check. The comparison is local
+and uses literal text, showing added, removed, changed and unchanged document blocks plus both saved titles. It detects
+format/structure differences even when visible text is unchanged. Tables and lists retain readable row/cell/item
+boundaries. Large comparisons use bounded alignment work and paginated rendering without silently dropping blocks;
+an approximate alignment is labelled. It is a block comparison, not tracked changes or automatic merging.
+The existing history route returns at most 200 recent versions. A connected partial history is accepted and labelled;
+relative labels do not invent absolute version numbers for older unloaded entries.
+
+An authorized reader may compare but cannot take over content for editing. Taking a historical version into a draft
+refreshes its exact content, the current head and current document capabilities. The new draft uses historical content
+and title while preserving the fresh head as its expected save base. Current write permission is required; historical
+write capability alone is insufficient. No POST occurs until the existing explicit save confirmation. The original
+versions remain immutable. An intervening save produces the ordinary CAS conflict and preserves the draft.
+
+Comparison selection changes, close, context switches and superseding editor operations invalidate pending responses.
+Access denial clears protected state; a temporary read failure clears partial comparison output but preserves the
+existing draft. Cancelling the discard decision preserves edits. Unsaved takeover content stays only in memory, and
+unchanged content/title does not manufacture a dirty version. No schema, retention, backup format or engine permission
+changes. Existing migration 0083 and exact-version recovery contracts remain applicable.
+
+## Find and replace
+
+Roadmap 254 extends search within the already opened native document. Search terms and replacement text are literal;
+no regex syntax, markup evaluation, global search index or network lookup is involved. Matching uses original UTF-16
+positions, including text split by formatting marks. Case-insensitive matching uses Unicode simple case folding;
+it does not expand sharp-s to `ss` or normalize accents. Whole-word matching treats Unicode letters, numbers, combining
+marks, connector punctuation and join controls as word characters. Matches do not cross paragraph, hard-break, list-item
+or table-cell boundaries. All matches are counted and navigable; only a labelled window of highlights is rendered.
+
+Current or all replacements affect only the local draft and form one undo step separated from adjacent typing.
+Untouched text keeps its formatting; replacement text takes the first matched character's marks. Empty replacement
+deletes the selected text while preserving structural nodes. Identical replacement leaves content and undo state alone.
+Size, character, node and depth limits are checked before changing the editor. Read-only or historical documents may
+be searched but not replaced; loading, saving, restoration and an uncertain save also block replacement. Search inputs
+are memory-only and cleared with the workspace/context. The existing confirmed CAS save alone persists a successor.
+
+Ctrl/Cmd+F opens the search field; Ctrl/Cmd+H focuses replacement. Enter/Shift+Enter move forward/backward and Escape
+closes the panel and returns focus to the editor. A 200-match highlight window follows the active match while the
+count/navigation/replacement set stays complete. If a replacement removes the final match, keyboard focus remains in
+the replacement field. Loaded content is excluded from undo history; undoing the first actual edit returns to the
+loaded version instead of erasing it. Search/case/whole-word settings are reset when the panel or workspace closes.
+
+## Contextual table editing
+
+Roadmap 255 adds table controls to the native editor. The existing quick insertion creates a three-by-three table;
+custom insertion accepts row and column counts and an optional header row. Context controls insert rows above/below
+or columns before/after the selection, toggle the first row as a header and select cells, rows, columns or the table.
+Removal requires a separate explicit confirmation and changes only the local draft. Cancellation preserves content,
+selection and undo history. Existing versions are never removed by these controls.
+
+Tables retain the existing rectangular format, at most 200 rows and 20 columns, without merged cells or column widths.
+Prospective commands are checked against the native schema and complete document resource limits before dispatch.
+Each structural edit forms one undo step, separated from adjacent typing. Keyboard movement between cells and row
+creation at the table end use the same bounds. Focus returns to the editor for continued input.
+If a new row cannot be added, Tab moves focus to an available control instead of trapping the keyboard in the last
+cell. At tablet widths, the inspector closes when entering the compact layout; users can explicitly reopen it.
+The table controls hide while find/replace is open, preserving space for the document.
+
+Read-only and historical content cannot be edited. Loading, saving, historical takeover and an uncertain save also
+block table changes. Pending table dialogs are invalidated when the document or context changes. Only the existing
+confirmed CAS save persists changes as a new version. No schema, dependency, endpoint or storage change is introduced.
+
+## Review discussions (Roadmap 256; acceptance pending)
+
+The Comments inspector shows discussions for the opened saved version. Users may comment on that entire version
+or select text within one paragraph/inline run, including across formatting marks. The server derives the quotation
+from the exact saved source and validates UTF-16 positions; selections across hard breaks, paragraphs or cells are
+rejected. New anchors require a clean current saved version. No marker is added to document JSON or undo history.
+An active text highlight is shown only while the editor still displays that exact unchanged version.
+
+Replies, resolving and reopening use their own explicit confirmation and thread revision, with current parent-document
+write/admin rights and the existing write feature. Historic document text stays read-only, but existing discussions
+can still receive authorized review actions. Discussions never move automatically to a newer text version. The UI
+paginates threads and events and protects memory-only comment drafts during document/context/version changes.
+Temporary failures preserve the exact mutation for retry; conflicts require refreshing current thread state.
+
+Migration 0084 creates `office.review_threads` and append-only `office.review_events`. Event bodies and quotations
+live in bounded canonical COMMENT SourceObjects: object ID is the thread, version ID the event, parent the document.
+Each event binds source content/manifest/receipt hashes, author, time, ACL snapshot, actor-scoped mutation reference,
+command hash and resulting state. Quotes and bodies do not enter normal logs or audit metadata. The same tenant
+write lock as document saves serializes fresh ACL checks, document/thread CAS and source/receipt writes.
+
+New threads require the expected current document head; later events use the expected thread revision. An exact retry
+is authorized afresh before replay, even if its revision has since advanced. A reused reference with different content
+conflicts. Reads validate source metadata, canonical bytes and event/anchor bindings before returning content. There
+is no independent comment ACL, deletion/editing, automatic reanchoring, notification sending or new search index.
+See `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`.
+
+## Records, retention and recovery
+
+Migration `0083_office_native_documents.sql` creates `office.documents` and `office.document_versions`. Heads carry
+tenant/object identity, owner/creator, timestamps, internal classification, `rp-standard`, Legal Hold state, lifecycle,
+KMS reference, source system and schema version. Version rows bind source identity, content/manifest hashes, exact
+write-receipt hash, creator and mutation reference; they are append-only. The head changes only to a validated successor.
+Immutable shared SourceObjects carry the exact canonical JSON bytes and full security metadata in versioned S3 storage.
+
+The initial slice accepts ordinary internal saved versions under the shared retention/KMS contracts. It does not implement
+classification changes, Legal Hold administration, record declaration or deletion; unsupported source state fails closed.
+Existing hold/retention and compliance workers remain independent of normal module availability. No new deletion bypass,
+index, AI provider or export path is created. Drafts are transient and have no claim of crash recovery.
+
+A creator ACL is inserted atomically with the head. Versions, source metadata, receipts and head updates share one database
+transaction. A tenant advisory lock precedes S3 PUT and stale-head validation. An unexpected database failure after PUT
+can leave a detectable orphan object; PostgreSQL rollback is not a cross-system rollback claim.
+
+Backup covers all four Office document/review tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
+source metadata/receipts and exact S3 versions. Restore must validate forced RLS, append-only versions, creator ACL trigger,
+source binding, document/review head guards and all associated function bodies against migrations 0083/0084, even when source and target have
+the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
+recovery proof must preserve native content, review events for all four operations, exact saved-version anchors,
+source/receipt hashes, historical reads and current ACL behavior.
+
+## Foundation acceptance evidence (Roadmap 252)
+
+Domain, PostgreSQL and API tests cover strict content limits, authoritative access, CAS races, exact idempotency,
+failure rollback, orphan detection, safe errors and module gates. Full backend quality on `7bba74f` passed Ruff checks
+and formatting across 665 files, Mypy across 526 source files and the full Pytest suite.
+
+The final browser run on `5917bdf` passed all 73 cases in 160.237 seconds, with zero skipped, unexpected or flaky tests.
+The previous 60 Work/KB/CRM cases remain green. Thirteen Office cases cover actual rich-text/table authoring, confirmed
+saves, reopen and historical reads, concurrent conflict, read-only access, forged/foreign grants, ACL revocation, feature
+removal, pre-PUT and read failures, idempotent retry after a lost successful response, literal markup and delayed
+close/context responses. Desktop, tablet and mobile screenshots were visually reviewed. The earlier complete run's
+toolbar-focus failure was fixed in `5917bdf` and the existing rich-authoring test now checks immediate focus restoration.
+
+The nonempty recovery proof on `5917bdf` verified 13 Office documents, 18 versions, five documents with multiple versions
+and an inventory of 37 source objects, including exact content, historical reads and current ACL behavior. Its report is
+`sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`.
+Migration 0083 has been applied to the main development database. The foundation gate passed with 83 migrations,
+91 tables and `office_document_controls_verified=true`. The existing three-slice business release gate also passed
+without business writes or tenant activation. The API-only development rollout returned healthy; final live checks
+and cleanup are recorded in the operations log and current handoff.
+
+All browser and nonempty Office recovery data use the isolated synthetic tenant `tenant-work-e2e`, real PostgreSQL/S3
+and fresh ACL resolution. No ordinary tenant was enabled; the normal pilot switch, indexing and DOCX engine gates remain
+closed. These results complete Roadmap 252 / PLANS 113 as a product foundation, not a production or real-user admission.
+
+## Version workflow acceptance (Roadmap 253)
+
+Implementation `3aa0069` passed full remote Ruff checks/formatting (665 files), Mypy (526 source files) and Pytest.
+The focused 27 checks passed, followed by the complete 100-check matrix in 249.923 seconds: 88 browser cases and
+12 pure comparison-model cases, with zero skipped, unexpected or flaky results. All previous 73 browser cases remain.
+The model suite checks bounded alignment, semantic mark/key ordering and complete ordered projections for long text,
+large unique/repeated blocks and duplicate edit patterns. Browser proof covers exact version/title/format/table changes,
+read-only access, fresh-head takeover, confirmed successor lineage, later CAS conflict, current ACL/feature removal,
+cancelled discard, transient storage failure and late close/selection/context/takeover responses. A partial history
+window uses three real saved versions and one reduced metadata response. Identical takeover creates no dirty version.
+Desktop, tablet and mobile screenshots passed visual review.
+
+Final report: `sha256:42448945e2d326b56552c886d3603d69d1dcaf4d416ca4c727bf2e66e3ce8859`.
+Evidence lives under ignored `e2e/work/artifacts/roadmap-253/`; hashes and controlled API rollout are recorded in the
+operations log and current handoff. No new schema, durable record, storage format or write API was added. Roadmap 252's
+verified migration/backup/nonempty recovery/foundation/business proofs remain retained; they were not rerun for 253.
+
+## Find/replace acceptance (Roadmap 254)
+
+Implementation `f4c37e5` passed full remote Ruff/format (665 files), Mypy (526 source files) and Pytest; only the known
+Starlette/AnyIO warning remains. All 32 focused checks passed after correcting an initial undo-history defect and one
+case-sensitive test expectation. Loaded content is now explicitly excluded from history, so the first typed edit cannot
+merge with document loading. The full matrix passed 132/132 in 291.588 seconds: 97 browser cases and 35 pure model cases,
+zero skipped, unexpected or flaky. All prior 100 checks remain green. Twenty-three new model tests cover Unicode,
+exact positions, format/run boundaries, literal/no-op replacement and limits, including 100,000 matches and preflight
+rejection of explosive expansion. Nine browser runs prove actual save/reopen/immutable versions, undo/redo separated
+from adjacent typing, full counts above 1,000, read-only/history, literal hostile markup, size/no-op/deletion behavior,
+cancelled discard/context/late reads and responsive controls. Final desktop/tablet/mobile screenshots passed visual review.
+
+Results: `sha256:e12cf71865e5a013852d6482b6a96a33d5a37c4c031157721d0d980324d32b71`, under ignored
+`e2e/work/artifacts/roadmap-254/`. API rollout, cleanup and exact screenshot hashes are in the operations log/handoff.
+No new schema, storage format, write endpoint or tenant capability; item 252 recovery proofs remain retained, not rerun.
+
+## Table editing acceptance (Roadmap 255)
+
+Implementation `e3cf88c` passed full remote Ruff/format across 665 files, Mypy across 526 source files and Pytest;
+only the known Starlette/AnyIO warning remains. The focused run on `93cbd71` passed nine cases and failed one assertion
+that used a control-enabled matcher on a disabled option. `a27c433` checks the native disabled property; all ten focused
+cases then passed in 38.975 seconds. Visual review found the inspector obscuring the table on a desktop-to-tablet
+resize; `e3cf88c` closes it on entry to compact layout and adds a visibility regression.
+
+The complete matrix passed 142/142 in 359.156 seconds: 107 browser cases and 35 pure model cases, zero skipped,
+unexpected or flaky. All prior 132 cases remain green. Eight new table workflows and two responsive runs cover real
+save/reopen/immutable history, preserved marks and content, header/row/column/selection operations, isolated undo/redo,
+immediate focus, removal confirmation and cancellation, keyboard navigation and bounded new rows, read-only/history,
+pending and uncertain saves with retry, context invalidation, invalid insertion and canonical-byte overflow.
+Final desktop/tablet/mobile screenshots passed visual review, including the corrected tablet transition.
+
+Results: `sha256:89c132f192d7a3302ab3a48dc201dfdc0f60c007e8334c993e79be9f7df9d2d8`, under ignored
+`e2e/work/artifacts/roadmap-255/`. No new schema, storage format, dependency or endpoint; item 252 migration/backup/
+nonempty recovery/foundation/business evidence remains retained, not rerun. Live rollout is recorded in the operations log.
+
+## Continuing Office work
+
+Roadmap 255 / PLANS 116 is complete. Preserve the confirmed save and current access contracts when extending native
+editing and review workflows. Comments, tracked changes and live collaboration remain separate open work. Native Office
+continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.

@@ -1,0 +1,4 @@
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth,clientAuth
+subjectAltName=DNS:openbao,DNS:openbao.openbao,DNS:openbao.openbao.svc,DNS:openbao.openbao.svc.cluster.local,DNS:openbao-active,DNS:openbao-active.openbao,DNS:openbao-active.openbao.svc,DNS:openbao-active.openbao.svc.cluster.local,DNS:openbao-internal,DNS:openbao-internal.openbao,DNS:openbao-internal.openbao.svc,DNS:openbao-internal.openbao.svc.cluster.local,DNS:*.openbao-internal.openbao.svc.cluster.local

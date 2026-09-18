@@ -69,6 +69,97 @@ Current implementation:
 - `rich-document-parser` in Docker Compose runs the parser manifest command in a read-only, no-network, no-new-privileges container.
 - Complex PDFs, scanned PDFs, macro-bearing files, password-protected files, and high-fidelity Office compatibility still require dedicated hardened parser engines and malicious-file test corpora.
 
+## Guarded Plain-Text Preview Release
+
+The shared content boundary now includes a productive but deliberately narrow preview release for UTF-8 `text/plain`
+and `text/markdown` documents, wiki objects, and procedure documents. It requires current tenant policy, authoritative
+ACL revalidation, complete preview-decision and renderer evidence, a fresh operational release gate, unchanged source
+manifest/content hashes and ACL version, and exact human confirmation. Output is returned as plain text only and is not
+persisted in release receipts or normal audit logs.
+
+This does not open RFC mail bodies, attachments, HTML, PDF, DOCX, ODT, spreadsheets, presentations, macros, active
+content, external resources, or mail sending. Those surfaces retain their dedicated hardened worker and action gates.
+See `docs/modules/SOURCE_OBJECT_PREVIEW_CONTENT_RELEASE.md`.
+
+## Office Editing Boundaries
+
+Office editing follows a hybrid architecture rather than one embedded vendor suite:
+
+- **Quick Edit** is a Collabio-native surface for constrained DOCX and Markdown changes. A future save creates a
+  candidate SourceObject version; it never mutates the authoritative version in place.
+- **Full Collaboration** is a separate provider-neutral WOPI adapter, with Collabora Online preferred for the first
+  evaluation and ONLYOFFICE retained as an alternative.
+- **Preview** remains the independent canonical PDF/LibreOffice/PDF.js boundary from ADR-0060.
+- **Office AI** remains draft-only behind the Local LLM Gateway and may not commit or perform external actions without
+  explicit human confirmation.
+
+ADR-0061 introduces `office_edit_adapter.v1` and a selective GenOffice evaluation. The complete GenOffice application
+is not forked or embedded. The evaluation pins commit `fd33934dab1fdf8666af3f88b9794e7b4e19474a`, treats only
+`packages/docx-engine/**` as a future import candidate, keeps spreadsheet and presentation engines reference-only, and
+prohibits `ee/**`, shell, cloud-AI provider, and AI-search source scopes.
+
+The current API is metadata-only. It performs authoritative tenant and ACL lookup and binds its plan to the policy,
+adapter descriptor, source manifest, content hash, ACL version, and exact upstream commit. It does not read source
+bytes, import upstream code, invoke an engine, start an editor or WOPI session, access a network, or write a draft or
+candidate version.
+
+ADR-0062 adds the first real source-admission evidence without opening that boundary. The exact codeload archive is
+bound by SHA-256, read directly without extraction, and reduced to a deterministic manifest for root evidence plus the
+selected DOCX package. The offline verifier records the complete locked runtime dependency closure and vendored source
+licenses, rejects links and unsafe paths, and cannot invoke npm, Node.js, a network, or the engine. This closes source-
+byte and dependency inventory first. The follow-up pre-build supply-chain gate now proves byte-identical
+`emf-converter@2.0.2` provenance, a schema-valid deterministic 23-component CycloneDX 1.6 SBOM, an exact netzloser
+Trivy-PURL-Abgleich und zero findings against a fresh DB. A separated npm/Sigstore gate additionally verifies the
+registry signature, npm publish attestation, SLSA v1 package subject, GitHub-hosted workflow identity, Fulcio
+certificate and Rekor inclusion proofs. Legal approval, reproducible worker build and image SBOM, malicious-file and
+fidelity proof, content access, and production use remain blocked.
+
+Before Quick Edit may process content, a separate admission change must prove:
+
+- final legal, license, notice, trademark, reproducible-build, image-SBOM, and runtime-vulnerability review of the now
+  hash-bound and cryptographically provenance-verified source and dependency inventory;
+- malicious OOXML, macro, OLE, external relationship, ZIP expansion, and resource-exhaustion resistance;
+- Word/LibreOffice/GenOffice/Collabio fidelity corpora plus explicit safe-export and high-fidelity modes;
+- immutable preservation of signed originals and explicit signature-invalidated state on derived edits;
+- no-egress stronger isolation, source-blind candidate revalidation, canonical PDF preview, fresh ACL checks, human
+  confirmation, and an append-only edit receipt;
+- restore and failover drills for durable draft journals, candidate versions, collaboration manifests, receipts, and
+  policy/engine hashes. Transient plaintext worker files and session tokens are never backup artifacts.
+
+ADR-0072 fixes the fidelity-study control plane before those engines are run. Microsoft Word is an interactive Windows
+reference runner rather than an unattended server dependency; LibreOffice is an isolated headless runner; and
+GenOffice stays behind the ADR-0070 two-person `runsc-kvm` boundary. The exact three-by-three plan, structural OOXML
+baselines, deterministic RGB metrics and per-engine Ed25519 result envelopes are implemented. The original readiness
+bundle contains no engine output and cannot make a compatibility claim. The later LibreOffice row is signed and its
+referenced evidence is verified, but a complete matrix still requires the Word and GenOffice rows, calibrated
+thresholds and human fidelity review.
+
+ADR-0073 implements that referenced-evidence verification as an independent no-engine control. It strictly validates
+the retained file tree and execution receipt, reruns DOCX preflight and structural fingerprinting, verifies Open XML and
+font metadata, checks both same-engine source and round-trip CDR page bytes, and recomputes every RGB metric. The control
+can prove one signed result's evidence bytes internally consistent; it cannot replace real runner authorization,
+threshold calibration, cross-engine review or a human compatibility decision.
+
+ADR-0074 implements the first real engine path without opening product editing. A digest-bound LibreOffice 25.8 image
+runs one synthetic assignment at a time under `runsc-kvm`, without network, capabilities, credentials or signing keys.
+It uses an exact locked `DocumentFormat.OpenXml` 3.5.1 validator, writes the complete initially unsigned ADR-0073
+evidence tree and hands only a canonical signature message to the external signing boundary. A post-policy generation
+has since produced three valid LibreOffice envelopes whose referenced evidence bytes were independently verified. The
+three-fixture baseline was visually exact under same-engine rendering, but it also retained six to seven real OpenXML
+schema findings per output. That is authenticated execution evidence and a useful baseline, not a compatibility pass.
+Tenant content, product saves,
+cross-engine acceptance, calibrated thresholds and human review remain closed.
+
+ADR-0076 implements the Microsoft Word reference boundary without turning Word into a server dependency. A dedicated
+local Windows account must have no Office identity, no access to Fidelity signing custody and a verified outbound block
+for `WINWORD.EXE`. The script runs only in a visible interactive desktop, forces macros off, opens one exact synthetic
+fixture read-only, requires a human confirmation, and produces an unsigned DOCX plus same-engine source/candidate PDFs.
+A separate no-network `runsc-kvm` collector on `dev001` performs source-blind validation and evidence materialization.
+The path is implemented but has not yet produced a real Word row; the authenticated matrix therefore remains `3/9`.
+
+This division lets Collabio reuse proven format-engine work without allowing an office engine to become a second
+storage, authorization, compliance, recovery, or AI control plane.
+
 ## Indexing Flow
 
 ```text

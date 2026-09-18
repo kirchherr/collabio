@@ -1,0 +1,111 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "accepted_signed_result_count": {
+      "const": 9,
+      "default": 9,
+      "title": "Accepted Signed Result Count",
+      "type": "integer"
+    },
+    "assignment_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Assignment Ids",
+      "type": "array"
+    },
+    "compatibility_claim_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claim Allowed",
+      "type": "boolean"
+    },
+    "envelope_hashes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Envelope Hashes",
+      "type": "array"
+    },
+    "exact_assignment_matrix_verified": {
+      "const": true,
+      "default": true,
+      "title": "Exact Assignment Matrix Verified",
+      "type": "boolean"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "human_fidelity_review_verified": {
+      "const": false,
+      "default": false,
+      "title": "Human Fidelity Review Verified",
+      "type": "boolean"
+    },
+    "quick_edit_spike_complete": {
+      "const": false,
+      "default": false,
+      "title": "Quick Edit Spike Complete",
+      "type": "boolean"
+    },
+    "referenced_evidence_content_verified": {
+      "const": false,
+      "default": false,
+      "title": "Referenced Evidence Content Verified",
+      "type": "boolean"
+    },
+    "referenced_evidence_hashes_bound": {
+      "const": true,
+      "default": true,
+      "title": "Referenced Evidence Hashes Bound",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_result_matrix_intake_report.v1",
+      "default": "genoffice_docx_fidelity_result_matrix_intake_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signatures_verified": {
+      "const": true,
+      "default": true,
+      "title": "Signatures Verified",
+      "type": "boolean"
+    },
+    "signer_policy_hash": {
+      "title": "Signer Policy Hash",
+      "type": "string"
+    },
+    "source_blind_revalidation_attested": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Attested",
+      "type": "boolean"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "visual_thresholds_calibrated": {
+      "const": false,
+      "default": false,
+      "title": "Visual Thresholds Calibrated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "fidelity_policy_hash",
+    "study_plan_hash",
+    "signer_policy_hash",
+    "assignment_ids",
+    "envelope_hashes",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxFidelityResultMatrixIntakeReport",
+  "type": "object"
+}
