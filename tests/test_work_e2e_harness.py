@@ -12,6 +12,7 @@ from suite.testing.work_e2e_guard import (
     WORK_E2E_TENANT_ID,
     require_isolated_work_e2e_environment,
 )
+from work_e2e_controls import WORK_E2E_READER_ID, permits_reader_acl_fixture, storage_failure_modes
 
 REPO_ROOT = Path(__file__).parents[1]
 
@@ -107,3 +108,83 @@ def test_work_e2e_runner_is_version_and_digest_pinned() -> None:
     assert '"@playwright/test": "1.63.0"' in package
     assert "npm ci --ignore-scripts" in dockerfile
     assert "USER pwuser" in dockerfile
+
+
+@pytest.mark.parametrize("allow_traffic", (True, False))
+def test_synthetic_read_failure_is_independent_of_write_and_pilot_switch(allow_traffic: bool) -> None:
+    assert storage_failure_modes(
+        tenant_id=WORK_E2E_TENANT_ID,
+        method="GET",
+        path="/v1/kb/articles/kb-article-test/content",
+        requested=True,
+        allow_synthetic_traffic=allow_traffic,
+    ) == (False, True)
+    assert storage_failure_modes(
+        tenant_id=WORK_E2E_TENANT_ID,
+        method="POST",
+        path="/v1/admin/kb/articles/write-approvals/execute",
+        requested=True,
+        allow_synthetic_traffic=allow_traffic,
+    ) == (allow_traffic, False)
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "method", "path", "requested"),
+    (
+        ("tenant-demo", "GET", "/v1/kb/articles/kb-article-test/content", True),
+        (None, "GET", "/v1/kb/articles/kb-article-test/content", True),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/kb/articles/kb-article-test/content", False),
+        (WORK_E2E_TENANT_ID, "POST", "/v1/kb/articles/kb-article-test/content", True),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/kb/articles", True),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/kb/articles/nested/id/content", True),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/admin/kb/articles/kb-article-test/edit-content", True),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/admin/kb/articles/write-approvals/execute", True),
+        (WORK_E2E_TENANT_ID, "POST", "/v1/tasks/items", True),
+    ),
+)
+def test_storage_failure_fixture_cannot_escape_exact_read_write_scope(
+    tenant_id: str | None, method: str, path: str, requested: bool
+) -> None:
+    assert storage_failure_modes(
+        tenant_id=tenant_id, method=method, path=path, requested=requested, allow_synthetic_traffic=True
+    ) == (False, False)
+
+
+@pytest.mark.parametrize(
+    ("object_type", "prefix"), (("kb.article", "kb-article-"), ("kb.article_version", "kb-article-version-"))
+)
+def test_reader_acl_fixture_grants_only_synthetic_article_and_version_read(object_type: str, prefix: str) -> None:
+    assert permits_reader_acl_fixture(
+        tenant_id=WORK_E2E_TENANT_ID,
+        object_id=prefix + "a" * 32,
+        object_type=object_type,
+        subject_type="user",
+        subject_id=WORK_E2E_READER_ID,
+        permission="read",
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    (
+        ("tenant_id", "tenant-demo"),
+        ("object_id", "kb-article-existing-demo"),
+        ("object_id", "kb-article-version-" + "a" * 32),
+        ("object_type", "task.item"),
+        ("subject_type", "role"),
+        ("subject_id", "work-user-e2e"),
+        ("permission", "write"),
+        ("permission", "admin"),
+    ),
+)
+def test_reader_acl_fixture_rejects_broader_authorization(key: str, value: str) -> None:
+    fields = {
+        "tenant_id": WORK_E2E_TENANT_ID,
+        "object_id": "kb-article-" + "a" * 32,
+        "object_type": "kb.article",
+        "subject_type": "user",
+        "subject_id": WORK_E2E_READER_ID,
+        "permission": "read",
+    }
+    fields[key] = value
+    assert not permits_reader_acl_fixture(**fields)

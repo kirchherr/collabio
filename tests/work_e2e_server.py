@@ -6,12 +6,18 @@ from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from suite.ai_control_plane.models import UserContext
 from suite.operations.productivity_pilot_preflight import ProductivityPilotControl
+from suite.platform.authz_admin import (
+    AuthzMutationView,
+    InMemoryAuthzAdminStore,
+    ObjectAclEntryUpsertCommand,
+    PgAuthzAdminStore,
+)
 from suite.platform.context import TenantRequestContext
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
 from suite.platform.knowledge_base import (
@@ -59,6 +65,7 @@ from suite.testing.work_e2e_guard import (
     WORK_E2E_TENANT_ID,
     require_isolated_work_e2e_environment,
 )
+from work_e2e_controls import permits_reader_acl_fixture, storage_failure_modes
 
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
@@ -138,10 +145,16 @@ def _synthetic_hash(label: str) -> str:
 
 
 _fail_storage_write: ContextVar[bool] = ContextVar("work_e2e_fail_storage_write", default=False)
+_fail_storage_read: ContextVar[bool] = ContextVar("work_e2e_fail_storage_read", default=False)
 
 
 class FailureInjectableObjectStoreClient(Boto3S3CompatibleObjectStoreClient):
-    """Exercise the real UoW rollback without a production failure-control API."""
+    """Exercise real content access without a production failure-control API."""
+
+    def get_object(self, *, bucket_id: str, object_key: str, object_version_id: str) -> bytes:
+        if _fail_storage_read.get():
+            raise SourceObjectStorageError("synthetic Work E2E object-store read failure")
+        return super().get_object(bucket_id=bucket_id, object_key=object_key, object_version_id=object_version_id)
 
     def put_object(
         self,
@@ -167,16 +180,42 @@ class FailureInjectableObjectStoreClient(Boto3S3CompatibleObjectStoreClient):
 
 @app.middleware("http")
 async def _isolated_storage_failure(request: Request, call_next: RequestResponseEndpoint) -> Response:
-    token = _fail_storage_write.set(
-        allow_synthetic_traffic
-        and request.headers.get("X-Tenant-Id") == WORK_E2E_TENANT_ID
-        and request.url.path == "/v1/admin/kb/articles/write-approvals/execute"
-        and request.headers.get("X-Work-E2E-Fail-Storage") == "1"
+    fail_write, fail_read = storage_failure_modes(
+        tenant_id=request.headers.get("X-Tenant-Id"),
+        method=request.method,
+        path=request.url.path,
+        requested=request.headers.get("X-Work-E2E-Fail-Storage") == "1",
+        allow_synthetic_traffic=allow_synthetic_traffic,
     )
+    write_token = _fail_storage_write.set(fail_write)
+    read_token = _fail_storage_read.set(fail_read)
     try:
         return await call_next(request)
     finally:
-        _fail_storage_write.reset(token)
+        _fail_storage_write.reset(write_token)
+        _fail_storage_read.reset(read_token)
+
+
+class SyntheticKnowledgeReaderAclStore(InMemoryAuthzAdminStore):
+    def __init__(self, *, database_dsn: str) -> None:
+        super().__init__()
+        self.reader_acl_store = PgAuthzAdminStore(database_dsn=database_dsn)
+
+    def upsert_object_acl_entry(
+        self, *, tenant_id: str, command: ObjectAclEntryUpsertCommand, audit_chain_ref: str
+    ) -> AuthzMutationView:
+        if not permits_reader_acl_fixture(
+            tenant_id=tenant_id,
+            object_id=command.object_id,
+            object_type=command.object_type,
+            subject_type=command.acl_subject_type,
+            subject_id=command.acl_subject_id,
+            permission=command.permission,
+        ):
+            raise HTTPException(status_code=403, detail="Outside synthetic reader ACL fixture")
+        return self.reader_acl_store.upsert_object_acl_entry(
+            tenant_id=tenant_id, command=command, audit_chain_ref=audit_chain_ref
+        )
 
 
 def _install_synthetic_knowledge_runtime() -> None:
@@ -237,6 +276,9 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
 
 
 _install_synthetic_knowledge_runtime()
+app.state.authz_admin_store = SyntheticKnowledgeReaderAclStore(
+    database_dsn=os.environ["SUITE_AUTHZ_ADMIN_DATABASE_DSN"]
+)
 app.dependency_overrides[main_module.get_tenant_request_context] = _synthetic_authorized_context
 
 

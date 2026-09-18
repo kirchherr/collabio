@@ -18,8 +18,8 @@ export const KB_HEADERS = {
   "X-Role-Ids": "tenant-admin",
 };
 
-export async function openKnowledge(page, { baseUrl = BASE_URL, roleIds = "tenant-admin" } = {}) {
-  await installContext(page, { roleIds });
+export async function openKnowledge(page, { baseUrl = BASE_URL, roleIds = "tenant-admin", userId = USER_ID } = {}) {
+  await installContext(page, { roleIds, userId });
   // Keep the independent source-state fixtures; every Knowledge Base request uses the real API.
   await installResourceRoutes(
     page,

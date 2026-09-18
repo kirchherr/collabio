@@ -5,7 +5,7 @@
 This runbook verifies the first daily-work surface through a real browser, the real Collabio API routes and the real
 PostgreSQL task/time adapters and the Knowledge Base PostgreSQL/S3 unit of work. It covers every source independently
 in ready, empty, blocked and unavailable states, the closed productivity-pilot runtime boundary, task reassignment,
-time correction and resubmission, Knowledge Base create/edit/conflict/failure handling, and desktop/mobile containment.
+time correction and resubmission, Knowledge Base create/edit/read/conflict/failure handling, and desktop/mobile containment.
 
 The profile is test-only. It uses only tenant `tenant-work-e2e`, generated synthetic records and an ephemeral
 tmpfs-backed PostgreSQL and MinIO instances. It publishes no host port, joins only the internal `work_e2e_internal` network and
@@ -27,6 +27,12 @@ ACLs. Browser-supplied readable IDs are ignored for these requests. Migration `0
 principal access and copy the article ACL to each new version in the same PostgreSQL transaction. The storage-failure
 case injects a request-local exception at the existing object-store adapter before its write and verifies that the
 previous body and version remain authoritative. The failure switch exists only in the guarded test harness.
+
+The seeded non-admin `work-reader-e2e` reads through the blocked API with the write feature disabled. A narrow
+synthetic store behind the existing authz administration route grants/revokes only read ACLs for that principal and
+new synthetic KB article/version objects in the isolated database. The new version must inherit the reader's article
+ACL through migration 0082. Request-local read failure injection is limited to the exact synthetic tenant and
+`GET /v1/kb/articles/{article_object_id}/content`; it does not require the write/pilot test override.
 
 Follow `/home/extern/AGENTS.md`, work in `dev001:/home/extern/collabio`, always use Compose project `collabio`, and
 acquire `build.lock` before `docker.lock` whenever both apply.
@@ -72,12 +78,15 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 41 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
+The expected matrix is 50 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
 a competing edit conflict, object-store failure, disabled write feature, unauthorized role, approval invalidation
 after changing a draft, and rejection of stale responses after a context switch. Other source views use the existing synthetic fixtures in these focused Knowledge Base cases;
-the original workflow and route-policy cases retain their real API coverage.
+the original workflow and route-policy cases retain their real API coverage. Seven reader cases additionally prove
+ordinary read with write disabled, exact updated content, literal markup, missing/forged/foreign ACL denial,
+article/version ACL revocation, S3 read failure and recovery, delayed responses after close/reopen or context change.
+Two additional desktop/mobile reader runs check long text, viewport containment and an accessible close action.
 
 ## Evidence
 
@@ -88,6 +97,8 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `work-desktop-chromium.png` and `work-mobile-chromium.png`, the responsive proof;
 - `work-knowledge-complete.png`, the completed PostgreSQL/S3 create/edit workflow;
 - `work-knowledge-desktop-chromium.png` and `work-knowledge-mobile-chromium.png`, the editor and confirmation proof;
+- `work-knowledge-reader-complete.png`, the ordinary reader after an admin's committed edit;
+- `work-knowledge-reader-desktop-chromium.png` and `work-knowledge-reader-mobile-chromium.png`, the reader containment proof;
 - traces and failure screenshots only when a test fails.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation

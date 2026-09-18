@@ -36,6 +36,13 @@ const elements = {
   knowledgeExecute: document.querySelector("#knowledge-execute"),
   knowledgeConfirmation: document.querySelector("#knowledge-confirmation"),
   knowledgeConfirm: document.querySelector("#knowledge-confirm"),
+  knowledgeReaderTitle: document.querySelector("#knowledge-reader-title"),
+  knowledgeReaderBody: document.querySelector("#knowledge-reader-body"),
+  knowledgeReaderMeta: document.querySelector("#knowledge-reader-meta"),
+  knowledgeReaderVersion: document.querySelector("#knowledge-reader-version"),
+  knowledgeReaderUpdated: document.querySelector("#knowledge-reader-updated"),
+  knowledgeReaderMessage: document.querySelector("#knowledge-reader-message"),
+  knowledgeReaderRefresh: document.querySelector("#knowledge-reader-refresh"),
   crmList: document.querySelector("#crm-list"),
 };
 
@@ -49,6 +56,7 @@ const dialogs = {
   ticket: document.querySelector("#ticket-dialog"),
   ticketTransition: document.querySelector("#ticket-transition-dialog"),
   knowledge: document.querySelector("#knowledge-dialog"),
+  knowledgeReader: document.querySelector("#knowledge-reader-dialog"),
 };
 
 const forms = {
@@ -179,6 +187,7 @@ const state = {
   refreshGeneration: 0,
   refreshContext: "",
   knowledgeEditor: null,
+  knowledgeReader: null,
   resources: Object.fromEntries(
     Object.keys(resourceDefinitions).map((key) => [key, { status: "idle", items: [], detail: "" }]),
   ),
@@ -541,6 +550,9 @@ function renderKnowledge() {
   elements.knowledgeList.querySelectorAll("[data-knowledge-edit]").forEach((button) => {
     button.addEventListener("click", () => openKnowledgeEditor(button.dataset.knowledgeEdit));
   });
+  elements.knowledgeList.querySelectorAll("[data-knowledge-read]").forEach((button) => {
+    button.addEventListener("click", () => openKnowledgeReader(button.dataset.knowledgeRead));
+  });
 }
 
 function renderCrm() {
@@ -694,7 +706,10 @@ function knowledgeItem(item) {
     <article class="knowledge-item">
       <div><span class="status-pill ${statusClass(item.status)}">${escapeHtml(statusLabels[item.status] || humanize(item.status))}</span><h3>${escapeHtml(item.title)}</h3></div>
       <div class="knowledge-meta"><span>${escapeHtml(item.article_key)}</span><span>${escapeHtml(item.current_version_label)}</span><span>${escapeHtml(formatDate(item.updated_at_utc))}</span></div>
-      ${state.resources.knowledge.canWrite ? `<button class="button secondary knowledge-edit" type="button" data-knowledge-edit="${escapeHtml(item.object_id)}" aria-label="Artikel ${escapeHtml(item.title)} bearbeiten">Artikel bearbeiten</button>` : ""}
+      <div class="knowledge-actions">
+        <button class="button secondary" type="button" data-knowledge-read="${escapeHtml(item.object_id)}" aria-label="Artikel ${escapeHtml(item.title)} lesen">Artikel lesen</button>
+        ${state.resources.knowledge.canWrite ? `<button class="button secondary" type="button" data-knowledge-edit="${escapeHtml(item.object_id)}" aria-label="Artikel ${escapeHtml(item.title)} bearbeiten">Artikel bearbeiten</button>` : ""}
+      </div>
     </article>
   `;
 }
@@ -920,6 +935,110 @@ function rememberReadableObjectIds(objectIds) {
   objectIds.filter(Boolean).forEach((objectId) => current.add(objectId));
   fields.readableObjectIds.value = [...current].join(",");
   persistContext();
+}
+
+function clearKnowledgeReaderContent() {
+  elements.knowledgeReaderTitle.textContent = "Artikel lesen";
+  elements.knowledgeReaderBody.textContent = "";
+  elements.knowledgeReaderBody.hidden = true;
+  elements.knowledgeReaderBody.scrollTop = 0;
+  elements.knowledgeReaderMeta.hidden = true;
+  elements.knowledgeReaderVersion.textContent = "";
+  elements.knowledgeReaderUpdated.textContent = "";
+  elements.knowledgeReaderUpdated.removeAttribute("datetime");
+  elements.knowledgeReaderMessage.textContent = "";
+  elements.knowledgeReaderMessage.classList.remove("error");
+}
+
+function closeKnowledgeReader() {
+  state.knowledgeReader = null;
+  clearKnowledgeReaderContent();
+  dialogs.knowledgeReader.removeAttribute("aria-busy");
+  dialogs.knowledgeReader.close();
+}
+
+function openKnowledgeReader(articleObjectId) {
+  if (!resourceItems("knowledge").some((article) => article.object_id === articleObjectId)) {
+    return;
+  }
+  state.knowledgeReader = {
+    articleObjectId,
+    context: JSON.stringify(readContext()),
+    requestNumber: 0,
+  };
+  clearKnowledgeReaderContent();
+  if (!dialogs.knowledgeReader.open) {
+    dialogs.knowledgeReader.showModal();
+  }
+  loadKnowledgeReader();
+}
+
+async function loadKnowledgeReader() {
+  const reader = state.knowledgeReader;
+  if (!reader || !dialogs.knowledgeReader.open) {
+    return;
+  }
+  if (reader.context !== JSON.stringify(readContext())) {
+    closeKnowledgeReader();
+    return;
+  }
+  const articleObjectId = reader.articleObjectId;
+  const requestNumber = ++reader.requestNumber;
+  const isCurrent = () => state.knowledgeReader === reader && dialogs.knowledgeReader.open &&
+    reader.context === JSON.stringify(readContext()) && reader.articleObjectId === articleObjectId &&
+    reader.requestNumber === requestNumber;
+  clearKnowledgeReaderContent();
+  elements.knowledgeReaderMessage.textContent = "Artikel wird geladen ...";
+  elements.knowledgeReaderRefresh.textContent = "Erneut laden";
+  elements.knowledgeReaderRefresh.disabled = true;
+  dialogs.knowledgeReader.setAttribute("aria-busy", "true");
+  try {
+    const result = await apiRequest(`/v1/kb/articles/${encodeURIComponent(articleObjectId)}/content`, {
+      cache: "no-store",
+    });
+    if (!isCurrent()) {
+      return;
+    }
+    const article = result.article;
+    if (
+      result.tenant_id !== readContext().tenantId || article?.object_id !== articleObjectId ||
+      typeof article.title !== "string" || !article.current_version_object_id || !article.current_version_label ||
+      typeof result.body !== "string" || result.body.length > 200000 ||
+      result.rag_indexing_allowed !== false || result.search_indexing_allowed !== false
+    ) {
+      throw new ApiError("Unvollstaendige Artikelantwort", 502);
+    }
+    elements.knowledgeReaderTitle.textContent = article.title;
+    elements.knowledgeReaderVersion.textContent = `${article.current_version_label} · ${article.current_version_object_id}`;
+    const updated = new Date(article.updated_at_utc);
+    if (!Number.isNaN(updated.getTime())) {
+      elements.knowledgeReaderUpdated.dateTime = updated.toISOString();
+      elements.knowledgeReaderUpdated.textContent = new Intl.DateTimeFormat("de-DE", {
+        dateStyle: "medium", timeStyle: "short",
+      }).format(updated);
+    } else {
+      elements.knowledgeReaderUpdated.textContent = "Nicht angegeben";
+    }
+    elements.knowledgeReaderMeta.hidden = false;
+    elements.knowledgeReaderBody.textContent = result.body;
+    elements.knowledgeReaderBody.hidden = false;
+    elements.knowledgeReaderMessage.textContent = "";
+    elements.knowledgeReaderRefresh.textContent = "Aktualisieren";
+  } catch (error) {
+    if (!isCurrent()) {
+      return;
+    }
+    const denied = error instanceof ApiError && [401, 403, 404, 423].includes(error.status);
+    elements.knowledgeReaderMessage.textContent = denied
+      ? "Dieser Artikel ist nicht verfuegbar oder nicht mehr freigegeben."
+      : "Der Artikel konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+    elements.knowledgeReaderMessage.classList.add("error");
+  } finally {
+    if (isCurrent()) {
+      elements.knowledgeReaderRefresh.disabled = false;
+      dialogs.knowledgeReader.removeAttribute("aria-busy");
+    }
+  }
 }
 
 function knowledgeSessionIsCurrent(editor) {
@@ -1633,13 +1752,24 @@ document.querySelectorAll("[data-open-dialog]").forEach((button) => {
 });
 
 document.querySelectorAll("[data-close-dialog]").forEach((button) => {
-  button.addEventListener("click", () => button.closest("dialog")?.close());
+  button.addEventListener("click", () => {
+    const dialog = button.closest("dialog");
+    if (dialog === dialogs.knowledgeReader) {
+      closeKnowledgeReader();
+    } else {
+      dialog?.close();
+    }
+  });
 });
 
 document.querySelectorAll(".editor-dialog").forEach((dialog) => {
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog && !(dialog === dialogs.knowledge && state.knowledgeEditor?.busy)) {
-      dialog.close();
+      if (dialog === dialogs.knowledgeReader) {
+        closeKnowledgeReader();
+      } else {
+        dialog.close();
+      }
     }
   });
 });
@@ -1670,6 +1800,7 @@ elements.contextButton.addEventListener("click", () => {
 
 elements.contextForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  closeKnowledgeReader();
   dialogs.knowledge.close();
   elements.knowledgeResult.hidden = true;
   elements.knowledgeResult.replaceChildren();
@@ -1698,6 +1829,22 @@ forms.knowledge.elements.content_text.addEventListener("input", invalidateKnowle
 elements.knowledgeApprove.addEventListener("click", approveKnowledge);
 elements.knowledgeExecute.addEventListener("click", executeKnowledge);
 elements.knowledgeConfirm.addEventListener("change", renderKnowledgeEditor);
+elements.knowledgeReaderRefresh.addEventListener("click", loadKnowledgeReader);
+elements.contextForm.addEventListener("input", () => {
+  if (state.knowledgeReader && state.knowledgeReader.context !== JSON.stringify(readContext())) {
+    closeKnowledgeReader();
+  }
+});
+dialogs.knowledgeReader.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeKnowledgeReader();
+});
+dialogs.knowledgeReader.addEventListener("close", () => {
+  if (!dialogs.knowledgeReader.open) {
+    state.knowledgeReader = null;
+    clearKnowledgeReaderContent();
+  }
+});
 dialogs.knowledge.addEventListener("cancel", (event) => {
   if (state.knowledgeEditor?.busy) {
     event.preventDefault();

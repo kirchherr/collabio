@@ -28,6 +28,7 @@ from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
+    SourceObjectMetadataRepository,
     SourceObjectRecord,
     SourceObjectRepository,
     SourceObjectType,
@@ -631,6 +632,11 @@ class KnowledgeBaseArticleEditContent(BaseModel):
     article: KnowledgeBaseArticleView
     body: str
     audit_event_id: str
+
+
+class KnowledgeBaseArticleContent(KnowledgeBaseArticleEditContent):
+    rag_indexing_allowed: bool = False
+    search_indexing_allowed: bool = False
 
 
 class KnowledgeBaseProductSourceGuardCommand(BaseModel):
@@ -3019,26 +3025,88 @@ class KnowledgeBaseArticleService:
         ):
             raise ValueError("Knowledge Base source content is outside the editor contract")
 
+    def _read_article_text(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> tuple[KnowledgeBaseArticleRecord, KnowledgeBaseSourceVersionEvidence, str]:
+        article = self._authorized_article(user_context=user_context, article_object_id=article_object_id)
+        if (
+            article.status != KnowledgeBaseArticleStatus.PUBLISHED
+            or article.lifecycle_state != KnowledgeBaseArticleLifecycleState.PUBLISHED
+        ):
+            raise LookupError("Knowledge Base article is unavailable")
+        source_identity = {
+            "tenant_id": user_context.tenant_id,
+            "object_id": article.current_source_object_id,
+            "version_id": article.current_source_version_id,
+        }
+        if isinstance(self.source_repository, SourceObjectMetadataRepository):
+            metadata = self.source_repository.get_metadata(**source_identity)
+            self._require_article_text_metadata(article, metadata)
+        source = self.source_repository.get(
+            **source_identity,
+        )
+        self._require_article_text_metadata(article, source.metadata)
+        content = source_object_content_bytes(source)
+        if len(content) != source.metadata.content_byte_length or len(content) > 400_000:
+            raise ValueError("Knowledge Base source exceeds the content size limit")
+        evidence = build_knowledge_base_source_version_evidence(article, source)
+        body = content.decode("utf-8")
+        if len(body) > 100_000 or not body.strip() or "\x00" in body:
+            raise ValueError("Knowledge Base source is not supported article text")
+        return article, evidence, body
+
+    @staticmethod
+    def _require_article_text_metadata(
+        article: KnowledgeBaseArticleRecord, metadata: SourceObjectMetadata
+    ) -> None:
+        require_knowledge_base_source_version_metadata(article, metadata)
+        if (
+            metadata.object_type != SourceObjectType.WIKI
+            or metadata.mime_type != "text/plain"
+            or metadata.schema_version != "source_object.v1"
+            or metadata.lifecycle_state != SourceLifecycleState.SAVED_VERSION
+            or not 0 < metadata.content_byte_length <= 400_000
+        ):
+            raise ValueError("Knowledge Base source is not supported article text")
+
+    def read_content(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> KnowledgeBaseArticleContent:
+        article, evidence, body = self._read_article_text(
+            user_context=user_context, article_object_id=article_object_id
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.content_read",
+            source_object_ids=knowledge_base_audit_source_object_ids([article]),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "feature_id": KB_ARTICLES_FEATURE_ID,
+                "surface": "api",
+                "result_contract": "metadata_only",
+                "content_included": False,
+                "source_version_evidence_hash": evidence.evidence_hash,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
+        )
+        return KnowledgeBaseArticleContent(
+            tenant_id=user_context.tenant_id,
+            article=knowledge_base_article_view(article).model_copy(
+                update={"source_version_evidence_hash": evidence.evidence_hash}
+            ),
+            body=body,
+            audit_event_id=event.event_id,
+        )
+
     def read_edit_content(
         self, *, user_context: UserContext, article_object_id: str
     ) -> KnowledgeBaseArticleEditContent:
         if "tenant-admin" not in user_context.role_ids:
             raise PermissionError("Tenant admin role required")
-        article = self._authorized_article(user_context=user_context, article_object_id=article_object_id)
-        source = self.source_repository.get(
-            tenant_id=user_context.tenant_id,
-            object_id=article.current_source_object_id,
-            version_id=article.current_source_version_id,
+        article, evidence, body = self._read_article_text(
+            user_context=user_context, article_object_id=article_object_id
         )
-        evidence = build_knowledge_base_source_version_evidence(article, source)
-        if source.metadata.mime_type != "text/plain":
-            raise ValueError("Knowledge Base editor requires a text source")
-        content = source_object_content_bytes(source)
-        if len(content) > 400_000:
-            raise ValueError("Knowledge Base source exceeds the editor size limit")
-        body = content.decode("utf-8")
-        if len(body) > 100_000:
-            raise ValueError("Knowledge Base source exceeds the editor size limit")
         event = self.audit_logger.record(
             user_context=user_context,
             event_type="knowledge_base.article.edit_content_read",
@@ -4027,13 +4095,11 @@ def build_default_knowledge_base_write_approval_ledger() -> KnowledgeBaseWriteAp
     raise ValueError(f"Unsupported SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: {backend}")
 
 
-def build_knowledge_base_source_version_evidence(
+def require_knowledge_base_source_version_metadata(
     article: KnowledgeBaseArticleRecord,
-    source_record: SourceObjectRecord,
-) -> KnowledgeBaseSourceVersionEvidence:
-    metadata = source_record.metadata
+    metadata: SourceObjectMetadata,
+) -> None:
     expected_manifest_hash = build_source_object_manifest_hash(metadata)
-    expected_content_hash = sha256_bytes(source_object_content_bytes(source_record))
     mismatches: list[str] = []
     if metadata.tenant_id != article.tenant_id:
         mismatches.append("tenant_id")
@@ -4050,7 +4116,7 @@ def build_knowledge_base_source_version_evidence(
         or metadata.manifest_hash != expected_manifest_hash
     ):
         mismatches.append("source_manifest_hash")
-    if metadata.content_hash != article.current_content_hash or metadata.content_hash != expected_content_hash:
+    if metadata.content_hash != article.current_content_hash:
         mismatches.append("content_hash")
     if metadata.acl_version != article.current_acl_version:
         mismatches.append("acl_version")
@@ -4063,6 +4129,15 @@ def build_knowledge_base_source_version_evidence(
     if mismatches:
         raise ValueError(f"knowledge base source version evidence mismatch: {', '.join(sorted(mismatches))}")
 
+
+def build_knowledge_base_source_version_evidence(
+    article: KnowledgeBaseArticleRecord,
+    source_record: SourceObjectRecord,
+) -> KnowledgeBaseSourceVersionEvidence:
+    metadata = source_record.metadata
+    require_knowledge_base_source_version_metadata(article, metadata)
+    if metadata.content_hash != sha256_bytes(source_object_content_bytes(source_record)):
+        raise ValueError("knowledge base source version evidence mismatch: content_hash")
     draft = KnowledgeBaseSourceVersionEvidence(
         tenant_id=article.tenant_id,
         article_object_id=article.object_id,

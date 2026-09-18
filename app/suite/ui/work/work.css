@@ -926,6 +926,7 @@ h2 {
 
 .knowledge-item h3 {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 15px;
   line-height: 1.35;
 }
@@ -939,9 +940,88 @@ h2 {
   font-size: 10px;
 }
 
-.knowledge-edit {
-  justify-self: start;
+.knowledge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 16px;
+}
+
+.knowledge-reader {
+  width: min(800px, calc(100vw - 32px));
+  overflow-wrap: anywhere;
+}
+
+.knowledge-reader > header,
+.knowledge-reader > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.knowledge-reader > header {
+  border-bottom: 1px solid var(--line);
+}
+
+.knowledge-reader > header > div {
+  min-width: 0;
+}
+
+.knowledge-reader > footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+}
+
+.knowledge-reader-meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 16px 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.knowledge-reader-meta dd {
+  margin: 0;
+}
+
+.knowledge-reader-message {
+  margin: 16px 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.knowledge-reader-message:empty {
+  display: none;
+}
+
+.knowledge-reader-message.error {
+  color: var(--red);
+}
+
+.knowledge-reader-body {
+  max-height: 54vh;
+  margin: 16px 18px 20px;
+  padding: 4px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.7;
+  tab-size: 4;
+}
+
+.knowledge-reader-body:focus-visible {
+  outline: 3px solid rgba(23, 105, 170, 0.25);
+  outline-offset: 2px;
+}
+
+.knowledge-reader [hidden] {
+  display: none;
 }
 
 .knowledge-dialog {

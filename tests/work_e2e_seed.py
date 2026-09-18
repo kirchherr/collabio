@@ -9,11 +9,13 @@ import psycopg
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
+from work_e2e_controls import WORK_E2E_READER_ID
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",
     "work-approver-e2e",
     "work-assignee-e2e",
+    WORK_E2E_READER_ID,
 )
 
 

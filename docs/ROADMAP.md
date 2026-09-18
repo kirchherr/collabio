@@ -1,6 +1,6 @@
 # Master Roadmap
 
-Stand: 2026-09-17
+Stand: 2026-09-18
 
 Diese Roadmap merged:
 
@@ -1497,6 +1497,10 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      atomar; Restore prueft Trigger und Funktionsdefinitionen. Alle 41 isolierten Browserfaelle, volle Remote-Quality
      sowie Backup/Restore/Release-Gates sind gruen. Konflikte, Speicherausfaelle und verspaetete Antworten nach einem
      Kontextwechsel sind abgedeckt; reale Tenant-Aktivierung, Pilot und RAG/Indexing bleiben geschlossen.
+250. [ ] Wissensartikel fuer berechtigte Leser in `/work` vollstaendig oeffnen: eigene Leseansicht mit Inhalt,
+     aktueller Version und Aenderungsdatum, ohne Schreibrecht oder Adminrolle. Artikel-, Versions- und Quellen-ACL,
+     exakte Source-Version und Inhaltsintegritaet serverseitig pruefen; Rechteentzug, Fremdtenant, Speicherfehler,
+     Kontextwechsel und Desktop/Mobile isoliert browserbasiert abnehmen. Pilot und RAG/Indexing bleiben geschlossen.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 

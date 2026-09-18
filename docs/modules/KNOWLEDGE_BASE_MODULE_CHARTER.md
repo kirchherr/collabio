@@ -18,6 +18,8 @@ This charter intentionally starts smaller than a full wiki. The first slices pro
 The current product boundary adds guarded tenant-admin create/edit in `/work`. It reuses the approval ledger and
 PostgreSQL/S3 unit of work, requires an explicit final save confirmation, and leaves RAG/search indexing disabled.
 The isolated browser proof is documented in `docs/operations/WORK_E2E.md`; it does not authorize real tenant activation.
+The normal reader in `KNOWLEDGE_BASE_READER_VERTICAL_SLICE.md` adds a separate `/work` article view for authorized
+non-admin users. Its content read uses the read feature alone and leaves the authoring gates unchanged.
 
 ## 2. Lifecycle And Activation
 
@@ -42,7 +44,7 @@ Disabled stops normal article browsing and editing. Disabled does not stop reten
 
 | Feature ID | Default | Requires approval | Notes |
 | --- | --- | --- | --- |
-| `knowledge_base.articles.read` | on | no | Metadata-only article list and current version references |
+| `knowledge_base.articles.read` | on | no | Metadata list and authorized published current-version plain-text reader |
 | `knowledge_base.articles.write` | off | yes | Guarded tenant-admin create/edit and approval workflow in `/work` |
 | `knowledge_base.rag_indexing` | off | yes | Future candidate-only indexing after source resolver and ACL checks |
 | `knowledge_base.ai_assist` | off | yes | Future assist behind tenant AI policy and Local LLM Gateway |
@@ -61,6 +63,7 @@ Tenant Context
 Initial API:
 
 - `GET /v1/kb/articles`
+- `GET /v1/kb/articles/{article_object_id}/content`
 - `POST /v1/admin/kb/runtime/activate`
 - `POST /v1/admin/kb/runtime/reconcile`
 - `GET /v1/admin/kb/evidence`

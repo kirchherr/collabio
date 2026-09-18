@@ -96,6 +96,11 @@ Further authoring, search indexing, embedding, RAG, export, and AI-assist work m
 
 ## Persistence
 
+The normal article reader (`GET /v1/kb/articles/{article_object_id}/content`) consumes the exact version and integrity
+contract without changing durable state. Authorization and metadata checks precede content loading; the loaded source
+is revalidated and its source-version evidence hash accompanies the response and metadata-only audit. Its plain-text
+body is excluded from audit, receipts and recovery reports. No new schema or backup domain is introduced.
+
 `PostgresKnowledgeBaseWriteUnitOfWork` serializes tenant writes and revalidates expected-version and approved restore
 evidence under the transaction lock before content/receipt persistence. It validates projected source/restore evidence
 before commit and returns the committed transaction snapshot. Execution does not reread a newer tenant state to judge

@@ -3,7 +3,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, cast
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg import Error as PsycopgError
@@ -161,6 +161,7 @@ from suite.platform.knowledge_base import (
     KB_ARTICLES_WRITE_FEATURE_ID,
     KNOWLEDGE_BASE_MODULE_ID,
     InMemoryKnowledgeBaseArticleRepository,
+    KnowledgeBaseArticleContent,
     KnowledgeBaseArticleEditContent,
     KnowledgeBaseArticleService,
     KnowledgeBaseArticlesResponse,
@@ -21217,6 +21218,7 @@ def build_app() -> FastAPI:
     def read_knowledge_base_article_edit_content(
         article_object_id: str,
         request: Request,
+        response: Response,
         context: Annotated[TenantRequestContext, Depends(require_tenant_admin)],
         gate: Annotated[
             ModuleGateDecision,
@@ -21226,20 +21228,27 @@ def build_app() -> FastAPI:
         ],
     ) -> KnowledgeBaseArticleEditContent:
         del gate
+        response.headers["Cache-Control"] = "no-store"
         try:
             articles = knowledge_base_article_service_for_context(request=request, context=context)
             return articles.read_edit_content(article_object_id=article_object_id, user_context=context.user_context)
         except (SourceObjectStorageError, PsycopgError) as exc:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Knowledge Base storage unavailable"
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Knowledge Base storage unavailable",
+                headers={"Cache-Control": "no-store"},
             ) from exc
         except LookupError as exc:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge Base article is unavailable"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Base article is unavailable",
+                headers={"Cache-Control": "no-store"},
             ) from exc
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge Base source validation failed"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Knowledge Base source validation failed",
+                headers={"Cache-Control": "no-store"},
             ) from exc
 
     @app.post(
@@ -23100,6 +23109,43 @@ def build_app() -> FastAPI:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.get("/v1/kb/articles/{article_object_id}/content", response_model=KnowledgeBaseArticleContent)
+    def read_knowledge_base_article_content(
+        article_object_id: str,
+        request: Request,
+        response: Response,
+        context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
+        gate: Annotated[
+            ModuleGateDecision,
+            Depends(
+                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_FEATURE_ID)
+            ),
+        ],
+    ) -> KnowledgeBaseArticleContent:
+        del gate
+        response.headers["Cache-Control"] = "no-store"
+        try:
+            articles = knowledge_base_article_service_for_context(request=request, context=context)
+            return articles.read_content(article_object_id=article_object_id, user_context=context.user_context)
+        except (SourceObjectStorageError, PsycopgError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Knowledge Base storage unavailable",
+                headers={"Cache-Control": "no-store"},
+            ) from exc
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge Base article is unavailable",
+                headers={"Cache-Control": "no-store"},
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Knowledge Base source validation failed",
+                headers={"Cache-Control": "no-store"},
+            ) from exc
 
     @app.get("/v1/kb/articles", response_model=KnowledgeBaseArticlesResponse)
     def list_knowledge_base_articles(

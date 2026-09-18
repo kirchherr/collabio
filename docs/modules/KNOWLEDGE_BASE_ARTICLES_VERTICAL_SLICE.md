@@ -6,14 +6,16 @@ Date: 2026-09-18
 This slice proves the reusable module implementation contract outside CRM/ERP. It starts the Knowledge Base with metadata-only article reads, source-version evidence, and restore evidence, not a full wiki and not RAG.
 
 The initial metadata-read slice remains the foundation. `/work` now adds tenant-admin create/edit through the existing
-approval chain and PostgreSQL/S3 unit of work. Article content is available only through the authorized editor paths;
-list, ledger, receipt, audit and recovery evidence remain metadata-only. RAG and search indexing stay off.
+approval chain and PostgreSQL/S3 unit of work. The normal reader adds bounded current-version content under the read
+feature, independently of write/admin privileges. List, ledger, receipt, audit and recovery evidence remain
+metadata-only. RAG and search indexing stay off. See `KNOWLEDGE_BASE_READER_VERTICAL_SLICE.md` for the reader contract.
 
 ## Scope
 
 - Module: `knowledge_base`
 - Feature gates: `knowledge_base.articles.read`; default-off `knowledge_base.articles.write` for authoring
 - API: `GET /v1/kb/articles`
+- Reader API: `GET /v1/kb/articles/{article_object_id}/content`
 - Persistent tables: `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`
 - Object types: `kb.article`, `kb.article_version`
 - Classification: `internal`
@@ -67,6 +69,11 @@ request tenant context
 The list API returns only articles for the current tenant where the current user is authorized for the `kb.article`,
 current `kb.article_version` and current source object IDs. It exposes `can_write` for the UI; every authoring request
 still checks tenant-admin, the enabled module, the write feature and current edit authorization independently.
+
+The content reader requires only the read feature and those same authoritative object permissions. It checks the
+published state and exact source metadata before loading content, verifies the immutable source version and hashes,
+and returns bounded plain text with `Cache-Control: no-store`. The separate Work read dialog clears content on
+refresh, close and context changes. Error responses and read audits exclude content and raw storage error details.
 
 `POST /v1/admin/kb/articles/prepare-write` accepts operation, title, body and the exact article/current-version IDs for
 edits. The server constructs the proposed `SourceObjectRecord`, security metadata and canonical hashes. The UI sends

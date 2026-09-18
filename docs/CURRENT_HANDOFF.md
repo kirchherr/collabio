@@ -169,9 +169,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 249 is complete. No item 250 or new tenant activation has been authorized.
-Review the current roadmap with the user's next product instruction;
-do not repeat this KB implementation or launch another preparation-only series.
+Item 249 is complete. The user authorized item 250: a normal Knowledge Base reader in `/work`, using the read feature
+without write/admin privileges, authoritative article/version/source ACLs and exact source integrity. Prove create,
+authorized read, edit and updated read, plus revocation, foreign tenant, storage failures and responsive behavior.
+No new tenant activation, pilot opening, indexing or CRM implementation is part of item 250.
 
 For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
 data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.

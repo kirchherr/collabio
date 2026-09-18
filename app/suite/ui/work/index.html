@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Arbeit</title>
-    <link rel="stylesheet" href="/work/assets/work.css?v=4" />
+    <link rel="stylesheet" href="/work/assets/work.css?v=5" />
   </head>
   <body>
     <div class="app-shell">
@@ -349,6 +349,23 @@
       </form>
     </dialog>
 
-    <script src="/work/assets/work.js?v=5" defer></script>
+    <dialog class="editor-dialog knowledge-reader" id="knowledge-reader-dialog" aria-labelledby="knowledge-reader-title">
+      <header>
+        <div><p class="eyebrow">Knowledge Base</p><h2 id="knowledge-reader-title">Artikel lesen</h2></div>
+        <button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button>
+      </header>
+      <dl class="knowledge-reader-meta" id="knowledge-reader-meta" hidden>
+        <dt>Version</dt><dd id="knowledge-reader-version"></dd>
+        <dt>Geaendert</dt><dd><time id="knowledge-reader-updated"></time></dd>
+      </dl>
+      <p class="knowledge-reader-message" id="knowledge-reader-message" role="status" aria-live="polite"></p>
+      <article class="knowledge-reader-body" id="knowledge-reader-body" aria-label="Artikelinhalt" tabindex="0" hidden></article>
+      <footer>
+        <button class="button secondary" id="knowledge-reader-refresh" type="button">Erneut laden</button>
+        <button class="button primary" id="knowledge-reader-close" type="button" data-close-dialog>Schliessen</button>
+      </footer>
+    </dialog>
+
+    <script src="/work/assets/work.js?v=6" defer></script>
   </body>
 </html>
