@@ -40,8 +40,8 @@ class ProductHarness:
     def post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
         response = self.client.post(path, headers=self.headers, json=body)
         assert response.status_code == 200, response.text
-    body: dict[str, Any] = response.json()
-    return body
+        result: dict[str, Any] = response.json()
+        return result
 
 
 @pytest.fixture

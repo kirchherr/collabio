@@ -259,7 +259,9 @@ def _snapshot(
                     "function_language": "plpgsql",
                     "function_identity_arguments": "",
                     "function_result": "trigger",
-                    "function_definition": f"CREATE FUNCTION knowledge_base.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
+                    "function_definition": (
+                        f"CREATE FUNCTION knowledge_base.{function_name}(){function_sql.split('$$;', 1)[0]}$$;"
+                    ),
                     "function_body": function_body,
                     "function_public_execute": False,
                     "function_runtime_execute": False,

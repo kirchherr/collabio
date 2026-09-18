@@ -1255,7 +1255,9 @@ def _knowledge_base_acl_controls_verified(triggers: Sequence[Mapping[str, object
         ):
             return False
         body = row.get("function_body")
-        if not isinstance(body, str) or _normalized_function_body(body) != _knowledge_base_acl_function_body(function_name):
+        if not isinstance(body, str) or _normalized_function_body(body) != _knowledge_base_acl_function_body(
+            function_name
+        ):
             return False
     return True
 
