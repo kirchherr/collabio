@@ -97,6 +97,17 @@ OFFICE_DOCUMENT_TABLES = {
     "office.review_threads",
     "office.review_events",
 }
+OFFICE_OWNER_TABLE_PRIVILEGES = {
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "TRUNCATE",
+    "REFERENCES",
+    "TRIGGER",
+    "MAINTAIN",
+}
+OFFICE_OWNER_COLUMN_PRIVILEGES = {"SELECT", "INSERT", "UPDATE", "REFERENCES"}
 OFFICE_UPDATE_COLUMNS = {
     "office.documents": {"title", "current_version_id", "updated_at_utc"},
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
@@ -208,6 +219,11 @@ OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
         "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
         "FOREIGN KEY (tenant_id, thread_id, current_event_id) "
         "REFERENCES office.review_events(tenant_id, thread_id, event_id) DEFERRABLE INITIALLY DEFERRED",
+        "CHECK ((revision >= 1))",
+        "CHECK ((status = ANY (ARRAY['open'::text, 'resolved'::text])))",
+        "CHECK ((((anchor_from IS NULL) AND (anchor_to IS NULL)) OR "
+        "((anchor_from IS NOT NULL) AND (anchor_to IS NOT NULL) AND (anchor_from >= 1) "
+        "AND (anchor_to > anchor_from) AND (anchor_to <= 220000))))",
     },
     "office.review_events": {
         "PRIMARY KEY (tenant_id, thread_id, event_id)",
@@ -223,6 +239,15 @@ OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
         "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
         "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
         "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
+        "CHECK ((revision >= 1))",
+        "CHECK ((operation = ANY (ARRAY['create'::text, 'reply'::text, 'resolve'::text, 'reopen'::text])))",
+        "CHECK ((status_after = ANY (ARRAY['open'::text, 'resolved'::text])))",
+        "CHECK (((content_byte_length >= 1) AND (content_byte_length <= 80000)))",
+        "CHECK ((((revision = 1) AND (previous_event_id IS NULL) AND (operation = 'create'::text)) OR "
+        "((revision > 1) AND (previous_event_id IS NOT NULL) AND (previous_event_id <> event_id) "
+        "AND (operation <> 'create'::text))))",
+        "CHECK ((((operation = 'resolve'::text) AND (status_after = 'resolved'::text)) OR "
+        "((operation <> 'resolve'::text) AND (status_after = 'open'::text))))",
     },
 }
 
@@ -608,6 +633,7 @@ def build_postgres_database_snapshot(
     office_document_verified = _office_document_controls_verified(
         schemas=normalized["schemas"],
         tables=normalized["tables"],
+        columns=normalized["columns"],
         policies=normalized["policies"],
         triggers=normalized["triggers"],
         constraints=normalized["constraints"],
@@ -1178,17 +1204,21 @@ def inspect_postgres_database(database_dsn: str) -> PostgresDatabaseSnapshot:
         constraints = _fetch_rows(
             connection,
             """
+            -- Pin Office CHECKs using canonical output, independent of pretty-print parentheses.
             SELECT n.nspname AS schema_name,
                    c.relname AS table_name,
                    con.conname AS constraint_name,
                    con.contype::text AS constraint_type,
-                   pg_get_constraintdef(con.oid, true) AS constraint_definition
+                   pg_get_constraintdef(
+                       con.oid, NOT (n.nspname || '.' || c.relname = ANY(%s))
+                   ) AS constraint_definition
             FROM pg_constraint con
             JOIN pg_class c ON c.oid = con.conrelid
             JOIN pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
             ORDER BY n.nspname, c.relname, con.conname
             """,
+            (sorted(OFFICE_DOCUMENT_TABLES),),
         )
         indexes = _fetch_rows(
             connection,
@@ -1281,21 +1311,26 @@ def inspect_postgres_database(database_dsn: str) -> PostgresDatabaseSnapshot:
                    privilege_type,
                    is_grantable
             FROM information_schema.table_privileges
-            WHERE grantee = ANY(%s) OR grantee = 'PUBLIC'
+            WHERE (grantee = ANY(%s) OR grantee = 'PUBLIC')
+              AND NOT (table_schema || '.' || table_name = ANY(%s))
             ORDER BY table_schema, table_name, grantee, privilege_type
             """,
-            (sorted(SERVICE_ROLES),),
+            (sorted(SERVICE_ROLES), sorted(OFFICE_DOCUMENT_TABLES)),
         )
         column_grants = _fetch_rows(
             connection,
             """
             SELECT table_schema AS schema_name, table_name, column_name, grantee, privilege_type, is_grantable
             FROM information_schema.column_privileges
-            WHERE grantee = ANY(%s) OR grantee = 'PUBLIC'
+            WHERE (grantee = ANY(%s) OR grantee = 'PUBLIC')
+              AND NOT (table_schema || '.' || table_name = ANY(%s))
             ORDER BY table_schema, table_name, column_name, grantee, privilege_type
             """,
-            (sorted(SERVICE_ROLES),),
+            (sorted(SERVICE_ROLES), sorted(OFFICE_DOCUMENT_TABLES)),
         )
+        office_grants, office_column_grants = _inspect_office_grants(connection)
+        grants += office_grants
+        column_grants += office_column_grants
         row_counts = _exact_row_counts(connection, tables)
     return build_postgres_database_snapshot(
         database_ref_hash=database_ref_hash,
@@ -1370,6 +1405,67 @@ def _fetch_rows(
     return tuple(dict(row) for row in connection.execute(query, params).fetchall())
 
 
+def _inspect_office_grants(
+    connection: psycopg.Connection[dict[str, Any]],
+) -> tuple[tuple[Mapping[str, object], ...], tuple[Mapping[str, object], ...]]:
+    # The information_schema views omit MAINTAIN and can hide unrelated grantees.
+    # Inspect every Office ACL directly; preserve the existing scope for other modules.
+    rows = _fetch_rows(
+        connection,
+        """
+        WITH relations AS (
+            SELECT c.oid, c.relowner, c.relacl, n.nspname AS schema_name, c.relname AS table_name
+            FROM pg_catalog.pg_class c
+            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relkind IN ('r', 'p') AND n.nspname || '.' || c.relname = ANY(%s)
+        ), table_acl AS (
+            SELECT r.*, acl.grantor, acl.grantee, acl.privilege_type, acl.is_grantable
+            FROM relations r
+            CROSS JOIN LATERAL pg_catalog.aclexplode(
+                coalesce(r.relacl, pg_catalog.acldefault('r', r.relowner))
+            ) acl
+        ), column_acl AS (
+            SELECT t.schema_name, t.table_name, t.relowner, t.grantor, t.grantee,
+                   t.privilege_type, t.is_grantable, a.attname AS column_name
+            FROM table_acl t
+            JOIN pg_catalog.pg_attribute a ON a.attrelid = t.oid
+            WHERE a.attnum > 0 AND NOT a.attisdropped
+              AND t.privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+            UNION
+            SELECT r.schema_name, r.table_name, r.relowner, acl.grantor, acl.grantee,
+                   acl.privilege_type, acl.is_grantable, a.attname AS column_name
+            FROM relations r
+            JOIN pg_catalog.pg_attribute a ON a.attrelid = r.oid
+            CROSS JOIN LATERAL pg_catalog.aclexplode(
+                coalesce(a.attacl, pg_catalog.acldefault('c', r.relowner))
+            ) acl
+            WHERE a.attnum > 0 AND NOT a.attisdropped
+        ), all_acl AS (
+            SELECT schema_name, table_name, relowner, grantor, grantee, privilege_type,
+                   is_grantable, NULL::name AS column_name FROM table_acl
+            UNION ALL
+            SELECT schema_name, table_name, relowner, grantor, grantee, privilege_type,
+                   is_grantable, column_name FROM column_acl
+        )
+        SELECT schema_name, table_name, pg_catalog.pg_get_userbyid(grantor) AS grantor,
+               CASE WHEN grantee = 0 THEN 'PUBLIC' ELSE pg_catalog.pg_get_userbyid(grantee) END AS grantee,
+               privilege_type, column_name,
+               CASE WHEN grantee = relowner OR is_grantable THEN 'YES' ELSE 'NO' END AS is_grantable
+        FROM all_acl
+        ORDER BY schema_name, table_name, column_name, grantee, grantor, privilege_type
+        """,
+        (sorted(OFFICE_DOCUMENT_TABLES),),
+    )
+    table_grants: list[Mapping[str, object]] = []
+    column_grants: list[Mapping[str, object]] = []
+    for row in rows:
+        if row["column_name"] is None:
+            table_grants.append({key: value for key, value in row.items() if key != "column_name"})
+        else:
+            column_grants.append(row)
+    return tuple(table_grants), tuple(column_grants)
+
+
 def _exact_row_counts(
     connection: psycopg.Connection[dict[str, Any]],
     tables: Sequence[Mapping[str, object]],
@@ -1400,6 +1496,7 @@ def _office_document_controls_verified(
     *,
     schemas: Sequence[Mapping[str, object]],
     tables: Sequence[Mapping[str, object]],
+    columns: Sequence[Mapping[str, object]],
     policies: Sequence[Mapping[str, object]],
     triggers: Sequence[Mapping[str, object]],
     constraints: Sequence[Mapping[str, object]],
@@ -1478,26 +1575,52 @@ def _office_document_controls_verified(
             function_name, security_definer
         ):
             return False
-    allowed_grantees = SERVICE_ROLES | {"PUBLIC"}
+    allowed_grantees = SERVICE_ROLES | {"PUBLIC", "collabio_owner"}
+    office_grants = [row for row in grants if _qualified_name(row) in OFFICE_DOCUMENT_TABLES]
+    if any(
+        row.get("grantee") not in allowed_grantees or row.get("grantor") != "collabio_owner" for row in office_grants
+    ):
+        return False
     for table_name in OFFICE_DOCUMENT_TABLES:
         for grantee in allowed_grantees:
-            matching = [row for row in grants if _qualified_name(row) == table_name and row.get("grantee") == grantee]
+            matching = [
+                row for row in office_grants if _qualified_name(row) == table_name and row.get("grantee") == grantee
+            ]
             privileges = {str(row.get("privilege_type")) for row in matching}
             expected_privileges = (
-                {"SELECT", "INSERT"}
+                OFFICE_OWNER_TABLE_PRIVILEGES
+                if grantee == "collabio_owner"
+                else {"SELECT", "INSERT"}
                 if grantee == "collabio_app"
                 else {"SELECT"}
                 if grantee == "collabio_worker"
                 else set()
             )
-            if privileges != expected_privileges or any(row.get("is_grantable") != "NO" for row in matching):
+            expected_grantable = "YES" if grantee == "collabio_owner" else "NO"
+            if privileges != expected_privileges or any(
+                row.get("is_grantable") != expected_grantable for row in matching
+            ):
                 return False
+    expected_owner_columns = {
+        (_qualified_name(row), str(row.get("column_name")), privilege)
+        for row in columns
+        if _qualified_name(row) in OFFICE_DOCUMENT_TABLES
+        for privilege in OFFICE_OWNER_COLUMN_PRIVILEGES
+    }
+    owner_columns: set[tuple[str, str, str]] = set()
     update_columns: dict[str, set[str]] = {table: set() for table in OFFICE_UPDATE_COLUMNS}
     for row in column_grants:
         table_name = _qualified_name(row)
         if table_name not in OFFICE_DOCUMENT_TABLES:
             continue
         grantee, privilege = str(row.get("grantee")), row.get("privilege_type")
+        if row.get("grantor") != "collabio_owner":
+            return False
+        if grantee == "collabio_owner":
+            if row.get("is_grantable") != "YES":
+                return False
+            owner_columns.add((table_name, str(row.get("column_name")), str(privilege)))
+            continue
         if row.get("is_grantable") != "NO":
             return False
         if grantee == "collabio_app" and privilege == "UPDATE" and table_name in OFFICE_UPDATE_COLUMNS:
@@ -1508,7 +1631,11 @@ def _office_document_controls_verified(
             continue
         else:
             return False
-    return update_columns == OFFICE_UPDATE_COLUMNS
+    return (
+        update_columns == OFFICE_UPDATE_COLUMNS
+        and owner_columns == expected_owner_columns
+        and {table for table, _, _ in owner_columns} == OFFICE_DOCUMENT_TABLES
+    )
 
 
 def _office_function_body(function_name: str, security_definer: bool) -> str:

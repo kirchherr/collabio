@@ -4,8 +4,11 @@ import hashlib
 import os
 from collections.abc import Callable
 from pathlib import Path
+from uuid import uuid4
 
+import psycopg
 import pytest
+from psycopg import sql
 
 from suite.operations.backend_foundation_completion_gate import (
     build_backend_foundation_completion_gate,
@@ -23,6 +26,8 @@ from suite.operations.postgres_restore_drill import (
     KB_ARTICLE_ACL_TRIGGER,
     MODULE_REGISTRY_TABLES,
     OFFICE_DOCUMENT_TABLES,
+    OFFICE_OWNER_COLUMN_PRIVILEGES,
+    OFFICE_OWNER_TABLE_PRIVILEGES,
     OFFICE_POLICY_DEFINITIONS,
     OFFICE_REQUIRED_CONSTRAINTS,
     OFFICE_TRIGGER_FUNCTIONS,
@@ -72,6 +77,11 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
         migration.sql() for migration in load_migrations() if migration.module_id == "office_documents"
     )
     triggers: list[dict[str, object]] = []
+    columns: list[dict[str, object]] = [
+        {"schema_name": "office", "table_name": table.split(".")[1], "column_name": column}
+        for table in sorted(OFFICE_DOCUMENT_TABLES)
+        for column in sorted({"tenant_id"} | OFFICE_UPDATE_COLUMNS.get(table, set()))
+    ]
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
         function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
         triggers.append(
@@ -113,6 +123,7 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
             for table_name in sorted(OFFICE_DOCUMENT_TABLES)
         ],
         "triggers": triggers,
+        "columns": columns,
         "policies": [
             {
                 "schema_name": "office",
@@ -140,18 +151,34 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
                 "schema_name": "office",
                 "table_name": table_name.split(".")[1],
                 "grantee": grantee,
+                "grantor": "collabio_owner",
                 "privilege_type": privilege,
-                "is_grantable": "NO",
+                "is_grantable": "YES" if grantee == "collabio_owner" else "NO",
             }
             for table_name in sorted(OFFICE_DOCUMENT_TABLES)
-            for grantee, privileges in (("collabio_app", ("SELECT", "INSERT")), ("collabio_worker", ("SELECT",)))
+            for grantee, privileges in (
+                ("collabio_app", ("SELECT", "INSERT")),
+                ("collabio_worker", ("SELECT",)),
+                ("collabio_owner", sorted(OFFICE_OWNER_TABLE_PRIVILEGES)),
+            )
             for privilege in privileges
         ],
         "column_grants": [
             {
+                **column,
+                "grantee": "collabio_owner",
+                "grantor": "collabio_owner",
+                "privilege_type": privilege,
+                "is_grantable": "YES",
+            }
+            for column in columns
+            for privilege in sorted(OFFICE_OWNER_COLUMN_PRIVILEGES)
+        ] + [
+            {
                 "schema_name": "office",
                 "table_name": table_name.split(".")[1],
                 "grantee": "collabio_app",
+                "grantor": "collabio_owner",
                 "column_name": column,
                 "privilege_type": "UPDATE",
                 "is_grantable": "NO",
@@ -515,7 +542,7 @@ def _snapshot(
         database_ref_hash=database_hash,
         schemas=[{"schema_name": "collabio"}, *office["schemas"]],
         tables=tables,
-        columns=[],
+        columns=office["columns"],
         row_counts=row_counts,
         migrations=migrations,
         policies=policies,
@@ -602,6 +629,38 @@ def test_live_postgres_snapshot_verifies_authored_kb_and_office_integrity_contro
     assert snapshot.office_document_controls_verified is True
 
 
+@pytest.mark.parametrize("privilege", ("SELECT", "MAINTAIN", "SELECT (tenant_id)"))
+def test_live_postgres_snapshot_captures_and_rejects_unknown_office_grantee(privilege: str) -> None:
+    database_dsn = os.environ.get("SUITE_MIGRATION_DATABASE_DSN")
+    if not database_dsn:
+        pytest.skip("SUITE_MIGRATION_DATABASE_DSN is not configured")
+    apply_migrations(database_dsn)
+    before = inspect_postgres_database(database_dsn)
+    assert before.office_document_controls_verified is True
+    role_name = f"office_restore_grant_test_{uuid4().hex}"
+    with psycopg.connect(database_dsn, autocommit=True) as connection:
+        connection.execute(sql.SQL("CREATE ROLE {} NOLOGIN").format(sql.Identifier(role_name)))
+        try:
+            connection.execute(
+                sql.SQL("GRANT {} ON TABLE office.review_events TO {}").format(
+                    sql.SQL(privilege), sql.Identifier(role_name)
+                )
+            )
+            tampered = inspect_postgres_database(database_dsn)
+            assert tampered.office_document_controls_verified is False
+            assert tampered.database_control_manifest_hash != before.database_control_manifest_hash
+        finally:
+            connection.execute(
+                sql.SQL("REVOKE {} ON TABLE office.review_events FROM {}").format(
+                    sql.SQL(privilege), sql.Identifier(role_name)
+                )
+            )
+            connection.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role_name)))
+    restored = inspect_postgres_database(database_dsn)
+    assert restored.office_document_controls_verified is True
+    assert restored.database_control_manifest_hash == before.database_control_manifest_hash
+
+
 def _office_tamper_report(
     mutate: Callable[[dict[str, list[dict[str, object]]]], None],
 ) -> PostgresRestoreDrillReport:
@@ -634,7 +693,7 @@ def test_restore_requires_native_office_controls() -> None:
         for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
     ],
 )
-def test_restore_rejects_each_missing_review_identity_anchor_or_receipt_constraint(
+def test_restore_rejects_each_missing_review_identity_state_anchor_or_receipt_constraint(
     table_name: str,
     definition: str,
 ) -> None:
@@ -646,6 +705,27 @@ def test_restore_rejects_each_missing_review_identity_anchor_or_receipt_constrai
         ]
 
     _assert_office_tamper_blocked(_office_tamper_report(remove))
+
+
+@pytest.mark.parametrize(
+    ("table_name", "definition"),
+    [
+        (table, definition)
+        for table in ("office.review_threads", "office.review_events")
+        for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
+        if definition.startswith("CHECK ")
+    ],
+)
+def test_restore_rejects_identical_review_check_drift(table_name: str, definition: str) -> None:
+    def weaken(rows: dict[str, list[dict[str, object]]]) -> None:
+        constraint = next(
+            row
+            for row in rows["constraints"]
+            if row["table_name"] == table_name.split(".")[1] and row["constraint_definition"] == definition
+        )
+        constraint["constraint_definition"] = "CHECK (true)"
+
+    _assert_office_tamper_blocked(_office_tamper_report(weaken))
 
 
 @pytest.mark.parametrize(
@@ -740,6 +820,12 @@ def test_restore_rejects_additional_unreviewed_office_trigger_or_policy(collecti
         ("grants", "review_events", "collabio_app", "DELETE", ""),
         ("column_grants", "review_threads", "collabio_app", "UPDATE", "anchor_version_id"),
         ("column_grants", "review_events", "collabio_app", "UPDATE", "content_hash"),
+        ("grants", "documents", "unreviewed_export_role", "SELECT", ""),
+        ("grants", "document_versions", "unreviewed_export_role", "MAINTAIN", ""),
+        ("grants", "review_threads", "unreviewed_export_role", "SELECT", ""),
+        ("grants", "review_events", "unreviewed_export_role", "SELECT", ""),
+        ("column_grants", "review_events", "unreviewed_export_role", "SELECT", "content_hash"),
+        ("column_grants", "documents", "unreviewed_export_role", "SELECT", "title"),
     ),
 )
 def test_restore_rejects_broadened_office_table_and_column_grants(
@@ -755,6 +841,7 @@ def test_restore_rejects_broadened_office_table_and_column_grants(
                 "schema_name": "office",
                 "table_name": table_name,
                 "grantee": grantee,
+                "grantor": "collabio_owner",
                 "privilege_type": privilege,
                 "column_name": column,
                 "is_grantable": "NO",
@@ -762,6 +849,35 @@ def test_restore_rejects_broadened_office_table_and_column_grants(
         )
 
     _assert_office_tamper_blocked(_office_tamper_report(grant))
+
+
+@pytest.mark.parametrize("collection", ("grants", "column_grants"))
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (("is_grantable", "NO"), ("privilege_type", "EXECUTE"), ("grantor", "unreviewed_owner_role")),
+)
+def test_restore_pins_legitimate_office_owner_grants(collection: str, field: str, value: str) -> None:
+    def tamper(rows: dict[str, list[dict[str, object]]]) -> None:
+        next(row for row in rows[collection] if row["grantee"] == "collabio_owner")[field] = value
+
+    _assert_office_tamper_blocked(_office_tamper_report(tamper))
+
+
+@pytest.mark.parametrize("collection", ("grants", "column_grants"))
+def test_restore_rejects_missing_office_owner_privilege(collection: str) -> None:
+    def remove(rows: dict[str, list[dict[str, object]]]) -> None:
+        owner_grant = next(row for row in rows[collection] if row["grantee"] == "collabio_owner")
+        rows[collection].remove(owner_grant)
+
+    _assert_office_tamper_blocked(_office_tamper_report(remove))
+
+
+@pytest.mark.parametrize("collection", ("grants", "column_grants"))
+def test_restore_does_not_treat_runtime_grant_options_as_owner_rights(collection: str) -> None:
+    def delegate(rows: dict[str, list[dict[str, object]]]) -> None:
+        next(row for row in rows[collection] if row["grantee"] == "collabio_app")["is_grantable"] = "YES"
+
+    _assert_office_tamper_blocked(_office_tamper_report(delegate))
 
 
 def test_restore_hashes_office_column_grants_and_complete_function_definitions() -> None:
