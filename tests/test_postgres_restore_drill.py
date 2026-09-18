@@ -173,7 +173,8 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
             }
             for column in columns
             for privilege in sorted(OFFICE_OWNER_COLUMN_PRIVILEGES)
-        ] + [
+        ]
+        + [
             {
                 "schema_name": "office",
                 "table_name": table_name.split(".")[1],
