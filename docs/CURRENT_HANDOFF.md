@@ -85,6 +85,10 @@ account-detail dialog with associated contacts and activities. It reuses
   cover child filtering/redaction, literal fields, empty children, missing/forged/foreign permissions, closed pilot,
   account ACL revocation, disabled contacts feature, database failure/retry, late responses and desktop/mobile layout.
   Both viewport screenshots passed visual review; the previous 50 Work/KB cases remain green.
+- After the operator approved publishing the described development evidence to the public repository, documentation
+  commit `43149aa` was pushed and synchronized to dev001. All 11 targeted KB/module-contract/roadmap tests passed in
+  19.88 seconds; health remained ok at 09:01:01 UTC. The disposable test used --no-deps and started no persistent
+  service or auxiliary database. The final evidence-only update changes no runtime code or pilot state.
 
 Current proof artifacts are ignored under `e2e/work/artifacts/roadmap-251/`:
 
