@@ -1228,9 +1228,7 @@ def _exact_row_counts(
 def _knowledge_base_acl_controls_verified(triggers: Sequence[Mapping[str, object]]) -> bool:
     for (table_name, trigger_name), function_name in KB_ACL_TRIGGER_FUNCTIONS.items():
         matching = [
-            row
-            for row in triggers
-            if _qualified_name(row) == table_name and row.get("trigger_name") == trigger_name
+            row for row in triggers if _qualified_name(row) == table_name and row.get("trigger_name") == trigger_name
         ]
         if len(matching) != 1:
             return False
