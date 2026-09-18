@@ -1491,9 +1491,12 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Route-Policy, reale Task-Neuzuweisung mit Time-Correction/Resubmission und separate Desktop-/Mobile-Ansichten,
      insgesamt 32 Faelle auf ephemerem PostgreSQL. Der Pilot-Kill-Switch blieb geschlossen; es gab keine
      Tenant-Aktivierung oder dauerhaften Nutzdaten.
-249. [ ] Naechsten Produktzug schliessen: vorhandene guarded Knowledge-Base-Create/Edit-Vertraege in `/work` nutzbar
-     machen und Create, Edit, Konflikt, Blockade und partielle Fehler browserbasiert pruefen. Bestehende Approval-,
-     UoW-, Audit-, S3-/PostgreSQL- und Restore-Grenzen werden wiederverwendet; RAG/Indexing bleibt geschlossen.
+249. [x] Guarded Knowledge-Base-Create/Edit in `/work` geschlossen: serverseitige SourceObject-Vorbereitung,
+     autoritative Artikel-/Versions-ACLs, explizite Freigabe/Bestaetigung und tenantweise serialisierte PostgreSQL-/S3-
+     Writes verwenden die bestehenden Approval-, UoW-, Audit- und Restore-Grenzen. Migration `0082` bindet neue ACLs
+     atomar; Restore prueft Trigger und Funktionsdefinitionen. Alle 41 isolierten Browserfaelle, volle Remote-Quality
+     sowie Backup/Restore/Release-Gates sind gruen. Konflikte, Speicherausfaelle und verspaetete Antworten nach einem
+     Kontextwechsel sind abgedeckt; reale Tenant-Aktivierung, Pilot und RAG/Indexing bleiben geschlossen.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 
@@ -1507,7 +1510,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 - [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
 - [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
 - [x] Task-Status und Time-Approval als append-only, datenbankseitig validierte Workflows mit UI-Aktionen operationalisiert; Basisdatensaetze bleiben unveraendert.
-- [x] Daily-Work-Oberflaeche mit 32 isolierten Browserfaellen ueber Desktop und Mobile abgenommen; alle sieben Fachquellen, partielle Fehler, Route-Policy, Neuzuweisung und Korrektur/Neueinreichung sind reproduzierbar geprueft.
+- [x] Daily-Work-Oberflaeche mit 41 isolierten Browserfaellen ueber Desktop und Mobile abgenommen; alle sieben Fachquellen, partielle Fehler, Route-Policy, Neuzuweisung, Korrektur/Neueinreichung, Knowledge-Base-Create/Edit und Kontextwechsel sind reproduzierbar geprueft.
 
 Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
 

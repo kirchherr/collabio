@@ -117,6 +117,7 @@ Current sprint:
 107. [x] Append-only task reassignment and due-date amendments with optimistic checks, active-principal validation, precise ACL rebinding, activity evidence, shared serialization with lifecycle transitions, restore coverage, API, and Work UI actions.
 108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
 109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
+110. [x] Guarded Knowledge Base create/edit in `/work` with server-prepared source metadata, authoritative ACLs, explicit approval/confirmation, tenant-serialized PostgreSQL/S3 writes, conflict/failure recovery, migration 0082 ACL restore verification, and 41 passing isolated browser cases; full remote quality and backup/restore/release gates passed with pilot and indexing closed.
 
 ## Next Engineering Step
 
