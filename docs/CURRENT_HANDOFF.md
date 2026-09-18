@@ -101,6 +101,8 @@ spreadsheets, presentations and mail remain open product work; no claim of Offic
 - Final browser proof on `5917bdf`: 73/73 in 160.237 seconds, zero skipped, unexpected or flaky cases. It preserves all
   60 Work/KB/CRM regressions and adds 13 Office workflow/policy/responsive cases. Earlier failures and corrections are
   retained in the operations log. The final focus regression checks focus during the control event, without sleeps.
+- Documentation closeout `39980c5` passed all 11 targeted module/KB/roadmap contract tests in 59.58 seconds, with only
+  the same warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 10:19:15 UTC.
 - Final nonempty recovery on `5917bdf`: 13 documents, 18 exact versions, five multi-version documents and 37 total source
   objects restored to separate PostgreSQL/S3 targets. Historical reads, canonical content/receipt hashes, current ACLs
   and foreign-tenant denial pass. Report `sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`;
