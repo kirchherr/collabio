@@ -12,6 +12,17 @@ function descendants(value) {
   return [value, ...(value.content || []).flatMap(descendants)];
 }
 
+const officeFeatureTest = test.extend({
+  restoreOfficeFeatures: [async ({ request }, use) => {
+    let previous = null;
+    try {
+      await use((features) => { previous = { ...features }; });
+    } finally {
+      if (previous !== null) await setOfficeFeatures({ request }, previous);
+    }
+  }, { timeout: 20_000 }],
+});
+
 test("Office rich authoring saves confirmed native content and reopens from PostgreSQL/S3", async ({ page }) => {
   const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
   const writes = [];
@@ -157,22 +168,20 @@ test("Office current document ACL revocation also denies history and clears the 
   }
 });
 
-test("Office feature removal is rechecked on save and restores the exact synthetic feature mapping", async ({ page }) => {
+officeFeatureTest("Office feature removal is rechecked on save and restores the exact synthetic feature mapping", async ({ page, restoreOfficeFeatures }) => {
   await openOffice(page);
   const created = await createOfficeDocument(page, "Synthetic feature-bound document", "Before feature closure");
   await officeEditor(page).fill("Unsaved text after feature closure");
   const previous = await officeFeatures(page);
-  try {
-    await setOfficeFeatures(page, { ...previous, "office_documents.documents.write": false });
-    await saveOffice(page, { objectId: created.document.object_id, status: 403 });
-    await expect(page.locator("#office-editor")).toHaveText("");
-    await expect(page.locator("#documents-status")).toContainText("Zugriff wurde nicht bestätigt");
-    const current = await officeContent(page, created.document.object_id);
-    expect(current.content).toEqual(created.content);
-    expect(current.can_write).toBe(false);
-  } finally {
-    await setOfficeFeatures(page, previous);
-  }
+  // Arm cleanup before the mutation so a lost acknowledgment is covered as well.
+  restoreOfficeFeatures(previous);
+  await setOfficeFeatures(page, { ...previous, "office_documents.documents.write": false });
+  await saveOffice(page, { objectId: created.document.object_id, status: 403 });
+  await expect(page.locator("#office-editor")).toHaveText("");
+  await expect(page.locator("#documents-status")).toContainText("Zugriff wurde nicht bestätigt");
+  const current = await officeContent(page, created.document.object_id);
+  expect(current.content).toEqual(created.content);
+  expect(current.can_write).toBe(false);
 });
 
 test("Office pre-PUT storage failure leaves head unchanged and retries the same confirmed save", async ({ page }) => {

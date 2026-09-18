@@ -1244,9 +1244,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "rag_and_search_indexing_false",
     }.issubset(office_native["guardrails"])
     assert "docs/modules/OFFICE_NATIVE_DOCUMENTS.md" in office_native["evidence_refs"]
-    assert (
-        "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
-    )
+    assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
     registered_routes = {
         (getattr(route, "path", None), method)
         for route in app.routes

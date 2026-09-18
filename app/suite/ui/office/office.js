@@ -61,7 +61,22 @@ async function api(path, { method = "GET", body } = {}, context = state.context)
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!response.ok) throw new ApiError(response.status);
+  if (!response.ok) {
+    const reader = response.body?.getReader();
+    if (reader) {
+      let receivedBytes = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          receivedBytes += value.byteLength;
+          if (receivedBytes > 65536) { await reader.cancel(); break; }
+        }
+      } catch { /* Preserve the safe HTTP status if the error body cannot be drained. */ }
+      finally { reader.releaseLock(); }
+    }
+    throw new ApiError(response.status);
+  }
   try { return await response.json(); } catch { throw new ApiError(502); }
 }
 

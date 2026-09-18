@@ -24,11 +24,11 @@ RUN python -m pip install --require-hashes --requirement requirements.lock
 
 FROM base AS dev
 
-COPY --from=office-frontend /office-build/dist /opt/collabio-office
-
 COPY requirements-dev.lock .
 COPY requirements-preview.lock .
 RUN python -m pip install --require-hashes --requirement requirements-dev.lock
+
+COPY --from=office-frontend /office-build/dist /opt/collabio-office
 
 COPY app ./app
 COPY tests ./tests
@@ -43,12 +43,12 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS runtime
 
-COPY --from=office-frontend /office-build/dist /opt/collabio-office
-
 RUN addgroup -S -g 10001 collabio \
     && adduser -S -D -H -u 10001 -G collabio collabio \
     && mkdir --parents /workspace/data \
     && chown 10001:10001 /workspace/data
+
+COPY --from=office-frontend /office-build/dist /opt/collabio-office
 
 COPY --chown=10001:10001 app ./app
 COPY --chown=10001:10001 docs/operations/genoffice_evaluation_policy.json ./docs/operations/genoffice_evaluation_policy.json
