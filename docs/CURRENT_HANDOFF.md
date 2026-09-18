@@ -10,7 +10,7 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `383c001`; the commit containing this handoff is the continuation
+- Validated implementation: `d8d0386`; the commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
 - Generated `e2e/work/artifacts/` output is ignored and must not be committed.
@@ -23,12 +23,12 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final host verification at 2026-09-18 07:22:34 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final host verification at 2026-09-18 08:17:16 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated. Webcut remains `running(7)` and all three
 provider nodes remain unchanged (127.0.0.1:26443). Tricert was absent. Work-E2E containers were removed; postgres-test,
-postgres-restore and minio-restore are stopped. Live checks confirmed all new KB routes, `/work`, the disabled KB write
-feature in tenant-demo and the closed pilot switch. The initial post-recreate health read hit a connection reset and
-the first cold OpenAPI read exceeded 15 seconds; the later read check passed without a code change.
+postgres-restore and minio-restore are stopped. Live checks confirmed the new normal KB content route and existing
+authoring routes, the reader in `/work`, the disabled KB write feature in tenant-demo and the closed pilot switch.
+Bounded health retries covered startup connection resets; health and the cold OpenAPI check then passed.
 
 ## Non-negotiable boundaries
 
@@ -59,7 +59,29 @@ Prefer mature maintained open-source components behind provider-neutral interfac
 before adoption. Office and Mail retain their extension points; do not pull a full suite ahead of the agreed roadmap.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 249
+## Last completed slice: Roadmap 250
+
+Roadmap item 250 and PLANS item 111 are complete. Authorized ordinary readers can open published Knowledge Base
+articles in `/work` with `knowledge_base.articles.read`, without an admin role or write feature.
+
+- `GET /v1/kb/articles/{article_object_id}/content` returns the current article, exact source version, plain-text body,
+  audit event ID and false RAG/search flags. Successful content responses and route-local errors use `no-store`.
+- Article, current-version and source ACLs are checked before source access. JWT/OIDC ignores forged browser grants.
+  Metadata preflight and loaded-byte validation bind exact identity, manifest/content hashes and security metadata.
+- Only published article/lifecycle and WIKI/text/plain saved-version sources are supported, bounded to 400,000 bytes
+  and 100,000 characters. Missing/denied, corrupt and unavailable sources return generic 404/400/503 responses.
+- The read audit includes IDs and evidence hashes, never the article body. The editor shares the integrity helper;
+  all existing write gates and approval stages remain intact.
+- The dialog displays title, version and change date; literal markup stays plain text. Refresh clears old content
+  before revalidation. Closing/reopening or changing context invalidates late responses. Desktop and mobile fit.
+- The isolated browser proof uses a seeded ordinary reader, current PostgreSQL ACLs and the blocked API with write
+  disabled. New-version access proves migration 0082 ACL inheritance without an extra version grant. Article/version
+  revocation, S3 read failure/retry, foreign tenant, malicious markup and delayed-response cases pass.
+
+No schema or durable business-data change was added. The migration 0082 backup/restore/release evidence below is
+retained from item 249 and was not rerun for this read slice. No real tenant/runtime activation or pilot opening occurred.
+
+## Previous slice: Roadmap 249 authoring foundation
 
 Roadmap item 249 and PLANS item 110 are complete. The original Work browser slice (item 248/PLANS 109) remains intact.
 
@@ -97,20 +119,21 @@ Security and durability:
 
 ## Validation and recovery evidence
 
-On commit `383c001`, full quality passed: Ruff, formatting across 649 files, Mypy on 513 source files and full Pytest
+On commit `d8d0386`, full quality passed: Ruff, formatting across 652 files, Mypy on 515 source files and full Pytest
 to 100 percent. Only the known Starlette/AnyIO deprecation warning remains. This includes the PostgreSQL concurrency,
 atomic ACL, API policy, storage-failure and restore-function tamper tests.
-After documentation closeout, commit `1cf06d4` also passed all 11 targeted KB/module-contract/roadmap tests.
+The new normal-reader API and isolated-harness policy tests are included. Prior item 249 documentation checks passed
+on `1cf06d4`; its implementation quality and 41-case browser evidence remain in the operations log.
 
-Final browser report: 41/41 passed in 51.539 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
-screenshots were visually checked. Ignored artifact hashes:
+Final browser report: 50/50 passed in 120.480 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
+reader screenshots were visually checked. Ignored local artifacts are retained under `e2e/work/artifacts/roadmap-250/`:
 
-- `results.json`: `sha256:275f152a1979d7c1de44bf7d435e0a86b7414bd580c982837f93417fd99c2be7`.
-- `work-knowledge-complete.png`: `sha256:459e2cba4811ba28538a44a464a8ff5b412e88d76b1c40c342652473a114221e`.
-- `work-knowledge-desktop-chromium.png`: `sha256:a77147f5df7dad251f62ea8126d5f0c4dd6e4998bb65cc0025163711e9abd08d`.
-- `work-knowledge-mobile-chromium.png`: `sha256:9345dd60148bed75145c40189fb902e7424abd73404a51dc40f52a3ee8a3b248`.
+- `results.json`: `sha256:3dfb92a96f8cd61ec353c96e438ba94608476abc7321da223ea4f65f2b0f0a11`.
+- `work-knowledge-reader-complete.png`: `sha256:98e0885f2a1370fa259fddf61dd518ae89dd672bf3f7e625716f913819d0db61`.
+- `work-knowledge-reader-desktop-chromium.png`: `sha256:4e61218844b82d6f320a53bdbe9a49485de77273f4128ed0c78e10818dadd07a`.
+- `work-knowledge-reader-mobile-chromium.png`: `sha256:9241af34e5fc7011298b80bbbf1544aca505d4828ff12529ec233873cb0c5ef6`.
 
-Post-migration recovery and release proofs on dev001:
+Retained item 249 post-migration recovery and release proofs on dev001 (not newly executed for item 250):
 
 - Backup `collabio-20260918T070901Z.dump`:
   `sha256:9de68a2febdaa66c5f880ee1478d03bf343bea9004da67ee1b34966a875fb253`.
@@ -126,12 +149,12 @@ is the separate API/PostgreSQL/browser matrix above. No new real-user pilot pref
 The isolated browser profile has tmpfs PostgreSQL and MinIO, internal networking, no host ports, tenant
 `tenant-work-e2e` only, memory-only synthetic runtime activation and the normal pilot switch closed.
 It ignores browser-supplied KB readable IDs and resolves current database ACLs on every KB request.
-Its request-local storage failure injection is restricted to the exact synthetic tenant and execute route.
+Its request-local storage failure injection is restricted to the exact synthetic tenant and execute or content-read route.
 No failure injection exists in production API code.
 
-The expected browser matrix is 41 tests: the previous 32 cases, six KB workflow cases, two KB responsive cases and
-one delayed-response/context-switch regression. The original 28 independent source-state cases, closed-pilot route
-policy proof and real task/time workflow remain intact. Artifacts and their hashes are development evidence only.
+The browser matrix is 50 tests: the previous 41 cases plus seven reader workflow/policy/race cases and two reader
+responsive runs. The original 28 independent source-state cases, closed-pilot route policy proof, real task/time
+workflow and guarded authoring remain intact. Artifacts and their hashes are development evidence only.
 
 Pre-0082 backup: `collabio-20260918T062951Z.dump`,
 `sha256:d2724821f35c11cb9de0b023696593f70ce9dab69dbb458d003d4860c373b0e5`, checksum/catalog verified.
@@ -143,16 +166,18 @@ Primary code and runbooks:
 - `app/suite/persistence/migrations/0082_knowledge_base_version_acls.sql`.
 - `app/suite/operations/postgres_restore_drill.py`.
 - `app/suite/ui/work/index.html`, `work.js`, `work.css`.
-- `tests/test_knowledge_base_product_api.py`, `test_knowledge_base_acl_migration.py`,
+- `tests/test_knowledge_base_read_api.py`, `test_knowledge_base_product_api.py`, `test_knowledge_base_acl_migration.py`,
   `test_knowledge_base_write_unit_of_work.py`, `test_knowledge_base_pg_repository.py` and `test_postgres_restore_drill.py`.
-- `tests/work_e2e_server.py`, `tests/work_e2e_seed.py`, `app/suite/testing/work_e2e_guard.py`, `e2e/work/tests/`.
-- `docs/modules/KNOWLEDGE_BASE_ARTICLES_VERTICAL_SLICE.md`, `KNOWLEDGE_BASE_WRITE_APPROVAL_LEDGER.md`,
+- `tests/work_e2e_server.py`, `tests/work_e2e_seed.py`, `tests/work_e2e_controls.py`,
+  `app/suite/testing/work_e2e_guard.py`, `e2e/work/tests/`.
+- `docs/modules/KNOWLEDGE_BASE_READER_VERTICAL_SLICE.md`, `KNOWLEDGE_BASE_ARTICLES_VERTICAL_SLICE.md`,
+  `KNOWLEDGE_BASE_WRITE_APPROVAL_LEDGER.md`,
   `KNOWLEDGE_BASE_SOURCE_RESTORE_EVIDENCE.md` and `MODULE_IMPLEMENTATION_CONTRACT.md`.
 - `docs/operations/WORK_E2E.md`, `BACKUP_FAILOVER.md`, `REMOTE_DEVELOPMENT_HOST.md`.
 
 ## Existing product and platform status
 
-- `/roadmap` presents capabilities; KB now shows guarded product authoring with real API route paths.
+- `/roadmap` presents capabilities; KB shows guarded authoring and ordinary reading with real API route paths.
 - `/workspace` provides the module cockpit and controlled foundation workflows.
 - `/work` provides Tasks/activity, Time, Tickets, KB and CRM with independent loading/error states and responsive UI.
 - Tasks include durable lifecycle, reassignment and due-date changes with append-only evidence and shared mutation
@@ -169,10 +194,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 249 is complete. The user authorized item 250: a normal Knowledge Base reader in `/work`, using the read feature
-without write/admin privileges, authoritative article/version/source ACLs and exact source integrity. Prove create,
-authorized read, edit and updated read, plus revocation, foreign tenant, storage failures and responsive behavior.
-No new tenant activation, pilot opening, indexing or CRM implementation is part of item 250.
+Item 250 is complete. No item 251 implementation has been authorized. The recommended next coherent product loop is
+CRM account detail with associated contacts and activities in `/work`, using the existing backend and platform gates.
+Treat that as a recommendation until the user selects it. No CRM expansion, new tenant activation, pilot opening or
+indexing is part of item 250.
 
 For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
 data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.

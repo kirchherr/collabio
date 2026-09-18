@@ -118,14 +118,14 @@ Current sprint:
 108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
 109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
 110. [x] Guarded Knowledge Base create/edit in `/work` with server-prepared source metadata, authoritative ACLs, explicit approval/confirmation, tenant-serialized PostgreSQL/S3 writes, conflict/failure recovery, migration 0082 ACL restore verification, and 41 passing isolated browser cases; full remote quality and backup/restore/release gates passed with pilot and indexing closed.
-111. [ ] Complete Knowledge Base reading in `/work`: authorized non-admin readers can open exact current article content with the read feature alone, safe plain-text rendering, integrity checks, context-safe refresh and isolated browser proof; preserve closed pilot/indexing and existing write controls.
+111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
-- Make guarded Knowledge Base create/edit usable in `/work` by reusing the existing approval ledger, PostgreSQL/S3 unit-of-work, fresh tenant/ACL/module checks, explicit user confirmation, audit receipts, and restore contract.
-- Prove create, edit, conflict, blocked, and partial-failure behavior in the same isolated browser harness; add infrastructure only when that workflow exposes a concrete gap.
+- Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
+- The recommended next product slice is CRM account detail with associated contacts and activities in `/work`, building on the existing backend. It remains a recommendation until selected; no CRM expansion is part of item 250.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.

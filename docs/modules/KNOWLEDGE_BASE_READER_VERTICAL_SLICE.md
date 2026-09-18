@@ -1,6 +1,6 @@
 # Knowledge Base Reader Vertical Slice
 
-Status: implementation in progress; final remote evidence pending
+Status: complete; full remote quality and 50 isolated browser cases passed on `d8d0386`
 Date: 2026-09-18
 
 Roadmap item 250 closes the normal-reader workflow after the item 249 authoring slice. It follows
@@ -55,4 +55,8 @@ future AI path must use the Local LLM Gateway and source/version citations.
 - Context/close races, literal markup and responsive browser behavior.
 - Full remote quality and the existing authoring/browser regression matrix remain green.
 
-Final test counts, hashes and deployment state belong to CURRENT_HANDOFF.md and the append-only operations log.
+The final browser report passed 50/50 in 120.480 seconds without skipped, unexpected or flaky cases. Both reader
+viewport screenshots passed visual review. Ruff, formatting across 652 files, Mypy across 515 source files and the
+full Pytest suite passed remotely. Hashes and deployment state are recorded in CURRENT_HANDOFF.md and the append-only
+operations log. Existing migration 0082 recovery evidence is retained; this read slice adds no migration or durable
+business-data change and did not rerun the prior backup/restore/release ceremony.
