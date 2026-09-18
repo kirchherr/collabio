@@ -72,11 +72,11 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 40 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
-case, one real reassignment/correction/resubmission workflow, and two responsive project runs), six Knowledge Base
+The expected matrix is 41 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
+case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
-a competing edit conflict, object-store failure, disabled write feature, unauthorized role, and approval invalidation
-after changing a draft. Other source views use the existing synthetic fixtures in these focused Knowledge Base cases;
+a competing edit conflict, object-store failure, disabled write feature, unauthorized role, approval invalidation
+after changing a draft, and rejection of stale responses after a context switch. Other source views use the existing synthetic fixtures in these focused Knowledge Base cases;
 the original workflow and route-policy cases retain their real API coverage.
 
 ## Evidence

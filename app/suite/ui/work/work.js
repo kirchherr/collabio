@@ -176,6 +176,8 @@ const state = {
   taskFilter: "active",
   ticketFilter: "open",
   loading: false,
+  refreshGeneration: 0,
+  refreshContext: "",
   knowledgeEditor: null,
   resources: Object.fromEntries(
     Object.keys(resourceDefinitions).map((key) => [key, { status: "idle", items: [], detail: "" }]),
@@ -272,9 +274,17 @@ async function apiRequest(path, options = {}) {
 
 async function loadResource(key) {
   const definition = resourceDefinitions[key];
-  state.resources[key] = { status: "loading", items: [], detail: "" };
+  const generation = state.refreshGeneration;
+  const context = JSON.stringify(readContext());
+  const pending = { status: "loading", items: [], detail: "" };
+  state.resources[key] = pending;
+  const isCurrent = () => generation === state.refreshGeneration &&
+    context === JSON.stringify(readContext()) && state.resources[key] === pending;
   try {
     const body = await apiRequest(definition.path);
+    if (!isCurrent()) {
+      return;
+    }
     const items = Array.isArray(body[definition.collection]) ? body[definition.collection] : [];
     state.resources[key] = {
       status: "ready",
@@ -284,6 +294,9 @@ async function loadResource(key) {
       canWrite: key === "knowledge" && body.can_write === true,
     };
   } catch (error) {
+    if (!isCurrent()) {
+      return;
+    }
     const status = error instanceof ApiError && [403, 404, 423].includes(error.status) ? "blocked" : "error";
     state.resources[key] = {
       status,
@@ -295,11 +308,20 @@ async function loadResource(key) {
 }
 
 async function refreshAll() {
-  if (state.loading) {
+  const context = readContext();
+  const contextSnapshot = JSON.stringify(context);
+  if (state.loading && state.refreshContext === contextSnapshot) {
     return;
   }
-  const context = readContext();
+  const generation = ++state.refreshGeneration;
+  state.refreshContext = contextSnapshot;
+  Object.keys(resourceDefinitions).forEach((key) => {
+    state.resources[key] = { status: "loading", items: [], detail: "" };
+  });
+  renderAll();
   if (!context.tenantId || !context.userId) {
+    state.loading = false;
+    elements.refreshButton.disabled = false;
     setSyncStatus("Tenant und User sind erforderlich.", true);
     elements.contextPanel.hidden = false;
     return;
@@ -308,13 +330,20 @@ async function refreshAll() {
   state.loading = true;
   elements.refreshButton.disabled = true;
   setSyncStatus("Arbeitsbereich wird aktualisiert ...");
-  Object.keys(resourceDefinitions).forEach((key) => {
-    state.resources[key] = { status: "loading", items: [], detail: "" };
-  });
-  renderAll();
   await Promise.allSettled(Object.keys(resourceDefinitions).map((key) => loadResource(key)));
+  if (generation !== state.refreshGeneration) {
+    return;
+  }
   state.loading = false;
   elements.refreshButton.disabled = false;
+  if (contextSnapshot !== JSON.stringify(readContext())) {
+    Object.keys(resourceDefinitions).forEach((key) => {
+      state.resources[key] = { status: "idle", items: [], detail: "" };
+    });
+    setSyncStatus("Kontext geaendert. Bitte Kontext anwenden.");
+    renderAll();
+    return;
+  }
   const readyCount = Object.values(state.resources).filter((resource) => resource.status === "ready").length;
   const blockedCount = Object.values(state.resources).filter((resource) => resource.status === "blocked").length;
   setSyncStatus(

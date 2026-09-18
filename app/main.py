@@ -21324,7 +21324,7 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT
-                if "expected current article version" in str(exc)
+                if isinstance(exc, KnowledgeBaseWriteConflictError) or "expected current article version" in str(exc)
                 else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
@@ -21360,7 +21360,7 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT
-                if "expected current article version" in str(exc)
+                if isinstance(exc, KnowledgeBaseWriteConflictError) or "expected current article version" in str(exc)
                 else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
@@ -21396,7 +21396,7 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT
-                if "expected current article version" in str(exc)
+                if isinstance(exc, KnowledgeBaseWriteConflictError) or "expected current article version" in str(exc)
                 else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
@@ -21432,7 +21432,7 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT
-                if "expected current article version" in str(exc)
+                if isinstance(exc, KnowledgeBaseWriteConflictError) or "expected current article version" in str(exc)
                 else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc
@@ -21473,7 +21473,7 @@ def build_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT
-                if "expected current article version" in str(exc)
+                if isinstance(exc, KnowledgeBaseWriteConflictError) or "expected current article version" in str(exc)
                 else status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
             ) from exc

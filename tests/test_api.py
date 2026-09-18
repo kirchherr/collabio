@@ -980,9 +980,10 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert "/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions" in js_response.text
     assert "/v1/time-tracking/entries/${encodeURIComponent(entryObjectId)}/corrections" in js_response.text
     assert 'apiRequest("/v1/tickets"' in js_response.text
-    assert "/v1/admin/kb/articles/prepare-write" in js_response.text
-    assert "/v1/admin/kb/articles/source-object-write-guard" in js_response.text
-    assert "/v1/admin/kb/articles/write-approvals/execute" in js_response.text
+    assert 'apiRequest(`/v1/admin/kb/articles/${path}`' in js_response.text
+    assert 'knowledgePost("prepare-write"' in js_response.text
+    assert 'knowledgePost("source-object-write-guard"' in js_response.text
+    assert 'knowledgePost("write-approvals/execute"' in js_response.text
     assert "body.can_write === true" in js_response.text
     assert "crypto.subtle.digest" not in js_response.text
     assert "/v1/work/overview" not in js_response.text
@@ -36228,7 +36229,7 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     event = dry_run_events[0]
     assert event.input_hash is not None
     assert event.output_hash is None
-    assert event.metadata["surface"] == "compliance_api"
+    assert event.metadata["surface"] == "api"
     assert event.metadata["dry_run"] is True
     assert event.metadata["persistence_allowed"] is False
     assert event.metadata["command_hash"] == body["command_hash"]
@@ -36271,6 +36272,10 @@ def test_knowledge_base_write_dry_run_endpoint_requires_admin_and_does_not_persi
     assert execution_event.metadata["execution_plan_hash"] == execution_body["execution_plan_hash"]
     write_events = [event for event in new_events if event.event_type == "knowledge_base.write_approval.executed"]
     assert len(write_events) == 1
+    assert all(
+        event.metadata["surface"] == "api"
+        for event in [*dry_run_events, *approval_events, *refresh_events, *execution_events, *write_events]
+    )
     write_event = write_events[0]
     assert write_event.input_hash is not None
     assert write_event.output_hash is None
@@ -37237,11 +37242,11 @@ def test_pg_backed_tenant_module_lifecycle_api_smoke_drives_worker_discovery_and
     assert provision_response.status_code == 200
     assert provision_response.json()["status"] == "disabled"
     assert [evidence["version"] for evidence in provision_response.json()["migration_evidence"]][-5:] == [
-        "0025",
         "0026",
         "0027",
         "0028",
         "0029",
+        "0082",
     ]
     assert enable_response.status_code == 200
     assert enable_response.json()["status"] == "enabled"

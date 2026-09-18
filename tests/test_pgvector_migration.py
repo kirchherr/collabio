@@ -187,8 +187,8 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     ]
     assert [migration.version for migration in time_tracking_migrations] == ["0060", "0078", "0080"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "tasks_activities"
-    assert manifest[-1].name == "task_mutation_serialization"
+    assert manifest[-1].module_id == "knowledge_base"
+    assert manifest[-1].name == "knowledge_base_version_acls"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)

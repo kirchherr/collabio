@@ -1,14 +1,18 @@
 # Knowledge Base Articles Vertical Slice
 
-Status: initial
-Date: 2026-06-12
+Status: guarded read/write implementation; tenant activation remains gated
+Date: 2026-09-18
 
 This slice proves the reusable module implementation contract outside CRM/ERP. It starts the Knowledge Base with metadata-only article reads, source-version evidence, and restore evidence, not a full wiki and not RAG.
+
+The initial metadata-read slice remains the foundation. `/work` now adds tenant-admin create/edit through the existing
+approval chain and PostgreSQL/S3 unit of work. Article content is available only through the authorized editor paths;
+list, ledger, receipt, audit and recovery evidence remain metadata-only. RAG and search indexing stay off.
 
 ## Scope
 
 - Module: `knowledge_base`
-- Feature gate: `knowledge_base.articles.read`
+- Feature gates: `knowledge_base.articles.read`; default-off `knowledge_base.articles.write` for authoring
 - API: `GET /v1/kb/articles`
 - Persistent tables: `knowledge_base.articles`, `knowledge_base.article_versions`, `knowledge_base.source_version_evidence`, `knowledge_base.restore_evidence`
 - Object types: `kb.article`, `kb.article_version`
@@ -60,7 +64,19 @@ request tenant context
 
 ## Runtime Contract
 
-The API returns only articles for the current tenant where the current user is authorized for both the `kb.article` and current `kb.article_version` object IDs.
+The list API returns only articles for the current tenant where the current user is authorized for the `kb.article`,
+current `kb.article_version` and current source object IDs. It exposes `can_write` for the UI; every authoring request
+still checks tenant-admin, the enabled module, the write feature and current edit authorization independently.
+
+`POST /v1/admin/kb/articles/prepare-write` accepts operation, title, body and the exact article/current-version IDs for
+edits. The server constructs the proposed `SourceObjectRecord`, security metadata and canonical hashes. The UI sends
+the returned command through dry-run and approval, refreshes evidence, and obtains the authoritative decision from
+`POST /v1/admin/kb/articles/source-object-write-guard`. After explicit final confirmation it calls the execution
+skeleton and execute stages. These are separate gated requests.
+
+`GET /v1/admin/kb/articles/{article_object_id}/edit-content` validates and returns the exact currently authorized
+source version. All authoring stages use the normal enabled-module/write-feature gate; disabled or suspended modules
+allow neither editor content access nor article mutation. The compliance evidence read below remains separate.
 
 Each returned article includes a `source_version_evidence_hash`. The response includes `source_version_evidence_hashes` and a `restore_evidence_hash`, and the audit event records those hashes as metadata only.
 
@@ -72,7 +88,7 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 `docker compose run --rm kb-runtime-reconciler` is the scheduled-worker entrypoint for the same check. It selects tenants through the Knowledge Base compliance worker gate and active runtime activations, applies the retry contract, emits alert severity, and returns a metadata-only `knowledge_base_runtime_reconciliation_run_report.v1` with restore-drill report hashes for runbook evidence.
 
-`POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and produces audit-only dry-run evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
+`POST /v1/admin/kb/articles/write-dry-run` accepts create/edit approval command metadata and persists metadata-only audit and append-only dry-run approval evidence. It does not mutate article rows, source objects, search indexes, embeddings, or RAG state.
 
 `POST /v1/admin/kb/articles/write-approvals/approve` accepts a dry-run evidence hash and a new approval reference. It appends approved ledger evidence only; article rows, source objects, search indexes, embeddings, and RAG state remain unchanged.
 
@@ -86,9 +102,20 @@ Each returned article includes a `source_version_evidence_hash`. The response in
 
 Normal use is blocked unless the tenant has provisioned and enabled `knowledge_base` with `knowledge_base.articles.read` enabled.
 
+The PostgreSQL UoW serializes writes for each tenant, including concurrent first creates. After acquiring the
+transaction lock it rechecks the expected version and approved restore state before any S3 write or receipt insert.
+It validates the resulting source/restore evidence before committing and returns that transaction's evidence
+snapshot. A subsequent write cannot turn an already committed success into an evidence-conflict response.
+Migration `0082_knowledge_base_version_acls.sql` grants the article creator and copies active article ACLs to new
+versions atomically; fresh authorization resolves those grants from PostgreSQL.
+
 ## Backup And Restore
 
 The slice belongs to the `knowledge_base_content` continuity domain. Source-object write receipts belong to `postgres_metadata` and are linked by hash from Knowledge Base execution evidence. Backup and restore evidence must cover article metadata, article-version metadata, source-version evidence, source write receipts, runtime activation evidence, runtime reconciliation evidence, runtime reconciliation run-report hashes, source references, tenant isolation, disabled-state restore behavior, and Legal Hold state before broader authoring or RAG work begins.
+
+Restore coverage also binds creator/version ACL rows and both ACL triggers to the authored function definitions,
+ownership, security mode, search path and execution privileges. PostgreSQL metadata rolls back on a failed write;
+an S3 version written before a later metadata failure remains subject to the existing orphan-reconciliation gate.
 
 ## RAG Boundary
 
@@ -100,3 +127,6 @@ This slice intentionally stops before RAG. Later RAG work must use candidate-onl
 - `tests/test_api.py`
 - `tests/test_pgvector_migration.py`
 - `tests/test_knowledge_base_docs.py`
+- `tests/test_knowledge_base_write_unit_of_work.py`
+- `tests/test_postgres_restore_drill.py`
+- `e2e/work/tests/knowledge.spec.mjs`

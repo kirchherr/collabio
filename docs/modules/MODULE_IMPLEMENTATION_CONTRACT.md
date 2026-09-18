@@ -1,7 +1,7 @@
 # Module Implementation Contract
 
 Status: active
-Date: 2026-06-12
+Date: 2026-09-18
 Contract ID: `module_vertical_slice_contract`
 
 This contract turns the first CRM/ERP read slices into the reusable implementation rule for every future suite module. It is intentionally broader than ERP: knowledge base, LMS, tasks and activities, incident/ticket systems, time tracking, office, mail, search, and later AI extensions must enter through the same gates.
@@ -93,6 +93,10 @@ Rules:
 - Containerized API and worker paths must use the persistent module registry unless explicitly running an isolated unit test. The persistent store is `collabio.module_catalog` plus `collabio.tenant_modules`; it carries required migration versions and tenant provisioning evidence.
 - Compliance workers may discover tenant module rows only through the worker DB role and must still call `ModuleWorkerGate` per tenant before acting.
 
+Authoring preparation, approval and execution are normal feature workflows even under an `/admin` route. They must
+not inherit disabled-module access from a compliance evidence reader. The Knowledge Base uses separate normal write
+gates for its product stages and a compliance gate for metadata-only recovery evidence.
+
 ## 5. Data, Retention, And Legal Hold
 
 Each object type must map to canonical data classes and retention policies before data is imported or accepted from users.
@@ -146,6 +150,10 @@ Required evidence:
 
 This requirement follows the module forever. New tables, source types, indexes, queues, exports, AI traces, and imports must update the continuity domain in the same change.
 
+When database triggers enforce authorization, restore verification must include enabled state, function code,
+ownership, security mode, search path and execution privileges. Matching source/target catalog names alone cannot
+establish that restored authorization still enforces the authored behavior.
+
 ## 8. Migrations And Legacy Imports
 
 Module migrations and legacy imports must be repeatable, checksummed, validated, and auditable.
@@ -193,6 +201,12 @@ The next module families should start as small read or metadata slices, not as f
 | Tasks and activities | `task.task`, `task.activity` | assigned task/activity read and atomic creation slice | `tasks_activities.tasks.items.read` | `task_activity_records` |
 | Tickets and incidents | `ticket.ticket`, `ticket.event` | ticket metadata and append-only event vertical slice | `tickets_incidents.items.read` | `ticket_incident_records` |
 | Time tracking | `time.entry`, `time.approval` | own time-entry read slice with approval state | `time_tracking.entries.read` | `time_tracking_records` |
+
+The Knowledge Base has progressed from its listed read baseline to guarded tenant-admin create/edit in `/work`.
+Server-side source preparation, authoritative guard evaluation, separate approval stages and explicit final
+confirmation precede the PostgreSQL/S3 write. The UoW serializes tenant changes, checks approved state before writing,
+and returns source/restore evidence from the committing transaction. Creator/version ACLs are committed with metadata.
+This progression keeps `knowledge_base.articles.write` off by default and leaves RAG/search indexing closed.
 
 LMS now has a catalog-registered, not-installed foundation in `docs/modules/LMS_MODULE_CHARTER.md`, `app/suite/platform/lms_module.py`, `app/suite/persistence/migrations/0045_lms_catalog_registration.sql`, `app/suite/persistence/migrations/0046_lms_metadata_schema.sql`, `app/suite/persistence/migrations/0047_lms_package_install_approval_records.sql`, and the metadata-only readiness endpoints `GET /v1/platform/modules/families/lms/catalog-readiness`, `GET /v1/platform/modules/families/lms/restore-drill-evidence`, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate`, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records`, `GET /v1/platform/modules/families/lms/package-installation-readiness`, `POST /v1/platform/modules/families/lms/package-installation-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-executor-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-implementation-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-contract`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-request-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-runtime-boundary`, and `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-receipt-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-persistence-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-activation-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary`. Package installation, tenant provisioning, LMS business API routes, workers, content runtime, automations, RAG, and AI assist remain separate gates; the executor skeleton, dry-run plan, dry-run execution boundary, dry-run execution skeleton, dry-run executor implementation review, dry-run result contract, dry-run execution gate, dry-run execution request boundary, and dry-run executor runtime boundary and execution preflight and execution receipt boundary, result persistence boundary, execution start boundary, dispatch boundary, worker boundary, and final readiness gate and approval boundary, approval record, admission gate, runbook and execution plan, execution plan review and scheduler boundary only define future execution shapes; the approval boundary does not record execution approval, and the approval record records explicit human confirmation as hashes and refs only before the admission gate binds the stored approval record before the runbook binds backup, rollback and operator handoff refs before the execution plan binds execution-window, resource-budget and scheduler-policy refs without activation before the plan review confirms that scheduler activation remains a future metadata gate before the scheduler boundary binds scheduler policy refs without creating scheduler jobs before the worker image boundary binds worker-image policy/catalog refs without resolving, pulling, digest lookup, enqueue or dispatch.
 

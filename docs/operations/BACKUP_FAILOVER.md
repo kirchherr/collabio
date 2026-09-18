@@ -79,7 +79,10 @@ The machine-readable policy in `docs/operations/backup_failover_policy.json` tra
 - incident reports, tickets, immutable event chains, SLA state, explicit approval records, communications, and escalation evidence
 - time entries, corrections, approvals, and export metadata
 
-The CRM runtime bootstrap is an explicit predecessor of both the API and PostgreSQL backup in Compose. This guarantees that the account, contact, activity, and note tables enter the same checksum, catalog, row-count, RLS, and independent-restore proof as the rest of the backend before the CRM read workflow is treated as operational.
+The CRM runtime bootstrap is an explicit predecessor of the API. Backup depends only on healthy PostgreSQL and
+preserves the existing state without running migrations or seeders. Account, contact, activity and note tables must
+enter the same checksum, catalog, row-count, RLS and independent-restore proof as the rest of the backend; any required
+bootstrap is a separate explicit operation before the corresponding post-change proof.
 The Tasks & Activities runtime follows the same rule. Migrations `0059`, `0077`, `0079`, and `0081` place
 task, activity, authoritative ACL, creation-receipt, append-only lifecycle-transition, and versioned
 assignment/due-date amendment state inside the PostgreSQL backup domain. The isolated restore drill
@@ -311,9 +314,18 @@ The 2026-07-31 technical proof restored 63 migrations and 70 tables, including e
 
 Knowledge Base migration `0082` binds creator article grants and inherited version ACLs to the metadata transaction.
 Restore `collabio.object_acl_entries` with the article/version records; verify the
-`knowledge_base_article_versions_bind_acls` trigger, active-only inheritance, audit references and tenant isolation.
-The PostgreSQL foundation gate includes this trigger in authoritative IAM verification. A missing trigger closes
-the gate; restoration must never recreate access from owner fields or browser claims.
+`knowledge_base_articles_bind_acl` and `knowledge_base_article_versions_bind_acls` triggers, active-only inheritance,
+audit references and tenant isolation. PostgreSQL snapshots include trigger enablement, full function definitions,
+ownership, security mode, search path and execution privileges. The IAM gate requires the KB functions' bodies to
+match the authored migration and denies PUBLIC/runtime execution. Missing, disabled or drifted controls close the
+gate even when source and restored target agree; restoration never recreates access from owner fields or browser claims.
+
+Knowledge Base writes serialize tenant mutations and revalidate the approved version/restore state before source
+storage and receipt insertion. Source/restore evidence is checked within the committing transaction and returned from
+that snapshot. Backup coverage includes the approval lineage, source receipt and manifest, article/version metadata,
+ACLs and evidence together; source bytes remain subject to exact-version object recovery and orphan reconciliation.
+The authoring routes require an enabled module and write feature after recovery. Compliance evidence access while
+disabled does not permit article writes, tenant activation or indexing.
 
 Run the Knowledge Base runtime reconciliation worker after a restore drill or before a production-write activation:
 

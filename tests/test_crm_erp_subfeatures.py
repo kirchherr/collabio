@@ -131,7 +131,7 @@ def test_default_module_registry_uses_canonical_crm_erp_subfeature_defaults() ->
     assert not tenant_state.enabled_features["crm_erp.legacy_import.sqlserver"]
     assert not tenant_state.enabled_features["crm_erp.rag_indexing"]
     assert not tenant_state.enabled_features["crm_erp.ai_assist"]
-    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0025", "0026", "0027", "0028", "0029")
+    assert knowledge_base_catalog.required_migration_versions[-5:] == ("0026", "0027", "0028", "0029", "0082")
 
 
 def test_crm_erp_subfeature_registry_covers_all_mapping_target_profiles() -> None:
