@@ -612,24 +612,30 @@ def execution_command_for_service(
         text=f"Synthetic content for {suffix}",
     )
     command = write_command_for_unit_of_work(
-        source_record=source, article_object_id=f"kb-article-{suffix}", article_key=f"KB-{suffix}", title=source.metadata.title
+        source_record=source,
+        article_object_id=f"kb-article-{suffix}",
+        article_key=f"KB-{suffix}",
+        title=source.metadata.title,
     )
     dry = service.dry_run_write_approval(command=command, user_context=user_context)
     approved = service.approve_write_approval(
         command=KnowledgeBaseWriteApprovalTransitionCommand(
             dry_run_write_approval_evidence_hash=dry.write_approval_evidence_hash,
-            approval_reference=f"approval:{suffix}", reason="synthetic concurrency test",
+            approval_reference=f"approval:{suffix}",
+            reason="synthetic concurrency test",
         ),
         user_context=user_context,
     )
     guard = service.evaluate_source_object_write_guard(
-        user_context=user_context, write_approval_evidence_hash=approved.approved_write_approval_evidence_hash,
+        user_context=user_context,
+        write_approval_evidence_hash=approved.approved_write_approval_evidence_hash,
         proposed_source_record=source,
     )
     preview = service.preview_write_evidence_refresh(
         command=KnowledgeBaseEvidenceRefreshPreviewCommand(
             approved_write_approval_evidence_hash=approved.approved_write_approval_evidence_hash,
-            preview_reference=f"preview:{suffix}", reason="synthetic concurrency test",
+            preview_reference=f"preview:{suffix}",
+            reason="synthetic concurrency test",
         ),
         user_context=user_context,
     )
@@ -638,7 +644,8 @@ def execution_command_for_service(
         source_object_write_guard_decision=guard,
         refresh_preview_command_hash=preview.preview_command_hash,
         projected_restore_evidence_preview_hash=preview.projected_restore_evidence_preview_hash,
-        execution_reference=f"execution:{suffix}", human_confirmation_reference=f"human-confirmation:{suffix}",
+        execution_reference=f"execution:{suffix}",
+        human_confirmation_reference=f"human-confirmation:{suffix}",
         reason="synthetic concurrency test",
     )
     skeleton = service.prepare_write_execution_skeleton(command=skeleton_command, user_context=user_context)
@@ -665,30 +672,42 @@ def test_concurrent_pg_writes_recheck_before_receipts_and_content_including_empt
 
     def execute_candidate(index: int) -> KnowledgeBaseWriteUnitOfWorkCommit | KnowledgeBaseWriteConflictError:
         source = source_record_for_unit_of_work(
-            tenant_id=tenant_id, object_id=f"kb-version-{uuid4().hex}", version_id="v2" if edit else "v1",
-            title=f"Candidate {index}", text=f"Concurrent candidate {index}",
+            tenant_id=tenant_id,
+            object_id=f"kb-version-{uuid4().hex}",
+            version_id="v2" if edit else "v1",
+            title=f"Candidate {index}",
+            text=f"Concurrent candidate {index}",
         )
         command = write_command_for_unit_of_work(
-            source_record=source, article_object_id=f"kb-article-{uuid4().hex}", article_key=f"KB-{uuid4().hex}",
+            source_record=source,
+            article_object_id=f"kb-article-{uuid4().hex}",
+            article_key=f"KB-{uuid4().hex}",
             title=source.metadata.title,
         )
         if edit:
-            command = command.model_copy(update={
-                "operation": KnowledgeBaseWriteOperation.EDIT,
-                "article_object_id": current_articles[0].object_id,
-                "article_key": current_articles[0].article_key,
-                "expected_current_version_object_id": current_articles[0].current_version_object_id,
-            })
+            command = command.model_copy(
+                update={
+                    "operation": KnowledgeBaseWriteOperation.EDIT,
+                    "article_object_id": current_articles[0].object_id,
+                    "article_key": current_articles[0].article_key,
+                    "expected_current_version_object_id": current_articles[0].current_version_object_id,
+                }
+            )
         evidence = approved_evidence_for_unit_of_work_write(
             tenant_id=tenant_id, command=command, source_record=source, current_articles=current_articles
         )
         receipt = build_source_object_write_receipt(
-            record=source, receipt_reference=f"receipt:{source.metadata.object_id}", audit_chain_ref="audit:concurrent-test"
+            record=source,
+            receipt_reference=f"receipt:{source.metadata.object_id}",
+            audit_chain_ref="audit:concurrent-test",
         )
         barrier.wait(timeout=15)
         try:
             return service.write_unit_of_work.commit(
-                tenant_id=tenant_id, evidence=evidence, source_record=source, source_object_write_receipt=receipt,
+                tenant_id=tenant_id,
+                evidence=evidence,
+                source_record=source,
+                source_object_write_receipt=receipt,
                 audit_chain_ref="audit:concurrent-test",
             )
         except KnowledgeBaseWriteConflictError as exc:
@@ -705,10 +724,14 @@ def test_concurrent_pg_writes_recheck_before_receipts_and_content_including_empt
     with psycopg.connect(live_database.app_dsn) as connection:
         set_tenant(connection, tenant_id)
         for table in (
-            "collabio.source_object_write_receipts", "collabio.source_object_metadata",
-            "collabio.source_object_storage_manifests", "knowledge_base.article_versions",
+            "collabio.source_object_write_receipts",
+            "collabio.source_object_metadata",
+            "collabio.source_object_storage_manifests",
+            "knowledge_base.article_versions",
         ):
-            assert connection.execute(f"SELECT count(*) FROM {table} WHERE tenant_id = %s", (tenant_id,)).fetchone() == (expected_count,)
+            assert connection.execute(
+                f"SELECT count(*) FROM {table} WHERE tenant_id = %s", (tenant_id,)
+            ).fetchone() == (expected_count,)
     assert isinstance(service.source_repository, PgSourceObjectRepository)
     recovery = service.source_repository.build_content_recovery_evidence(
         tenant_id=tenant_id, restore_drill_report_hash=stable_hash("synthetic-concurrency-restore")
@@ -733,10 +756,12 @@ def test_execution_uses_its_committed_snapshot_when_a_later_write_finishes_befor
         first_commit = original_commit(**kwargs)
         monkeypatch.setattr(service.write_unit_of_work, "commit", original_commit)
         with ThreadPoolExecutor(max_workers=1) as executor:
+
             def later_write() -> None:
                 later = execution_command_for_service(service, user_context=context, suffix=uuid4().hex)
                 response = service.execute_write(command=later, user_context=context)
                 assert response.article_count_after == 2
+
             executor.submit(later_write).result(timeout=30)
         returned_commits.append(first_commit)
         return first_commit
@@ -747,8 +772,13 @@ def test_execution_uses_its_committed_snapshot_when_a_later_write_finishes_befor
     assert response.write_unit_of_work_committed is True
     assert response.article_count_after == 1
     assert response.refreshed_restore_evidence_hash == returned_commits[0].restore_evidence.evidence_hash
-    assert response.source_version_evidence_hashes_after == returned_commits[0].restore_evidence.source_version_evidence_hashes
+    assert (
+        response.source_version_evidence_hashes_after
+        == returned_commits[0].restore_evidence.source_version_evidence_hashes
+    )
     assert response.refreshed_source_version_evidence_hash == returned_commits[0].source_version_evidence.evidence_hash
-    executed_events = [event for event in service.audit_logger.events if event.event_type == "knowledge_base.write_approval.executed"]
+    executed_events = [
+        event for event in service.audit_logger.events if event.event_type == "knowledge_base.write_approval.executed"
+    ]
     assert len(executed_events) == 2
     assert executed_events[-1].metadata["refreshed_restore_evidence_hash"] == response.refreshed_restore_evidence_hash

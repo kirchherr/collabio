@@ -1656,9 +1656,7 @@ class PostgresKnowledgeBaseWriteUnitOfWork:
 
 def lock_knowledge_base_tenant_write(connection: psycopg.Connection[Any], *, tenant_id: str) -> None:
     # A row lock cannot serialize two first writes into an empty tenant.
-    connection.execute(
-        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"knowledge-base-write:{tenant_id}",)
-    )
+    connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"knowledge-base-write:{tenant_id}",))
 
 
 def require_current_knowledge_base_write(
