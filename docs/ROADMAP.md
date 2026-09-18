@@ -48,9 +48,10 @@ Arbeitsweise:
 
 Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
 
-- Punkt 252 ist als native Office-Produktgrundlage abgeschlossen: Formatierung, Gliederung, Suche und versioniertes
-  Speichern sind abgenommen. Naechster offener Schritt ist Punkt 253: Versionsvergleich und eine fruehere Fassung als
-  neuer lokaler Entwurf mit frischem Head, aktuellen ACLs, CAS und explizitem Speichern. Den bestehenden
+- Punkte 252 und 253 sind abgeschlossen: native Formatierung, Gliederung, Suche, versioniertes Speichern,
+  Versionsvergleich und eine fruehere Fassung als neuer lokaler Entwurf mit frischem Head, aktuellen ACLs,
+  CAS und explizitem Speichern. Die 100 Pruefungen (88 Browserfaelle und 12 Modellfaelle) erhalten und native
+  Office-Bearbeitungs- und Review-Workflows weiter ausbauen; Kommentare und Live-Zusammenarbeit bleiben offen. Den bestehenden
   DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness und source-blinder/CDR-Kandidatenpruefung
   als getrennten Pfad erhalten. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
   menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
@@ -636,7 +637,8 @@ Epics:
 
 Aufgaben:
 
-- [ ] Dokument-Metadaten- und Version-APIs erstellen.
+- [x] Native Dokument-Metadaten- und Version-APIs erstellen (Roadmap 252/253).
+- [ ] Weitergehende Kollaborations- und Interchange-Vertraege fuer Dokumente ausbauen.
 - [ ] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren.
 - [ ] CRDT Service vorbereiten.
 - [ ] WebSocket Gateway vorbereiten.
@@ -1533,10 +1535,15 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Hauptmigration 0083 und Foundation mit 83 Migrationen, 91 Tabellen und Office-Integritaetskontrollen gruen.
      Business-/API-Rollout wird separat operational dokumentiert; keine reale Tenant- oder Produktivfreigabe.
      Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen beziehungsweise eigenstaendig.
-253. [ ] Autorisierte gespeicherte Office-Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf
-     oeffnen. Aktuellen Head und Faehigkeiten frisch laden, ACLs und CAS beim Speichern erneut pruefen und eine
-     ausdrueckliche Bestaetigung fuer die neue Version verlangen; bestehende Historie unveraendert erhalten.
-     Office bleibt vor weiterem CRM-Ausbau priorisiert, DOCX-Fidelity bleibt ein getrennter Freigabepfad.
+253. [x] Autorisierte gespeicherte Office-Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf
+     uebernehmen: Text, Titel, Formatierung, Listen und Tabellen werden blockweise verglichen, grosse Ergebnisse
+     vollstaendig und seitenweise dargestellt. Aktuellen Head und Schreibrechte frisch laden; erst bestaetigtes
+     CAS-Speichern erzeugt eine neue Version, die bestehende Historie bleibt unveraendert. Rechteentzug, Konflikte,
+     spaete Antworten, begrenzte Historie und identische Uebernahme sind geprueft. Volle Remote-Quality und alle
+     100 Pruefungen (88 Browserfaelle plus 12 Modellfaelle) auf `3aa0069` in 249,923 Sekunden gruen, ohne
+     uebersprungene, unerwartete oder flakige Faelle; Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration;
+     Restore-Nachweise aus Punkt 252 bleiben erhalten. Office bleibt vor CRM priorisiert; Tenant-, Pilot- und
+     DOCX-/Engine-Freigaben bleiben geschlossen beziehungsweise eigenstaendig.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
@@ -1839,7 +1846,7 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Backend-Fundament
 
 - [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
-- [x] Exakter Quell-/Zielvergleich fuer aktuell 81 Migrationen und 89 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Exakter Quell-/Zielvergleich fuer aktuell 83 Migrationen und 91 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
 - [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.

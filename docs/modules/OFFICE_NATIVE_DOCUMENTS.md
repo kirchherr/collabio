@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: product foundation complete; remote acceptance and nonempty recovery passed
+Status: product foundation and version workflow complete; remote quality/browser acceptance passed; foundation recovery retained
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
@@ -9,8 +9,8 @@ Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 
 `/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
 apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
-save a confirmed version and read previous versions. Search covers the current document or loaded document titles;
-it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
+save a confirmed version, compare saved versions and take a historical version into a new local draft. Search covers
+the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
 available. Formatting returns focus to the editor before immediate typing.
 
 This slice stores native structured documents. DOCX interchange, tracked changes, comments, live collaboration, spreadsheets,
@@ -20,7 +20,7 @@ presentations and mail remain separate product work. Existing DOCX engine fideli
 
 | Feature | Normal behavior | Default |
 | --- | --- | --- |
-| `office_documents.documents.read` | List authorized documents, open exact content, read version history | false |
+| `office_documents.documents.read` | List authorized documents, open exact content, read and compare saved versions | false |
 | `office_documents.documents.write` | Create a native document or explicitly save a successor | false |
 
 The package is installed in the module catalog; no ordinary tenant is provisioned or enabled by migration 0083.
@@ -90,7 +90,7 @@ source binding, head guard and all associated function bodies against migration 
 the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
 recovery proof must preserve native content, source hashes, historical reads and current ACL behavior.
 
-## Acceptance evidence
+## Foundation acceptance evidence (Roadmap 252)
 
 Domain, PostgreSQL and API tests cover strict content limits, authoritative access, CAS races, exact idempotency,
 failure rollback, orphan detection, safe errors and module gates. Full backend quality on `7bba74f` passed Ruff checks
@@ -115,9 +115,25 @@ All browser and nonempty Office recovery data use the isolated synthetic tenant 
 and fresh ACL resolution. No ordinary tenant was enabled; the normal pilot switch, indexing and DOCX engine gates remain
 closed. These results complete Roadmap 252 / PLANS 113 as a product foundation, not a production or real-user admission.
 
-## Next Office step
+## Version workflow acceptance (Roadmap 253)
 
-Roadmap 253 / PLANS 114 remains pending: compare authorized saved versions and open an earlier version as a new local
-draft. Refresh the current head and capabilities before preparing that draft, recheck current ACLs and CAS on save,
-and require explicit confirmation to append a new version. Existing history must remain unchanged. Native Office work
+Implementation `3aa0069` passed full remote Ruff checks/formatting (665 files), Mypy (526 source files) and Pytest.
+The focused 27 checks passed, followed by the complete 100-check matrix in 249.923 seconds: 88 browser cases and
+12 pure comparison-model cases, with zero skipped, unexpected or flaky results. All previous 73 browser cases remain.
+The model suite checks bounded alignment, semantic mark/key ordering and complete ordered projections for long text,
+large unique/repeated blocks and duplicate edit patterns. Browser proof covers exact version/title/format/table changes,
+read-only access, fresh-head takeover, confirmed successor lineage, later CAS conflict, current ACL/feature removal,
+cancelled discard, transient storage failure and late close/selection/context/takeover responses. A partial history
+window uses three real saved versions and one reduced metadata response. Identical takeover creates no dirty version.
+Desktop, tablet and mobile screenshots passed visual review.
+
+Final report: `sha256:42448945e2d326b56552c886d3603d69d1dcaf4d416ca4c727bf2e66e3ce8859`.
+Evidence lives under ignored `e2e/work/artifacts/roadmap-253/`; hashes and controlled API rollout are recorded in the
+operations log and current handoff. No new schema, durable record, storage format or write API was added. Roadmap 252's
+verified migration/backup/nonempty recovery/foundation/business proofs remain retained; they were not rerun for 253.
+
+## Continuing Office work
+
+Roadmap 253 / PLANS 114 is complete. Preserve the confirmed save and current access contracts when extending native
+editing and review workflows. Comments, tracked changes and live collaboration remain separate open work. Native Office
 continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.

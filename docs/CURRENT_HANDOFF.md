@@ -10,7 +10,7 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `5917bdf` (full Python quality on `7bba74f`, then frontend-only focus correction); the commit containing this handoff is the continuation
+- Validated implementation: `3aa0069` (full Python quality and all 100 comparison-model/browser checks); the commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
 - Generated `e2e/work/artifacts/` output is ignored and must not be committed.
@@ -23,7 +23,16 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 252 host verification at 2026-09-18 10:17:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 253 host verification at 2026-09-18 10:50:07 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated (`765b23c23888`); bounded startup retries
+reached healthy at 10:47:56 UTC. Live verification confirmed the new comparison/takeover controls in the shell and
+bundle, local styles/notices, Work link, all five Office operations and no-store/CSP. Ordinary tenant Office remains
+unprovisioned with a non-cacheable 404; Office features are closed, KB write is false and pilot is 0. Exact Work-E2E
+containers were removed and postgres-test stopped after evidence preservation. Restore targets stayed stopped;
+the retained item 252 synthetic restore database was untouched. Webcut remains running(7), all three provider nodes
+and listener 26443 unchanged, Tricert absent. No migration or new backup/restore was required for this UI-only workflow.
+
+Previous item 252 host verification at 2026-09-18 10:17:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated (`e2e37654dd3d`). Live checks verified
 `/office`, its local bundle/styles/license notices, the `/work` link and all five Office API operations. The ordinary
 tenant is not provisioned for Office; its read returns non-cacheable 404, both Office features stay closed, KB write is
@@ -76,7 +85,40 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 252
+## Last completed slice: Roadmap 253
+
+Roadmap 253 / PLANS 114 adds saved-version comparison and historical takeover to `/office`, using the existing five
+Office APIs. Text, titles, format-only changes, lists and tables are compared as literal block content. Bounded alignment
+preserves every input block; large approximate results are labelled and paginated. The last 200 history entries may form
+a connected partial chain; relative labels avoid invented absolute version numbers.
+
+Historical takeover freshly reads exact historical content, the current head and current write capabilities. It produces
+only an in-memory draft based on that fresh head; explicit confirmed CAS save appends a successor without rewriting
+history. Read-only users can compare. Access denial clears protected state; transient failure, cancelled discard and a
+later competing save preserve existing drafts. Closing, changing selection/context or superseding an operation invalidates
+pending responses. Identical takeover creates no dirty state or redundant save. This is block comparison, not tracked
+changes or automatic merging.
+
+- Implementation `3aa0069` passed full Ruff/format (665 files), Mypy (526 source files) and Pytest. Only the known
+  Starlette/AnyIO warning remains. The focused 27 checks passed before the complete matrix.
+- Full matrix: 100/100 in 249.923 seconds, zero skipped, unexpected or flaky; 88 browser cases plus 12 pure model cases.
+  All previous 73 browser cases remain green. New coverage includes large/duplicate model inputs, exact comparison,
+  fresh-head takeover, CAS conflicts, current ACL/feature removal, cancelled discard, failure retry, bounded real history,
+  no-op takeover and late responses. Final desktop/tablet/mobile screenshots passed visual review.
+- No new schema, durable record or save endpoint. Item 252's migration 0083, verified backups, nonempty recovery and
+  foundation/business proofs below remain retained, not newly rerun. No new engine, tenant or pilot admission.
+- Primary changes: `app/suite/ui/office/office.js`, `office-comparison.mjs`, `office.css`, `index.html`;
+  `e2e/work/tests/office-comparison-model.spec.mjs`, `office-versions.spec.mjs`, `office-versions-responsive.spec.mjs`;
+  Docker bundle/module mounts and metadata-only roadmap capability evidence.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-253/`:
+
+- `results.json`: `sha256:42448945e2d326b56552c886d3603d69d1dcaf4d416ca4c727bf2e66e3ce8859`.
+- Desktop: `sha256:0d28f346e40703ee5aae43f1b97f1d935af540d3757fbe2fc881c6a33037ca24`.
+- Tablet: `sha256:7df8d3dd56d2f4b9d5ef1df12664a75ad7dbafc9e0d89ca5cd7f8670b8b9b53e`.
+- Mobile: `sha256:33024e5aed9b0ac0b9c68787839cca0fdfe7856c7950cb8f61359e84685c5a3c`.
+
+## Previous slice: Roadmap 252
 
 Roadmap 252 / PLANS 113 delivers `/office`, linked from `/work`: native rich text, headings, lists, tables, templates,
 outline, local text search, word count, focus mode, explicit version saves and historical reads. Desktop, tablet and
@@ -288,7 +330,8 @@ Primary code and runbooks:
 
 ## Existing product and platform status
 
-- `/office` provides native document authoring and immutable version history under its closed tenant gates.
+- `/office` provides native document authoring, immutable history, saved-version comparison and historical takeover
+  as an explicitly saved new draft, under its closed tenant gates.
 - `/roadmap` presents capabilities, including guarded native Office; KB shows authoring and ordinary reading, and CRM includes Work account
   details, with real API route paths.
 - `/workspace` provides the module cockpit and controlled foundation workflows.
@@ -308,11 +351,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 252 is complete. Preserve the 73-case Work/KB/CRM/Office regression matrix and the closed normal pilot boundary.
-Next is Roadmap 253 / PLANS 114: compare explicitly selected native versions and take a prior version into a new
-unsaved draft against a freshly loaded current head. Recheck current ACLs, preserve immutable history and require an
-explicit confirmed CAS save; read-only users may compare but cannot take over a version. This is a usability extension,
-not automatic merging or persisted autosave. Office remains ahead of CRM expansion.
+Item 253 is complete. Preserve the 100-check matrix (88 Work/KB/CRM/Office browser cases and 12 comparison-model cases)
+and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
+comments, tracked changes and live collaboration remain open. Preserve fresh current access checks, immutable history,
+explicit confirmed CAS saves and memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.
 Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
 authorization and executable-image admission must precede an engine proof. Productive saves and WOPI remain separate
