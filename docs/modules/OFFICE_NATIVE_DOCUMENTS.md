@@ -1,7 +1,7 @@
 # Native Office Documents
 
 Status: product foundation complete; remote acceptance and nonempty recovery passed
-Roadmap: 252 / PLANS 113
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 
@@ -42,6 +42,30 @@ failures use constant messages. The UI uses local assets under a restrictive CSP
 or stale-head conflicts, clears content when access is denied, preserves exact retry keys and drops late responses after
 closing or changing context. Only connection context,
 never content or credentials, is stored in browser localStorage.
+
+## Version comparison and local takeover
+
+Roadmap 253 extends the existing five APIs without another persistence model. Users explicitly select two saved
+versions in the history dialog and load their comparison. Both exact source versions are read through the normal
+authoritative content route; no stored browser copy substitutes for a new authorization check. The comparison is local
+and uses literal text, showing added, removed, changed and unchanged document blocks plus both saved titles. It detects
+format/structure differences even when visible text is unchanged. Tables and lists retain readable row/cell/item
+boundaries. Large comparisons use bounded alignment work and paginated rendering without silently dropping blocks;
+an approximate alignment is labelled. It is a block comparison, not tracked changes or automatic merging.
+The existing history route returns at most 200 recent versions. A connected partial history is accepted and labelled;
+relative labels do not invent absolute version numbers for older unloaded entries.
+
+An authorized reader may compare but cannot take over content for editing. Taking a historical version into a draft
+refreshes its exact content, the current head and current document capabilities. The new draft uses historical content
+and title while preserving the fresh head as its expected save base. Current write permission is required; historical
+write capability alone is insufficient. No POST occurs until the existing explicit save confirmation. The original
+versions remain immutable. An intervening save produces the ordinary CAS conflict and preserves the draft.
+
+Comparison selection changes, close, context switches and superseding editor operations invalidate pending responses.
+Access denial clears protected state; a temporary read failure clears partial comparison output but preserves the
+existing draft. Cancelling the discard decision preserves edits. Unsaved takeover content stays only in memory, and
+unchanged content/title does not manufacture a dirty version. No schema, retention, backup format or engine permission
+changes. Existing migration 0083 and exact-version recovery contracts remain applicable.
 
 ## Records, retention and recovery
 

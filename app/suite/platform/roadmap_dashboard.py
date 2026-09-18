@@ -803,8 +803,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     summary=(
                         "Der Schreibarbeitsplatz /office bietet native strukturierte Dokumente mit Formatierung, "
                         "Tabellen, Gliederung, Textsuche und Versionsgeschichte. Autorisierte Nutzer koennen "
-                        "Dokumente auflisten, erstellen, lesen, Versionen auflisten und eine neue Version explizit "
-                        "bestaetigen. PostgreSQL-Metadaten und exakte S3-Quellversionen bleiben an aktuelle ACLs "
+                        "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
+                        "auf dem frisch gelesenen aktuellen Stand uebernehmen. Erst eine ausdrueckliche "
+                        "Bestaetigung speichert eine neue Version. PostgreSQL-Metadaten und exakte S3-Quellversionen "
+                        "bleiben an aktuelle ACLs "
                         "gebunden. Das Modul office_documents und seine Lese-/Schreibfeatures bleiben fuer normale "
                         "Mandanten standardmaessig geschlossen; DOCX-Import, Export und Engine-Freigaben sind separat."
                     ),
@@ -821,6 +823,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/office_recovery_proof.py",
                         "tests/test_office_recovery_proof.py",
                         "e2e/work/tests/office.spec.mjs",
+                        "app/suite/ui/office/office-comparison.mjs",
+                        "e2e/work/tests/office-versions.spec.mjs",
                         "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
                     ),
@@ -838,6 +842,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "strict_bounded_native_document_schema_without_active_content",
                         "explicit_human_confirmation_before_version_save",
                         "expected_current_version_compare_and_swap",
+                        "version_comparison_revalidates_both_saved_sources",
+                        "historical_takeover_is_local_until_confirmed_cas_save",
                         "actor_bound_exact_mutation_retry",
                         "postgresql_forced_rls_and_append_only_versions",
                         "tenant_write_lock_before_s3_put",
@@ -849,7 +855,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="complete_remote_acceptance_and_recovery_before_separate_tenant_activation",
+                    next_action="extend_native_document_workflows_with_tenant_and_docx_admission_kept_separate",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

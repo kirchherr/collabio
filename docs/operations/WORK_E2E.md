@@ -86,7 +86,8 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 73 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
+The expected matrix is 100 passing checks: 88 browser cases and 12 pure native-comparison model cases. The original
+73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
 a competing edit conflict, object-store failure, disabled write feature, unauthorized role, approval invalidation
@@ -103,6 +104,15 @@ Eleven native Office workflow/policy cases and two responsive runs cover real ri
 history, concurrent saves, current typed ACLs, forged grants, foreign tenants, feature closure, source read/write failures,
 lost-response idempotent retry and late context responses. Office uses its own PostgreSQL/S3 domain service and seeded
 editor/reader, always with fresh database ACL resolution. The blocked process permits authorized reads but closes writes.
+
+Roadmap 253 adds thirteen version-workflow cases and two desktop/mobile runs (including a tablet screenshot): exact
+saved text/title/format/table comparison, equality, local historical takeover against a freshly loaded head, explicit
+save lineage, no-op takeover, a subsequent CAS conflict, read-only comparison, ACL/write-feature removal, cancelled
+discard, transient read failure and late close/selection/context/takeover responses. A bounded-history edge case uses
+three genuine stored versions and reduces only one real metadata response to its two newest rows; source reads stay
+real and demonstrate a visible predecessor outside the returned window. Twelve pure-model cases verify deterministic,
+bounded alignment, semantic mark/key ordering and complete ordered before/after projections, including large repeated
+blocks and long text. The runner mounts the exact product comparison module read-only; it does not use a second copy.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
@@ -126,6 +136,8 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `work-crm-detail-complete.png`, the authorized PostgreSQL account detail;
 - `work-crm-detail-desktop-chromium.png` and `work-crm-detail-mobile-chromium.png`, CRM detail containment and scrolling;
 - traces and failure screenshots only when a test fails.
+- `office-editor-desktop-chromium.png`, `office-editor-tablet-chromium.png`, `office-editor-mobile-chromium.png`;
+- `office-versions-desktop-chromium.png`, `office-versions-tablet-chromium.png`, `office-versions-mobile-chromium.png`.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

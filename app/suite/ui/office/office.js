@@ -3,12 +3,13 @@ import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
-  session: null, editor: null, listLoading: false, discardResolve: null,
+  session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1 };
@@ -51,9 +52,9 @@ function restoreContext() {
   $("tenant-label").textContent = context.tenantId;
 }
 
-async function api(path, { method = "GET", body } = {}, context = state.context) {
+async function api(path, { method = "GET", body, signal } = {}, context = state.context) {
   const response = await fetch(path, {
-    method, cache: "no-store",
+    method, cache: "no-store", signal,
     headers: {
       "X-Tenant-Id": context.tenantId, "X-User-Id": context.userId,
       "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds,
@@ -152,16 +153,19 @@ function isDirty() {
 function updateEditorState() {
   const session = state.session;
   const editor = state.editor;
-  const editable = Boolean(session && editor && session.canWrite && !session.historical && !session.saving && !session.uncertain);
+  const editable = Boolean(session && editor && session.canWrite && !session.historical && !session.saving && !session.uncertain && !session.restoring);
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
-  $("document-save").disabled = !session || !editor || session.loading || session.saving || session.historical ||
+  $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
     !session.canWrite || session.conflict || (!session.uncertain && !isDirty());
   $("document-save").textContent = session?.uncertain ? "Speicherung prüfen" : "Version speichern";
   $("document-close").disabled = Boolean(session?.saving);
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
   $("document-reload").textContent = session?.historical ? "Aktuelle Version" : "Neu laden";
-  $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving);
+  $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
+  $("history-compare").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
+  $("historical-actions").hidden = !session?.historical || !listedWriteAccess(session?.objectId);
+  $("document-restore").disabled = Boolean(session?.loading || session?.saving || session?.restoring);
   document.querySelectorAll("[data-command]").forEach((button) => {
     const command = button.dataset.command;
     button.disabled = !editable || !editor.can()[commandNames[command]]();
@@ -181,6 +185,7 @@ function updateEditorState() {
   if (!session) return;
   if (session.loading) status.textContent = "Dokument wird geladen …";
   else if (session.saving) status.textContent = "Version wird gespeichert …";
+  else if (session.restoring) status.textContent = "Frühere Fassung wird geprüft …";
   else if (session.uncertain) { status.textContent = "Speicherung noch nicht bestätigt"; status.classList.add("error"); }
   else if (session.conflict) { status.textContent = "Neuere Version vorhanden · Ihr Entwurf bleibt erhalten"; status.classList.add("error"); }
   else if (session.historical) status.textContent = "Frühere Version · Schreibgeschützt";
@@ -285,6 +290,8 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  closeComparison();
+  cancelRestore();
   session.revision += 1;
   session.attempt = null;
   $("save-dialog").close();
@@ -332,6 +339,8 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  closeComparison();
+  cancelRestore();
   state.session = null;
   state.editor?.destroy();
   state.editor = null;
@@ -343,6 +352,7 @@ function clearWorkspace() {
   $("history-status").textContent = "";
   $("document-status").textContent = "";
   $("document-version").textContent = "";
+  $("historical-actions").hidden = true;
   $("find-query").value = "";
   $("find-panel").hidden = true;
   $("find-toggle").setAttribute("aria-expanded", "false");
@@ -433,13 +443,15 @@ function settleDiscard(confirmed) {
 
 function freshSession(objectId = null) {
   return { epoch: state.epoch, objectId, revision: 0, historyRequest: 0, canWrite: false,
-    loading: true, saving: false, historical: false, conflict: false, uncertain: false,
-    version: null, metadata: null, baseline: "", attempt: null };
+    loading: true, saving: false, historical: false, conflict: false, uncertain: false, restoring: false,
+    version: null, metadata: null, baseline: "", attempt: null, versions: [] };
 }
 
 function contentMatches(result, objectId, versionId = null) {
   return result?.tenant_id === state.context.tenantId && result.document?.object_id === objectId &&
-    typeof result.document.title === "string" && typeof result.version?.version_id === "string" &&
+    typeof result.document.title === "string" && typeof result.document.current_version_id === "string" &&
+    typeof result.version?.version_id === "string" &&
+    (!result.is_current_version || result.version.version_id === result.document.current_version_id) &&
     (versionId ? result.version.version_id === versionId :
       result.is_current_version === true && result.version.version_id === result.document.current_version_id) &&
     typeof result.is_current_version === "boolean" && typeof result.can_write === "boolean" &&
@@ -448,6 +460,8 @@ function contentMatches(result, objectId, versionId = null) {
 
 function acceptContent(result, session) {
   mountEditor(result.content, session);
+  closeComparison();
+  cancelRestore();
   session.historyRequest += 1;
   session.metadata = result.document;
   session.version = result.version;
@@ -645,15 +659,15 @@ async function loadHistory() {
   try {
     const result = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/versions`);
     if (!current()) return;
-    if (result.tenant_id !== state.context.tenantId || result.object_id !== session.objectId || !Array.isArray(result.versions)) throw new ApiError(502);
-    $("history-status").textContent = "Frühere Versionen öffnen Sie schreibgeschützt.";
-    result.versions.forEach((version) => {
-      if (typeof version.version_id !== "string") throw new ApiError(502);
+    const versions = validatedHistory(result, session.objectId);
+    session.versions = versions;
+    $("history-status").textContent = `Frühere Versionen öffnen Sie schreibgeschützt. ${historyCoverage(versions)}`.trim();
+    [...versions].reverse().forEach((version) => {
       const button = node("button", undefined, "version-entry");
       button.type = "button";
       button.dataset.versionId = version.version_id;
       button.setAttribute("aria-current", String(version.version_id === session.version?.version_id));
-      button.append(node("strong", version.version_id === session.metadata.current_version_id ? "Aktuelle Version" : "Gespeicherte Version"),
+      button.append(node("strong", versionLabel(version, versions)),
         node("small", dateLabel(version.created_at_utc)), node("small", version.created_by));
       button.title = version.version_id;
       button.addEventListener("click", () => openDocument(session.objectId, version.version_id));
@@ -663,13 +677,310 @@ async function loadHistory() {
     if (!current()) return;
     $("document-history").replaceChildren();
     if (denied(error)) {
-      clearWorkspace();
-      $("documents-status").textContent = "Dieses Dokument ist nicht mehr freigegeben.";
+      officeAccessDenied();
       return;
     }
     $("history-status").textContent = "Versionen konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
   } finally {
     if (current()) $("history-refresh").disabled = false;
+  }
+}
+
+function listedWriteAccess(objectId) {
+  return state.documents.some((entry) => entry.object_id === objectId && entry.can_write === true);
+}
+
+function officeAccessDenied() {
+  clearWorkspace();
+  state.documents = []; state.canCreate = false;
+  renderDocuments();
+  $("documents-status").textContent = "Dieses Dokument ist nicht mehr freigegeben.";
+  $("documents-status").classList.add("error");
+}
+
+function validatedHistory(result, objectId) {
+  if (result?.tenant_id !== state.context.tenantId || result.object_id !== objectId ||
+    !Array.isArray(result.versions) || !result.versions.length) throw new ApiError(502);
+  const successors = new Map();
+  const ids = new Set();
+  result.versions.forEach((version) => {
+    if (typeof version.version_id !== "string" || typeof version.title !== "string" ||
+      typeof version.created_at_utc !== "string" || typeof version.created_by !== "string" ||
+      !(version.previous_version_id === null || typeof version.previous_version_id === "string") ||
+      ids.has(version.version_id) || successors.has(version.previous_version_id)) throw new ApiError(502);
+    ids.add(version.version_id);
+    successors.set(version.previous_version_id, version);
+  });
+  const roots = result.versions.filter((version) => version.previous_version_id === null || !ids.has(version.previous_version_id));
+  if (roots.length !== 1) throw new ApiError(502);
+  const ordered = [];
+  let version = roots[0];
+  while (version && ordered.length < result.versions.length) {
+    ordered.push(version);
+    version = successors.get(version.version_id);
+  }
+  if (version || ordered.length !== result.versions.length) throw new ApiError(502);
+  return ordered;
+}
+
+function versionLabel(version, versions) {
+  const index = versions.findIndex((entry) => entry.version_id === version.version_id);
+  const distance = versions.length - 1 - index;
+  const label = distance === 0 ? "Aktuelle Fassung" : `${distance} ${distance === 1 ? "Fassung" : "Fassungen"} zuvor`;
+  return `${label} · ${dateLabel(version.created_at_utc)}`;
+}
+
+function historyCoverage(versions) {
+  return versions[0]?.previous_version_id !== null
+    ? `Angezeigt werden die letzten ${versions.length} Fassungen; ältere Fassungen sind nicht geladen.` : "";
+}
+
+function validatedContent(result, objectId, versionId = null) {
+  if (!contentMatches(result, objectId, versionId) || typeof result.version.title !== "string") throw new ApiError(502);
+  const content = normalizedDocument(result.content);
+  if (!state.editor) throw new ApiError(502);
+  state.editor.schema.nodeFromJSON(content).check();
+  return content;
+}
+
+function cancelRestore() {
+  const restore = state.restore;
+  state.restore = null;
+  if (!restore) return;
+  restore.controller.abort();
+  restore.session.restoring = false;
+  if (state.discardResolve) settleDiscard(false);
+}
+
+function clearComparisonResult(comparison = state.compare) {
+  if (comparison) { comparison.result = null; comparison.left = null; comparison.right = null; comparison.page = 0; }
+  $("compare-results").replaceChildren();
+  $("compare-summary").textContent = "";
+  $("compare-page").textContent = "";
+  $("compare-previous").disabled = true;
+  $("compare-next").disabled = true;
+  $("compare-restore").disabled = true;
+}
+
+function closeComparison() {
+  const comparison = state.compare;
+  if (!comparison && !$("compare-dialog").open) return;
+  state.compare = null;
+  comparison?.controller.abort();
+  if (state.restore?.comparison === comparison) cancelRestore();
+  clearComparisonResult(comparison);
+  if (comparison) comparison.versions = [];
+  $("compare-left").replaceChildren(); $("compare-right").replaceChildren();
+  $("compare-left").disabled = true; $("compare-right").disabled = true;
+  $("compare-status").textContent = "";
+  $("compare-load").disabled = true;
+  $("compare-dialog").close();
+  if (state.session) updateEditorState();
+}
+
+function comparisonCurrent(comparison, request = comparison.request) {
+  return state.compare === comparison && $("compare-dialog").open && sessionCurrent(comparison.session) &&
+    comparison.session.revision === comparison.revision && comparison.request === request;
+}
+
+async function openComparison() {
+  const session = state.session;
+  if (!session?.objectId || session.loading || session.saving || !state.editor) return;
+  closeComparison();
+  const comparison = { session, revision: session.revision, context: state.context, request: 0,
+    controller: new AbortController(), versions: [], result: null, left: null, right: null, page: 0 };
+  state.compare = comparison;
+  const request = comparison.request;
+  clearComparisonResult(comparison);
+  $("compare-status").textContent = "Versionen werden geladen …";
+  $("compare-dialog").showModal();
+  try {
+    const result = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/versions`,
+      { signal: comparison.controller.signal }, comparison.context);
+    if (!comparisonCurrent(comparison, request)) return;
+    const versions = validatedHistory(result, session.objectId);
+    comparison.versions = versions;
+    session.versions = versions;
+    ["compare-left", "compare-right"].forEach((id) => {
+      $(id).replaceChildren(...versions.map((version) => {
+        const option = node("option", versionLabel(version, versions));
+        option.value = version.version_id;
+        return option;
+      }));
+      $(id).disabled = false;
+    });
+    $("compare-left").value = versions[Math.max(0, versions.length - 2)].version_id;
+    $("compare-right").value = versions[versions.length - 1].version_id;
+    $("compare-load").disabled = false;
+    $("compare-status").textContent = `Wählen Sie zwei Fassungen und laden Sie den Vergleich. ${historyCoverage(versions)}`.trim();
+  } catch (error) {
+    if (!comparisonCurrent(comparison, request)) return;
+    if (denied(error)) { officeAccessDenied(); return; }
+    $("compare-status").textContent = "Versionen konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
+    $("compare-load").disabled = false;
+  }
+}
+
+function comparisonSelectionChanged() {
+  const comparison = state.compare;
+  if (!comparison) return;
+  comparison.request += 1;
+  comparison.controller.abort();
+  comparison.controller = new AbortController();
+  cancelRestore();
+  clearComparisonResult(comparison);
+  $("compare-status").textContent = "Auswahl geändert. Laden Sie den Vergleich erneut.";
+  $("compare-load").disabled = false;
+  updateEditorState();
+}
+
+async function loadComparison() {
+  const comparison = state.compare;
+  if (!comparison || state.restore) return;
+  if (!comparison.versions.length) { openComparison(); return; }
+  const leftId = $("compare-left").value;
+  const rightId = $("compare-right").value;
+  if (![leftId, rightId].every((id) => comparison.versions.some((entry) => entry.version_id === id))) return;
+  comparison.controller.abort();
+  comparison.controller = new AbortController();
+  const request = ++comparison.request;
+  clearComparisonResult(comparison);
+  $("compare-status").textContent = "Vergleich wird geladen …";
+  $("compare-load").disabled = true;
+  try {
+    const path = `/v1/office/documents/${encodeURIComponent(comparison.session.objectId)}/content?version_id=`;
+    const [left, right] = await Promise.all([leftId, rightId].map((id) =>
+      api(`${path}${encodeURIComponent(id)}`, { signal: comparison.controller.signal }, comparison.context)));
+    if (!comparisonCurrent(comparison, request)) return;
+    const before = validatedContent(left, comparison.session.objectId, leftId);
+    const after = validatedContent(right, comparison.session.objectId, rightId);
+    comparison.result = compareOfficeDocuments(before, after);
+    comparison.left = left; comparison.right = right;
+    renderComparison(comparison);
+    $("compare-status").textContent = "Vergleich geladen. Gespeicherte Fassungen bleiben unverändert.";
+  } catch (error) {
+    if (!comparisonCurrent(comparison, request)) return;
+    clearComparisonResult(comparison);
+    if (denied(error)) { officeAccessDenied(); return; }
+    $("compare-status").textContent = "Vergleich konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+  } finally {
+    if (comparisonCurrent(comparison, request)) $("compare-load").disabled = false;
+  }
+}
+
+function renderComparison(comparison) {
+  if (!comparisonCurrent(comparison) || !comparison.result) return;
+  const { rows, counts, simplified } = comparison.result;
+  const titleChanged = comparison.left.version.title !== comparison.right.version.title;
+  $("compare-summary").textContent = `${counts.changed} geändert · ${counts.added} hinzugefügt · ${counts.removed} entfernt · ${counts.equal} unverändert.${titleChanged ? " Titel geändert." : " Titel unverändert."}${simplified ? " Große Fassung: vereinfachter Blockvergleich; alle Inhalte sind enthalten." : ""} ${historyCoverage(comparison.versions)}`.trim();
+  $("compare-results").replaceChildren();
+  const titleRow = node("section", undefined, `compare-row ${titleChanged ? "changed" : "equal"}`);
+  titleRow.append(node("h3", titleChanged ? "Titel geändert" : "Titel unverändert"));
+  const titles = node("div", undefined, "compare-columns");
+  [comparison.left, comparison.right].forEach((entry, index) => {
+    const side = node("div", undefined, "compare-side");
+    side.append(node("h4", `${index ? "Rechts" : "Links"} · ${versionLabel(entry.version, comparison.versions)}`),
+      node("p", entry.version.title, "compare-text"));
+    titles.append(side);
+  });
+  titleRow.append(titles);
+  $("compare-results").append(titleRow);
+  const pageSize = 40;
+  const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+  comparison.page = Math.min(Math.max(comparison.page, 0), pages - 1);
+  const labels = { equal: "Unverändert", changed: "Geändert", added: "Hinzugefügt", removed: "Entfernt" };
+  rows.slice(comparison.page * pageSize, (comparison.page + 1) * pageSize).forEach((row, index) => {
+    const section = node("section", undefined, `compare-row ${row.kind}`);
+    section.dataset.changeKind = row.kind;
+    section.append(node("h3", `${labels[row.kind]} · Block ${comparison.page * pageSize + index + 1}`));
+    const columns = node("div", undefined, "compare-columns");
+    [row.before, row.after].forEach((block, sideIndex) => {
+      const side = node("div", undefined, "compare-side");
+      side.append(node("h4", sideIndex ? "Rechts · Nachher" : "Links · Vorher"));
+      if (block) {
+        const description = describeOfficeBlock(block);
+        side.append(node("p", description.label, "compare-block-label"), node("pre", description.text, "compare-text"));
+      } else side.append(node("p", "Kein Block in dieser Fassung", "compare-empty"));
+      columns.append(side);
+    });
+    section.append(columns);
+    $("compare-results").append(section);
+  });
+  $("compare-page").textContent = `Seite ${comparison.page + 1} von ${pages} · ${rows.length} Blöcke`;
+  $("compare-previous").disabled = comparison.page === 0;
+  $("compare-next").disabled = comparison.page === pages - 1;
+  $("compare-restore").disabled = Boolean(state.restore) || comparison.left.is_current_version ||
+    !listedWriteAccess(comparison.session.objectId);
+}
+
+async function restoreVersion(versionId, comparison = null) {
+  const session = state.session;
+  if (!session?.objectId || session.saving || session.loading || state.restore || !listedWriteAccess(session.objectId)) return;
+  const restore = { session, revision: session.revision, context: state.context, comparison,
+    comparisonRequest: comparison?.request, versionId, controller: new AbortController() };
+  state.restore = restore;
+  const current = () => state.restore === restore && sessionCurrent(session) && session.revision === restore.revision &&
+    (!comparison || (comparisonCurrent(comparison, restore.comparisonRequest) && $("compare-left").value === versionId));
+  try {
+    if (!(await confirmDiscard()) || !current()) return;
+    session.restoring = true;
+    updateEditorState();
+    if (comparison) {
+      clearComparisonResult(comparison);
+      $("compare-status").textContent = "Fassung und aktuelle Berechtigung werden geprüft …";
+      $("compare-load").disabled = true;
+    } else notice("Fassung und aktuelle Berechtigung werden geprüft …");
+    const base = `/v1/office/documents/${encodeURIComponent(session.objectId)}/content`;
+    const [historical, head, listing] = await Promise.all([
+      api(`${base}?version_id=${encodeURIComponent(versionId)}`, { signal: restore.controller.signal }, restore.context),
+      api(base, { signal: restore.controller.signal }, restore.context),
+      api("/v1/office/documents", { signal: restore.controller.signal }, restore.context),
+    ]);
+    if (!current()) return;
+    const historicContent = validatedContent(historical, session.objectId, versionId);
+    const currentContent = validatedContent(head, session.objectId);
+    if (listing?.tenant_id !== restore.context.tenantId || !Array.isArray(listing.documents)) throw new ApiError(502);
+    const listed = listing.documents.find((entry) => entry.object_id === session.objectId);
+    if (!listed || head.can_write !== true || listed.can_write !== true) throw new ApiError(403);
+    if (listed.current_version_id !== head.version.version_id) throw new ApiError(409);
+    if (historical.version.version_id === head.version.version_id) throw new ApiError(409);
+    const nativeCurrentContent = normalizedDocument(state.editor.schema.nodeFromJSON(currentContent).toJSON());
+    const baseline = JSON.stringify({ title: head.version.title, document: nativeCurrentContent });
+    const replacement = freshSession(session.objectId);
+    replacement.metadata = head.document; replacement.version = head.version; replacement.canWrite = true;
+    replacement.versions = session.versions;
+    replacement.baseline = baseline;
+    mountEditor(historicContent, replacement);
+    closeComparison();
+    cancelRestore();
+    state.session = replacement;
+    $("document-title").value = historical.version.title;
+    replacement.loading = false;
+    $("document-mode").textContent = "Entwurf aus früherer Fassung";
+    $("document-version").textContent = `Basis · ${dateLabel(head.version.created_at_utc)}`;
+    $("document-version").title = head.version.version_id;
+    $("document-history").replaceChildren();
+    $("history-status").textContent = "Die Versionsgeschichte bleibt unverändert, bis Sie den Entwurf speichern.";
+    refreshDocumentTools();
+    notice(isDirty() ? "Frühere Fassung als ungespeicherten Entwurf übernommen. Speichern Sie sie bei Bedarf als neue Version." :
+      "Die gewählte Fassung entspricht bereits der aktuellen Version. Es gibt keine ungespeicherten Änderungen.");
+    focusEditor();
+    renderDocuments();
+  } catch (error) {
+    if (!current()) return;
+    if (denied(error)) { officeAccessDenied(); return; }
+    const message = error instanceof ApiError && error.status === 409
+      ? "Die aktuelle Version hat sich geändert. Bitte laden Sie die Fassungen erneut; Ihr Entwurf bleibt erhalten."
+      : "Die Fassung konnte nicht übernommen werden. Bitte versuchen Sie es erneut; Ihr Entwurf bleibt erhalten.";
+    if (comparison) { clearComparisonResult(comparison); $("compare-status").textContent = message; }
+    else notice(message, true);
+  } finally {
+    if (state.restore === restore) {
+      state.restore = null;
+      session.restoring = false;
+      if (sessionCurrent(session)) updateEditorState();
+      if (comparison && comparisonCurrent(comparison)) $("compare-load").disabled = false;
+    }
   }
 }
 
@@ -707,6 +1018,29 @@ $("document-close").addEventListener("click", async () => { if (await confirmDis
 $("documents-refresh").addEventListener("click", loadDocuments);
 $("documents-search").addEventListener("input", renderDocuments);
 $("history-refresh").addEventListener("click", loadHistory);
+$("history-compare").addEventListener("click", openComparison);
+$("compare-close").addEventListener("click", closeComparison);
+$("compare-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeComparison(); });
+$("compare-dialog").addEventListener("close", () => { if (!$("compare-dialog").open) closeComparison(); });
+$("compare-left").addEventListener("change", comparisonSelectionChanged);
+$("compare-right").addEventListener("change", comparisonSelectionChanged);
+$("compare-load").addEventListener("click", loadComparison);
+$("compare-restore").addEventListener("click", () => {
+  const comparison = state.compare;
+  if (comparison?.left && !$("compare-restore").disabled) restoreVersion(comparison.left.version.version_id, comparison);
+});
+$("document-restore").addEventListener("click", () => {
+  if (state.session?.historical && !$("document-restore").disabled) restoreVersion(state.session.version.version_id);
+});
+["previous", "next"].forEach((direction) => {
+  $(`compare-${direction}`).addEventListener("click", () => {
+    if (!state.compare?.result) return;
+    state.compare.page += direction === "next" ? 1 : -1;
+    renderComparison(state.compare);
+    $("compare-results").scrollIntoView({ block: "start" });
+    $("compare-results").focus({ preventScroll: true });
+  });
+});
 $("outline-tab").addEventListener("click", () => selectInspector("outline"));
 $("history-tab").addEventListener("click", () => selectInspector("history"));
 $("inspector-toggle").addEventListener("click", () => toggleInspector($("office-shell").classList.contains("inspector-hidden")));

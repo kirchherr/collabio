@@ -3,7 +3,7 @@ WORKDIR /office-build
 COPY frontend/office/package.json frontend/office/package-lock.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY frontend/office/build.mjs ./
-COPY app/suite/ui/office/office.js ./src/office.js
+COPY app/suite/ui/office/ ./src/
 RUN npm run build
 
 FROM python:3.12-alpine@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a AS base

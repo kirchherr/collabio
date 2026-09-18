@@ -47,6 +47,12 @@ No background AI, microphone, collaboration channel, search indexing or RAG is e
 
 ## Consequences and next steps
 
+Roadmap 253 adds comparison and historical takeover as local UI operations over the existing authorized version reads.
+A small bounded block comparison uses the native tree model directly; it adds no diff service, third-party executable,
+document copy or dependency. Structural and formatting changes remain distinguishable from text equality. Taking over
+an old version creates only an in-memory draft against a freshly authorized current head; the existing confirmed CAS
+save appends a successor. It neither rewrites history nor bypasses the source/receipt/recovery contracts.
+
 This creates a useful first document editor, not a full Word/Excel/PowerPoint replacement. Next steps are evaluated DOCX
 interchange, comments/review, accessible shared editing, then spreadsheet and presentation workflows with their own
 version and recovery contracts. Real Word/GenOffice fidelity evidence and existing engine release gates remain required.

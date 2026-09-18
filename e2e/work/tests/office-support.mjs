@@ -127,24 +127,80 @@ export async function setOfficeFeatures(page, features) {
   expect((await response.json()).enabled_features).toEqual(features);
 }
 
-export async function holdOfficeRead(page, objectId) {
+export async function holdOfficeRead(page, objectId, { versionId = null } = {}) {
   let release;
   let started;
+  let delivered;
+  let settled;
+  let interrupted = false;
   const gate = new Promise((resolve) => { release = resolve; });
   const ready = new Promise((resolve) => { started = resolve; });
-  await page.route(`**${officeContentPath(objectId)}`, async (route) => {
+  const delivery = new Promise((resolve) => { delivered = resolve; });
+  const network = new Promise((resolve) => { settled = resolve; });
+  const matches = (url) => url.pathname === officeContentPath(objectId) && url.searchParams.get("version_id") === versionId;
+  const failed = (request) => {
+    if (matches(new URL(request.url()))) { interrupted = true; settled(); }
+  };
+  const responded = (response) => {
+    if (matches(new URL(response.url()))) response.finished().then(settled);
+  };
+  page.on("requestfailed", failed);
+  page.on("response", responded);
+  await page.route(matches, async (route) => {
     const response = await route.fetch();
     expect(response.status()).toBe(200);
     started();
     await gate;
-    await route.fulfill({ response });
+    try { await route.fulfill({ response }); }
+    catch (error) { if (!interrupted) throw error; }
+    finally { delivered(); }
   }, { times: 1 });
   return { ready, release, async complete() {
-    const pending = page.waitForResponse((response) => new URL(response.url()).pathname === officeContentPath(objectId));
     release();
-    await (await pending).finished();
+    await Promise.all([delivery, network]);
+    page.off("requestfailed", failed);
+    page.off("response", responded);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   } };
+}
+
+export async function createOfficeVersionPair(page, title, firstText = "Earlier saved wording", secondText = "Current saved wording") {
+  const first = await createOfficeDocument(page, `${title} earlier`, firstText);
+  await page.locator("#document-title").fill(`${title} current`);
+  await officeEditor(page).fill(secondText);
+  const second = await saveOffice(page, { objectId: first.document.object_id });
+  return { first, second, objectId: first.document.object_id };
+}
+
+export async function openOfficeComparison(page) {
+  if (!await page.locator("#history-tab").isVisible()) await page.locator("#inspector-toggle").click();
+  await page.locator("#history-tab").click();
+  await page.locator("#history-compare").click();
+  await expect(page.locator("#compare-dialog")).toBeVisible();
+  await expect(page.locator("#compare-left")).toBeEnabled();
+  await expect(page.locator("#compare-right")).toBeEnabled();
+  await expect(page.locator("#compare-load")).toBeEnabled();
+}
+
+export async function loadOfficeComparison(page, objectId, leftVersionId, rightVersionId) {
+  await page.locator("#compare-left").selectOption(leftVersionId);
+  await page.locator("#compare-right").selectOption(rightVersionId);
+  const selected = [...new Set([leftVersionId, rightVersionId])];
+  const pending = selected.map((versionId) => page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === officeContentPath(objectId) && url.searchParams.get("version_id") === versionId && response.request().method() === "GET";
+  }));
+  await page.locator("#compare-load").click();
+  const responses = await Promise.all(pending);
+  for (const response of responses) {
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toContain("no-store");
+    const content = await response.json();
+    expect(content.document.object_id).toBe(objectId);
+    expect(selected).toContain(content.version.version_id);
+  }
+  await expect(page.locator("#compare-load")).toBeEnabled();
+  await expect(page.locator("#compare-summary")).not.toHaveText("");
 }
 
 export async function observeStaleOfficeContent(page, text) {
