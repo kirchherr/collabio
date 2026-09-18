@@ -1425,7 +1425,7 @@ function reviewReadFailure(error, review) {
   $("comments-status").textContent = "Kommentare sind gerade nicht erreichbar. Ihr Kommentarentwurf bleibt erhalten. Bitte erneut aktualisieren.";
 }
 function reviewBusy(review = state.review) {
-  return !reviewCurrent(review) || review.saving || review.session.loading || review.session.saving ||
+  return !reviewCurrent(review) || review.saving || review.settling || review.session.loading || review.session.saving ||
     review.session.restoring || review.session.uncertain;
 }
 function canCreateReview(review = state.review) {
@@ -1495,7 +1495,7 @@ async function loadReview(append = false) {
     review = { session, context: state.context, versionId: session.version.version_id,
       controller: new AbortController(), listRequest: 0, detailRequest: 0, threads: [], selectedId: null,
       detail: null, nextCursor: null, loading: false, canCreate: false, currentVersionId: null,
-      composer: null, attempt: null, saving: false, uncertain: false, conflict: false, highlight: null };
+      composer: null, attempt: null, saving: false, settling: false, uncertain: false, conflict: false, highlight: null };
     state.review = review;
   }
   if (review.saving || review.uncertain || (append && !review.nextCursor)) return;
@@ -1672,7 +1672,7 @@ function clearReviewComposer(review) {
   closeReviewConfirmation();
   $("comment-composer").hidden = true;
   $("comment-body").value = ""; $("comment-anchor").textContent = "";
-  updateReviewControls();
+  updateEditorState();
 }
 
 async function prepareReviewOperation(operation = null, thread = null) {
@@ -1737,6 +1737,7 @@ async function saveReviewOperation(event) {
         !Number.isInteger(result.applied_revision) || result.applied_revision !== result.event.revision ||
         typeof result.replayed !== "boolean") throw new ApiError(502);
     review.selectedId = result.thread.thread_id;
+    review.settling = true;
     clearReviewComposer(review);
     review.saving = false;
     const labels = { create: "Kommentar gespeichert.", reply: "Antwort gespeichert.", resolve: "Diskussion erledigt.", reopen: "Diskussion wieder geöffnet." };
@@ -1770,7 +1771,7 @@ async function saveReviewOperation(event) {
     if (reviewCurrent(review)) {
       $("comment-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = false; });
       $("comment-confirm-submit").disabled = true;
-      review.saving = false; updateEditorState();
+      review.saving = false; review.settling = false; updateEditorState();
     }
   }
 }
@@ -1780,6 +1781,7 @@ async function hideInspectorWithReview() {
   if (review && (!(await confirmDiscard("comments")) || state.review !== review)) return;
   if (review) clearReview();
   toggleInspector(false);
+  updateEditorState();
 }
 
 function toggleInspector(show) {
@@ -1862,7 +1864,7 @@ $("comments-toggle").addEventListener("click", () => selectInspector("comments")
 $("comments-close").addEventListener("click", async () => {
   const review = state.review;
   if (!(await confirmDiscard("comments")) || state.review !== review) return;
-  clearReview(); toggleInspector(false); $("comments-toggle").focus();
+  clearReview(); toggleInspector(false); updateEditorState(); $("comments-toggle").focus();
 });
 $("comments-refresh").addEventListener("click", () => loadReview());
 $("comments-more").addEventListener("click", () => loadReview(true));
@@ -1907,6 +1909,7 @@ $("focus-toggle").addEventListener("click", async () => {
   if (review && !$("office-shell").classList.contains("focus-mode")) {
     if (!(await confirmDiscard("comments")) || state.review !== review) return;
     clearReview();
+    updateEditorState();
   }
   const active = $("office-shell").classList.toggle("focus-mode");
   $("focus-toggle").setAttribute("aria-pressed", String(active));

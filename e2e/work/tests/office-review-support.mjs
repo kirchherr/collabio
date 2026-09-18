@@ -67,6 +67,9 @@ export async function confirmComment(page, objectId, { threadId = null, status =
     expect(result.search_indexing_allowed).toBe(false);
     expect(result.audit_event_id).toBeTruthy();
     await expect(threadCard(page, result.thread.thread_id)).toBeVisible();
+    // A confirmed mutation refreshes its metadata and opens the exact thread.
+    // Wait for that real read before the next action or failure-injection route.
+    await expect(page.locator("#comments-refresh")).toBeEnabled();
   }
   return result;
 }
