@@ -283,17 +283,29 @@ def test_office_failure_fixture_uses_exact_read_and_write_routes(allow_traffic: 
         ("POST", "/v1/office/documents/nested/id/versions", (False, False)),
         ("POST", "/v1/admin/kb/articles/write-approvals/execute", (False, False)),
     ):
+        assert (
+            office_storage_failure_modes(
+                tenant_id=WORK_E2E_TENANT_ID,
+                method=method,
+                path=path,
+                requested=True,
+                allow_synthetic_traffic=allow_traffic,
+            )
+            == expected
+        )
         assert office_storage_failure_modes(
-            tenant_id=WORK_E2E_TENANT_ID, method=method, path=path,
-            requested=True, allow_synthetic_traffic=allow_traffic,
-        ) == expected
-        assert office_storage_failure_modes(
-            tenant_id="tenant-demo", method=method, path=path,
-            requested=True, allow_synthetic_traffic=allow_traffic,
+            tenant_id="tenant-demo",
+            method=method,
+            path=path,
+            requested=True,
+            allow_synthetic_traffic=allow_traffic,
         ) == (False, False)
         assert office_storage_failure_modes(
-            tenant_id=WORK_E2E_TENANT_ID, method=method, path=path,
-            requested=False, allow_synthetic_traffic=allow_traffic,
+            tenant_id=WORK_E2E_TENANT_ID,
+            method=method,
+            path=path,
+            requested=False,
+            allow_synthetic_traffic=allow_traffic,
         ) == (False, False)
 
 

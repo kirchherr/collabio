@@ -11,6 +11,7 @@ test("Office native editor, confirmation and persisted document fit the viewport
   await officeEditor(page).press("Control+End");
   await page.keyboard.type("Responsive editing result");
   await page.locator("#document-save").click();
+  await expect(page.locator("#save-dialog")).toBeVisible();
   const dialog = await page.locator("#save-dialog").boundingBox();
   expect(dialog).not.toBeNull();
   expect(dialog.x).toBeGreaterThanOrEqual(0);

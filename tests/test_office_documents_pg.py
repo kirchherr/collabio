@@ -52,7 +52,8 @@ def database() -> Database:
 
 def source_repository(database: Database, store: InMemorySourceObjectContentStore) -> PgSourceObjectRepository:
     return PgSourceObjectRepository(
-        database_dsn=database.app_dsn, content_store=store,
+        database_dsn=database.app_dsn,
+        content_store=store,
         retention_policy=load_retention_manifest_policy(ROOT / "docs" / "retention_manifest_policy.json"),
         storage_policy=load_storage_adapter_policy(ROOT / "docs" / "storage_adapter_policy.json"),
     )
@@ -62,9 +63,12 @@ def service_for(database: Database, store: InMemorySourceObjectContentStore) -> 
     source = source_repository(database, store)
     return OfficeDocumentService(
         repository=PgOfficeDocumentRepository(
-            database_dsn=database.app_dsn, source_repository=source,
+            database_dsn=database.app_dsn,
+            source_repository=source,
             receipt_store=PgSourceObjectWriteReceiptStore(database_dsn=database.app_dsn),
-        ), source_repository=source, audit=InMemoryAuditLogger(),
+        ),
+        source_repository=source,
+        audit=InMemoryAuditLogger(),
     )
 
 
@@ -73,8 +77,12 @@ def editor() -> UserContext:
 
 
 def command(reference: str = "create", text: str = "Private native content") -> OfficeDocumentCreateCommand:
-    return OfficeDocumentCreateCommand(title="Native document", mutation_reference=reference, human_confirmation=True,
-        document={"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}]})
+    return OfficeDocumentCreateCommand(
+        title="Native document",
+        mutation_reference=reference,
+        human_confirmation=True,
+        document={"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}]},
+    )
 
 
 def set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
@@ -82,8 +90,13 @@ def set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
 
 
 def counts(database: Database, user: UserContext) -> tuple[int, ...]:
-    tables = ("office.documents", "office.document_versions", "collabio.source_object_metadata",
-              "collabio.source_object_write_receipts", "collabio.object_acl_entries")
+    tables = (
+        "office.documents",
+        "office.document_versions",
+        "collabio.source_object_metadata",
+        "collabio.source_object_write_receipts",
+        "collabio.object_acl_entries",
+    )
     with psycopg.connect(database.app_dsn) as connection:
         set_tenant(connection, user.tenant_id)
         result = []
@@ -116,9 +129,15 @@ def test_pg_create_save_read_history_receipts_and_creator_acl_are_atomic(databas
     assert service.read_content(user_context=user, object_id=object_id, write_enabled=True).can_write
     second_actor = user.model_copy(update={"user_id": "second-editor"})
     grant(database, user, object_id, second_actor.user_id, "write")
-    saved = service.save(user_context=second_actor, object_id=object_id, write_enabled=True, command=OfficeDocumentSaveCommand(
-        **command("save", "Updated text").model_dump(), expected_current_version_id=created.version.version_id,
-    ))
+    saved = service.save(
+        user_context=second_actor,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **command("save", "Updated text").model_dump(),
+            expected_current_version_id=created.version.version_id,
+        ),
+    )
     assert saved.version.created_by == "second-editor"
     original = service.read_content(user_context=user, object_id=object_id, version_id=created.version.version_id)
     assert original.content == command().document
@@ -128,7 +147,8 @@ def test_pg_create_save_read_history_receipts_and_creator_acl_are_atomic(databas
     assert counts(database, user) == (1, 2, 2, 2, 2)
     assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 2
     receipt = PgSourceObjectWriteReceiptStore(database_dsn=database.app_dsn).get(
-        tenant_id=user.tenant_id, receipt_hash=saved.version.source_write_receipt_hash,
+        tenant_id=user.tenant_id,
+        receipt_hash=saved.version.source_write_receipt_hash,
     )
     assert receipt.created_by == second_actor.user_id and receipt.owner_principal_id == user.user_id
     assert receipt.content_hash == saved.version.content_hash
@@ -145,17 +165,25 @@ def test_pg_explicit_read_acl_never_grants_write_and_revocation_blocks_history(d
     assert service.read_content(user_context=reader, object_id=object_id).content == command().document
     assert service.read_content(user_context=reader, object_id=object_id, write_enabled=True).can_write is False
     with pytest.raises(OfficeDocumentPermissionError):
-        service.save(user_context=reader, object_id=object_id, write_enabled=True, command=OfficeDocumentSaveCommand(
-            **command("denied").model_dump(), expected_current_version_id=created.version.version_id,
-        ))
+        service.save(
+            user_context=reader,
+            object_id=object_id,
+            write_enabled=True,
+            command=OfficeDocumentSaveCommand(
+                **command("denied").model_dump(),
+                expected_current_version_id=created.version.version_id,
+            ),
+        )
     forged = reader.model_copy(update={"user_id": "forged", "role_ids": {"office-editor"}})
     with pytest.raises(OfficeDocumentNotFoundError):
         service.read_content(user_context=forged, object_id=object_id)
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, user.tenant_id)
-        connection.execute("UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
-                           "WHERE tenant_id = %s AND object_id = %s AND acl_subject_id = %s",
-                           (user.tenant_id, object_id, reader.user_id))
+        connection.execute(
+            "UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
+            "WHERE tenant_id = %s AND object_id = %s AND acl_subject_id = %s",
+            (user.tenant_id, object_id, reader.user_id),
+        )
     with pytest.raises(OfficeDocumentNotFoundError):
         service.history(user_context=reader, object_id=object_id)
     assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 1
@@ -174,9 +202,15 @@ def test_pg_concurrent_stale_save_loser_has_no_receipt_source_or_orphan(database
         worker = service_for(database, store)
         barrier.wait(timeout=10)
         try:
-            worker.save(user_context=user, object_id=created.document.object_id, write_enabled=True,
-                        command=OfficeDocumentSaveCommand(**command(f"save-{index}", f"Version {index}").model_dump(),
-                            expected_current_version_id=created.version.version_id))
+            worker.save(
+                user_context=user,
+                object_id=created.document.object_id,
+                write_enabled=True,
+                command=OfficeDocumentSaveCommand(
+                    **command(f"save-{index}", f"Version {index}").model_dump(),
+                    expected_current_version_id=created.version.version_id,
+                ),
+            )
         except OfficeDocumentConflictError:
             return "conflict"
         return "committed"
@@ -194,9 +228,14 @@ def test_pg_exact_retry_replays_actor_bound_receipt_even_after_later_save(databa
     user = editor()
     created = service.create(user_context=user, command=command(), write_enabled=True)
     user.readable_object_ids.add(created.document.object_id)
-    service.save(user_context=user, object_id=created.document.object_id, write_enabled=True,
-                 command=OfficeDocumentSaveCommand(**command("save", "Later").model_dump(),
-                     expected_current_version_id=created.version.version_id))
+    service.save(
+        user_context=user,
+        object_id=created.document.object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **command("save", "Later").model_dump(), expected_current_version_id=created.version.version_id
+        ),
+    )
     replay = service.create(user_context=user, command=command(), write_enabled=True)
     assert replay.replayed and not replay.is_current_version and replay.version == created.version
     with pytest.raises(OfficeDocumentConflictError):
@@ -221,14 +260,49 @@ def test_pg_storage_failure_rolls_back_document_creator_acl_and_receipt(database
     assert service.audit.events == ()
 
 
+def test_pg_database_failure_after_put_preserves_old_head_and_detects_orphan(
+    database: Database, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    user = editor()
+    created = service.create(user_context=user, command=command(), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+
+    def fail_version_insert(connection: psycopg.Connection[Any], version: Any) -> None:
+        connection.execute("SELECT 1 / 0")
+
+    monkeypatch.setattr(service.repository, "_insert_version", fail_version_insert)
+    with pytest.raises(psycopg.errors.DivisionByZero):
+        service.save(user_context=user, object_id=object_id, write_enabled=True,
+                     command=OfficeDocumentSaveCommand(**command("failed-save", "Uncommitted draft").model_dump(),
+                         expected_current_version_id=created.version.version_id))
+    assert counts(database, user) == (1, 1, 1, 1, 1)
+    assert service.read_content(user_context=user, object_id=object_id).version == created.version
+    assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 2
+    recovery = source_repository(database, store).build_content_recovery_evidence(
+        tenant_id=user.tenant_id, restore_drill_report_hash="sha256:" + "a" * 64,
+    )
+    assert recovery.orphaned_content_count == 1
+    assert recovery.missing_content_count == 0
+    assert recovery.source_content_recovery_required
+    assert not recovery.api_wiring_allowed
+
+
 def test_pg_rls_append_only_versions_and_head_cannot_rewind(database: Database) -> None:
     service = service_for(database, InMemorySourceObjectContentStore())
     user = editor()
     created = service.create(user_context=user, command=command(), write_enabled=True)
     user.readable_object_ids.add(created.document.object_id)
-    service.save(user_context=user, object_id=created.document.object_id, write_enabled=True,
-                 command=OfficeDocumentSaveCommand(**command("save", "New").model_dump(),
-                     expected_current_version_id=created.version.version_id))
+    service.save(
+        user_context=user,
+        object_id=created.document.object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **command("save", "New").model_dump(), expected_current_version_id=created.version.version_id
+        ),
+    )
     foreign = user.model_copy(update={"tenant_id": "tenant-other"})
     assert service.list_documents(user_context=foreign).documents == []
     with pytest.raises(OfficeDocumentNotFoundError):
@@ -243,5 +317,7 @@ def test_pg_rls_append_only_versions_and_head_cannot_rewind(database: Database) 
             with pytest.raises(psycopg.Error), connection.transaction():
                 connection.execute(sql, (user.tenant_id,))
         with pytest.raises(psycopg.Error), connection.transaction():
-            connection.execute("UPDATE office.documents SET current_version_id = %s WHERE tenant_id = %s AND object_id = %s",
-                               (created.version.version_id, user.tenant_id, created.document.object_id))
+            connection.execute(
+                "UPDATE office.documents SET current_version_id = %s WHERE tenant_id = %s AND object_id = %s",
+                (created.version.version_id, user.tenant_id, created.document.object_id),
+            )

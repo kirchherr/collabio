@@ -423,12 +423,6 @@ from suite.platform.module_family_backlog import (
     build_module_family_backlog_response,
     build_module_family_next_slice_selection_response,
 )
-from suite.platform.office_api import build_office_document_service, register_office_routes
-from suite.platform.office_documents import (
-    OFFICE_DOCUMENTS_MODULE_ID,
-    OFFICE_DOCUMENTS_READ_FEATURE_ID,
-    OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
-)
 from suite.platform.modules import (
     InMemoryModuleRegistry,
     ModuleDecommissionBlockCommand,
@@ -454,6 +448,12 @@ from suite.platform.mvp_pilot_decisions import (
     MvpPilotDecisionService,
     build_default_mvp_pilot_decision_store,
     build_mvp_pilot_decision_context,
+)
+from suite.platform.office_api import build_office_document_service, register_office_routes
+from suite.platform.office_documents import (
+    OFFICE_DOCUMENTS_MODULE_ID,
+    OFFICE_DOCUMENTS_READ_FEATURE_ID,
+    OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
 )
 from suite.platform.office_edit_adapter import (
     OfficeEditAdapterEvaluationBlocked,

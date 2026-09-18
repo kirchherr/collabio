@@ -213,6 +213,7 @@ test("Office lost success response replays the actual committed version without 
     await route.abort("connectionreset");
   }, { times: 1 });
   await page.locator("#document-save").click();
+  await expect(page.locator("#save-dialog")).toBeVisible();
   await page.locator("#save-confirm").check();
   await page.locator("#save-submit").click();
   await expect(page.locator("#save-dialog")).toBeHidden();

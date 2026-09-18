@@ -33,6 +33,7 @@ def _backend_gate(*, complete: bool = True) -> BackendFoundationCompletionGate:
         tenant_iam_verified=complete,
         append_only_audit_verified=complete,
         module_registry_verified=complete,
+        office_document_controls_verified=complete,
         crm_atomic_write_controls_verified=complete,
         tasks_activities_write_controls_verified=complete,
         time_tracking_write_controls_verified=complete,

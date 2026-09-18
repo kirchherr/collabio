@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,10 @@ from suite.operations.postgres_restore_drill import (
     KB_ACL_TRIGGER,
     KB_ARTICLE_ACL_TRIGGER,
     MODULE_REGISTRY_TABLES,
+    OFFICE_DOCUMENT_TABLES,
+    OFFICE_POLICY_DEFINITIONS,
+    OFFICE_REQUIRED_CONSTRAINTS,
+    OFFICE_TRIGGER_FUNCTIONS,
     PRODUCTIVITY_PILOT_APPEND_ONLY_POLICIES_BY_TABLE,
     PRODUCTIVITY_PILOT_APPEND_ONLY_TRIGGERS_BY_TABLE,
     PRODUCTIVITY_PILOT_AUTHZ_PRIVILEGES_BY_TABLE,
@@ -61,6 +66,50 @@ from suite.storage.backend_storage_foundation_gate import (
 CHECKED_AT = "2026-07-30T10:00:00Z"
 
 
+def _office_fixture() -> dict[str, list[dict[str, object]]]:
+    migration_sql = next(migration.sql() for migration in load_migrations() if migration.version == "0083")
+    triggers: list[dict[str, object]] = []
+    for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
+        function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
+        triggers.append({
+            "schema_name": "office", "table_name": table_name.split(".")[1],
+            "trigger_name": trigger_name, "trigger_enabled": "O",
+            "trigger_definition": f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} FOR EACH ROW EXECUTE FUNCTION office.{function_name}()",
+            "function_schema": "office", "function_name": function_name, "function_owner": "collabio_owner",
+            "function_security_definer": security_definer, "function_config": ["search_path=pg_catalog"],
+            "function_acl": "{collabio_owner=X/collabio_owner}", "function_language": "plpgsql",
+            "function_identity_arguments": "", "function_result": "trigger",
+            "function_definition": f"CREATE FUNCTION office.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
+            "function_body": function_sql.split("AS $$", 1)[1].split("$$;", 1)[0],
+            "function_public_execute": False, "function_runtime_execute": False,
+        })
+    return {
+        "schemas": [{"schema_name": "office"}],
+        "tables": [{
+            "schema_name": "office", "table_name": table_name.split(".")[1], "relation_kind": "r",
+            "table_owner": "collabio_owner", "rls_enabled": True, "rls_forced": True,
+        } for table_name in sorted(OFFICE_DOCUMENT_TABLES)],
+        "triggers": triggers,
+        "policies": [{
+            "schema_name": "office", "table_name": table_name.split(".")[1], "policy_name": policy_name,
+            "cmd": command, "qual": qualifier, "with_check": check, "permissive": "PERMISSIVE", "roles": "{public}",
+        } for (table_name, policy_name), (command, qualifier, check) in OFFICE_POLICY_DEFINITIONS.items()],
+        "constraints": [{
+            "schema_name": "office", "table_name": table_name.split(".")[1], "constraint_definition": definition,
+        } for table_name, definitions in OFFICE_REQUIRED_CONSTRAINTS.items() for definition in sorted(definitions)],
+        "grants": [{
+            "schema_name": "office", "table_name": table_name.split(".")[1], "grantee": grantee,
+            "privilege_type": privilege, "is_grantable": "NO",
+        } for table_name in sorted(OFFICE_DOCUMENT_TABLES)
+            for grantee, privileges in (("collabio_app", ("SELECT", "INSERT")), ("collabio_worker", ("SELECT",)))
+            for privilege in privileges],
+        "column_grants": [{
+            "schema_name": "office", "table_name": "documents", "grantee": "collabio_app",
+            "column_name": column, "privilege_type": "UPDATE", "is_grantable": "NO",
+        } for column in ("title", "current_version_id", "updated_at_utc")],
+    }
+
+
 def _snapshot(
     *,
     database_hash: str,
@@ -74,7 +123,11 @@ def _snapshot(
     start_authorization_controls: bool = True,
     kb_acl_trigger: bool = True,
     kb_trigger_overrides: dict[str, object] | None = None,
+    office_mutate: Callable[[dict[str, list[dict[str, object]]]], None] | None = None,
 ) -> PostgresDatabaseSnapshot:
+    office = _office_fixture()
+    if office_mutate:
+        office_mutate(office)
     table_names = sorted(
         TENANT_IAM_TABLES
         | KB_ACL_TABLES
@@ -88,7 +141,7 @@ def _snapshot(
         | PRODUCTIVITY_PILOT_TRAFFIC_SCOPE_TABLES
         | PRODUCTIVITY_PILOT_START_AUTHORIZATION_TABLES
     )
-    tables = [
+    tables: list[dict[str, object]] = [
         {
             "schema_name": qualified_name.split(".", 1)[0],
             "table_name": qualified_name.split(".", 1)[1],
@@ -98,6 +151,7 @@ def _snapshot(
         }
         for qualified_name in table_names
     ]
+    tables.extend(office["tables"])
     row_counts = [
         {
             "schema_name": table["schema_name"],
@@ -117,7 +171,7 @@ def _snapshot(
         }
         for migration in load_migrations()
     ]
-    policies = [
+    policies: list[dict[str, object]] = [
         {
             "schema_name": qualified_name.split(".", 1)[0],
             "table_name": qualified_name.split(".", 1)[1],
@@ -126,6 +180,7 @@ def _snapshot(
         for qualified_name, policy_names in sorted(AUDIT_APPEND_ONLY_POLICIES_BY_TABLE.items())
         for policy_name in sorted(policy_names)
     ]
+    policies.extend(office["policies"])
     policies.extend(
         {
             "schema_name": "crm",
@@ -269,7 +324,8 @@ def _snapshot(
                 }
             )
     roles = [{"role_name": role_name, "can_login": True} for role_name in sorted(SERVICE_ROLES)]
-    grants = [
+    triggers.extend(office["triggers"])
+    grants: list[dict[str, object]] = [
         {
             "schema_name": table_name.split(".", 1)[0],
             "table_name": table_name.split(".", 1)[1],
@@ -279,6 +335,7 @@ def _snapshot(
         for table_name in sorted(AUDIT_TABLES)
         for privilege in ("INSERT", "SELECT")
     ]
+    grants.extend(office["grants"])
     grants.extend(
         {
             "schema_name": table_name.split(".", 1)[0],
@@ -404,18 +461,19 @@ def _snapshot(
         )
     return build_postgres_database_snapshot(
         database_ref_hash=database_hash,
-        schemas=[{"schema_name": "collabio"}],
+        schemas=[{"schema_name": "collabio"}, *office["schemas"]],
         tables=tables,
         columns=[],
         row_counts=row_counts,
         migrations=migrations,
         policies=policies,
-        constraints=[],
+        constraints=office["constraints"],
         indexes=[],
         triggers=triggers,
         extensions=[{"extension_name": "plpgsql", "extension_version": "1.0"}],
         roles=roles,
         grants=grants,
+        column_grants=office["column_grants"],
     )
 
 
@@ -479,7 +537,7 @@ def test_restore_hashes_complete_trigger_function_definition_and_privileges(fiel
     assert report.restore_ready is False
 
 
-def test_live_postgres_snapshot_verifies_authored_knowledge_base_acl_functions() -> None:
+def test_live_postgres_snapshot_verifies_authored_kb_and_office_integrity_controls() -> None:
     database_dsn = os.environ.get("SUITE_MIGRATION_DATABASE_DSN")
     if not database_dsn:
         pytest.skip("SUITE_MIGRATION_DATABASE_DSN is not configured")
@@ -489,6 +547,126 @@ def test_live_postgres_snapshot_verifies_authored_knowledge_base_acl_functions()
 
     assert snapshot.migration_catalog_verified is True
     assert snapshot.tenant_iam_controls_verified is True
+    assert snapshot.office_document_controls_verified is True
+
+
+def _office_tamper_report(
+    mutate: Callable[[dict[str, list[dict[str, object]]]], None],
+) -> PostgresRestoreDrillReport:
+    return build_postgres_restore_drill_report(
+        backup_evidence=_backup_evidence(),
+        source_snapshot=_snapshot(database_hash="sha256:" + "b" * 64, office_mutate=mutate),
+        target_snapshot=_snapshot(database_hash="sha256:" + "c" * 64, office_mutate=mutate),
+        target_isolation_ref_hash="sha256:" + "d" * 64,
+        checked_at_utc=CHECKED_AT,
+    )
+
+
+def _assert_office_tamper_blocked(report: PostgresRestoreDrillReport) -> None:
+    assert report.source_target_state_verified is True
+    assert report.office_document_controls_verified is False
+    assert report.restore_ready is False
+    assert "office_document_controls_not_verified" in report.blocking_reasons
+
+
+def test_restore_requires_native_office_controls() -> None:
+    snapshot = _snapshot(database_hash="sha256:" + "b" * 64)
+    assert snapshot.office_document_controls_verified is True
+
+
+@pytest.mark.parametrize("collection", ("schemas", "tables", "policies", "constraints", "triggers", "grants", "column_grants"))
+def test_restore_rejects_identically_missing_office_controls(collection: str) -> None:
+    def remove(rows: dict[str, list[dict[str, object]]]) -> None:
+        rows[collection].pop()
+    _assert_office_tamper_blocked(_office_tamper_report(remove))
+
+
+@pytest.mark.parametrize("function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head"))
+@pytest.mark.parametrize(("field", "value"), (
+    ("trigger_enabled", "D"),
+    ("trigger_enabled", "R"),
+    ("trigger_definition", "CREATE TRIGGER replacement AFTER DELETE ON office.documents"),
+    ("function_schema", "public"),
+    ("function_name", "replacement_function"),
+    ("function_owner", "collabio_app"),
+    ("function_config", ["search_path=public, pg_catalog"]),
+    ("function_config", None),
+    ("function_acl", "{collabio_owner=X/collabio_owner,unreviewed_role=X/collabio_owner}"),
+    ("function_public_execute", True),
+    ("function_runtime_execute", True),
+    ("function_language", "sql"),
+    ("function_identity_arguments", "arg text"),
+    ("function_result", "text"),
+    ("function_body", "BEGIN RETURN NEW; END"),
+    ("function_body", None),
+))
+def test_restore_rejects_identical_office_trigger_function_drift(function_name: str, field: str, value: object) -> None:
+    def tamper(rows: dict[str, list[dict[str, object]]]) -> None:
+        next(row for row in rows["triggers"] if row["function_name"] == function_name)[field] = value
+    _assert_office_tamper_blocked(_office_tamper_report(tamper))
+
+
+@pytest.mark.parametrize("function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head"))
+def test_restore_pins_each_office_function_security_mode(function_name: str) -> None:
+    def flip_security(rows: dict[str, list[dict[str, object]]]) -> None:
+        function = next(row for row in rows["triggers"] if row["function_name"] == function_name)
+        function["function_security_definer"] = not function["function_security_definer"]
+    _assert_office_tamper_blocked(_office_tamper_report(flip_security))
+
+
+@pytest.mark.parametrize("table_name", ("documents", "document_versions"))
+@pytest.mark.parametrize(("field", "value"), (("rls_enabled", False), ("rls_forced", False), ("table_owner", "collabio_app")))
+def test_restore_rejects_office_table_security_drift(table_name: str, field: str, value: object) -> None:
+    def tamper(rows: dict[str, list[dict[str, object]]]) -> None:
+        next(row for row in rows["tables"] if row["table_name"] == table_name)[field] = value
+    _assert_office_tamper_blocked(_office_tamper_report(tamper))
+
+
+@pytest.mark.parametrize("policy_name", tuple(policy for _, policy in OFFICE_POLICY_DEFINITIONS))
+def test_restore_checks_office_policy_expressions_including_append_only_denials(policy_name: str) -> None:
+    def permit_all(rows: dict[str, list[dict[str, object]]]) -> None:
+        policy = next(row for row in rows["policies"] if row["policy_name"] == policy_name)
+        policy["with_check" if policy["cmd"] == "INSERT" else "qual"] = "true"
+    _assert_office_tamper_blocked(_office_tamper_report(permit_all))
+
+
+@pytest.mark.parametrize("collection", ("triggers", "policies"))
+def test_restore_rejects_additional_unreviewed_office_trigger_or_policy(collection: str) -> None:
+    def append(rows: dict[str, list[dict[str, object]]]) -> None:
+        name = "trigger_name" if collection == "triggers" else "policy_name"
+        rows[collection].append({**rows[collection][0], name: "unreviewed_bypass"})
+    _assert_office_tamper_blocked(_office_tamper_report(append))
+
+
+@pytest.mark.parametrize(("collection", "table_name", "grantee", "privilege", "column"), (
+    ("grants", "documents", "collabio_app", "UPDATE", ""),
+    ("grants", "documents", "PUBLIC", "DELETE", ""),
+    ("grants", "document_versions", "collabio_app", "UPDATE", ""),
+    ("grants", "document_versions", "collabio_worker", "INSERT", ""),
+    ("column_grants", "documents", "collabio_app", "UPDATE", "owner_principal_id"),
+    ("column_grants", "document_versions", "collabio_app", "UPDATE", "content_hash"),
+    ("column_grants", "documents", "PUBLIC", "UPDATE", "title"),
+))
+def test_restore_rejects_broadened_office_table_and_column_grants(
+    collection: str, table_name: str, grantee: str, privilege: str, column: str,
+) -> None:
+    def grant(rows: dict[str, list[dict[str, object]]]) -> None:
+        rows[collection].append({
+            "schema_name": "office", "table_name": table_name, "grantee": grantee,
+            "privilege_type": privilege, "column_name": column, "is_grantable": "NO",
+        })
+    _assert_office_tamper_blocked(_office_tamper_report(grant))
+
+
+def test_restore_hashes_office_column_grants_and_complete_function_definitions() -> None:
+    source = _snapshot(database_hash="sha256:" + "b" * 64)
+    def alter_definition(rows: dict[str, list[dict[str, object]]]) -> None:
+        rows["triggers"][0]["function_definition"] = "changed"
+        rows["column_grants"][0]["is_grantable"] = "YES"
+    target = _snapshot(database_hash="sha256:" + "c" * 64, office_mutate=alter_definition)
+    assert source.relation_manifest_hash != target.relation_manifest_hash
+    assert source.database_control_manifest_hash != target.database_control_manifest_hash
+    assert source.state_manifest_hash != target.state_manifest_hash
 
 
 def _backup_evidence() -> PostgresBackupArtifactEvidence:
@@ -673,6 +851,7 @@ def test_backend_foundation_completion_gate_binds_database_and_object_recovery()
     assert gate.backend_foundation_complete is True
     assert gate.api_start_allowed is True
     assert gate.tenant_iam_verified is True
+    assert gate.office_document_controls_verified is True
     assert gate.postgres_backup_restore_verified is True
     assert gate.exact_version_object_restore_verified is True
     assert gate.crm_atomic_write_controls_verified is True
@@ -696,6 +875,17 @@ def test_backend_foundation_completion_gate_blocks_missing_productive_write_cont
     assert gate.productive_business_write_controls_verified is False
     assert "time_tracking_write_controls_not_verified" in gate.blocking_reasons
     assert "productive_business_write_controls_not_verified" in gate.blocking_reasons
+
+
+def test_backend_foundation_gate_independently_requires_office_integrity_even_when_restore_ready_is_claimed() -> None:
+    report = _restore_report().model_copy(update={"office_document_controls_verified": False})
+    report = report.model_copy(update={"report_hash": build_postgres_restore_drill_report_hash(report)})
+    assert report.restore_ready is True
+    gate = build_backend_foundation_completion_gate(postgres_restore_report=report, storage_gate=_storage_gate())
+    assert gate.office_document_controls_verified is False
+    assert gate.backend_foundation_complete is False
+    assert gate.api_start_allowed is False
+    assert "office_document_controls_not_verified" in gate.blocking_reasons
 
 
 def test_backend_foundation_completion_gate_report_round_trip_and_tamper_detection(tmp_path: Path) -> None:

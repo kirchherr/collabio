@@ -38,6 +38,7 @@ export async function newOfficeDraft(page, title, { text, template = "blank" } =
 
 export async function saveOffice(page, { status = 200, objectId = null } = {}) {
   await page.locator("#document-save").click();
+  await expect(page.locator("#save-dialog")).toBeVisible();
   await expect(page.locator("#save-submit")).toBeDisabled();
   await page.locator("#save-confirm").check();
   const path = objectId ? `${OFFICE_PATH}/${objectId}/versions` : OFFICE_PATH;

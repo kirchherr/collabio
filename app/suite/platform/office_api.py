@@ -109,7 +109,9 @@ class OfficeRoute(APIRoute):
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
-                return JSONResponse({"detail": "The document has a newer or conflicting saved version"}, status_code=409)
+                return JSONResponse(
+                    {"detail": "The document has a newer or conflicting saved version"}, status_code=409
+                )
             except OfficeDocumentInvalidContentError:
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
             except (SourceObjectStorageError, PsycopgError):
@@ -134,6 +136,7 @@ def build_office_document_service(
         repository=InMemoryOfficeDocumentRepository(source_repository=source_repository),
         source_repository=source_repository,
         audit=audit,
+        writes_available=False,
     )
 
 
@@ -152,7 +155,10 @@ def _write_enabled(request: Request, context: TenantRequestContext) -> bool:
 
 
 def register_office_routes(
-    app: FastAPI, *, context_dependency: Callable[..., Any], read_gate: Callable[..., Any],
+    app: FastAPI,
+    *,
+    context_dependency: Callable[..., Any],
+    read_gate: Callable[..., Any],
     write_gate: Callable[..., Any],
 ) -> None:
     app.add_middleware(OfficeBoundaryMiddleware)
@@ -184,7 +190,8 @@ def register_office_routes(
 
     @router.post("", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])
     def create_document(
-        command: OfficeDocumentCreateCommand, request: Request,
+        command: OfficeDocumentCreateCommand,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_document_service.create(
@@ -193,24 +200,33 @@ def register_office_routes(
 
     @router.get("/{object_id}/content", response_model=OfficeDocumentContentResponse)
     def read_document(
-        object_id: str, request: Request,
+        object_id: str,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
         version_id: str | None = Query(default=None, min_length=1, max_length=128),
     ) -> Any:
         return request.app.state.office_document_service.read_content(
-            user_context=context.user_context, object_id=object_id, version_id=version_id,
+            user_context=context.user_context,
+            object_id=object_id,
+            version_id=version_id,
             write_enabled=_write_enabled(request, context),
         )
 
     @router.get("/{object_id}/versions", response_model=OfficeDocumentHistoryResponse)
     def document_history(
-        object_id: str, request: Request, context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        object_id: str,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_document_service.history(user_context=context.user_context, object_id=object_id)
 
-    @router.post("/{object_id}/versions", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])
+    @router.post(
+        "/{object_id}/versions", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)]
+    )
     def save_document(
-        object_id: str, command: OfficeDocumentSaveCommand, request: Request,
+        object_id: str,
+        command: OfficeDocumentSaveCommand,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_document_service.save(

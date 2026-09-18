@@ -98,8 +98,8 @@ search/vector candidate ids -> authoritative ACL -> source fetch -> redaction ->
 
 | Bereich | Empfehlung | Status | Warum |
 | --- | --- | --- | --- |
-| Rich Text Core | ProseMirror | candidate | Bewaehrt, tief kontrollierbar. |
-| Product Editor Layer | Tiptap | candidate | Schnellere Produktentwicklung, ProseMirror-basiert; Lizenz/Pro Features pruefen. |
+| Rich Text Core | ProseMirror | selected for native Office documents | Striktes strukturiertes Format, lokale Transaktionen und getestete Editorbefehle; ADR-0079. |
+| Product Editor Layer | Tiptap 3.31.3, open-source core | implemented; acceptance pending | Lokal gebuendelt, exakter Integrity-Lock, Lizenztexte und SBOM-Inventar; keine Pro-/Cloud-Dienste. |
 | CRDT | Yjs | candidate | Bewaehrte CRDT-Basis, Editor-Bindings, netzwerkagnostisch. |
 | DOCX Quick Edit Engine | Selektiv evaluierter GenOffice `docx-engine` hinter `OfficeEditAdapter.v1` | development image admitted; executable proof pending two-person runtime authorization | Byte-erhaltende Patch-Architektur; 23 Komponenten ohne Findings gescannt, npm-Signatur/SLSA/Fulcio/Rekor verifiziert sowie 21 Runtime-Archive und 42 Rechtsdateien hashgebunden. Der engine-unabhaengige 19-Faelle-OOXML-Preflight, Safe-/High-Fidelity-Vertraege und die source-blinde Revalidierung stehen. Der status-only Worker und ein harter Harness-Gate verhindern Engine-, Tenant-, Hosted-, On-Prem- oder Produktionsnutzung. |
 | Full Collaboration | Collabora Online ueber separaten WOPI-Adapter | candidate | Self-hosted und LibreOffice-basiert; Sessions, Locks, Tokens, Callbacks und Writes bleiben ausserhalb von Preview und Quick Edit. |

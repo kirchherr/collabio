@@ -48,10 +48,11 @@ Arbeitsweise:
 
 Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
 
-- Als naechsten Office-Pfad den bestehenden DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness
+- Punkt 252 liefert zuerst einen nativen Dokumentarbeitsplatz mit Formatierung, Gliederung, Suche und versioniertem
+  Speichern. Anschliessend den bestehenden DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness
   und source-blinder/CDR-Kandidatenpruefung fortsetzen. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
   menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
-  durch diese Priorisierung ersetzt. Produktiver Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
+  durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
   CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
@@ -1519,6 +1520,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      wiederverwenden. Leere, gesperrte und ausgefallene Detailansichten sowie Refresh, Kontextwechsel und
      Desktop/Mobile gegen isoliertes PostgreSQL geprueft. Volle Remote-Quality und alle 60 Browserfaelle sind gruen.
      Bestehende Pilot-Grenze bleibt geschlossen; keine neue Mutation, Migration oder reale Tenant-Aktivierung.
+
+252. [ ] Nativen Office-Dokumentarbeitsplatz unter `/office` umsetzen: lokale Rich-Text-Formatierung, Tabellen,
+     Gliederung, Textsuche, Fokusmodus und explizites Speichern neuer Versionen. Eigenes Modul mit geschlossenen
+     Tenant-Features, aktuellen Lese-/Schreib-ACLs, PostgreSQL/S3, CAS, exakter Wiederholung und Migration 0083.
+     Remote-Quality, Browserpruefung sowie nichtleerer Recovery-Nachweis vor Abschluss; DOCX-/Engine-Gates bleiben getrennt.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

@@ -39,7 +39,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         if set(node) - {"type", "attrs", "content", "text", "marks"}:
             reject()
         kind = node.get("type")
-        if not isinstance(kind, str) or kind not in BLOCKS | {"doc", "text", "hardBreak", "listItem", "tableRow", "tableCell", "tableHeader"}:
+        if not isinstance(kind, str) or kind not in BLOCKS | {
+            "doc",
+            "text",
+            "hardBreak",
+            "listItem",
+            "tableRow",
+            "tableCell",
+            "tableHeader",
+        }:
             reject()
         attrs = node.get("attrs", {})
         if not isinstance(attrs, dict):
@@ -48,7 +56,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if set(attrs) != {"level"} or type(attrs["level"]) is not int or attrs["level"] not in {1, 2, 3}:
                 reject()
         elif kind == "orderedList":
-            if set(attrs) - {"start"} or type(attrs.get("start", 1)) is not int or not 1 <= attrs.get("start", 1) <= 1_000_000:
+            if (
+                set(attrs) - {"start"}
+                or type(attrs.get("start", 1)) is not int
+                or not 1 <= attrs.get("start", 1) <= 1_000_000
+            ):
                 reject()
         elif kind == "codeBlock":
             if set(attrs) - {"language"} or attrs.get("language") is not None:
@@ -82,7 +94,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             value = node.get("text")
             if not isinstance(value, str) or not value or children:
                 reject()
-            if any((ord(character) < 32 and character not in "\n\t") or 0xD800 <= ord(character) <= 0xDFFF for character in value):
+            if any(
+                (ord(character) < 32 and character not in "\n\t") or 0xD800 <= ord(character) <= 0xDFFF
+                for character in value
+            ):
                 reject()
             characters += len(value)
             if characters > MAX_DOCUMENT_CHARACTERS:

@@ -201,21 +201,22 @@ def can_create_office_document(user_context: UserContext) -> bool:
 class OfficeDocumentService:
     def __init__(
         self, *, repository: OfficeDocumentRepository, source_repository: SourceObjectRepository,
-        audit: InMemoryAuditLogger,
+        audit: InMemoryAuditLogger, writes_available: bool = True,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
         self.audit = audit
+        self.writes_available = writes_available
 
     def list_documents(self, *, user_context: UserContext, write_enabled: bool = False) -> OfficeDocumentListResponse:
         records = self.repository.list_documents(user_context=user_context)
         event_id = self._audit(user_context, "office.documents.list", count=len(records))
         return OfficeDocumentListResponse(
             tenant_id=user_context.tenant_id,
-            documents=[self._view(record, write_enabled and self.repository.can_write(
+            documents=[self._view(record, self.writes_available and write_enabled and self.repository.can_write(
                 user_context=user_context, object_id=record.object_id
             )) for record in records],
-            can_create=write_enabled and can_create_office_document(user_context),
+            can_create=self.writes_available and write_enabled and can_create_office_document(user_context),
             audit_event_id=event_id,
         )
 
@@ -228,7 +229,7 @@ class OfficeDocumentService:
             user_context=user_context, object_id=object_id, version_id=version_id or document.current_version_id
         )
         content = self._read_content(document, version)
-        can_write = write_enabled and self.repository.can_write(user_context=user_context, object_id=object_id)
+        can_write = self.writes_available and write_enabled and self.repository.can_write(user_context=user_context, object_id=object_id)
         event_id = self._audit(user_context, "office.documents.read", object_id=object_id,
                                version_id=version.version_id, content_hash=version.content_hash)
         return self._content_response(document, version, content, can_write, event_id)
@@ -244,7 +245,7 @@ class OfficeDocumentService:
     def create(
         self, *, user_context: UserContext, command: OfficeDocumentCreateCommand, write_enabled: bool = False,
     ) -> OfficeDocumentContentResponse:
-        if not write_enabled or not can_create_office_document(user_context):
+        if not self.writes_available or not write_enabled or not can_create_office_document(user_context):
             raise OfficeDocumentPermissionError("Document creation is not permitted")
         return self._save(user_context=user_context, object_id=None, command=command)
 
@@ -252,7 +253,7 @@ class OfficeDocumentService:
         self, *, user_context: UserContext, object_id: str, command: OfficeDocumentSaveCommand,
         write_enabled: bool = False,
     ) -> OfficeDocumentContentResponse:
-        if not write_enabled:
+        if not self.writes_available or not write_enabled:
             raise OfficeDocumentPermissionError("Document saving is not permitted")
         return self._save(user_context=user_context, object_id=object_id, command=command)
 

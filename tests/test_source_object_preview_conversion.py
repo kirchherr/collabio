@@ -846,6 +846,7 @@ def _foundation_gate() -> BackendFoundationCompletionGate:
         tenant_iam_verified=True,
         append_only_audit_verified=True,
         module_registry_verified=True,
+        office_document_controls_verified=True,
         crm_atomic_write_controls_verified=True,
         tasks_activities_write_controls_verified=True,
         time_tracking_write_controls_verified=True,

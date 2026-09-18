@@ -83,7 +83,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 
 ## Phase 3 ADRs
 
-- [ ] ADR-0032: Text editor foundation: ProseMirror direct vs. Tiptap.
+- [x] ADR-0032 topic resolved by ADR-0079: native Office editor using open-source Tiptap over ProseMirror; DOCX fidelity and collaboration retain separate gates.
 - [ ] ADR-0033: CRDT strategy: Yjs and persistence model.
 - [ ] ADR-0034: Document record commit semantics.
 - [ ] ADR-0035: OOXML/ODF import/export scope.

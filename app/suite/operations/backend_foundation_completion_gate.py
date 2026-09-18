@@ -33,6 +33,7 @@ class BackendFoundationCompletionGate(BaseModel):
     tenant_iam_verified: bool
     append_only_audit_verified: bool
     module_registry_verified: bool
+    office_document_controls_verified: bool = False
     crm_atomic_write_controls_verified: bool
     tasks_activities_write_controls_verified: bool
     time_tracking_write_controls_verified: bool
@@ -80,6 +81,7 @@ def build_backend_foundation_completion_gate(
         and postgres_restore_report.time_tracking_write_controls_verified
     )
     checks = {
+        "office_document_controls_not_verified": postgres_restore_report.office_document_controls_verified,
         "tenant_iam_not_verified": postgres_restore_report.tenant_iam_controls_verified,
         "append_only_audit_not_verified": postgres_restore_report.append_only_audit_controls_verified,
         "module_registry_not_verified": postgres_restore_report.module_registry_controls_verified,
@@ -122,6 +124,7 @@ def build_backend_foundation_completion_gate(
         tenant_iam_verified=postgres_restore_report.tenant_iam_controls_verified,
         append_only_audit_verified=postgres_restore_report.append_only_audit_controls_verified,
         module_registry_verified=postgres_restore_report.module_registry_controls_verified,
+        office_document_controls_verified=postgres_restore_report.office_document_controls_verified,
         crm_atomic_write_controls_verified=postgres_restore_report.crm_atomic_write_controls_verified,
         tasks_activities_write_controls_verified=postgres_restore_report.tasks_activities_write_controls_verified,
         time_tracking_write_controls_verified=postgres_restore_report.time_tracking_write_controls_verified,

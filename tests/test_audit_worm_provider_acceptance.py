@@ -169,6 +169,7 @@ def _restore_report() -> PostgresRestoreDrillReport:
         append_only_audit_controls_verified=True,
         module_registry_controls_verified=True,
         source_object_controls_verified=True,
+        office_document_controls_verified=True,
         metadata_only_evidence_verified=True,
         restore_ready=True,
         report_hash="sha256:" + ("0" * 64),

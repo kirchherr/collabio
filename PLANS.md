@@ -124,12 +124,14 @@ Current sprint:
 111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
 112. [x] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling; full remote quality and 60 isolated browser cases pass with current PostgreSQL ACLs and the existing pilot boundary closed.
 
+113. [ ] Deliver a native Office document workspace at `/office`: real rich-text editing, tables, outline, search, focus mode, confirmed version saves, current ACLs, PostgreSQL/S3, CAS and exact retries; complete remote quality, browser and nonempty recovery proof before closeout.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Office is the next development priority: continue the existing DOCX Quick Edit spike using the synthetic corpus, stronger isolation and source-blind/CDR candidate validation. Real Word/GenOffice fidelity results, calibrated thresholds and human review remain separate prerequisites; productive saves and WOPI retain their own later release gates. Do not resume Word/account/firewall interventions on the original workstation.
+- Office is the next development priority: complete native document authoring and version history as Roadmap 252. Continue DOCX interchange through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation. Real Word/GenOffice fidelity, calibrated thresholds and human review remain separate prerequisites; DOCX saves and WOPI retain their own gates. Do not resume Word/account/firewall interventions on the original workstation.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

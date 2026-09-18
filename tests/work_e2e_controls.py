@@ -76,10 +76,9 @@ def office_storage_failure_modes(
     if tenant_id != WORK_E2E_TENANT_ID or not requested:
         return False, False
     return (
-        allow_synthetic_traffic and method == "POST" and (
-            path == "/v1/office/documents"
-            or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None
-        ),
+        allow_synthetic_traffic
+        and method == "POST"
+        and (path == "/v1/office/documents" or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None),
         method == "GET" and re.fullmatch(r"/v1/office/documents/[^/]+/content", path) is not None,
     )
 

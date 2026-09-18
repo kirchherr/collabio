@@ -513,6 +513,14 @@ function beginDraft(event) {
   state.editor.commands.focus("end");
 }
 
+function mutationReference() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function showSave() {
   const session = state.session;
   if (!session || !state.editor || $("document-save").disabled) return;
@@ -522,7 +530,7 @@ function showSave() {
   if (!session.attempt) {
     session.attempt = {
       revision: session.revision,
-      payload: { ...snapshot, mutation_reference: crypto.randomUUID(), human_confirmation: true,
+      payload: { ...snapshot, mutation_reference: mutationReference(), human_confirmation: true,
         ...(session.objectId ? { expected_current_version_id: session.metadata.current_version_id } : {}) },
     };
   }

@@ -119,10 +119,13 @@ app.state.module_registry = InMemoryModuleRegistry(
     tenant_modules=[
         _enabled_state("crm_erp", default_crm_erp_subfeature_enabled_features()),
         _enabled_state("knowledge_base", knowledge_features),
-        _enabled_state("office_documents", {
-            "office_documents.documents.read": True,
-            "office_documents.documents.write": allow_synthetic_traffic,
-        }),
+        _enabled_state(
+            "office_documents",
+            {
+                "office_documents.documents.read": True,
+                "office_documents.documents.write": allow_synthetic_traffic,
+            },
+        ),
         _enabled_state("tasks_activities", task_features),
         _enabled_state("time_tracking", time_features),
     ],

@@ -18,6 +18,8 @@ await build({
 });
 
 const lock = JSON.parse(await readFile("package-lock.json", "utf8"));
+// Retain the exact dependency inventory for image SBOM and vulnerability inspection.
+await writeFile("dist/package-lock.json", JSON.stringify(lock, null, 2) + "\n");
 const notices = ["Collabio native Office editor — third-party notices", ""];
 for (const [directory, entry] of Object.entries(lock.packages).sort(([left], [right]) => left.localeCompare(right))) {
   if (!directory || entry.dev || entry.optional) continue;

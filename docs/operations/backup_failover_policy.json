@@ -129,6 +129,10 @@
       "recovery_strategy": "restore object records plus metadata; verify draft/version/business-record separation and WORM constraints",
       "state_artifacts": [
         "draft state",
+        "native office.documents heads and append-only office.document_versions with migration 0083",
+        "native document current ACLs, creator ACL bootstrap, source bindings and immutable source write receipts",
+        "exact native document SourceObject JSON bytes, manifest hashes and S3 object versions",
+        "native Office forced RLS, column-restricted head grants, trigger definitions and actor-bound idempotency",
         "draft journals",
         "draft checkpoints",
         "saved versions",
@@ -317,6 +321,7 @@
       "covered_domains": [
         "tenant_iam_authz",
         "postgres_metadata",
+        "office_documents",
         "audit_evidence",
         "mail_messages_threads",
         "vector_indexes",

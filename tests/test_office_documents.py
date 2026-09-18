@@ -167,6 +167,26 @@ def test_stale_save_and_missing_confirmation_have_no_source_or_receipt_side_effe
     assert len(repository.receipt_store.list_receipts(tenant_id=user.tenant_id)) == 1
 
 
+def test_unavailable_write_adapter_denies_writes_and_does_not_advertise_editing(office: Any) -> None:
+    service, repository, user = office
+    created = service.create(user_context=user, command=create_command(), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    readonly = OfficeDocumentService(repository=repository, source_repository=repository.source_repository,
+                                    audit=service.audit, writes_available=False)
+    listed = readonly.list_documents(user_context=user, write_enabled=True)
+    assert not listed.can_create and not listed.documents[0].can_write
+    read = readonly.read_content(user_context=user, object_id=object_id, write_enabled=True)
+    assert not read.can_write and not read.document.can_write
+    with pytest.raises(OfficeDocumentPermissionError):
+        readonly.create(user_context=user, command=create_command("new"), write_enabled=True)
+    with pytest.raises(OfficeDocumentPermissionError):
+        readonly.save(user_context=user, object_id=object_id, write_enabled=True,
+                      command=OfficeDocumentSaveCommand(**create_command("save").model_dump(),
+                          expected_current_version_id=created.version.version_id))
+    assert len(repository.saved_versions) == 1
+
+
 @pytest.mark.parametrize("field,value", [
     ("tenant_id", "tenant-foreign"), ("mime_type", "text/html"), ("source_system", "other"),
     ("lifecycle_state", "restricted"), ("content_hash", "sha256:" + "f" * 64),

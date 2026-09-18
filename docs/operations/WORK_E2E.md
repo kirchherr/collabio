@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 60 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
+The expected matrix is 73 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
 a competing edit conflict, object-store failure, disabled write feature, unauthorized role, approval invalidation
@@ -98,6 +98,19 @@ Two additional desktop/mobile reader runs check long text, viewport containment 
 Eight CRM detail cases prove PostgreSQL child filtering/redaction, literal field values, empty children, missing or
 forged permissions, foreign tenant and closed pilot, account ACL revocation, disabled contacts feature, database
 failure/retry and close/context races. Two more desktop/mobile runs verify the CRM dialog and reachable controls.
+
+Eleven native Office workflow/policy cases and two responsive runs cover real rich-text editing, immutable version
+history, concurrent saves, current typed ACLs, forged grants, foreign tenants, feature closure, source read/write failures,
+lost-response idempotent retry and late context responses. Office uses its own PostgreSQL/S3 domain service and seeded
+editor/reader, always with fresh database ACL resolution. The blocked process permits authorized reads but closes writes.
+
+After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
+versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
+and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.
+The dump, checksum and restore receipt must result from a real operator-run pg_dump/pg_restore under the host locks.
+Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs. Never run
+it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
+before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
 
 ## Evidence
 
