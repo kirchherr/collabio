@@ -44,6 +44,13 @@ const elements = {
   knowledgeReaderMessage: document.querySelector("#knowledge-reader-message"),
   knowledgeReaderRefresh: document.querySelector("#knowledge-reader-refresh"),
   crmList: document.querySelector("#crm-list"),
+  crmDetailTitle: document.querySelector("#crm-detail-title"),
+  crmDetailStatus: document.querySelector("#crm-detail-status"),
+  crmDetailContent: document.querySelector("#crm-detail-content"),
+  crmDetailAccount: document.querySelector("#crm-detail-account"),
+  crmDetailContacts: document.querySelector("#crm-detail-contacts"),
+  crmDetailActivities: document.querySelector("#crm-detail-activities"),
+  crmDetailRefresh: document.querySelector("#crm-detail-refresh"),
 };
 
 const dialogs = {
@@ -57,6 +64,7 @@ const dialogs = {
   ticketTransition: document.querySelector("#ticket-transition-dialog"),
   knowledge: document.querySelector("#knowledge-dialog"),
   knowledgeReader: document.querySelector("#knowledge-reader-dialog"),
+  crmDetail: document.querySelector("#crm-detail-dialog"),
 };
 
 const forms = {
@@ -188,6 +196,7 @@ const state = {
   refreshContext: "",
   knowledgeEditor: null,
   knowledgeReader: null,
+  crmDetail: null,
   resources: Object.fromEntries(
     Object.keys(resourceDefinitions).map((key) => [key, { status: "idle", items: [], detail: "" }]),
   ),
@@ -565,6 +574,9 @@ function renderCrm() {
     filterMatches(item.display_name, item.account_number, item.account_kind, item.status),
   );
   elements.crmList.innerHTML = items.length ? items.map(crmRow).join("") : emptyState("Keine Accounts im Filter.");
+  elements.crmList.querySelectorAll("[data-crm-detail]").forEach((button) => {
+    button.addEventListener("click", () => openCrmDetail(button.dataset.crmDetail));
+  });
 }
 
 function renderAvailability() {
@@ -721,6 +733,7 @@ function crmRow(item) {
       <span class="number-cell">${escapeHtml(item.account_number || "-")}</span>
       <span class="muted">${escapeHtml(humanize(item.account_kind))}</span>
       ${statusPill(item.status)}
+      <button class="button secondary crm-detail-action" type="button" data-crm-detail="${escapeHtml(item.object_id)}" aria-label="Kontodetails fuer ${escapeHtml(item.display_name)}">Kontodetails</button>
     </article>
   `;
 }
@@ -935,6 +948,202 @@ function rememberReadableObjectIds(objectIds) {
   objectIds.filter(Boolean).forEach((objectId) => current.add(objectId));
   fields.readableObjectIds.value = [...current].join(",");
   persistContext();
+}
+
+function clearCrmDetailContent() {
+  elements.crmDetailTitle.textContent = "Kontodetails";
+  elements.crmDetailContent.hidden = true;
+  elements.crmDetailContent.scrollTop = 0;
+  elements.crmDetailAccount.replaceChildren();
+  elements.crmDetailContacts.replaceChildren();
+  elements.crmDetailActivities.replaceChildren();
+  elements.crmDetailStatus.textContent = "";
+  elements.crmDetailStatus.classList.remove("error");
+}
+
+function closeCrmDetail() {
+  state.crmDetail = null;
+  clearCrmDetailContent();
+  dialogs.crmDetail.removeAttribute("aria-busy");
+  dialogs.crmDetail.close();
+}
+
+function openCrmDetail(accountObjectId) {
+  if (!resourceItems("crm").some((account) => account.object_id === accountObjectId)) {
+    return;
+  }
+  state.crmDetail = {
+    accountObjectId,
+    context: JSON.stringify(readContext()),
+    requestNumber: 0,
+  };
+  clearCrmDetailContent();
+  if (!dialogs.crmDetail.open) {
+    dialogs.crmDetail.showModal();
+  }
+  loadCrmDetail();
+}
+
+function crmWorkspaceMatches(result, accountObjectId, tenantId) {
+  const account = result?.account;
+  const requiredFeatures = ["crm_erp.crm.accounts", "crm_erp.crm.contacts", "crm_erp.crm.activities"];
+  if (
+    result?.tenant_id !== tenantId || result.schema_version !== "crm_account_workspace.v1" ||
+    result.module_id !== "crm_erp" || result.result_contract !== "metadata_only_account_workspace" ||
+    result.content_included !== false || result.access_checked !== true ||
+    !Array.isArray(result.required_feature_ids) || result.required_feature_ids.length !== requiredFeatures.length ||
+    !requiredFeatures.every((feature) => result.required_feature_ids.includes(feature)) ||
+    account?.object_id !== accountObjectId || account.object_type !== "crm.account" ||
+    account.access_checked !== true || typeof account.display_name !== "string" ||
+    !Array.isArray(result.contacts) || !Array.isArray(result.activities)
+  ) {
+    return false;
+  }
+  const contactIds = new Set(result.contacts.map((contact) => contact?.object_id));
+  return result.contacts.every((contact) =>
+    contact?.object_type === "crm.contact" && typeof contact.object_id === "string" &&
+    typeof contact.display_name === "string" && contact.account_object_id === accountObjectId &&
+    contact.access_checked === true && contact.linked_account_access_checked === true,
+  ) && result.activities.every((activity) =>
+    activity?.object_type === "crm.activity" && typeof activity.object_id === "string" &&
+    typeof activity.subject === "string" && activity.access_checked === true &&
+    activity.linked_object_access_checked === true &&
+    (activity.account_object_id === accountObjectId ||
+      (activity.account_object_id === null && contactIds.has(activity.contact_object_id))),
+  );
+}
+
+async function loadCrmDetail() {
+  const detail = state.crmDetail;
+  if (!detail || !dialogs.crmDetail.open) {
+    return;
+  }
+  const context = readContext();
+  if (detail.context !== JSON.stringify(context)) {
+    closeCrmDetail();
+    return;
+  }
+  const accountObjectId = detail.accountObjectId;
+  const requestNumber = ++detail.requestNumber;
+  const isCurrent = () => state.crmDetail === detail && dialogs.crmDetail.open &&
+    detail.context === JSON.stringify(readContext()) && detail.accountObjectId === accountObjectId &&
+    detail.requestNumber === requestNumber;
+  clearCrmDetailContent();
+  elements.crmDetailStatus.textContent = "Kontodetails werden geladen ...";
+  elements.crmDetailRefresh.textContent = "Erneut laden";
+  elements.crmDetailRefresh.disabled = true;
+  dialogs.crmDetail.setAttribute("aria-busy", "true");
+  try {
+    const result = await apiRequest(`/v1/crm/accounts/${encodeURIComponent(accountObjectId)}/workspace`, {
+      cache: "no-store",
+    });
+    if (!isCurrent()) {
+      return;
+    }
+    if (!crmWorkspaceMatches(result, accountObjectId, context.tenantId)) {
+      throw new ApiError("Unvollstaendige Kontodetails", 502);
+    }
+    renderCrmDetail(result);
+    elements.crmDetailStatus.textContent = "";
+    elements.crmDetailRefresh.textContent = "Aktualisieren";
+  } catch (error) {
+    if (!isCurrent()) {
+      return;
+    }
+    clearCrmDetailContent();
+    const denied = error instanceof ApiError && [401, 403, 404, 423].includes(error.status);
+    elements.crmDetailStatus.textContent = denied
+      ? "Die Kontodetails sind nicht verfuegbar oder nicht freigegeben."
+      : "Die Kontodetails konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
+    elements.crmDetailStatus.classList.add("error");
+  } finally {
+    if (isCurrent()) {
+      elements.crmDetailRefresh.disabled = false;
+      dialogs.crmDetail.removeAttribute("aria-busy");
+    }
+  }
+}
+
+function appendCrmDetailFields(container, fieldsToShow) {
+  fieldsToShow.forEach(([label, value]) => {
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+    term.textContent = label;
+    description.textContent = value || "Nicht angegeben";
+    container.append(term, description);
+  });
+}
+
+function crmDetailCard(title, testId, fieldsToShow) {
+  const card = document.createElement("article");
+  card.className = "crm-detail-card";
+  card.dataset.testid = testId;
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const fieldsToRender = document.createElement("dl");
+  fieldsToRender.className = "crm-detail-fields";
+  appendCrmDetailFields(fieldsToRender, fieldsToShow);
+  card.append(heading, fieldsToRender);
+  return card;
+}
+
+function renderCrmDetail(result) {
+  const account = result.account;
+  const statusLabel = (status) => ({ active: "Aktiv", planned: "Geplant", done: "Erledigt" }[status] ||
+    statusLabels[status] || humanize(status));
+  const dateLabel = (value) => {
+    const date = new Date(value || "");
+    return Number.isNaN(date.getTime()) ? "Nicht angegeben" :
+      new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  };
+  elements.crmDetailTitle.textContent = account.display_name;
+  appendCrmDetailFields(elements.crmDetailAccount, [
+    ["Kontonummer", account.account_number],
+    ["Art", account.account_kind === "organization" ? "Organisation" : humanize(account.account_kind)],
+    ["Status", statusLabel(account.status)],
+    ["Verantwortlich", account.owner_principal_id],
+    ["Geaendert", dateLabel(account.updated_at_utc)],
+  ]);
+  result.contacts.forEach((contact) => {
+    elements.crmDetailContacts.append(crmDetailCard(contact.display_name, "crm-detail-contact", [
+      ["Rolle", contact.role_label],
+      ["E-Mail", contact.primary_email],
+      ["Telefon", contact.primary_phone],
+      ["Kontaktnummer", contact.contact_number],
+      ["Status", statusLabel(contact.status)],
+    ]));
+  });
+  result.activities.forEach((activity) => {
+    const contact = result.contacts.find((candidate) => candidate.object_id === activity.contact_object_id);
+    const activityType = {
+      task: "Aufgabe", call: "Anruf", meeting: "Termin", email: "E-Mail", follow_up: "Nachverfolgung",
+    }[activity.activity_type] || humanize(activity.activity_type);
+    const activityFields = [
+      ["Art", activityType],
+      ["Status", statusLabel(activity.status)],
+      ["Faellig", dateLabel(activity.due_at_utc)],
+      ["Verantwortlich", activity.owner_principal_id],
+    ];
+    if (contact) {
+      activityFields.push(["Kontakt", contact.display_name]);
+    }
+    if (activity.completed_at_utc) {
+      activityFields.push(["Erledigt", dateLabel(activity.completed_at_utc)]);
+    }
+    elements.crmDetailActivities.append(crmDetailCard(activity.subject, "crm-detail-activity", activityFields));
+  });
+  [
+    [elements.crmDetailContacts, result.contacts, "Keine freigegebenen Kontakte zu diesem Konto."],
+    [elements.crmDetailActivities, result.activities, "Keine freigegebenen Aktivitaeten zu diesem Konto."],
+  ].forEach(([container, items, message]) => {
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "crm-detail-empty";
+      empty.textContent = message;
+      container.append(empty);
+    }
+  });
+  elements.crmDetailContent.hidden = false;
 }
 
 function clearKnowledgeReaderContent() {
@@ -1756,6 +1965,8 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     const dialog = button.closest("dialog");
     if (dialog === dialogs.knowledgeReader) {
       closeKnowledgeReader();
+    } else if (dialog === dialogs.crmDetail) {
+      closeCrmDetail();
     } else {
       dialog?.close();
     }
@@ -1767,6 +1978,8 @@ document.querySelectorAll(".editor-dialog").forEach((dialog) => {
     if (event.target === dialog && !(dialog === dialogs.knowledge && state.knowledgeEditor?.busy)) {
       if (dialog === dialogs.knowledgeReader) {
         closeKnowledgeReader();
+      } else if (dialog === dialogs.crmDetail) {
+        closeCrmDetail();
       } else {
         dialog.close();
       }
@@ -1801,6 +2014,7 @@ elements.contextButton.addEventListener("click", () => {
 elements.contextForm.addEventListener("submit", (event) => {
   event.preventDefault();
   closeKnowledgeReader();
+  closeCrmDetail();
   dialogs.knowledge.close();
   elements.knowledgeResult.hidden = true;
   elements.knowledgeResult.replaceChildren();
@@ -1830,9 +2044,23 @@ elements.knowledgeApprove.addEventListener("click", approveKnowledge);
 elements.knowledgeExecute.addEventListener("click", executeKnowledge);
 elements.knowledgeConfirm.addEventListener("change", renderKnowledgeEditor);
 elements.knowledgeReaderRefresh.addEventListener("click", loadKnowledgeReader);
+elements.crmDetailRefresh.addEventListener("click", loadCrmDetail);
 elements.contextForm.addEventListener("input", () => {
   if (state.knowledgeReader && state.knowledgeReader.context !== JSON.stringify(readContext())) {
     closeKnowledgeReader();
+  }
+  if (state.crmDetail && state.crmDetail.context !== JSON.stringify(readContext())) {
+    closeCrmDetail();
+  }
+});
+dialogs.crmDetail.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeCrmDetail();
+});
+dialogs.crmDetail.addEventListener("close", () => {
+  if (!dialogs.crmDetail.open) {
+    state.crmDetail = null;
+    clearCrmDetailContent();
   }
 });
 dialogs.knowledgeReader.addEventListener("cancel", (event) => {

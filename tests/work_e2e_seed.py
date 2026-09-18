@@ -10,6 +10,7 @@ from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_controls import WORK_E2E_READER_ID
+from work_e2e_crm import seed_synthetic_crm_records
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",
@@ -65,12 +66,15 @@ def main() -> int:
                 ),
             )
 
+        crm_record_count = seed_synthetic_crm_records(connection)
+
     print(
         json.dumps(
             {
                 "schema_version": "work_e2e_seed.v1",
                 "tenant_id": WORK_E2E_TENANT_ID,
                 "principal_count": len(SYNTHETIC_PRINCIPALS),
+                "synthetic_crm_record_count": crm_record_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

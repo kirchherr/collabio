@@ -294,6 +294,8 @@ module registry
   -> expose gated GET /v1/crm/accounts
   -> expose gated GET /v1/crm/contacts
   -> expose gated GET /v1/crm/activities and GET /v1/crm/notes
+  -> expose the account workspace with all three CRM feature gates, per-object ACLs and linked-object redaction
+  -> present account, contact and activity details in /work through the existing workspace route
   -> expose gated GET /v1/erp/products as internal master-data proof
   -> prove disabled module blocks normal CRM/ERP APIs
   -> audit metadata-only CRM/ERP reads

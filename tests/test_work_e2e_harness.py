@@ -12,7 +12,15 @@ from suite.testing.work_e2e_guard import (
     WORK_E2E_TENANT_ID,
     require_isolated_work_e2e_environment,
 )
-from work_e2e_controls import WORK_E2E_READER_ID, permits_reader_acl_fixture, storage_failure_modes
+from work_e2e_controls import (
+    WORK_E2E_CRM_OBJECT_TYPES,
+    WORK_E2E_READER_ID,
+    crm_failure_requested,
+    permits_crm_reader_acl_fixture,
+    permits_reader_acl_fixture,
+    storage_failure_modes,
+)
+from work_e2e_crm import synthetic_crm_records
 
 REPO_ROOT = Path(__file__).parents[1]
 
@@ -188,3 +196,59 @@ def test_reader_acl_fixture_rejects_broader_authorization(key: str, value: str) 
     }
     fields[key] = value
     assert not permits_reader_acl_fixture(**fields)
+
+
+def test_crm_fixture_has_only_explicit_synthetic_records_and_parent_links() -> None:
+    records = synthetic_crm_records()
+    by_id = {record.object_id: record for record in records}
+    assert {record.tenant_id for record in records} == {WORK_E2E_TENANT_ID}
+    assert {record.object_id: record.object_type for record in records} == WORK_E2E_CRM_OBJECT_TYPES
+    for record in records:
+        for field in ("account_object_id", "contact_object_id", "activity_object_id"):
+            related_id = getattr(record, field, None)
+            if related_id is not None:
+                assert related_id in by_id
+        assert "body" not in record.model_dump()
+        assert "note_body" not in record.model_dump()
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "method", "path", "requested", "expected"),
+    (
+        (WORK_E2E_TENANT_ID, "GET", "/v1/crm/accounts/synthetic/workspace", True, True),
+        ("tenant-demo", "GET", "/v1/crm/accounts/synthetic/workspace", True, False),
+        (None, "GET", "/v1/crm/accounts/synthetic/workspace", True, False),
+        (WORK_E2E_TENANT_ID, "POST", "/v1/crm/accounts/synthetic/workspace", True, False),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/crm/accounts", True, False),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/crm/contacts", True, False),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/crm/accounts/nested/id/workspace", True, False),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/kb/articles/kb-article-test/content", True, False),
+        (WORK_E2E_TENANT_ID, "GET", "/v1/crm/accounts/synthetic/workspace", False, False),
+    ),
+)
+def test_crm_database_failure_can_only_target_explicit_synthetic_workspace_reads(
+    tenant_id: str | None, method: str, path: str, requested: bool, expected: bool
+) -> None:
+    assert crm_failure_requested(tenant_id=tenant_id, method=method, path=path, requested=requested) is expected
+
+
+def test_crm_reader_acl_fixture_rejects_arbitrary_objects_tenants_principals_and_permissions() -> None:
+    valid = {
+        "tenant_id": WORK_E2E_TENANT_ID,
+        "object_id": "crm-account-work-e2e-main",
+        "object_type": "crm.account",
+        "subject_type": "user",
+        "subject_id": WORK_E2E_READER_ID,
+        "permission": "read",
+    }
+    assert permits_crm_reader_acl_fixture(**valid)
+    for key, value in (
+        ("tenant_id", "tenant-demo"),
+        ("object_id", "crm-account-arbitrary"),
+        ("object_type", "crm.contact"),
+        ("subject_type", "role"),
+        ("subject_id", "work-user-e2e"),
+        ("permission", "write"),
+        ("permission", "admin"),
+    ):
+        assert not permits_crm_reader_acl_fixture(**{**valid, key: value})

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import importlib
 import os
+from collections.abc import Sequence
 from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
+import psycopg
 from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
@@ -19,7 +21,9 @@ from suite.platform.authz_admin import (
     PgAuthzAdminStore,
 )
 from suite.platform.context import TenantRequestContext
+from suite.platform.crm_accounts import CrmAccountRecord
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
+from suite.platform.crm_runtime import PgCrmRepository
 from suite.platform.knowledge_base import (
     KB_ARTICLES_WRITE_FEATURE_ID,
     default_knowledge_base_enabled_features,
@@ -65,7 +69,12 @@ from suite.testing.work_e2e_guard import (
     WORK_E2E_TENANT_ID,
     require_isolated_work_e2e_environment,
 )
-from work_e2e_controls import permits_reader_acl_fixture, storage_failure_modes
+from work_e2e_controls import (
+    crm_failure_requested,
+    permits_crm_reader_acl_fixture,
+    permits_reader_acl_fixture,
+    storage_failure_modes,
+)
 
 allow_synthetic_traffic = require_isolated_work_e2e_environment(os.environ)
 main_module = importlib.import_module("main")
@@ -146,6 +155,14 @@ def _synthetic_hash(label: str) -> str:
 
 _fail_storage_write: ContextVar[bool] = ContextVar("work_e2e_fail_storage_write", default=False)
 _fail_storage_read: ContextVar[bool] = ContextVar("work_e2e_fail_storage_read", default=False)
+_fail_crm_read: ContextVar[bool] = ContextVar("work_e2e_fail_crm_read", default=False)
+
+
+class FailureInjectableCrmRepository(PgCrmRepository):
+    def list_accounts(self, *, tenant_id: str) -> Sequence[CrmAccountRecord]:
+        if _fail_crm_read.get():
+            raise psycopg.OperationalError("synthetic Work E2E CRM database failure")
+        return super().list_accounts(tenant_id=tenant_id)
 
 
 class FailureInjectableObjectStoreClient(Boto3S3CompatibleObjectStoreClient):
@@ -189,14 +206,21 @@ async def _isolated_storage_failure(request: Request, call_next: RequestResponse
     )
     write_token = _fail_storage_write.set(fail_write)
     read_token = _fail_storage_read.set(fail_read)
+    crm_token = _fail_crm_read.set(crm_failure_requested(
+        tenant_id=request.headers.get("X-Tenant-Id"),
+        method=request.method,
+        path=request.url.path,
+        requested=request.headers.get("X-Work-E2E-Fail-CRM") == "1",
+    ))
     try:
         return await call_next(request)
     finally:
         _fail_storage_write.reset(write_token)
         _fail_storage_read.reset(read_token)
+        _fail_crm_read.reset(crm_token)
 
 
-class SyntheticKnowledgeReaderAclStore(InMemoryAuthzAdminStore):
+class SyntheticReaderAclStore(InMemoryAuthzAdminStore):
     def __init__(self, *, database_dsn: str) -> None:
         super().__init__()
         self.reader_acl_store = PgAuthzAdminStore(database_dsn=database_dsn)
@@ -204,14 +228,15 @@ class SyntheticKnowledgeReaderAclStore(InMemoryAuthzAdminStore):
     def upsert_object_acl_entry(
         self, *, tenant_id: str, command: ObjectAclEntryUpsertCommand, audit_chain_ref: str
     ) -> AuthzMutationView:
-        if not permits_reader_acl_fixture(
+        fields = dict(
             tenant_id=tenant_id,
             object_id=command.object_id,
             object_type=command.object_type,
             subject_type=command.acl_subject_type,
             subject_id=command.acl_subject_id,
             permission=command.permission,
-        ):
+        )
+        if not (permits_reader_acl_fixture(**fields) or permits_crm_reader_acl_fixture(**fields)):
             raise HTTPException(status_code=403, detail="Outside synthetic reader ACL fixture")
         return self.reader_acl_store.upsert_object_acl_entry(
             tenant_id=tenant_id, command=command, audit_chain_ref=audit_chain_ref
@@ -260,9 +285,9 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
             readable_object_ids=request.headers.get("X-Readable-Object-Ids"),
         ),
     )
-    if not request.url.path.startswith(("/v1/kb/", "/v1/admin/kb/")):
+    if not request.url.path.startswith(("/v1/kb/", "/v1/admin/kb/", "/v1/crm/")):
         return context
-    # Knowledge Base visibility comes from fresh transactional ACLs, never browser-supplied IDs.
+    # KB and CRM visibility comes from fresh database ACLs, never browser-supplied IDs.
     directory = PgPrincipalDirectory(database_dsn=os.environ["SUITE_DATABASE_DSN"])
     readable = directory.readable_object_ids(
         tenant_id=context.user_context.tenant_id,
@@ -276,7 +301,16 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
 
 
 _install_synthetic_knowledge_runtime()
-app.state.authz_admin_store = SyntheticKnowledgeReaderAclStore(
+crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
+app.state.crm_account_service.repository = crm_repository
+app.state.crm_contact_service.repository = crm_repository
+app.state.crm_activity_service.activity_repository = crm_repository
+app.state.crm_activity_service.note_repository = crm_repository
+app.state.crm_account_workspace_service.account_repository = crm_repository
+app.state.crm_account_workspace_service.contact_repository = crm_repository
+app.state.crm_account_workspace_service.activity_repository = crm_repository
+app.state.crm_account_workspace_service.note_repository = crm_repository
+app.state.authz_admin_store = SyntheticReaderAclStore(
     database_dsn=os.environ["SUITE_AUTHZ_ADMIN_DATABASE_DSN"]
 )
 app.dependency_overrides[main_module.get_tenant_request_context] = _synthetic_authorized_context

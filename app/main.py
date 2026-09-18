@@ -22796,6 +22796,7 @@ def build_app() -> FastAPI:
     def read_crm_account_workspace(
         account_object_id: str,
         request: Request,
+        response: Response,
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
         accounts_gate: Annotated[
             ModuleGateDecision,
@@ -22811,6 +22812,7 @@ def build_app() -> FastAPI:
         ],
     ) -> CrmAccountWorkspaceResponse:
         del accounts_gate, contacts_gate, activities_gate
+        response.headers["Cache-Control"] = "no-store"
         crm_workspace = cast(
             CrmAccountWorkspaceService,
             request.app.state.crm_account_workspace_service,
@@ -22824,6 +22826,13 @@ def build_app() -> FastAPI:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="CRM account workspace not found",
+                headers={"Cache-Control": "no-store"},
+            ) from exc
+        except PsycopgError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="CRM account workspace unavailable",
+                headers={"Cache-Control": "no-store"},
             ) from exc
 
     @app.get(

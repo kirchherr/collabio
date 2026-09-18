@@ -1132,7 +1132,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     title="CRM Account Workspace Runtime",
                     summary=(
                         "Accounts, Contacts, Activities und Notes laufen ueber PostgreSQL-RLS und werden als "
-                        "gemeinsamer ACL-gepruefter Account-Workflow gelesen."
+                        "gemeinsamer ACL-gepruefter Account-Workflow gelesen; /work zeigt Konto, Kontakte und Aktivitaeten."
                     ),
                     status=RoadmapCapabilityStatus.OPERATIONAL,
                     capability_type="productive_business_read_workflow",
@@ -1142,9 +1142,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_crm_runtime.py",
                         "tests/test_crm_workspace.py",
                         "tests/test_crm_workspace_api.py",
+                        "e2e/work/tests/crm.spec.mjs",
                         "docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md",
                     ),
                     api_routes=(
+                        "/work",
                         "/v1/crm/accounts",
                         "/v1/crm/contacts",
                         "/v1/crm/activities",

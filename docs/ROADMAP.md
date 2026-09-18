@@ -1502,6 +1502,10 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      exakte Source-Version und Inhaltsintegritaet serverseitig pruefen; Rechteentzug, Fremdtenant, Speicherfehler,
      Kontextwechsel und Desktop/Mobile isoliert browserbasiert abgenommen. Volle Remote-Quality und alle 50
      Browserfaelle sind gruen. Pilot und RAG/Indexing bleiben geschlossen.
+251. [ ] CRM-Kontodetails mit zugehoerigen Kontakten und Aktivitaeten in `/work` nutzbar machen: bestehenden
+     Account-Workspace-Vertrag mit drei Feature-Gates, autoritativen Objekt-ACLs und redigierten Verknuepfungen
+     wiederverwenden. Leere, gesperrte und ausgefallene Detailansichten sowie Refresh, Kontextwechsel und
+     Desktop/Mobile gegen isoliertes PostgreSQL pruefen. Bestehende Pilot-Grenze bleibt geschlossen.
 
 ## Aktueller Fokus: Persistente Backend-Runtime
 

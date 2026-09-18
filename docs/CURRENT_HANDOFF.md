@@ -195,10 +195,11 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 250 is complete. No item 251 implementation has been authorized. The recommended next coherent product loop is
-CRM account detail with associated contacts and activities in `/work`, using the existing backend and platform gates.
-Treat that as a recommendation until the user selects it. No CRM expansion, new tenant activation, pilot opening or
-indexing is part of item 250.
+Item 250 is complete. The user authorized item 251: CRM account detail with associated contacts and activities in
+`/work`, reusing the existing account-workspace API, all three CRM feature gates, object ACLs and linked-object
+redaction. Prove empty/blocked/unavailable states, current database rights, safe refresh/context races and responsive
+behavior against isolated PostgreSQL. No new mutation workflow, real tenant activation, pilot opening or indexing
+is part of item 251.
 
 For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
 data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.

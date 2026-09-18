@@ -3,7 +3,7 @@
 ## Purpose
 
 This runbook verifies the first daily-work surface through a real browser, the real Collabio API routes and the real
-PostgreSQL task/time adapters and the Knowledge Base PostgreSQL/S3 unit of work. It covers every source independently
+PostgreSQL task/time/CRM adapters and the Knowledge Base PostgreSQL/S3 unit of work. It covers every source independently
 in ready, empty, blocked and unavailable states, the closed productivity-pilot runtime boundary, task reassignment,
 time correction and resubmission, Knowledge Base create/edit/read/conflict/failure handling, and desktop/mobile containment.
 
@@ -22,7 +22,7 @@ test-only runtime activation remains in memory, binds an explicitly synthetic re
 provider capabilities and content inventory. It is not a production restore drill or accountable activation approval.
 Only the synthetic-traffic API enables `knowledge_base.articles.write`; the blocked API leaves it disabled.
 
-Every Knowledge Base request resolves readable object IDs from `PgPrincipalDirectory` against the current database
+Every Knowledge Base and CRM request resolves readable object IDs from `PgPrincipalDirectory` against the current database
 ACLs. Browser-supplied readable IDs are ignored for these requests. Migration `0082` must therefore grant the creating
 principal access and copy the article ACL to each new version in the same PostgreSQL transaction. The storage-failure
 case injects a request-local exception at the existing object-store adapter before its write and verifies that the
@@ -33,6 +33,14 @@ synthetic store behind the existing authz administration route grants/revokes on
 new synthetic KB article/version objects in the isolated database. The new version must inherit the reader's article
 ACL through migration 0082. Request-local read failure injection is limited to the exact synthetic tenant and
 `GET /v1/kb/articles/{article_object_id}/content`; it does not require the write/pilot test override.
+
+CRM details use the existing account-workspace route against a real `PgCrmRepository`. Seeded account, contact,
+activity and note metadata is restricted to the synthetic tenant. Each reader ACL is a database record; forged
+browser-readable IDs cannot reveal an account or child. The fixtures include unrelated readable records, unreadable
+children and readable activities with redacted contact links. The real blocked process still rejects CRM reads under
+the unchanged pilot policy. Feature and ACL denial tests restore the prior synthetic state in `finally` blocks.
+Request-local database failure injection is restricted to synthetic account-workspace GETs; no failure control is
+installed in the normal API.
 
 Follow `/home/extern/AGENTS.md`, work in `dev001:/home/extern/collabio`, always use Compose project `collabio`, and
 acquire `build.lock` before `docker.lock` whenever both apply.
@@ -78,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 50 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
+The expected matrix is 60 passing tests: the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
 a competing edit conflict, object-store failure, disabled write feature, unauthorized role, approval invalidation
@@ -87,6 +95,9 @@ the original workflow and route-policy cases retain their real API coverage. Sev
 ordinary read with write disabled, exact updated content, literal markup, missing/forged/foreign ACL denial,
 article/version ACL revocation, S3 read failure and recovery, delayed responses after close/reopen or context change.
 Two additional desktop/mobile reader runs check long text, viewport containment and an accessible close action.
+Eight CRM detail cases prove PostgreSQL child filtering/redaction, literal field values, empty children, missing or
+forged permissions, foreign tenant and closed pilot, account ACL revocation, disabled contacts feature, database
+failure/retry and close/context races. Two more desktop/mobile runs verify the CRM dialog and reachable controls.
 
 ## Evidence
 
@@ -99,6 +110,8 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `work-knowledge-desktop-chromium.png` and `work-knowledge-mobile-chromium.png`, the editor and confirmation proof;
 - `work-knowledge-reader-complete.png`, the ordinary reader after an admin's committed edit;
 - `work-knowledge-reader-desktop-chromium.png` and `work-knowledge-reader-mobile-chromium.png`, the reader containment proof;
+- `work-crm-detail-complete.png`, the authorized PostgreSQL account detail;
+- `work-crm-detail-desktop-chromium.png` and `work-crm-detail-mobile-chromium.png`, CRM detail containment and scrolling;
 - traces and failure screenshots only when a test fails.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation

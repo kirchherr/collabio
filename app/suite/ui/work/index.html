@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Collabio Arbeit</title>
-    <link rel="stylesheet" href="/work/assets/work.css?v=5" />
+    <link rel="stylesheet" href="/work/assets/work.css?v=6" />
   </head>
   <body>
     <div class="app-shell">
@@ -196,7 +196,7 @@
           </div>
           <section class="content-section" aria-label="CRM Accounts">
             <div class="table-head crm-columns" aria-hidden="true">
-              <span>Account</span><span>Nummer</span><span>Art</span><span>Status</span>
+              <span>Account</span><span>Nummer</span><span>Art</span><span>Status</span><span>Details</span>
             </div>
             <div class="row-list" id="crm-list"></div>
           </section>
@@ -366,6 +366,32 @@
       </footer>
     </dialog>
 
-    <script src="/work/assets/work.js?v=6" defer></script>
+    <dialog class="editor-dialog crm-detail" id="crm-detail-dialog" aria-labelledby="crm-detail-title">
+      <header>
+        <div><p class="eyebrow">CRM · Konto</p><h2 id="crm-detail-title">Kontodetails</h2></div>
+        <button class="icon-button" type="button" data-close-dialog title="Schliessen" aria-label="Schliessen">&times;</button>
+      </header>
+      <p class="crm-detail-status" id="crm-detail-status" role="status" aria-live="polite"></p>
+      <div class="crm-detail-content" id="crm-detail-content" tabindex="0" aria-label="Kontostammdaten, Kontakte und Aktivitaeten" hidden>
+        <section aria-labelledby="crm-detail-account-heading">
+          <h3 id="crm-detail-account-heading">Kontostammdaten</h3>
+          <dl class="crm-detail-fields" id="crm-detail-account"></dl>
+        </section>
+        <section aria-labelledby="crm-detail-contacts-heading">
+          <h3 id="crm-detail-contacts-heading">Kontakte</h3>
+          <div class="crm-detail-list" id="crm-detail-contacts"></div>
+        </section>
+        <section aria-labelledby="crm-detail-activities-heading">
+          <h3 id="crm-detail-activities-heading">Aktivitaeten</h3>
+          <div class="crm-detail-list" id="crm-detail-activities"></div>
+        </section>
+      </div>
+      <footer>
+        <button class="button secondary" id="crm-detail-refresh" type="button">Erneut laden</button>
+        <button class="button primary" id="crm-detail-close" type="button" data-close-dialog>Schliessen</button>
+      </footer>
+    </dialog>
+
+    <script src="/work/assets/work.js?v=7" defer></script>
   </body>
 </html>

@@ -97,6 +97,11 @@ Authoring preparation, approval and execution are normal feature workflows even 
 not inherit disabled-module access from a compliance evidence reader. The Knowledge Base uses separate normal write
 gates for its product stages and a compliance gate for metadata-only recovery evidence.
 
+The CRM account detail in `/work` reuses its existing account-workspace projection. Accounts, contacts and activities
+feature gates and the productivity-pilot traffic boundary all remain mandatory. Account access does not imply child
+access; each returned object is authorized and unreadable relation IDs are redacted. The UI renders authorized
+personal metadata, clears it on refresh/close/context changes and exposes no note body or new mutation workflow.
+
 ## 5. Data, Retention, And Legal Hold
 
 Each object type must map to canonical data classes and retention policies before data is imported or accepted from users.

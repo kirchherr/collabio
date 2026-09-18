@@ -1,7 +1,7 @@
 # CRM Account Workspace Vertical Slice
 
-Status: operational read workflow
-Date: 2026-07-30
+Status: operational API; Work integration in progress
+Date: 2026-09-18
 
 This slice moves CRM Accounts, Contacts, Activities, and Notes from isolated in-memory lists onto the shared PostgreSQL runtime and exposes one account-centered workflow. It remains metadata-only: note bodies and attachments are not released.
 
@@ -20,6 +20,32 @@ request tenant context
 ```
 
 The API route is `GET /v1/crm/accounts/{account_object_id}/workspace`. An unreadable account and an absent account produce the same `404` response. Contacts, activities, and notes are included only when the object itself is readable and its relation belongs to the selected account workspace. Unreadable linked IDs are redacted.
+
+## Daily Work Detail (Roadmap 251)
+
+`/work` opens an account from the existing CRM list in a separate detail dialog. It uses the account-workspace route
+as one authorized projection, showing account information, associated contacts and activities. Contact names,
+email addresses and phone numbers remain personal data; metadata-only does not mean anonymous. The API retains
+its existing note-metadata contract, but this UI adds no note-body or attachment surface.
+
+All three CRM feature gates and the existing productivity-pilot traffic-scope dependency remain mandatory.
+An account-list entry does not grant access to its children. Every child must be independently readable and match
+the account relation; unreadable linked IDs remain redacted. A denied account is rejected before child repositories
+are queried. JWT/OIDC permissions are resolved server-side, ignoring browser-supplied grants.
+
+The detail dialog has loading, empty, blocked/unavailable, refresh and close states. It clears previous data before
+refresh or after close/context changes and rejects late responses from a prior account or principal. User-provided
+fields render as literal text. Long names and identifiers wrap within desktop/mobile viewports. The existing API
+returns non-cacheable successful detail responses and safe route-local errors, including a generic 503 for database
+failures; error text must not expose personal data or database details. Audit events contain IDs/counts, never field
+values or note bodies.
+
+The proof runs only in the guarded Work-E2E environment with synthetic records, real PostgreSQL repositories and
+fresh database ACLs. The allowed test process retains its existing synthetic traffic override; the blocked process
+must still reject CRM reads under the real route policy with the normal pilot switch closed.
+
+This read integration adds no schema migration, business mutation, module activation, RAG indexing or AI execution.
+The existing `crm_erp_business_records` continuity domain and PostgreSQL restore coverage remain applicable.
 
 ## PostgreSQL Runtime
 
