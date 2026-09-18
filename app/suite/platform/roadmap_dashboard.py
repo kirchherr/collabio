@@ -798,6 +798,60 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     ),
                 ),
                 RoadmapCapability(
+                    capability_id="office_native_documents",
+                    title="Native Office-Dokumente",
+                    summary=(
+                        "Der Schreibarbeitsplatz /office bietet native strukturierte Dokumente mit Formatierung, "
+                        "Tabellen, Gliederung, Textsuche und Versionsgeschichte. Autorisierte Nutzer koennen "
+                        "Dokumente auflisten, erstellen, lesen, Versionen auflisten und eine neue Version explizit "
+                        "bestaetigen. PostgreSQL-Metadaten und exakte S3-Quellversionen bleiben an aktuelle ACLs "
+                        "gebunden. Das Modul office_documents und seine Lese-/Schreibfeatures bleiben fuer normale "
+                        "Mandanten standardmaessig geschlossen; DOCX-Import, Export und Engine-Freigaben sind separat."
+                    ),
+                    status=RoadmapCapabilityStatus.GUARDED,
+                    capability_type="office_document_workspace",
+                    evidence_refs=(
+                        "app/suite/platform/office_documents.py",
+                        "app/suite/platform/office_api.py",
+                        "app/suite/ui/office/index.html",
+                        "app/suite/persistence/migrations/0083_office_native_documents.sql",
+                        "tests/test_office_documents.py",
+                        "tests/test_office_documents_pg.py",
+                        "tests/test_office_documents_api.py",
+                        "tests/office_recovery_proof.py",
+                        "tests/test_office_recovery_proof.py",
+                        "e2e/work/tests/office.spec.mjs",
+                        "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
+                    ),
+                    api_routes=(
+                        "/v1/office/documents",
+                        "/v1/office/documents/{object_id}/content",
+                        "/v1/office/documents/{object_id}/versions",
+                    ),
+                    guardrails=(
+                        "office_documents_module_enabled_required",
+                        "office_documents.documents.read_required",
+                        "office_documents.documents.write_required_for_mutations",
+                        "tenant_module_and_features_closed_by_default",
+                        "current_authoritative_acl_required_for_content_history_and_replay",
+                        "strict_bounded_native_document_schema_without_active_content",
+                        "explicit_human_confirmation_before_version_save",
+                        "expected_current_version_compare_and_swap",
+                        "actor_bound_exact_mutation_retry",
+                        "postgresql_forced_rls_and_append_only_versions",
+                        "tenant_write_lock_before_s3_put",
+                        "exact_s3_source_version_manifest_hash_and_receipt_binding",
+                        "database_rollback_does_not_claim_s3_rollback",
+                        "isolated_nonempty_postgresql_and_exact_s3_restore_evidence_required",
+                        "restore_checks_current_acl_triggers_grants_and_source_binding",
+                        "content_and_errors_no_store_content_excluded_from_audit",
+                        "rag_and_search_indexing_false",
+                        "docx_engine_and_production_admission_remain_separate",
+                    ),
+                    next_action="complete_remote_acceptance_and_recovery_before_separate_tenant_activation",
+                ),
+                RoadmapCapability(
                     capability_id="office_edit_source_admission",
                     title="Office Quick Edit Source Admission",
                     summary=(

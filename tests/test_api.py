@@ -1163,8 +1163,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert body["persistent_task_created"] is False
     assert body["destructive_actions_allowed"] is False
     assert body["external_side_effect_allowed"] is False
-    assert body["summary"]["foundation_ready_count"] == 35
-    assert body["summary"]["total_count"] == 37
+    assert body["summary"]["foundation_ready_count"] == 36
+    assert body["summary"]["total_count"] == 38
     assert body["summary"]["total_count"] == sum(len(group["capabilities"]) for group in body["groups"])
     capabilities = [capability for group in body["groups"] for capability in group["capabilities"]]
     capability_ids = {capability["capability_id"] for capability in capabilities}
@@ -1192,6 +1192,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "time_tracking_runtime",
         "crm_erp_acl_first_search",
         "legacy_migration_registry",
+        "office_native_documents",
         "office_edit_source_admission",
         "office_mail_clients",
     }.issubset(capability_ids)
@@ -1216,6 +1217,52 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "app/suite/platform/preview_cdr.py" in preview_renderer["evidence_refs"]
     assert "tests/test_preview_cdr.py" in preview_renderer["evidence_refs"]
     assert "docs/operations/PREVIEW_CDR.md" in preview_renderer["evidence_refs"]
+    office_native = next(
+        capability for capability in capabilities if capability["capability_id"] == "office_native_documents"
+    )
+    assert office_native["status"] == "guarded"
+    assert "/office" in office_native["summary"]
+    assert office_native["api_routes"] == [
+        "/v1/office/documents",
+        "/v1/office/documents/{object_id}/content",
+        "/v1/office/documents/{object_id}/versions",
+    ]
+    assert {
+        "office_documents_module_enabled_required",
+        "office_documents.documents.read_required",
+        "office_documents.documents.write_required_for_mutations",
+        "tenant_module_and_features_closed_by_default",
+        "current_authoritative_acl_required_for_content_history_and_replay",
+        "explicit_human_confirmation_before_version_save",
+        "expected_current_version_compare_and_swap",
+        "actor_bound_exact_mutation_retry",
+        "postgresql_forced_rls_and_append_only_versions",
+        "exact_s3_source_version_manifest_hash_and_receipt_binding",
+        "database_rollback_does_not_claim_s3_rollback",
+        "isolated_nonempty_postgresql_and_exact_s3_restore_evidence_required",
+        "restore_checks_current_acl_triggers_grants_and_source_binding",
+        "rag_and_search_indexing_false",
+    }.issubset(office_native["guardrails"])
+    assert "docs/modules/OFFICE_NATIVE_DOCUMENTS.md" in office_native["evidence_refs"]
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
+    )
+    registered_routes = {
+        (getattr(route, "path", None), method)
+        for route in app.routes
+        for method in (getattr(route, "methods", None) or ())
+    }
+    assert {
+        ("/v1/office/documents", "GET"),
+        ("/v1/office/documents", "POST"),
+        ("/v1/office/documents/{object_id}/content", "GET"),
+        ("/v1/office/documents/{object_id}/versions", "GET"),
+        ("/v1/office/documents/{object_id}/versions", "POST"),
+    }.issubset(registered_routes)
+    ordered_capability_ids = [capability["capability_id"] for capability in capabilities]
+    assert ordered_capability_ids.index("office_native_documents") < ordered_capability_ids.index(
+        "office_edit_source_admission"
+    )
     office_source_admission = next(
         capability for capability in capabilities if capability["capability_id"] == "office_edit_source_admission"
     )
@@ -1693,7 +1740,7 @@ def test_roadmap_plan_snapshot_api_prioritizes_now_next_later_without_actions() 
         "next_count": 2,
         "later_count": 4,
         "total_count": 7,
-        "foundation_ready_count": 35,
+        "foundation_ready_count": 36,
     }
     items = {item["work_item_id"]: item for item in body["items"]}
     assert set(items) == {
