@@ -58,7 +58,9 @@ def synthetic_crm_records() -> tuple[CrmFixtureRecord, ...]:
             object_id=main_contact,
             account_object_id=main_account,
             contact_number="CRM-E2E-CONTACT",
-            display_name="Synthetic CRM reader contact <img src=https://outside.invalid/x onerror=window.crmUnsafe=true>",
+            display_name=(
+                "Synthetic CRM reader contact <img src=https://outside.invalid/x onerror=window.crmUnsafe=true>"
+            ),
             primary_email="synthetic.crm@work-e2e.invalid",
             primary_phone="+49 000 0000",
             role_label="Synthetic reviewer",
