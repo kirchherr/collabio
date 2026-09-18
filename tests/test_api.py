@@ -1239,6 +1239,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "historical_takeover_is_local_until_confirmed_cas_save",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
+        "table_edits_are_bounded_reversible_local_drafts",
+        "table_removal_requires_explicit_confirmation",
         "actor_bound_exact_mutation_retry",
         "postgresql_forced_rls_and_append_only_versions",
         "exact_s3_source_version_manifest_hash_and_receipt_binding",
@@ -1248,6 +1250,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "rag_and_search_indexing_false",
     }.issubset(office_native["guardrails"])
     assert "docs/modules/OFFICE_NATIVE_DOCUMENTS.md" in office_native["evidence_refs"]
+    assert "e2e/work/tests/office-tables.spec.mjs" in office_native["evidence_refs"]
+    assert "e2e/work/tests/office-tables-responsive.spec.mjs" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())

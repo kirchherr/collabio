@@ -89,6 +89,23 @@ count/navigation/replacement set stays complete. If a replacement removes the fi
 the replacement field. Loaded content is excluded from undo history; undoing the first actual edit returns to the
 loaded version instead of erasing it. Search/case/whole-word settings are reset when the panel or workspace closes.
 
+## Contextual table editing
+
+Roadmap 255 adds table controls to the native editor. The existing quick insertion creates a three-by-three table;
+custom insertion accepts row and column counts and an optional header row. Context controls insert rows above/below
+or columns before/after the selection, toggle the first row as a header and select cells, rows, columns or the table.
+Removal requires a separate explicit confirmation and changes only the local draft. Cancellation preserves content,
+selection and undo history. Existing versions are never removed by these controls.
+
+Tables retain the existing rectangular format, at most 200 rows and 20 columns, without merged cells or column widths.
+Prospective commands are checked against the native schema and complete document resource limits before dispatch.
+Each structural edit forms one undo step, separated from adjacent typing. Keyboard movement between cells and row
+creation at the table end use the same bounds. Focus returns to the editor for continued input.
+
+Read-only and historical content cannot be edited. Loading, saving, historical takeover and an uncertain save also
+block table changes. Pending table dialogs are invalidated when the document or context changes. Only the existing
+confirmed CAS save persists changes as a new version. No schema, dependency, endpoint or storage change is introduced.
+
 ## Records, retention and recovery
 
 Migration `0083_office_native_documents.sql` creates `office.documents` and `office.document_versions`. Heads carry

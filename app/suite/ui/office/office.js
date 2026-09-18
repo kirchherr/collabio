@@ -4,6 +4,10 @@ import { Table, TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import {
+  addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn,
+  deleteTable, goToNextCell, selectedRect, isInTable, CellSelection, TableMap,
+} from "@tiptap/pm/tables";
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 
@@ -12,6 +16,7 @@ const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
+  tableAction: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -131,12 +136,21 @@ function normalizedDocument(document) {
       result.attrs = { colspan: 1, rowspan: 1 };
     }
     if (value.marks?.length) {
-      if (value.type !== "text" || value.marks.some((mark) => !allowedMarks.has(mark.type))) throw new Error("document-marks");
+      const types = value.marks.map((mark) => mark.type);
+      if (value.type !== "text" || types.some((type) => !allowedMarks.has(type)) ||
+          new Set(types).size !== types.length || (types.includes("code") && types.length > 1)) throw new Error("document-marks");
       result.marks = value.marks.map((mark) => ({ type: mark.type }));
     }
     if (value.content) {
       if (!Array.isArray(value.content)) throw new Error("document-content");
       result.content = value.content.map((child) => walk(child, depth + 1));
+    }
+    if (value.type === "table") {
+      const rows = result.content || [];
+      if (!rows.length || rows.length > 200 || rows.some((row) => row.type !== "tableRow" ||
+          !row.content?.length || row.content.length > 20 || row.content.length !== rows[0].content.length)) {
+        throw new Error("document-table");
+      }
     }
     return result;
   };
@@ -156,7 +170,8 @@ function isDirty() {
 function updateEditorState() {
   const session = state.session;
   const editor = state.editor;
-  const editable = Boolean(session && editor && session.canWrite && !session.historical && !session.saving && !session.uncertain && !session.restoring);
+  const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && !session.loading &&
+    !session.historical && !session.saving && !session.uncertain && !session.restoring);
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
   $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
@@ -176,9 +191,7 @@ function updateEditorState() {
   });
   $("text-style").disabled = !editable;
   $("insert-menu").disabled = !editable;
-  $("insert-menu").querySelectorAll("optgroup option").forEach((option) => {
-    option.disabled = !editable || !editor.isActive("table");
-  });
+  updateTableControls();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -346,6 +359,247 @@ function formatEditor(command) {
   updateEditorState();
 }
 
+const tableCommands = { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, deleteTable };
+const tableSizeMessage = "Tabellen unterstützen höchstens 200 Zeilen und 20 Spalten.";
+const tableLimitMessage = "Die Tabellenänderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
+
+function validateEditorDocument(documentNode) {
+  documentNode.check();
+  const documentContent = normalizedDocument(documentNode.toJSON());
+  // The shared native preflight checks code points, controls, depth, node count
+  // and the server's ASCII-escaped canonical JSON byte limit, even for no query.
+  findDocumentMatches(documentContent, "");
+  return documentContent;
+}
+
+const NativeDocumentGuard = Extension.create({
+  name: "nativeDocumentGuard",
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+    return [new Plugin({
+      filterTransaction(transaction) {
+        if (!transaction.docChanged) return true;
+        if (editor === state.editor && !replacementAllowed()) return false;
+        try { validateEditorDocument(transaction.doc); return true; }
+        catch {
+          if (editor === state.editor) notice("Diese Änderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.", true);
+          return false;
+        }
+      },
+    })];
+  },
+});
+
+function currentTable(editor = state.editor) {
+  if (!editor || !isInTable(editor.state)) return null;
+  try { return selectedRect(editor.state); } catch { return null; }
+}
+
+function tableActionSnapshot(kind, command) {
+  return { kind, command, session: state.session, editor: state.editor, revision: state.session.revision,
+    document: state.editor.state.doc, selection: state.editor.state.selection };
+}
+
+function tableActionCurrent(action) {
+  return Boolean(action && sessionCurrent(action.session) && action.editor === state.editor &&
+    action.revision === state.session.revision && action.document === state.editor.state.doc &&
+    action.selection.eq(state.editor.state.selection) && replacementAllowed());
+}
+
+function closeTableDialogs(restoreFocus = false) {
+  const action = state.tableAction;
+  state.tableAction = null;
+  $("table-insert-dialog").close();
+  $("table-remove-dialog").close();
+  $("table-insert-form").reset();
+  $("table-insert-message").textContent = "";
+  $("table-remove-summary").textContent = "";
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function updateTableControls() {
+  const rect = currentTable();
+  const allowed = replacementAllowed();
+  $("table-tools").hidden = !rect || !$("find-panel").hidden;
+  if (state.tableAction && !tableActionCurrent(state.tableAction)) closeTableDialogs();
+  const rowCount = rect?.map.height || 0;
+  const columnCount = rect?.map.width || 0;
+  $("table-info").textContent = rect ? `${rowCount} ${rowCount === 1 ? "Zeile" : "Zeilen"} × ${columnCount} ${columnCount === 1 ? "Spalte" : "Spalten"} · Zelle ${rect.top + 1}, ${rect.left + 1}` : "";
+  $("table-row-action").disabled = !rect || !allowed;
+  $("table-column-action").disabled = !rect || !allowed;
+  $("table-header-toggle").disabled = !rect || !allowed;
+  $("table-delete").disabled = !rect || !allowed;
+  $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
+  const header = Boolean(rect && Array.from({ length: rect.table.firstChild.childCount }, (_, index) =>
+    rect.table.firstChild.child(index).type.name === "tableHeader").every(Boolean));
+  $("table-header-toggle").setAttribute("aria-pressed", String(header));
+  $("table-header-toggle").title = header ? "Kopfzeile in normale Zellen umwandeln" : "Erste Zeile als Kopfzeile formatieren";
+  for (const select of [$("table-row-action"), $("table-column-action"), $("insert-menu")]) {
+    select.querySelectorAll("option").forEach((option) => {
+      if (!Object.hasOwn(tableCommands, option.value)) return;
+      option.disabled = !rect || !allowed ||
+        (option.value === "deleteRow" && rect.bottom - rect.top === rowCount) ||
+        (option.value === "deleteColumn" && rect.right - rect.left === columnCount);
+    });
+  }
+}
+
+function commitTableTransaction(transaction, message) {
+  const editor = state.editor;
+  if (!replacementAllowed() || !transaction || !transaction.docChanged || transaction.doc.eq(editor.state.doc)) return false;
+  try { validateEditorDocument(transaction.doc); }
+  catch {
+    $("table-message").textContent = tableLimitMessage;
+    if ($("table-tools").hidden && !$("table-insert-dialog").open) notice(tableLimitMessage, true);
+    return false;
+  }
+  closeTableDialogs();
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  $("table-message").textContent = message;
+  focusEditor(editor);
+  updateEditorState();
+  if ($("table-tools").hidden) notice(message);
+  return true;
+}
+
+function insertTable(rows = 3, columns = 3, withHeader = true) {
+  if (!replacementAllowed()) return false;
+  if (!Number.isInteger(rows) || rows < 1 || rows > 200 || !Number.isInteger(columns) || columns < 1 || columns > 20) {
+    $("table-insert-message").textContent = tableSizeMessage;
+    return false;
+  }
+  const editor = state.editor;
+  const schema = editor.schema;
+  const tableRows = Array.from({ length: rows }, (_, rowIndex) => schema.nodes.tableRow.create(null,
+    Array.from({ length: columns }, () => (withHeader && rowIndex === 0 ? schema.nodes.tableHeader : schema.nodes.tableCell).createAndFill()),
+  ));
+  const transaction = editor.state.tr.replaceSelectionWith(schema.nodes.table.create(null, tableRows));
+  // The insertion can split a paragraph. Locate the actual inserted table rather
+  // than assuming that its start equals the old text selection position.
+  const insertedEnd = transaction.selection.from;
+  let tableStart = null;
+  transaction.doc.descendants((entry, position) => {
+    if (entry.type.name === "table" && position < insertedEnd && position + entry.nodeSize >= insertedEnd) tableStart = position + 1;
+  });
+  if (tableStart !== null) transaction.setSelection(Selection.near(transaction.doc.resolve(tableStart + 2)));
+  if (commitTableTransaction(transaction, "Tabelle eingefügt. Änderungen bleiben bis zum Speichern im Entwurf.")) return true;
+  $("table-insert-message").textContent = tableLimitMessage;
+  return false;
+}
+
+function openTableInsert() {
+  if (!replacementAllowed()) return;
+  closeTableDialogs();
+  state.tableAction = tableActionSnapshot("insert");
+  $("table-insert-dialog").showModal();
+  $("table-rows").focus();
+}
+
+function runTableCommand(command, confirmed = false, firstColumn = false) {
+  if (!replacementAllowed() || !Object.hasOwn(tableCommands, command)) return false;
+  const editor = state.editor;
+  const rect = currentTable();
+  if (!rect) return false;
+  if ((command.startsWith("addRow") && rect.map.height >= 200) ||
+      (command.startsWith("addColumn") && rect.map.width >= 20)) {
+    $("table-message").textContent = tableSizeMessage;
+    focusEditor();
+    return false;
+  }
+  if ((command === "deleteRow" && rect.bottom - rect.top === rect.map.height) ||
+      (command === "deleteColumn" && rect.right - rect.left === rect.map.width)) {
+    $("table-message").textContent = "Die letzte Zeile oder Spalte bleibt erhalten. Verwenden Sie „Tabelle entfernen“, um die ganze Tabelle zu entfernen.";
+    return false;
+  }
+  if (command.startsWith("delete") && !confirmed) {
+    closeTableDialogs();
+    state.tableAction = tableActionSnapshot("remove", command);
+    const target = command === "deleteTable" ? "die gesamte Tabelle" : command === "deleteRow" ? "die ausgewählten Zeilen" : "die ausgewählten Spalten";
+    $("table-remove-summary").textContent = `Möchten Sie ${target} mit ihren Inhalten aus dem Entwurf entfernen? Die Änderung lässt sich rückgängig machen. Gespeicherte Versionen bleiben erhalten.`;
+    $("table-remove-dialog").showModal();
+    $("table-remove-cancel").focus();
+    return false;
+  }
+  let transaction = null;
+  tableCommands[command](editor.state, (candidate) => { transaction = candidate; });
+  if (!transaction) return false;
+  if (command !== "deleteTable") {
+    const remainingTable = transaction.doc.nodeAt(rect.tableStart - 1);
+    if (remainingTable?.type.name === "table") {
+      const map = TableMap.get(remainingTable);
+      const row = command === "addRowAfter" ? rect.bottom : Math.min(rect.top, map.height - 1);
+      const column = firstColumn ? 0 : command === "addColumnAfter" ? rect.right : Math.min(rect.left, map.width - 1);
+      transaction.setSelection(Selection.near(transaction.doc.resolve(rect.tableStart + map.map[row * map.width + column] + 1)));
+    }
+  }
+  return commitTableTransaction(transaction, command.startsWith("delete") ? "Auswahl aus dem Entwurf entfernt. Rückgängig ist möglich." : "Tabelle erweitert. Änderungen bleiben im Entwurf.");
+}
+
+function toggleTableHeader() {
+  if (!replacementAllowed()) return;
+  const editor = state.editor;
+  const rect = currentTable();
+  if (!rect) return;
+  const firstRow = rect.table.firstChild;
+  let allHeaders = true;
+  firstRow.forEach((cell) => { if (cell.type.name !== "tableHeader") allHeaders = false; });
+  const type = allHeaders ? editor.schema.nodes.tableCell : editor.schema.nodes.tableHeader;
+  const transaction = editor.state.tr;
+  for (let column = 0; column < rect.map.width; column += 1) {
+    const position = rect.tableStart + rect.map.map[column];
+    const cell = transaction.doc.nodeAt(position);
+    transaction.setNodeMarkup(position, type, cell.attrs, cell.marks);
+  }
+  commitTableTransaction(transaction, allHeaders ? "Kopfzeile in normale Zellen umgewandelt." : "Erste Zeile als Kopfzeile formatiert.");
+}
+
+function selectTablePart(part) {
+  const editor = state.editor;
+  const rect = currentTable();
+  if (!rect || !["cell", "row", "column", "table"].includes(part) || $("table-select").disabled) return;
+  const row = rect.top;
+  const column = rect.left;
+  const anchor = part === "table" ? 0 : part === "column" ? column : row * rect.map.width + (part === "row" ? 0 : column);
+  const head = part === "table" ? rect.map.map.length - 1 : part === "column" ? (rect.map.height - 1) * rect.map.width + column :
+    part === "row" ? (row + 1) * rect.map.width - 1 : anchor;
+  editor.view.dispatch(editor.state.tr.setSelection(CellSelection.create(editor.state.doc,
+    rect.tableStart + rect.map.map[anchor], rect.tableStart + rect.map.map[head])));
+  focusEditor();
+}
+
+function handleTableKey(view, event) {
+  if (state.editor?.view !== view || event.altKey) return false;
+  const rect = currentTable();
+  if (!rect) return false;
+  if (["Backspace", "Delete"].includes(event.key) && state.editor.state.selection instanceof CellSelection &&
+      rect.top === 0 && rect.left === 0 && rect.bottom === rect.map.height && rect.right === rect.map.width) {
+    event.preventDefault();
+    runTableCommand("deleteTable");
+    return true;
+  }
+  if (event.key !== "Tab" || event.ctrlKey || event.metaKey) return false;
+  event.preventDefault();
+  const moved = goToNextCell(event.shiftKey ? -1 : 1)(state.editor.state, (transaction) => view.dispatch(transaction));
+  if (moved) return true;
+  if (event.shiftKey) {
+    leaveTableByKeyboard();
+    $("table-message").textContent = "Tabellenanfang erreicht. Wählen Sie eine Tabellenaktion oder navigieren Sie mit Tab weiter.";
+  } else if (replacementAllowed()) {
+    if (!runTableCommand("addRowAfter", false, true)) leaveTableByKeyboard();
+  } else {
+    leaveTableByKeyboard();
+    $("table-message").textContent = "Tabellenende erreicht. Eine neue Zeile ist im aktuellen Dokumentzustand nicht verfügbar.";
+  }
+  return true;
+}
+
+function leaveTableByKeyboard() {
+  const target = !$("table-tools").hidden && !$("table-select").disabled ? $("table-select") :
+    !$("find-panel").hidden ? $("find-query") : $("find-toggle");
+  target.focus();
+}
+
 function refreshDocumentTools() {
   const editor = state.editor;
   if (!editor) return;
@@ -372,6 +626,8 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  closeTableDialogs();
+  $("table-message").textContent = "";
   closeComparison();
   cancelRestore();
   session.revision += 1;
@@ -393,12 +649,14 @@ function mountEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), SearchHighlights,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), SearchHighlights, NativeDocumentGuard,
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
+      handleKeyDown: handleTableKey,
       handlePaste(view, event) {
         event.preventDefault();
+        if (state.editor?.view !== view || !replacementAllowed()) return true;
         const text = event.clipboardData?.getData("text/plain") || "";
         if (text.length > 100000) { notice("Der eingefügte Text ist zu lang.", true); return true; }
         const paragraphs = text.replaceAll("\r", "").split("\n").map((line) => ({
@@ -413,7 +671,7 @@ function mountEditor(content, session) {
     onSelectionUpdate: () => updateEditorState(),
   });
   try {
-    editor.schema.nodeFromJSON(safeContent).check();
+    validateEditorDocument(editor.schema.nodeFromJSON(safeContent));
     editor.chain().setMeta("addToHistory", false)
       .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true }).run();
   } catch (error) { editor.destroy(); throw error; }
@@ -423,6 +681,10 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  closeTableDialogs();
+  $("table-tools").hidden = true;
+  $("table-info").textContent = "";
+  $("table-message").textContent = "";
   closeComparison();
   cancelRestore();
   state.session = null;
@@ -1091,6 +1353,7 @@ function toggleFind(show, replacement = false) {
     const input = replacement && replacementAllowed() ? $("replace-query") : $("find-query");
     input.focus(); input.select();
   } else { resetSearch(); rebuildSearch(); focusEditor(); }
+  updateTableControls();
 }
 
 $("document-new").addEventListener("click", showNewDocument);
@@ -1167,12 +1430,43 @@ $("text-style").addEventListener("change", () => {
 $("insert-menu").addEventListener("change", () => {
   const command = $("insert-menu").value;
   if (command) {
-    if (command === "insertTable") formatEditor((chain) => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }));
+    if (command === "insertTable") insertTable();
+    else if (command === "insertTableCustom") openTableInsert();
     else if (command === "horizontalRule") formatEditor((chain) => chain.setHorizontalRule());
     else if (command === "codeBlock") formatEditor((chain) => chain.toggleCodeBlock());
-    else formatEditor((chain) => chain[command]());
+    else runTableCommand(command);
   }
   $("insert-menu").value = "";
+});
+["table-row-action", "table-column-action"].forEach((id) => {
+  $(id).addEventListener("change", () => { const command = $(id).value; $(id).value = ""; runTableCommand(command); });
+});
+$("table-select").addEventListener("change", () => { const part = $("table-select").value; $("table-select").value = ""; selectTablePart(part); });
+$("table-header-toggle").addEventListener("click", toggleTableHeader);
+$("table-delete").addEventListener("click", () => runTableCommand("deleteTable"));
+["table-header-toggle", "table-delete"].forEach((id) => {
+  $(id).addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+});
+$("table-insert-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!tableActionCurrent(state.tableAction) || state.tableAction.kind !== "insert") { closeTableDialogs(); return; }
+  insertTable(Number($("table-rows").value), Number($("table-columns").value), $("table-with-header").checked);
+});
+$("table-remove-confirm").addEventListener("click", () => {
+  const action = state.tableAction;
+  if (!tableActionCurrent(action) || action.kind !== "remove") { closeTableDialogs(); return; }
+  const command = action.command;
+  closeTableDialogs();
+  runTableCommand(command, true);
+});
+["table-insert-cancel", "table-insert-close", "table-remove-cancel"].forEach((id) => {
+  $(id).addEventListener("click", () => closeTableDialogs(true));
+});
+["table-insert-dialog", "table-remove-dialog"].forEach((id) => {
+  $(id).addEventListener("cancel", (event) => { event.preventDefault(); closeTableDialogs(true); });
+  $(id).addEventListener("close", () => {
+    if (!$(id).open && state.tableAction?.kind === (id === "table-insert-dialog" ? "insert" : "remove")) closeTableDialogs();
+  });
 });
 document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   button.addEventListener("click", () => { if (!state.session?.saving) button.closest("dialog").close(); });

@@ -59,6 +59,12 @@ applied as one isolated undo step. The current source/read/write/CAS contracts r
 service, dependency, index, persistence format or document permission is introduced. Visible highlight counts may be
 bounded independently of the full navigable result set. See the module contract for exact boundary and formatting rules.
 
+Roadmap 255 exposes contextual table operations over the existing ProseMirror table commands and rectangular native
+schema. Commands are staged and validated before applying one isolated undo step; removal requires confirmation.
+The 200-row/20-column and whole-document resource limits also govern keyboard-created rows. No cell spans, column
+widths, schema extension, dependency or persistence path is added. Current read-only/history/save-state boundaries
+remain mandatory, and only a confirmed CAS save creates a durable successor.
+
 This creates a useful first document editor, not a full Word/Excel/PowerPoint replacement. Next steps are evaluated DOCX
 interchange, comments/review, accessible shared editing, then spreadsheet and presentation workflows with their own
 version and recovery contracts. Real Word/GenOffice fidelity evidence and existing engine release gates remain required.
@@ -69,4 +75,6 @@ Primary references: [Tiptap installation](https://tiptap.dev/docs/editor/getting
 [StarterKit](https://tiptap.dev/docs/editor/extensions/functionality/starterkit),
 [ProseMirror guide](https://prosemirror.net/docs/guide/),
 [ProseMirror history implementation](https://github.com/ProseMirror/prosemirror-history/blob/master/src/history.ts),
+[Tiptap 3.31.3 table implementation](https://github.com/ueberdosis/tiptap/blob/v3.31.3/packages/extension-table/src/table/table.ts),
+[ProseMirror table commands](https://github.com/ProseMirror/prosemirror-tables/blob/v1.8.5/src/commands.ts),
 [Unicode-aware literal case matching](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/ignoreCase).

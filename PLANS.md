@@ -129,6 +129,8 @@ Current sprint:
 114. [x] Compare authorized saved Office versions, including text, titles, formatting, lists and tables, and take an earlier version into a new local draft. Refresh the current head and capabilities; require a confirmed CAS save to append without rewriting history. Full remote quality and all 100 checks (88 browser cases plus 12 comparison-model cases) pass on `3aa0069`, including desktop/tablet/mobile review, current access removal, late responses, partial history and no-op takeover. Existing migration/recovery contracts and closed tenant/pilot/engine gates remain unchanged.
 115. [x] Complete native Office find and replace: literal Unicode-safe positions, case/whole-word options, full counts and current/all replacement as one reversible local edit. Preserve structure, outside formatting, limits and read-only/history boundaries. Loaded content stays outside undo history. Full remote quality and all 132 checks (97 browser cases plus 35 model cases) pass on `f4c37e5`; desktop/tablet/mobile visually reviewed. Existing confirmed CAS saves and closed tenant/pilot/engine gates remain unchanged.
 
+116. [ ] Complete contextual native Office table editing: configurable insertion, row/column operations, first-row headers, cell/row/column/table selection and bounded keyboard navigation. Validate prospective changes before dispatch, separate each edit in undo history, confirm removals and preserve current read-only/history/save-state boundaries. Prove real saved versions, cancellation, limits and responsive controls on dev001; retain the existing 132 checks and closed tenant/pilot/engine gates.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
