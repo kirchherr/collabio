@@ -980,7 +980,7 @@ def test_work_shell_assets_compose_existing_guarded_domain_apis_without_gate_byp
     assert "/v1/time-tracking/approvals/${encodeURIComponent(approvalObjectId)}/transitions" in js_response.text
     assert "/v1/time-tracking/entries/${encodeURIComponent(entryObjectId)}/corrections" in js_response.text
     assert 'apiRequest("/v1/tickets"' in js_response.text
-    assert 'apiRequest(`/v1/admin/kb/articles/${path}`' in js_response.text
+    assert "apiRequest(`/v1/admin/kb/articles/${path}`" in js_response.text
     assert 'knowledgePost("prepare-write"' in js_response.text
     assert 'knowledgePost("source-object-write-guard"' in js_response.text
     assert 'knowledgePost("write-approvals/execute"' in js_response.text
