@@ -1519,7 +1519,8 @@ class CoordinatedKnowledgeBaseWriteUnitOfWork:
             source_record=source_record,
             audit_chain_ref=audit_chain_ref,
         )
-        refreshed_records = tuple(record for record in records if record.object_id != updated_article.object_id) + (
+        refreshed_records = (
+            *(record for record in records if record.object_id != updated_article.object_id),
             updated_article,
         )
         source_evidence, restore_evidence = build_committed_knowledge_base_evidence(
