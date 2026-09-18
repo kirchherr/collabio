@@ -114,6 +114,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0080",
         "0081",
         "0082",
+        "0083",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -130,6 +131,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     tasks_activities_migrations = load_module_migrations("tasks_activities")
     tickets_incidents_migrations = load_module_migrations("tickets_incidents")
     time_tracking_migrations = load_module_migrations("time_tracking")
+    office_documents_migrations = load_module_migrations("office_documents")
     manifest = load_migration_manifest()
 
     non_core_migrations = (
@@ -139,6 +141,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         + tasks_activities_migrations
         + tickets_incidents_migrations
         + time_tracking_migrations
+        + office_documents_migrations
     )
     assert len(core_migrations) == len(load_migrations()) - len(non_core_migrations)
     assert [migration.version for migration in crm_erp_migrations] == [
@@ -186,9 +189,10 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0074",
     ]
     assert [migration.version for migration in time_tracking_migrations] == ["0060", "0078", "0080"]
+    assert [migration.version for migration in office_documents_migrations] == ["0083"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
-    assert manifest[-1].module_id == "knowledge_base"
-    assert manifest[-1].name == "knowledge_base_version_acls"
+    assert manifest[-1].module_id == "office_documents"
+    assert manifest[-1].name == "office_native_documents"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)

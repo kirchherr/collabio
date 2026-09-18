@@ -42,14 +42,24 @@ def test_all_github_actions_use_immutable_commit_references() -> None:
 
 def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     dockerfile = DOCKERFILE_PATH.read_text(encoding="utf-8")
-    base_image = dockerfile.splitlines()[0]
+    base_stages = [line for line in dockerfile.splitlines() if line.endswith(" AS base")]
+    office_frontend_stages = [line for line in dockerfile.splitlines() if line.endswith(" AS office-frontend")]
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
     dependabot = DEPENDABOT_PATH.read_text(encoding="utf-8")
     requirements = REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
     dev_requirements = DEV_REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
     preview_requirements = PREVIEW_REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
 
-    assert re.fullmatch(r"FROM python:3\.12-alpine@sha256:[a-f0-9]{64} AS base", base_image)
+    assert len(base_stages) == 1
+    assert re.fullmatch(r"FROM python:3\.12-alpine@sha256:[a-f0-9]{64} AS base", base_stages[0])
+    assert len(office_frontend_stages) == 1
+    assert re.fullmatch(
+        r"FROM mcr\.microsoft\.com/playwright:v1\.63\.0-noble@sha256:[a-f0-9]{64} AS office-frontend",
+        office_frontend_stages[0],
+    )
+    office_tooling = re.search(r"(?ms)^  office-dependency-lock:\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)", compose)
+    assert office_tooling is not None
+    assert f"    image: {office_frontend_stages[0].split()[1]}\n" in office_tooling.group(1)
     assert "ARG LIBUUID_VERSION=2.42.3-r1" in dockerfile
     assert 'RUN apk add --no-cache "libuuid=${LIBUUID_VERSION}"' in dockerfile
     assert 'package-ecosystem: "docker"' in dependabot
@@ -70,7 +80,7 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     assert "COPY requirements-preview.lock ." in dockerfile
     assert "pip install --requirement requirements.txt" not in dockerfile
     assert compose.count("ghcr.io/astral-sh/uv:0.12.2-python3.12-alpine@sha256:") == 3
-    assert compose.count('profiles: ["tooling"]') == 3
+    assert compose.count('profiles: ["tooling"]') == 4
     assert compose.count('entrypoint: ["/usr/local/bin/uv"]') == 3
     assert compose.count('"sh docker/regenerate-dependency-locks.sh"') == 3
     assert "cat /tmp/requirements" not in compose

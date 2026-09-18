@@ -8,6 +8,13 @@ The second rule is just as important: every new durable component must update th
 
 ## Scope
 
+Native Office documents (migration 0083) belong to both PostgreSQL and object-storage recovery. Preserve
+`office.documents`, append-only `office.document_versions`, current ACLs, module features, source metadata and write
+receipts together with the exact canonical JSON object versions. Restore validation pins forced RLS, column-level head
+update grants and the complete creator-ACL/source-binding/head-guard functions to the migration, so matching drift on both
+systems still blocks recovery. The foundation gate requires this Office result explicitly. See
+`docs/modules/OFFICE_NATIVE_DOCUMENTS.md` and the guarded nonempty proof in `docs/operations/WORK_E2E.md`.
+
 This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.
