@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 100 passing checks: 88 browser cases and 12 pure native-comparison model cases. The original
+The expected matrix is 132 passing checks: 97 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -114,6 +114,13 @@ real and demonstrate a visible predecessor outside the returned window. Twelve p
 bounded alignment, semantic mark/key ordering and complete ordered before/after projections, including large repeated
 blocks and long text. The runner mounts the exact product comparison module read-only; it does not use a second copy.
 
+Roadmap 254 adds nine browser runs and 23 pure search-model cases. Browser checks cover
+literal Unicode/cross-mark matches, current/all replacement, isolated undo/redo, real confirmed save/reopen/version
+history, complete counts beyond 1,000 matches, read-only/history restrictions, no-op/delete/size limits, context/discard
+and delayed reads, plus responsive desktop/mobile/tablet layouts. The product search module is mounted read-only into
+the same runner. Model cases validate original UTF-16 positions, word boundaries, literal replacement, preserved marks
+and structure, complete result sets and preflight limits; no alternative test implementation substitutes for the product.
+
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.
@@ -138,6 +145,7 @@ The ignored directory `e2e/work/artifacts/` receives:
 - traces and failure screenshots only when a test fails.
 - `office-editor-desktop-chromium.png`, `office-editor-tablet-chromium.png`, `office-editor-mobile-chromium.png`;
 - `office-versions-desktop-chromium.png`, `office-versions-tablet-chromium.png`, `office-versions-mobile-chromium.png`.
+- `office-search-desktop-chromium.png`, `office-search-tablet-chromium.png`, `office-search-mobile-chromium.png`.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

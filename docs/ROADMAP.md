@@ -1544,6 +1544,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      uebersprungene, unerwartete oder flakige Faelle; Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration;
      Restore-Nachweise aus Punkt 252 bleiben erhalten. Office bleibt vor CRM priorisiert; Tenant-, Pilot- und
      DOCX-/Engine-Freigaben bleiben geschlossen beziehungsweise eigenstaendig.
+254. [ ] Suchen und Ersetzen im nativen Office-Dokument vervollstaendigen: literale Unicode-sichere Suche,
+     Gross-/Kleinschreibung, ganze Woerter, vollstaendige Trefferzahlen und einzelne/alle Ersetzungen als ein
+     rueckgaengiger lokaler Bearbeitungsschritt. Struktur und Formatierung ausserhalb der Fundstellen erhalten,
+     Inhaltsgrenzen vor Aenderung pruefen und schreibgeschuetzte/historische Fassungen nur durchsuchen.
+     Bestaetigtes CAS-Speichern, Versionsvergleich und Desktop/Tablet/Mobile durchgehend pruefen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

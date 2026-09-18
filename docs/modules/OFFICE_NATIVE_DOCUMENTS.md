@@ -2,6 +2,7 @@
 
 Status: product foundation and version workflow complete; remote quality/browser acceptance passed; foundation recovery retained
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow
+In progress: 254 / PLANS 115 find and replace
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 
@@ -66,6 +67,22 @@ Access denial clears protected state; a temporary read failure clears partial co
 existing draft. Cancelling the discard decision preserves edits. Unsaved takeover content stays only in memory, and
 unchanged content/title does not manufacture a dirty version. No schema, retention, backup format or engine permission
 changes. Existing migration 0083 and exact-version recovery contracts remain applicable.
+
+## Find and replace
+
+Roadmap 254 extends search within the already opened native document. Search terms and replacement text are literal;
+no regex syntax, markup evaluation, global search index or network lookup is involved. Matching uses original UTF-16
+positions, including text split by formatting marks. Case-insensitive matching uses Unicode simple case folding;
+it does not expand sharp-s to `ss` or normalize accents. Whole-word matching treats Unicode letters, numbers, combining
+marks, connector punctuation and join controls as word characters. Matches do not cross paragraph, hard-break, list-item
+or table-cell boundaries. All matches are counted and navigable; only a labelled window of highlights is rendered.
+
+Current or all replacements affect only the local draft and form one undo step separated from adjacent typing.
+Untouched text keeps its formatting; replacement text takes the first matched character's marks. Empty replacement
+deletes the selected text while preserving structural nodes. Identical replacement leaves content and undo state alone.
+Size, character, node and depth limits are checked before changing the editor. Read-only or historical documents may
+be searched but not replaced; loading, saving, restoration and an uncertain save also block replacement. Search inputs
+are memory-only and cleared with the workspace/context. The existing confirmed CAS save alone persists a successor.
 
 ## Records, retention and recovery
 

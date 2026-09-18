@@ -2,8 +2,10 @@ import { Editor, Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
+import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -12,7 +14,8 @@ const state = {
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
 };
 const searchKey = new PluginKey("officeSearch");
-const search = { query: "", matches: [], index: -1 };
+const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
+const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader",
@@ -108,7 +111,7 @@ function normalizedDocument(document) {
     const result = { type: value.type };
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
-      characters += value.text.length;
+      characters += Array.from(value.text).length;
       if (characters > 100000) throw new Error("document-length");
       result.text = value.text;
     }
@@ -180,6 +183,7 @@ function updateEditorState() {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
   }
+  updateSearchControls();
   const status = $("document-status");
   status.className = "document-status";
   if (!session) return;
@@ -201,10 +205,10 @@ const SearchHighlights = Extension.create({
       key: searchKey,
       props: {
         decorations(editorState) {
-          return DecorationSet.create(editorState.doc, search.matches.filter((match) =>
+          return DecorationSet.create(editorState.doc, search.matches.slice(search.windowStart, search.windowStart + searchHighlightLimit).filter((match) =>
             match.from >= 0 && match.to <= editorState.doc.content.size,
           ).map((match, index) =>
-            Decoration.inline(match.from, match.to, { class: `search-match${index === search.index ? " current" : ""}` }),
+            Decoration.inline(match.from, match.to, { class: `search-match${index + search.windowStart === search.index ? " current" : ""}` }),
           ));
         },
       },
@@ -217,24 +221,44 @@ function rebuildSearch(scroll = false) {
   search.query = $("find-query").value;
   search.matches = [];
   if (editor && search.query) {
-    const query = search.query.toLocaleLowerCase("de-DE");
-    editor.state.doc.descendants((block, position) => {
-      if (!block.isTextblock) return;
-      const text = block.textBetween(0, block.content.size, "", " ").toLocaleLowerCase("de-DE");
-      let index = 0;
-      while ((index = text.indexOf(query, index)) !== -1 && search.matches.length < 1000) {
-        search.matches.push({ from: position + 1 + index, to: position + 1 + index + query.length });
-        index += Math.max(query.length, 1);
-      }
-      return false;
-    });
+    try {
+      search.matches = findDocumentMatches(normalizedDocument(editor.getJSON()), search.query, {
+        caseSensitive: $("find-case-sensitive").checked, wholeWord: $("find-whole-word").checked,
+      });
+    } catch { search.notice = "Die Suche überschreitet die unterstützte Dokumentgröße oder Struktur."; }
   }
   search.index = search.matches.length ? Math.min(Math.max(search.index, 0), search.matches.length - 1) : -1;
+  updateSearchControls();
+  if (editor) editor.view.dispatch(editor.state.tr.setMeta(searchKey, true));
+  if (scroll && search.index >= 0) moveToMatch(0);
+}
+
+function replacementAllowed() {
+  const session = state.session;
+  return Boolean(session && sessionCurrent(session) && state.editor?.isEditable && session.canWrite &&
+    !session.loading && !session.historical && !session.saving && !session.uncertain && !session.restoring);
+}
+
+function updateSearchControls() {
+  search.windowStart = Math.max(0, Math.min(search.index - Math.floor(searchHighlightLimit / 2), search.matches.length - searchHighlightLimit));
   $("find-count").textContent = search.matches.length ? `${search.index + 1} / ${search.matches.length}` : "0 Treffer";
   $("find-previous").disabled = !search.matches.length;
   $("find-next").disabled = !search.matches.length;
-  if (editor) editor.view.dispatch(editor.state.tr.setMeta(searchKey, true));
-  if (scroll && search.index >= 0) moveToMatch(0);
+  const allowed = replacementAllowed();
+  $("replace-query").disabled = !allowed;
+  $("replace-current").disabled = !allowed || !search.matches.length;
+  $("replace-all").disabled = !allowed || !search.matches.length;
+  $("find-highlight-note").hidden = search.matches.length <= searchHighlightLimit;
+  $("find-highlight-note").textContent = search.matches.length > searchHighlightLimit
+    ? `Markiert werden Treffer ${search.windowStart + 1}–${Math.min(search.windowStart + searchHighlightLimit, search.matches.length)} von ${search.matches.length}. Alle Treffer sind über die Suche erreichbar.` : "";
+  const session = state.session;
+  let message = search.notice;
+  if (session?.loading) message = "Das Dokument wird geladen. Ersetzen ist noch nicht verfügbar.";
+  else if (session?.saving) message = "Während der Speicherung ist Ersetzen nicht verfügbar.";
+  else if (session?.restoring) message = "Während der Übernahme einer Fassung ist Ersetzen nicht verfügbar.";
+  else if (session?.uncertain) message = "Prüfen Sie zuerst die noch nicht bestätigte Speicherung, bevor Sie Text ersetzen.";
+  else if (session && !allowed) message = "Schreibgeschützt: Suchen ist möglich, Ersetzen nicht.";
+  $("find-message").textContent = message;
 }
 
 function moveToMatch(direction) {
@@ -243,8 +267,66 @@ function moveToMatch(direction) {
   const match = search.matches[search.index];
   state.editor.commands.setTextSelection({ from: match.from, to: match.to });
   state.editor.commands.scrollIntoView();
-  $("find-count").textContent = `${search.index + 1} / ${search.matches.length}`;
+  updateSearchControls();
   state.editor.view.dispatch(state.editor.state.tr.setMeta(searchKey, true));
+}
+
+function resetSearch() {
+  search.query = ""; search.matches = []; search.index = -1; search.windowStart = 0; search.notice = "";
+  $("find-query").value = ""; $("replace-query").value = "";
+  $("find-case-sensitive").checked = false; $("find-whole-word").checked = false;
+  $("find-message").textContent = ""; $("find-highlight-note").textContent = "";
+  $("find-highlight-note").hidden = true;
+  updateSearchControls();
+}
+
+function replaceMatches(all) {
+  const editor = state.editor;
+  const session = state.session;
+  if (!replacementAllowed() || !search.query || !search.matches.length) return;
+  const options = { caseSensitive: $("find-case-sensitive").checked, wholeWord: $("find-whole-word").checked };
+  const replacement = $("replace-query").value;
+  const initiatingControl = document.activeElement;
+  let change;
+  try {
+    const documentContent = normalizedDocument(editor.getJSON());
+    const matches = findDocumentMatches(documentContent, $("find-query").value, options);
+    const index = Math.min(Math.max(search.index, 0), matches.length - 1);
+    if (!matches.length) { rebuildSearch(); return; }
+    const result = replaceDocumentMatches(documentContent, matches, replacement, all ? {} : { currentIndex: index });
+    const nextDocument = editor.schema.nodeFromJSON(result.document);
+    nextDocument.check();
+    if (result.noOp || !result.changedCount || nextDocument.eq(editor.state.doc)) {
+      search.notice = "Keine Änderung: Suchtext und Ersatz ergeben denselben Inhalt.";
+      updateSearchControls();
+      return;
+    }
+    if (!sessionCurrent(session) || !replacementAllowed()) return;
+    const position = Math.min((all ? matches[0].from : matches[index].from) + replacement.length, nextDocument.content.size);
+    const transaction = closeHistory(editor.state.tr).replaceWith(0, editor.state.doc.content.size, nextDocument.content);
+    transaction.setSelection(Selection.near(transaction.doc.resolve(position)));
+    change = { transaction, position, count: result.changedCount };
+  } catch (error) {
+    search.notice = error instanceof OfficeSearchLimitError
+      ? "Die Ersetzung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert."
+      : "Die Ersetzung konnte nicht angewendet werden. Ihr Entwurf bleibt unverändert.";
+    updateSearchControls();
+    return;
+  }
+  editor.view.dispatch(change.transaction);
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  search.notice = `${change.count} Treffer ersetzt.`;
+  if (!all && search.matches.length) {
+    const nextIndex = search.matches.findIndex((match) => match.from >= change.position);
+    search.index = nextIndex >= 0 ? nextIndex : 0;
+    moveToMatch(0);
+  } else {
+    updateSearchControls();
+    editor.commands.scrollIntoView();
+  }
+  if (["replace-current", "replace-all"].includes(initiatingControl?.id) && initiatingControl.disabled) {
+    $("replace-query").focus();
+  }
 }
 
 function focusEditor(editor = state.editor) {
@@ -293,6 +375,7 @@ function contentChanged(session) {
   closeComparison();
   cancelRestore();
   session.revision += 1;
+  search.notice = "";
   session.attempt = null;
   $("save-dialog").close();
   $("save-confirm").checked = false;
@@ -344,7 +427,7 @@ function clearWorkspace() {
   state.session = null;
   state.editor?.destroy();
   state.editor = null;
-  search.query = ""; search.matches = []; search.index = -1;
+  resetSearch();
   $("office-editor").replaceChildren();
   $("document-title").value = "";
   $("document-history").replaceChildren();
@@ -999,11 +1082,14 @@ function selectInspector(name) {
   if (name === "history") loadHistory();
 }
 
-function toggleFind(show) {
+function toggleFind(show, replacement = false) {
   $("find-panel").hidden = !show;
   $("find-toggle").setAttribute("aria-expanded", String(show));
-  if (show) { $("find-query").focus(); $("find-query").select(); }
-  else { $("find-query").value = ""; rebuildSearch(); focusEditor(); }
+  if (show) {
+    updateSearchControls();
+    const input = replacement && replacementAllowed() ? $("replace-query") : $("find-query");
+    input.focus(); input.select();
+  } else { resetSearch(); rebuildSearch(); focusEditor(); }
 }
 
 $("document-new").addEventListener("click", showNewDocument);
@@ -1054,12 +1140,19 @@ $("focus-toggle").addEventListener("click", () => {
 });
 $("find-toggle").addEventListener("click", () => toggleFind($("find-panel").hidden));
 $("find-close").addEventListener("click", () => toggleFind(false));
-$("find-query").addEventListener("input", () => { search.index = 0; rebuildSearch(true); });
+$("find-query").addEventListener("input", () => { search.index = 0; search.notice = ""; rebuildSearch(true); });
+$("replace-query").addEventListener("input", () => { search.notice = ""; updateSearchControls(); });
+$("find-case-sensitive").addEventListener("change", () => { search.index = 0; search.notice = ""; rebuildSearch(true); });
+$("find-whole-word").addEventListener("change", () => { search.index = 0; search.notice = ""; rebuildSearch(true); });
+$("replace-current").addEventListener("click", () => replaceMatches(false));
+$("replace-all").addEventListener("click", () => replaceMatches(true));
 $("find-next").addEventListener("click", () => moveToMatch(1));
 $("find-previous").addEventListener("click", () => moveToMatch(-1));
-$("find-query").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") { event.preventDefault(); moveToMatch(event.shiftKey ? -1 : 1); }
-  if (event.key === "Escape") { event.preventDefault(); toggleFind(false); }
+$("find-panel").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && [$("find-query"), $("replace-query")].includes(event.target)) {
+    event.preventDefault(); moveToMatch(event.shiftKey ? -1 : 1);
+  }
+  if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); toggleFind(false); }
 });
 document.querySelectorAll("[data-command]").forEach((button) => {
   button.addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
@@ -1120,10 +1213,12 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
     $("office-shell").classList.remove("documents-open");
     $("documents-toggle").setAttribute("aria-expanded", "false");
+    if (!$("find-panel").hidden) { event.preventDefault(); toggleFind(false); }
   }
   if (!state.editor || document.querySelector("dialog[open]") || !(event.ctrlKey || event.metaKey)) return;
   if (event.key.toLowerCase() === "s") { event.preventDefault(); showSave(); }
   if (event.key.toLowerCase() === "f") { event.preventDefault(); toggleFind(true); }
+  if (event.key.toLowerCase() === "h") { event.preventDefault(); toggleFind(true, true); }
 });
 window.addEventListener("beforeunload", (event) => {
   if (isDirty() || state.session?.saving || state.session?.uncertain) { event.preventDefault(); event.returnValue = ""; }

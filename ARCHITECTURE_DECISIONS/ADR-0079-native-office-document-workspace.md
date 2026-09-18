@@ -53,6 +53,12 @@ document copy or dependency. Structural and formatting changes remain distinguis
 an old version creates only an in-memory draft against a freshly authorized current head; the existing confirmed CAS
 save appends a successor. It neither rewrites history nor bypasses the source/receipt/recovery contracts.
 
+Roadmap 254 extends the local editor with literal find/replace. Match positions refer to the original UTF-16 document
+positions, with explicit case/whole-word options and complete counts. Replacements are bounded native-tree transforms
+applied as one isolated undo step. The current source/read/write/CAS contracts remain authoritative on save; no new
+service, dependency, index, persistence format or document permission is introduced. Visible highlight counts may be
+bounded independently of the full navigable result set. See the module contract for exact boundary and formatting rules.
+
 This creates a useful first document editor, not a full Word/Excel/PowerPoint replacement. Next steps are evaluated DOCX
 interchange, comments/review, accessible shared editing, then spreadsheet and presentation workflows with their own
 version and recovery contracts. Real Word/GenOffice fidelity evidence and existing engine release gates remain required.
@@ -61,4 +67,6 @@ No intervention on the original Windows workstation or implicit real-tenant acti
 Primary references: [Tiptap installation](https://tiptap.dev/docs/editor/getting-started/install/vanilla-javascript),
 [Tiptap overview](https://tiptap.dev/docs/editor/getting-started/overview),
 [StarterKit](https://tiptap.dev/docs/editor/extensions/functionality/starterkit),
-[ProseMirror guide](https://prosemirror.net/docs/guide/).
+[ProseMirror guide](https://prosemirror.net/docs/guide/),
+[ProseMirror history implementation](https://github.com/ProseMirror/prosemirror-history/blob/master/src/history.ts),
+[Unicode-aware literal case matching](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp/ignoreCase).

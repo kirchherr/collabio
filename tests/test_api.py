@@ -1237,6 +1237,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "expected_current_version_compare_and_swap",
         "version_comparison_revalidates_both_saved_sources",
         "historical_takeover_is_local_until_confirmed_cas_save",
+        "find_replace_is_bounded_literal_and_local_until_confirmed_save",
+        "read_only_and_historical_content_cannot_be_replaced",
         "actor_bound_exact_mutation_retry",
         "postgresql_forced_rls_and_append_only_versions",
         "exact_s3_source_version_manifest_hash_and_receipt_binding",
