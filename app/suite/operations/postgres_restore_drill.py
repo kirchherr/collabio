@@ -1422,7 +1422,7 @@ def _office_document_controls_verified(
         table_name = _qualified_name(row)
         if table_name not in OFFICE_DOCUMENT_TABLES:
             continue
-        grantee, privilege = row.get("grantee"), row.get("privilege_type")
+        grantee, privilege = str(row.get("grantee")), row.get("privilege_type")
         if row.get("is_grantable") != "NO":
             return False
         if grantee == "collabio_app" and privilege == "UPDATE" and table_name == "office.documents":

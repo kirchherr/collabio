@@ -135,7 +135,7 @@ def test_office_module_defaults_closed_before_repository_access(
     monkeypatch.setattr(office_api.repository, "commit", write)
     for method in ("GET", "POST"):
         response = office_api.client.request(
-            method, BASE, headers=office_api.headers, **({"json": create_payload()} if method == "POST" else {})
+            method, BASE, headers=office_api.headers, json=create_payload() if method == "POST" else None
         )
         assert response.status_code in {403, 404}
         assert response.headers["Cache-Control"] == "no-store"
@@ -251,6 +251,7 @@ def test_office_reader_cannot_create_or_write_and_revocation_is_fresh(
             json=save_payload(created),
         )
         assert rejected.status_code == 403
+    assert isinstance(office_api.service.source_repository, InMemorySourceObjectRepository)
     metadata_read = Mock(wraps=office_api.service.source_repository.get_metadata)
     monkeypatch.setattr(office_api.service.source_repository, "get_metadata", metadata_read)
     del office_api.repository.grants[("tenant-demo", object_id, reader_id)]
