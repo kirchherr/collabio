@@ -48,9 +48,11 @@ Arbeitsweise:
 
 Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
 
-- Punkt 252 liefert zuerst einen nativen Dokumentarbeitsplatz mit Formatierung, Gliederung, Suche und versioniertem
-  Speichern. Anschliessend den bestehenden DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness
-  und source-blinder/CDR-Kandidatenpruefung fortsetzen. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
+- Punkt 252 ist als native Office-Produktgrundlage abgeschlossen: Formatierung, Gliederung, Suche und versioniertes
+  Speichern sind abgenommen. Naechster offener Schritt ist Punkt 253: Versionsvergleich und eine fruehere Fassung als
+  neuer lokaler Entwurf mit frischem Head, aktuellen ACLs, CAS und explizitem Speichern. Den bestehenden
+  DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness und source-blinder/CDR-Kandidatenpruefung
+  als getrennten Pfad erhalten. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
   menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
   durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
@@ -1521,10 +1523,20 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Desktop/Mobile gegen isoliertes PostgreSQL geprueft. Volle Remote-Quality und alle 60 Browserfaelle sind gruen.
      Bestehende Pilot-Grenze bleibt geschlossen; keine neue Mutation, Migration oder reale Tenant-Aktivierung.
 
-252. [ ] Nativen Office-Dokumentarbeitsplatz unter `/office` umsetzen: lokale Rich-Text-Formatierung, Tabellen,
+252. [x] Native Office-Produktgrundlage unter `/office` geschlossen: lokale Rich-Text-Formatierung, Tabellen,
      Gliederung, Textsuche, Fokusmodus und explizites Speichern neuer Versionen. Eigenes Modul mit geschlossenen
      Tenant-Features, aktuellen Lese-/Schreib-ACLs, PostgreSQL/S3, CAS, exakter Wiederholung und Migration 0083.
-     Remote-Quality, Browserpruefung sowie nichtleerer Recovery-Nachweis vor Abschluss; DOCX-/Engine-Gates bleiben getrennt.
+     Volle Backend-Quality auf `7bba74f` gruen; auf `5917bdf` alle 73 Browserfaelle in 160,237 Sekunden gruen,
+     ohne uebersprungene, unerwartete oder flakige Faelle, Desktop/Tablet/Mobile visuell geprueft. Nichtleerer Restore
+     mit 13 Dokumenten, 18 Versionen, fuenf mehrversionigen Dokumenten und 37 SourceObjects bestanden:
+     `sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`.
+     Hauptmigration 0083 und Foundation mit 83 Migrationen, 91 Tabellen und Office-Integritaetskontrollen gruen.
+     Business-/API-Rollout wird separat operational dokumentiert; keine reale Tenant- oder Produktivfreigabe.
+     Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen beziehungsweise eigenstaendig.
+253. [ ] Autorisierte gespeicherte Office-Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf
+     oeffnen. Aktuellen Head und Faehigkeiten frisch laden, ACLs und CAS beim Speichern erneut pruefen und eine
+     ausdrueckliche Bestaetigung fuer die neue Version verlangen; bestehende Historie unveraendert erhalten.
+     Office bleibt vor weiterem CRM-Ausbau priorisiert, DOCX-Fidelity bleibt ein getrennter Freigabepfad.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

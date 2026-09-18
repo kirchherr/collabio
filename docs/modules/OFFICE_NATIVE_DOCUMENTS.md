@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: implemented; remote acceptance and recovery evidence pending
+Status: product foundation complete; remote acceptance and nonempty recovery passed
 Roadmap: 252 / PLANS 113
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
@@ -10,7 +10,8 @@ Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 `/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
 apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
 save a confirmed version and read previous versions. Search covers the current document or loaded document titles;
-it does not enable a global content index. The workspace supports keyboard controls and narrow screens.
+it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
+available. Formatting returns focus to the editor before immediate typing.
 
 This slice stores native structured documents. DOCX interchange, tracked changes, comments, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
@@ -37,8 +38,9 @@ and server-resolved ABAC scope are rechecked, including on replay and historical
 | `POST /v1/office/documents/{object_id}/versions` | Compare expected head and append a confirmed successor |
 
 Content and error responses use `no-store`. Invalid JSON/schema errors do not echo submitted content. Storage/database
-failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after failed saves,
-detects stale heads, preserves exact retry keys and drops late responses after a context change. Only connection context,
+failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after transient failures
+or stale-head conflicts, clears content when access is denied, preserves exact retry keys and drops late responses after
+closing or changing context. Only connection context,
 never content or credentials, is stored in browser localStorage.
 
 ## Records, retention and recovery
@@ -66,8 +68,32 @@ recovery proof must preserve native content, source hashes, historical reads and
 
 ## Acceptance evidence
 
-New domain, PostgreSQL and API tests cover strict content limits, authoritative access, CAS races, exact idempotency,
-failure rollback, orphan detection, safe errors and module gates. The guarded browser harness uses only synthetic
-`tenant-work-e2e`, real PostgreSQL/S3 and fresh ACL resolution. It extends the existing 60 Work/KB/CRM cases with native
-Office workflows and desktop/mobile checks. Final counts, source commit and recovery hashes are recorded after execution
-in the operations log and current handoff. Synthetic evidence never grants real-user access.
+Domain, PostgreSQL and API tests cover strict content limits, authoritative access, CAS races, exact idempotency,
+failure rollback, orphan detection, safe errors and module gates. Full backend quality on `7bba74f` passed Ruff checks
+and formatting across 665 files, Mypy across 526 source files and the full Pytest suite.
+
+The final browser run on `5917bdf` passed all 73 cases in 160.237 seconds, with zero skipped, unexpected or flaky tests.
+The previous 60 Work/KB/CRM cases remain green. Thirteen Office cases cover actual rich-text/table authoring, confirmed
+saves, reopen and historical reads, concurrent conflict, read-only access, forged/foreign grants, ACL revocation, feature
+removal, pre-PUT and read failures, idempotent retry after a lost successful response, literal markup and delayed
+close/context responses. Desktop, tablet and mobile screenshots were visually reviewed. The earlier complete run's
+toolbar-focus failure was fixed in `5917bdf` and the existing rich-authoring test now checks immediate focus restoration.
+
+The nonempty recovery proof on `5917bdf` verified 13 Office documents, 18 versions, five documents with multiple versions
+and an inventory of 37 source objects, including exact content, historical reads and current ACL behavior. Its report is
+`sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`.
+Migration 0083 has been applied to the main development database. The foundation gate passed with 83 migrations,
+91 tables and `office_document_controls_verified=true`. The existing three-slice business release gate also passed
+without business writes or tenant activation. The API-only development rollout returned healthy; final live checks
+and cleanup are recorded in the operations log and current handoff.
+
+All browser and nonempty Office recovery data use the isolated synthetic tenant `tenant-work-e2e`, real PostgreSQL/S3
+and fresh ACL resolution. No ordinary tenant was enabled; the normal pilot switch, indexing and DOCX engine gates remain
+closed. These results complete Roadmap 252 / PLANS 113 as a product foundation, not a production or real-user admission.
+
+## Next Office step
+
+Roadmap 253 / PLANS 114 remains pending: compare authorized saved versions and open an earlier version as a new local
+draft. Refresh the current head and capabilities before preparing that draft, recheck current ACLs and CAS on save,
+and require explicit confirmation to append a new version. Existing history must remain unchanged. Native Office work
+continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.

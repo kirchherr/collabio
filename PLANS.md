@@ -6,8 +6,9 @@ This file tracks the active implementation sequence. The canonical roadmap is `d
 
 Theme: Turn the proven foundation into coherent product workflows without weakening its gates.
 
-User priority (2026-09-18): Office development comes before further CRM expansion. Resume the existing DOCX Quick
-Edit path; defer CRM account onboarding in `/work` and subsequent CRM mutations until after the Office work.
+User priority (2026-09-18): Office development comes before further CRM expansion. Continue native document and version
+workflows; keep DOCX Quick Edit/fidelity on its separate gated path. Defer CRM account onboarding in `/work` and
+subsequent CRM mutations until after the Office work.
 
 Current sprint:
 
@@ -124,20 +125,21 @@ Current sprint:
 111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
 112. [x] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling; full remote quality and 60 isolated browser cases pass with current PostgreSQL ACLs and the existing pilot boundary closed.
 
-113. [ ] Deliver a native Office document workspace at `/office`: real rich-text editing, tables, outline, search, focus mode, confirmed version saves, current ACLs, PostgreSQL/S3, CAS and exact retries; complete remote quality, browser and nonempty recovery proof before closeout.
+113. [x] Complete the native Office product foundation at `/office`: rich-text editing, tables, outline, search, focus mode, confirmed version saves, current ACLs, PostgreSQL/S3, CAS and exact retries. Backend quality passed on `7bba74f`; all 73 browser cases and nonempty recovery passed on `5917bdf`, with desktop/tablet/mobile visual review. Migration 0083 and the 83-migration/91-table foundation gate passed; ordinary tenant activation, pilot, indexing and DOCX engine gates remain closed. Business/API rollout verification is recorded separately.
+114. [ ] Add authorized saved-version comparison and open an earlier Office version as a new local draft. Refresh the current head and capabilities, recheck current ACLs and CAS, and require an explicit confirmed save to append a new version without rewriting history.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Office is the next development priority: complete native document authoring and version history as Roadmap 252. Continue DOCX interchange through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation. Real Word/GenOffice fidelity, calibrated thresholds and human review remain separate prerequisites; DOCX saves and WOPI retain their own gates. Do not resume Word/account/firewall interventions on the original workstation.
+- Native document authoring and version history are complete as Roadmap 252. Continue Office with Roadmap 253: saved-version comparison and an earlier version as a new local draft, with fresh head/ACL checks, CAS and explicit save. Preserve all 73 browser cases. DOCX interchange remains a separate Quick Edit/fidelity path; real Word/GenOffice results, calibrated thresholds and human review remain prerequisites, and DOCX saves/WOPI retain their gates. Do not resume Word/account/firewall interventions on the original workstation.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
 - Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.
 - Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until a new evidence chain, four-eyes approvals, and the hash-only closure path pass together.
-- Keep productive Legacy SQL writes, Office/Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
+- Keep productive Legacy SQL writes, DOCX engine/WOPI and Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
 
 ## Module Expansion Stance
 
