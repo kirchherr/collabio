@@ -1553,11 +1553,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      unerwartete oder flakige Faelle. Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration oder Ablage;
      bestehende Bestaetigungs-/CAS-/Recovery-Vertraege und geschlossene Tenant-/Pilot-/Engine-Gates bleiben erhalten.
 
-255. [ ] Komfortable Tabellenbearbeitung im nativen Office-Editor: waehlbare Tabellengroesse, kontextabhaengige
+255. [x] Komfortable Tabellenbearbeitung im nativen Office-Editor: waehlbare Tabellengroesse, kontextabhaengige
      Zeilen-/Spaltenaktionen, Kopfzeile, Zell-/Zeilen-/Spalten-/Tabellenauswahl und begrenzte Tastaturnavigation.
      Aenderungen vor Anwendung validieren, einzeln rueckgaengig machen und Entfernen bestaetigen. Schreibschutz,
      Historie und laufende/unbestaetigte Speicherung respektieren; echte gespeicherte Versionen und responsive
-     Bedienung auf dev001 pruefen. Bestehende 132 Pruefungen und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
+     Bedienung auf dev001 geprueft. Volle Remote-Quality auf `e3cf88c` gruen; alle 142 Pruefungen (107 Browserfaelle plus
+     35 Modellfaelle) in 359,156 Sekunden bestanden, ohne uebersprungene, unerwartete oder flakige Faelle. Alle bisherigen
+     132 Pruefungen bleiben gruen. Desktop/Tablet/Mobile visuell geprueft; beim Wechsel auf Tabletbreite klappt die
+     Gliederung ein und gibt die Tabelle frei. Bestehendes Schema, Recovery und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

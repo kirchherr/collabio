@@ -1,7 +1,7 @@
 # Native Office Documents
 
-Status: product foundation, version workflow and find/replace complete; remote quality/browser acceptance passed; foundation recovery retained
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace
+Status: product foundation, version workflow, find/replace and contextual table editing complete; remote acceptance passed; foundation recovery retained
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 
@@ -101,6 +101,9 @@ Tables retain the existing rectangular format, at most 200 rows and 20 columns, 
 Prospective commands are checked against the native schema and complete document resource limits before dispatch.
 Each structural edit forms one undo step, separated from adjacent typing. Keyboard movement between cells and row
 creation at the table end use the same bounds. Focus returns to the editor for continued input.
+If a new row cannot be added, Tab moves focus to an available control instead of trapping the keyboard in the last
+cell. At tablet widths, the inspector closes when entering the compact layout; users can explicitly reopen it.
+The table controls hide while find/replace is open, preserving space for the document.
 
 Read-only and historical content cannot be edited. Loading, saving, historical takeover and an uncertain save also
 block table changes. Pending table dialogs are invalidated when the document or context changes. Only the existing
@@ -187,8 +190,27 @@ Results: `sha256:e12cf71865e5a013852d6482b6a96a33d5a37c4c031157721d0d980324d32b7
 `e2e/work/artifacts/roadmap-254/`. API rollout, cleanup and exact screenshot hashes are in the operations log/handoff.
 No new schema, storage format, write endpoint or tenant capability; item 252 recovery proofs remain retained, not rerun.
 
+## Table editing acceptance (Roadmap 255)
+
+Implementation `e3cf88c` passed full remote Ruff/format across 665 files, Mypy across 526 source files and Pytest;
+only the known Starlette/AnyIO warning remains. The focused run on `93cbd71` passed nine cases and failed one assertion
+that used a control-enabled matcher on a disabled option. `a27c433` checks the native disabled property; all ten focused
+cases then passed in 38.975 seconds. Visual review found the inspector obscuring the table on a desktop-to-tablet
+resize; `e3cf88c` closes it on entry to compact layout and adds a visibility regression.
+
+The complete matrix passed 142/142 in 359.156 seconds: 107 browser cases and 35 pure model cases, zero skipped,
+unexpected or flaky. All prior 132 cases remain green. Eight new table workflows and two responsive runs cover real
+save/reopen/immutable history, preserved marks and content, header/row/column/selection operations, isolated undo/redo,
+immediate focus, removal confirmation and cancellation, keyboard navigation and bounded new rows, read-only/history,
+pending and uncertain saves with retry, context invalidation, invalid insertion and canonical-byte overflow.
+Final desktop/tablet/mobile screenshots passed visual review, including the corrected tablet transition.
+
+Results: `sha256:89c132f192d7a3302ab3a48dc201dfdc0f60c007e8334c993e79be9f7df9d2d8`, under ignored
+`e2e/work/artifacts/roadmap-255/`. No new schema, storage format, dependency or endpoint; item 252 migration/backup/
+nonempty recovery/foundation/business evidence remains retained, not rerun. Live rollout is recorded in the operations log.
+
 ## Continuing Office work
 
-Roadmap 254 / PLANS 115 is complete. Preserve the confirmed save and current access contracts when extending native
+Roadmap 255 / PLANS 116 is complete. Preserve the confirmed save and current access contracts when extending native
 editing and review workflows. Comments, tracked changes and live collaboration remain separate open work. Native Office
 continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.
