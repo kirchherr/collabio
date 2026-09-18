@@ -105,6 +105,8 @@ changes or automatic merging.
   All previous 73 browser cases remain green. New coverage includes large/duplicate model inputs, exact comparison,
   fresh-head takeover, CAS conflicts, current ACL/feature removal, cancelled discard, failure retry, bounded real history,
   no-op takeover and late responses. Final desktop/tablet/mobile screenshots passed visual review.
+- Documentation closeout `5a15195` passed all 11 targeted module/KB/roadmap contracts in 61.94 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 10:52:56 UTC.
 - No new schema, durable record or save endpoint. Item 252's migration 0083, verified backups, nonempty recovery and
   foundation/business proofs below remain retained, not newly rerun. No new engine, tenant or pilot admission.
 - Primary changes: `app/suite/ui/office/office.js`, `office-comparison.mjs`, `office.css`, `index.html`;
@@ -331,7 +333,7 @@ Primary code and runbooks:
 ## Existing product and platform status
 
 - `/office` provides native document authoring, immutable history, saved-version comparison and historical takeover
-  as an explicitly saved new draft, under its closed tenant gates.
+  into an unsaved local draft. Explicitly confirmed save appends a new version, under the closed tenant gates.
 - `/roadmap` presents capabilities, including guarded native Office; KB shows authoring and ordinary reading, and CRM includes Work account
   details, with real API route paths.
 - `/workspace` provides the module cockpit and controlled foundation workflows.

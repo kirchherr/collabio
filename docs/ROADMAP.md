@@ -1539,8 +1539,8 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      uebernehmen: Text, Titel, Formatierung, Listen und Tabellen werden blockweise verglichen, grosse Ergebnisse
      vollstaendig und seitenweise dargestellt. Aktuellen Head und Schreibrechte frisch laden; erst bestaetigtes
      CAS-Speichern erzeugt eine neue Version, die bestehende Historie bleibt unveraendert. Rechteentzug, Konflikte,
-     spaete Antworten, begrenzte Historie und identische Uebernahme sind geprueft. Volle Remote-Quality und alle
-     100 Pruefungen (88 Browserfaelle plus 12 Modellfaelle) auf `3aa0069` in 249,923 Sekunden gruen, ohne
+     spaete Antworten, begrenzte Historie und identische Uebernahme sind geprueft. Volle Remote-Quality auf `3aa0069`
+     gruen; alle 100 Pruefungen (88 Browserfaelle plus 12 Modellfaelle) in 249,923 Sekunden bestanden, ohne
      uebersprungene, unerwartete oder flakige Faelle; Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration;
      Restore-Nachweise aus Punkt 252 bleiben erhalten. Office bleibt vor CRM priorisiert; Tenant-, Pilot- und
      DOCX-/Engine-Freigaben bleiben geschlossen beziehungsweise eigenstaendig.
