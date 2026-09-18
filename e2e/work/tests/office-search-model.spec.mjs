@@ -108,7 +108,7 @@ test("nested lists tables and leaf nodes contribute exact ProseMirror positions"
   const result = replace(before, "D", "Delta");
   expect(result.document.content[3]).toEqual(table("C", "Delta"));
   expect(result.document.content[2]).toBe(before.content[2]);
-  expect(findDocumentMatches(result.document, "E")).toEqual([{ from: 30, to: 31 }]);
+  expect(findDocumentMatches(result.document, "E", { caseSensitive: true })).toEqual([{ from: 30, to: 31 }]);
 });
 
 test("replacement preserves headings list attributes quotes code text and unsupported-looking literal content", () => {

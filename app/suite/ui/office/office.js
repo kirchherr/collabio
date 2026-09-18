@@ -414,7 +414,8 @@ function mountEditor(content, session) {
   });
   try {
     editor.schema.nodeFromJSON(safeContent).check();
-    editor.commands.setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true });
+    editor.chain().setMeta("addToHistory", false)
+      .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true }).run();
   } catch (error) { editor.destroy(); throw error; }
   state.editor?.destroy();
   $("office-editor").replaceChildren(editorHost);
