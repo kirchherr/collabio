@@ -886,7 +886,7 @@ def test_restore_hashes_office_column_grants_and_complete_function_definitions()
 
     def alter_definition(rows: dict[str, list[dict[str, object]]]) -> None:
         rows["triggers"][0]["function_definition"] = "changed"
-        rows["column_grants"][0]["is_grantable"] = "YES"
+        next(row for row in rows["column_grants"] if row["grantee"] == "collabio_app")["is_grantable"] = "YES"
 
     target = _snapshot(database_hash="sha256:" + "c" * 64, office_mutate=alter_definition)
     assert source.relation_manifest_hash != target.relation_manifest_hash
