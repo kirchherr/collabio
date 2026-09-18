@@ -57,17 +57,22 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         parsed = urlparse(env.get(key, ""))
         if (
             parsed.scheme not in {"postgres", "postgresql"}
-            or parsed.hostname != host or parsed.path != f"/{database}" or parsed.username != user
-            or parsed.port != 5432 or parsed.query or parsed.fragment
+            or parsed.hostname != host
+            or parsed.path != f"/{database}"
+            or parsed.username != user
+            or parsed.port != 5432
+            or parsed.query
+            or parsed.fragment
         ):
             raise ValueError("Office recovery database is outside its isolated scope")
     if env.get("SUITE_S3_ENDPOINT_URL") != "http://work-e2e-minio:9000":
         raise ValueError("Office recovery source storage is outside its isolated scope")
     if env.get("SUITE_RESTORE_S3_ENDPOINT_URL") != "http://minio-restore:9000":
         raise ValueError("Office recovery target storage is outside its isolated scope")
-    if env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup" or env.get(
-        "SUITE_POSTGRES_RESTORE_RECEIPT_PATH"
-    ) != "/proof-backup/postgres-restore-receipt.sha256":
+    if (
+        env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup"
+        or env.get("SUITE_POSTGRES_RESTORE_RECEIPT_PATH") != "/proof-backup/postgres-restore-receipt.sha256"
+    ):
         raise ValueError("Office recovery must use its separately mounted backup artifact")
 
 
@@ -78,13 +83,15 @@ def _metadata_hash(database_dsn: str) -> str:
         for table in ("documents", "document_versions"):
             result = connection.execute(
                 f"SELECT to_jsonb(record) FROM office.{table} AS record WHERE tenant_id = %s "
-                "ORDER BY to_jsonb(record)::text", (TENANT_ID,),
+                "ORDER BY to_jsonb(record)::text",
+                (TENANT_ID,),
             ).fetchall()
             rows[table] = [row[0] for row in result]
         result = connection.execute(
             "SELECT to_jsonb(acl) FROM collabio.object_acl_entries AS acl "
             "WHERE acl.tenant_id = %s AND acl.object_type = 'office.document' "
-            "ORDER BY to_jsonb(acl)::text", (TENANT_ID,),
+            "ORDER BY to_jsonb(acl)::text",
+            (TENANT_ID,),
         ).fetchall()
         rows["acls"] = [row[0] for row in result]
     return stable_hash(canonical_json(rows))
@@ -105,7 +112,10 @@ def _restored_reader(database_dsn: str) -> UserContext:
     if principal is None:
         raise ValueError("Office recovery synthetic reader membership is missing")
     readable = PgPrincipalDirectory(database_dsn=database_dsn).readable_object_ids(
-        tenant_id=TENANT_ID, user_id=EDITOR_ID, role_ids=set(), group_ids=set(),
+        tenant_id=TENANT_ID,
+        user_id=EDITOR_ID,
+        role_ids=set(),
+        group_ids=set(),
     )
     return UserContext(tenant_id=TENANT_ID, user_id=EDITOR_ID, readable_object_ids=readable)
 
@@ -123,46 +133,69 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     storage_policy = load_storage_adapter_policy(Path("docs/storage_adapter_policy.json"))
     retention_policy = load_retention_manifest_policy(Path("docs/retention_manifest_policy.json"))
     source_client = build_boto3_s3_compatible_client(
-        endpoint_url=env["SUITE_S3_ENDPOINT_URL"], access_key_id=env["SUITE_S3_ACCESS_KEY_ID"],
-        secret_access_key=env["SUITE_S3_SECRET_ACCESS_KEY"], storage_provider="minio",
+        endpoint_url=env["SUITE_S3_ENDPOINT_URL"],
+        access_key_id=env["SUITE_S3_ACCESS_KEY_ID"],
+        secret_access_key=env["SUITE_S3_SECRET_ACCESS_KEY"],
+        storage_provider="minio",
     )
     target_client = build_boto3_s3_compatible_client(
-        endpoint_url=env["SUITE_RESTORE_S3_ENDPOINT_URL"], access_key_id=env["SUITE_RESTORE_S3_ACCESS_KEY_ID"],
-        secret_access_key=env["SUITE_RESTORE_S3_SECRET_ACCESS_KEY"], storage_provider="minio-restore-target",
+        endpoint_url=env["SUITE_RESTORE_S3_ENDPOINT_URL"],
+        access_key_id=env["SUITE_RESTORE_S3_ACCESS_KEY_ID"],
+        secret_access_key=env["SUITE_RESTORE_S3_SECRET_ACCESS_KEY"],
+        storage_provider="minio-restore-target",
     )
     wait_for_s3_compatible_client(client=target_client, storage_policy=storage_policy)
     source_repository = PgSourceObjectRepository(
-        database_dsn=source_dsn, storage_policy=storage_policy, retention_policy=retention_policy,
+        database_dsn=source_dsn,
+        storage_policy=storage_policy,
+        retention_policy=retention_policy,
         content_store=S3CompatibleSourceObjectContentStore(client=source_client, storage_policy=storage_policy),
     )
     source_profile = build_s3_compatible_provider_profile_evidence(
-        client=source_client, storage_policy=storage_policy, provider_profile_id="office-e2e-source",
+        client=source_client,
+        storage_policy=storage_policy,
+        provider_profile_id="office-e2e-source",
     )
     target_profile = build_s3_compatible_provider_profile_evidence(
-        client=target_client, storage_policy=storage_policy, provider_profile_id="office-e2e-restore",
+        client=target_client,
+        storage_policy=storage_policy,
+        provider_profile_id="office-e2e-restore",
     )
     objects = run_exact_version_restore_drill(
-        repository=source_repository, target_client=target_client, storage_policy=storage_policy,
-        retention_policy=retention_policy, source_provider_profile_evidence=source_profile,
+        repository=source_repository,
+        target_client=target_client,
+        storage_policy=storage_policy,
+        retention_policy=retention_policy,
+        source_provider_profile_evidence=source_profile,
         target_provider_profile_evidence=target_profile,
         target_isolation_ref_hash=build_restore_target_isolation_ref_hash(
-            source_endpoint=env["SUITE_S3_ENDPOINT_URL"], target_endpoint=env["SUITE_RESTORE_S3_ENDPOINT_URL"],
-            source_provider_profile_id="office-e2e-source", target_provider_profile_id="office-e2e-restore",
-        ), tenant_ids=(TENANT_ID,),
+            source_endpoint=env["SUITE_S3_ENDPOINT_URL"],
+            target_endpoint=env["SUITE_RESTORE_S3_ENDPOINT_URL"],
+            source_provider_profile_id="office-e2e-source",
+            target_provider_profile_id="office-e2e-restore",
+        ),
+        tenant_ids=(TENANT_ID,),
     )
     if not objects.restore_ready:
         raise ValueError("Office exact-version object restoration is not verified")
     restored_sources = PgSourceObjectRepository(
-        database_dsn=target_dsn, storage_policy=storage_policy, retention_policy=retention_policy,
+        database_dsn=target_dsn,
+        storage_policy=storage_policy,
+        retention_policy=retention_policy,
         content_store=S3CompatibleSourceObjectContentStore(
-            client=target_client, storage_policy=storage_policy, restore_reference_resolution_enabled=True,
+            client=target_client,
+            storage_policy=storage_policy,
+            restore_reference_resolution_enabled=True,
         ),
     )
     receipt_store = PgSourceObjectWriteReceiptStore(database_dsn=target_dsn)
     restored = OfficeDocumentService(
-        repository=PgOfficeDocumentRepository(database_dsn=target_dsn, source_repository=restored_sources,
-                                             receipt_store=receipt_store),
-        source_repository=restored_sources, audit=InMemoryAuditLogger(), writes_available=False,
+        repository=PgOfficeDocumentRepository(
+            database_dsn=target_dsn, source_repository=restored_sources, receipt_store=receipt_store
+        ),
+        source_repository=restored_sources,
+        audit=InMemoryAuditLogger(),
+        writes_available=False,
     )
     user = _restored_reader(target_dsn)
     documents = restored.list_documents(user_context=user).documents
@@ -174,21 +207,34 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         for version in history.versions:
             read = restored.read_content(user_context=user, object_id=document.object_id, version_id=version.version_id)
             receipt = receipt_store.get(tenant_id=TENANT_ID, receipt_hash=version.source_write_receipt_hash)
-            source = source_repository.get(tenant_id=TENANT_ID, object_id=document.object_id, version_id=version.version_id)
+            source = source_repository.get(
+                tenant_id=TENANT_ID, object_id=document.object_id, version_id=version.version_id
+            )
             if (
                 receipt.receipt_hash != build_source_object_write_receipt_hash(receipt)
-                or receipt.object_id != document.object_id or receipt.version_id != version.version_id
-                or receipt.content_hash != version.content_hash or receipt.manifest_hash != source.metadata.manifest_hash
+                or receipt.object_id != document.object_id
+                or receipt.version_id != version.version_id
+                or receipt.content_hash != version.content_hash
+                or receipt.manifest_hash != source.metadata.manifest_hash
                 or stable_hash(canonical_json(read.content)) != source.metadata.content_hash
-                or read.can_write or read.rag_indexing_allowed or read.search_indexing_allowed
+                or read.can_write
+                or read.rag_indexing_allowed
+                or read.search_indexing_allowed
             ):
                 raise ValueError("Office restored version or receipt binding is invalid")
-            evidence.append({"object_id": document.object_id, "version_id": version.version_id,
-                             "content_hash": version.content_hash, "receipt_hash": receipt.receipt_hash})
+            evidence.append(
+                {
+                    "object_id": document.object_id,
+                    "version_id": version.version_id,
+                    "content_hash": version.content_hash,
+                    "receipt_hash": receipt.receipt_hash,
+                }
+            )
     if multi_version_documents < 1 or len(evidence) < 2:
         raise ValueError("Office recovery requires a non-empty document with at least two saved versions")
-    foreign = UserContext(tenant_id="tenant-work-e2e-foreign", user_id=EDITOR_ID,
-                          readable_object_ids={documents[0].object_id})
+    foreign = UserContext(
+        tenant_id="tenant-work-e2e-foreign", user_id=EDITOR_ID, readable_object_ids={documents[0].object_id}
+    )
     try:
         restored.read_content(user_context=foreign, object_id=documents[0].object_id)
     except OfficeDocumentNotFoundError:
@@ -198,14 +244,24 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     if source_metadata_hash != _metadata_hash(source_dsn) or source_metadata_hash != _metadata_hash(target_dsn):
         raise ValueError("Office recovery observed concurrent metadata changes")
     report = {
-        "schema_version": "office_native_synthetic_recovery_proof.v1", "synthetic_only": True,
-        "postgres_restore_report_hash": postgres.report_hash, "backup_sha256": postgres.backup_sha256,
-        "exact_version_restore_report_hash": objects.report_hash, "office_metadata_hash": source_metadata_hash,
-        "version_evidence_hash": stable_hash(canonical_json(evidence)), "document_count": len(documents),
-        "verified_office_version_count": len(evidence), "multi_version_document_count": multi_version_documents,
-        "restored_source_object_count": objects.restored_object_count, "authoritative_acl_verified": True,
-        "receipt_bindings_verified": True, "foreign_tenant_denied": True, "recovery_ready": True,
-        "content_included": False, "runtime_activated": False, "office_engine_admitted": False,
+        "schema_version": "office_native_synthetic_recovery_proof.v1",
+        "synthetic_only": True,
+        "postgres_restore_report_hash": postgres.report_hash,
+        "backup_sha256": postgres.backup_sha256,
+        "exact_version_restore_report_hash": objects.report_hash,
+        "office_metadata_hash": source_metadata_hash,
+        "version_evidence_hash": stable_hash(canonical_json(evidence)),
+        "document_count": len(documents),
+        "verified_office_version_count": len(evidence),
+        "multi_version_document_count": multi_version_documents,
+        "restored_source_object_count": objects.restored_object_count,
+        "authoritative_acl_verified": True,
+        "receipt_bindings_verified": True,
+        "foreign_tenant_denied": True,
+        "recovery_ready": True,
+        "content_included": False,
+        "runtime_activated": False,
+        "office_engine_admitted": False,
     }
     report["report_hash"] = stable_hash(canonical_json(report))
     return report
@@ -215,9 +271,17 @@ def main() -> int:
     try:
         report = run_office_recovery_proof(os.environ)
     except (KeyError, ValueError, OSError, psycopg.Error):
-        print(json.dumps({"schema_version": "office_native_synthetic_recovery_proof.v1",
-                          "recovery_ready": False, "content_included": False,
-                          "reason": "Office synthetic recovery proof failed"}, sort_keys=True))
+        print(
+            json.dumps(
+                {
+                    "schema_version": "office_native_synthetic_recovery_proof.v1",
+                    "recovery_ready": False,
+                    "content_included": False,
+                    "reason": "Office synthetic recovery proof failed",
+                },
+                sort_keys=True,
+            )
+        )
         return 2
     print(json.dumps(report, sort_keys=True))
     return 0

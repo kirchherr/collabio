@@ -71,42 +71,90 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
     triggers: list[dict[str, object]] = []
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
         function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
-        triggers.append({
-            "schema_name": "office", "table_name": table_name.split(".")[1],
-            "trigger_name": trigger_name, "trigger_enabled": "O",
-            "trigger_definition": f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} FOR EACH ROW EXECUTE FUNCTION office.{function_name}()",
-            "function_schema": "office", "function_name": function_name, "function_owner": "collabio_owner",
-            "function_security_definer": security_definer, "function_config": ["search_path=pg_catalog"],
-            "function_acl": "{collabio_owner=X/collabio_owner}", "function_language": "plpgsql",
-            "function_identity_arguments": "", "function_result": "trigger",
-            "function_definition": f"CREATE FUNCTION office.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
-            "function_body": function_sql.split("AS $$", 1)[1].split("$$;", 1)[0],
-            "function_public_execute": False, "function_runtime_execute": False,
-        })
+        triggers.append(
+            {
+                "schema_name": "office",
+                "table_name": table_name.split(".")[1],
+                "trigger_name": trigger_name,
+                "trigger_enabled": "O",
+                "trigger_definition": (
+                    f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} "
+                    f"FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
+                ),
+                "function_schema": "office",
+                "function_name": function_name,
+                "function_owner": "collabio_owner",
+                "function_security_definer": security_definer,
+                "function_config": ["search_path=pg_catalog"],
+                "function_acl": "{collabio_owner=X/collabio_owner}",
+                "function_language": "plpgsql",
+                "function_identity_arguments": "",
+                "function_result": "trigger",
+                "function_definition": f"CREATE FUNCTION office.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
+                "function_body": function_sql.split("AS $$", 1)[1].split("$$;", 1)[0],
+                "function_public_execute": False,
+                "function_runtime_execute": False,
+            }
+        )
     return {
         "schemas": [{"schema_name": "office"}],
-        "tables": [{
-            "schema_name": "office", "table_name": table_name.split(".")[1], "relation_kind": "r",
-            "table_owner": "collabio_owner", "rls_enabled": True, "rls_forced": True,
-        } for table_name in sorted(OFFICE_DOCUMENT_TABLES)],
+        "tables": [
+            {
+                "schema_name": "office",
+                "table_name": table_name.split(".")[1],
+                "relation_kind": "r",
+                "table_owner": "collabio_owner",
+                "rls_enabled": True,
+                "rls_forced": True,
+            }
+            for table_name in sorted(OFFICE_DOCUMENT_TABLES)
+        ],
         "triggers": triggers,
-        "policies": [{
-            "schema_name": "office", "table_name": table_name.split(".")[1], "policy_name": policy_name,
-            "cmd": command, "qual": qualifier, "with_check": check, "permissive": "PERMISSIVE", "roles": "{public}",
-        } for (table_name, policy_name), (command, qualifier, check) in OFFICE_POLICY_DEFINITIONS.items()],
-        "constraints": [{
-            "schema_name": "office", "table_name": table_name.split(".")[1], "constraint_definition": definition,
-        } for table_name, definitions in OFFICE_REQUIRED_CONSTRAINTS.items() for definition in sorted(definitions)],
-        "grants": [{
-            "schema_name": "office", "table_name": table_name.split(".")[1], "grantee": grantee,
-            "privilege_type": privilege, "is_grantable": "NO",
-        } for table_name in sorted(OFFICE_DOCUMENT_TABLES)
+        "policies": [
+            {
+                "schema_name": "office",
+                "table_name": table_name.split(".")[1],
+                "policy_name": policy_name,
+                "cmd": command,
+                "qual": qualifier,
+                "with_check": check,
+                "permissive": "PERMISSIVE",
+                "roles": "{public}",
+            }
+            for (table_name, policy_name), (command, qualifier, check) in OFFICE_POLICY_DEFINITIONS.items()
+        ],
+        "constraints": [
+            {
+                "schema_name": "office",
+                "table_name": table_name.split(".")[1],
+                "constraint_definition": definition,
+            }
+            for table_name, definitions in OFFICE_REQUIRED_CONSTRAINTS.items()
+            for definition in sorted(definitions)
+        ],
+        "grants": [
+            {
+                "schema_name": "office",
+                "table_name": table_name.split(".")[1],
+                "grantee": grantee,
+                "privilege_type": privilege,
+                "is_grantable": "NO",
+            }
+            for table_name in sorted(OFFICE_DOCUMENT_TABLES)
             for grantee, privileges in (("collabio_app", ("SELECT", "INSERT")), ("collabio_worker", ("SELECT",)))
-            for privilege in privileges],
-        "column_grants": [{
-            "schema_name": "office", "table_name": "documents", "grantee": "collabio_app",
-            "column_name": column, "privilege_type": "UPDATE", "is_grantable": "NO",
-        } for column in ("title", "current_version_id", "updated_at_utc")],
+            for privilege in privileges
+        ],
+        "column_grants": [
+            {
+                "schema_name": "office",
+                "table_name": "documents",
+                "grantee": "collabio_app",
+                "column_name": column,
+                "privilege_type": "UPDATE",
+                "is_grantable": "NO",
+            }
+            for column in ("title", "current_version_id", "updated_at_utc")
+        ],
     }
 
 
@@ -574,51 +622,66 @@ def test_restore_requires_native_office_controls() -> None:
     assert snapshot.office_document_controls_verified is True
 
 
-@pytest.mark.parametrize("collection", ("schemas", "tables", "policies", "constraints", "triggers", "grants", "column_grants"))
+@pytest.mark.parametrize(
+    "collection", ("schemas", "tables", "policies", "constraints", "triggers", "grants", "column_grants")
+)
 def test_restore_rejects_identically_missing_office_controls(collection: str) -> None:
     def remove(rows: dict[str, list[dict[str, object]]]) -> None:
         rows[collection].pop()
+
     _assert_office_tamper_blocked(_office_tamper_report(remove))
 
 
-@pytest.mark.parametrize("function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head"))
-@pytest.mark.parametrize(("field", "value"), (
-    ("trigger_enabled", "D"),
-    ("trigger_enabled", "R"),
-    ("trigger_definition", "CREATE TRIGGER replacement AFTER DELETE ON office.documents"),
-    ("function_schema", "public"),
-    ("function_name", "replacement_function"),
-    ("function_owner", "collabio_app"),
-    ("function_config", ["search_path=public, pg_catalog"]),
-    ("function_config", None),
-    ("function_acl", "{collabio_owner=X/collabio_owner,unreviewed_role=X/collabio_owner}"),
-    ("function_public_execute", True),
-    ("function_runtime_execute", True),
-    ("function_language", "sql"),
-    ("function_identity_arguments", "arg text"),
-    ("function_result", "text"),
-    ("function_body", "BEGIN RETURN NEW; END"),
-    ("function_body", None),
-))
+@pytest.mark.parametrize(
+    "function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head")
+)
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("trigger_enabled", "D"),
+        ("trigger_enabled", "R"),
+        ("trigger_definition", "CREATE TRIGGER replacement AFTER DELETE ON office.documents"),
+        ("function_schema", "public"),
+        ("function_name", "replacement_function"),
+        ("function_owner", "collabio_app"),
+        ("function_config", ["search_path=public, pg_catalog"]),
+        ("function_config", None),
+        ("function_acl", "{collabio_owner=X/collabio_owner,unreviewed_role=X/collabio_owner}"),
+        ("function_public_execute", True),
+        ("function_runtime_execute", True),
+        ("function_language", "sql"),
+        ("function_identity_arguments", "arg text"),
+        ("function_result", "text"),
+        ("function_body", "BEGIN RETURN NEW; END"),
+        ("function_body", None),
+    ),
+)
 def test_restore_rejects_identical_office_trigger_function_drift(function_name: str, field: str, value: object) -> None:
     def tamper(rows: dict[str, list[dict[str, object]]]) -> None:
         next(row for row in rows["triggers"] if row["function_name"] == function_name)[field] = value
+
     _assert_office_tamper_blocked(_office_tamper_report(tamper))
 
 
-@pytest.mark.parametrize("function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head"))
+@pytest.mark.parametrize(
+    "function_name", ("bind_document_creator_acl", "enforce_version_source_binding", "guard_document_head")
+)
 def test_restore_pins_each_office_function_security_mode(function_name: str) -> None:
     def flip_security(rows: dict[str, list[dict[str, object]]]) -> None:
         function = next(row for row in rows["triggers"] if row["function_name"] == function_name)
         function["function_security_definer"] = not function["function_security_definer"]
+
     _assert_office_tamper_blocked(_office_tamper_report(flip_security))
 
 
 @pytest.mark.parametrize("table_name", ("documents", "document_versions"))
-@pytest.mark.parametrize(("field", "value"), (("rls_enabled", False), ("rls_forced", False), ("table_owner", "collabio_app")))
+@pytest.mark.parametrize(
+    ("field", "value"), (("rls_enabled", False), ("rls_forced", False), ("table_owner", "collabio_app"))
+)
 def test_restore_rejects_office_table_security_drift(table_name: str, field: str, value: object) -> None:
     def tamper(rows: dict[str, list[dict[str, object]]]) -> None:
         next(row for row in rows["tables"] if row["table_name"] == table_name)[field] = value
+
     _assert_office_tamper_blocked(_office_tamper_report(tamper))
 
 
@@ -627,6 +690,7 @@ def test_restore_checks_office_policy_expressions_including_append_only_denials(
     def permit_all(rows: dict[str, list[dict[str, object]]]) -> None:
         policy = next(row for row in rows["policies"] if row["policy_name"] == policy_name)
         policy["with_check" if policy["cmd"] == "INSERT" else "qual"] = "true"
+
     _assert_office_tamper_blocked(_office_tamper_report(permit_all))
 
 
@@ -635,34 +699,51 @@ def test_restore_rejects_additional_unreviewed_office_trigger_or_policy(collecti
     def append(rows: dict[str, list[dict[str, object]]]) -> None:
         name = "trigger_name" if collection == "triggers" else "policy_name"
         rows[collection].append({**rows[collection][0], name: "unreviewed_bypass"})
+
     _assert_office_tamper_blocked(_office_tamper_report(append))
 
 
-@pytest.mark.parametrize(("collection", "table_name", "grantee", "privilege", "column"), (
-    ("grants", "documents", "collabio_app", "UPDATE", ""),
-    ("grants", "documents", "PUBLIC", "DELETE", ""),
-    ("grants", "document_versions", "collabio_app", "UPDATE", ""),
-    ("grants", "document_versions", "collabio_worker", "INSERT", ""),
-    ("column_grants", "documents", "collabio_app", "UPDATE", "owner_principal_id"),
-    ("column_grants", "document_versions", "collabio_app", "UPDATE", "content_hash"),
-    ("column_grants", "documents", "PUBLIC", "UPDATE", "title"),
-))
+@pytest.mark.parametrize(
+    ("collection", "table_name", "grantee", "privilege", "column"),
+    (
+        ("grants", "documents", "collabio_app", "UPDATE", ""),
+        ("grants", "documents", "PUBLIC", "DELETE", ""),
+        ("grants", "document_versions", "collabio_app", "UPDATE", ""),
+        ("grants", "document_versions", "collabio_worker", "INSERT", ""),
+        ("column_grants", "documents", "collabio_app", "UPDATE", "owner_principal_id"),
+        ("column_grants", "document_versions", "collabio_app", "UPDATE", "content_hash"),
+        ("column_grants", "documents", "PUBLIC", "UPDATE", "title"),
+    ),
+)
 def test_restore_rejects_broadened_office_table_and_column_grants(
-    collection: str, table_name: str, grantee: str, privilege: str, column: str,
+    collection: str,
+    table_name: str,
+    grantee: str,
+    privilege: str,
+    column: str,
 ) -> None:
     def grant(rows: dict[str, list[dict[str, object]]]) -> None:
-        rows[collection].append({
-            "schema_name": "office", "table_name": table_name, "grantee": grantee,
-            "privilege_type": privilege, "column_name": column, "is_grantable": "NO",
-        })
+        rows[collection].append(
+            {
+                "schema_name": "office",
+                "table_name": table_name,
+                "grantee": grantee,
+                "privilege_type": privilege,
+                "column_name": column,
+                "is_grantable": "NO",
+            }
+        )
+
     _assert_office_tamper_blocked(_office_tamper_report(grant))
 
 
 def test_restore_hashes_office_column_grants_and_complete_function_definitions() -> None:
     source = _snapshot(database_hash="sha256:" + "b" * 64)
+
     def alter_definition(rows: dict[str, list[dict[str, object]]]) -> None:
         rows["triggers"][0]["function_definition"] = "changed"
         rows["column_grants"][0]["is_grantable"] = "YES"
+
     target = _snapshot(database_hash="sha256:" + "c" * 64, office_mutate=alter_definition)
     assert source.relation_manifest_hash != target.relation_manifest_hash
     assert source.database_control_manifest_hash != target.database_control_manifest_hash

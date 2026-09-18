@@ -185,13 +185,17 @@ class OfficeDocumentRepository(Protocol):
 def office_document_command_hash(
     *, user_context: UserContext, object_id: str | None, command: OfficeDocumentCreateCommand
 ) -> str:
-    return stable_hash(canonical_json({
-        "tenant_id": user_context.tenant_id,
-        "actor": user_context.user_id,
-        "object_id": object_id,
-        "command": command.model_dump(mode="json"),
-        "schema_version": OFFICE_DOCUMENT_SCHEMA_VERSION,
-    }))
+    return stable_hash(
+        canonical_json(
+            {
+                "tenant_id": user_context.tenant_id,
+                "actor": user_context.user_id,
+                "object_id": object_id,
+                "command": command.model_dump(mode="json"),
+                "schema_version": OFFICE_DOCUMENT_SCHEMA_VERSION,
+            }
+        )
+    )
 
 
 def can_create_office_document(user_context: UserContext) -> bool:
@@ -200,8 +204,12 @@ def can_create_office_document(user_context: UserContext) -> bool:
 
 class OfficeDocumentService:
     def __init__(
-        self, *, repository: OfficeDocumentRepository, source_repository: SourceObjectRepository,
-        audit: InMemoryAuditLogger, writes_available: bool = True,
+        self,
+        *,
+        repository: OfficeDocumentRepository,
+        source_repository: SourceObjectRepository,
+        audit: InMemoryAuditLogger,
+        writes_available: bool = True,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
@@ -213,15 +221,25 @@ class OfficeDocumentService:
         event_id = self._audit(user_context, "office.documents.list", count=len(records))
         return OfficeDocumentListResponse(
             tenant_id=user_context.tenant_id,
-            documents=[self._view(record, self.writes_available and write_enabled and self.repository.can_write(
-                user_context=user_context, object_id=record.object_id
-            )) for record in records],
+            documents=[
+                self._view(
+                    record,
+                    self.writes_available
+                    and write_enabled
+                    and self.repository.can_write(user_context=user_context, object_id=record.object_id),
+                )
+                for record in records
+            ],
             can_create=self.writes_available and write_enabled and can_create_office_document(user_context),
             audit_event_id=event_id,
         )
 
     def read_content(
-        self, *, user_context: UserContext, object_id: str, version_id: str | None = None,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        version_id: str | None = None,
         write_enabled: bool = False,
     ) -> OfficeDocumentContentResponse:
         document = self.repository.get_document(user_context=user_context, object_id=object_id)
@@ -229,28 +247,47 @@ class OfficeDocumentService:
             user_context=user_context, object_id=object_id, version_id=version_id or document.current_version_id
         )
         content = self._read_content(document, version)
-        can_write = self.writes_available and write_enabled and self.repository.can_write(user_context=user_context, object_id=object_id)
-        event_id = self._audit(user_context, "office.documents.read", object_id=object_id,
-                               version_id=version.version_id, content_hash=version.content_hash)
+        can_write = (
+            self.writes_available
+            and write_enabled
+            and self.repository.can_write(user_context=user_context, object_id=object_id)
+        )
+        event_id = self._audit(
+            user_context,
+            "office.documents.read",
+            object_id=object_id,
+            version_id=version.version_id,
+            content_hash=version.content_hash,
+        )
         return self._content_response(document, version, content, can_write, event_id)
 
     def history(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentHistoryResponse:
         versions = self.repository.versions(user_context=user_context, object_id=object_id)
         event_id = self._audit(user_context, "office.documents.history", object_id=object_id, count=len(versions))
         return OfficeDocumentHistoryResponse(
-            tenant_id=user_context.tenant_id, object_id=object_id,
-            versions=[self._version_view(version) for version in versions], audit_event_id=event_id,
+            tenant_id=user_context.tenant_id,
+            object_id=object_id,
+            versions=[self._version_view(version) for version in versions],
+            audit_event_id=event_id,
         )
 
     def create(
-        self, *, user_context: UserContext, command: OfficeDocumentCreateCommand, write_enabled: bool = False,
+        self,
+        *,
+        user_context: UserContext,
+        command: OfficeDocumentCreateCommand,
+        write_enabled: bool = False,
     ) -> OfficeDocumentContentResponse:
         if not self.writes_available or not write_enabled or not can_create_office_document(user_context):
             raise OfficeDocumentPermissionError("Document creation is not permitted")
         return self._save(user_context=user_context, object_id=None, command=command)
 
     def save(
-        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentSaveCommand,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentSaveCommand,
         write_enabled: bool = False,
     ) -> OfficeDocumentContentResponse:
         if not self.writes_available or not write_enabled:
@@ -258,16 +295,24 @@ class OfficeDocumentService:
         return self._save(user_context=user_context, object_id=object_id, command=command)
 
     def _save(
-        self, *, user_context: UserContext, object_id: str | None, command: OfficeDocumentCreateCommand,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str | None,
+        command: OfficeDocumentCreateCommand,
     ) -> OfficeDocumentContentResponse:
         # Revalidate even commands constructed internally without Pydantic validation.
         command = type(command).model_validate(command.model_dump(mode="python"))
         result = self.repository.commit(user_context=user_context, object_id=object_id, command=command)
         event_id = self._audit(
-            user_context, "office.documents.saved", object_id=result.document.object_id,
-            version_id=result.version.version_id, content_hash=result.version.content_hash,
+            user_context,
+            "office.documents.saved",
+            object_id=result.document.object_id,
+            version_id=result.version.version_id,
+            content_hash=result.version.content_hash,
             source_write_receipt_hash=result.version.source_write_receipt_hash,
-            command_hash=result.version.command_hash, replayed=result.replayed,
+            command_hash=result.version.command_hash,
+            replayed=result.replayed,
         )
         # Return the committed transaction snapshot: a later save cannot invalidate this success.
         return self._content_response(
@@ -309,22 +354,35 @@ class OfficeDocumentService:
             raise OfficeDocumentInvalidContentError("Document source is invalid") from exc
 
     @staticmethod
-    def _validate_source(metadata: SourceObjectMetadata, document: OfficeDocumentRecord, version: OfficeDocumentVersion) -> None:
+    def _validate_source(
+        metadata: SourceObjectMetadata, document: OfficeDocumentRecord, version: OfficeDocumentVersion
+    ) -> None:
         if (
-            metadata.tenant_id != document.tenant_id or metadata.object_id != document.object_id
-            or metadata.version_id != version.version_id or metadata.object_type != SourceObjectType.DOCUMENT
-            or metadata.mime_type != OFFICE_DOCUMENT_MIME_TYPE or metadata.source_system != OFFICE_DOCUMENT_SOURCE_SYSTEM
+            metadata.tenant_id != document.tenant_id
+            or metadata.object_id != document.object_id
+            or metadata.version_id != version.version_id
+            or metadata.object_type != SourceObjectType.DOCUMENT
+            or metadata.mime_type != OFFICE_DOCUMENT_MIME_TYPE
+            or metadata.source_system != OFFICE_DOCUMENT_SOURCE_SYSTEM
             or metadata.schema_version != OFFICE_DOCUMENT_SCHEMA_VERSION
             or metadata.lifecycle_state != SourceLifecycleState.SAVED_VERSION
-            or metadata.classification.value != "internal" or metadata.retention_policy_id != "rp-standard"
-            or metadata.legal_hold_state.value != "none" or metadata.parent_object_id is not None
-            or metadata.thread_id is not None or metadata.parser_profile_id is not None
-            or metadata.owner_principal_id != document.owner_principal_id or metadata.created_by != version.created_by
-            or metadata.title != version.title or metadata.created_at_utc != version.created_at_utc
-            or metadata.updated_at_utc != version.created_at_utc or metadata.audit_chain_ref != version.audit_chain_ref
+            or metadata.classification.value != "internal"
+            or metadata.retention_policy_id != "rp-standard"
+            or metadata.legal_hold_state.value != "none"
+            or metadata.parent_object_id is not None
+            or metadata.thread_id is not None
+            or metadata.parser_profile_id is not None
+            or metadata.owner_principal_id != document.owner_principal_id
+            or metadata.created_by != version.created_by
+            or metadata.title != version.title
+            or metadata.created_at_utc != version.created_at_utc
+            or metadata.updated_at_utc != version.created_at_utc
+            or metadata.audit_chain_ref != version.audit_chain_ref
             or metadata.kms_key_ref != f"kms://{document.tenant_id}/internal/v1"
-            or metadata.content_hash != version.content_hash or metadata.manifest_hash != version.source_manifest_hash
-            or metadata.acl_hash != version.acl_hash or metadata.acl_version != version.acl_version
+            or metadata.content_hash != version.content_hash
+            or metadata.manifest_hash != version.source_manifest_hash
+            or metadata.acl_hash != version.acl_hash
+            or metadata.acl_version != version.acl_version
             or metadata.content_byte_length != version.content_byte_length
             or not 0 < metadata.content_byte_length <= MAX_DOCUMENT_BYTES
             or build_source_object_manifest_hash(metadata) != metadata.manifest_hash
@@ -333,30 +391,49 @@ class OfficeDocumentService:
 
     @staticmethod
     def _view(record: OfficeDocumentRecord, can_write: bool) -> OfficeDocumentView:
-        return OfficeDocumentView(**record.model_dump(include={
-            "object_id", "title", "current_version_id", "created_at_utc", "updated_at_utc"
-        }), can_write=can_write)
+        return OfficeDocumentView(
+            **record.model_dump(
+                include={"object_id", "title", "current_version_id", "created_at_utc", "updated_at_utc"}
+            ),
+            can_write=can_write,
+        )
 
     @staticmethod
     def _version_view(version: OfficeDocumentVersion) -> OfficeDocumentVersionView:
         return OfficeDocumentVersionView(**version.model_dump(include=set(OfficeDocumentVersionView.model_fields)))
 
     def _content_response(
-        self, document: OfficeDocumentRecord, version: OfficeDocumentVersion, content: dict[str, Any],
-        can_write: bool, event_id: str, *, replayed: bool = False,
+        self,
+        document: OfficeDocumentRecord,
+        version: OfficeDocumentVersion,
+        content: dict[str, Any],
+        can_write: bool,
+        event_id: str,
+        *,
+        replayed: bool = False,
     ) -> OfficeDocumentContentResponse:
         return OfficeDocumentContentResponse(
-            tenant_id=document.tenant_id, document=self._view(document, can_write),
-            version=self._version_view(version), content=content,
+            tenant_id=document.tenant_id,
+            document=self._view(document, can_write),
+            version=self._version_view(version),
+            content=content,
             is_current_version=document.current_version_id == version.version_id,
-            can_write=can_write, audit_event_id=event_id, replayed=replayed,
+            can_write=can_write,
+            audit_event_id=event_id,
+            replayed=replayed,
         )
 
     def _audit(self, user: UserContext, event_type: str, **metadata: Any) -> str:
         object_id = metadata.get("object_id")
         return self.audit.record(
-            user_context=user, event_type=event_type,
+            user_context=user,
+            event_type=event_type,
             source_object_ids=[object_id] if isinstance(object_id, str) else [],
-            metadata={"module_id": OFFICE_DOCUMENTS_MODULE_ID, "surface": "api", **metadata,
-                      "rag_indexing_allowed": False, "search_indexing_allowed": False},
+            metadata={
+                "module_id": OFFICE_DOCUMENTS_MODULE_ID,
+                "surface": "api",
+                **metadata,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
         ).event_id

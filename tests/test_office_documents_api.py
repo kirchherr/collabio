@@ -57,9 +57,7 @@ def office_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[OfficeApiHarness]:
     monkeypatch.setenv("SUITE_AUTH_MODE", "dev")
     sources = InMemorySourceObjectRepository()
     repository = InMemoryOfficeDocumentRepository(source_repository=sources)
-    service = OfficeDocumentService(
-        repository=repository, source_repository=sources, audit=InMemoryAuditLogger()
-    )
+    service = OfficeDocumentService(repository=repository, source_repository=sources, audit=InMemoryAuditLogger())
     monkeypatch.setattr(app.state, "office_document_service", service)
     monkeypatch.setattr(app.state, "module_registry", default_module_registry())
     headers = {
@@ -324,10 +322,14 @@ def test_office_storage_and_database_errors_are_safe_and_uncacheable(
     created = create_document(office_api)
     object_id = created["document"]["object_id"]
     if operation == "read":
-        monkeypatch.setattr(office_api.service.source_repository, "get", Mock(side_effect=SourceObjectStorageError(SECRET)))
+        monkeypatch.setattr(
+            office_api.service.source_repository, "get", Mock(side_effect=SourceObjectStorageError(SECRET))
+        )
         response = office_api.client.get(f"{BASE}/{object_id}/content", headers=office_api.headers)
     elif operation == "save":
-        monkeypatch.setattr(office_api.service.source_repository, "add", Mock(side_effect=SourceObjectStorageError(SECRET)))
+        monkeypatch.setattr(
+            office_api.service.source_repository, "add", Mock(side_effect=SourceObjectStorageError(SECRET))
+        )
         response = office_api.client.post(
             f"{BASE}/{object_id}/versions", headers=office_api.headers, json=save_payload(created)
         )
@@ -401,13 +403,16 @@ def test_office_jwt_ignores_forged_browser_roles_ids_and_tenant(
     assert office_api.client.get(f"{BASE}/{object_id}/content", headers=headers).status_code == 404
     resolver.directory = InMemoryPrincipalDirectory(
         principals=[principal],
-        object_acls=[ObjectAclRecord(tenant_id="tenant-demo", object_id=object_id, readable_user_ids={principal.user_id})],
+        object_acls=[
+            ObjectAclRecord(tenant_id="tenant-demo", object_id=object_id, readable_user_ids={principal.user_id})
+        ],
     )
     response = office_api.client.get(f"{BASE}/{object_id}/content", headers=headers)
     assert response.status_code == 200
     assert response.json()["tenant_id"] == "tenant-demo"
     assert response.json()["can_write"] is False
     assert office_api.client.post(BASE, headers=headers, json=create_payload("forged-create")).status_code == 403
-    assert office_api.client.post(
-        f"{BASE}/{object_id}/versions", headers=headers, json=save_payload(created)
-    ).status_code == 403
+    assert (
+        office_api.client.post(f"{BASE}/{object_id}/versions", headers=headers, json=save_payload(created)).status_code
+        == 403
+    )

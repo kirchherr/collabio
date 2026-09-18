@@ -112,7 +112,8 @@ def grant(database: Database, user: UserContext, object_id: str, principal: str,
         set_tenant(connection, user.tenant_id)
         connection.execute(
             "INSERT INTO collabio.object_acl_entries "
-            "(tenant_id, object_id, object_type, acl_subject_type, acl_subject_id, permission, acl_version, status, audit_chain_ref) "
+            "(tenant_id, object_id, object_type, acl_subject_type, acl_subject_id, "
+            "permission, acl_version, status, audit_chain_ref) "
             "VALUES (%s, %s, 'office.document', 'user', %s, %s, 1, 'active', 'audit:office-test-grant')",
             (user.tenant_id, object_id, principal, permission),
         )
@@ -261,7 +262,8 @@ def test_pg_storage_failure_rolls_back_document_creator_acl_and_receipt(database
 
 
 def test_pg_database_failure_after_put_preserves_old_head_and_detects_orphan(
-    database: Database, monkeypatch: pytest.MonkeyPatch,
+    database: Database,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = InMemorySourceObjectContentStore()
     service = service_for(database, store)
@@ -275,14 +277,21 @@ def test_pg_database_failure_after_put_preserves_old_head_and_detects_orphan(
 
     monkeypatch.setattr(service.repository, "_insert_version", fail_version_insert)
     with pytest.raises(psycopg.errors.DivisionByZero):
-        service.save(user_context=user, object_id=object_id, write_enabled=True,
-                     command=OfficeDocumentSaveCommand(**command("failed-save", "Uncommitted draft").model_dump(),
-                         expected_current_version_id=created.version.version_id))
+        service.save(
+            user_context=user,
+            object_id=object_id,
+            write_enabled=True,
+            command=OfficeDocumentSaveCommand(
+                **command("failed-save", "Uncommitted draft").model_dump(),
+                expected_current_version_id=created.version.version_id,
+            ),
+        )
     assert counts(database, user) == (1, 1, 1, 1, 1)
     assert service.read_content(user_context=user, object_id=object_id).version == created.version
     assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 2
     recovery = source_repository(database, store).build_content_recovery_evidence(
-        tenant_id=user.tenant_id, restore_drill_report_hash="sha256:" + "a" * 64,
+        tenant_id=user.tenant_id,
+        restore_drill_report_hash="sha256:" + "a" * 64,
     )
     assert recovery.orphaned_content_count == 1
     assert recovery.missing_content_count == 0

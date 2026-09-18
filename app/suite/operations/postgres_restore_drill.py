@@ -94,34 +94,60 @@ KB_ACL_TRIGGER_FUNCTIONS = {
 OFFICE_DOCUMENT_TABLES = {"office.documents", "office.document_versions"}
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ("office.documents", "office_documents_bind_creator_acl"): ("bind_document_creator_acl", "AFTER INSERT", True),
-    ("office.document_versions", "office_versions_bind_source"): ("enforce_version_source_binding", "BEFORE INSERT", False),
+    ("office.document_versions", "office_versions_bind_source"): (
+        "enforce_version_source_binding",
+        "BEFORE INSERT",
+        False,
+    ),
     ("office.documents", "office_documents_guard_head"): ("guard_document_head", "BEFORE UPDATE", False),
 }
 OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | None]] = {
-    ("office.documents", "office_documents_tenant_select"): ("SELECT", "(tenant_id = collabio.current_tenant_id())", None),
-    ("office.documents", "office_documents_tenant_insert"): ("INSERT", None, "(tenant_id = collabio.current_tenant_id())"),
+    ("office.documents", "office_documents_tenant_select"): (
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
+    ),
+    ("office.documents", "office_documents_tenant_insert"): (
+        "INSERT",
+        None,
+        "(tenant_id = collabio.current_tenant_id())",
+    ),
     ("office.documents", "office_documents_tenant_update"): (
-        "UPDATE", "(tenant_id = collabio.current_tenant_id())", "(tenant_id = collabio.current_tenant_id())"
+        "UPDATE",
+        "(tenant_id = collabio.current_tenant_id())",
+        "(tenant_id = collabio.current_tenant_id())",
     ),
     ("office.documents", "office_documents_no_delete"): ("DELETE", "false", None),
-    ("office.document_versions", "office_versions_tenant_select"): ("SELECT", "(tenant_id = collabio.current_tenant_id())", None),
-    ("office.document_versions", "office_versions_tenant_insert"): ("INSERT", None, "(tenant_id = collabio.current_tenant_id())"),
+    ("office.document_versions", "office_versions_tenant_select"): (
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
+    ),
+    ("office.document_versions", "office_versions_tenant_insert"): (
+        "INSERT",
+        None,
+        "(tenant_id = collabio.current_tenant_id())",
+    ),
     ("office.document_versions", "office_versions_no_update"): ("UPDATE", "false", None),
     ("office.document_versions", "office_versions_no_delete"): ("DELETE", "false", None),
 }
 OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
     "office.documents": {
         "PRIMARY KEY (tenant_id, object_id)",
-        "FOREIGN KEY (tenant_id, object_id, current_version_id) REFERENCES office.document_versions(tenant_id, object_id, version_id) DEFERRABLE INITIALLY DEFERRED",
+        "FOREIGN KEY (tenant_id, object_id, current_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id) DEFERRABLE INITIALLY DEFERRED",
     },
     "office.document_versions": {
         "PRIMARY KEY (tenant_id, object_id, version_id)",
         "UNIQUE (tenant_id, created_by, mutation_reference)",
         "UNIQUE (tenant_id, source_write_receipt_hash)",
         "FOREIGN KEY (tenant_id, object_id) REFERENCES office.documents(tenant_id, object_id)",
-        "FOREIGN KEY (tenant_id, object_id, previous_version_id) REFERENCES office.document_versions(tenant_id, object_id, version_id)",
-        "FOREIGN KEY (tenant_id, object_id, version_id) REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
-        "FOREIGN KEY (tenant_id, source_write_receipt_hash) REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
+        "FOREIGN KEY (tenant_id, object_id, previous_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, object_id, version_id) "
+        "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
+        "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
     },
 }
 
@@ -505,9 +531,13 @@ def build_postgres_database_snapshot(
     module_registry_verified = table_names >= MODULE_REGISTRY_TABLES and "collabio.tenant_modules" in forced_rls_tables
     source_object_verified = table_names >= SOURCE_OBJECT_TABLES and forced_rls_tables >= SOURCE_OBJECT_TABLES
     office_document_verified = _office_document_controls_verified(
-        schemas=normalized["schemas"], tables=normalized["tables"], policies=normalized["policies"],
-        triggers=normalized["triggers"], constraints=normalized["constraints"],
-        grants=normalized["grants"], column_grants=normalized["column_grants"],
+        schemas=normalized["schemas"],
+        tables=normalized["tables"],
+        policies=normalized["policies"],
+        triggers=normalized["triggers"],
+        constraints=normalized["constraints"],
+        grants=normalized["grants"],
+        column_grants=normalized["column_grants"],
     )
     crm_receipt_policies = {
         str(row.get("policy_name", ""))
@@ -783,9 +813,13 @@ def build_postgres_database_snapshot(
     row_count_manifest_hash = _canonical_sha256(normalized["row_counts"])
     migration_manifest_hash = _canonical_sha256(normalized["migrations"])
     rls_policy_manifest_hash = _canonical_sha256({"tables": normalized["tables"], "policies": normalized["policies"]})
-    database_control_manifest_hash = _canonical_sha256({
-        "roles": normalized["roles"], "grants": normalized["grants"], "column_grants": normalized["column_grants"],
-    })
+    database_control_manifest_hash = _canonical_sha256(
+        {
+            "roles": normalized["roles"],
+            "grants": normalized["grants"],
+            "column_grants": normalized["column_grants"],
+        }
+    )
     state_payload = {
         "schema_manifest_hash": schema_manifest_hash,
         "relation_manifest_hash": relation_manifest_hash,
@@ -1288,66 +1322,99 @@ def _exact_row_counts(
 
 
 def _office_document_controls_verified(
-    *, schemas: Sequence[Mapping[str, object]], tables: Sequence[Mapping[str, object]],
-    policies: Sequence[Mapping[str, object]], triggers: Sequence[Mapping[str, object]],
-    constraints: Sequence[Mapping[str, object]], grants: Sequence[Mapping[str, object]],
+    *,
+    schemas: Sequence[Mapping[str, object]],
+    tables: Sequence[Mapping[str, object]],
+    policies: Sequence[Mapping[str, object]],
+    triggers: Sequence[Mapping[str, object]],
+    constraints: Sequence[Mapping[str, object]],
+    grants: Sequence[Mapping[str, object]],
     column_grants: Sequence[Mapping[str, object]],
 ) -> bool:
     if not any(row.get("schema_name") == "office" for row in schemas):
         return False
     office_tables = [row for row in tables if _qualified_name(row) in OFFICE_DOCUMENT_TABLES]
     if len(office_tables) != len(OFFICE_DOCUMENT_TABLES) or any(
-        row.get("rls_enabled") is not True or row.get("rls_forced") is not True
-        or row.get("table_owner") != "collabio_owner" for row in office_tables
+        row.get("rls_enabled") is not True
+        or row.get("rls_forced") is not True
+        or row.get("table_owner") != "collabio_owner"
+        for row in office_tables
     ):
         return False
     office_policies = [row for row in policies if _qualified_name(row) in OFFICE_DOCUMENT_TABLES]
     if len(office_policies) != len(OFFICE_POLICY_DEFINITIONS):
         return False
     for (table_name, policy_name), (command, qualifier, check) in OFFICE_POLICY_DEFINITIONS.items():
-        matching = [row for row in office_policies if _qualified_name(row) == table_name and row.get("policy_name") == policy_name]
+        matching = [
+            row
+            for row in office_policies
+            if _qualified_name(row) == table_name and row.get("policy_name") == policy_name
+        ]
         if len(matching) != 1:
             return False
         policy = matching[0]
-        if (policy.get("cmd"), policy.get("qual"), policy.get("with_check"), policy.get("permissive"), policy.get("roles")) != (
-            command, qualifier, check, "PERMISSIVE", "{public}"
-        ):
+        if (
+            policy.get("cmd"),
+            policy.get("qual"),
+            policy.get("with_check"),
+            policy.get("permissive"),
+            policy.get("roles"),
+        ) != (command, qualifier, check, "PERMISSIVE", "{public}"):
             return False
     for table_name, expected in OFFICE_REQUIRED_CONSTRAINTS.items():
         actual = {str(row.get("constraint_definition")) for row in constraints if _qualified_name(row) == table_name}
         if not expected <= actual:
             return False
-    if {(_qualified_name(row), str(row.get("trigger_name"))) for row in triggers if _qualified_name(row) in OFFICE_DOCUMENT_TABLES} != set(OFFICE_TRIGGER_FUNCTIONS):
+    if {
+        (_qualified_name(row), str(row.get("trigger_name")))
+        for row in triggers
+        if _qualified_name(row) in OFFICE_DOCUMENT_TABLES
+    } != set(OFFICE_TRIGGER_FUNCTIONS):
         return False
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
-        matching = [row for row in triggers if _qualified_name(row) == table_name and row.get("trigger_name") == trigger_name]
+        matching = [
+            row for row in triggers if _qualified_name(row) == table_name and row.get("trigger_name") == trigger_name
+        ]
         if len(matching) != 1:
             return False
         trigger = matching[0]
         if (
             trigger.get("trigger_enabled") != "O"
-            or trigger.get("trigger_definition") != (
-                f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
+            or trigger.get("trigger_definition")
+            != (
+                f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} "
+                f"FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
             )
-            or trigger.get("function_schema") != "office" or trigger.get("function_name") != function_name
+            or trigger.get("function_schema") != "office"
+            or trigger.get("function_name") != function_name
             or trigger.get("function_owner") != "collabio_owner"
             or trigger.get("function_security_definer") is not security_definer
             or trigger.get("function_config") != ["search_path=pg_catalog"]
             or trigger.get("function_acl") != "{collabio_owner=X/collabio_owner}"
-            or trigger.get("function_public_execute") is not False or trigger.get("function_runtime_execute") is not False
-            or trigger.get("function_language") != "plpgsql" or trigger.get("function_identity_arguments") != ""
+            or trigger.get("function_public_execute") is not False
+            or trigger.get("function_runtime_execute") is not False
+            or trigger.get("function_language") != "plpgsql"
+            or trigger.get("function_identity_arguments") != ""
             or trigger.get("function_result") != "trigger"
         ):
             return False
         body = trigger.get("function_body")
-        if not isinstance(body, str) or _normalized_function_body(body) != _office_function_body(function_name, security_definer):
+        if not isinstance(body, str) or _normalized_function_body(body) != _office_function_body(
+            function_name, security_definer
+        ):
             return False
     allowed_grantees = SERVICE_ROLES | {"PUBLIC"}
     for table_name in OFFICE_DOCUMENT_TABLES:
         for grantee in allowed_grantees:
             matching = [row for row in grants if _qualified_name(row) == table_name and row.get("grantee") == grantee]
             privileges = {str(row.get("privilege_type")) for row in matching}
-            expected_privileges = {"SELECT", "INSERT"} if grantee == "collabio_app" else {"SELECT"} if grantee == "collabio_worker" else set()
+            expected_privileges = (
+                {"SELECT", "INSERT"}
+                if grantee == "collabio_app"
+                else {"SELECT"}
+                if grantee == "collabio_worker"
+                else set()
+            )
             if privileges != expected_privileges or any(row.get("is_grantable") != "NO" for row in matching):
                 return False
     update_columns = set()
@@ -1360,7 +1427,9 @@ def _office_document_controls_verified(
             return False
         if grantee == "collabio_app" and privilege == "UPDATE" and table_name == "office.documents":
             update_columns.add(str(row.get("column_name")))
-        elif (grantee == "collabio_app" and privilege in {"SELECT", "INSERT"}) or (grantee == "collabio_worker" and privilege == "SELECT"):
+        elif (grantee == "collabio_app" and privilege in {"SELECT", "INSERT"}) or (
+            grantee == "collabio_worker" and privilege == "SELECT"
+        ):
             continue
         else:
             return False
@@ -1372,7 +1441,8 @@ def _office_function_body(function_name: str, security_definer: bool) -> str:
     security_clause = r"SECURITY DEFINER\s+" if security_definer else ""
     pattern = (
         rf"\bCREATE FUNCTION office\.{re.escape(function_name)}\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+"
-        + security_clause + r"SET search_path = pg_catalog\s+"
+        + security_clause
+        + r"SET search_path = pg_catalog\s+"
         r"AS (?P<tag>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)(?P<body>.*?)(?P=tag);"
     )
     matches = list(re.finditer(pattern, migration.sql(), flags=re.DOTALL))
