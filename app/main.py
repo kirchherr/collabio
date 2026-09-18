@@ -23118,9 +23118,7 @@ def build_app() -> FastAPI:
         context: Annotated[TenantRequestContext, Depends(get_tenant_request_context)],
         gate: Annotated[
             ModuleGateDecision,
-            Depends(
-                require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_FEATURE_ID)
-            ),
+            Depends(require_module_api_gate(module_id=KNOWLEDGE_BASE_MODULE_ID, feature_id=KB_ARTICLES_FEATURE_ID)),
         ],
     ) -> KnowledgeBaseArticleContent:
         del gate

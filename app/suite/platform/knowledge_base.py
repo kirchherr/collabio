@@ -3056,9 +3056,7 @@ class KnowledgeBaseArticleService:
         return article, evidence, body
 
     @staticmethod
-    def _require_article_text_metadata(
-        article: KnowledgeBaseArticleRecord, metadata: SourceObjectMetadata
-    ) -> None:
+    def _require_article_text_metadata(article: KnowledgeBaseArticleRecord, metadata: SourceObjectMetadata) -> None:
         require_knowledge_base_source_version_metadata(article, metadata)
         if (
             metadata.object_type != SourceObjectType.WIKI
@@ -3069,9 +3067,7 @@ class KnowledgeBaseArticleService:
         ):
             raise ValueError("Knowledge Base source is not supported article text")
 
-    def read_content(
-        self, *, user_context: UserContext, article_object_id: str
-    ) -> KnowledgeBaseArticleContent:
+    def read_content(self, *, user_context: UserContext, article_object_id: str) -> KnowledgeBaseArticleContent:
         article, evidence, body = self._read_article_text(
             user_context=user_context, article_object_id=article_object_id
         )

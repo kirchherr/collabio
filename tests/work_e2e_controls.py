@@ -13,9 +13,7 @@ def storage_failure_modes(
     if tenant_id != WORK_E2E_TENANT_ID or not requested:
         return False, False
     return (
-        allow_synthetic_traffic
-        and method == "POST"
-        and path == "/v1/admin/kb/articles/write-approvals/execute",
+        allow_synthetic_traffic and method == "POST" and path == "/v1/admin/kb/articles/write-approvals/execute",
         method == "GET" and re.fullmatch(r"/v1/kb/articles/[^/]+/content", path) is not None,
     )
 
