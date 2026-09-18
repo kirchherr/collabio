@@ -48,9 +48,9 @@ Arbeitsweise:
 
 Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
 
-- Punkte 252 und 253 sind abgeschlossen: native Formatierung, Gliederung, Suche, versioniertes Speichern,
+- Punkte 252 bis 254 sind abgeschlossen: native Formatierung, Gliederung, Suchen/Ersetzen, versioniertes Speichern,
   Versionsvergleich und eine fruehere Fassung als neuer lokaler Entwurf mit frischem Head, aktuellen ACLs,
-  CAS und explizitem Speichern. Die 100 Pruefungen (88 Browserfaelle und 12 Modellfaelle) erhalten und native
+  CAS und explizitem Speichern. Die 132 Pruefungen (97 Browserfaelle und 35 Modellfaelle) erhalten und native
   Office-Bearbeitungs- und Review-Workflows weiter ausbauen; Kommentare und Live-Zusammenarbeit bleiben offen. Den bestehenden
   DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness und source-blinder/CDR-Kandidatenpruefung
   als getrennten Pfad erhalten. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
@@ -1544,11 +1544,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      uebersprungene, unerwartete oder flakige Faelle; Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration;
      Restore-Nachweise aus Punkt 252 bleiben erhalten. Office bleibt vor CRM priorisiert; Tenant-, Pilot- und
      DOCX-/Engine-Freigaben bleiben geschlossen beziehungsweise eigenstaendig.
-254. [ ] Suchen und Ersetzen im nativen Office-Dokument vervollstaendigen: literale Unicode-sichere Suche,
+254. [x] Suchen und Ersetzen im nativen Office-Dokument geschlossen: literale Unicode-sichere Suche,
      Gross-/Kleinschreibung, ganze Woerter, vollstaendige Trefferzahlen und einzelne/alle Ersetzungen als ein
-     rueckgaengiger lokaler Bearbeitungsschritt. Struktur und Formatierung ausserhalb der Fundstellen erhalten,
-     Inhaltsgrenzen vor Aenderung pruefen und schreibgeschuetzte/historische Fassungen nur durchsuchen.
-     Bestaetigtes CAS-Speichern, Versionsvergleich und Desktop/Tablet/Mobile durchgehend pruefen.
+     rueckgaengiger lokaler Bearbeitungsschritt. Struktur und Formatierung ausserhalb der Treffer bleiben erhalten,
+     Inhaltsgrenzen werden vor Aenderung geprueft; schreibgeschuetzte/historische Fassungen bleiben nur durchsuchbar.
+     Geladener Ausgangsinhalt ist vom Undo-Verlauf ausgeschlossen. Volle Remote-Quality auf `f4c37e5` gruen;
+     alle 132 Pruefungen (97 Browserfaelle und 35 Modellfaelle) in 291,588 Sekunden bestanden, ohne uebersprungene,
+     unerwartete oder flakige Faelle. Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration oder Ablage;
+     bestehende Bestaetigungs-/CAS-/Recovery-Vertraege und geschlossene Tenant-/Pilot-/Engine-Gates bleiben erhalten.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

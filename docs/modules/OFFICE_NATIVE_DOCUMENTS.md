@@ -1,8 +1,7 @@
 # Native Office Documents
 
-Status: product foundation and version workflow complete; remote quality/browser acceptance passed; foundation recovery retained
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow
-In progress: 254 / PLANS 115 find and replace
+Status: product foundation, version workflow and find/replace complete; remote quality/browser acceptance passed; foundation recovery retained
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace
 Module: `office_documents` / version 0.1.0
 Decision: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`
 
@@ -84,6 +83,12 @@ Size, character, node and depth limits are checked before changing the editor. R
 be searched but not replaced; loading, saving, restoration and an uncertain save also block replacement. Search inputs
 are memory-only and cleared with the workspace/context. The existing confirmed CAS save alone persists a successor.
 
+Ctrl/Cmd+F opens the search field; Ctrl/Cmd+H focuses replacement. Enter/Shift+Enter move forward/backward and Escape
+closes the panel and returns focus to the editor. A 200-match highlight window follows the active match while the
+count/navigation/replacement set stays complete. If a replacement removes the final match, keyboard focus remains in
+the replacement field. Loaded content is excluded from undo history; undoing the first actual edit returns to the
+loaded version instead of erasing it. Search/case/whole-word settings are reset when the panel or workspace closes.
+
 ## Records, retention and recovery
 
 Migration `0083_office_native_documents.sql` creates `office.documents` and `office.document_versions`. Heads carry
@@ -149,8 +154,24 @@ Evidence lives under ignored `e2e/work/artifacts/roadmap-253/`; hashes and contr
 operations log and current handoff. No new schema, durable record, storage format or write API was added. Roadmap 252's
 verified migration/backup/nonempty recovery/foundation/business proofs remain retained; they were not rerun for 253.
 
+## Find/replace acceptance (Roadmap 254)
+
+Implementation `f4c37e5` passed full remote Ruff/format (665 files), Mypy (526 source files) and Pytest; only the known
+Starlette/AnyIO warning remains. All 32 focused checks passed after correcting an initial undo-history defect and one
+case-sensitive test expectation. Loaded content is now explicitly excluded from history, so the first typed edit cannot
+merge with document loading. The full matrix passed 132/132 in 291.588 seconds: 97 browser cases and 35 pure model cases,
+zero skipped, unexpected or flaky. All prior 100 checks remain green. Twenty-three new model tests cover Unicode,
+exact positions, format/run boundaries, literal/no-op replacement and limits, including 100,000 matches and preflight
+rejection of explosive expansion. Nine browser runs prove actual save/reopen/immutable versions, undo/redo separated
+from adjacent typing, full counts above 1,000, read-only/history, literal hostile markup, size/no-op/deletion behavior,
+cancelled discard/context/late reads and responsive controls. Final desktop/tablet/mobile screenshots passed visual review.
+
+Results: `sha256:e12cf71865e5a013852d6482b6a96a33d5a37c4c031157721d0d980324d32b71`, under ignored
+`e2e/work/artifacts/roadmap-254/`. API rollout, cleanup and exact screenshot hashes are in the operations log/handoff.
+No new schema, storage format, write endpoint or tenant capability; item 252 recovery proofs remain retained, not rerun.
+
 ## Continuing Office work
 
-Roadmap 253 / PLANS 114 is complete. Preserve the confirmed save and current access contracts when extending native
+Roadmap 254 / PLANS 115 is complete. Preserve the confirmed save and current access contracts when extending native
 editing and review workflows. Comments, tracked changes and live collaboration remain separate open work. Native Office
 continues before further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates.

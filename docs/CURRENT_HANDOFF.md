@@ -10,7 +10,7 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `3aa0069` (full Python quality and all 100 comparison-model/browser checks); the commit containing this handoff is the continuation
+- Validated implementation: `f4c37e5` (full Python quality and all 132 browser/model checks); the commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
 - Generated `e2e/work/artifacts/` output is ignored and must not be committed.
@@ -23,7 +23,15 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 253 host verification at 2026-09-18 10:50:07 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 254 host verification at 2026-09-18 11:30:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`1f30ae972f77`); bounded startup retries
+reached healthy at 11:28:21 UTC. Live verification confirmed find/replace and previous version controls in the shell and
+compiled bundle, local assets/licenses, Work link, no-store/CSP and five Office API operations. Tenant-demo Office remains
+unprovisioned with non-cacheable 404; Office features are closed, KB write is false and pilot is 0. Exact Work-E2E
+containers were removed and postgres-test stopped. Restore targets and retained synthetic recovery database stayed
+untouched. Webcut running(7), all three provider nodes/listener26443 unchanged, Tricert absent. No migration was added.
+
+Previous item 253 host verification at 2026-09-18 10:50:07 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated (`765b23c23888`); bounded startup retries
 reached healthy at 10:47:56 UTC. Live verification confirmed the new comparison/takeover controls in the shell and
 bundle, local styles/notices, Work link, all five Office operations and no-store/CSP. Ordinary tenant Office remains
@@ -85,7 +93,41 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 253
+## Last completed slice: Roadmap 254
+
+Roadmap 254 / PLANS 115 completes literal find/replace in `/office`: Unicode-safe original positions, case and whole-word
+options, complete counts, previous/next navigation, current/all replacement, keyboard shortcuts and responsive controls.
+Matches span adjacent formatting nodes but never cross paragraphs, hard breaks or cells. Untouched text/structure stays
+intact; replacement inherits the first matched character's marks. A labelled 200-match highlight window follows the
+active result; all results remain navigable and replaceable. Character/node/depth/canonical-byte limits are checked
+before applying changes. No regex/HTML interpretation, background request, new dependency, index or persistence format.
+
+Replacement affects only the local draft as one undo step isolated from adjacent typing. Read-only/history and busy or
+uncertain-save states prohibit replacement. Existing confirmed CAS save persists a new version. Loading a document is
+excluded from undo history, so undoing its first edit cannot erase the loaded source. Context/panel/workspace clearing,
+cancelled discard, no-op, source history and safe retry contracts remain intact.
+
+- Source `1142642` first passed 24 focused checks; one test incorrectly ignored a lowercase match, and undo exposed
+  initial content loading as a history event. Both were corrected in `f4c37e5`. All 32 focused checks then passed.
+- Full quality on `f4c37e5`: Ruff/format across 665 files, Mypy across 526 source files and full Pytest passed; only the
+  known Starlette/AnyIO warning remains. Full matrix: 132/132 in 291.588 seconds, zero skipped/unexpected/flaky,
+  consisting of 97 browser cases and 35 model cases. All prior 100 checks remain; nine browser and 23 model cases are new.
+- New proof includes actual saved replacements/reopen/version comparison, isolated undo/redo, current/history reader
+  restrictions, literal hostile text, complete large result sets, no-op/delete/expansion limits and late context reads.
+  Model proof reaches 100,000 matches and checks original Unicode positions, mark boundaries and resource preflight.
+  Final desktop/tablet/mobile screenshots were visually reviewed.
+- No schema or durable contract change; the item 252 migration/backup/restore/foundation/business evidence below
+  remains retained, not rerun. No tenant/pilot/indexing/engine activation. Main code is `office-search.mjs` and the
+  existing Office UI; tests are `office-search-model.spec.mjs`, `office-search.spec.mjs`, `office-search-responsive.spec.mjs`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-254/`:
+
+- `results.json`: `sha256:e12cf71865e5a013852d6482b6a96a33d5a37c4c031157721d0d980324d32b71`.
+- Desktop: `sha256:301e7030dd649df94023e5ac4d2e81d2385cbf10b7fb530ab44b832eeaa91350`.
+- Tablet: `sha256:32174cead5fdc1d292439d6633fe2f71f350a73984de4d9c7100287662094ccc`.
+- Mobile: `sha256:0cfac05e9a82fd705655c7e9831e868ac334afb313e4f48d24f14e489d508613`.
+
+## Previous slice: Roadmap 253
 
 Roadmap 253 / PLANS 114 adds saved-version comparison and historical takeover to `/office`, using the existing five
 Office APIs. Text, titles, format-only changes, lists and tables are compared as literal block content. Bounded alignment
@@ -332,7 +374,7 @@ Primary code and runbooks:
 
 ## Existing product and platform status
 
-- `/office` provides native document authoring, immutable history, saved-version comparison and historical takeover
+- `/office` provides native document authoring with find/replace, immutable history, saved-version comparison and historical takeover
   into an unsaved local draft. Explicitly confirmed save appends a new version, under the closed tenant gates.
 - `/roadmap` presents capabilities, including guarded native Office; KB shows authoring and ordinary reading, and CRM includes Work account
   details, with real API route paths.
@@ -353,9 +395,9 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 253 is complete. Preserve the 100-check matrix (88 Work/KB/CRM/Office browser cases and 12 comparison-model cases)
+Item 254 is complete. Preserve the 132-check matrix (97 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-comments, tracked changes and live collaboration remain open. Preserve fresh current access checks, immutable history,
+table usability, comments, tracked changes and live collaboration remain open. Preserve fresh current access checks, immutable history,
 explicit confirmed CAS saves and memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.
 Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
