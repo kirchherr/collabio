@@ -21,25 +21,44 @@ from test_office_documents import office as office
 
 
 def seed_version_history(
-    repository: InMemoryOfficeDocumentRepository, user: UserContext, count: int = 225, *, document_index: int = 1,
+    repository: InMemoryOfficeDocumentRepository,
+    user: UserContext,
+    count: int = 225,
+    *,
+    document_index: int = 1,
 ) -> tuple[str, list[str]]:
     """Metadata-only fixture with identical timestamps and deliberately contrary ID order."""
     object_id = f"office-doc-{document_index:032x}"
     ids = [f"office-version-{document_index * 1000 + count - index:032x}" for index in range(count)]
     timestamp = "2026-09-21T08:00:00Z"
     repository.documents[(user.tenant_id, object_id)] = OfficeDocumentRecord(
-        tenant_id=user.tenant_id, object_id=object_id, title="Private history title",
-        current_version_id=ids[-1], owner_principal_id=user.user_id, created_by=user.user_id,
-        created_at_utc=timestamp, updated_at_utc=timestamp, audit_chain_ref="audit:history-fixture",
+        tenant_id=user.tenant_id,
+        object_id=object_id,
+        title="Private history title",
+        current_version_id=ids[-1],
+        owner_principal_id=user.user_id,
+        created_by=user.user_id,
+        created_at_utc=timestamp,
+        updated_at_utc=timestamp,
+        audit_chain_ref="audit:history-fixture",
     )
     for index, version_id in enumerate(ids):
         repository.saved_versions[(user.tenant_id, object_id, version_id)] = OfficeDocumentVersion(
-            tenant_id=user.tenant_id, object_id=object_id, version_id=version_id,
-            previous_version_id=ids[index - 1] if index else None, title=f"Private history title {index}",
-            created_at_utc=timestamp, created_by=user.user_id, content_hash=f"sha256:{index:064x}",
-            source_manifest_hash="sha256:" + "a" * 64, source_write_receipt_hash=f"sha256:{index:064x}",
-            content_byte_length=10, acl_hash="sha256:" + "b" * 64, acl_version=1,
-            mutation_reference=f"history-{document_index}-{index}", command_hash="sha256:" + "c" * 64,
+            tenant_id=user.tenant_id,
+            object_id=object_id,
+            version_id=version_id,
+            previous_version_id=ids[index - 1] if index else None,
+            title=f"Private history title {index}",
+            created_at_utc=timestamp,
+            created_by=user.user_id,
+            content_hash=f"sha256:{index:064x}",
+            source_manifest_hash="sha256:" + "a" * 64,
+            source_write_receipt_hash=f"sha256:{index:064x}",
+            content_byte_length=10,
+            acl_hash="sha256:" + "b" * 64,
+            acl_version=1,
+            mutation_reference=f"history-{document_index}-{index}",
+            command_hash="sha256:" + "c" * 64,
             audit_chain_ref="audit:history-fixture",
         )
     repository.grants[(user.tenant_id, object_id, user.user_id)] = "read"
@@ -60,7 +79,9 @@ def test_history_pagination_reaches_all_versions_by_links_without_source_bytes(o
     assert len(last.versions) == 25 and last.versions[-1].previous_version_id is None
     assert not last.has_more and last.next_cursor is None
     assert first.versions[-1].previous_version_id == last.versions[0].version_id
-    assert [version.version_id for version in repository.versions(user_context=user, object_id=object_id)] == list(reversed(ids))[:200]
+    assert [version.version_id for version in repository.versions(user_context=user, object_id=object_id)] == list(
+        reversed(ids)
+    )[:200]
     audit = canonical_json([event.model_dump() for event in service.audit.events])
     assert "Private history title" not in audit and first.next_cursor not in audit
     source_read.assert_not_called()
@@ -72,9 +93,12 @@ def test_history_keeps_original_head_while_current_head_advances(office: Any) ->
     first = service.history(user_context=user, object_id=object_id, page_size=3)
     newest_id = "office-version-" + "f" * 32
     previous = repository.saved_versions[(user.tenant_id, object_id, ids[-1])]
-    repository.saved_versions[(user.tenant_id, object_id, newest_id)] = previous.model_copy(update={
-        "version_id": newest_id, "previous_version_id": ids[-1],
-    })
+    repository.saved_versions[(user.tenant_id, object_id, newest_id)] = previous.model_copy(
+        update={
+            "version_id": newest_id,
+            "previous_version_id": ids[-1],
+        }
+    )
     key = (user.tenant_id, object_id)
     repository.documents[key] = repository.documents[key].model_copy(update={"current_version_id": newest_id})
     page = service.history(user_context=user, object_id=object_id, page_size=3, cursor=first.next_cursor)
@@ -95,7 +119,9 @@ def test_history_page_boundaries_and_lookahead_agree(office: Any, page_size: int
     while True:
         result = service.history(user_context=user, object_id=object_id, page_size=page_size, cursor=cursor)
         assert 0 < len(result.versions) <= page_size
-        assert result.has_more == (result.next_cursor is not None) == (result.versions[-1].previous_version_id is not None)
+        assert (
+            result.has_more == (result.next_cursor is not None) == (result.versions[-1].previous_version_id is not None)
+        )
         versions.extend(version.version_id for version in result.versions)
         if not result.has_more:
             break
@@ -122,7 +148,9 @@ def test_history_cursor_context_is_checked_before_repository(office: Any, monkey
     elif change == "page_size":
         page_size = 2
     elif change == "restart":
-        service = OfficeDocumentService(repository=repository, source_repository=repository.source_repository, audit=service.audit)
+        service = OfficeDocumentService(
+            repository=repository, source_repository=repository.source_repository, audit=service.audit
+        )
     else:
         token += "tampered"
     read = Mock(side_effect=AssertionError("invalid cursor must precede repository"))
@@ -148,8 +176,13 @@ def test_history_cursor_is_domain_separated_from_discovery_and_never_authorizes(
         service.history(user_context=user, object_id=object_id, page_size=1, cursor=history.next_cursor)
 
 
-@pytest.mark.parametrize("page_size,cursor", [(0, None), (201, None), (True, None), (1.0, None), (1, ""), (1, "x" * 1025), (1, "private-invalid")])
-def test_history_invalid_parameters_fail_before_repository(office: Any, monkeypatch: Any, page_size: Any, cursor: Any) -> None:
+@pytest.mark.parametrize(
+    "page_size,cursor",
+    [(0, None), (201, None), (True, None), (1.0, None), (1, ""), (1, "x" * 1025), (1, "private-invalid")],
+)
+def test_history_invalid_parameters_fail_before_repository(
+    office: Any, monkeypatch: Any, page_size: Any, cursor: Any
+) -> None:
     service, repository, user = office
     read = Mock(side_effect=AssertionError("invalid request must not access history"))
     monkeypatch.setattr(repository, "history_page", read)
@@ -158,7 +191,9 @@ def test_history_invalid_parameters_fail_before_repository(office: Any, monkeypa
     read.assert_not_called()
 
 
-@pytest.mark.parametrize("corruption", ["missing_head", "missing_predecessor", "cycle", "lookahead_cycle", "foreign_link"])
+@pytest.mark.parametrize(
+    "corruption", ["missing_head", "missing_predecessor", "cycle", "lookahead_cycle", "foreign_link"]
+)
 def test_history_integrity_failures_never_return_partial_metadata(office: Any, corruption: str) -> None:
     service, repository, user = office
     object_id, ids = seed_version_history(repository, user, 3)
@@ -168,9 +203,11 @@ def test_history_integrity_failures_never_return_partial_metadata(office: Any, c
         del repository.saved_versions[(user.tenant_id, object_id, ids[-2])]
     else:
         key = (user.tenant_id, object_id, ids[0] if corruption == "lookahead_cycle" else ids[-2])
-        repository.saved_versions[key] = repository.saved_versions[key].model_copy(update={
-            "previous_version_id": ids[-1] if corruption != "foreign_link" else "office-version-" + "f" * 32,
-        })
+        repository.saved_versions[key] = repository.saved_versions[key].model_copy(
+            update={
+                "previous_version_id": ids[-1] if corruption != "foreign_link" else "office-version-" + "f" * 32,
+            }
+        )
     with pytest.raises(OfficeDocumentInvalidContentError):
         service.history(user_context=user, object_id=object_id, page_size=2)
 

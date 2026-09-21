@@ -16,7 +16,8 @@ from test_office_documents_pg import database as database
 
 
 def test_pg_history_follows_205_real_same_timestamp_versions_and_reads_old_content(
-    database: Database, monkeypatch: pytest.MonkeyPatch,
+    database: Database,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     prepare = document_repository._prepare_version
     fixed = datetime(2026, 9, 21, 9, 0, tzinfo=UTC)
@@ -30,13 +31,17 @@ def test_pg_history_follows_205_real_same_timestamp_versions_and_reads_old_conte
     monkeypatch.setattr(document_repository, "_prepare_version", same_timestamp)
     service = service_for(database, InMemorySourceObjectContentStore())
     user = editor()
-    saved = service.create(user_context=user, command=command("history-create", "Oldest exact content"), write_enabled=True)
+    saved = service.create(
+        user_context=user, command=command("history-create", "Oldest exact content"), write_enabled=True
+    )
     object_id = saved.document.object_id
     user.readable_object_ids.add(object_id)
     ids = [saved.version.version_id]
     for index in range(1, 205):
         saved = service.save(
-            user_context=user, object_id=object_id, write_enabled=True,
+            user_context=user,
+            object_id=object_id,
+            write_enabled=True,
             command=OfficeDocumentSaveCommand(
                 **command(f"history-save-{index}", f"Saved text {index}").model_dump(),
                 expected_current_version_id=ids[-1],
@@ -67,14 +72,22 @@ def test_pg_history_cursor_continuation_is_immutable_across_confirmed_new_saves(
     ids = [saved.version.version_id]
     for index in range(1, 4):
         saved = service.save(
-            user_context=user, object_id=object_id, write_enabled=True,
-            command=OfficeDocumentSaveCommand(**command(f"history-save-{index}").model_dump(), expected_current_version_id=ids[-1]),
+            user_context=user,
+            object_id=object_id,
+            write_enabled=True,
+            command=OfficeDocumentSaveCommand(
+                **command(f"history-save-{index}").model_dump(), expected_current_version_id=ids[-1]
+            ),
         )
         ids.append(saved.version.version_id)
     first = service.history(user_context=user, object_id=object_id, page_size=2)
     newest = service.save(
-        user_context=user, object_id=object_id, write_enabled=True,
-        command=OfficeDocumentSaveCommand(**command("history-after-page").model_dump(), expected_current_version_id=ids[-1]),
+        user_context=user,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **command("history-after-page").model_dump(), expected_current_version_id=ids[-1]
+        ),
     )
     final = service.history(user_context=user, object_id=object_id, page_size=2, cursor=first.next_cursor)
     assert final.history_head_version_id == first.history_head_version_id == ids[-1]
@@ -86,7 +99,8 @@ def test_pg_history_cursor_continuation_is_immutable_across_confirmed_new_saves(
 
 
 def test_pg_history_rechecks_typed_parent_acl_before_cursor_page_metadata(
-    database: Database, monkeypatch: pytest.MonkeyPatch,
+    database: Database,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     service = service_for(database, InMemorySourceObjectContentStore())
     owner = editor()
@@ -94,10 +108,16 @@ def test_pg_history_rechecks_typed_parent_acl_before_cursor_page_metadata(
     object_id = created.document.object_id
     owner.readable_object_ids.add(object_id)
     service.save(
-        user_context=owner, object_id=object_id, write_enabled=True,
-        command=OfficeDocumentSaveCommand(**command("history-save").model_dump(), expected_current_version_id=created.version.version_id),
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **command("history-save").model_dump(), expected_current_version_id=created.version.version_id
+        ),
     )
-    viewer = UserContext(tenant_id=owner.tenant_id, user_id="history-reader", role_ids={"office-reader"}, readable_object_ids={object_id})
+    viewer = UserContext(
+        tenant_id=owner.tenant_id, user_id="history-reader", role_ids={"office-reader"}, readable_object_ids={object_id}
+    )
     with pytest.raises(OfficeDocumentNotFoundError):
         service.history(user_context=viewer, object_id=object_id)
     with psycopg.connect(database.admin_dsn) as connection:

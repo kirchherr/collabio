@@ -21,16 +21,49 @@ def history_document(number: int) -> dict[str, Any]:
     if not 1 <= number <= HISTORY_VERSION_COUNT:
         raise ValueError("Synthetic history version is outside the fixture")
     if number != 1:
-        return {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": f"Synthetic saved history version {number:03d}."}]}]}
+        return {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": f"Synthetic saved history version {number:03d}."}],
+                }
+            ],
+        }
     return {
         "type": "doc",
         "content": [
             {"type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "History 001 — Café 😀"}]},
-            {"type": "paragraph", "content": [{"type": "text", "text": "<script>literal earliest version</script>", "marks": [{"type": "bold"}]}]},
-            {"type": "table", "content": [{"type": "tableRow", "content": [
-                {"type": "tableHeader", "attrs": {"colspan": 1, "rowspan": 1}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Original owner"}]}]},
-                {"type": "tableHeader", "attrs": {"colspan": 1, "rowspan": 1}, "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Original decision"}]}]},
-            ]}]},
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "text", "text": "<script>literal earliest version</script>", "marks": [{"type": "bold"}]}
+                ],
+            },
+            {
+                "type": "table",
+                "content": [
+                    {
+                        "type": "tableRow",
+                        "content": [
+                            {
+                                "type": "tableHeader",
+                                "attrs": {"colspan": 1, "rowspan": 1},
+                                "content": [
+                                    {"type": "paragraph", "content": [{"type": "text", "text": "Original owner"}]}
+                                ],
+                            },
+                            {
+                                "type": "tableHeader",
+                                "attrs": {"colspan": 1, "rowspan": 1},
+                                "content": [
+                                    {"type": "paragraph", "content": [{"type": "text", "text": "Original decision"}]}
+                                ],
+                            },
+                        ],
+                    }
+                ],
+            },
         ],
     }
 

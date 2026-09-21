@@ -25,8 +25,8 @@ from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
-    OfficeDocumentHistoryResponse,
     OfficeDocumentHistoryRequestError,
+    OfficeDocumentHistoryResponse,
     OfficeDocumentListRequestError,
     OfficeDocumentListResponse,
     OfficeDocumentNotFoundError,
@@ -285,7 +285,10 @@ def register_office_routes(
         cursor: str | None = Query(default=None, min_length=1, max_length=1024),
     ) -> Any:
         return request.app.state.office_document_service.history(
-            user_context=context.user_context, object_id=object_id, page_size=page_size, cursor=cursor,
+            user_context=context.user_context,
+            object_id=object_id,
+            page_size=page_size,
+            cursor=cursor,
         )
 
     @router.post(

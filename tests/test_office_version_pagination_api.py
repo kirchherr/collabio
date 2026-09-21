@@ -22,7 +22,9 @@ def api_history_fixture(harness: OfficeApiHarness, count: int = 205) -> tuple[st
     return object_id, ids
 
 
-def test_history_api_preserves_legacy_fields_and_reads_all_pages_without_write(office_api: OfficeApiHarness, monkeypatch: Any) -> None:
+def test_history_api_preserves_legacy_fields_and_reads_all_pages_without_write(
+    office_api: OfficeApiHarness, monkeypatch: Any
+) -> None:
     object_id, ids = api_history_fixture(office_api)
     source_read = Mock(side_effect=AssertionError("history is metadata only"))
     monkeypatch.setattr(office_api.service.source_repository, "get", source_read)
@@ -44,23 +46,37 @@ def test_history_api_preserves_legacy_fields_and_reads_all_pages_without_write(o
     source_read.assert_not_called()
 
 
-@pytest.mark.parametrize("params,status", [
-    ({"page_size": "0"}, 422), ({"page_size": "201"}, 422), ({"page_size": "true"}, 422),
-    ({"page_size": "1.5"}, 422), ({"cursor": "private-invalid"}, 400), ({"cursor": "x" * 1025}, 422),
-])
+@pytest.mark.parametrize(
+    "params,status",
+    [
+        ({"page_size": "0"}, 422),
+        ({"page_size": "201"}, 422),
+        ({"page_size": "true"}, 422),
+        ({"page_size": "1.5"}, 422),
+        ({"cursor": "private-invalid"}, 400),
+        ({"cursor": "x" * 1025}, 422),
+    ],
+)
 def test_history_api_invalid_cursor_and_limits_never_echo_request(
-    office_api: OfficeApiHarness, monkeypatch: Any, params: dict[str, str], status: int,
+    office_api: OfficeApiHarness,
+    monkeypatch: Any,
+    params: dict[str, str],
+    status: int,
 ) -> None:
     enable_office()
     read = Mock(side_effect=AssertionError("invalid input before repository"))
     monkeypatch.setattr(office_api.repository, "history_page", read)
     response = office_api.client.get(f"{BASE}/unreadable/versions", headers=office_api.headers, params=params)
     assert response.status_code == status and response.headers["Cache-Control"] == "no-store"
-    assert response.json() == {"detail": "Invalid version history request" if status == 400 else "Invalid document request"}
+    assert response.json() == {
+        "detail": "Invalid version history request" if status == 400 else "Invalid document request"
+    }
     read.assert_not_called()
 
 
-def test_history_api_cursor_cannot_bypass_authentication_feature_or_current_parent_acl(office_api: OfficeApiHarness) -> None:
+def test_history_api_cursor_cannot_bypass_authentication_feature_or_current_parent_acl(
+    office_api: OfficeApiHarness,
+) -> None:
     object_id, _ = api_history_fixture(office_api, 3)
     path = f"{BASE}/{object_id}/versions"
     cursor = office_api.client.get(path, headers=office_api.headers, params={"page_size": 1}).json()["next_cursor"]
@@ -87,7 +103,9 @@ def test_history_api_missing_and_denied_are_indistinguishable(office_api: Office
         object_id = "office-doc-" + "f" * 32
     elif case == "foreign":
         document = office_api.repository.documents.pop(("tenant-demo", object_id))
-        office_api.repository.documents[("other-tenant", object_id)] = document.model_copy(update={"tenant_id": "other-tenant"})
+        office_api.repository.documents[("other-tenant", object_id)] = document.model_copy(
+            update={"tenant_id": "other-tenant"}
+        )
     else:
         headers["X-User-Id"] = "forged-reader"
     response = office_api.client.get(f"{BASE}/{object_id}/versions", headers=headers)
@@ -102,7 +120,9 @@ def test_history_api_integrity_and_database_failures_are_safe(office_api: Office
     broken = office_api.client.get(path, headers=office_api.headers)
     assert broken.status_code == 400 and broken.json() == {"detail": "Document validation failed"}
     assert broken.headers["Cache-Control"] == "no-store"
-    monkeypatch.setattr(office_api.repository, "history_page", Mock(side_effect=psycopg.OperationalError("private history secret")))
+    monkeypatch.setattr(
+        office_api.repository, "history_page", Mock(side_effect=psycopg.OperationalError("private history secret"))
+    )
     failed = office_api.client.get(path, headers=office_api.headers)
     assert failed.status_code == 503 and failed.json() == {"detail": "Office storage unavailable"}
     assert failed.headers["Cache-Control"] == "no-store" and "private" not in failed.text

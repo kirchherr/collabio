@@ -76,14 +76,21 @@ def _model_values(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validated_history_page(
-    *, document: OfficeDocumentRecord, head: str, start: str, versions: tuple[OfficeDocumentVersion, ...], limit: int,
+    *,
+    document: OfficeDocumentRecord,
+    head: str,
+    start: str,
+    versions: tuple[OfficeDocumentVersion, ...],
+    limit: int,
 ) -> OfficeDocumentHistoryPage:
     expected: str | None = start
     seen: set[str] = set()
     for version in versions:
         if (
-            version.tenant_id != document.tenant_id or version.object_id != document.object_id
-            or version.version_id != expected or version.version_id in seen
+            version.tenant_id != document.tenant_id
+            or version.object_id != document.object_id
+            or version.version_id != expected
+            or version.version_id in seen
             or (start != head and version.version_id == head)
         ):
             raise OfficeDocumentInvalidContentError("Document history integrity failed")
@@ -92,7 +99,9 @@ def _validated_history_page(
     if not versions or expected in seen or (len(versions) < limit and expected is not None):
         raise OfficeDocumentInvalidContentError("Document history integrity failed")
     return OfficeDocumentHistoryPage(
-        history_head_version_id=head, current_version_id=document.current_version_id, versions=versions,
+        history_head_version_id=head,
+        current_version_id=document.current_version_id,
+        versions=versions,
     )
 
 
@@ -314,8 +323,13 @@ class PgOfficeDocumentRepository:
         return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
 
     def history_page(
-        self, *, user_context: UserContext, object_id: str, history_head_version_id: str | None = None,
-        next_version_id: str | None = None, limit: int = 201,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        history_head_version_id: str | None = None,
+        next_version_id: str | None = None,
+        limit: int = 201,
     ) -> OfficeDocumentHistoryPage:
         if not 1 <= limit <= 201:
             raise OfficeDocumentInvalidContentError("Document history page is invalid")
@@ -350,7 +364,9 @@ class PgOfficeDocumentRepository:
                     (user_context.tenant_id, object_id, start, limit),
                 ).fetchall()
         versions = tuple(
-            OfficeDocumentVersion.model_validate(_model_values({name: row[name] for name in OfficeDocumentVersion.model_fields}))
+            OfficeDocumentVersion.model_validate(
+                _model_values({name: row[name] for name in OfficeDocumentVersion.model_fields})
+            )
             for row in rows
         )
         return _validated_history_page(document=document, head=head, start=start, versions=versions, limit=limit)
@@ -575,8 +591,13 @@ class InMemoryOfficeDocumentRepository:
         return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
 
     def history_page(
-        self, *, user_context: UserContext, object_id: str, history_head_version_id: str | None = None,
-        next_version_id: str | None = None, limit: int = 201,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        history_head_version_id: str | None = None,
+        next_version_id: str | None = None,
+        limit: int = 201,
     ) -> OfficeDocumentHistoryPage:
         if not 1 <= limit <= 201:
             raise OfficeDocumentInvalidContentError("Document history page is invalid")
@@ -597,7 +618,11 @@ class InMemoryOfficeDocumentRepository:
                 seen.add(version_id)
                 version_id = version.previous_version_id
             return _validated_history_page(
-                document=document, head=head, start=start, versions=tuple(versions), limit=limit,
+                document=document,
+                head=head,
+                start=start,
+                versions=tuple(versions),
+                limit=limit,
             )
 
     def get_version(self, *, user_context: UserContext, object_id: str, version_id: str) -> OfficeDocumentVersion:
