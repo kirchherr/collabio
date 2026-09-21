@@ -150,17 +150,20 @@ focus changes cancel pending reads. Full quality passed on 46a83b4; all 200 chec
 checks and 23 focused browser cases, independent code/visual review and actual access-log cursor redaction. API rollout
 and final health/gate evidence are recorded in docs/CURRENT_HANDOFF.md; no new schema, durable format or recovery drill.
 
-123. [ ] Implement native Office paragraph alignment and line/before/after spacing through a compact selection-aware
-dialog. Preserve optional attributes across saved versions, undo, comparison, reuse, print and recovery without changing
-legacy canonical bytes. Strict validation, complete paginated nonempty recovery, responsive/PDF review, full regression
-and remote quality are required before API rollout. See ADR-0086; Office remains ahead of CRM.
+123. [x] Implement native Office paragraph alignment and line/before/after spacing through a compact selection-aware
+dialog. Strict optional attributes survive saved versions, undo, comparison, reuse, print and recovery without changing
+legacy canonical bytes. Full quality on 8b61d8d passed Ruff, formatting across 712 files, Mypy across 557 sources and
+complete Pytest. All 215 checks (176 browser + 39 model) passed in 759.313613 seconds, zero skipped/unexpected/flaky;
+294 focused Python and 46 focused browser/model checks also passed. Independent responsive and three-page PDF review
+passed. Complete paginated nonempty recovery verified 330 documents, 666 versions and 721 sources; release gates passed.
+API rollout and final health/gate details are recorded in docs/CURRENT_HANDOFF.md. See ADR-0086; Office remains ahead of CRM.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native document authoring, paginated version history, comparison, historical takeover, find/replace, contextual table editing, version-bound discussions, explicit saved-text suggestions, saved-version browser printing, independent document reuse and paginated title discovery are complete through Roadmap 261. Preserve all 200 checks (165 browser cases and 35 model cases), immutable review/suggestion history, atomic accepted versions and nonempty recovery. Continue user-visible native Office development before CRM expansion; a bounded next candidate is paragraph formatting with alignment and spacing, consistently validated and preserved through save, undo, comparison, print and recovery. This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain future work. DOCX interchange remains a separate Quick Edit/fidelity path; real Word/GenOffice results, calibrated thresholds and human review remain prerequisites, and DOCX saves/WOPI retain their gates. Do not resume Word/account/firewall interventions on the original workstation.
+- Native document authoring, paginated version history, comparison, historical takeover, find/replace, contextual table editing, version-bound discussions, explicit saved-text suggestions, saved-version browser printing, independent document reuse, paginated title discovery and paragraph formatting are complete through Roadmap 262. Preserve all 215 checks (176 browser cases and 39 model cases), immutable review/suggestion history, atomic accepted versions and nonempty recovery. Continue user-visible native Office development before CRM expansion; the next recommendation is bounded character formatting with font sizes and text colors, preserving current ACL, confirmed-save/CAS, undo, comparison, print and recovery boundaries. This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain future work. DOCX interchange remains a separate Quick Edit/fidelity path; real Word/GenOffice results, calibrated thresholds and human review remain prerequisites, and DOCX saves/WOPI retain their gates. Do not resume Word/account/firewall interventions on the original workstation.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

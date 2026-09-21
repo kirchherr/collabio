@@ -2,9 +2,11 @@
 
 Updated: 2026-09-21
 
-Roadmap 262 / PLANS 123 is in progress: native paragraph alignment and line/before/after spacing, with strict optional
-attributes and unchanged legacy canonical bytes. The user approved this next Office step. Save/undo/comparison/print,
-complete paginated nonempty recovery and full remote verification are pending; no completion or rollout is claimed.
+Roadmap 262 / PLANS 123 completes native paragraph alignment and line/before/after spacing, with strict optional
+attributes and unchanged legacy canonical bytes. Save, undo, comparison, reuse and print preserve formatting.
+Full quality and all 215 browser/model checks passed on `8b61d8d`; nonempty recovery verified 330 documents,
+666 Office versions and 721 sources. Actual PDF output and responsive layouts passed independent visual review.
+Both release gates, API-only rollout, live verification and exact cleanup passed. Office development continues before CRM.
 Decision: `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`.
 
 Roadmap 261 / PLANS 122 completes saved-version history beyond 200 entries with bounded pages along the immutable
@@ -70,8 +72,9 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `46a83b4` (full Python quality and all 200 browser/model checks). Backend/API and UI
-  history pagination is integrated in `7f95caf`; `46a83b4` preserves composer drafts and cancels hidden history reads.
+- Validated implementation: `8b61d8d` (full Python quality and all 215 browser/model checks, actual PDF inspection,
+  complete paginated nonempty recovery and both release gates). Paragraph formatting extends the native v1 format
+  through optional strictly validated attributes without changing legacy canonical bytes or requiring a migration.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -85,7 +88,21 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 261 host verification at 2026-09-21 14:27:43 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 262 host verification at 2026-09-21 15:18:55 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`132526da7a34`) with pilot explicitly 0;
+bounded startup retries reached healthy at 15:17:23 UTC. Live verification at 15:18:18 UTC confirmed all thirteen Office
+OpenAPI operation definitions, discovery/history parameters, paragraph and existing controls, local assets/licenses,
+Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations. Tenant-demo
+Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0. Six remaining
+exact Work-E2E containers were removed, with the disposable runner already absent; postgres-test, postgres-restore
+and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) remain unchanged; both old
+and new synthetic recovery databases/dumps/receipts are retained. The isolated main restore target was refreshed only
+from the verified current main backup. Webcut running(7), all three provider nodes and listener 26443 unchanged,
+Tricert absent. No main-database migration, ordinary tenant/business-content write, indexing, cloud provider or DOCX
+engine activation occurred; isolated test databases ran their required migrations. Recovery and both release gates
+passed before API rollout. Locks and fresh lifecycle inventories are recorded in the operations log.
+
+Previous item 261 host verification at 2026-09-21 14:27:43 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`1585ccedc940`) with pilot explicitly 0;
 bounded startup retries reached healthy at 14:25:53 UTC. Live verification at 14:27:03 UTC confirmed all thirteen Office
 OpenAPI operation definitions, additive history page_size/cursor parameters, new history and existing controls, local
@@ -227,7 +244,73 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 261
+## Last completed slice: Roadmap 262
+
+The compact selection-aware paragraph dialog formats paragraphs and headings, including those inside lists, quotes
+and table cells. Alignment supports left, center, right and justify; line spacing supports the exact strings 1,
+1.15, 1.5 and 2; before/after spacing supports integer 0, 6, 12, 18 and 24 points. Mixed values remain unchanged
+unless selected; Standard removes an attribute. Reset prepares defaults for explicit Apply. A no-op stays clean,
+and one application is one undo step separated from adjacent typing. Historical/read-only views retain their gates.
+
+Strict server validation rejects unknown or malformed values without mutating input. Optional attributes preserve
+legacy canonical bytes, hashes and receipts. Selection, context, revision and document checks prevent stale edits;
+resource limits are checked before applying. Heading shortcuts/input rules, split paragraphs, replacement, reuse,
+version comparison and print preserve formatting. Only fixed allowlisted DOM attributes and styles are rendered.
+No new endpoint, dependency or SQL migration is introduced. The native MIME and collabio_document.v1 remain unchanged.
+
+Acceptance on immutable `8b61d8d`:
+
+- All 294 focused Python/API/PostgreSQL/harness checks passed in 18.05 seconds. All 46 focused browser/model checks
+  passed in 150.538659 seconds, with zero skipped/unexpected/flaky.
+- Full quality passed: Ruff, formatting across 712 files, Mypy across 557 sources and complete Pytest; only the known
+  Starlette/AnyIO warning remains. All 215 checks (176 browser + 39 model) passed in 759.313613 seconds at
+  2026-09-21 15:10:02 UTC, zero skipped/unexpected/flaky, preserving all previous 200 cases.
+- Independent backend/UI/test reviews found no remaining material defect. Root and independent visual review passed
+  four Office views, two Work screenshots and all three actual PDF pages. The A4 portrait PDF contains 5233 extracted
+  characters, all 28 ordered paragraph markers and both boundary markers, H1/H2/P structure, and no empty page.
+- Actual Uvicorn logs verified 349 document-list and 219 history records without query/cursor values at
+  2026-09-21 15:10:45 UTC.
+- Focused report: `sha256:312bf9c8d93747ad8ce7e5cb8a99400ee075bc4998b141f1039e711fc61dbe7f`.
+- Focused Python log: `sha256:0c73376a480c923e0e77292ca7ec307c79c76cd2f72c67ca020dd7c29b1145b9`.
+- Final report: `sha256:b9d422791168a5f1a8dc710eb1574a28fe373a928c44c11227bbd981380d71a6`.
+- Quality log: `sha256:e60159bdafa33d3854347d8fdf6fc5f55bc4bb87c630f8e6ebdbefe6240d358c`.
+- Browser log: `sha256:cdd7dcf868769ec4f793971b0f438294f42d455351224abedc0b3059dbfbf35b`.
+- Actual PDF: `sha256:ab04640d1bb33ad12712de3303fa98037ebad2ae1ff7689baac1419de608222f`.
+- PDF QA report: `sha256:b271848bc5b5c2e3f13f6a2c99621d64f69600cb203946d8ee5eb56ae17023b1`.
+- Office desktop/tablet/mobile/print-preview hashes respectively:
+  `61443567cee46b6406a77388c9eacfd11d5de4ba92c49071262b875a2bad2872`,
+  `e0e39c57ce1ca7c317c6fccd4f0afdc5befb2e85f55fb91f87e05196fc090754`,
+  `6d3cee2186d104ffe1a15f7ac01aafdf54221f08a9fc1bbfe0aa4aee9bfef827`,
+  `39aeddbcc3b2d93d77488117b6394fce8e3f027c009e5c66af566edfda50e7ac`.
+- Work desktop/mobile hashes respectively:
+  `7d40106046bf015678a36f48f3f11d81bbf4949debe3056dba65a4b65f617192`,
+  `c1152844fab0cdf1819eb04e899507b04e9908c3a7adc1e0459952afadb8b851`.
+
+Nonempty recovery completed at 2026-09-21 15:13:34 UTC against the new isolated database
+`collabio_work_e2e_262_restore`; the previous `collabio_work_e2e_restore` remains retained. Complete document/history
+pagination verified 330 documents, 666 versions, 50 multi-version documents and 721 source objects. Active database
+principals, roles and groups supply authoritative read access; no extra grant or synthetic super-role is introduced.
+Immutable predecessor/head inventories, exact source versions, receipts, ACL denial and read-only behavior pass.
+The designated three-version fixture proves unchanged legacy bytes plus two distinct formatting profiles inside
+paragraphs, headings, lists, quotes and table cells. All ten review threads/eighteen events and eleven suggestions/
+seven decisions (five accepted, two rejected) pass the shared checks. No content is included in metadata evidence.
+
+- Recovery report internal canonical hash: `sha256:bfc720ee2ec275061c5f934369a5864259071d5409f7bd4f99368b431951c7f7`.
+- Recovery report file hash: `sha256:bb02922322b46b09627d9c3f842534fda0cabec5d7ab541c58f0500e60fdd94c`.
+- Backup: `sha256:a4481417a96ebff0af7070bf817fcf5ad01e975e9f4fa909717c906e947379f7`.
+- PostgreSQL restore: `sha256:f5b5ebfe499f6164efc6381758ed8bed548d8d1e0dfec150f07f17f462234935`.
+- Exact S3 restore: `sha256:54086c3bbe49cc6576ee1c0ee60ee1f9a239dffa9c9685572587023c11b32b76`.
+- Paragraph evidence: `sha256:1b58df7dd469f375e85291e229b5b1daf635229fe44b743dc3bc6f227fe5dff5`.
+
+A separate current main-database backup was created and verified, then restored into the existing isolated main
+restore target. Foundation gate `sha256:1a36fb9cd2724bd085af7dd0eb68002f53c70869c33871e15dc057e7f1fd00a9` passed
+at 15:14:23 UTC; business release gate `sha256:bbfaaf80a09b1bccb477f8e6632af9fb4656381aa943d63895e4c2844344e341`
+passed at 15:15:09 UTC. Both report no blocking reasons, and business writes/tenant activation remain false.
+Ignored local evidence is under `e2e/work/artifacts/roadmap-262/`; the remote backup, receipt and metadata report remain
+under `e2e/work/artifacts/office-262-recovery-backup/` and `office-native-paragraph-recovery-proof.json`.
+Independent evidence review recomputed the canonical recovery hash and matched final report/quality/counts.
+
+## Previous completed slice: Roadmap 261
 
 The existing versions endpoint now supports bounded pages along the immutable predecessor chain, including identical
 timestamps. Its default remains 200 entries; the UI requests 50. Authenticated cursors bind tenant, actor, roles,
@@ -864,11 +947,12 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 261 is complete. Preserve the 200-check matrix (165 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 262 is complete. Preserve the 215-check matrix (176 Work/KB/CRM/Office browser cases and 39 model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
 version-bound comments, explicit saved-text suggestions, browser printing, independent saved-version reuse and paginated
-title discovery and older-version pagination are complete. A suitable next bounded workflow is paragraph formatting with
-alignment and spacing, consistently validated and preserved through saved versions, undo, comparison, print and recovery.
+title discovery, older-version pagination and paragraph alignment/spacing are complete. A suitable next bounded workflow
+is character formatting with font sizes and text colors, strictly validated and preserved through saved versions, undo,
+comparison, print and recovery, while retaining current access checks and resource limits.
 This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.

@@ -1629,10 +1629,21 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md. Keine neue Schema-/
      Persistenzaenderung oder Recovery-Ausfuehrung; Nachweis aus Punkt257 und geschlossene Gates bleiben erhalten.
 
-262. [ ] Absatzformatierung im nativen Office: Ausrichtung, Zeilenabstand und Abstaende davor/danach in einem
-     kompakten auswahlgebundenen Dialog. Optionale Werte strikt validieren und durch Speichern, Undo, Vergleich,
-     Wiederverwendung, Druck und Recovery erhalten; bisherige kanonische Inhaltsbytes unveraendert lassen.
-     Vollstaendig paginierter nichtleerer Restore, Responsive-/PDF-Pruefung, Regression und Remote-Quality vor Rollout.
+262. [x] Absatzformatierung im nativen Office: Ausrichtung, Zeilenabstand und Abstaende davor/danach in einem
+     kompakten auswahlgebundenen Dialog. Strikt validierte optionale Werte bleiben durch Speichern, Undo, Vergleich,
+     Wiederverwendung, Druck und Recovery erhalten; bisherige kanonische Inhaltsbytes bleiben unveraendert.
+     Volle Quality auf 8b61d8d gruen: Ruff, 712 formatierte Dateien, Mypy 557 Quellen und vollstaendiges Pytest.
+     Alle 215 Browser-/Modellpruefungen (176 + 39) in 759,313613 Sekunden bestanden, keine ausgelassenen,
+     unerwarteten oder instabilen Ergebnisse; alle bisherigen 200 Faelle erhalten. 294 fokussierte Python- und
+     46 fokussierte Browser-/Modellpruefungen ebenfalls gruen. Sechs finale Office-/Work-Ansichten und alle drei
+     PDF-Seiten unabhaengig geprueft; 28 vollstaendige Absaetze, keine leeren Seiten oder abgeschnittenen Inhalte.
+     Vollstaendig paginierter nichtleerer Recovery-Nachweis mit 330 Dokumenten, 666 Fassungen und 721 SourceObjects
+     sowie Releasegates gruen. API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md.
+     Keine neue SQL-Migration, Abhaengigkeit oder API; normale Tenant-/Pilot-/Engine-Gates bleiben geschlossen.
+
+Naechste Empfehlung, nicht implementiert: begrenzte Zeichenformatierung mit Schriftgroessen und Textfarben unter
+denselben aktuellen ACL-, bestaetigten Save/CAS-, Undo-, Vergleichs-, Druck- und Recovery-Grenzen. Native Office bleibt
+vor weiterem CRM-Ausbau priorisiert; Fortsetzungsstand ist Roadmap 262 mit 215 bestandenen Browser-/Modellpruefungen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

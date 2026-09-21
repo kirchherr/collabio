@@ -1,14 +1,14 @@
 # Native Office Documents
 
-Status: Roadmap 252–261 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history
+Status: Roadmap 252–262 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`
 
 ## User workflow and scope
 
 `/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
-apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
+apply text styles, paragraph alignment and spacing, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
 save a confirmed version, compare saved versions, take a historical version into a new local draft, discuss an exact
 saved version through comments and replies, and propose text replacements for explicit acceptance or rejection.
 Roadmap 258 adds a saved-version print preview and browser print/PDF action, with completed development validation below.
@@ -20,12 +20,47 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Paragraph formatting (Roadmap 262, in development)
+## Paragraph formatting (Roadmap 262)
 
-Roadmap 262 is being implemented under ADR-0086. Four optional paragraph/heading attributes select alignment,
+Roadmap 262 completes paragraph formatting under
+[ADR-0086](../../ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md). Four optional paragraph/heading attributes select alignment,
 unitless line spacing and before/after spacing in points. Missing values retain the existing presentation; strict
 validation preserves exact old payloads. A selection-bound dialog, format-aware comparison and safe print rendering
-share the allowlist. Full validation, fresh paginated nonempty recovery and rollout remain pending.
+share the allowlist. Development validation and fresh paginated nonempty recovery passed; operational rollout evidence
+is maintained in the [current handoff](../CURRENT_HANDOFF.md).
+
+Select text or place the cursor inside a paragraph, then choose **Absatz …**. The dialog also handles headings,
+list/quote paragraphs and exact selected table cells. Mixed values remain unchanged until selected; **Standard**
+removes one explicit property and **Standard wiederherstellen** prepares removal of all four. Apply changes only the
+local draft, creates one undo step and returns focus to the editor. Applying identical values leaves the draft clean.
+Headings, keyboard shortcuts, Enter, find/replace and independent saved-version reuse preserve allowed attributes.
+Historical views, readers and pending/uncertain saves keep formatting disabled; current access and explicit confirmed
+CAS saves remain authoritative. Comparison labels explain format-only changes, including their nested location.
+
+Alignment is left/center/right/justify; line spacing is 1, 1.15, 1.5 or 2; before/after spacing is 0, 6, 12, 18 or 24 pt.
+The browser omits only its null defaults. Server validation never rewrites legacy payloads, hashes or receipts.
+These attributes extend native JSON without a new SQL migration, dependency or endpoint. A rollback editor must
+understand the attributes before allowing edits of formatted documents.
+
+Acceptance on `8b61d8d` passed full Ruff, formatting across 712 files, Mypy across 557 sources and complete Pytest,
+with only the known Starlette/AnyIO warning. All 215 browser/model checks passed in 759.313613 seconds: 176 browser
+and 39 model cases, zero skipped, unexpected or flaky, preserving all previous 200 checks. Also passed: 294 focused
+Python checks and 46 focused browser/model checks. Independent code review and all six final Office/Work screenshots
+found no material issue. The actual A4 PDF has three nonempty pages, all 28 numbered paragraphs, 5,233 extracted
+characters and H1/H2/P structure. Independent review of all three rendered pages found no clipped content or unexpected
+page breaks; this does not claim PDF/UA certification.
+
+Fresh paginated PostgreSQL/S3 recovery verified all 330 documents, 666 exact saved versions and 721 source objects,
+including three designated paragraph fixture versions: one unchanged legacy version and two formatted versions.
+Legacy canonical hashes, exact receipts, current ACLs, foreign-tenant denial and read-only restored services passed;
+review and suggestion histories and accepted result versions remained valid. Foundation and business release gates
+passed. This completes Roadmap 262 / PLANS 123 development without ordinary-tenant or production admission.
+API rollout, live verification and cleanup details belong to the [current handoff](../CURRENT_HANDOFF.md).
+
+Ignored evidence is under `e2e/work/artifacts/roadmap-262/`. Final matrix report:
+`sha256:b9d422791168a5f1a8dc710eb1574a28fe373a928c44c11227bbd981380d71a6`;
+quality log: `sha256:e60159bdafa33d3854347d8fdf6fc5f55bc4bb87c630f8e6ebdbefe6240d358c`;
+synthetic recovery report: `sha256:bfc720ee2ec275061c5f934369a5864259071d5409f7bd4f99368b431951c7f7`.
 
 ## Older saved-version history (Roadmap 261)
 
@@ -489,7 +524,12 @@ Roadmap 259 completed full quality, the 180-check matrix, independent final visu
 Roadmap 260 adds paginated title discovery and completes full quality, the 190-check matrix and controlled rollout.
 Roadmap 261 completes loading older saved versions for reading, comparison and takeover, preserving fresh parent
 ACLs, connected history validation, selection and drafts. Focused checks, full quality, the 200-check matrix, API-only
-rollout, live verification and cleanup passed. No subsequent roadmap item is declared implemented.
+rollout, live verification and cleanup passed. Roadmap 262 completes strictly bounded paragraph alignment and spacing,
+preserving legacy canonical bytes and exact saved versions. Full quality, all 215 checks (176 browser and 39 model),
+responsive/PDF review, complete paginated nonempty recovery and release gates passed. Operational details remain in
+the [current handoff](../CURRENT_HANDOFF.md).
+The next recommendation is bounded character formatting with font sizes and text colors, preserving the same current
+ACL, confirmed-save/CAS, undo, comparison, print and recovery boundaries. This recommendation is not implemented.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,

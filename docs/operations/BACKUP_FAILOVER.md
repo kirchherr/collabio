@@ -28,14 +28,14 @@ proof must include accepted and rejected proposals, exact original and replaceme
 result content/hash/predecessor. Current ACL denial and read-only restored services remain mandatory. Identical drift
 in source and restore must fail these controls; the prior review-only proof does not cover migration 0085.
 
-This model covers the whole suite trajectory:
-
 Roadmap 262 adds optional paragraph/heading alignment and spacing to native JSON. These attributes belong to the
 existing exact-version document/source-object domain; no new SQL table or migration is needed. Never normalize old
 canonical payloads during recovery. A fresh nonempty proof must compare an unchanged legacy version and historically
 different formatting profiles through exact bytes, source hashes and receipts. Document and version inventories must
 follow every page, using existing active principals with current parent ACLs and no synthetic grants. Prior recovery
 snapshots and reports remain retained. Rollback editors must understand these attributes before edits are admitted.
+
+This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.
 - File-backed development policy and registry data.

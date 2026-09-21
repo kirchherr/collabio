@@ -270,11 +270,44 @@ services were unchanged; Tricert was absent. Roadmap 261 development is complete
 recovery drill, ordinary-tenant write, indexing, cloud provider or engine activation occurred. Roadmap 257 recovery
 evidence remains retained; these checks grant no ordinary-tenant or production admission.
 
-Roadmap 262 adds paragraph alignment/spacing workflows and format-only comparison model cases. Acceptance includes
-mixed selection, targeted table cells, undo, strict legacy roundtrips, historical comparison/takeover, write revocation,
-exact save retry, context cancellation, responsive layout and a real multipage browser PDF. Validation is pending.
+Roadmap 262 development validation is complete on `8b61d8d`. Nine new browser workflows, two responsive runs and
+four additional comparison-model cases preserve the previous 200 checks. Coverage includes mixed selection,
+targeted table cells, isolated undo, no-op/reset/cancellation, legacy roundtrips and canonical-byte limits; heading
+shortcuts, Enter, input rules, lists, replacement and reuse retain exact attributes. Historical comparison/takeover,
+fresh write revocation, identical save retry, context cancellation and actual browser PDF remain covered.
 The synthetic seed adds one existing-author document with three exact versions: original defaults and two different
 format profiles. It creates no additional principal or ACL grant. Reports include only counts and hashes.
+
+All 294 focused Python checks passed in 18.05 seconds; all 46 focused browser/model checks passed in 150.538659 seconds,
+with zero skipped, unexpected or flaky results. Focused report:
+`sha256:312bf9c8d93747ad8ce7e5cb8a99400ee075bc4998b141f1039e711fc61dbe7f`;
+focused Python log: `sha256:0c73376a480c923e0e77292ca7ec307c79c76cd2f72c67ca020dd7c29b1145b9`.
+Full quality on the same source passed Ruff, formatting across 712 files, Mypy across 557 sources and complete Pytest,
+with only the known Starlette/AnyIO warning. All 215 checks passed in 759.313613 seconds: 176 browser and 39 model cases,
+zero skipped, unexpected or flaky. Final report:
+`sha256:b9d422791168a5f1a8dc710eb1574a28fe373a928c44c11227bbd981380d71a6`;
+quality log: `sha256:e60159bdafa33d3854347d8fdf6fc5f55bc4bb87c630f8e6ebdbefe6240d358c`.
+
+The same-page PDF proof checked actual print-media alignment, line height and paragraph margins after fresh exact-version
+authorization. Independent Poppler/QPDF checks verified three A4 pages (594.96 × 841.92 points), 5,233 extracted characters,
+all 28 numbered paragraphs and both sentinels, H1/H2/P structure, no empty page and no shell/context leakage. The PDF is
+`sha256:ab04640d1bb33ad12712de3303fa98037ebad2ae1ff7689baac1419de608222f`;
+PDF-QA report: `sha256:b271848bc5b5c2e3f13f6a2c99621d64f69600cb203946d8ee5eb56ae17023b1`.
+Independent visual review passed nine artifacts: three paragraph viewports, print preview, two Work viewports and all
+three rendered PDF pages. Final, focused and PDF evidence is retained under ignored `e2e/work/artifacts/roadmap-262/`.
+
+Fresh nonempty recovery into the separate `collabio_work_e2e_262_restore` database verified 330 documents, 666 exact
+versions, 50 multi-version documents and 721 source objects. All three designated paragraph fixture versions passed:
+one unchanged legacy version and two historical formatted versions. Complete pagination and existing current parent
+ACLs, source/receipt bindings, read-only restored services and foreign-tenant denial passed. The proof also retained
+ten review threads/18 events and eleven suggestions/seven decisions, including five accepted and two rejected proposals.
+The embedded recovery `report_hash` is `sha256:bfc720ee2ec275061c5f934369a5864259071d5409f7bd4f99368b431951c7f7`;
+the retained `recovery.json` file SHA-256 is `bb02922322b46b09627d9c3f842534fda0cabec5d7ab541c58f0500e60fdd94c`.
+Its verified dump is `sha256:a4481417a96ebff0af7070bf817fcf5ad01e975e9f4fa909717c906e947379f7`.
+Earlier recovery data and evidence remain retained. No main-database migration was required. Both release gates passed
+before the API-only rollout, which reached health at 15:17:23 UTC (`132526da7a34`). Live verification passed at 15:18:18
+UTC; exact cleanup completed at 15:18:55 UTC with Collabio running(3), health ok and auxiliary services stopped. Full
+host/gate evidence is recorded in `docs/CURRENT_HANDOFF.md`; ordinary tenants, pilot and production remain closed.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
@@ -292,7 +325,9 @@ Roadmap 262 follows all document/history pages under existing active, currently 
 inventory equality, immutable predecessor chains and read-only capabilities remain mandatory. The original unformatted
 fixture and both historical format profiles are pinned to exact canonical bytes, hashes and receipts after restoration.
 Never run it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
-before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
+before removing the exact test services. Keep the prior synthetic dump under ignored
+`e2e/work/artifacts/office-recovery-backup` and the separate 262 dump under
+`e2e/work/artifacts/office-262-recovery-backup`; do not overwrite the earlier database, dump or receipt.
 
 ## Evidence
 
@@ -320,6 +355,8 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `office-reuse-desktop-chromium.png`, `office-reuse-tablet-chromium.png`, `office-reuse-mobile-chromium.png`.
 - `office-discovery-desktop-chromium.png`, `office-discovery-tablet-chromium.png`, `office-discovery-mobile-chromium.png`.
 - `office-history-pagination-desktop-chromium.png`, `office-history-pagination-tablet-chromium.png`, `office-history-pagination-mobile-chromium.png`.
+- `office-paragraph-desktop-chromium.png`, `office-paragraph-tablet-chromium.png`, `office-paragraph-mobile-chromium.png`;
+- `office-paragraph-print-preview.png`, `office-paragraph-a4-portrait.pdf` and the independent PDF-QA report/rendered pages.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in
