@@ -148,7 +148,7 @@ Report `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`
 `e2e/work/artifacts/roadmap-257/`. The main migration/foundation/business gates, API-only rollout and cleanup passed;
 ordinary tenant, pilot, indexing and engine admission remain closed. Exact evidence is in the operations log and handoff.
 
-Roadmap 258 adds six saved-version print workflows and two responsive runs (development acceptance pending). A controlled
+Roadmap 258 adds six saved-version print workflows and two responsive runs. A controlled
 browser print callback invokes Chromium's real PDF output on the same page while the freshly authorized print surface
 is prepared. Tests exercise immutable versions and historical titles, read-only access, literal native structure,
 paper/orientation, fresh ACL revocation, failures and late responses, dirty/unresolved drafts and output isolation.
@@ -159,6 +159,21 @@ requesting tagged output is insufficient: modal preview siblings were initially 
 The preview becomes nonmodal only during printing and returns to modal only if its session remains valid.
 PDF inspection uses the existing project image's Poppler/QPDF tools in a separate disposable Compose service with no network,
 read-only artifact input and scoped output. It does not execute LibreOffice or admit any document conversion engine.
+
+Development acceptance on `cf2244c` passed all 170 checks in 562.233916 seconds: 135 browser cases and 35 model cases,
+zero skipped, unexpected or flaky; all previous 162 remain included. Full Python quality passed Ruff/format across
+689 files, Mypy across 541 sources and full Pytest, with only the known Starlette/AnyIO warning. Final desktop,
+tablet and mobile screenshots and all PDF pages passed independent visual review.
+The same-page PDFs contain nine rich Letter-landscape pages, one historical A4-portrait page and one unprepared-print
+guidance page. Independent Poppler/QPDF checks find all 80 rich paragraphs and the final sentinel, complete literal
+content and no application-shell leakage. Both prepared PDFs have actual heading/paragraph tags; the rich fixture
+also has two lists/two list items, one table, 20 header cells and 40 data cells. This is tested Chromium evidence,
+not a PDF/UA certificate or a guarantee about native OS printer selection and completed user output.
+Browser report: `sha256:8198c66138af5af63d6d767ab9e8c4c06acaf18e60013809ed31879f39faa86f`;
+PDF QA report: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3bedb63b`.
+Final artifacts and rendered pages are under ignored `e2e/work/artifacts/roadmap-258/`. Later `d8300aa` changes only
+test cleanup and is not the source of the full report; its affected-case recheck and API-only rollout/health/cleanup
+are recorded separately in the operations log and current handoff. Item 257 recovery is retained, not newly executed.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
@@ -192,6 +207,9 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `office-tables-desktop-chromium.png`, `office-tables-tablet-chromium.png`, `office-tables-mobile-chromium.png`.
 - `office-review-desktop-chromium.png`, `office-review-tablet-chromium.png`, `office-review-mobile-chromium.png`.
 - `office-suggestions-desktop-chromium.png`, `office-suggestions-tablet-chromium.png`, `office-suggestions-mobile-chromium.png`.
+- `office-print-desktop-chromium.png`, `office-print-tablet-chromium.png`, `office-print-mobile-chromium.png`;
+- `office-print-rich-letter-landscape.pdf`, `office-print-history-a4-portrait.pdf`, `office-print-unprepared.pdf`;
+- `pdf-qa/report.json`, extracted PDF text and rendered page PNGs from independent inspection.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

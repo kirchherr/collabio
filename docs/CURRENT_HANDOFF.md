@@ -2,32 +2,17 @@
 
 Updated: 2026-09-21
 
-Active continuation: Roadmap 258 / PLANS 119 adds saved-version print preview and browser print/PDF output.
-Source `a939b1b` is synchronized to dev001. Eight focused browser checks passed on `a9477d5` in 26.199 seconds,
-including real PDF generation and semantic heading/list/table structure. Independent Poppler/QPDF checks verified
-all 80 numbered paragraphs, final text, correct A4/Letter dimensions and no application-shell output. The initial
-modal preview omitted PDF accessibility tags; the scoped nonmodal print transition and explicit structure tests fix it.
-Full quality passed on `a939b1b`: Ruff, formatting across 685 files, Mypy across 541 sources and full Pytest;
-only the known Starlette/AnyIO warning remains. Quality log SHA-256 is
-`bea9820805e28392dd07530cec26b714574c29d8e7652c679e6e2e534c815522`.
-The first full browser/model run passed 169/170 in 591.030 seconds. One existing historical-takeover CAS test
-failed while Playwright read the real 409 response body (`Network.getResponseBody`), after the status assertion.
-The narrow test observation fix buffers the real upstream response unchanged, without retrying writes or changing
-product code; fresh complete validation, rollout and closeout remain pending. Failed report SHA-256:
-`18415b02c2ddc62922231905f297ba9dd7dbdf800e0fe64d1171de9d862191f9` (ignored `roadmap-258/failed-full`).
-On `4545d48`, the focused CAS case and full Python quality passed. The second full browser/model run passed
-168/170 in 560.111 seconds, with the same Chromium body-observation failure on existing review-storage 503 and
-comparison-revocation 404 checks. All eight print checks passed again. Failed report SHA-256:
-`0cb6cfd6cad7cc95d1d359f1ba3314e75978d0c4dde43349964bd58a9b1b5cb4` (ignored `roadmap-258/failed-full2`).
-Expected-error observations are now being consistently buffered from genuine upstream responses, including the
-independently identified table-save, content-read and review-refresh cases; fresh full acceptance is still pending.
-There is no schema, persistence, dependency or API change. Roadmap 257 recovery evidence is retained, not rerun.
+Roadmap 258 / PLANS 119 completes saved-version print preview and browser print/PDF output. Office development
+continues before CRM expansion. Full quality and all 170 browser/model checks passed on `cf2244c`; the final
+cleanup-only test guard on `d8300aa` passed its affected browser case. Actual PDF text, dimensions, pagination,
+semantic structure and visual output passed independent checks. There is no schema, persistence, dependency or API
+change. Roadmap 257 recovery evidence is retained, not rerun. Final host verification is recorded below.
 
 Publication state: on 2026-09-21 the operator explicitly approved publishing the prepared Roadmap 256 documentation,
 including its operational metadata, to the public `kirchherr/collabio` repository and instructed work to continue.
 Documentation commit `1545bb2` was pushed and synchronized. All 11 module/KB/roadmap contract checks passed in
 58.85 seconds; health remained ok at 2026-09-21 06:34:16 UTC. The --no-deps test started no auxiliary service.
-That Roadmap 256 publication is complete. The subsequent authorized Office continuation is Roadmap 257 below;
+That Roadmap 256 publication is complete. Roadmap 257 then continued the authorized Office development below;
 implementation `9c17a31` passed full validation, nonempty recovery and API rollout on dev001.
 Roadmap 257 closeout `c4176de` was published and synchronized. All 11 documentation/module/roadmap contract tests
 passed in 59.02 seconds; health remained ok at 2026-09-21 07:24:18 UTC. The --no-deps check started no auxiliary
@@ -42,7 +27,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `9c17a31` (full Python quality and all 162 browser/model checks).
+- Validated implementation: `cf2244c` (full Python quality and all 170 browser/model checks); `d8300aa` adds only
+  a test-cleanup guard, with the affected browser case verified afterward.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -56,7 +42,16 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 257 host verification at 2026-09-21 07:18:57 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 258 host verification at 2026-09-21 11:32:51 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fc8312db43b7`) with pilot explicitly 0;
+bounded startup retries reached healthy at 11:31:16 UTC. Live verification passed thirteen Office operations, new print
+and existing editor controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned
+with non-cacheable 404; Office features closed, KB write false, pilot 0. Exact Work-E2E services were removed;
+postgres-test, postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`)
+and retained synthetic recovery data were unchanged. Webcut running(7), all three provider nodes/listener 26443 unchanged,
+Tricert absent. No migration, business-content write, ordinary tenant, indexing, cloud provider or DOCX engine activation.
+
+Previous item 257 host verification at 2026-09-21 07:18:57 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`b4e2756191a1`); bounded startup retries
 reached healthy at 07:17:41 UTC. Live checks verified thirteen Office operations, suggestion controls, previous editor
 workflows, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned for Office with
@@ -156,7 +151,54 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 257
+## Last completed slice: Roadmap 258
+
+Roadmap 258 / PLANS 119 completes native saved-version printing. A clean current or historical version opens a
+literal, semantic print preview with A4/Letter and portrait/landscape settings. Readers may print without write rights.
+The existing exact-version endpoint freshly rechecks current access both on preview and immediately before the
+explicit browser call. Historical output uses its own saved title. Dirty, new and unresolved-save states remain blocked;
+no content is implicitly saved or discarded. Prepared output is cleared after printing, close or context invalidation.
+
+The browser controls final pagination, destination and settings; opening its dialog does not prove output completed.
+The isolated print surface excludes editor controls, context, comments and suggestions. Other print entry points show
+neutral guidance. Native headings, lists and table cells survive PDF structure export; the preview becomes temporarily
+nonmodal during the browser call, then returns only for the still-valid session. No PDF/UA or cross-browser fidelity
+claim, server export, new receipt, storage derivative, dependency, migration or engine admission is added.
+
+- Full quality on `cf2244c` passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest;
+  only the known Starlette/AnyIO warning remains.
+- All 170 checks passed in 562.234 seconds: 135 browser cases plus 35 comparison/search-model cases, zero skipped,
+  unexpected or flaky. The previous 162 checks remain. Twelve targeted error cases passed first. The final
+  cleanup-only guard on `d8300aa` passed its affected parallel-revocation case in 9.0 seconds.
+- All eight print cases cover exact saved/historical content, ordinary readers, literal markup, all supported native
+  structures, paper/orientation, current ACL revocation, transient failures, late responses, dirty/unresolved states,
+  output isolation and responsive layout. Same-page Chromium PDF generation exercises the freshly prepared product surface.
+- Independent Poppler/QPDF inspection verified all 80 numbered paragraphs and final sentinel across nine Letter
+  landscape pages, preserved text and table content, A4 historical output on one page and one guidance-only page.
+  Real H1/P/list/table/header/data-cell dictionaries are present; no application-shell or protected-current-version leakage.
+  Desktop/tablet/mobile screenshots and all eleven PDF pages were visually reviewed.
+- The first complete runs passed 169/170 on `a939b1b` and 168/170 on `4545d48`; all print cases passed. Existing
+  error-body observations failed because Chromium discarded streamed no-store bodies. Test-only buffering preserves
+  actual upstream status/headers/bytes and has no retries. A focused 11/12 run then exposed the expected canceled
+  sibling request after a parallel 404. Its observer now checks the identical request's ERR_ABORTED and waits for both
+  reads before restoring the synthetic ACL. Subsequent focused and full runs passed. Failed reports/traces remain retained.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-258/`:
+
+- `results.json`: `sha256:8198c66138af5af63d6d767ab9e8c4c06acaf18e60013809ed31879f39faa86f`.
+- `quality.log`: `sha256:541ce600a21a8651c99c4cb0182b24c80f5f0b3132b161c7099ea4c164d4de1a`.
+- Desktop: `sha256:1cf476412f3b51cc20110eadf1d816b8669e01e19352357c82e4cab8a325f924`.
+- Tablet: `sha256:b8e061e59054f8c8b6e35c6e6e569c5de0313ff5c3c5535c08f335010ac99654`.
+- Mobile: `sha256:42524d1e6f332e586d4b9e48b631584cc744254ede18120aa979b18265c058c8`.
+- Rich PDF: `sha256:15c5bb6c81b7fd75a9b53ad22e1c80496f3b34584ee6bc654a8133b0b7a13785`.
+- Historical PDF: `sha256:3e6094137a2b1e78191b7ba08c01d970d0250c78f179f22904e5ac562f428a67`.
+- Guidance PDF: `sha256:233a9b4e3b27324c3ed86362813b0fe5f8fa6cb8bbc37dcd9bd0f84eeb1cb495`.
+- `pdf-qa/report.json`: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3bedb63b`.
+- First failed full report: `sha256:18415b02c2ddc62922231905f297ba9dd7dbdf800e0fe64d1171de9d862191f9`.
+- Second failed full report: `sha256:0cb6cfd6cad7cc95d1d359f1ba3314e75978d0c4dde43349964bd58a9b1b5cb4`.
+- Failed error-focused report: `sha256:8bc6dc421e49ceb88018d48c05dffe94623c0655e64960037ccdaecf2c77d8bf`.
+
+## Previous completed slice: Roadmap 257
 
 Roadmap 257 / PLANS 118 completes explicit saved-text suggestions: select text in a clean current saved version,
 propose replacement (including deletion), inspect literal before/after and confirm accept or reject. Acceptance
@@ -607,9 +649,11 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 257 is complete. Preserve the 162-check matrix (127 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 258 is complete. Preserve the 170-check matrix (135 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-version-bound comments and explicit saved-text suggestions are complete; continuous tracked changes and live collaboration remain open.
+version-bound comments, explicit saved-text suggestions and browser printing are complete. A suitable next bounded workflow is
+using a freshly authorized saved version as an independent new document draft, with a new object/creator ACL and existing
+explicit create confirmation. This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.

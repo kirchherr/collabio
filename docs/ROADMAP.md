@@ -1586,10 +1586,15 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-Rollout mit 13 Office-Operationen, Health und Cleanup am 2026-09-21 um 07:18:57 UTC gruen.
      Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
 
-258. [ ] Druckansicht fuer exakte gespeicherte native Office-Fassungen mit A4/Letter, Hoch-/Querformat,
+258. [x] Druckansicht fuer exakte gespeicherte native Office-Fassungen mit A4/Letter, Hoch-/Querformat,
      erneuter Leseautorisierung vor Browserdruck/PDF-Speicherung, sicherem Inhaltsrendering und isolierten
-     Druckstilen. Bestehende 162 Browser-/Modellpruefungen, unveraenderliche Versionen und geschlossene
-     Tenant-/Pilot-/Engine-Gates erhalten. Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung.
+     Druckstilen. Full-Quality auf cf2244c bestanden: Ruff, 689 formatierte Dateien, Mypy 541 Quellen und Pytest.
+     Alle 170 Browser-/Modellpruefungen (135 + 35) in 562,234 Sekunden bestanden, keine ausgelassenen,
+     unerwarteten oder instabilen Ergebnisse. Echte PDFs auf Textvollstaendigkeit, Seitenformat, semantische
+     Struktur und sichtbare Ausgabe geprueft. Abschliessende Test-Cleanup-Absicherung d8300aa fokussiert gruen.
+     Bestehende 162 Pruefungen, unveraenderliche Versionen und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
+     Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
+     API-Rollout, Health und abschliessender Betriebszustand: docs/CURRENT_HANDOFF.md.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

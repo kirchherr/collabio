@@ -1,7 +1,7 @@
 # ADR-0082: Native Office saved-version browser printing
 
 Date: 2026-09-21
-Status: accepted design; development validation pending
+Status: accepted; development validation complete, rollout evidence tracked separately
 Scope: Roadmap 258 / PLANS 119, extending ADR-0079
 
 ## Context
@@ -39,7 +39,27 @@ No new API, schema, durable record, object-storage derivative, dependency or eng
 server-side PDF conversion, production export policy and archival/signing remain separate work. Normal Office tenant
 and pilot gates remain closed. Retain Roadmap 257 recovery evidence without claiming a new recovery execution.
 
-Remote browser checks must cover exact historical content, read-only output, literal hostile text, all supported native
+Remote browser checks cover exact historical content, read-only output, literal hostile text, supported native
 structures, settings, output isolation, fresh access revocation, transient failures, late responses and responsive
-layout. A real browser-generated PDF supplements the controlled print-dialog test; full Python quality and existing
-browser/model regressions remain required before dev001 API-only rollout.
+layout. Real browser-generated PDFs supplement the controlled print-dialog test.
+
+## Development acceptance
+
+On `cf2244c`, the complete matrix passed 170/170 checks in 562.233916 seconds: 135 browser cases and 35 model cases,
+zero skipped, unexpected or flaky. Full Python quality passed Ruff/format across 689 files, Mypy across 541 sources
+and full Pytest, with only the known Starlette/AnyIO deprecation warning. All previous 162 checks remain included.
+Final desktop/tablet/mobile screenshots and PDF pages passed independent visual review.
+
+Same-page Chromium output and independent Poppler/QPDF inspection verified nine rich Letter-landscape pages, one
+historical A4-portrait page and one unprepared-print guidance page. All 80 rich text paragraphs, the final sentinel,
+literal markup, whitespace and table content are present; no application shell or protected panel content is printed.
+Both prepared PDFs carry actual heading/paragraph structure tags; the rich document additionally carries two lists,
+two list items, one table, 20 header cells and 40 data cells. No PDF/UA or cross-browser equivalence is claimed.
+
+Browser report: `sha256:8198c66138af5af63d6d767ab9e8c4c06acaf18e60013809ed31879f39faa86f`.
+PDF QA report: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3bedb63b`.
+Full artifact hashes and exact scope are in `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`; ignored artifacts live under
+`e2e/work/artifacts/roadmap-258/`. The later test-cleanup-only change `d8300aa` is distinct from the full matrix source.
+Its affected-case recheck passed in 9.001 seconds. Dev001 API-only rollout, live verification and cleanup passed;
+final health was ok at 2026-09-21 11:32:51 UTC. Exact operating evidence is recorded separately in the operations log
+and current handoff. Retained item 257 recovery was not rerun for this UI slice.

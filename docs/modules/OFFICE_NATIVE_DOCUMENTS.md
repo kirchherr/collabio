@@ -1,16 +1,18 @@
 # Native Office Documents
 
-Status: Roadmap 252–257 complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions
+Status: Roadmap 252–258 complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`
 
 ## User workflow and scope
 
 `/office` is a focused writing workspace linked from `/work`. Users can start from an empty document or a local template,
 apply text styles, headings, lists and tables, navigate an outline, search within text, inspect word count, use focus mode,
-save a confirmed version, compare saved versions, take a historical version into a new local draft and discuss an exact
-saved version through comments and replies. Search covers
+save a confirmed version, compare saved versions, take a historical version into a new local draft, discuss an exact
+saved version through comments and replies, and propose text replacements for explicit acceptance or rejection.
+Roadmap 258 adds a saved-version print preview and browser print/PDF action, with completed development validation below.
+Search covers
 the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
 available. Formatting returns focus to the editor before immediate typing.
 
@@ -18,29 +20,38 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Saved-version print preview (Roadmap 258, validation pending)
+## Saved-version print preview (Roadmap 258)
 
-The print preview opens only a clean saved version, including a historical version or an ordinary reader's document.
+"Drucken / PDF" or Ctrl/Cmd+P opens a preview only for a clean saved version, including a historical version or an
+ordinary reader's document. Write permission is not required.
 It reads the exact selected version afresh on opening and again before the explicit browser print/PDF action; current
 parent ACLs and the read feature apply both times. The historical title comes from that version, not the current head.
 Unsaved changes, new documents and unresolved saves cannot enter the workflow. No draft is implicitly saved or discarded.
 
-A4/Letter and portrait/landscape are temporary view settings. The continuous preview shows the document's layout;
+A4/Letter and portrait/landscape are selectable temporary view settings. "Erneut laden" clears the preview and reads
+that same version again. "Drucken / als PDF speichern" performs the final fresh read before opening the browser dialog.
+The continuous preview shows typography and width;
 the browser print dialog determines pagination, destination and final settings. Users may choose its PDF destination
 where supported. The application does not receive proof that a print or PDF save completed. Existing metadata-only
 version-read audits remain unchanged; there is no server export endpoint or export-completion receipt.
 
-An allowlisted DOM renderer preserves supported native blocks, marks, lists and tables and treats all text literally.
+An allowlisted DOM renderer preserves supported native blocks, marks, list numbering, table headers, whitespace and
+empty paragraphs and treats all text literally. Its semantic headings, paragraphs, lists and table header/data cells
+remain available to browser PDF generation. During the browser call, the preview is temporarily nonmodal so the
+separate print surface is not excluded as inert; modal state returns only for the still-valid print session.
+PDF validation inspects actual structure dictionaries, not just a requested tagged-output flag. This does not claim
+PDF/UA conformance or equivalent tagging, pagination or fidelity across browsers.
 Print media isolates the prepared document from the editor, context, comments, suggestions and dialogs. Other browser
 print entry points display neutral guidance; prepared content is cleared after the browser call, afterprint, close or
 context invalidation. Fresh denial clears protected state; transient failures allow a fresh retry. No remote resource,
-new dependency, durable record, DOCX engine or server PDF conversion is added. See ADR-0082.
+new dependency, durable record, DOCX engine or server PDF conversion is added. See
+[ADR-0082](../../ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md).
 
 ## Features and authoritative access
 
 | Feature | Normal behavior | Default |
 | --- | --- | --- |
-| `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions, discussions and suggestions | false |
+| `office_documents.documents.read` | List authorized documents, open exact content, read/compare/print versions, discussions and suggestions | false |
 | `office_documents.documents.write` | Create a document, save a successor or confirm review/suggestion actions under current parent rights | false |
 
 The package is installed in the module catalog; migrations 0083–0085 neither provision nor enable an ordinary tenant.
@@ -352,7 +363,8 @@ artifacts are under `e2e/work/artifacts/roadmap-256/focused/`.
 
 ## Continuing Office work
 
-Roadmap 257 / PLANS 118 is complete with the verified quality, browser and recovery evidence below.
+Roadmap 258 / PLANS 119 has completed development validation with the print evidence below. Roadmap 257's verified
+recovery remains retained; printing introduces no new persistence and does not claim a new recovery execution.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
@@ -407,3 +419,44 @@ and previous editor controls, local assets/licenses, Work link and no-store/CSP.
 404; Office features, KB write and pilot remain closed. Scoped cleanup finished healthy at 07:18:57 UTC with only
 API/PostgreSQL/MinIO running. API is `b4e2756191a1`; main storage and other projects were unchanged. The synthetic
 restore database and verified dump remain retained. Final ignored artifacts are under `e2e/work/artifacts/roadmap-257/`.
+
+## Browser printing acceptance (Roadmap 258)
+
+The complete matrix on `cf2244c` passed 170/170 checks in 562.233916 seconds: 135 browser cases and 35 comparison/search
+model cases, with zero skipped, unexpected or flaky results. All prior 162 checks remain included. Full Python quality
+passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest; only the known Starlette/AnyIO
+deprecation warning remains. The eight focused print runs had passed on `a9477d5` in 26.199 seconds.
+
+Six new workflows and two responsive runs verify fresh exact-version reads before preview and browser printing,
+historical titles and ordinary readers, literal native formatting, paper/orientation, dirty/busy/uncertain restrictions,
+current ACL revocation, storage failures/retry, delayed close/context responses and isolated output. Final desktop,
+tablet and mobile screenshots passed independent visual review. No browser test substitutes cached source content
+or local permission claims for the real PostgreSQL/S3-backed API reads.
+
+The browser callback generated actual PDFs from the same page while its freshly prepared print surface was active.
+Independent Poppler/QPDF inspection verified a nine-page Letter-landscape rich document, a one-page A4-portrait
+historical document and a one-page unprepared-print guidance document. The rich PDF contains all 80 numbered text
+paragraphs and the final sentinel, literal markup, preserved whitespace and complete table content; no application
+shell, context, comments or suggestions enter the prepared output. All PDF pages passed visual review, including
+wrapped long code and repeated table headers. The guidance PDF contains no draft or document content.
+
+Actual PDF structure dictionaries include heading/paragraph tags in both prepared documents, plus two lists/two list
+items, one table, 20 header cells and 40 data cells in the rich fixture. The modal preview initially suppressed these
+tags; the corrected implementation becomes nonmodal only during the browser call and restores the modal only for a
+still-valid session. This proves the tested Chromium output, not PDF/UA certification, cross-browser fidelity, a
+guaranteed page count for other documents, or completion of a user's print/save action.
+
+- Browser report: `sha256:8198c66138af5af63d6d767ab9e8c4c06acaf18e60013809ed31879f39faa86f`.
+- Quality log: `sha256:541ce600a21a8651c99c4cb0182b24c80f5f0b3132b161c7099ea4c164d4de1a`.
+- PDF QA report: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3bedb63b`.
+- Rich PDF: `sha256:15c5bb6c81b7fd75a9b53ad22e1c80496f3b34584ee6bc654a8133b0b7a13785`.
+- Historical PDF: `sha256:3e6094137a2b1e78191b7ba08c01d970d0250c78f179f22904e5ac562f428a67`.
+- Unprepared guidance PDF: `sha256:233a9b4e3b27324c3ed86362813b0fe5f8fa6cb8bbc37dcd9bd0f84eeb1cb495`.
+
+Ignored artifacts are under `e2e/work/artifacts/roadmap-258/`, including `pdf-qa/report.json` and rendered pages.
+The complete matrix's source is `cf2244c`; later `d8300aa` changes only test cleanup and is not the source of that
+report. Its affected parallel-revocation case passed in 9.001 seconds. API-only rollout reached healthy at
+2026-09-21 11:31:16 UTC; live controls, all thirteen operations and closed tenant gates passed. Cleanup finished
+healthy at 11:32:51 UTC with only API/PostgreSQL/MinIO running; API is fc8312db43b7. Full host evidence is in
+`docs/operations/DEV001_OPERATIONS_LOG.md` and `docs/CURRENT_HANDOFF.md`. No schema, durable record, dependency,
+server export or ordinary tenant/pilot/index/engine admission changed.
