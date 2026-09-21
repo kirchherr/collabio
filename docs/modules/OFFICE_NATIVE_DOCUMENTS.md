@@ -18,6 +18,24 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
+## Saved-version print preview (Roadmap 258, validation pending)
+
+The print preview opens only a clean saved version, including a historical version or an ordinary reader's document.
+It reads the exact selected version afresh on opening and again before the explicit browser print/PDF action; current
+parent ACLs and the read feature apply both times. The historical title comes from that version, not the current head.
+Unsaved changes, new documents and unresolved saves cannot enter the workflow. No draft is implicitly saved or discarded.
+
+A4/Letter and portrait/landscape are temporary view settings. The continuous preview shows the document's layout;
+the browser print dialog determines pagination, destination and final settings. Users may choose its PDF destination
+where supported. The application does not receive proof that a print or PDF save completed. Existing metadata-only
+version-read audits remain unchanged; there is no server export endpoint or export-completion receipt.
+
+An allowlisted DOM renderer preserves supported native blocks, marks, lists and tables and treats all text literally.
+Print media isolates the prepared document from the editor, context, comments, suggestions and dialogs. Other browser
+print entry points display neutral guidance; prepared content is cleared after the browser call, afterprint, close or
+context invalidation. Fresh denial clears protected state; transient failures allow a fresh retry. No remote resource,
+new dependency, durable record, DOCX engine or server PDF conversion is added. See ADR-0082.
+
 ## Features and authoritative access
 
 | Feature | Normal behavior | Default |

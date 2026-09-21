@@ -47,7 +47,7 @@
         <section class="document-workspace" id="document-workspace" aria-label="Dokument bearbeiten" hidden>
           <header class="document-header">
             <div class="document-heading"><p class="eyebrow" id="document-mode">Neues Dokument</p><label class="visually-hidden" for="document-title">Dokumenttitel</label><input id="document-title" maxlength="200" placeholder="Unbenanntes Dokument" autocomplete="off" /><p id="document-status" class="document-status" role="status" aria-live="polite"></p></div>
-            <div class="document-actions"><button class="quiet-button" id="document-reload" type="button">Neu laden</button><button class="button primary" id="document-save" type="button" disabled>Version speichern</button><button class="icon-button" id="document-close" type="button" aria-label="Dokument schließen" title="Dokument schließen">×</button></div>
+            <div class="document-actions"><button class="quiet-button" id="document-print" type="button" disabled title="Gespeicherte Fassung drucken (Strg+P)">Drucken / PDF</button><button class="quiet-button" id="document-reload" type="button">Neu laden</button><button class="button primary" id="document-save" type="button" disabled>Version speichern</button><button class="icon-button" id="document-close" type="button" aria-label="Dokument schließen" title="Dokument schließen">×</button></div>
           </header>
           <div class="document-notice" id="document-notice" role="status" hidden></div>
           <div class="historical-actions" id="historical-actions" hidden><span>Mit dieser Fassung weiterarbeiten?</span><button class="button secondary" id="document-restore" type="button">Als Entwurf übernehmen</button></div>
@@ -129,6 +129,16 @@
       </form>
     </dialog>
     <dialog class="office-dialog compact" id="table-remove-dialog" aria-labelledby="table-remove-title"><header><h2 id="table-remove-title">Tabelleninhalt entfernen?</h2></header><div class="dialog-body"><p id="table-remove-summary"></p></div><footer><button class="button secondary" id="table-remove-cancel" type="button">Behalten</button><button class="button danger" id="table-remove-confirm" type="button">Aus Entwurf entfernen</button></footer></dialog>
+    <dialog class="office-dialog print-dialog" id="print-dialog" aria-labelledby="print-title">
+      <header><div><p class="eyebrow">Gespeicherte Fassung</p><h2 id="print-title">Druckansicht</h2></div><button class="icon-button" id="print-close" type="button" aria-label="Druckansicht schließen">×</button></header>
+      <div class="print-controls"><label>Papierformat<select id="print-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="print-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label><button class="quiet-button" id="print-refresh" type="button">Erneut laden</button></div>
+      <p class="print-help">Fortlaufende Vorschau: Seitenumbrüche und endgültiges Papierformat bestimmt Ihr Browser. Gedruckt werden nur Titel und Dokumentinhalt. Kommentare, Vorschläge und diese Versionsangaben werden nicht mitgedruckt.</p>
+      <p id="print-version" class="print-version"></p><p id="print-status" role="status" aria-live="polite"></p>
+      <div class="print-preview-canvas"><div id="print-preview" class="paper-a4 orientation-portrait" aria-label="Vorschau der gespeicherten Fassung"></div></div>
+      <footer><p>Wählen Sie im Browserdialog einen Drucker oder „Als PDF speichern“, sofern verfügbar.</p><button class="button primary" id="print-submit" type="button" disabled>Drucken / als PDF speichern</button></footer>
+    </dialog>
+    <div id="office-print-root"></div>
+    <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
     <script type="module" src="/office/editor.js?v=1"></script>
   </body>
 </html>

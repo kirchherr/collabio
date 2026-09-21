@@ -808,6 +808,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
+                        "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
+                        "dessen PDF-Speicherung vor und prueft vor der Ausgabe erneut die aktuellen Leserechte. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -837,6 +839,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/ui/office/office-comparison.mjs",
                         "e2e/work/tests/office-versions.spec.mjs",
                         "app/suite/ui/office/office-search.mjs",
+                        "app/suite/ui/office/office-print.mjs",
+                        "e2e/work/tests/office-print.spec.mjs",
                         "e2e/work/tests/office-search.spec.mjs",
                         "e2e/work/tests/office-tables.spec.mjs",
                         "e2e/work/tests/office-tables-responsive.spec.mjs",
@@ -844,6 +848,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
                         "ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md",
                         "ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -867,6 +872,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "expected_current_version_compare_and_swap",
                         "version_comparison_revalidates_both_saved_sources",
                         "historical_takeover_is_local_until_confirmed_cas_save",
+                        "browser_print_requires_fresh_exact_version_read_and_explicit_action",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",

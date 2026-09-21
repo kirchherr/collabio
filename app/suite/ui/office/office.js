@@ -10,13 +10,14 @@ import {
 } from "@tiptap/pm/tables";
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
+import { renderOfficePrintDocument } from "./office-print.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
-  tableAction: null, review: null, suggestions: null,
+  tableAction: null, review: null, suggestions: null, print: null, preparedPrint: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -168,6 +169,7 @@ function isDirty() {
 }
 
 function updateEditorState() {
+  if (state.print && !printCurrent(state.print)) closePrint();
   const session = state.session;
   const editor = state.editor;
   const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && !session.loading &&
@@ -180,6 +182,7 @@ function updateEditorState() {
   $("document-close").disabled = Boolean(session?.saving);
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
   $("document-reload").textContent = session?.historical ? "Aktuelle Version" : "Neu laden";
+  $("document-print").disabled = !printAllowed();
   $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
   $("history-compare").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
   $("historical-actions").hidden = !session?.historical || !listedWriteAccess(session?.objectId);
@@ -628,6 +631,7 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  closePrint();
   closeTableDialogs();
   $("table-message").textContent = "";
   closeComparison();
@@ -688,6 +692,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  closePrint();
   clearReview();
   clearSuggestions();
   closeTableDialogs();
@@ -822,6 +827,7 @@ function contentMatches(result, objectId, versionId = null) {
 }
 
 function acceptContent(result, session) {
+  closePrint();
   clearReview();
   clearSuggestions();
   mountEditor(result.content, session);
@@ -1115,6 +1121,141 @@ function validatedContent(result, objectId, versionId = null) {
   if (!state.editor) throw new ApiError(502);
   state.editor.schema.nodeFromJSON(content).check();
   return content;
+}
+
+function printAllowed() {
+  const session = state.session;
+  return Boolean(session && sessionCurrent(session) && state.editor && session.objectId && session.version?.version_id &&
+    typeof session.version.content_hash === "string" && session.version.content_hash &&
+    !session.loading && !session.saving && !session.restoring && !session.uncertain && !session.conflict && !isDirty() &&
+    !state.review?.saving && !state.review?.settling && !state.review?.uncertain && !suggestionLocksDocument());
+}
+
+function printCurrent(print) {
+  return Boolean(print && state.print === print && $("print-dialog").open && print.context === state.context &&
+    sessionCurrent(print.session) && print.session.revision === print.revision &&
+    print.session.objectId === print.objectId && print.session.version?.version_id === print.versionId && printAllowed());
+}
+
+function clearPreparedPrint(owner = null) {
+  if (owner && state.preparedPrint !== owner) return;
+  state.preparedPrint = null;
+  document.body.classList.remove("office-print-ready");
+  $("office-print-root").replaceChildren();
+  $("office-print-root").className = "";
+}
+
+function closePrint(returnFocus = false) {
+  const print = state.print;
+  state.print = null;
+  print?.controller?.abort();
+  if (print) print.content = null;
+  clearPreparedPrint();
+  $("print-preview").replaceChildren();
+  $("print-preview").className = "paper-a4 orientation-portrait";
+  $("print-version").textContent = "";
+  $("print-status").textContent = "";
+  $("print-paper").value = "a4";
+  $("print-orientation").value = "portrait";
+  $("print-submit").disabled = true;
+  $("print-dialog").close();
+  if (returnFocus && print?.session === state.session && !$("document-print").disabled) $("document-print").focus();
+}
+
+function printFormat() {
+  const paper = $("print-paper").value === "letter" ? "letter" : "a4";
+  const orientation = $("print-orientation").value === "landscape" ? "landscape" : "portrait";
+  return `paper-${paper} orientation-${orientation}`;
+}
+
+function updatePrintControls() {
+  const print = state.print;
+  const current = printCurrent(print);
+  const busy = Boolean(print?.loading || print?.printing);
+  $("print-refresh").disabled = !current || busy;
+  $("print-paper").disabled = !current || busy;
+  $("print-orientation").disabled = !current || busy;
+  $("print-submit").disabled = !current || busy || !print.content;
+  $("print-preview").className = printFormat();
+}
+
+function validatePrintContent(result, print) {
+  if (result?.tenant_id !== print.context.tenantId || result.version?.content_hash !== print.contentHash ||
+    result.version?.title !== print.title) throw new ApiError(502);
+  const content = validatedContent(result, print.objectId, print.versionId);
+  validateEditorDocument(state.editor.schema.nodeFromJSON(content));
+  return content;
+}
+
+async function loadPrintContent(print = state.print, finalAction = false) {
+  if (!printCurrent(print) || print.loading || print.printing) return;
+  const request = ++print.request;
+  print.controller?.abort();
+  print.controller = new AbortController();
+  print.loading = true;
+  print.content = null;
+  clearPreparedPrint();
+  $("print-preview").replaceChildren();
+  $("print-version").textContent = "";
+  $("print-status").textContent = finalAction ? "Gespeicherte Fassung und Freigabe werden erneut geprüft …" : "Druckansicht wird geladen …";
+  updatePrintControls();
+  const current = () => printCurrent(print) && print.request === request;
+  try {
+    const result = await api(`/v1/office/documents/${encodeURIComponent(print.objectId)}/content?version_id=${encodeURIComponent(print.versionId)}`,
+      { signal: print.controller.signal }, print.context);
+    if (!current()) return;
+    const content = validatePrintContent(result, print);
+    const preview = renderOfficePrintDocument(content, result.version.title);
+    if (!current()) return;
+    print.content = content;
+    $("print-preview").replaceChildren(preview);
+    $("print-version").textContent = `${result.version.title} · ${dateLabel(result.version.created_at_utc)} · Version ${print.versionId}`;
+    $("print-status").textContent = "Druckansicht bereit. Vor dem Drucken wird diese Fassung erneut geprüft.";
+    if (finalAction) {
+      // The print surface is made from this fresh response, never from the live
+      // editor, the preview DOM, or an older cached authorization result.
+      const root = $("office-print-root");
+      root.replaceChildren(renderOfficePrintDocument(content, result.version.title));
+      root.className = printFormat();
+      print.printing = true;
+      state.preparedPrint = print;
+      document.body.classList.add("office-print-ready");
+      updatePrintControls();
+      $("print-status").textContent = "Der Browser steuert Druck und PDF-Speicherung. Schließen Sie anschließend den Browserdialog.";
+      try { await window.print(); }
+      finally { clearPreparedPrint(print); }
+      if (!current()) return;
+      $("print-status").textContent = "Druckansicht bereit. Ob gedruckt oder eine PDF gespeichert wurde, bestimmt der Browser.";
+    }
+  } catch (error) {
+    if (!current()) return;
+    clearPreparedPrint(print);
+    print.content = null;
+    $("print-preview").replaceChildren();
+    $("print-version").textContent = "";
+    if (denied(error)) { officeAccessDenied(); return; }
+    $("print-status").textContent = "Die Druckansicht ist gerade nicht verfügbar. Bitte erneut laden.";
+  } finally {
+    if (current()) {
+      print.loading = false; print.printing = false;
+      updatePrintControls();
+    }
+  }
+}
+
+function openPrint() {
+  if ($("print-dialog").open) return;
+  if (!printAllowed() || document.querySelector("dialog[open]")) {
+    if (state.session) notice("Drucken ist für eine gespeicherte Fassung ohne ungespeicherte oder noch unbestätigte Änderungen verfügbar.");
+    return;
+  }
+  const session = state.session;
+  const print = { session, context: state.context, revision: session.revision, objectId: session.objectId,
+    versionId: session.version.version_id, contentHash: session.version.content_hash, title: session.version.title,
+    request: 0, content: null, controller: null, loading: false, printing: false };
+  state.print = print;
+  $("print-dialog").showModal();
+  loadPrintContent(print);
 }
 
 function cancelRestore() {
@@ -2268,6 +2409,17 @@ $("save-form").addEventListener("submit", saveDocument);
 $("save-confirm").addEventListener("change", () => { $("save-submit").disabled = !$("save-confirm").checked; });
 $("document-title").addEventListener("input", () => { if (state.session) contentChanged(state.session); });
 $("document-reload").addEventListener("click", () => { if (state.session?.objectId) openDocument(state.session.objectId); });
+$("document-print").addEventListener("click", openPrint);
+$("print-close").addEventListener("click", () => closePrint(true));
+$("print-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closePrint(true); });
+$("print-dialog").addEventListener("close", () => { if (!$("print-dialog").open && state.print) closePrint(); });
+$("print-refresh").addEventListener("click", () => loadPrintContent());
+$("print-submit").addEventListener("click", () => loadPrintContent(state.print, true));
+["print-paper", "print-orientation"].forEach((id) => $(id).addEventListener("change", updatePrintControls));
+window.addEventListener("beforeprint", () => {
+  if (!state.preparedPrint || !printCurrent(state.preparedPrint) || !state.preparedPrint.printing) clearPreparedPrint();
+});
+window.addEventListener("afterprint", () => clearPreparedPrint());
 $("document-close").addEventListener("click", async () => { if (await confirmDiscard()) { clearWorkspace(); renderDocuments(); } });
 $("documents-refresh").addEventListener("click", loadDocuments);
 $("documents-search").addEventListener("input", renderDocuments);
@@ -2489,6 +2641,9 @@ $("context-form").addEventListener("submit", async (event) => {
   loadDocuments();
 });
 document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
+    event.preventDefault(); openPrint(); return;
+  }
   if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
     $("office-shell").classList.remove("documents-open");
     $("documents-toggle").setAttribute("aria-expanded", "false");

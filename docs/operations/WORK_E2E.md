@@ -148,6 +148,15 @@ Report `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`
 `e2e/work/artifacts/roadmap-257/`. The main migration/foundation/business gates, API-only rollout and cleanup passed;
 ordinary tenant, pilot, indexing and engine admission remain closed. Exact evidence is in the operations log and handoff.
 
+Roadmap 258 adds saved-version print workflow and responsive checks (development acceptance pending). A controlled
+browser print callback invokes Chromium's real PDF output on the same page while the freshly authorized print surface
+is prepared. Tests exercise immutable versions and historical titles, read-only access, literal native structure,
+paper/orientation, fresh ACL revocation, failures and late responses, dirty/unresolved drafts and output isolation.
+The callback observes the real workflow; it does not replace the API, authorization, renderer or source bytes. Native
+OS printer selection is outside headless automation; the application never claims that opening a dialog completed output.
+PDF inspection uses the existing project image's Poppler tools in a separate disposable Compose service with no network,
+read-only artifact input and scoped output. It does not execute LibreOffice or admit any document conversion engine.
+
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.

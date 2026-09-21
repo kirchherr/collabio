@@ -1586,6 +1586,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-Rollout mit 13 Office-Operationen, Health und Cleanup am 2026-09-21 um 07:18:57 UTC gruen.
      Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
 
+258. [ ] Druckansicht fuer exakte gespeicherte native Office-Fassungen mit A4/Letter, Hoch-/Querformat,
+     erneuter Leseautorisierung vor Browserdruck/PDF-Speicherung, sicherem Inhaltsrendering und isolierten
+     Druckstilen. Bestehende 162 Browser-/Modellpruefungen, unveraenderliche Versionen und geschlossene
+     Tenant-/Pilot-/Engine-Gates erhalten. Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

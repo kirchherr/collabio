@@ -135,6 +135,8 @@ Current sprint:
 
 118. [x] Complete saved-version native Office text suggestions: confirmed creation, literal before/after review, atomic acceptance/new document version, immutable rejection, current ACLs, exact retries and version conflicts. Full quality passed on `9c17a31` (684 formatted files, Mypy 541 sources and full Pytest); 688 focused tests passed and all 162 browser/model checks passed in 535.956 seconds, preserving the prior 152 with zero skipped, unexpected or flaky results. Migration 0085, 85-migration/95-table foundation and nonempty PostgreSQL/S3 recovery verified 67 documents, 109 versions, ten suggestions and seven decisions (five accepted, two rejected). API rollout, thirteen Office operations, health and cleanup passed at 2026-09-21 07:18:57 UTC. Ordinary tenant, pilot, indexing and engine gates remain closed.
 
+119. [ ] Complete native Office saved-version print preview with A4/Letter and orientation, fresh exact-version authorization before browser print/PDF, safe literal content rendering, isolated print media and cleanup. Preserve the 162 existing browser/model checks and all closed tenant/pilot/engine gates. No new persistence, server export or DOCX admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
