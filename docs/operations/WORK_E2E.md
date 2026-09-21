@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 152 passing checks: 117 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 162 passing checks: 127 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -148,11 +148,10 @@ and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup
 The dump, checksum and restore receipt must result from a real operator-run pg_dump/pg_restore under the host locks.
 Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs.
 Roadmap 256 extends the proof to nonempty review creation, reply, resolve and reopen events, complete review metadata
-hashes and exact COMMENT source versions/receipts; parent ACL denial must still apply after restoration. Never run
-the proof without its Roadmap 257 extension: it also requires nonempty accepted and rejected suggestions, complete
+hashes and exact COMMENT source versions/receipts; parent ACL denial must still apply after restoration.
+The Roadmap 257 extension also requires nonempty accepted and rejected suggestions, complete
 proposal/decision inventory, exact original/replacement bytes and receipts, accepted result versions and current ACLs.
-Never run
-it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
+Never run it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
 before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
 
 ## Evidence

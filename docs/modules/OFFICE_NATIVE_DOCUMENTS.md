@@ -1,9 +1,9 @@
 # Native Office Documents
 
 Status: Roadmap 252–256 complete on dev001; Roadmap 257 implementation and verification in progress; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`
 
 ## User workflow and scope
 
@@ -22,10 +22,10 @@ presentations and mail remain separate product work. Existing DOCX engine fideli
 
 | Feature | Normal behavior | Default |
 | --- | --- | --- |
-| `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions and read discussions | false |
-| `office_documents.documents.write` | Create a document, save a successor or confirm a review action under current parent rights | false |
+| `office_documents.documents.read` | List authorized documents, open exact content, read/compare versions, discussions and suggestions | false |
+| `office_documents.documents.write` | Create a document, save a successor or confirm review/suggestion actions under current parent rights | false |
 
-The package is installed in the module catalog; migrations 0083 and 0084 neither provision nor enable an ordinary tenant.
+The package is installed in the module catalog; migrations 0083–0085 neither provision nor enable an ordinary tenant.
 Every route requires tenant context, an enabled module and the read feature. Writes also require the write feature and
 explicit confirmation. Create requires `office-editor` or `tenant-admin`; save requires an explicit current write/admin
 ACL on object type `office.document`. Role membership does not replace object authorization. Current PostgreSQL ACLs
@@ -199,7 +199,7 @@ A creator ACL is inserted atomically with the head. Versions, source metadata, r
 transaction. A tenant advisory lock precedes S3 PUT and stale-head validation. An unexpected database failure after PUT
 can leave a detectable orphan object; PostgreSQL rollback is not a cross-system rollback claim.
 
-Backup covers all four Office document/review tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
+Backup covers all six Office document/review/suggestion tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
 source metadata/receipts and exact S3 versions. Restore must validate forced RLS, append-only versions, creator ACL trigger,
 source binding, document/review head guards and all associated function bodies against migrations 0083/0084, even when source and target have
 the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
