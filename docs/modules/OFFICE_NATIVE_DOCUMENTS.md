@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: Roadmap 252–260 development complete on dev001; ordinary tenant and production admission remain closed
+Status: Roadmap 252–260 development complete on dev001; Roadmap 261 validation pending; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`
@@ -19,6 +19,22 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Older saved-version history (Roadmap 261, validation pending)
+
+The existing versions endpoint gains bounded page_size and cursor parameters. Default calls keep a 200-entry page;
+the UI requests 50 saved versions and exposes older-version, refresh and retry controls in history and comparison.
+Pages follow the immutable previous_version_id chain, including equal timestamps. The first page fixes a history head;
+later pages also report the freshly read current head so concurrent saves can be shown without shifting that chain.
+Every page requires current parent role/ABAC and typed ACL access. Cursors bind document, tenant, actor, roles, page size
+and continuation; they grant no permission and expire on service restart under the current single-worker deployment.
+
+Appending preserves comparison selections/results and local document, discussion and suggestion drafts. Refresh adopts
+new history metadata only after validation, while previous exact comparison selections remain separately labelled when
+outside the new window. Fresh content reads still authorize comparison and takeover. Errors distinguish retryable
+failure, invalid cursor requiring refresh and actual access denial; late responses cannot repopulate closed contexts.
+No schema, durable format or new endpoint is introduced. See
+[ADR-0085](../../ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md); dev001 validation is pending.
 
 ## Document discovery (Roadmap 260)
 
@@ -176,8 +192,8 @@ and uses literal text, showing added, removed, changed and unchanged document bl
 format/structure differences even when visible text is unchanged. Tables and lists retain readable row/cell/item
 boundaries. Large comparisons use bounded alignment work and paginated rendering without silently dropping blocks;
 an approximate alignment is labelled. It is a block comparison, not tracked changes or automatic merging.
-The existing history route returns at most 200 recent versions. A connected partial history is accepted and labelled;
-relative labels do not invent absolute version numbers for older unloaded entries.
+The history route keeps a default 200-entry page; Roadmap 261 adds older-page navigation as described above.
+A connected partial history is accepted and labelled; relative labels do not invent absolute version numbers for older unloaded entries.
 
 An authorized reader may compare but cannot take over content as a successor of the same document without write access.
 Taking a historical version into a draft

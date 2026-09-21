@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 190 passing checks: 155 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 200 passing checks: 165 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -237,6 +237,15 @@ with the disposable runner already absent, and test/restore services stopped. Ma
 `98ce365f455b` were unchanged. Webcut remained running(7), three provider nodes and listener 26443 were unchanged,
 and Tricert was absent. Roadmap 260 development is complete; no main-database migration or new recovery drill ran.
 Roadmap 257 recovery evidence is retained. These checks authorize no ordinary tenant or production admission.
+
+Roadmap 261 adds eight older-history workflows and two responsive runs; validation is pending. A dedicated synthetic
+author creates one genuine PostgreSQL/S3 document with 225 confirmed immutable versions, and a dedicated reader has
+only its parent read grant. These principals are separate from the existing 225-document discovery fixture. The cases
+exercise complete history, earliest rich content, current reader access, exact comparison/takeover/CAS, concurrent
+heads, preserved document/review drafts, lost genuine responses with same-cursor retry, invalid cursors and late reads.
+The legacy bounded-history case now uses its own real 51-version chain and genuine 50-entry response, preserving its
+partial-history, exact comparison and no-write takeover checks. No fabricated pagination response replaces the API.
+Desktop/tablet/mobile screenshots and actual access-log cursor redaction are required before acceptance.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source

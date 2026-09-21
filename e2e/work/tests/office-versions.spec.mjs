@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import {
-  OFFICE_PATH, OFFICE_READER_ID, captureOfficeResponse, createOfficeVersionPair, holdOfficeRead,
+  OFFICE_HEADERS, OFFICE_PATH, OFFICE_READER_ID, captureOfficeResponse, createOfficeVersionPair, holdOfficeRead,
   loadOfficeComparison, newOfficeDraft, observeStaleOfficeContent, officeContent,
   officeContentPath, officeEditor, officeFeatures, officeVersions, openOffice,
   openOfficeComparison, openOfficeDocument, saveOffice, setOfficeAcl, setOfficeFeatures,
@@ -164,20 +164,29 @@ test("Office historical takeover creates only a draft and explicit save extends 
 
 test("Office compares a bounded real history window and takes over its historical entry without writing", async ({ page }) => {
   await openOffice(page);
-  const pair = await createOfficeVersionPair(page, "Synthetic bounded history");
+  await newOfficeDraft(page, "Synthetic bounded history", { text: "Earlier saved wording" });
+  const first = await saveOffice(page);
+  const objectId = first.document.object_id;
+  let previous = first;
+  // Genuine committed predecessors naturally extend beyond the UI's 50-row page.
+  for (let number = 2; number <= 50; number += 1) {
+    const text = number === 50 ? "Current saved wording" : `Intermediate saved wording ${number}`;
+    const response = await page.request.post(`${BASE_URL}${OFFICE_PATH}/${objectId}/versions`, {
+      headers: OFFICE_HEADERS,
+      data: {
+        title: "Synthetic bounded history", document: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+        expected_current_version_id: previous.version.version_id,
+        mutation_reference: `bounded-history-${objectId}-${number}`, human_confirmation: true,
+      },
+    });
+    expect(response.status()).toBe(200);
+    previous = await response.json();
+  }
+  const pair = { first, second: previous, objectId };
+  await page.locator("#document-reload").click();
+  await expect(officeEditor(page)).toHaveText("Current saved wording");
   await officeEditor(page).fill("Third saved wording outside the old pair");
   const third = await saveOffice(page, { objectId: pair.objectId });
-  const path = `${OFFICE_PATH}/${pair.objectId}/versions`;
-  await page.route((url) => url.pathname === path, async (route) => {
-    if (route.request().method() !== "GET") { await route.continue(); return; }
-    const response = await route.fetch();
-    expect(response.status()).toBe(200);
-    const result = await response.json();
-    // Reproduce the repository's bounded history window using only real committed rows.
-    result.versions = result.versions.filter((version) => version.version_id !== pair.first.version.version_id);
-    expect(result.versions).toHaveLength(2);
-    await route.fulfill({ response, json: result });
-  });
   const writes = collectWrites(page);
   await openOfficeComparison(page);
   await expect(page.locator("#compare-left")).toHaveValue(pair.second.version.version_id);
@@ -196,7 +205,7 @@ test("Office compares a bounded real history window and takes over its historica
   await page.locator("#document-restore").click();
   await expectAdoptedDraft(page, pair.second.version.title, "Current saved wording");
   expect(writes).toHaveLength(0);
-  expect(await officeVersions(page, pair.objectId)).toHaveLength(3);
+  expect(await officeVersions(page, pair.objectId)).toHaveLength(51);
 });
 
 test("Office restored draft survives a later competing save with a real CAS conflict", async ({ page, context }) => {

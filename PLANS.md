@@ -141,6 +141,11 @@ Current sprint:
 
 121. [x] Make native Office documents discoverable beyond the initial 200 records: bounded server-side literal title search, current ACL checks before pagination, authenticated context-bound cursors, and clear next-page/retry controls. Preserve open and dirty documents independently of list membership; reauthorize exact saved sources for refresh/takeover/acceptance. Search values stay outside normal logs; mobile Work navigation exposes Office. Full quality passed on 5bcb7d2; all 190 checks (155 browser + 35 model) passed in 651.284899 seconds, and 180 focused Python and ten focused browser cases passed. API-only rollout, live checks and cleanup completed at 2026-09-21 13:04:19 UTC with closed gates. No new schema/persistence or recovery drill; item 257 evidence remains retained.
 
+122. [ ] Load older saved native Office versions beyond the 200-version window through authenticated, document-bound
+pagination along the immutable predecessor chain. Revalidate current parent ACLs for every page; preserve drafts,
+comparison selections and already rendered results while appending. Clearly identify newer saved heads and restart
+history without silently replacing content. Preserve all 190 existing checks and closed tenant/pilot/engine gates.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

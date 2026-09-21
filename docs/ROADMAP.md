@@ -1617,6 +1617,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 13:04:19 UTC gruen; geschlossene Gates erhalten.
      Keine neue Persistenz, Hauptdatenbank-Migration oder Recovery-Ausfuehrung; Nachweis aus Punkt257 bleibt erhalten.
 
+261. [ ] Aeltere gespeicherte Office-Fassungen ueber das bisherige 200-Versionen-Fenster hinaus nachladen:
+     begrenzte Seiten entlang der unveraenderlichen Vorgaengerkette, dokument- und kontextgebundene Cursor und
+     frische Parent-ACL je Seite. Auswahl, Vergleich und lokale Entwuerfe beim Nachladen erhalten; neuere Fassungen
+     eindeutig anzeigen und Verlauf bewusst aktualisieren. Alle bisherigen 190 Pruefungen und geschlossenen Gates erhalten.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

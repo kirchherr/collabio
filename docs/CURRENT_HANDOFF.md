@@ -2,6 +2,10 @@
 
 Updated: 2026-09-21
 
+Active continuation: Roadmap 261 / PLANS 122 extends saved-version history beyond 200 entries with bounded pages
+along the immutable predecessor chain. Current parent ACLs remain mandatory for every page; selection and local
+drafts survive loading and refresh. Implementation and dev001 validation are in progress.
+
 Roadmap 260 / PLANS 121 completes native Office discovery with server-side literal title search and cursor-based
 loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership never clears
 an open document or draft. Full quality and all 190 browser/model checks passed on `5bcb7d2`. Desktop/tablet/mobile
