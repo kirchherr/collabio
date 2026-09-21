@@ -203,13 +203,40 @@ API/PostgreSQL/MinIO running; the exact E2E services were removed and auxiliary 
 Ordinary Office remains unprovisioned, with its features, KB write and pilot closed. Roadmap 259 development is complete;
 no main-database migration or new recovery drill was run, and no ordinary-tenant or production admission follows from this evidence.
 
-Roadmap 260 adds server-side title discovery and pagination; development validation is pending. Its dedicated synthetic
+Roadmap 260 adds eight title-discovery workflows and two responsive runs. Its dedicated synthetic
 owner receives 225 tiny genuine PostgreSQL/S3 documents through the existing document-create service, and a separate
 reader receives only three old entries. Existing user fixtures remain separate. The seed runs only after the isolated
 environment guard and principal transaction commit, emits counts only, and changes no normal-runtime activation.
-New browser tests cover beyond-200 discovery, literal title queries, pagination, restricted readers, preserved drafts,
-fresh permissions, transient failures, stale responses and responsive controls. Query/cursor values must be absent from
-the API access logs. The existing main database and retained recovery evidence remain unchanged.
+The cases prove complete unique pages despite a real saved rename, literal Unicode/wildcard/markup searches, ACL filtering
+before limits, preserved document/review drafts, fresh write revocation and read denial, stale query/context cancellation,
+and rejected tampered/cross-role cursors. The retry case drops a genuine upstream 200 response once and verifies the
+same cursor against a new real read; it introduces neither a fabricated success nor a server failure-control endpoint.
+The responsive case follows the real Work-to-Office link, then exercises search, append focus and reachable controls.
+The first focused run on `e304b28` passed nine of ten and revealed that Work hid the only Office link on mobile.
+The narrow product fix exposes that existing link in compact navigation; the test and its real-click assertions remain unchanged.
+
+On `5bcb7d2`, all ten focused checks passed in 46.602456 seconds, with zero skipped, unexpected or flaky results.
+Focused report: `sha256:663d6370c40b38e432000b458ea2f7fb662121fd3a0be3b19ddfdf2b59e42c03`.
+Independent visual review passed desktop, tablet and mobile screenshots. Focused API log inspection found 51 list access
+records with query/cursor values redacted.
+
+Final verification on immutable `5bcb7d2` completed with quality and browser status 0 at 2026-09-21 13:01:19 UTC.
+Ruff, formatting across 699 files, Mypy across 547 sources and full Pytest passed; only the known Starlette/AnyIO warning
+remains. All 190 checks passed in 651.284899 seconds: 155 browser and 35 model cases, zero skipped, unexpected or flaky;
+the previous 180 checks remain included. Independent visual review passed all five final screenshots: three Office
+discovery viewports and two Work viewports. At 13:01:29 UTC, inspection of 306 actual list access records confirmed
+query/cursor redaction. Final browser report:
+`sha256:f11d3d0e6130351760439eec1ea7e71ae85de1fe881d76d2df4c9eee0ac8b8ef`;
+quality log: `sha256:627d7e5a71376e443db09d5bc78e953c86298b699d3df8a8b2e3feaba1fc446c`.
+The API-only `--no-deps` rollout retained pilot 0 and reached healthy at 2026-09-21 13:03:04 UTC (`6751b0ddada8`).
+Live verification at 13:04:01 UTC checked all existing/new controls, the query/page-size/cursor contract, thirteen Office
+OpenAPI operation definitions, assets/licenses, Work navigation and no-store/CSP; it did not execute all thirteen operations.
+Ordinary Office remains unprovisioned with a 404; Office features, KB write and pilot remain closed.
+Cleanup completed healthy at 13:04:19 UTC with Collabio running(3): the six remaining exact E2E containers were removed,
+with the disposable runner already absent, and test/restore services stopped. Main PostgreSQL `87a6b37942c8` and MinIO
+`98ce365f455b` were unchanged. Webcut remained running(7), three provider nodes and listener 26443 were unchanged,
+and Tricert was absent. Roadmap 260 development is complete; no main-database migration or new recovery drill ran.
+Roadmap 257 recovery evidence is retained. These checks authorize no ordinary tenant or production admission.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
@@ -247,6 +274,7 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `office-print-rich-letter-landscape.pdf`, `office-print-history-a4-portrait.pdf`, `office-print-unprepared.pdf`;
 - `pdf-qa/report.json`, extracted PDF text and rendered page PNGs from independent inspection.
 - `office-reuse-desktop-chromium.png`, `office-reuse-tablet-chromium.png`, `office-reuse-mobile-chromium.png`.
+- `office-discovery-desktop-chromium.png`, `office-discovery-tablet-chromium.png`, `office-discovery-mobile-chromium.png`.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

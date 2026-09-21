@@ -1606,10 +1606,16 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 12:22:11 UTC gruen; alle Tenant-/Pilot-/Engine-Gates
      bleiben geschlossen. Keine Schema-/Persistenzaenderung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
 
-260. [ ] Native Office-Dokumente ueber die ersten 200 Eintraege hinaus auffindbar machen: serverseitige literale
+260. [x] Native Office-Dokumente ueber die ersten 200 Eintraege hinaus auffindbar machen: serverseitige literale
      Titelsuche, begrenzte Seiten mit aktueller ACL-Pruefung vor Seitengrenzen und kontextgebundene Cursor.
      Suche, Nachladen und Wiederholen erhalten geoeffnete Dokumente und ungespeicherte Entwuerfe unabhaengig von
-     Listenmitgliedschaft; Suchtexte bleiben ausserhalb normaler Logs. Alle bisherigen 180 Pruefungen erhalten.
+     Listenmitgliedschaft; Suchtexte bleiben ausserhalb normaler Logs. Mobiler Office-Einstieg in Work erreichbar.
+     Volle Quality auf 5bcb7d2 gruen: Ruff, 699 formatierte Dateien, Mypy 547 Quellen und vollstaendiges Pytest.
+     180 fokussierte Python-, zehn fokussierte Browser- sowie alle 190 Browser-/Modellpruefungen (155 + 35)
+     bestanden; Gesamtmatrix 651,284899 Sekunden, keine ausgelassenen, unerwarteten oder instabilen Ergebnisse.
+     Fuenf finale Bildschirmansichten unabhaengig geprueft; 306 echte Listen-Zugriffslogs ohne Suchtexte/Cursor.
+     API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 13:04:19 UTC gruen; geschlossene Gates erhalten.
+     Keine neue Persistenz, Hauptdatenbank-Migration oder Recovery-Ausfuehrung; Nachweis aus Punkt257 bleibt erhalten.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

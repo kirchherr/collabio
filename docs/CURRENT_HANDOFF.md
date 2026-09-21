@@ -2,9 +2,10 @@
 
 Updated: 2026-09-21
 
-Active continuation: Roadmap 260 / PLANS 121 extends native Office discovery with server-side literal title search
-and cursor-based loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership
-must never clear an open document or draft. API/UI implementation and dev001 validation are in progress.
+Roadmap 260 / PLANS 121 completes native Office discovery with server-side literal title search and cursor-based
+loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership never clears
+an open document or draft. Full quality and all 190 browser/model checks passed on `5bcb7d2`. Desktop/tablet/mobile
+review, API-only rollout and final health/gate checks passed. Office development continues before CRM expansion.
 
 Roadmap 259 / PLANS 120 completes saved-version reuse as an independent new document draft. Source read and create
 permission are freshly checked after discard consent; the existing confirmed Create supplies the new identity and
@@ -47,8 +48,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `e7fec24` (full Python quality and all 180 browser/model checks, including ten focused
-  reuse checks). Product changes are in `b4add9d`; `e7fec24` only corrects canonical table attributes in a test fixture.
+- Validated implementation: `5bcb7d2` (full Python quality and all 190 browser/model checks, including ten focused
+  discovery checks). Backend/API and UI implementation is integrated in `e304b28`; `5bcb7d2` fixes mobile Work navigation.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -62,7 +63,18 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 259 host verification at 2026-09-21 12:22:11 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 260 host verification at 2026-09-21 13:04:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`6751b0ddada8`) with pilot explicitly 0;
+bounded startup retries reached healthy at 13:03:04 UTC. Live verification at 13:04:01 UTC confirmed all thirteen Office
+OpenAPI operation definitions, additive query/page_size/cursor parameters, new discovery and existing controls, local
+assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with non-cacheable 404; Office
+features closed, KB write false, pilot 0. Six remaining exact Work-E2E containers were removed, with the disposable
+runner already absent; postgres-test, postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`),
+MinIO (`98ce365f455b`) and retained synthetic recovery data are unchanged. Webcut running(7), all three provider nodes
+and listener 26443 unchanged, Tricert absent. No main-database migration, new recovery drill, ordinary tenant/business
+content write, indexing, cloud provider or DOCX engine activation occurred; isolated test databases ran their migrations.
+
+Previous item 259 host verification at 2026-09-21 12:22:11 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`a001838868f7`) with pilot explicitly 0;
 bounded startup retries reached healthy at 12:21:23 UTC. Live checks confirmed thirteen Office OpenAPI operation definitions,
 new reuse and existing controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with
@@ -181,7 +193,56 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 259
+## Last completed slice: Roadmap 260
+
+The existing document-list operation now supports bounded literal title search and context-bound cursor pagination.
+The UI requests 50 entries per page, shows loaded counts, and exposes clear next-page, reset and retry controls.
+Current role/ABAC and typed ACL checks precede the page limit and lookahead. Creation time and object ID provide a
+stable order across saves and renames; concurrent title/ACL changes remain live and this is not a frozen snapshot.
+Cursors bind tenant, actor, roles, normalized query and page size. The per-service HMAC key supports the current
+single-worker deployment; restart invalidates cursors and requires a list refresh. No shared multi-worker key is claimed.
+
+Search and pagination preserve open documents and all local drafts independently of list membership. Manual refresh
+reauthorizes the exact saved source and updates its write capability without replacing edited content or review drafts.
+Actual read denial clears protected state; transient list/read failures preserve drafts. Historical takeover and
+suggestion acceptance use fresh exact content permissions instead of filtered-list membership. Existing confirmation,
+version/hash validation, CAS and exact save retry remain intact. Query text and cursors are excluded from audit metadata
+and ordinary Uvicorn access records. The compact Work navigation now exposes the existing Office link on mobile.
+
+Backend implementation `ac250d7` received formatting-only correction `35fdb1e`. Its real PostgreSQL revocation fixture
+then required the existing mandatory revoked_at_utc value; `e304b28` corrects that fixture and integrates the UI/tests.
+All 180 focused Python checks passed in 23.04 seconds, including genuine PostgreSQL authorization-before-limit tests.
+The first browser run passed nine of ten and found the hidden mobile Work link. Product correction `5bcb7d2` preserves
+the unchanged real-click test. All ten focused browser checks then passed in 46.602456 seconds, zero skipped/unexpected/flaky.
+The separate synthetic author owns 225 real PostgreSQL/S3 documents; a separate reader can see only three oldest entries.
+Independent desktop/tablet/mobile visual review passed. Actual Uvicorn logs verified 51 redacted list access records.
+
+- Focused report: `sha256:663d6370c40b38e432000b458ea2f7fb662121fd3a0be3b19ddfdf2b59e42c03`.
+- Focused Python log: `sha256:424ede12b4e521f026d5e8535595879e23de559bc4e7cd9cf7d1026d9cd622c5`.
+- Failed initial browser report: `sha256:74199fc7e94aaa0580778fcef451c7d7a4f81cf4faf77369672fc404879b37c4`.
+- Failed PostgreSQL fixture log: `sha256:0d6509f0c156b72c42c8502a12ac8872fe6ff9c8ad974a1f137bbfc8d328c29c`.
+
+Full acceptance completed on immutable `5bcb7d2` at 2026-09-21 13:01:19 UTC:
+
+- Ruff and formatting across 699 files, Mypy across 547 sources and complete Pytest passed; only the known
+  Starlette/AnyIO deprecation warning remains.
+- All 190 checks passed in 651.284899 seconds: 155 browser and 35 model cases, zero skipped/unexpected/flaky.
+- Final report: `sha256:f11d3d0e6130351760439eec1ea7e71ae85de1fe881d76d2df4c9eee0ac8b8ef`.
+- Quality log: `sha256:627d7e5a71376e443db09d5bc78e953c86298b699d3df8a8b2e3feaba1fc446c`.
+- Independent final visual review passed all three Office and both Work screenshots, including mobile navigation.
+- Office desktop: `sha256:2dc5a26e4a3e5002f221e9d01fc4852de6ac984ea41c7ff240a6310f871ce23e`;
+  tablet: `sha256:b05b0ef9fed915953a45a12858b1e12eb70bc2b09f80b7c9091e39facae323b8`;
+  mobile: `sha256:7623c55a537cba751d8626bc4a6a4edb03f87e6265ae836e0083390d529909df`.
+- Work desktop: `sha256:8280b8ca8309031eefea8d13080c9d0f97d0840a5621d5490869fdeecd5f9796`;
+  mobile: `sha256:693614c26b4f68e2ac4558a01d36368ed3c6221f0a702a7bc411e5f6621bc482`.
+- Actual Uvicorn logs verified 306 list access records without query/cursor values at 13:01:29 UTC.
+
+Ignored reports and diagnostics remain under `e2e/work/artifacts/roadmap-260/`. API rollout, live verification and
+exact cleanup passed as recorded above and in the append-only operations log. No schema, durable storage,
+dependency or endpoint change is introduced; the existing read endpoint receives additive parameters/response fields.
+No main-database migration or new recovery drill is claimed. Roadmap 257 recovery evidence remains retained.
+
+## Previous completed slice: Roadmap 259
 
 Saved current or historical native Office versions can now become independent memory-only drafts through
 "Als neues Dokument". The dialog identifies the saved title/version/date and accepts a bounded new title.
@@ -716,13 +777,13 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 259 is complete. Preserve the 180-check matrix (145 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 260 is complete. Preserve the 190-check matrix (155 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-version-bound comments, explicit saved-text suggestions, browser printing and independent saved-version reuse are complete.
-A suitable next bounded workflow is server-side title search and cursor-based document-list loading: the current PostgreSQL
-listing returns at most 200 entries and the UI searches only those loaded titles. Preserve authoritative current ACL checks,
-stable pagination and drafts; absence from a filtered page must not be treated as access revocation. This is a recommendation,
-not an implemented item. Continuous tracked changes and live collaboration remain open.
+version-bound comments, explicit saved-text suggestions, browser printing, independent saved-version reuse and paginated
+title discovery are complete. A suitable next bounded workflow is loading older saved versions: the current history route
+still returns at most 200 versions. Make older exact versions reachable for reading, comparison and takeover, preserving
+fresh parent ACL checks, connected history validation, stable selection and all drafts across pages and concurrent saves.
+This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.

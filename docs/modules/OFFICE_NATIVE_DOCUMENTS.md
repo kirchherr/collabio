@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: Roadmap 252–259 development complete on dev001; Roadmap 260 validation pending; ordinary tenant and production admission remain closed
+Status: Roadmap 252–260 development complete on dev001; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`
@@ -20,7 +20,7 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Document discovery (Roadmap 260, validation pending)
+## Document discovery (Roadmap 260)
 
 The document list searches all currently readable titles on the server and loads results in pages of 50 through
 the existing `GET /v1/office/documents` operation. Optional `query`, `page_size` and `cursor` parameters extend its
@@ -41,7 +41,33 @@ responses, independently of a filtered page. Existing confirmations, version che
 
 List query text and cursors do not enter audit metadata or ordinary Uvicorn access records. No new schema, persistence,
 index, dependency or endpoint is introduced; existing Roadmap 257 recovery evidence is retained, not rerun.
-See [ADR-0084](../../ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md). Full dev001 validation is pending.
+The existing Work-to-Office link is also visible in compact mobile navigation; its destination and access checks are unchanged.
+
+Focused development verification on `5bcb7d2` passed all ten discovery browser checks in 46.602456 seconds, with zero
+skipped, unexpected or flaky cases. The fixture uses 225 genuine PostgreSQL/S3 documents under a separate synthetic
+author and grants a dedicated reader only the three oldest entries. Checks cover complete unique pagination despite a
+saved rename, literal Unicode/wildcard/markup titles, ACL filtering before limits, preserved document/review drafts,
+fresh write revocation and read denial, query/context cancellation, a lost genuine list response with exact cursor retry,
+invalid/cross-role cursors and desktop/tablet/mobile controls. All three viewport screenshots passed independent review.
+The first focused run on `e304b28` passed nine cases and exposed the hidden mobile Work link; the product fix preserves
+the original real-click assertions. Inspection of 51 actual list access records confirmed query/cursor redaction.
+Focused report: `sha256:663d6370c40b38e432000b458ea2f7fb662121fd3a0be3b19ddfdf2b59e42c03`.
+Full verification on the same immutable `5bcb7d2` completed successfully at 2026-09-21 13:01:19 UTC: Ruff, formatting
+across 699 files, Mypy across 547 sources and full Pytest passed, with only the known Starlette/AnyIO warning.
+All 190 checks passed in 651.284899 seconds: 155 browser cases and 35 model cases, zero skipped, unexpected or flaky.
+All previous 180 checks remain included. Independent review passed the three Office discovery and two Work screenshots.
+Inspection at 13:01:29 UTC confirmed query/cursor redaction in 306 actual list access records.
+Final browser report: `sha256:f11d3d0e6130351760439eec1ea7e71ae85de1fe881d76d2df4c9eee0ac8b8ef`;
+quality log: `sha256:627d7e5a71376e443db09d5bc78e953c86298b699d3df8a8b2e3feaba1fc446c`.
+The API-only `--no-deps` rollout retained pilot 0 and reached healthy at 2026-09-21 13:03:04 UTC (`6751b0ddada8`).
+Live verification at 13:04:01 UTC checked existing/new controls, the query/page-size/cursor contract, all thirteen Office
+OpenAPI operation definitions, local assets/licenses, Work navigation and no-store/CSP. These are definition checks,
+not execution of every operation. Ordinary Office remains unprovisioned with a 404; Office features, KB write and pilot
+remain closed. Cleanup finished healthy at 13:04:19 UTC with only regular API/PostgreSQL/MinIO running, exact E2E services
+removed and test/restore services stopped. Roadmap 260 development is complete. Main PostgreSQL and MinIO were unchanged;
+no main-database migration or new recovery drill ran, and Roadmap 257 recovery evidence is retained. No ordinary-tenant
+or production admission follows from this development evidence.
+See [ADR-0084](../../ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md).
 
 ## Saved-version reuse (Roadmap 259)
 
