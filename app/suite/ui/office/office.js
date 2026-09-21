@@ -16,7 +16,7 @@ const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
-  tableAction: null, review: null,
+  tableAction: null, review: null, suggestions: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -171,11 +171,11 @@ function updateEditorState() {
   const session = state.session;
   const editor = state.editor;
   const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && !session.loading &&
-    !session.historical && !session.saving && !session.uncertain && !session.restoring);
+    !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
   $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
-    !session.canWrite || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || (!session.uncertain && !isDirty());
+    !session.canWrite || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || suggestionLocksDocument() || (!session.uncertain && !isDirty());
   $("document-save").textContent = session?.uncertain ? "Speicherung prüfen" : "Version speichern";
   $("document-close").disabled = Boolean(session?.saving);
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
@@ -198,6 +198,7 @@ function updateEditorState() {
   }
   updateSearchControls();
   updateReviewControls();
+  updateSuggestionControls();
   const status = $("document-status");
   status.className = "document-status";
   if (!session) return;
@@ -250,7 +251,7 @@ function rebuildSearch(scroll = false) {
 function replacementAllowed() {
   const session = state.session;
   return Boolean(session && sessionCurrent(session) && state.editor?.isEditable && session.canWrite &&
-    !session.loading && !session.historical && !session.saving && !session.uncertain && !session.restoring);
+    !session.loading && !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
 }
 
 function updateSearchControls() {
@@ -639,6 +640,10 @@ function contentChanged(session) {
   if (!session.conflict) notice();
   refreshDocumentTools();
   clearReviewHighlight();
+  if (state.suggestions && !state.suggestions.uncertain) {
+    state.suggestions.attempt = null;
+    closeSuggestionConfirmation();
+  }
 }
 
 function mountEditor(content, session) {
@@ -684,6 +689,7 @@ function mountEditor(content, session) {
 
 function clearWorkspace() {
   clearReview();
+  clearSuggestions();
   closeTableDialogs();
   $("table-tools").hidden = true;
   $("table-info").textContent = "";
@@ -776,11 +782,15 @@ async function loadDocuments() {
 }
 
 function confirmDiscard(scope = "all") {
-  if (state.session?.saving || state.review?.saving) return Promise.resolve(false);
-  const documentDraft = scope !== "comments" && (isDirty() || state.session?.uncertain);
-  if (!documentDraft && !hasReviewDraft()) return Promise.resolve(true);
+  if (state.session?.saving || state.review?.saving || state.suggestions?.saving || state.suggestions?.settling) return Promise.resolve(false);
+  const documentDraft = scope === "all" && (isDirty() || state.session?.uncertain);
+  const reviewDraft = scope !== "suggestions" && hasReviewDraft();
+  const suggestionDraft = scope !== "comments" && hasSuggestionDraft();
+  if (!documentDraft && !reviewDraft && !suggestionDraft) return Promise.resolve(true);
   if (state.discardResolve) return Promise.resolve(false);
-  $("discard-message").textContent = hasReviewDraft()
+  $("discard-message").textContent = suggestionDraft
+    ? `${documentDraft ? "Ihre Dokumentänderungen und " : "Ihre "}ungespeicherten Änderungsvorschläge gehen verloren.${state.suggestions?.uncertain ? " Eine noch nicht bestätigte Speicherung kann bereits erfolgt sein." : ""}`
+    : reviewDraft
     ? `${documentDraft ? "Ihre Dokumentänderungen und " : "Ihre "}ungespeicherten Kommentarentwürfe gehen verloren.${state.review?.uncertain ? " Eine noch nicht bestätigte Kommentarspeicherung kann bereits erfolgt sein." : ""}`
     : "Ihre ungespeicherten Änderungen gehen verloren.";
   $("discard-dialog").showModal();
@@ -813,6 +823,7 @@ function contentMatches(result, objectId, versionId = null) {
 
 function acceptContent(result, session) {
   clearReview();
+  clearSuggestions();
   mountEditor(result.content, session);
   closeComparison();
   cancelRestore();
@@ -852,6 +863,7 @@ async function openDocument(objectId, versionId = null) {
     acceptContent(result, session);
     if ($("history-tab").getAttribute("aria-selected") === "true") loadHistory();
     if (reviewPanelOpen()) loadReview();
+    if (suggestionPanelOpen()) loadSuggestions();
   } catch (error) {
     if (!sessionCurrent(session)) return;
     state.editor?.destroy(); state.editor = null; $("office-editor").replaceChildren();
@@ -927,9 +939,10 @@ function mutationReference() {
 async function showSave() {
   const session = state.session;
   if (!session || !state.editor || $("document-save").disabled) return;
-  if (hasReviewDraft()) {
-    if (!(await confirmDiscard("comments")) || !sessionCurrent(session)) return;
+  if (hasReviewDraft() || hasSuggestionDraft()) {
+    if (!(await confirmDiscard("inspector")) || !sessionCurrent(session)) return;
     clearReview();
+    clearSuggestions();
   }
   let snapshot;
   try { snapshot = draftSnapshot(); } catch { notice("Das Dokument überschreitet das unterstützte Format oder die Größenbegrenzung.", true); return; }
@@ -975,6 +988,7 @@ async function saveDocument(event) {
     await loadDocuments();
     if (sessionCurrent(session) && $("history-tab").getAttribute("aria-selected") === "true") loadHistory();
     if (sessionCurrent(session) && reviewPanelOpen()) loadReview();
+    if (sessionCurrent(session) && suggestionPanelOpen()) loadSuggestions();
   } catch (error) {
     if (!sessionCurrent(session)) return;
     $("save-dialog").close();
@@ -1312,6 +1326,7 @@ async function restoreVersion(versionId, comparison = null) {
     replacement.baseline = baseline;
     mountEditor(historicContent, replacement);
     clearReview();
+    clearSuggestions();
     closeComparison();
     cancelRestore();
     state.session = replacement;
@@ -1776,10 +1791,419 @@ async function saveReviewOperation(event) {
   }
 }
 
+function suggestionCurrent(suggestions) {
+  return Boolean(suggestions && state.suggestions === suggestions && sessionCurrent(suggestions.session) &&
+    suggestions.context === state.context && suggestions.versionId === suggestions.session.version?.version_id);
+}
+function suggestionPanelOpen() {
+  return $("suggestions-tab").getAttribute("aria-selected") === "true" &&
+    !$("office-shell").classList.contains("inspector-hidden") && !$("office-shell").classList.contains("focus-mode");
+}
+function hasSuggestionDraft() { return Boolean(state.suggestions?.composer?.operation === "create" || state.suggestions?.uncertain); }
+function suggestionLocksDocument() {
+  const suggestions = state.suggestions;
+  return Boolean(suggestions && (suggestions.preparing || suggestions.saving || suggestions.settling || suggestions.uncertain));
+}
+function suggestionBusy(suggestions = state.suggestions) {
+  return !suggestionCurrent(suggestions) || suggestions.preparing || suggestions.saving || suggestions.settling ||
+    suggestions.session.loading || suggestions.session.saving || suggestions.session.restoring || suggestions.session.uncertain;
+}
+function suggestionBase(suggestions) { return `/v1/office/documents/${encodeURIComponent(suggestions.session.objectId)}/suggestions`; }
+function suggestionIdentity(result, suggestions) {
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    typeof result.current_version_id === "string" && result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
+}
+function validSuggestion(value, suggestions) {
+  return value && typeof value.suggestion_id === "string" && value.anchor_version_id === suggestions.versionId &&
+    Number.isInteger(value.anchor?.from) && Number.isInteger(value.anchor?.to) && value.anchor.from >= 0 && value.anchor.to > value.anchor.from &&
+    ["open", "accepted", "rejected"].includes(value.status) && value.revision === (value.status === "open" ? 1 : 2) &&
+    typeof value.created_by === "string" && typeof value.created_at_utc === "string" &&
+    typeof value.can_accept === "boolean" && typeof value.can_reject === "boolean" &&
+    (value.status === "accepted" ? typeof value.result_version_id === "string" : value.result_version_id === null);
+}
+function validSuggestionDetail(result, suggestions, id = null) {
+  if (!suggestionIdentity(result, suggestions) || !validSuggestion(result.suggestion, suggestions) ||
+      (id && result.suggestion.suggestion_id !== id) || typeof result.quote !== "string" || !result.quote ||
+      Array.from(result.quote).length > 2000 || typeof result.replacement_text !== "string" ||
+      Array.from(result.replacement_text).length > 4000 || result.quote === result.replacement_text) return false;
+  const decision = result.decision;
+  return result.suggestion.status === "open" ? decision === null : Boolean(decision &&
+    typeof decision.decision_id === "string" && typeof decision.created_by === "string" && typeof decision.created_at_utc === "string" &&
+    decision.operation === (result.suggestion.status === "accepted" ? "accept" : "reject") &&
+    decision.result_version_id === result.suggestion.result_version_id);
+}
+function closeSuggestionConfirmation() {
+  $("suggestion-confirm-dialog").close();
+  $("suggestion-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = false; });
+  $("suggestion-confirm-checkbox").checked = false;
+  $("suggestion-confirm-submit").disabled = true;
+  ["summary", "before", "after", "message"].forEach((name) => { $(`suggestion-confirm-${name}`).textContent = ""; });
+}
+function clearSuggestions() {
+  const suggestions = state.suggestions;
+  state.suggestions = null;
+  suggestions?.controller.abort();
+  closeSuggestionConfirmation();
+  $("suggestions-list").replaceChildren();
+  ["suggestions-status", "suggestions-version", "suggestions-hint", "suggestion-before", "suggestion-count"].forEach((id) => { $(id).textContent = ""; });
+  $("suggestion-replacement").value = "";
+  $("suggestion-composer").hidden = true;
+  $("suggestions-more").hidden = true;
+  $("suggestion-new").disabled = true;
+}
+function canCreateSuggestion(suggestions = state.suggestions) {
+  return !suggestionBusy(suggestions) && !suggestions.uncertain && !suggestions.loading && suggestions.canCreate &&
+    suggestions.session.canWrite && !suggestions.session.historical && !suggestions.session.conflict && !isDirty() && suggestions.currentVersionId === suggestions.versionId;
+}
+function canAcceptSuggestion(suggestions, detail = suggestions?.detail) {
+  return !suggestionBusy(suggestions) && !suggestions.uncertain && !suggestions.conflict && !suggestions.loading &&
+    detail?.suggestion.status === "open" && detail.suggestion.can_accept && suggestions.session.canWrite &&
+    !suggestions.session.historical && !suggestions.session.conflict && !isDirty() && suggestions.currentVersionId === suggestions.versionId;
+}
+function updateSuggestionControls() {
+  const suggestions = state.suggestions;
+  const busy = suggestionBusy(suggestions);
+  $("suggestions-toggle").disabled = !state.editor || !state.session?.objectId || Boolean(state.session?.loading);
+  $("suggestions-refresh").disabled = busy || Boolean(suggestions?.loading || suggestions?.uncertain);
+  $("suggestions-more").disabled = $("suggestions-refresh").disabled;
+  $("suggestions-close").disabled = Boolean(suggestions?.saving || suggestions?.settling);
+  $("suggestion-new").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  const composer = suggestions?.composer;
+  const length = Array.from(composer?.replacement || "").length;
+  $("suggestion-count").textContent = composer?.operation === "create" ? `${length} / 4.000 Zeichen` : "";
+  $("suggestion-replacement").disabled = busy || Boolean(suggestions?.uncertain) || composer?.operation !== "create";
+  $("suggestion-cancel").disabled = Boolean(suggestions?.saving || suggestions?.settling);
+  $("suggestion-prepare").textContent = suggestions?.uncertain ? "Speicherung prüfen" : "Speicherung vorbereiten";
+  $("suggestion-prepare").disabled = busy || (!suggestions?.uncertain && (suggestions?.conflict ||
+    composer?.operation !== "create" || !canCreateSuggestion(suggestions) || composer.documentRevision !== suggestions.session.revision ||
+    length > 4000 || composer.replacement === composer.quote));
+  document.querySelectorAll("[data-suggestion-action]").forEach((button) => {
+    const action = button.dataset.suggestionAction;
+    button.disabled = busy || Boolean(suggestions?.uncertain || suggestions?.loading) ||
+      (action === "accept" && !canAcceptSuggestion(suggestions)) ||
+      (action === "reject" && (!suggestions?.detail?.suggestion.can_reject || suggestions.detail.suggestion.status !== "open"));
+  });
+  if (!suggestionCurrent(suggestions)) return;
+  let hint = "Markieren Sie bis zu 2.000 Zeichen innerhalb eines Absatzes. Vorschläge bleiben an genau diese gespeicherte Fassung gebunden.";
+  if (suggestions.uncertain) hint = "Speicherung nicht bestätigt. Prüfen Sie denselben Vorgang erneut, bevor Sie weiterarbeiten.";
+  else if (suggestions.conflict) hint = "Der Stand hat sich geändert. Aktualisieren Sie die Vorschläge; Ihr Entwurf bleibt erhalten.";
+  else if (suggestions.session.uncertain) hint = "Prüfen Sie zuerst die noch nicht bestätigte Dokumentspeicherung.";
+  else if (isDirty()) hint = "Speichern Sie Ihre Dokumentänderungen zuerst. Neue Vorschläge und Annahmen erfordern eine unveränderte gespeicherte Fassung.";
+  else if (suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId) hint = "Frühere Fassung: Vorschläge bleiben lesbar und können bei entsprechender Berechtigung abgelehnt werden. Sie werden nicht auf neuere Fassungen übertragen.";
+  else if (composer?.operation === "create" && composer.documentRevision !== suggestions.session.revision) hint = "Die Fassung hat sich seit der Textauswahl geändert. Ihr Ersatztext bleibt erhalten; wählen Sie die Textstelle erneut.";
+  else if (composer?.operation === "create" && composer.replacement === composer.quote) hint = "Keine Änderung: Vorher und Nachher sind gleich.";
+  else if (!suggestions.loading && !suggestions.canCreate) hint = "Vorschläge sind schreibgeschützt. Freigegebene Vorschläge bleiben lesbar.";
+  $("suggestions-hint").textContent = hint;
+}
+function suggestionReadFailure(error, suggestions) {
+  if (!suggestionCurrent(suggestions)) return;
+  if (denied(error)) { officeAccessDenied(); return; }
+  $("suggestions-status").textContent = "Vorschläge sind gerade nicht erreichbar. Ihr Entwurf bleibt erhalten. Bitte erneut aktualisieren.";
+}
+async function loadSuggestions(append = false) {
+  if (!suggestionPanelOpen()) return false;
+  const session = state.session;
+  if (!session?.objectId || !session.version || session.loading) {
+    $("suggestions-status").textContent = "Speichern Sie das Dokument zuerst, um Änderungen vorzuschlagen.";
+    return false;
+  }
+  let suggestions = state.suggestions;
+  if (!suggestionCurrent(suggestions)) {
+    clearSuggestions();
+    suggestions = { session, context: state.context, versionId: session.version.version_id, controller: new AbortController(),
+      listRequest: 0, detailRequest: 0, items: [], selectedId: null, detail: null, nextCursor: null,
+      loading: false, canCreate: false, currentVersionId: null, composer: null, attempt: null,
+      preparing: false, saving: false, settling: false, uncertain: false, conflict: false };
+    state.suggestions = suggestions;
+  }
+  if (suggestions.saving || suggestions.preparing || suggestions.uncertain || (append && !suggestions.nextCursor)) return false;
+  const request = ++suggestions.listRequest;
+  const cursor = append ? suggestions.nextCursor : null;
+  suggestions.loading = true; suggestions.canCreate = false;
+  if (!append) {
+    suggestions.items = []; suggestions.detail = null; suggestions.selectedId = null;
+    suggestions.detailRequest += 1; suggestions.nextCursor = null;
+    suggestions.attempt = null; closeSuggestionConfirmation();
+    $("suggestions-list").replaceChildren(); $("suggestions-more").hidden = true;
+  }
+  $("suggestions-version").textContent = `${session.historical ? "Frühere Fassung" : "Geöffnete Fassung"} · ${dateLabel(session.version.created_at_utc)}`;
+  $("suggestions-version").title = suggestions.versionId;
+  $("suggestions-status").textContent = "Vorschläge werden geladen …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions)}?anchor_version_id=${encodeURIComponent(suggestions.versionId)}&limit=20${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`, { signal: suggestions.controller.signal }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.listRequest !== request) return false;
+    if (!suggestionIdentity(result, suggestions) || typeof result.can_create !== "boolean" || !Array.isArray(result.suggestions) ||
+        result.suggestions.length > 20 || result.suggestions.some((value) => !validSuggestion(value, suggestions)) ||
+        !(result.next_cursor === null || typeof result.next_cursor === "string") || (cursor && result.next_cursor === cursor)) throw new ApiError(502);
+    const ids = new Set(suggestions.items.map((value) => value.suggestion_id));
+    for (const value of result.suggestions) {
+      if (ids.has(value.suggestion_id)) throw new ApiError(502);
+      ids.add(value.suggestion_id);
+    }
+    suggestions.items.push(...result.suggestions); suggestions.nextCursor = result.next_cursor;
+    suggestions.currentVersionId = result.current_version_id; suggestions.canCreate = result.can_create;
+    if (suggestions.composer?.operation === "create") suggestions.conflict = false;
+    $("suggestions-status").textContent = suggestions.items.length ? `${suggestions.items.length} Vorschläge geladen${suggestions.nextCursor ? " · weitere verfügbar" : ""}.` : "Noch keine Vorschläge zu dieser Fassung.";
+    renderSuggestions(suggestions);
+    return true;
+  } catch (error) {
+    if (suggestionCurrent(suggestions) && suggestions.listRequest === request) suggestionReadFailure(error, suggestions);
+    return false;
+  } finally {
+    if (suggestionCurrent(suggestions) && suggestions.listRequest === request) { suggestions.loading = false; updateSuggestionControls(); }
+  }
+}
+function renderSuggestions(suggestions) {
+  if (!suggestionCurrent(suggestions)) return;
+  $("suggestions-list").replaceChildren();
+  const items = [...suggestions.items];
+  if (suggestions.detail && !items.some((value) => value.suggestion_id === suggestions.detail.suggestion.suggestion_id)) items.unshift(suggestions.detail.suggestion);
+  const labels = { open: "Offen", accepted: "Angenommen", rejected: "Abgelehnt" };
+  items.forEach((listed) => {
+    const value = suggestions.detail?.suggestion.suggestion_id === listed.suggestion_id ? suggestions.detail.suggestion : listed;
+    const card = node("article", undefined, "review-thread"); card.dataset.suggestionId = value.suggestion_id;
+    const open = node("button", `Textänderung · ${labels[value.status]}`, "review-thread-open");
+    open.type = "button"; open.dataset.suggestionAction = "open";
+    open.setAttribute("aria-expanded", String(suggestions.selectedId === value.suggestion_id));
+    open.addEventListener("click", () => loadSuggestionDetail(value.suggestion_id));
+    card.append(open, node("p", `${value.created_by} · ${dateLabel(value.created_at_utc)}`, "review-meta"));
+    if (suggestions.selectedId === value.suggestion_id && suggestions.detail) {
+      const detail = suggestions.detail;
+      const section = node("section", undefined, "suggestion-detail"); section.id = "suggestion-detail";
+      section.append(node("p", `Fassung vom ${dateLabel(suggestions.session.version.created_at_utc)} · Revision ${value.revision}`, "review-meta"));
+      const before = node("p", detail.quote, "suggestion-text"); before.id = "suggestion-quote";
+      const after = node("p", detail.replacement_text || "Textstelle löschen", "suggestion-text"); after.id = "suggestion-after";
+      section.append(node("h4", "Vorher"), before, node("h4", detail.replacement_text ? "Nachher" : "Nachher · leer"), after);
+      if (detail.decision) section.append(node("p", `${labels[value.status]} durch ${detail.decision.created_by} · ${dateLabel(detail.decision.created_at_utc)}`, "review-meta"));
+      const actions = node("div", undefined, "review-actions");
+      for (const [operation, label] of [["accept", "Annehmen und neue Version speichern"], ["reject", "Ablehnen"]]) {
+        const button = node("button", label, operation === "accept" ? "button secondary" : "quiet-button");
+        button.type = "button"; button.dataset.suggestionAction = operation;
+        button.addEventListener("click", () => prepareSuggestionOperation(operation, value.suggestion_id)); actions.append(button);
+      }
+      section.append(actions); card.append(section);
+    }
+    $("suggestions-list").append(card);
+  });
+  $("suggestions-more").hidden = !suggestions.nextCursor;
+  updateSuggestionControls();
+}
+async function loadSuggestionDetail(id) {
+  const suggestions = state.suggestions;
+  if (!suggestionCurrent(suggestions) || suggestions.preparing || suggestions.saving || suggestions.uncertain) return false;
+  const request = ++suggestions.detailRequest;
+  suggestions.attempt = null; closeSuggestionConfirmation();
+  suggestions.selectedId = id; suggestions.detail = null; renderSuggestions(suggestions);
+  $("suggestions-status").textContent = "Vorschlag wird geladen …";
+  try {
+    const result = await api(`${suggestionBase(suggestions)}/${encodeURIComponent(id)}`, { signal: suggestions.controller.signal }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.detailRequest !== request || suggestions.selectedId !== id) return false;
+    if (!validSuggestionDetail(result, suggestions, id)) throw new ApiError(502);
+    suggestions.detail = result; suggestions.currentVersionId = result.current_version_id;
+    if (suggestions.composer?.suggestionId === id) suggestions.conflict = false;
+    $("suggestions-status").textContent = "Vorschlag geladen.";
+    renderSuggestions(suggestions);
+    return true;
+  } catch (error) {
+    if (suggestionCurrent(suggestions) && suggestions.detailRequest === request) {
+      suggestions.detail = null; renderSuggestions(suggestions); suggestionReadFailure(error, suggestions);
+    }
+    return false;
+  }
+}
+function clearSuggestionComposer(suggestions) {
+  suggestions.composer = null; suggestions.attempt = null; suggestions.uncertain = false; suggestions.conflict = false;
+  closeSuggestionConfirmation(); $("suggestion-composer").hidden = true;
+  $("suggestion-replacement").value = ""; $("suggestion-before").textContent = "";
+  updateEditorState();
+}
+async function beginSuggestion() {
+  const suggestions = state.suggestions;
+  const selection = selectedReviewAnchor();
+  if (!canCreateSuggestion(suggestions) || !selection) return;
+  const revision = suggestions.session.revision;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) ||
+      !canCreateSuggestion(suggestions) || suggestions.session.revision !== revision) return;
+  const selected = selectedReviewAnchor();
+  if (!selected || selected.anchor.from !== selection.anchor.from || selected.anchor.to !== selection.anchor.to) return;
+  clearSuggestionComposer(suggestions);
+  suggestions.composer = { operation: "create", suggestionId: null, anchor: selection.anchor, quote: selection.quote,
+    replacement: selection.quote, revision: 0, documentRevision: revision };
+  $("suggestion-composer-title").textContent = "Neuer Änderungsvorschlag";
+  $("suggestion-before").textContent = selection.quote;
+  $("suggestion-replacement").value = selection.quote;
+  $("suggestion-composer").hidden = false;
+  updateSuggestionControls(); $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+}
+async function prepareSuggestionOperation(operation = null, id = null) {
+  const suggestions = state.suggestions;
+  if (suggestionBusy(suggestions)) return;
+  if (operation && !suggestions.uncertain) {
+    if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) || suggestionBusy(suggestions)) return;
+    const detail = suggestions.detail;
+    if (detail?.suggestion.suggestion_id !== id || detail.suggestion.status !== "open" ||
+        (operation === "accept" ? !canAcceptSuggestion(suggestions) : !detail.suggestion.can_reject)) return;
+    clearSuggestionComposer(suggestions);
+    suggestions.composer = { operation, suggestionId: id, quote: detail.quote, replacement: detail.replacement_text,
+      revision: 0, documentRevision: suggestions.session.revision };
+  }
+  const composer = suggestions.composer;
+  if (!composer) return;
+  if (!suggestions.attempt) {
+    if (composer.operation === "create" && $("suggestion-prepare").disabled) return;
+    const revision = suggestions.session.revision;
+    const detailRequest = suggestions.detailRequest;
+    if (composer.operation !== "create") {
+      suggestions.preparing = true; updateEditorState();
+      $("suggestions-status").textContent = "Vorschlag und aktuelle Berechtigung werden geprüft …";
+      try {
+        const base = `/v1/office/documents/${encodeURIComponent(suggestions.session.objectId)}`;
+        const [detail, head, listing] = await Promise.all([
+          api(`${suggestionBase(suggestions)}/${encodeURIComponent(composer.suggestionId)}`, { signal: suggestions.controller.signal }, suggestions.context),
+          composer.operation === "accept" ? api(`${base}/content`, { signal: suggestions.controller.signal }, suggestions.context) : null,
+          composer.operation === "accept" ? api("/v1/office/documents", { signal: suggestions.controller.signal }, suggestions.context) : null,
+        ]);
+        if (!suggestionCurrent(suggestions) || suggestions.composer !== composer || suggestions.detailRequest !== detailRequest || suggestions.session.revision !== revision) return;
+        if (!validSuggestionDetail(detail, suggestions, composer.suggestionId)) throw new ApiError(502);
+        suggestions.detail = detail; suggestions.currentVersionId = detail.current_version_id;
+        if (detail.suggestion.status !== "open") throw new ApiError(409);
+        if (composer.operation === "accept") {
+          const content = validatedContent(head, suggestions.session.objectId);
+          if (listing?.tenant_id !== suggestions.context.tenantId || !Array.isArray(listing.documents)) throw new ApiError(502);
+          const listed = listing.documents.find((value) => value.object_id === suggestions.session.objectId);
+          if (!listed || !listed.can_write || !head.can_write || !head.document.can_write) throw new ApiError(403);
+          if (head.version.version_id !== suggestions.versionId || listed.current_version_id !== head.version.version_id ||
+              detail.current_version_id !== head.version.version_id || !detail.suggestion.can_accept) throw new ApiError(409);
+          if (isDirty() || suggestions.session.historical || !state.editor.schema.nodeFromJSON(content).eq(state.editor.state.doc) ||
+              head.version.title !== $("document-title").value.trim()) throw new ApiError(409);
+        } else if (!detail.suggestion.can_reject) throw new ApiError(403);
+        composer.quote = detail.quote; composer.replacement = detail.replacement_text;
+      } catch (error) {
+        if (!suggestionCurrent(suggestions)) return;
+        if (denied(error)) { officeAccessDenied(); return; }
+        suggestions.detail = null; renderSuggestions(suggestions);
+        suggestions.conflict = error instanceof ApiError && error.status === 409;
+        $("suggestions-status").textContent = suggestions.conflict
+          ? "Der Stand hat sich geändert. Ihr Entwurf bleibt erhalten. Aktualisieren Sie die Vorschläge."
+          : "Der Vorschlag konnte nicht geprüft werden. Bitte erneut aktualisieren; Ihr Entwurf bleibt erhalten.";
+        return;
+      } finally {
+        if (suggestionCurrent(suggestions)) { suggestions.preparing = false; updateEditorState(); }
+      }
+    }
+    if (!suggestionCurrent(suggestions) || suggestions.composer !== composer || suggestions.session.revision !== revision) return;
+    const payload = { mutation_reference: mutationReference(), human_confirmation: true };
+    if (composer.operation === "create") Object.assign(payload, { anchor_version_id: suggestions.versionId,
+      expected_current_version_id: suggestions.versionId, anchor: composer.anchor, replacement_text: composer.replacement });
+    else Object.assign(payload, { operation: composer.operation, expected_revision: suggestions.detail.suggestion.revision,
+      ...(composer.operation === "accept" ? { expected_current_version_id: suggestions.versionId } : {}) });
+    suggestions.attempt = { operation: composer.operation, suggestionId: composer.suggestionId, composerRevision: composer.revision,
+      documentRevision: suggestions.session.revision, payload };
+  }
+  const labels = { create: "Änderungsvorschlag speichern", accept: "Annehmen und neue Version speichern", reject: "Änderungsvorschlag ablehnen" };
+  const attempt = suggestions.attempt;
+  $("suggestion-confirm-title").textContent = labels[attempt.operation];
+  $("suggestion-confirm-submit").textContent = labels[attempt.operation];
+  $("suggestion-confirm-summary").textContent = `${labels[attempt.operation]} · Fassung vom ${dateLabel(suggestions.session.version.created_at_utc)}.${suggestions.uncertain ? " Derselbe Vorgang wird erneut geprüft." : attempt.operation === "accept" ? " Die Textänderung wird unmittelbar als neue Dokumentversion gespeichert. Frühere Fassungen bleiben erhalten." : " Der Dokumenttext bleibt unverändert."}`;
+  $("suggestion-confirm-before").textContent = composer.quote;
+  $("suggestion-confirm-after").textContent = composer.replacement || "Textstelle löschen (leerer Ersatztext)";
+  $("suggestion-confirm-label").textContent = attempt.operation === "accept"
+    ? "Ich bestätige die Annahme dieses Vorschlags und die Speicherung einer neuen Dokumentversion."
+    : "Ich bestätige, dass diese Vorschlagsaktion verbindlich gespeichert werden soll.";
+  $("suggestion-confirm-checkbox").checked = false; $("suggestion-confirm-submit").disabled = true;
+  $("suggestion-confirm-message").textContent = ""; $("suggestion-confirm-dialog").showModal();
+}
+async function saveSuggestionOperation(event) {
+  event.preventDefault();
+  const suggestions = state.suggestions;
+  if (suggestionBusy(suggestions) || !$("suggestion-confirm-checkbox").checked || !suggestions.attempt ||
+      suggestions.attempt.composerRevision !== suggestions.composer?.revision) return;
+  const attempt = suggestions.attempt;
+  if (!suggestions.uncertain && attempt.operation !== "reject" && (isDirty() || suggestions.session.historical ||
+      suggestions.session.conflict || attempt.documentRevision !== suggestions.session.revision)) {
+    closeSuggestionConfirmation(); updateSuggestionControls(); return;
+  }
+  suggestions.saving = true;
+  let acknowledged = false;
+  $("suggestion-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = true; });
+  $("suggestion-confirm-message").textContent = "Vorschlagsaktion wird gespeichert …";
+  updateEditorState();
+  try {
+    const path = `${suggestionBase(suggestions)}${attempt.suggestionId ? `/${encodeURIComponent(attempt.suggestionId)}/decisions` : ""}`;
+    const result = await api(path, { method: "POST", body: attempt.payload }, suggestions.context);
+    if (!suggestionCurrent(suggestions)) return;
+    const expectedStatus = { create: "open", accept: "accepted", reject: "rejected" }[attempt.operation];
+    if (!validSuggestionDetail(result, suggestions, attempt.suggestionId) || result.suggestion.status !== expectedStatus ||
+        result.applied_revision !== result.suggestion.revision || typeof result.replayed !== "boolean" ||
+        result.quote !== suggestions.composer.quote || result.replacement_text !== suggestions.composer.replacement) throw new ApiError(502);
+    if (attempt.operation === "create" && (result.suggestion.anchor.from !== attempt.payload.anchor.from ||
+        result.suggestion.anchor.to !== attempt.payload.anchor.to)) throw new ApiError(502);
+    if (attempt.operation === "accept") {
+      const content = result.document_result;
+      if (!contentMatches(content, suggestions.session.objectId, result.suggestion.result_version_id) ||
+          content.version.previous_version_id !== attempt.payload.expected_current_version_id) throw new ApiError(502);
+      validateEditorDocument(state.editor.schema.nodeFromJSON(normalizedDocument(content.content)));
+    } else if (result.document_result !== null) throw new ApiError(502);
+    // The write is acknowledged here. Refresh failures must never create another mutation.
+    acknowledged = true;
+    suggestions.settling = true;
+    clearSuggestionComposer(suggestions); suggestions.saving = false;
+    const success = { create: "Vorschlag gespeichert.", accept: "Vorschlag angenommen. Neue Version gespeichert.", reject: "Vorschlag abgelehnt." }[attempt.operation];
+    if (attempt.operation === "accept") {
+      const session = suggestions.session;
+      acceptContent(result.document_result, session);
+      notice(`${success}${result.document_result.is_current_version ? "" : " Inzwischen gibt es eine neuere Fassung. Öffnen Sie die aktuelle Version über „Aktuelle Version“."}`);
+      await loadDocuments();
+      if (sessionCurrent(session) && suggestionPanelOpen()) {
+        await loadSuggestions();
+        if (sessionCurrent(session)) $("suggestions-status").textContent = `${success} ${$("suggestions-status").textContent}`;
+      }
+    } else {
+      const refreshed = await loadSuggestions();
+      if (refreshed && suggestionCurrent(suggestions)) await loadSuggestionDetail(result.suggestion.suggestion_id);
+      if (suggestionCurrent(suggestions)) $("suggestions-status").textContent = `${success} ${$("suggestions-status").textContent}`;
+    }
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    closeSuggestionConfirmation();
+    if (denied(error)) { officeAccessDenied(); return; }
+    if (acknowledged) {
+      clearSuggestionComposer(suggestions);
+      $("suggestions-status").textContent = "Vorschlagsaktion gespeichert. Die Ansicht konnte nicht aktualisiert werden; laden Sie die Vorschläge erneut.";
+      return;
+    }
+    if (error instanceof ApiError && error.status === 409) {
+      suggestions.attempt = null; suggestions.uncertain = false; suggestions.conflict = true;
+      $("suggestions-status").textContent = "Der Stand hat sich geändert. Ihr Entwurf bleibt erhalten. Aktualisieren Sie die Vorschläge.";
+    } else if (error instanceof ApiError && [400, 413, 422].includes(error.status)) {
+      suggestions.attempt = null; suggestions.uncertain = false;
+      $("suggestions-status").textContent = "Der Vorschlag konnte nicht gespeichert werden. Prüfen Sie Textauswahl und Ersatztext; Ihr Entwurf bleibt erhalten.";
+    } else {
+      suggestions.uncertain = true;
+      $("suggestions-status").textContent = "Speicherung nicht bestätigt. Prüfen Sie denselben Vorgang erneut.";
+    }
+    if (attempt.operation !== "create") {
+      $("suggestion-composer-title").textContent = "Vorschlagsaktion prüfen";
+      $("suggestion-before").textContent = suggestions.composer.quote;
+      $("suggestion-replacement").value = suggestions.composer.replacement;
+      $("suggestion-composer").hidden = !suggestions.uncertain;
+    }
+  } finally {
+    if (suggestionCurrent(suggestions)) {
+      suggestions.saving = false; suggestions.settling = false;
+      $("suggestion-confirm-dialog").querySelectorAll("button,input").forEach((control) => { control.disabled = false; });
+      $("suggestion-confirm-submit").disabled = true; updateEditorState();
+    }
+  }
+}
+
 async function hideInspectorWithReview() {
   const review = state.review;
-  if (review && (!(await confirmDiscard("comments")) || state.review !== review)) return;
+  const suggestions = state.suggestions;
+  if ((review || suggestions) && (!(await confirmDiscard("inspector")) || state.review !== review || state.suggestions !== suggestions)) return;
   if (review) clearReview();
+  if (suggestions) clearSuggestions();
   toggleInspector(false);
   updateEditorState();
 }
@@ -1791,23 +2215,37 @@ function toggleInspector(show) {
 
 async function selectInspector(name) {
   const review = state.review;
+  const suggestions = state.suggestions;
+  const epoch = state.epoch;
   if (name !== "comments" && review) {
     if (!(await confirmDiscard("comments")) || state.review !== review) return;
     clearReview();
   }
-  ["outline", "history", "comments"].forEach((candidate) => {
+  if (name !== "suggestions" && suggestions) {
+    if (!(await confirmDiscard("suggestions")) || state.suggestions !== suggestions || state.epoch !== epoch) return;
+    clearSuggestions();
+    updateEditorState();
+  }
+  ["outline", "history", "comments", "suggestions"].forEach((candidate) => {
     const active = name === candidate;
     $(`${candidate}-tab`).setAttribute("aria-selected", String(active));
     $(`${candidate}-tab`).tabIndex = active ? 0 : -1;
     $(`${candidate}-panel`).hidden = !active;
   });
   $("document-inspector").classList.toggle("comments-active", name === "comments");
+  $("document-inspector").classList.toggle("suggestions-active", name === "suggestions");
   if (name === "history") loadHistory();
   if (name === "comments") {
     $("office-shell").classList.remove("focus-mode");
     $("focus-toggle").setAttribute("aria-pressed", "false");
     toggleInspector(true);
     if (!reviewCurrent(state.review)) loadReview();
+  }
+  if (name === "suggestions") {
+    $("office-shell").classList.remove("focus-mode");
+    $("focus-toggle").setAttribute("aria-pressed", "false");
+    toggleInspector(true);
+    if (!suggestionCurrent(state.suggestions)) loadSuggestions();
   }
 }
 
@@ -1893,11 +2331,41 @@ $("comment-confirm-checkbox").addEventListener("change", () => { $("comment-conf
 $("comment-confirm-form").addEventListener("submit", saveReviewOperation);
 $("comment-confirm-cancel").addEventListener("click", () => { if (!state.review?.saving) closeReviewConfirmation(); });
 $("comment-confirm-dialog").addEventListener("cancel", (event) => { event.preventDefault(); if (!state.review?.saving) closeReviewConfirmation(); });
+$("suggestions-tab").addEventListener("click", () => selectInspector("suggestions"));
+$("suggestions-toggle").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestions-toggle").addEventListener("click", () => selectInspector("suggestions"));
+$("suggestions-close").addEventListener("click", async () => {
+  const suggestions = state.suggestions;
+  if (!(await confirmDiscard("suggestions")) || state.suggestions !== suggestions) return;
+  clearSuggestions(); toggleInspector(false); updateEditorState(); $("suggestions-toggle").focus();
+});
+$("suggestions-refresh").addEventListener("click", () => loadSuggestions());
+$("suggestions-more").addEventListener("click", () => loadSuggestions(true));
+$("suggestion-new").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-new").addEventListener("click", beginSuggestion);
+$("suggestion-replacement").addEventListener("input", () => {
+  const suggestions = state.suggestions;
+  if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;
+  suggestions.composer.replacement = $("suggestion-replacement").value;
+  suggestions.composer.revision += 1; suggestions.attempt = null;
+  closeSuggestionConfirmation(); updateSuggestionControls();
+});
+$("suggestion-prepare").addEventListener("click", () => prepareSuggestionOperation());
+$("suggestion-cancel").addEventListener("click", async () => {
+  const suggestions = state.suggestions;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions)) return;
+  clearSuggestionComposer(suggestions); $("suggestion-new").focus();
+});
+$("suggestion-confirm-checkbox").addEventListener("change", () => { $("suggestion-confirm-submit").disabled = !$("suggestion-confirm-checkbox").checked; });
+$("suggestion-confirm-form").addEventListener("submit", saveSuggestionOperation);
+$("suggestion-confirm-cancel").addEventListener("click", () => { if (!state.suggestions?.saving) closeSuggestionConfirmation(); });
+$("suggestion-confirm-dialog").addEventListener("cancel", (event) => { event.preventDefault(); if (!state.suggestions?.saving) closeSuggestionConfirmation(); });
 $("inspector-toggle").addEventListener("click", () => {
   if (!$("office-shell").classList.contains("inspector-hidden")) hideInspectorWithReview();
   else {
     toggleInspector(true);
     if ($("comments-tab").getAttribute("aria-selected") === "true" && !reviewCurrent(state.review)) loadReview();
+    if ($("suggestions-tab").getAttribute("aria-selected") === "true" && !suggestionCurrent(state.suggestions)) loadSuggestions();
   }
 });
 $("documents-toggle").addEventListener("click", () => {
@@ -1906,9 +2374,11 @@ $("documents-toggle").addEventListener("click", () => {
 });
 $("focus-toggle").addEventListener("click", async () => {
   const review = state.review;
-  if (review && !$("office-shell").classList.contains("focus-mode")) {
-    if (!(await confirmDiscard("comments")) || state.review !== review) return;
+  const suggestions = state.suggestions;
+  if ((review || suggestions) && !$("office-shell").classList.contains("focus-mode")) {
+    if (!(await confirmDiscard("inspector")) || state.review !== review || state.suggestions !== suggestions) return;
     clearReview();
+    clearSuggestions();
     updateEditorState();
   }
   const active = $("office-shell").classList.toggle("focus-mode");
@@ -1991,9 +2461,9 @@ document.querySelectorAll(".inspector-tabs [role=tab]").forEach((tab) => {
   tab.addEventListener("keydown", (event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const tabs = ["outline", "history", "comments"];
+    const tabs = ["outline", "history", "comments", "suggestions"];
     const position = tabs.findIndex((name) => tab.id === `${name}-tab`);
-    const target = event.key === "Home" ? "outline" : event.key === "End" ? "comments" :
+    const target = event.key === "Home" ? "outline" : event.key === "End" ? "suggestions" :
       tabs[(position + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
     selectInspector(target); $(`${target}-tab`).focus();
   });
@@ -2030,14 +2500,14 @@ document.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "h") { event.preventDefault(); toggleFind(true, true); }
 });
 window.addEventListener("beforeunload", (event) => {
-  if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving) { event.preventDefault(); event.returnValue = ""; }
+  if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving || hasSuggestionDraft() || state.suggestions?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
 
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {
-  if (event.matches && !hasReviewDraft() && !state.review?.saving) {
-    clearReview(); toggleInspector(false);
+  if (event.matches && !hasReviewDraft() && !state.review?.saving && !hasSuggestionDraft() && !state.suggestions?.saving) {
+    clearReview(); clearSuggestions(); toggleInspector(false);
   }
 });
 loadDocuments();

@@ -1575,6 +1575,12 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      17 Review-Ereignissen bestanden. API-Rollout, Health und Cleanup am 2026-09-18 um 13:14:20 UTC gruen.
      Keine reale Tenant-Aktivierung; Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen.
 
+257. [ ] Gespeicherte Textvorschlaege im nativen Office: bestaetigte Anlage an einer exakten gespeicherten Textstelle,
+     Vorher/Nachher-Vergleich und bestaetigtes Annehmen oder Ablehnen. Annahme muss Entscheidung und neue
+     Dokumentversion in derselben PostgreSQL-Transaktion speichern; veraltete Anker bleiben unveraendert.
+     Migration 0085, aktuelle Rechte, exakte Wiederholungen, Browserpruefung und nichtleerer isolierter Restore
+     gehoeren zum Abschluss. Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

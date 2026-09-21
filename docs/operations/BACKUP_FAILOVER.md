@@ -8,8 +8,9 @@ The second rule is just as important: every new durable component must update th
 
 ## Scope
 
-Native Office documents and reviews (migrations 0083/0084) belong to both PostgreSQL and object-storage recovery. Preserve
+Native Office documents, reviews and suggestions (migrations 0083/0084/0085) belong to both PostgreSQL and object-storage recovery. Preserve
 `office.documents`, append-only `office.document_versions`, `office.review_threads`, append-only `office.review_events`,
+append-only `office.text_suggestions` and `office.text_suggestion_decisions`,
 current ACLs, module features, source metadata and write
 receipts together with the exact canonical JSON object versions. Restore validation pins forced RLS, column-level head
 update grants and the complete creator-ACL/source-binding/head-guard functions to the migration, so matching drift on both
@@ -20,6 +21,12 @@ COMMENT source/receipt bindings; quotations and discussion bodies require their 
 must restore creation, reply, resolve and reopen events as well as documents. The foundation gate requires the Office
 schema/control result explicitly; the separate nonempty product proof is also required before rollout. See
 `docs/modules/OFFICE_NATIVE_DOCUMENTS.md` and the guarded nonempty proof in `docs/operations/WORK_E2E.md`.
+
+Suggestion recovery also pins all canonical proposal/decision constraints, grants and complete source-binding
+functions, including the deferred trigger requiring a decision for every internal acceptance version. The nonempty
+proof must include accepted and rejected proposals, exact original and replacement bytes, source receipts and accepted
+result content/hash/predecessor. Current ACL denial and read-only restored services remain mandatory. Identical drift
+in source and restore must fail these controls; the prior review-only proof does not cover migration 0085.
 
 This model covers the whole suite trajectory:
 

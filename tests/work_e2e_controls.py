@@ -82,11 +82,13 @@ def office_storage_failure_modes(
             path == "/v1/office/documents"
             or re.fullmatch(r"/v1/office/documents/[^/]+/versions", path) is not None
             or re.fullmatch(r"/v1/office/documents/[^/]+/review-threads(?:/[^/]+/events)?", path) is not None
+            or re.fullmatch(r"/v1/office/documents/[^/]+/suggestions(?:/[^/]+/decisions)?", path) is not None
         ),
         method == "GET"
         and (
             re.fullmatch(r"/v1/office/documents/[^/]+/content", path) is not None
             or re.fullmatch(r"/v1/office/documents/[^/]+/review-threads/[^/]+", path) is not None
+            or re.fullmatch(r"/v1/office/documents/[^/]+/suggestions/[^/]+", path) is not None
         ),
     )
 

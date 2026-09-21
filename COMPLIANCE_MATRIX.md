@@ -54,7 +54,9 @@ Native Office document authoring (Roadmap 252) maps to CM-001/002 (tenant and cu
 CM-014 (pinned local editor bundle, integrity lock and license inventory), and CM-017/018/019/020 (module migration,
 immutable versions and PostgreSQL/S3 recovery). Version-bound reviews (Roadmap 256, migration 0084) extend the same
 controls to current parent-document ACLs, confirmed review mutations, append-only events, exact COMMENT source/receipt
-bindings and nonempty recovery of discussion history. The concrete contract and test links are in
+bindings and nonempty recovery of discussion history. Saved-text suggestions (Roadmap 257, migration 0085) require
+the same controls plus CM-012 explicit confirmation, immutable terminal decisions and atomic accepted document versions;
+their nonempty recovery must bind original text, replacement, exact result version and current rights. The concrete contract and test links are in
 `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`. This is implementation evidence, not certification, legal approval or an
 authorization to activate real users. DOCX engines, indexing and AI remain subject to their separate controls.
 

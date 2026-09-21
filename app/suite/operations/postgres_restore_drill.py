@@ -96,6 +96,8 @@ OFFICE_DOCUMENT_TABLES = {
     "office.document_versions",
     "office.review_threads",
     "office.review_events",
+    "office.text_suggestions",
+    "office.text_suggestion_decisions",
 }
 OFFICE_OWNER_TABLE_PRIVILEGES = {
     "SELECT",
@@ -113,6 +115,15 @@ OFFICE_UPDATE_COLUMNS = {
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
 }
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
+    ("office.text_suggestions", "office_text_suggestions_bind_source"): (
+        "enforce_text_suggestion_source", "BEFORE INSERT", False,
+    ),
+    ("office.text_suggestion_decisions", "office_text_suggestion_decisions_bind_source"): (
+        "enforce_text_suggestion_source", "BEFORE INSERT", False,
+    ),
+    ("office.document_versions", "office_versions_require_suggestion_decision"): (
+        "require_text_suggestion_decision", "AFTER INSERT", False,
+    ),
     ("office.documents", "office_documents_bind_creator_acl"): ("bind_document_creator_acl", "AFTER INSERT", True),
     ("office.document_versions", "office_versions_bind_source"): (
         "enforce_version_source_binding",
@@ -137,6 +148,16 @@ OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ),
 }
 OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | None]] = {
+    **{
+        (f"office.{table}", f"office_{table}_{suffix}"): definition
+        for table in ("text_suggestions", "text_suggestion_decisions")
+        for suffix, definition in (
+            ("tenant_select", ("SELECT", "(tenant_id = collabio.current_tenant_id())", None)),
+            ("tenant_insert", ("INSERT", None, "(tenant_id = collabio.current_tenant_id())")),
+            ("no_update", ("UPDATE", "false", None)),
+            ("no_delete", ("DELETE", "false", None)),
+        )
+    },
     ("office.documents", "office_documents_tenant_select"): (
         "SELECT",
         "(tenant_id = collabio.current_tenant_id())",
@@ -195,6 +216,45 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ("office.review_events", "office_review_events_no_delete"): ("DELETE", "false", None),
 }
 OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
+    "office.text_suggestions": {
+        "PRIMARY KEY (tenant_id, suggestion_id)",
+        "UNIQUE (tenant_id, object_id, suggestion_id)",
+        "UNIQUE (tenant_id, created_by, mutation_reference)",
+        "UNIQUE (tenant_id, source_write_receipt_hash)",
+        "FOREIGN KEY (tenant_id, object_id, anchor_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, suggestion_id, source_version_id) "
+        "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
+        "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
+        "CHECK ((suggestion_id ~ '^office-suggestion-[a-f0-9]{32}$'::text))",
+        "CHECK ((source_version_id ~ '^office-suggestion-event-[a-f0-9]{32}$'::text))",
+        "CHECK ((anchor_content_hash ~ '^sha256:[a-f0-9]{64}$'::text))",
+        "CHECK ((anchor_from >= 1))",
+        "CHECK (((anchor_to > anchor_from) AND (anchor_to <= 220000)))",
+    },
+    "office.text_suggestion_decisions": {
+        "PRIMARY KEY (tenant_id, suggestion_id)",
+        "UNIQUE (tenant_id, decision_id)",
+        "UNIQUE (tenant_id, created_by, mutation_reference)",
+        "UNIQUE (tenant_id, source_write_receipt_hash)",
+        "UNIQUE (tenant_id, result_version_id)",
+        "FOREIGN KEY (tenant_id, object_id, suggestion_id) "
+        "REFERENCES office.text_suggestions(tenant_id, object_id, suggestion_id)",
+        "FOREIGN KEY (tenant_id, object_id, result_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, suggestion_id, source_version_id) "
+        "REFERENCES collabio.source_object_metadata(tenant_id, object_id, version_id)",
+        "FOREIGN KEY (tenant_id, source_write_receipt_hash) "
+        "REFERENCES collabio.source_object_write_receipts(tenant_id, receipt_hash)",
+        "CHECK ((decision_id ~ '^office-suggestion-decision-[a-f0-9]{32}$'::text))",
+        "CHECK ((operation = ANY (ARRAY['accept'::text, 'reject'::text])))",
+        "CHECK ((result_content_hash ~ '^sha256:[a-f0-9]{64}$'::text))",
+        "CHECK ((source_version_id = decision_id))",
+        "CHECK ((((operation = 'accept'::text) AND (result_version_id IS NOT NULL) "
+        "AND (result_content_hash IS NOT NULL)) OR ((operation = 'reject'::text) "
+        "AND (result_version_id IS NULL) AND (result_content_hash IS NULL))))",
+    },
     "office.documents": {
         "PRIMARY KEY (tenant_id, object_id)",
         "FOREIGN KEY (tenant_id, object_id, current_version_id) "
@@ -250,6 +310,18 @@ OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
         "((operation <> 'resolve'::text) AND (status_after = 'open'::text))))",
     },
 }
+
+for _office_table in ("office.text_suggestions", "office.text_suggestion_decisions"):
+    OFFICE_REQUIRED_CONSTRAINTS[_office_table].update({
+        "CHECK ((created_by <> ''::text))",
+        "CHECK (((content_byte_length >= 1) AND (content_byte_length <= 80000)))",
+        "CHECK ((acl_version >= 1))",
+        "CHECK (((length(mutation_reference) >= 1) AND (length(mutation_reference) <= 128)))",
+        "CHECK ((audit_chain_ref ~~ 'audit:%'::text))",
+        *(f"CHECK (({column} ~ '^sha256:[a-f0-9]{{64}}$'::text))" for column in (
+            "content_hash", "source_manifest_hash", "source_write_receipt_hash", "acl_hash", "command_hash"
+        )),
+    })
 
 TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.items",
@@ -1550,13 +1622,15 @@ def _office_document_controls_verified(
         if len(matching) != 1:
             return False
         trigger = matching[0]
+        deferred = trigger_name == "office_versions_require_suggestion_decision"
+        expected_definition = (
+            f"CREATE {'CONSTRAINT ' if deferred else ''}TRIGGER {trigger_name} {timing} ON {table_name} "
+            + ("DEFERRABLE INITIALLY DEFERRED " if deferred else "")
+            + f"FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
+        )
         if (
             trigger.get("trigger_enabled") != "O"
-            or trigger.get("trigger_definition")
-            != (
-                f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} "
-                f"FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
-            )
+            or trigger.get("trigger_definition") != expected_definition
             or trigger.get("function_schema") != "office"
             or trigger.get("function_name") != function_name
             or trigger.get("function_owner") != "collabio_owner"

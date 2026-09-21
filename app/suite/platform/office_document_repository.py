@@ -371,28 +371,27 @@ class PgOfficeDocumentRepository:
                     command_hash=command_hash,
                     acl_rows=acl_rows,
                 )
-                self.receipt_store.append_in_transaction(connection, receipt)
-                self.source_repository.add_with_receipt_in_transaction(
-                    connection,
-                    record=source,
-                    source_object_write_receipt_hash=receipt.receipt_hash,
-                )
-                self._insert_version(connection, version)
-                connection.execute(
-                    "UPDATE office.documents SET title = %s, current_version_id = %s, updated_at_utc = %s "
-                    "WHERE tenant_id = %s AND object_id = %s",
-                    (
-                        document.title,
-                        document.current_version_id,
-                        document.updated_at_utc,
-                        document.tenant_id,
-                        document.object_id,
-                    ),
-                )
-                result = OfficeDocumentCommit(document=document, version=version)
+                result = self._persist_prepared_version(connection, document, version, source, receipt)
         except psycopg.errors.UniqueViolation as exc:
             raise OfficeDocumentConflictError("Document mutation conflicts with existing metadata") from exc
         return result
+
+    def _persist_prepared_version(
+        self, connection: psycopg.Connection[Any], document: OfficeDocumentRecord,
+        version: OfficeDocumentVersion, source: SourceObjectRecord, receipt: SourceObjectWriteReceipt,
+    ) -> OfficeDocumentCommit:
+        """Internal primitive; caller owns the tenant lock, authorization and CAS checks."""
+        self.receipt_store.append_in_transaction(connection, receipt)
+        self.source_repository.add_with_receipt_in_transaction(
+            connection, record=source, source_object_write_receipt_hash=receipt.receipt_hash
+        )
+        self._insert_version(connection, version)
+        connection.execute(
+            "UPDATE office.documents SET title = %s, current_version_id = %s, updated_at_utc = %s "
+            "WHERE tenant_id = %s AND object_id = %s",
+            (document.title, document.current_version_id, document.updated_at_utc, document.tenant_id, document.object_id),
+        )
+        return OfficeDocumentCommit(document=document, version=version)
 
     @staticmethod
     def _insert_document(connection: psycopg.Connection[Any], document: OfficeDocumentRecord) -> None:

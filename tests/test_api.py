@@ -1229,6 +1229,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/{object_id}/review-threads",
         "/v1/office/documents/{object_id}/review-threads/{thread_id}",
         "/v1/office/documents/{object_id}/review-threads/{thread_id}/events",
+        "/v1/office/documents/{object_id}/suggestions",
+        "/v1/office/documents/{object_id}/suggestions/{suggestion_id}",
+        "/v1/office/documents/{object_id}/suggestions/{suggestion_id}/decisions",
     ]
     assert {
         "office_documents_module_enabled_required",
@@ -1247,6 +1250,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
         "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
         "review_events_append_only_with_exact_comment_sources_and_receipts",
+        "suggestion_acceptance_and_document_version_share_one_transaction",
+        "suggestions_require_exact_current_saved_text_without_automatic_reanchoring",
+        "suggestion_decisions_are_confirmed_append_only_and_actor_retry_bound",
         "actor_bound_exact_mutation_retry",
         "postgresql_forced_rls_and_append_only_versions",
         "exact_s3_source_version_manifest_hash_and_receipt_binding",
@@ -1275,6 +1281,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/{object_id}/review-threads", "POST"),
         ("/v1/office/documents/{object_id}/review-threads/{thread_id}", "GET"),
         ("/v1/office/documents/{object_id}/review-threads/{thread_id}/events", "POST"),
+        ("/v1/office/documents/{object_id}/suggestions", "GET"),
+        ("/v1/office/documents/{object_id}/suggestions", "POST"),
+        ("/v1/office/documents/{object_id}/suggestions/{suggestion_id}", "GET"),
+        ("/v1/office/documents/{object_id}/suggestions/{suggestion_id}/decisions", "POST"),
     }.issubset(registered_routes)
     ordered_capability_ids = [capability["capability_id"] for capability in capabilities]
     assert ordered_capability_ids.index("office_native_documents") < ordered_capability_ids.index(

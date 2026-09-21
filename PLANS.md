@@ -133,6 +133,8 @@ Current sprint:
 
 117. [x] Complete version-bound native Office review discussions: confirmed create/reply/resolve/reopen, server-validated text anchors, fresh parent ACLs, thread revision conflicts and exact retries, backed by immutable PostgreSQL/S3 event evidence. Full quality passed on `2305a96` (Ruff/format across 674 files, Mypy across 532 files and full Pytest); all 152 checks (117 browser cases and 35 model cases) passed on `7400b35` in 432.486 seconds, with zero skipped, unexpected or flaky cases. Migration 0084, the 84-migration/93-table foundation and nonempty isolated recovery of 57 documents, 93 versions, nine review threads and 17 events passed. API rollout, health and cleanup were verified green at 2026-09-18 13:14:20 UTC. Ordinary tenant activation, pilot, indexing and DOCX/engine gates remain closed.
 
+118. [ ] Complete saved-version native Office text suggestions: confirmed creation, literal before/after review, accepted changes and decision in one document transaction, immutable rejection, exact retries, current ACLs and version conflicts; add migration 0085 and nonempty PostgreSQL/S3 recovery before rollout. Preserve the existing 152 checks and closed ordinary tenant/pilot/engine boundaries.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

@@ -135,6 +135,13 @@ failures, delayed close/context responses and fresh write-feature removal. The p
 Comment state uses the same real PostgreSQL/source/receipt repositories as documents; failure injection remains
 request-local and restricted to the exact synthetic review routes.
 
+Roadmap 257 adds eight suggestion workflows and two responsive runs, taking the intended matrix to 162 checks.
+They cover saved-selection creation, literal before/after text, explicit accept/reject, accepted version lineage,
+immutable history, stale anchors, ordinary readers/current ACLs/foreign tenants, fresh feature closure, exact uncertain
+retries, late responses and memory-only draft protection. The real document repository and suggestion adapter share
+one transaction for acceptance. Request-local failure controls are restricted to the exact synthetic suggestion routes.
+The matrix remains unverified until its dev001 execution is recorded; all 152 previous checks remain included.
+
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.
@@ -142,6 +149,9 @@ The dump, checksum and restore receipt must result from a real operator-run pg_d
 Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs.
 Roadmap 256 extends the proof to nonempty review creation, reply, resolve and reopen events, complete review metadata
 hashes and exact COMMENT source versions/receipts; parent ACL denial must still apply after restoration. Never run
+the proof without its Roadmap 257 extension: it also requires nonempty accepted and rejected suggestions, complete
+proposal/decision inventory, exact original/replacement bytes and receipts, accepted result versions and current ACLs.
+Never run
 it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
 before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
 
@@ -164,6 +174,7 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `office-search-desktop-chromium.png`, `office-search-tablet-chromium.png`, `office-search-mobile-chromium.png`.
 - `office-tables-desktop-chromium.png`, `office-tables-tablet-chromium.png`, `office-tables-mobile-chromium.png`.
 - `office-review-desktop-chromium.png`, `office-review-tablet-chromium.png`, `office-review-mobile-chromium.png`.
+- `office-suggestions-desktop-chromium.png`, `office-suggestions-tablet-chromium.png`, `office-suggestions-mobile-chromium.png`.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

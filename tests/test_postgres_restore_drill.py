@@ -91,7 +91,10 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
                 "trigger_name": trigger_name,
                 "trigger_enabled": "O",
                 "trigger_definition": (
-                    f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} "
+                    f"CREATE CONSTRAINT TRIGGER {trigger_name} {timing} ON {table_name} "
+                    f"DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
+                    if trigger_name == "office_versions_require_suggestion_decision"
+                    else f"CREATE TRIGGER {trigger_name} {timing} ON {table_name} "
                     f"FOR EACH ROW EXECUTE FUNCTION office.{function_name}()"
                 ),
                 "function_schema": "office",
@@ -690,7 +693,7 @@ def test_restore_requires_native_office_controls() -> None:
     ("table_name", "definition"),
     [
         (table, definition)
-        for table in ("office.review_threads", "office.review_events")
+        for table in ("office.review_threads", "office.review_events", "office.text_suggestions", "office.text_suggestion_decisions")
         for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
     ],
 )
@@ -712,7 +715,7 @@ def test_restore_rejects_each_missing_review_identity_state_anchor_or_receipt_co
     ("table_name", "definition"),
     [
         (table, definition)
-        for table in ("office.review_threads", "office.review_events")
+        for table in ("office.review_threads", "office.review_events", "office.text_suggestions", "office.text_suggestion_decisions")
         for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
         if definition.startswith("CHECK ")
     ],

@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: Roadmap 252–256 complete on dev001; ordinary tenant and production admission remain closed
+Status: Roadmap 252–256 complete on dev001; Roadmap 257 implementation and verification in progress; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`
@@ -45,12 +45,28 @@ read-only state does not itself determine permission to discuss an existing thre
 | `POST /v1/office/documents/{object_id}/review-threads` | Confirm a discussion on the current saved version |
 | `GET /v1/office/documents/{object_id}/review-threads/{thread_id}` | Paginated immutable events and verified anchor quotation |
 | `POST /v1/office/documents/{object_id}/review-threads/{thread_id}/events` | Confirm reply, resolve or reopen against the expected thread revision |
+| `GET /v1/office/documents/{object_id}/suggestions` | Paginated saved-text proposals with current capabilities |
+| `POST /v1/office/documents/{object_id}/suggestions` | Confirm replacement text on an exact current saved selection |
+| `GET /v1/office/documents/{object_id}/suggestions/{suggestion_id}` | Literal before/after text and immutable decision |
+| `POST /v1/office/documents/{object_id}/suggestions/{suggestion_id}/decisions` | Confirm rejection or atomically accept and save a successor |
 
 Content and error responses use `no-store`. Invalid JSON/schema errors do not echo submitted content. Storage/database
 failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after transient failures
 or stale-head conflicts, clears content when access is denied, preserves exact retry keys and drops late responses after
 closing or changing context. Only connection context,
 never content or credentials, is stored in browser localStorage.
+
+## Saved text suggestions (Roadmap 257, verification pending)
+
+Roadmap 257 adds explicit saved-text proposals, described in
+`ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`. The fourth inspector tab shows original and
+replacement text, author, exact anchor version and disposition. Empty replacement deletes text; the server derives
+the quotation and preserves unaffected formatting. Proposals and decisions are immutable COMMENT sources with
+receipts under migration 0085. Acceptance requires an unchanged current head and saves its decision and new document
+version in one PostgreSQL transaction; rejection saves only the decision. Old anchors remain on their original version.
+Every mutation rechecks current parent rights and write features and requires explicit confirmation. Exact retries,
+memory-only drafts and current read-only capabilities use the existing Office boundaries. Remote verification and
+nonempty recovery of accepted/rejected proposals are required before Roadmap 257 can be marked complete.
 
 ## Version comparison and local takeover
 

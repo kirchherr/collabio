@@ -806,6 +806,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Tabellenzeilen, Spalten und Kopfzeilen; Entfernen verlangt eine Bestaetigung. "
                         "Versionsgebundene Kommentare erlauben bestaetigte Antworten, Erledigen und Wiedereroeffnen; "
                         "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
+                        "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
+                        "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -820,10 +822,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     evidence_refs=(
                         "app/suite/platform/office_documents.py",
                         "app/suite/platform/office_reviews.py",
+                        "app/suite/platform/office_suggestions.py",
                         "app/suite/platform/office_api.py",
                         "app/suite/ui/office/index.html",
                         "app/suite/persistence/migrations/0083_office_native_documents.sql",
                         "app/suite/persistence/migrations/0084_office_native_reviews.sql",
+                        "app/suite/persistence/migrations/0085_office_native_suggestions.sql",
                         "tests/test_office_documents.py",
                         "tests/test_office_documents_pg.py",
                         "tests/test_office_documents_api.py",
@@ -839,6 +843,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
                         "ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -847,6 +852,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/review-threads",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}/events",
+                        "/v1/office/documents/{object_id}/suggestions",
+                        "/v1/office/documents/{object_id}/suggestions/{suggestion_id}",
+                        "/v1/office/documents/{object_id}/suggestions/{suggestion_id}/decisions",
                     ),
                     guardrails=(
                         "office_documents_module_enabled_required",
@@ -866,6 +874,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
                         "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
                         "review_events_append_only_with_exact_comment_sources_and_receipts",
+                        "suggestion_acceptance_and_document_version_share_one_transaction",
+                        "suggestions_require_exact_current_saved_text_without_automatic_reanchoring",
+                        "suggestion_decisions_are_confirmed_append_only_and_actor_retry_bound",
                         "actor_bound_exact_mutation_retry",
                         "postgresql_forced_rls_and_append_only_versions",
                         "tenant_write_lock_before_s3_put",

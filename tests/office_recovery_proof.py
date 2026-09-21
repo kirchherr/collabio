@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 
 import psycopg
 
+from office_suggestion_recovery import verify_restored_suggestions
+
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
 from suite.operations.postgres_restore_drill import run_postgres_restore_drill_from_environment
@@ -27,6 +29,8 @@ from suite.platform.office_documents import (
 )
 from suite.platform.office_review_repository import PgOfficeReviewRepository
 from suite.platform.office_reviews import OfficeReviewService, ReviewEventCommand, derive_review_quote
+from suite.platform.office_suggestion_repository import OfficeSuggestionRepositoryAdapter
+from suite.platform.office_suggestions import OfficeSuggestionService
 from suite.platform.principal_store import PgPrincipalDirectory
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.exact_version_restore_drill import (
@@ -94,7 +98,7 @@ def _metadata_snapshot(database_dsn: str) -> dict[str, list[Any]]:
     rows: dict[str, list[Any]] = {}
     with psycopg.connect(database_dsn) as connection:
         connection.execute("SELECT set_config('app.tenant_id', %s, true)", (TENANT_ID,))
-        for table in ("documents", "document_versions", "review_threads", "review_events"):
+        for table in ("documents", "document_versions", "review_threads", "review_events", "text_suggestions", "text_suggestion_decisions"):
             result = connection.execute(
                 f"SELECT to_jsonb(record) FROM office.{table} AS record WHERE tenant_id = %s "
                 "ORDER BY to_jsonb(record)::text",
@@ -463,6 +467,16 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         expected_thread_ids={row["thread_id"] for row in inventory["review_threads"]},
         expected_event_ids={row["event_id"] for row in inventory["review_events"]},
     )
+    suggestion_evidence = verify_restored_suggestions(
+        suggestions=OfficeSuggestionService(
+            repository=OfficeSuggestionRepositoryAdapter(document_service=restored),
+            document_service=restored, audit=InMemoryAuditLogger(),
+        ),
+        sources=restored_sources, receipts=receipt_store, user=user,
+        object_ids=tuple(document.object_id for document in documents),
+        expected_suggestion_ids={row["suggestion_id"] for row in inventory["text_suggestions"]},
+        expected_decision_ids={row["decision_id"] for row in inventory["text_suggestion_decisions"]},
+    )
     foreign = UserContext(
         tenant_id="tenant-work-e2e-foreign", user_id=EDITOR_ID, readable_object_ids={documents[0].object_id}
     )
@@ -487,6 +501,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         "multi_version_document_count": multi_version_documents,
         "restored_source_object_count": objects.restored_object_count,
         **review_evidence,
+        **suggestion_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,
         "foreign_tenant_denied": True,
