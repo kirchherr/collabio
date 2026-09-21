@@ -18,6 +18,10 @@ Roadmap 257 closeout `c4176de` was published and synchronized. All 11 documentat
 passed in 59.02 seconds; health remained ok at 2026-09-21 07:24:18 UTC. The --no-deps check started no auxiliary
 service. Final independent evidence review confirmed all counts/hashes and clarified two historical module-document
 references; those wording corrections change no implementation or tested contract behavior.
+Roadmap 258 closeout `61d7fce` was published and synchronized. All eleven module/KB/roadmap contract checks passed
+in 59.62 seconds, with only the known Starlette/AnyIO warning. Health remained ok at 2026-09-21 11:36:53 UTC;
+Collabio still running(3), with no auxiliary service started by the --no-deps disposable test. Independent final review
+matched all report/PDF/screenshot hashes and runtime evidence. This final evidence-only record changes no runtime or gate.
 
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
