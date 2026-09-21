@@ -211,7 +211,7 @@ Immutable shared SourceObjects carry the exact canonical JSON bytes and full sec
 The initial slice accepts ordinary internal saved versions under the shared retention/KMS contracts. It does not implement
 classification changes, Legal Hold administration, record declaration or deletion; unsupported source state fails closed.
 Existing hold/retention and compliance workers remain independent of normal module availability. No new deletion bypass,
-index, AI provider or export path is created. Drafts are transient and have no claim of crash recovery.
+index, AI provider or server export path is created. Drafts are transient and have no claim of crash recovery.
 
 A creator ACL is inserted atomically with the head. Versions, source metadata, receipts and head updates share one database
 transaction. A tenant advisory lock precedes S3 PUT and stale-head validation. An unexpected database failure after PUT

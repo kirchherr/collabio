@@ -2,6 +2,21 @@
 
 Updated: 2026-09-21
 
+Active continuation: Roadmap 258 / PLANS 119 adds saved-version print preview and browser print/PDF output.
+Source `a939b1b` is synchronized to dev001. Eight focused browser checks passed on `a9477d5` in 26.199 seconds,
+including real PDF generation and semantic heading/list/table structure. Independent Poppler/QPDF checks verified
+all 80 numbered paragraphs, final text, correct A4/Letter dimensions and no application-shell output. The initial
+modal preview omitted PDF accessibility tags; the scoped nonmodal print transition and explicit structure tests fix it.
+Full quality passed on `a939b1b`: Ruff, formatting across 685 files, Mypy across 541 sources and full Pytest;
+only the known Starlette/AnyIO warning remains. Quality log SHA-256 is
+`bea9820805e28392dd07530cec26b714574c29d8e7652c679e6e2e534c815522`.
+The first full browser/model run passed 169/170 in 591.030 seconds. One existing historical-takeover CAS test
+failed while Playwright read the real 409 response body (`Network.getResponseBody`), after the status assertion.
+The narrow test observation fix buffers the real upstream response unchanged, without retrying writes or changing
+product code; fresh complete validation, rollout and closeout remain pending. Failed report SHA-256:
+`18415b02c2ddc62922231905f297ba9dd7dbdf800e0fe64d1171de9d862191f9` (ignored `roadmap-258/failed-full`).
+There is no schema, persistence, dependency or API change. Roadmap 257 recovery evidence is retained, not rerun.
+
 Publication state: on 2026-09-21 the operator explicitly approved publishing the prepared Roadmap 256 documentation,
 including its operational metadata, to the public `kirchherr/collabio` repository and instructed work to continue.
 Documentation commit `1545bb2` was pushed and synchronized. All 11 module/KB/roadmap contract checks passed in
