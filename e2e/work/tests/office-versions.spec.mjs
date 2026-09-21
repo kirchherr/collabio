@@ -88,6 +88,7 @@ async function captureRevokedTakeoverReads(page, objectId) {
   return { received, replies, async dispose() {
     try {
       await page.unroute(matches, handler);
+      if (jobs.length > 0 && replies.length < 2) failReady(new Error("Both revoked takeover reads must reach the capture barrier"));
       const settled = await Promise.allSettled(jobs);
       for (const result of settled) if (result.status === "rejected") throw result.reason;
     } finally { page.off("requestfailed", failed); }
