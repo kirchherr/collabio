@@ -25,6 +25,9 @@ preview shows typography and width; final pagination and destination selection b
 Separate print media from the application shell, editor, context, discussion and suggestion panels. Only content
 prepared by the explicit freshly authorized action is printable; other browser-print entry points show neutral guidance.
 Close, context changes, access denial, afterprint and failure cleanup invalidate or remove prepared content.
+During the browser call, the preview temporarily becomes nonmodal so its sibling print content remains available to
+native PDF accessibility export. Restore modal state only while the original print session is still valid. Browser
+regressions inspect actual heading/list/table structure dictionaries, not merely the requested tagged-output flag.
 
 The normal metadata-only content-read audit remains the evidence of authorization. Calling the print dialog is not
 evidence that the user printed or saved a PDF. No completion receipt, export audit, download guarantee, stable page

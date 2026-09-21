@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 162 passing checks: 127 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 170 passing checks: 135 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -148,13 +148,16 @@ Report `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`
 `e2e/work/artifacts/roadmap-257/`. The main migration/foundation/business gates, API-only rollout and cleanup passed;
 ordinary tenant, pilot, indexing and engine admission remain closed. Exact evidence is in the operations log and handoff.
 
-Roadmap 258 adds saved-version print workflow and responsive checks (development acceptance pending). A controlled
+Roadmap 258 adds six saved-version print workflows and two responsive runs (development acceptance pending). A controlled
 browser print callback invokes Chromium's real PDF output on the same page while the freshly authorized print surface
 is prepared. Tests exercise immutable versions and historical titles, read-only access, literal native structure,
 paper/orientation, fresh ACL revocation, failures and late responses, dirty/unresolved drafts and output isolation.
 The callback observes the real workflow; it does not replace the API, authorization, renderer or source bytes. Native
 OS printer selection is outside headless automation; the application never claims that opening a dialog completed output.
-PDF inspection uses the existing project image's Poppler tools in a separate disposable Compose service with no network,
+Actual PDF structure dictionaries must include headings/paragraphs, and lists/table cells for the rich fixture. Merely
+requesting tagged output is insufficient: modal preview siblings were initially invisible to PDF accessibility export.
+The preview becomes nonmodal only during printing and returns to modal only if its session remains valid.
+PDF inspection uses the existing project image's Poppler/QPDF tools in a separate disposable Compose service with no network,
 read-only artifact input and scoped output. It does not execute LibreOffice or admit any document conversion engine.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
