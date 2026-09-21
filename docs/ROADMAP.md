@@ -1606,6 +1606,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 12:22:11 UTC gruen; alle Tenant-/Pilot-/Engine-Gates
      bleiben geschlossen. Keine Schema-/Persistenzaenderung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
 
+260. [ ] Native Office-Dokumente ueber die ersten 200 Eintraege hinaus auffindbar machen: serverseitige literale
+     Titelsuche, begrenzte Seiten mit aktueller ACL-Pruefung vor Seitengrenzen und kontextgebundene Cursor.
+     Suche, Nachladen und Wiederholen erhalten geoeffnete Dokumente und ungespeicherte Entwuerfe unabhaengig von
+     Listenmitgliedschaft; Suchtexte bleiben ausserhalb normaler Logs. Alle bisherigen 180 Pruefungen erhalten.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 180 passing checks: 145 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 190 passing checks: 155 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -202,6 +202,14 @@ definitions, new and existing controls, assets/licenses, Work link and no-store/
 API/PostgreSQL/MinIO running; the exact E2E services were removed and auxiliary test/restore services stopped.
 Ordinary Office remains unprovisioned, with its features, KB write and pilot closed. Roadmap 259 development is complete;
 no main-database migration or new recovery drill was run, and no ordinary-tenant or production admission follows from this evidence.
+
+Roadmap 260 adds server-side title discovery and pagination; development validation is pending. Its dedicated synthetic
+owner receives 225 tiny genuine PostgreSQL/S3 documents through the existing document-create service, and a separate
+reader receives only three old entries. Existing user fixtures remain separate. The seed runs only after the isolated
+environment guard and principal transaction commit, emits counts only, and changes no normal-runtime activation.
+New browser tests cover beyond-200 discovery, literal title queries, pagination, restricted readers, preserved drafts,
+fresh permissions, transient failures, stale responses and responsive controls. Query/cursor values must be absent from
+the API access logs. The existing main database and retained recovery evidence remain unchanged.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source

@@ -2,6 +2,10 @@
 
 Updated: 2026-09-21
 
+Active continuation: Roadmap 260 / PLANS 121 extends native Office discovery with server-side literal title search
+and cursor-based loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership
+must never clear an open document or draft. API/UI implementation and dev001 validation are in progress.
+
 Roadmap 259 / PLANS 120 completes saved-version reuse as an independent new document draft. Source read and create
 permission are freshly checked after discard consent; the existing confirmed Create supplies the new identity and
 creator ACL. Full quality and all 180 browser/model checks passed on `e7fec24`. Desktop/tablet/mobile visual review,

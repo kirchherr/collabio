@@ -139,6 +139,8 @@ Current sprint:
 
 120. [x] Reuse an exact saved native Office version as an independent new document draft: fresh source read and create capability after discard consent, editable bounded title, protected dirty drafts and existing explicit create confirmation. Preserve source history and ACLs; do not copy discussion/suggestion state. Full quality and all 180 checks (145 browser + 35 model) passed on e7fec24; API-only rollout and final health/gates passed on dev001. No new persistence or recovery execution; closed tenant/pilot/engine gates remain.
 
+121. [ ] Make native Office documents discoverable beyond the initial 200 records: bounded server-side literal title search, current ACL checks before pagination, authenticated context-bound cursors, and clear next-page/retry controls. Preserve open and dirty documents independently of list membership; reauthorize exact saved sources for refresh/takeover/acceptance. Keep query text out of normal logs and preserve all 180 existing checks and closed gates.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

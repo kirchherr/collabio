@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–259 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse
+Status: Roadmap 252–259 development complete on dev001; Roadmap 260 validation pending; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`
 
 ## User workflow and scope
 
@@ -12,13 +12,36 @@ apply text styles, headings, lists and tables, navigate an outline, search withi
 save a confirmed version, compare saved versions, take a historical version into a new local draft, discuss an exact
 saved version through comments and replies, and propose text replacements for explicit acceptance or rejection.
 Roadmap 258 adds a saved-version print preview and browser print/PDF action, with completed development validation below.
-Search covers
-the current document or loaded document titles; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
+Search within the current document remains local. Roadmap 260 extends title discovery to server-side search and
+paginated results, described below; it does not enable a global content index. Desktop, tablet and mobile layouts support keyboard controls and keep reload
 available. Formatting returns focus to the editor before immediate typing.
 
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Document discovery (Roadmap 260, validation pending)
+
+The document list searches all currently readable titles on the server and loads results in pages of 50 through
+the existing `GET /v1/office/documents` operation. Optional `query`, `page_size` and `cursor` parameters extend its
+contract; the default page remains 200 for existing callers. Responses add `has_more`, `next_cursor` and `page_size`,
+without a total count or query echo. Title queries are bounded literal lowercase substring matches; `%`, `_` and
+backslashes have no wildcard meaning. Current ABAC and typed ACL checks precede the page limit and lookahead.
+
+Results use creation time and object ID descending so saves and renames do not move entries across page boundaries.
+Concurrent title/permission changes remain visible on later reads; this is not a frozen snapshot. Refresh discovers
+newly created entries. Authenticated cursors bind tenant, actor, roles, query and page size and expire when the current
+service instance restarts. The current deployment has one API worker; no shared multi-worker cursor-key setup is claimed.
+
+Search and next-page loading never select a document, replace content or use page membership as authorization.
+An explicit refresh rechecks the exact opened saved version and updates its write capability while preserving local
+document, review and suggestion drafts. Actual access denial clears protected state; transient failure preserves drafts
+and offers retry. Historical takeover and suggestion acceptance authorize their exact source through fresh content
+responses, independently of a filtered page. Existing confirmations, version checks and exact save retries remain.
+
+List query text and cursors do not enter audit metadata or ordinary Uvicorn access records. No new schema, persistence,
+index, dependency or endpoint is introduced; existing Roadmap 257 recovery evidence is retained, not rerun.
+See [ADR-0084](../../ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md). Full dev001 validation is pending.
 
 ## Saved-version reuse (Roadmap 259)
 

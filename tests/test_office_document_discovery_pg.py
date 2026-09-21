@@ -78,7 +78,7 @@ def test_pg_office_discovery_filters_authoritative_typed_acl_before_limit_and_lo
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, owner.tenant_id)
         connection.execute(
-            "UPDATE collabio.object_acl_entries SET status = 'revoked' "
+            "UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
             "WHERE tenant_id = %s AND object_id = %s AND acl_subject_id = %s",
             (owner.tenant_id, ids[0], viewer.user_id),
         )

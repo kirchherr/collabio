@@ -16,7 +16,8 @@ const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
-  session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
+  session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
+  listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
   tableAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
@@ -37,7 +38,7 @@ const OfficeTable = Table.extend({
 });
 
 class ApiError extends Error {
-  constructor(status) { super(`HTTP ${status}`); this.status = status; }
+  constructor(status, malformed = false) { super(`HTTP ${status}`); this.status = status; this.malformed = malformed; }
 }
 
 function contextFields() {
@@ -87,7 +88,7 @@ async function api(path, { method = "GET", body, signal } = {}, context = state.
     }
     throw new ApiError(response.status);
   }
-  try { return await response.json(); } catch { throw new ApiError(502); }
+  try { return await response.json(); } catch { throw new ApiError(502, true); }
 }
 
 function denied(error) { return error instanceof ApiError && [401, 403, 404, 423].includes(error.status); }
@@ -186,7 +187,7 @@ function updateEditorState() {
   $("document-print").disabled = !printAllowed();
   $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
   $("history-compare").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring);
-  $("historical-actions").hidden = !session?.historical || !listedWriteAccess(session?.objectId);
+  $("historical-actions").hidden = !session?.historical || !sourceWriteAccess(session?.objectId);
   $("document-restore").disabled = Boolean(session?.loading || session?.saving || session?.restoring);
   document.querySelectorAll("[data-command]").forEach((button) => {
     const command = button.dataset.command;
@@ -734,10 +735,10 @@ function clearWorkspace() {
 }
 
 function renderDocuments() {
-  const query = $("documents-search").value.trim().toLocaleLowerCase("de-DE");
-  const documents = state.documents.filter((document) => document.title.toLocaleLowerCase("de-DE").includes(query));
+  const scrollTop = $("documents-list").scrollTop;
+  const focusedId = document.activeElement?.closest("[data-document-id]")?.dataset.documentId;
   $("documents-list").replaceChildren();
-  documents.forEach((document) => {
+  state.documents.forEach((document) => {
     const button = node("button", undefined, "document-item");
     button.type = "button";
     button.dataset.documentId = document.object_id;
@@ -747,49 +748,174 @@ function renderDocuments() {
     button.append(copy);
     button.addEventListener("click", () => openDocument(document.object_id));
     $("documents-list").append(button);
+    if (focusedId === document.object_id) button.focus({ preventScroll: true });
   });
-  if (!documents.length && !state.listLoading && state.documents.length) $("documents-list").append(node("p", "Keine Dokumente für diese Suche.", "list-status"));
+  $("documents-list").scrollTop = scrollTop;
   $("document-new").disabled = !state.canCreate;
   $("welcome-new").disabled = !state.canCreate;
+  $("documents-refresh").disabled = state.listLoading;
+  $("documents-list").setAttribute("aria-busy", String(state.listLoading));
+  $("documents-clear").hidden = !$("documents-search").value;
+  $("documents-load-more").hidden = !state.listCursor || Boolean(state.listRetry);
+  $("documents-load-more").disabled = state.listLoading;
+  $("documents-retry").hidden = !state.listRetry;
+  $("documents-retry").disabled = state.listLoading;
+  $("documents-retry").textContent = state.listRetry === "restart" ? "Liste neu laden" : "Erneut versuchen";
+  updateReuseControls();
 }
 
-async function loadDocuments() {
+function documentListStatus(message, error = false) {
+  $("documents-status").textContent = message;
+  $("documents-status").classList.toggle("error", error);
+}
+
+function cancelDocumentListRequest() {
+  state.listRequest += 1;
+  clearTimeout(state.listTimer);
+  state.listTimer = null;
+  state.listController?.abort();
+  state.listController = null;
+  state.listLoading = false;
+}
+
+function clearDocumentList(clearQuery = false) {
+  cancelDocumentListRequest();
+  state.documents = []; state.canCreate = false;
+  state.listCursor = null; state.listCursors = new Set(); state.listRetry = null;
+  if (clearQuery) $("documents-search").value = "";
+  state.listQuery = $("documents-search").value.trim();
+  renderDocuments();
+}
+
+function validDocumentQuery(query) {
+  return Array.from(query).length <= 200 && !/[\u0000-\u001f\u007f-\u009f]/u.test(query) &&
+    !Array.from(query).some((character) => { const point = character.codePointAt(0); return point >= 0xd800 && point <= 0xdfff; });
+}
+
+function validatedDocumentPage(result, context, cursor) {
+  if (result?.tenant_id !== context.tenantId || !Array.isArray(result.documents) || result.documents.length > 50 ||
+      typeof result.can_create !== "boolean" || result.page_size !== 50 || typeof result.has_more !== "boolean" ||
+      !(result.next_cursor === null || (typeof result.next_cursor === "string" && result.next_cursor.length > 0 && result.next_cursor.length <= 1024)) ||
+      result.has_more !== (result.next_cursor !== null) || (result.has_more && !result.documents.length) ||
+      (result.next_cursor && (result.next_cursor === cursor || state.listCursors.has(result.next_cursor)))) throw new ApiError(502, true);
+  const identifiers = new Set();
+  for (const entry of result.documents) {
+    if (!entry || typeof entry.object_id !== "string" || !entry.object_id || identifiers.has(entry.object_id) ||
+        typeof entry.title !== "string" || !entry.title || Array.from(entry.title).length > 200 ||
+        typeof entry.current_version_id !== "string" || !entry.current_version_id || typeof entry.can_write !== "boolean" ||
+        typeof entry.created_at_utc !== "string" || !Number.isFinite(Date.parse(entry.created_at_utc)) ||
+        typeof entry.updated_at_utc !== "string" || !Number.isFinite(Date.parse(entry.updated_at_utc))) throw new ApiError(502, true);
+    identifiers.add(entry.object_id);
+  }
+  return result;
+}
+
+function scheduleDocumentSearch(immediate = false) {
+  cancelDocumentListRequest();
+  state.documents = []; state.listCursor = null; state.listCursors = new Set(); state.listRetry = null;
+  state.listQuery = $("documents-search").value.trim();
+  if (!validDocumentQuery(state.listQuery)) {
+    documentListStatus("Bitte verwenden Sie höchstens 200 Zeichen ohne Steuerzeichen für die Titelsuche.", true);
+    renderDocuments();
+    return;
+  }
+  if (immediate) { loadDocuments(); return; }
+  state.listLoading = true;
+  documentListStatus("Dokumente werden geladen …");
+  renderDocuments();
+  state.listTimer = setTimeout(() => loadDocuments(), 250);
+}
+
+async function loadDocuments({ append = false, revalidateSource = false } = {}) {
+  if (append && (state.listLoading || !state.listCursor || state.listQuery !== $("documents-search").value.trim())) return;
+  const query = $("documents-search").value.trim();
+  if (!validDocumentQuery(query)) { scheduleDocumentSearch(); return; }
+  const cursor = append ? state.listCursor : null;
+  const initiator = document.activeElement;
+  const restoreFocus = [$("documents-refresh"), $("documents-load-more"), $("documents-retry")].includes(initiator);
+  const previousIds = new Set(state.documents.map((entry) => entry.object_id));
+  let loaded = false;
+  cancelDocumentListRequest();
   const epoch = state.epoch;
   const request = ++state.listRequest;
   const context = state.context;
-  const current = () => state.epoch === epoch && state.listRequest === request;
+  const controller = new AbortController();
+  state.listController = controller;
+  const current = () => state.epoch === epoch && state.context === context && state.listRequest === request &&
+    state.listQuery === query && $("documents-search").value.trim() === query;
+  state.listQuery = query;
+  state.listRetry = null;
+  if (!append) { state.documents = []; state.listCursor = null; state.listCursors = new Set(); }
   state.listLoading = true;
-  $("documents-refresh").disabled = true;
-  $("documents-status").classList.remove("error");
-  $("documents-status").textContent = "Dokumente werden geladen …";
+  documentListStatus(append ? "Weitere Dokumente werden geladen …" : "Dokumente werden geladen …");
+  renderDocuments();
+  const source = revalidateSource && state.session?.objectId && state.session.version ? {
+    session: state.session, version: state.session.version, editor: state.editor,
+  } : null;
+  const sourceCurrent = () => source && sessionCurrent(source.session) && source.session.version === source.version && state.editor === source.editor;
   try {
-    const result = await api("/v1/office/documents", {}, context);
-    if (!current()) return;
-    if (result.tenant_id !== context.tenantId || !Array.isArray(result.documents) ||
-      result.documents.some((entry) => typeof entry.object_id !== "string" || typeof entry.title !== "string")) throw new ApiError(502);
-    state.documents = result.documents;
-    state.canCreate = result.can_create === true;
-    if (state.session?.objectId && !state.documents.some((entry) => entry.object_id === state.session.objectId)) clearWorkspace();
-    if (state.session?.objectId) {
-      state.session.canWrite = state.documents.find((entry) => entry.object_id === state.session.objectId)?.can_write === true;
-      updateEditorState();
+    if (source) {
+      try {
+        const result = await api(`/v1/office/documents/${encodeURIComponent(source.session.objectId)}/content?version_id=${encodeURIComponent(source.version.version_id)}`,
+          { signal: controller.signal }, context);
+        if (!current()) return;
+        if (sourceCurrent()) {
+          try {
+            const content = validatedContent(result, source.session.objectId, source.version.version_id);
+            if (result.version.content_hash !== source.version.content_hash || result.version.title !== source.version.title ||
+                typeof result.document.can_write !== "boolean") throw new ApiError(502);
+            validateEditorDocument(source.editor.schema.nodeFromJSON(content));
+          } catch { throw new ApiError(502, true); }
+          source.session.canWrite = result.can_write && result.document.can_write;
+          source.session.metadata = { ...source.session.metadata, can_write: result.document.can_write };
+          updateEditorState();
+        }
+      } catch (error) {
+        if (!current()) return;
+        if (sourceCurrent()) throw error;
+      }
     }
-    if (state.session && !state.session.objectId && !state.canCreate) clearWorkspace();
-    $("documents-status").textContent = result.documents.length ? "" : "Noch keine freigegebenen Dokumente.";
+    const parameters = new URLSearchParams({ query, page_size: "50" });
+    if (cursor) parameters.set("cursor", cursor);
+    const result = await api(`/v1/office/documents?${parameters}`, { signal: controller.signal }, context);
+    if (!current()) return;
+    validatedDocumentPage(result, context, cursor);
+    state.documents = append ? [...new Map([...state.documents, ...result.documents].map((entry) => [entry.object_id, entry])).values()] : result.documents;
+    state.canCreate = result.can_create;
+    state.listCursor = result.next_cursor;
+    if (cursor) state.listCursors.add(cursor);
+    loaded = true;
+    documentListStatus(state.documents.length
+      ? `${state.documents.length} Dokumente geladen.${result.has_more ? " Weitere verfügbar." : ""}`
+      : query ? "Keine Dokumente für diese Suche." : "Noch keine freigegebenen Dokumente.");
   } catch (error) {
     if (!current()) return;
-    state.documents = [];
-    state.canCreate = false;
-    if (denied(error)) clearWorkspace();
-    $("documents-status").textContent = denied(error)
-      ? "Dokumente sind nicht freigegeben."
-      : "Dokumente sind gerade nicht erreichbar. Bitte die Liste erneut laden.";
-    $("documents-status").classList.add("error");
+    if (denied(error) || (error instanceof ApiError && error.malformed)) {
+      clearWorkspace();
+      clearDocumentList();
+      state.listRetry = "restart";
+      documentListStatus(denied(error) ? "Dieses Dokument oder die Dokumentliste ist nicht mehr freigegeben." :
+        "Die Antwort konnte nicht sicher zugeordnet werden. Bitte laden Sie die Liste erneut.", true);
+      renderDocuments();
+      return;
+    }
+    const invalidCursor = error instanceof ApiError && [400, 422].includes(error.status);
+    if (invalidCursor) { state.documents = []; state.listCursor = null; state.listCursors = new Set(); }
+    state.listRetry = invalidCursor ? "restart" : append ? "append" : revalidateSource ? "refresh" : "restart";
+    documentListStatus(invalidCursor ? "Die Liste muss neu geladen werden. Ihr geöffnetes Dokument bleibt erhalten." :
+      append ? "Weitere Dokumente konnten nicht geladen werden. Die bisherige Liste und Ihre Entwürfe bleiben erhalten." :
+      "Dokumente sind gerade nicht erreichbar. Bitte versuchen Sie es erneut; Ihre Entwürfe bleiben erhalten.", true);
   } finally {
     if (current()) {
       state.listLoading = false;
-      $("documents-refresh").disabled = false;
+      state.listController = null;
       renderDocuments();
+      if (restoreFocus && (document.activeElement === document.body || document.activeElement === initiator)) {
+        const firstNew = append && loaded ? Array.from($("documents-list").children).find((entry) =>
+          entry.dataset.documentId && !previousIds.has(entry.dataset.documentId)) : null;
+        const target = firstNew || (state.listRetry ? $("documents-retry") : append && state.listCursor ? $("documents-load-more") : $("documents-refresh"));
+        target.focus();
+      }
     }
   }
 }
@@ -1009,11 +1135,9 @@ async function saveDocument(event) {
     $("save-dialog").close();
     if (denied(error)) {
       clearWorkspace();
+      clearDocumentList();
       $("documents-status").textContent = "Der Zugriff wurde nicht bestätigt. Bitte laden Sie Ihre Dokumente erneut.";
       $("documents-status").classList.add("error");
-      state.canCreate = false;
-      state.documents = [];
-      renderDocuments();
       return;
     }
     if (error instanceof ApiError && error.status === 409) {
@@ -1075,14 +1199,13 @@ async function loadHistory() {
   }
 }
 
-function listedWriteAccess(objectId) {
-  return state.documents.some((entry) => entry.object_id === objectId && entry.can_write === true);
+function sourceWriteAccess(objectId) {
+  return Boolean(objectId && state.session?.objectId === objectId && state.session.canWrite && state.session.metadata?.can_write === true);
 }
 
 function officeAccessDenied() {
   clearWorkspace();
-  state.documents = []; state.canCreate = false;
-  renderDocuments();
+  clearDocumentList();
   $("documents-status").textContent = "Dieses Dokument ist nicht mehr freigegeben.";
   $("documents-status").classList.add("error");
 }
@@ -1613,12 +1736,12 @@ function renderComparison(comparison) {
   $("compare-previous").disabled = comparison.page === 0;
   $("compare-next").disabled = comparison.page === pages - 1;
   $("compare-restore").disabled = Boolean(state.restore) || comparison.left.is_current_version ||
-    !listedWriteAccess(comparison.session.objectId);
+    !sourceWriteAccess(comparison.session.objectId);
 }
 
 async function restoreVersion(versionId, comparison = null) {
   const session = state.session;
-  if (!session?.objectId || session.saving || session.loading || state.restore || !listedWriteAccess(session.objectId)) return;
+  if (!session?.objectId || session.saving || session.loading || state.restore || !sourceWriteAccess(session.objectId)) return;
   const restore = { session, revision: session.revision, context: state.context, comparison,
     comparisonRequest: comparison?.request, versionId, controller: new AbortController() };
   state.restore = restore;
@@ -1634,18 +1757,14 @@ async function restoreVersion(versionId, comparison = null) {
       $("compare-load").disabled = true;
     } else notice("Fassung und aktuelle Berechtigung werden geprüft …");
     const base = `/v1/office/documents/${encodeURIComponent(session.objectId)}/content`;
-    const [historical, head, listing] = await Promise.all([
+    const [historical, head] = await Promise.all([
       api(`${base}?version_id=${encodeURIComponent(versionId)}`, { signal: restore.controller.signal }, restore.context),
       api(base, { signal: restore.controller.signal }, restore.context),
-      api("/v1/office/documents", { signal: restore.controller.signal }, restore.context),
     ]);
     if (!current()) return;
     const historicContent = validatedContent(historical, session.objectId, versionId);
     const currentContent = validatedContent(head, session.objectId);
-    if (listing?.tenant_id !== restore.context.tenantId || !Array.isArray(listing.documents)) throw new ApiError(502);
-    const listed = listing.documents.find((entry) => entry.object_id === session.objectId);
-    if (!listed || head.can_write !== true || listed.can_write !== true) throw new ApiError(403);
-    if (listed.current_version_id !== head.version.version_id) throw new ApiError(409);
+    if (head.can_write !== true || head.document.can_write !== true) throw new ApiError(403);
     if (historical.version.version_id === head.version.version_id) throw new ApiError(409);
     const nativeCurrentContent = normalizedDocument(state.editor.schema.nodeFromJSON(currentContent).toJSON());
     const baseline = JSON.stringify({ title: head.version.title, document: nativeCurrentContent });
@@ -2406,10 +2525,9 @@ async function prepareSuggestionOperation(operation = null, id = null) {
       $("suggestions-status").textContent = "Vorschlag und aktuelle Berechtigung werden geprüft …";
       try {
         const base = `/v1/office/documents/${encodeURIComponent(suggestions.session.objectId)}`;
-        const [detail, head, listing] = await Promise.all([
+        const [detail, head] = await Promise.all([
           api(`${suggestionBase(suggestions)}/${encodeURIComponent(composer.suggestionId)}`, { signal: suggestions.controller.signal }, suggestions.context),
           composer.operation === "accept" ? api(`${base}/content`, { signal: suggestions.controller.signal }, suggestions.context) : null,
-          composer.operation === "accept" ? api("/v1/office/documents", { signal: suggestions.controller.signal }, suggestions.context) : null,
         ]);
         if (!suggestionCurrent(suggestions) || suggestions.composer !== composer || suggestions.detailRequest !== detailRequest || suggestions.session.revision !== revision) return;
         if (!validSuggestionDetail(detail, suggestions, composer.suggestionId)) throw new ApiError(502);
@@ -2417,10 +2535,8 @@ async function prepareSuggestionOperation(operation = null, id = null) {
         if (detail.suggestion.status !== "open") throw new ApiError(409);
         if (composer.operation === "accept") {
           const content = validatedContent(head, suggestions.session.objectId);
-          if (listing?.tenant_id !== suggestions.context.tenantId || !Array.isArray(listing.documents)) throw new ApiError(502);
-          const listed = listing.documents.find((value) => value.object_id === suggestions.session.objectId);
-          if (!listed || !listed.can_write || !head.can_write || !head.document.can_write) throw new ApiError(403);
-          if (head.version.version_id !== suggestions.versionId || listed.current_version_id !== head.version.version_id ||
+          if (head.can_write !== true || head.document.can_write !== true) throw new ApiError(403);
+          if (head.version.version_id !== suggestions.versionId ||
               detail.current_version_id !== head.version.version_id || !detail.suggestion.can_accept) throw new ApiError(409);
           if (isDirty() || suggestions.session.historical || !state.editor.schema.nodeFromJSON(content).eq(state.editor.state.doc) ||
               head.version.title !== $("document-title").value.trim()) throw new ApiError(409);
@@ -2645,8 +2761,18 @@ window.addEventListener("beforeprint", () => {
 });
 window.addEventListener("afterprint", () => clearPreparedPrint());
 $("document-close").addEventListener("click", async () => { if (await confirmDiscard()) { clearWorkspace(); renderDocuments(); } });
-$("documents-refresh").addEventListener("click", loadDocuments);
-$("documents-search").addEventListener("input", renderDocuments);
+$("documents-refresh").addEventListener("click", () => loadDocuments({ revalidateSource: true }));
+$("documents-search").addEventListener("input", () => scheduleDocumentSearch());
+$("documents-search").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.isComposing) { event.preventDefault(); scheduleDocumentSearch(true); }
+});
+$("documents-clear").addEventListener("click", () => {
+  $("documents-search").value = ""; scheduleDocumentSearch(true); $("documents-search").focus();
+});
+$("documents-load-more").addEventListener("click", () => loadDocuments({ append: true }));
+$("documents-retry").addEventListener("click", () => loadDocuments({
+  append: state.listRetry === "append", revalidateSource: state.listRetry === "refresh",
+}));
 $("history-refresh").addEventListener("click", loadHistory);
 $("history-compare").addEventListener("click", openComparison);
 $("compare-close").addEventListener("click", closeComparison);
@@ -2856,7 +2982,7 @@ $("context-form").addEventListener("submit", async (event) => {
   clearWorkspace();
   $("new-document-dialog").close();
   state.context = context;
-  state.documents = []; state.canCreate = false;
+  clearDocumentList(true);
   localStorage.setItem(storageKey, JSON.stringify(context));
   $("tenant-label").textContent = context.tenantId;
   $("context-panel").hidden = true;

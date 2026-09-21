@@ -30,9 +30,11 @@
       <aside class="documents-panel" id="documents-panel" aria-label="Dokumente">
         <div class="panel-heading"><div><p class="eyebrow">Ihr Arbeitsraum</p><h1>Dokumente</h1></div><button class="icon-button" id="documents-refresh" type="button" aria-label="Dokumentliste aktualisieren" title="Liste aktualisieren">↻</button></div>
         <button class="button primary new-document" id="document-new" type="button" disabled><span aria-hidden="true">＋</span> Neues Dokument</button>
-        <label class="list-search"><span class="visually-hidden">Dokumente durchsuchen</span><input type="search" id="documents-search" placeholder="Dokumente suchen" autocomplete="off" /></label>
-        <p class="list-status" id="documents-status" role="status">Dokumente werden geladen …</p>
+        <div class="list-search-controls"><label class="list-search"><span class="visually-hidden">Dokumenttitel durchsuchen</span><input type="search" id="documents-search" placeholder="Dokumenttitel suchen" maxlength="400" autocomplete="off" aria-describedby="documents-search-hint" /></label><button class="icon-button" id="documents-clear" type="button" aria-label="Suche zurücksetzen" title="Suche zurücksetzen" hidden>×</button></div>
+        <p class="list-hint" id="documents-search-hint">Titelsuche · Zuletzt erstellte zuerst</p>
+        <p class="list-status" id="documents-status" role="status" aria-live="polite">Dokumente werden geladen …</p>
         <nav class="document-list" id="documents-list" aria-label="Dokument auswählen"></nav>
+        <div class="list-pagination"><button class="button secondary" id="documents-load-more" type="button" hidden>Weitere Dokumente laden</button><button class="button secondary" id="documents-retry" type="button" hidden>Erneut versuchen</button></div>
         <p class="sidebar-note">Native Dokumente<br /><span>Text, Struktur und Tabellen an einem Ort.</span></p>
       </aside>
       <main id="office-main" class="document-main" tabindex="-1">
