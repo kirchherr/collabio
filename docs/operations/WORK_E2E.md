@@ -276,7 +276,8 @@ targeted table cells, isolated undo, no-op/reset/cancellation, legacy roundtrips
 shortcuts, Enter, input rules, lists, replacement and reuse retain exact attributes. Historical comparison/takeover,
 fresh write revocation, identical save retry, context cancellation and actual browser PDF remain covered.
 The synthetic seed adds one existing-author document with three exact versions: original defaults and two different
-format profiles. It creates no additional principal or ACL grant. Reports include only counts and hashes.
+format profiles. It creates no additional principal or manual ACL fixture grant; normal Create supplies its creator ACL.
+Reports include only counts and hashes.
 
 All 294 focused Python checks passed in 18.05 seconds; all 46 focused browser/model checks passed in 150.538659 seconds,
 with zero skipped, unexpected or flaky results. Focused report:
@@ -298,7 +299,7 @@ three rendered PDF pages. Final, focused and PDF evidence is retained under igno
 
 Fresh nonempty recovery into the separate `collabio_work_e2e_262_restore` database verified 330 documents, 666 exact
 versions, 50 multi-version documents and 721 source objects. All three designated paragraph fixture versions passed:
-one unchanged legacy version and two historical formatted versions. Complete pagination and existing current parent
+one unchanged legacy version and two distinct saved formatted versions. Complete pagination and existing current parent
 ACLs, source/receipt bindings, read-only restored services and foreign-tenant denial passed. The proof also retained
 ten review threads/18 events and eleven suggestions/seven decisions, including five accepted and two rejected proposals.
 The embedded recovery `report_hash` is `sha256:bfc720ee2ec275061c5f934369a5864259071d5409f7bd4f99368b431951c7f7`;

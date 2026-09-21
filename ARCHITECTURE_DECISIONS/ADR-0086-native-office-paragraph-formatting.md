@@ -64,7 +64,7 @@ PDF: `sha256:ab04640d1bb33ad12712de3303fa98037ebad2ae1ff7689baac1419de608222f`;
 PDF-QA report: `sha256:b271848bc5b5c2e3f13f6a2c99621d64f69600cb203946d8ee5eb56ae17023b1`.
 
 Fresh nonempty PostgreSQL/S3 recovery into `collabio_work_e2e_262_restore` verified 330 documents, 666 versions and
-721 source objects. The designated three-version fixture proved one unchanged legacy source and two historical format
+721 source objects. The designated three-version fixture proved one unchanged legacy source and two distinct saved format
 profiles through exact canonical hashes and receipts. Complete paginated inventories, current parent ACLs, read-only
 capabilities, foreign denial and existing review/suggestion recovery passed. Ten review threads/18 events and eleven
 suggestions/seven decisions remain covered. Embedded recovery `report_hash`:
