@@ -437,6 +437,9 @@ artifacts are under `e2e/work/artifacts/roadmap-256/focused/`.
 Roadmap 258 / PLANS 119 has completed development validation with the print evidence below. Roadmap 257's verified
 recovery remains retained; printing introduces no new persistence and does not claim a new recovery execution.
 Roadmap 259 completed full quality, the 180-check matrix, independent final visual review and controlled API-only rollout.
+Roadmap 260 adds paginated title discovery and completes full quality, the 190-check matrix and controlled rollout.
+A bounded next candidate is loading saved versions beyond the existing 200-version history window for reading,
+comparison and takeover, preserving fresh parent ACLs, connected history validation, selection and drafts.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
