@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–260 development complete on dev001; Roadmap 261 validation pending; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery
+Status: Roadmap 252–261 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`
 
 ## User workflow and scope
 
@@ -20,7 +20,7 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Older saved-version history (Roadmap 261, validation pending)
+## Older saved-version history (Roadmap 261)
 
 The existing versions endpoint gains bounded page_size and cursor parameters. Default calls keep a 200-entry page;
 the UI requests 50 saved versions and exposes older-version, refresh and retry controls in history and comparison.
@@ -29,12 +29,38 @@ later pages also report the freshly read current head so concurrent saves can be
 Every page requires current parent role/ABAC and typed ACL access. Cursors bind document, tenant, actor, roles, page size
 and continuation; they grant no permission and expire on service restart under the current single-worker deployment.
 
-Appending preserves comparison selections/results and local document, discussion and suggestion drafts. Refresh adopts
+Opening history retains a discussion or suggestion composer; returning resumes its exact version-bound draft.
+Document/context changes and explicit close still require the existing discard confirmation. Appending preserves
+comparison selections/results and local document, discussion and suggestion drafts. Refresh adopts
 new history metadata only after validation, while previous exact comparison selections remain separately labelled when
 outside the new window. Fresh content reads still authorize comparison and takeover. Errors distinguish retryable
 failure, invalid cursor requiring refresh and actual access denial; late responses cannot repopulate closed contexts.
+Hiding history, switching tabs or entering focus mode cancels pending history reads and restores their confirmed status.
 No schema, durable format or new endpoint is introduced. See
-[ADR-0085](../../ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md); dev001 validation is pending.
+[ADR-0085](../../ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md).
+
+Focused backend verification on `0bdd522` passed 249 Python/API/PostgreSQL checks in 40.58 seconds. On `46a83b4`,
+all 23 focused browser checks passed in 94.693441 seconds: ten new history-pagination cases and thirteen existing
+version-workflow cases, with zero skipped, unexpected or flaky results. Root and independent desktop/tablet/mobile
+visual review passed. Actual Uvicorn logs contained 63 list and 110 history access records with query/cursor values
+redacted. Focused report: `sha256:ef46cb8c44612e6dcb6261f784d42a5dbfbeaca1e1bf9604e3f6869bf5e464b3`.
+Full quality and all 200 checks passed on `46a83b4` at 2026-09-21 14:24:43 UTC: Ruff, formatting across 705 files,
+Mypy across 551 sources and complete Pytest, with only the known Starlette/AnyIO warning. The matrix passed in
+688.743181 seconds: 165 browser and 35 model cases, zero skipped, unexpected or flaky. Root and independent review
+passed all five final screenshots. Actual Uvicorn logs at 14:25:11 UTC verified 322 list and 205 history access records
+with query/cursor values redacted. Final report:
+`sha256:926b3a0c808d6baed3c65d904257cabc85996da6eb956f58eb5d7d03fb747e79`;
+quality log: `sha256:296215f2c5250e1199918099f88565806f30b1a49276e818f457b312e1508025`.
+The API-only rollout reached healthy at 14:25:53 UTC (`1585ccedc940`). Live verification at 14:27:03 UTC confirmed
+thirteen Office OpenAPI operation definitions, history page_size/cursor parameters, new and existing controls, local
+assets/licenses, Work navigation and no-store/CSP; it did not execute all thirteen operations. Tenant-demo Office
+remains unprovisioned with a non-cacheable 404; Office features, KB write and pilot remain closed.
+Cleanup completed healthy at 14:27:43 UTC: six remaining exact E2E containers were removed, the disposable runner was
+already absent, and postgres-test/postgres-restore/minio-restore were stopped. Collabio remained running(3), with
+unchanged loopback ports 8000/5433/29000/29001. Main PostgreSQL `87a6b37942c8`, MinIO `98ce365f455b`, Webcut running(7)
+and provider services were unchanged; Tricert was absent. Roadmap 261 development is complete. No main-database
+migration, new recovery drill, ordinary-tenant write, indexing, cloud provider or engine activation occurred.
+Roadmap 257 recovery evidence remains retained; these checks grant no ordinary-tenant or production admission.
 
 ## Document discovery (Roadmap 260)
 
@@ -454,8 +480,9 @@ Roadmap 258 / PLANS 119 has completed development validation with the print evid
 recovery remains retained; printing introduces no new persistence and does not claim a new recovery execution.
 Roadmap 259 completed full quality, the 180-check matrix, independent final visual review and controlled API-only rollout.
 Roadmap 260 adds paginated title discovery and completes full quality, the 190-check matrix and controlled rollout.
-A bounded next candidate is loading saved versions beyond the existing 200-version history window for reading,
-comparison and takeover, preserving fresh parent ACLs, connected history validation, selection and drafts.
+Roadmap 261 completes loading older saved versions for reading, comparison and takeover, preserving fresh parent
+ACLs, connected history validation, selection and drafts. Focused checks, full quality, the 200-check matrix, API-only
+rollout, live verification and cleanup passed. No subsequent roadmap item is declared implemented.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,

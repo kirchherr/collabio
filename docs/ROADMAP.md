@@ -1617,10 +1617,17 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 13:04:19 UTC gruen; geschlossene Gates erhalten.
      Keine neue Persistenz, Hauptdatenbank-Migration oder Recovery-Ausfuehrung; Nachweis aus Punkt257 bleibt erhalten.
 
-261. [ ] Aeltere gespeicherte Office-Fassungen ueber das bisherige 200-Versionen-Fenster hinaus nachladen:
+261. [x] Aeltere gespeicherte Office-Fassungen ueber das bisherige 200-Versionen-Fenster hinaus nachladen:
      begrenzte Seiten entlang der unveraenderlichen Vorgaengerkette, dokument- und kontextgebundene Cursor und
      frische Parent-ACL je Seite. Auswahl, Vergleich und lokale Entwuerfe beim Nachladen erhalten; neuere Fassungen
-     eindeutig anzeigen und Verlauf bewusst aktualisieren. Alle bisherigen 190 Pruefungen und geschlossenen Gates erhalten.
+     eindeutig anzeigen und Verlauf bewusst aktualisieren. Kommentar-/Vorschlagsentwuerfe beim Historienwechsel
+     erhalten; laufende Abrufe beim Ausblenden, Tabwechsel und Fokusmodus abbrechen. Volle Quality auf 46a83b4 gruen:
+     Ruff, 705 formatierte Dateien, Mypy 551 Quellen und vollstaendiges Pytest. Alle 200 Browser-/Modellpruefungen
+     (165 + 35) in 688,743181 Sekunden bestanden, keine ausgelassenen, unerwarteten oder instabilen Ergebnisse.
+     Alle bisherigen 190 Faelle erhalten; 249 fokussierte Python- und 23 fokussierte Browserpruefungen ebenfalls gruen.
+     Fuenf finale Bildschirmansichten unabhaengig geprueft; 322 Listen- und 205 Historien-Zugriffslogs ohne Suchtexte/Cursor.
+     API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md. Keine neue Schema-/
+     Persistenzaenderung oder Recovery-Ausfuehrung; Nachweis aus Punkt257 und geschlossene Gates bleiben erhalten.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

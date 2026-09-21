@@ -2,9 +2,10 @@
 
 Updated: 2026-09-21
 
-Active continuation: Roadmap 261 / PLANS 122 extends saved-version history beyond 200 entries with bounded pages
-along the immutable predecessor chain. Current parent ACLs remain mandatory for every page; selection and local
-drafts survive loading and refresh. Implementation and dev001 validation are in progress.
+Roadmap 261 / PLANS 122 completes saved-version history beyond 200 entries with bounded pages along the immutable
+predecessor chain. Current parent ACLs remain mandatory for every page; selection, comparisons and local drafts survive
+loading and refresh. Full quality and all 200 browser/model checks passed on `46a83b4`. Independent code and visual
+review, API-only rollout, live checks and exact cleanup passed. Office development continues before CRM expansion.
 
 Roadmap 260 / PLANS 121 completes native Office discovery with server-side literal title search and cursor-based
 loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership never clears
@@ -58,8 +59,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `5bcb7d2` (full Python quality and all 190 browser/model checks, including ten focused
-  discovery checks). Backend/API and UI implementation is integrated in `e304b28`; `5bcb7d2` fixes mobile Work navigation.
+- Validated implementation: `46a83b4` (full Python quality and all 200 browser/model checks). Backend/API and UI
+  history pagination is integrated in `7f95caf`; `46a83b4` preserves composer drafts and cancels hidden history reads.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -73,7 +74,19 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 260 host verification at 2026-09-21 13:04:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 261 host verification at 2026-09-21 14:27:43 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`1585ccedc940`) with pilot explicitly 0;
+bounded startup retries reached healthy at 14:25:53 UTC. Live verification at 14:27:03 UTC confirmed all thirteen Office
+OpenAPI operation definitions, additive history page_size/cursor parameters, new history and existing controls, local
+assets/licenses, Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations.
+Tenant-demo Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0.
+Six remaining exact Work-E2E containers were removed, with the disposable runner already absent; postgres-test,
+postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`) and retained
+synthetic recovery data are unchanged. Webcut running(7), all three provider nodes and listener 26443 unchanged, Tricert
+absent. No main-database migration, new recovery drill, ordinary tenant/business-content write, indexing, cloud provider
+or DOCX engine activation occurred; isolated test databases ran their required migrations.
+
+Previous item 260 host verification at 2026-09-21 13:04:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`6751b0ddada8`) with pilot explicitly 0;
 bounded startup retries reached healthy at 13:03:04 UTC. Live verification at 13:04:01 UTC confirmed all thirteen Office
 OpenAPI operation definitions, additive query/page_size/cursor parameters, new discovery and existing controls, local
@@ -203,7 +216,60 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 260
+## Last completed slice: Roadmap 261
+
+The existing versions endpoint now supports bounded pages along the immutable predecessor chain, including identical
+timestamps. Its default remains 200 entries; the UI requests 50. Authenticated cursors bind tenant, actor, roles,
+document and page size, and use a distinct signing domain. Each page rechecks current parent role/ABAC and typed ACL
+before reading metadata. A fixed history head keeps continuation stable; the current head is reported separately so
+concurrent saves are visible without replacing selected content. No source bytes are loaded by history pagination.
+
+History and comparison provide older-version, refresh and retry controls. Appending preserves exact selections,
+rendered comparisons and document/review/suggestion drafts. Refresh can pin the two exact comparison selections outside
+the new window. Opening history retains a version-bound composer; returning resumes its draft. Document/context changes
+and close keep existing discard consent. Transient failure preserves state, rejected cursors offer refresh, and actual
+access denial clears protected data. Inspector hide/tab/focus changes and comparison/context close cancel pending reads.
+Exact source authorization and explicit confirmed CAS saves remain mandatory for historical takeover.
+
+The first integrated browser run on `7f95caf` passed 22 of 23 cases and exposed the inspector discard path. Independent
+review also found uncanceled sidebar reads and stale loading status. Product correction `46a83b4` fixes those cases;
+expanded tests prove both composer drafts and the additional cancellation paths without weakening earlier assertions.
+Independent backend, UI and test reviews found no remaining concrete defects after correction.
+
+- All 249 focused Python/API/PostgreSQL/harness checks passed on `0bdd522` in 40.58 seconds.
+- All 23 focused browser cases passed on `46a83b4` in 94.693441 seconds, zero skipped/unexpected/flaky.
+- The fixture creates a genuine PostgreSQL/S3 document with 225 confirmed versions under dedicated author/reader
+  principals. Complete unique history, exact earliest rich content, current ACL denial, cross-role cursors, concurrent
+  heads, comparison, takeover, real CAS conflict and same-cursor retry are covered.
+- Root and independent visual inspection passed desktop/tablet/mobile controls. Actual Uvicorn logs verified 63
+  document-list and 110 history access records without query or cursor values at 2026-09-21 14:12:06 UTC.
+- Focused report: `sha256:ef46cb8c44612e6dcb6261f784d42a5dbfbeaca1e1bf9604e3f6869bf5e464b3`.
+- Focused Python log: `sha256:57c57ffa90404f8f0fb763e86f655a2726fa16264d2f0fc3c0bf60e809053122`.
+- Initial failed browser report: `sha256:c668c76b5ccf00227eebeb03735633a80a02388b95a8b5e4a2cbb6601c7a1348`.
+
+Full acceptance completed on unchanged `46a83b4` at 2026-09-21 14:24:43 UTC:
+
+- Ruff and formatting across 705 files, Mypy across 551 sources and complete Pytest passed; only the known
+  Starlette/AnyIO warning remains.
+- All 200 checks passed in 688.743181 seconds: 165 browser and 35 model cases, zero skipped/unexpected/flaky.
+  All previous 190 cases remain included.
+- Final report: `sha256:926b3a0c808d6baed3c65d904257cabc85996da6eb956f58eb5d7d03fb747e79`.
+- Quality log: `sha256:296215f2c5250e1199918099f88565806f30b1a49276e818f457b312e1508025`.
+- Root and independent final visual review passed three Office history and two Work screenshots.
+- Office desktop: `sha256:0892e8209a114f6e330161ea44668f5338da58afbfae2a428b54600b299c431a`;
+  tablet: `sha256:916637c44793934818ed7068f5aae091141fd50d851709c861250e8c83c6cc05`;
+  mobile: `sha256:cd21aac209668a7719e59a06ee0b4314b570a8fe9b23fb749dad862fc2e84c64`.
+- Work desktop: `sha256:c45d47f7839bc45fb3d6ba79ec4364e86f35afbc94db86d2ce65bf1a5432dd08`;
+  mobile: `sha256:ad1fc69cbc16d518a1c13a786a95ac214b88acfdbf5f50a6a0ac26065622afc7`.
+- Actual Uvicorn logs verified 322 document-list and 205 history access records without query/cursor values at
+  2026-09-21 14:25:11 UTC.
+
+API rollout, live verification and exact cleanup passed as recorded above. Ignored evidence is under
+`e2e/work/artifacts/roadmap-261/`. There is no new endpoint, schema, durable format or dependency; no main-database
+migration or new recovery drill ran. Roadmap 257 recovery evidence remains retained. Ordinary tenant, pilot, indexing,
+cloud provider and DOCX engine admission remain closed.
+
+## Previous completed slice: Roadmap 260
 
 The existing document-list operation now supports bounded literal title search and context-bound cursor pagination.
 The UI requests 50 entries per page, shows loaded counts, and exposes clear next-page, reset and retry controls.
@@ -787,12 +853,11 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 260 is complete. Preserve the 190-check matrix (155 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 261 is complete. Preserve the 200-check matrix (165 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
 version-bound comments, explicit saved-text suggestions, browser printing, independent saved-version reuse and paginated
-title discovery are complete. A suitable next bounded workflow is loading older saved versions: the current history route
-still returns at most 200 versions. Make older exact versions reachable for reading, comparison and takeover, preserving
-fresh parent ACL checks, connected history validation, stable selection and all drafts across pages and concurrent saves.
+title discovery and older-version pagination are complete. A suitable next bounded workflow is paragraph formatting with
+alignment and spacing, consistently validated and preserved through saved versions, undo, comparison, print and recovery.
 This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
