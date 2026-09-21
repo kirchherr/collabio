@@ -201,12 +201,14 @@ can leave a detectable orphan object; PostgreSQL rollback is not a cross-system 
 
 Backup covers all six Office document/review/suggestion tables, current ACLs, module/features, migration state, trigger functions, narrow column grants,
 source metadata/receipts and exact S3 versions. Restore must validate forced RLS, append-only versions, creator ACL trigger,
-source binding, document/review head guards and all associated function bodies against migrations 0083/0084, even when source and target have
-the same unexpected drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty
-recovery proof must preserve native content, review events for all four operations, exact saved-version anchors,
-source/receipt hashes, historical reads and current ACL behavior.
+source binding, document/review head guards, proposal/decision/result bindings and the deferred decision requirement
+against the complete function bodies in migrations 0083/0084/0085, even when source and target have the same unexpected
+drift. Disabled normal features do not stop backups or compliance recovery. The isolated nonempty recovery proof must
+preserve native content, review events for all four operations, proposals and accepted/rejected decisions, exact saved-version
+anchors, accepted result content/title/lineage, source/receipt hashes, historical reads and current ACL behavior.
 Roadmap 252's completed recovery below does not cover the new review tables. Roadmap 256 has separate verified
-backup, nonempty document/review restore and foundation evidence, recorded in its acceptance section below.
+backup, nonempty document/review restore and foundation evidence, recorded in its acceptance section below. Roadmap 257
+adds its separately verified proposal/decision recovery and migration 0085 foundation evidence.
 
 ## Foundation acceptance evidence (Roadmap 252)
 
@@ -338,7 +340,7 @@ memory-only drafts. Continuous tracked changes and live collaboration remain fut
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
 pilot, indexing and provider activation remain outside this implementation.
 
-The verified pre-/post-0084 backups, foundation and business release gates preceded the API-only rollout. Foundation
+Previous Roadmap 256 rollout: the verified pre-/post-0084 backups, foundation and business release gates preceded the API-only rollout. Foundation
 hash `sha256:4ee5691940bec2e1b2b48623bf8a671e67efaaa8232057a01e913c3ab820b4ce` and business release hash
 `sha256:e8109c8e126d80fd4bd55f16a5c432e8841e5c44a374de654b8e1eaaa354faa4` passed without tenant activation.
 Live checks verified all nine Office operations, comment controls, existing editor workflows, local assets and
