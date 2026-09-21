@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
+from suite.storage.s3_sdk_client import Boto3S3CompatibleObjectStoreClient
 from suite.testing.work_e2e_guard import (
     WORK_E2E_DATABASE_HOST,
     WORK_E2E_DATABASE_NAME,
@@ -24,6 +26,7 @@ from work_e2e_controls import (
     storage_failure_modes,
 )
 from work_e2e_crm import synthetic_crm_records
+from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 
 REPO_ROOT = Path(__file__).parents[1]
 
@@ -56,6 +59,17 @@ def test_work_e2e_guard_accepts_only_explicit_isolated_configuration() -> None:
     blocked = valid_environment()
     blocked["SUITE_WORK_E2E_ALLOW_SYNTHETIC_TRAFFIC"] = "0"
     assert require_isolated_work_e2e_environment(blocked) is False
+
+
+def test_office_discovery_seed_rejects_normal_environment_before_database_or_storage_access() -> None:
+    environment = valid_environment()
+    environment["SUITE_WORK_E2E_TENANT_ID"] = "tenant-demo"
+    client = Mock(spec=Boto3S3CompatibleObjectStoreClient)
+    # The guard runs before the supplied client or any service/DSN is used.
+    with pytest.raises(RuntimeError):
+        seed_synthetic_office_discovery(environment=environment, client=client)
+    assert not client.mock_calls
+    assert {DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID}.isdisjoint({WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID})
 
 
 def test_work_e2e_guard_accepts_only_same_database_source_receipt_and_office_overrides() -> None:

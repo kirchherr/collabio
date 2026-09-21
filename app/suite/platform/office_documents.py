@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import base64
+import hmac
 import json
+import re
+import secrets
+from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -44,6 +50,18 @@ class OfficeDocumentPermissionError(PermissionError):
 
 class OfficeDocumentConflictError(ValueError):
     pass
+
+
+class OfficeDocumentListRequestError(ValueError):
+    pass
+
+
+def validate_office_document_query(query: str) -> str:
+    if not isinstance(query, str) or len(query) > 200 or any(
+        ord(character) < 32 or 0x7F <= ord(character) <= 0x9F or 0xD800 <= ord(character) <= 0xDFFF for character in query
+    ):
+        raise OfficeDocumentListRequestError("Invalid document list request")
+    return query.strip()
 
 
 class OfficeDocumentCreateCommand(BaseModel):
@@ -137,6 +155,9 @@ class OfficeDocumentListResponse(BaseModel):
     documents: list[OfficeDocumentView]
     can_create: bool
     audit_event_id: str
+    next_cursor: str | None = None
+    has_more: bool = False
+    page_size: int = 200
 
 
 class OfficeDocumentContentResponse(BaseModel):
@@ -167,7 +188,14 @@ class OfficeDocumentCommit(BaseModel):
 
 
 class OfficeDocumentRepository(Protocol):
-    def list_documents(self, *, user_context: UserContext) -> tuple[OfficeDocumentRecord, ...]: ...
+    def list_documents(
+        self,
+        *,
+        user_context: UserContext,
+        query: str = "",
+        after: tuple[str, str] | None = None,
+        limit: int = 200,
+    ) -> tuple[OfficeDocumentRecord, ...]: ...
 
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord: ...
 
@@ -210,15 +238,79 @@ class OfficeDocumentService:
         source_repository: SourceObjectRepository,
         audit: InMemoryAuditLogger,
         writes_available: bool = True,
+        list_cursor_key: bytes | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
         self.audit = audit
         self.writes_available = writes_available
+        # Navigation only: restarts invalidate cursors, and each page checks current ACLs.
+        self._list_cursor_key = list_cursor_key if list_cursor_key is not None else secrets.token_bytes(32)
+        if len(self._list_cursor_key) < 32:
+            raise ValueError("Office list cursor key must contain at least 32 bytes")
 
-    def list_documents(self, *, user_context: UserContext, write_enabled: bool = False) -> OfficeDocumentListResponse:
-        records = self.repository.list_documents(user_context=user_context)
-        event_id = self._audit(user_context, "office.documents.list", count=len(records))
+    def _list_binding(self, user: UserContext, query: str, page_size: int) -> str:
+        payload = canonical_json({
+            "tenant": user.tenant_id, "actor": user.user_id, "roles": sorted(user.role_ids),
+            "query": query, "page_size": page_size,
+        }).encode("utf-8")
+        return hmac.new(self._list_cursor_key, payload, sha256).hexdigest()
+
+    def _read_list_cursor(self, cursor: str, binding: str) -> tuple[str, str]:
+        try:
+            if not isinstance(cursor, str) or not 1 <= len(cursor) <= 1024:
+                raise ValueError
+            encoded, signature = cursor.split(".")
+            payload = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+            if base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=") != encoded:
+                raise ValueError
+            expected = hmac.new(self._list_cursor_key, payload, sha256).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise ValueError
+            value = json.loads(payload)
+            if not isinstance(value, dict) or set(value) != {"binding", "created_at", "object_id"}:
+                raise ValueError
+            if not isinstance(value["binding"], str) or not hmac.compare_digest(value["binding"], binding):
+                raise ValueError
+            created_at, object_id = value["created_at"], value["object_id"]
+            if not isinstance(created_at, str) or len(created_at) > 32 or not isinstance(object_id, str):
+                raise ValueError
+            if re.fullmatch(r"office-doc-[a-f0-9]{32}", object_id) is None:
+                raise ValueError
+            timestamp = datetime.fromisoformat(created_at)
+            if timestamp.tzinfo is None or timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z") != created_at:
+                raise ValueError
+            return created_at, object_id
+        except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
+            raise OfficeDocumentListRequestError("Invalid document list request") from exc
+
+    def _write_list_cursor(self, record: OfficeDocumentRecord, binding: str) -> str:
+        payload = canonical_json({
+            "binding": binding, "created_at": record.created_at_utc, "object_id": record.object_id,
+        }).encode("utf-8")
+        encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        return f"{encoded}.{hmac.new(self._list_cursor_key, payload, sha256).hexdigest()}"
+
+    def list_documents(
+        self,
+        *,
+        user_context: UserContext,
+        write_enabled: bool = False,
+        query: str = "",
+        page_size: int = 200,
+        cursor: str | None = None,
+    ) -> OfficeDocumentListResponse:
+        query = validate_office_document_query(query)
+        if type(page_size) is not int or not 1 <= page_size <= 200:
+            raise OfficeDocumentListRequestError("Invalid document list request")
+        binding = self._list_binding(user_context, query, page_size)
+        after = self._read_list_cursor(cursor, binding) if cursor is not None else None
+        candidates = self.repository.list_documents(
+            user_context=user_context, query=query, after=after, limit=page_size + 1
+        )
+        records = candidates[:page_size]
+        has_more = len(candidates) > page_size
+        event_id = self._audit(user_context, "office.documents.list", count=len(records), has_more=has_more)
         return OfficeDocumentListResponse(
             tenant_id=user_context.tenant_id,
             documents=[
@@ -232,6 +324,9 @@ class OfficeDocumentService:
             ],
             can_create=self.writes_available and write_enabled and can_create_office_document(user_context),
             audit_event_id=event_id,
+            next_cursor=self._write_list_cursor(records[-1], binding) if has_more else None,
+            has_more=has_more,
+            page_size=page_size,
         )
 
     def read_content(

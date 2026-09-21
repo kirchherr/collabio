@@ -16,6 +16,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
+from suite.platform.office_access_logging import protect_office_discovery_access_logs
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -26,6 +27,7 @@ from suite.platform.office_documents import (
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryResponse,
     OfficeDocumentListResponse,
+    OfficeDocumentListRequestError,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -68,6 +70,7 @@ class OfficeBoundaryMiddleware:
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
+        protect_office_discovery_access_logs()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path = scope.get("path", "")
@@ -124,6 +127,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Invalid document request"}, status_code=422)
             except OfficeDocumentNotFoundError:
                 return JSONResponse({"detail": "Document not found"}, status_code=404)
+            except OfficeDocumentListRequestError:
+                return JSONResponse({"detail": "Invalid document list request"}, status_code=400)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
@@ -229,9 +234,16 @@ def register_office_routes(
     router = APIRouter(prefix="/v1/office/documents", route_class=OfficeRoute, dependencies=[Depends(read_gate)])
 
     @router.get("", response_model=OfficeDocumentListResponse)
-    def list_documents(request: Request, context: TenantRequestContext = Depends(context_dependency)) -> Any:  # noqa: B008
+    def list_documents(
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        query: str = Query(default="", max_length=200),
+        page_size: int = Query(default=200, ge=1, le=200),
+        cursor: str | None = Query(default=None, min_length=1, max_length=1024),
+    ) -> Any:
         return request.app.state.office_document_service.list_documents(
-            user_context=context.user_context, write_enabled=_write_enabled(request, context)
+            user_context=context.user_context, write_enabled=_write_enabled(request, context),
+            query=query, page_size=page_size, cursor=cursor,
         )
 
     @router.post("", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])

@@ -280,11 +280,11 @@ def _install_synthetic_knowledge_runtime() -> None:
         storage_provider="minio",
     )
     # This in-memory restore reference is only a fixture for the synthetic tenant.
-    # Provider capabilities and empty content inventory are checked against real MinIO/PG.
+    # Provider capabilities and the synthetic content inventory are checked against real MinIO/PG.
     resolver.activate_postgres_s3_runtime(
         command=KnowledgeBaseRuntimeActivationCommand(
             provider_profile_id="work-e2e-synthetic-minio",
-            restore_drill_report_hash=_synthetic_hash("empty-restore-fixture-not-production-evidence"),
+            restore_drill_report_hash=_synthetic_hash("synthetic-restore-fixture-not-production-evidence"),
             approval_reference="test-fixture:work-e2e-runtime",
             reason="isolated synthetic browser proof only",
             human_confirmation=True,

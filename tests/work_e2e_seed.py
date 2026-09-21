@@ -11,6 +11,7 @@ from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_f
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
+from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",
@@ -18,6 +19,8 @@ SYNTHETIC_PRINCIPALS = (
     "work-assignee-e2e",
     WORK_E2E_READER_ID,
     WORK_E2E_OFFICE_EDITOR_ID,
+    DISCOVERY_EDITOR_ID,
+    DISCOVERY_READER_ID,
 )
 
 
@@ -69,6 +72,8 @@ def main() -> int:
 
         crm_record_count = seed_synthetic_crm_records(connection)
 
+    office_document_count = seed_synthetic_office_discovery(environment=os.environ, client=client)
+
     print(
         json.dumps(
             {
@@ -76,6 +81,7 @@ def main() -> int:
                 "tenant_id": WORK_E2E_TENANT_ID,
                 "principal_count": len(SYNTHETIC_PRINCIPALS),
                 "synthetic_crm_record_count": crm_record_count,
+                "synthetic_office_document_count": office_document_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

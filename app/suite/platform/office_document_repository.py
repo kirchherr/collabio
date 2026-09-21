@@ -48,6 +48,23 @@ from suite.storage.source_objects import (
 
 _DOCUMENT_COLUMNS = ", ".join(OfficeDocumentRecord.model_fields)
 _VERSION_COLUMNS = ", ".join(OfficeDocumentVersion.model_fields)
+_ACL_SUBJECT_SQL = """
+    (acl.acl_subject_type = 'user' AND acl.acl_subject_id = %s)
+    OR (acl.acl_subject_type = 'role' AND acl.acl_subject_id = ANY(%s::text[]))
+    OR (acl.acl_subject_type = 'group' AND acl.acl_subject_id IN (
+        SELECT membership.group_id
+        FROM collabio.tenant_principal_group_memberships AS membership
+        JOIN collabio.tenant_principals AS principal
+          ON principal.tenant_id = membership.tenant_id
+         AND principal.issuer = membership.issuer AND principal.subject = membership.subject
+        JOIN collabio.tenant_groups AS tenant_group
+          ON tenant_group.tenant_id = membership.tenant_id
+         AND tenant_group.group_id = membership.group_id
+        WHERE principal.tenant_id = acl.tenant_id AND principal.user_id = %s
+          AND principal.status = 'active' AND membership.status = 'active'
+          AND tenant_group.status = 'active'
+    ))
+"""
 
 
 def _model_values(values: dict[str, Any]) -> dict[str, Any]:
@@ -179,28 +196,12 @@ class PgOfficeDocumentRepository:
         if object_id not in user.readable_object_ids:
             return set()
         rows = connection.execute(
-            """
+            f"""
             SELECT DISTINCT acl.permission
             FROM collabio.object_acl_entries AS acl
             WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
               AND acl.status = 'active'
-              AND (
-                (acl.acl_subject_type = 'user' AND acl.acl_subject_id = %s)
-                OR (acl.acl_subject_type = 'role' AND acl.acl_subject_id = ANY(%s::text[]))
-                OR (acl.acl_subject_type = 'group' AND acl.acl_subject_id IN (
-                    SELECT membership.group_id
-                    FROM collabio.tenant_principal_group_memberships AS membership
-                    JOIN collabio.tenant_principals AS principal
-                      ON principal.tenant_id = membership.tenant_id
-                     AND principal.issuer = membership.issuer AND principal.subject = membership.subject
-                    JOIN collabio.tenant_groups AS tenant_group
-                      ON tenant_group.tenant_id = membership.tenant_id
-                     AND tenant_group.group_id = membership.group_id
-                    WHERE principal.tenant_id = acl.tenant_id AND principal.user_id = %s
-                      AND principal.status = 'active' AND membership.status = 'active'
-                      AND tenant_group.status = 'active'
-                ))
-              )
+              AND ({_ACL_SUBJECT_SQL})
             """,
             (user.tenant_id, object_id, OFFICE_DOCUMENT_OBJECT_TYPE, user.user_id, sorted(user.role_ids), user.user_id),
         ).fetchall()
@@ -232,20 +233,47 @@ class PgOfficeDocumentRepository:
             raise OfficeDocumentPermissionError("Document saving is not permitted")
         return self._document(connection, user.tenant_id, object_id)
 
-    def list_documents(self, *, user_context: UserContext) -> tuple[OfficeDocumentRecord, ...]:
+    def list_documents(
+        self,
+        *,
+        user_context: UserContext,
+        query: str = "",
+        after: tuple[str, str] | None = None,
+        limit: int = 200,
+    ) -> tuple[OfficeDocumentRecord, ...]:
+        # Every returned row, including the lookahead, is authorized before LIMIT.
+        columns = ", ".join(f"document.{name}" for name in OfficeDocumentRecord.model_fields)
+        parameters: list[Any] = [
+            user_context.tenant_id, sorted(user_context.readable_object_ids), query,
+            OFFICE_DOCUMENT_OBJECT_TYPE, user_context.user_id, sorted(user_context.role_ids), user_context.user_id,
+        ]
+        boundary = ""
+        if after is not None:
+            boundary = "AND (document.created_at_utc, document.object_id) < (%s::timestamptz, %s)"
+            parameters.extend(after)
+        parameters.append(limit)
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, user_context.tenant_id)
             with connection.cursor(row_factory=dict_row) as cursor:
                 rows = cursor.execute(
-                    f"SELECT {_DOCUMENT_COLUMNS} FROM office.documents "
-                    "WHERE tenant_id = %s AND object_id = ANY(%s::text[]) "
-                    "ORDER BY updated_at_utc DESC, object_id LIMIT 200",
-                    (user_context.tenant_id, sorted(user_context.readable_object_ids)),
+                    f"""
+                    SELECT {columns} FROM office.documents AS document
+                    WHERE document.tenant_id = %s AND document.object_id = ANY(%s::text[])
+                      AND strpos(lower(document.title), lower(%s)) > 0
+                      AND EXISTS (
+                        SELECT 1 FROM collabio.object_acl_entries AS acl
+                        WHERE acl.tenant_id = document.tenant_id AND acl.object_id = document.object_id
+                          AND acl.object_type = %s AND acl.status = 'active'
+                          AND ({_ACL_SUBJECT_SQL})
+                      )
+                      {boundary}
+                    ORDER BY document.created_at_utc DESC, document.object_id DESC LIMIT %s
+                    """,
+                    parameters,
                 ).fetchall()
             return tuple(
                 OfficeDocumentRecord.model_validate(_model_values(row))
                 for row in rows
-                if self._permissions(connection, user_context, str(row["object_id"]))
             )
 
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord:
@@ -447,12 +475,26 @@ class InMemoryOfficeDocumentRepository:
             return None
         return self.grants.get((user.tenant_id, object_id, user.user_id))
 
-    def list_documents(self, *, user_context: UserContext) -> tuple[OfficeDocumentRecord, ...]:
-        return tuple(
-            document
-            for (tenant_id, object_id), document in self.documents.items()
-            if tenant_id == user_context.tenant_id and self._permission(user_context, object_id)
-        )
+    def list_documents(
+        self,
+        *,
+        user_context: UserContext,
+        query: str = "",
+        after: tuple[str, str] | None = None,
+        limit: int = 200,
+    ) -> tuple[OfficeDocumentRecord, ...]:
+        with self._lock:
+            boundary = (datetime.fromisoformat(after[0]), after[1]) if after else None
+            records = [
+                document
+                for (tenant_id, object_id), document in self.documents.items()
+                if tenant_id == user_context.tenant_id and self._permission(user_context, object_id)
+                and query.lower() in document.title.lower()
+                and (boundary is None or (datetime.fromisoformat(document.created_at_utc), document.object_id) < boundary)
+            ]
+            return tuple(sorted(
+                records, key=lambda record: (datetime.fromisoformat(record.created_at_utc), record.object_id), reverse=True
+            )[:limit])
 
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord:
         if not self._permission(user_context, object_id):
