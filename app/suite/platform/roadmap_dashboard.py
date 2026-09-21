@@ -814,6 +814,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "unabhaengiger neuer Entwurf dienen; erst bestaetigtes Speichern legt ein eigenes Dokument an. "
                         "Die Dokumentenliste durchsucht lesbare Titel auf dem Server und laedt weitere Ergebnisse "
                         "seitenweise, ohne geoeffnete Entwuerfe durch einen Listenfilter zu verlieren. "
+                        "Aeltere gespeicherte Fassungen lassen sich seitenweise in Historie und Vergleich laden; "
+                        "aktuelle Rechte, Auswahl und Entwuerfe bleiben dabei erhalten. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -840,6 +842,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_document_discovery.py",
                         "tests/test_office_document_discovery_api.py",
                         "tests/test_office_document_discovery_pg.py",
+                        "tests/test_office_version_pagination.py",
+                        "tests/test_office_version_pagination_api.py",
+                        "tests/test_office_version_pagination_pg.py",
                         "tests/test_office_access_logging.py",
                         "tests/office_recovery_proof.py",
                         "tests/test_office_recovery_proof.py",
@@ -853,6 +858,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-reuse-responsive.spec.mjs",
                         "e2e/work/tests/office-discovery.spec.mjs",
                         "e2e/work/tests/office-discovery-responsive.spec.mjs",
+                        "e2e/work/tests/office-history-pagination.spec.mjs",
+                        "e2e/work/tests/office-history-pagination-responsive.spec.mjs",
                         "e2e/work/tests/office-search.spec.mjs",
                         "e2e/work/tests/office-tables.spec.mjs",
                         "e2e/work/tests/office-tables-responsive.spec.mjs",
@@ -863,6 +870,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md",
                         "ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md",
                         "ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -892,6 +900,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "document_title_search_and_pagination_revalidate_acl_before_page_limits",
                         "filtered_list_membership_does_not_authorize_or_discard_open_drafts",
                         "document_search_queries_and_cursors_excluded_from_audit_and_access_logs",
+                        "version_pages_follow_immutable_lineage_with_fresh_parent_acl",
+                        "history_append_preserves_exact_selections_comparisons_and_local_drafts",
+                        "history_cursors_bind_document_context_and_never_authorize_access",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",

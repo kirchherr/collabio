@@ -21,6 +21,7 @@ from suite.platform.office_documents import (
     OfficeDocumentCommit,
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
+    OfficeDocumentHistoryPage,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentRecord,
@@ -72,6 +73,27 @@ def _model_values(values: dict[str, Any]) -> dict[str, Any]:
         key: value.astimezone(UTC).isoformat().replace("+00:00", "Z") if isinstance(value, datetime) else value
         for key, value in values.items()
     }
+
+
+def _validated_history_page(
+    *, document: OfficeDocumentRecord, head: str, start: str, versions: tuple[OfficeDocumentVersion, ...], limit: int,
+) -> OfficeDocumentHistoryPage:
+    expected: str | None = start
+    seen: set[str] = set()
+    for version in versions:
+        if (
+            version.tenant_id != document.tenant_id or version.object_id != document.object_id
+            or version.version_id != expected or version.version_id in seen
+            or (start != head and version.version_id == head)
+        ):
+            raise OfficeDocumentInvalidContentError("Document history integrity failed")
+        seen.add(version.version_id)
+        expected = version.previous_version_id
+    if not versions or expected in seen or (len(versions) < limit and expected is not None):
+        raise OfficeDocumentInvalidContentError("Document history integrity failed")
+    return OfficeDocumentHistoryPage(
+        history_head_version_id=head, current_version_id=document.current_version_id, versions=versions,
+    )
 
 
 def _new_document(user: UserContext, title: str) -> OfficeDocumentRecord:
@@ -289,16 +311,49 @@ class PgOfficeDocumentRepository:
             return bool(self._permissions(connection, user_context, object_id) & {"write", "admin"})
 
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]:
+        return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
+
+    def history_page(
+        self, *, user_context: UserContext, object_id: str, history_head_version_id: str | None = None,
+        next_version_id: str | None = None, limit: int = 201,
+    ) -> OfficeDocumentHistoryPage:
+        if not 1 <= limit <= 201:
+            raise OfficeDocumentInvalidContentError("Document history page is invalid")
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, user_context.tenant_id)
-            self._authorized_document(connection, user_context, object_id)
+            document = self._authorized_document(connection, user_context, object_id)
+            head = history_head_version_id or document.current_version_id
+            start = next_version_id or head
+            if history_head_version_id is not None:
+                try:
+                    self._version(connection, tenant_id=user_context.tenant_id, object_id=object_id, version_id=head)
+                except OfficeDocumentNotFoundError as exc:
+                    raise OfficeDocumentInvalidContentError("Document history integrity failed") from exc
             with connection.cursor(row_factory=dict_row) as cursor:
                 rows = cursor.execute(
-                    f"SELECT {_VERSION_COLUMNS} FROM office.document_versions "
-                    "WHERE tenant_id = %s AND object_id = %s ORDER BY created_at_utc DESC, version_id LIMIT 200",
-                    (user_context.tenant_id, object_id),
+                    """
+                    WITH RECURSIVE history AS (
+                        SELECT version.*, 1 AS depth, ARRAY[version.version_id] AS path, false AS cycle
+                        FROM office.document_versions AS version
+                        WHERE version.tenant_id = %s AND version.object_id = %s AND version.version_id = %s
+                        UNION ALL
+                        SELECT previous.*, history.depth + 1, history.path || previous.version_id,
+                               previous.version_id = ANY(history.path)
+                        FROM history
+                        JOIN office.document_versions AS previous
+                          ON previous.tenant_id = history.tenant_id AND previous.object_id = history.object_id
+                         AND previous.version_id = history.previous_version_id
+                        WHERE history.depth < %s AND NOT history.cycle
+                    )
+                    SELECT * FROM history ORDER BY depth
+                    """,
+                    (user_context.tenant_id, object_id, start, limit),
                 ).fetchall()
-        return tuple(OfficeDocumentVersion.model_validate(_model_values(row)) for row in rows)
+        versions = tuple(
+            OfficeDocumentVersion.model_validate(_model_values({name: row[name] for name in OfficeDocumentVersion.model_fields}))
+            for row in rows
+        )
+        return _validated_history_page(document=document, head=head, start=start, versions=versions, limit=limit)
 
     @staticmethod
     def _version(
@@ -517,18 +572,33 @@ class InMemoryOfficeDocumentRepository:
         return self._permission(user_context, object_id) in {"write", "admin"}
 
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]:
-        self.get_document(user_context=user_context, object_id=object_id)
-        return tuple(
-            sorted(
-                (
-                    version
-                    for (tenant_id, doc_id, _), version in self.saved_versions.items()
-                    if tenant_id == user_context.tenant_id and doc_id == object_id
-                ),
-                key=lambda version: (version.created_at_utc, version.version_id),
-                reverse=True,
-            )[:200]
-        )
+        return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
+
+    def history_page(
+        self, *, user_context: UserContext, object_id: str, history_head_version_id: str | None = None,
+        next_version_id: str | None = None, limit: int = 201,
+    ) -> OfficeDocumentHistoryPage:
+        if not 1 <= limit <= 201:
+            raise OfficeDocumentInvalidContentError("Document history page is invalid")
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            head = history_head_version_id or document.current_version_id
+            start = next_version_id or head
+            if (user_context.tenant_id, object_id, head) not in self.saved_versions:
+                raise OfficeDocumentInvalidContentError("Document history integrity failed")
+            versions: list[OfficeDocumentVersion] = []
+            version_id: str | None = start
+            seen: set[str] = set()
+            while version_id is not None and len(versions) < limit:
+                version = self.saved_versions.get((user_context.tenant_id, object_id, version_id))
+                if version is None or version_id in seen:
+                    raise OfficeDocumentInvalidContentError("Document history integrity failed")
+                versions.append(version)
+                seen.add(version_id)
+                version_id = version.previous_version_id
+            return _validated_history_page(
+                document=document, head=head, start=start, versions=tuple(versions), limit=limit,
+            )
 
     def get_version(self, *, user_context: UserContext, object_id: str, version_id: str) -> OfficeDocumentVersion:
         self.get_document(user_context=user_context, object_id=object_id)

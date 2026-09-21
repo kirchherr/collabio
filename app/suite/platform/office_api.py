@@ -26,6 +26,7 @@ from suite.platform.office_documents import (
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryResponse,
+    OfficeDocumentHistoryRequestError,
     OfficeDocumentListRequestError,
     OfficeDocumentListResponse,
     OfficeDocumentNotFoundError,
@@ -129,6 +130,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Document not found"}, status_code=404)
             except OfficeDocumentListRequestError:
                 return JSONResponse({"detail": "Invalid document list request"}, status_code=400)
+            except OfficeDocumentHistoryRequestError:
+                return JSONResponse({"detail": "Invalid version history request"}, status_code=400)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
@@ -278,8 +281,12 @@ def register_office_routes(
         object_id: str,
         request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        page_size: int = Query(default=200, ge=1, le=200),
+        cursor: str | None = Query(default=None, min_length=1, max_length=1024),
     ) -> Any:
-        return request.app.state.office_document_service.history(user_context=context.user_context, object_id=object_id)
+        return request.app.state.office_document_service.history(
+            user_context=context.user_context, object_id=object_id, page_size=page_size, cursor=cursor,
+        )
 
     @router.post(
         "/{object_id}/versions", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)]

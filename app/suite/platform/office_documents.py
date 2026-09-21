@@ -56,6 +56,10 @@ class OfficeDocumentListRequestError(ValueError):
     pass
 
 
+class OfficeDocumentHistoryRequestError(ValueError):
+    pass
+
+
 def validate_office_document_query(query: str) -> str:
     if (
         not isinstance(query, str)
@@ -184,6 +188,17 @@ class OfficeDocumentHistoryResponse(BaseModel):
     object_id: str
     versions: list[OfficeDocumentVersionView]
     audit_event_id: str
+    history_head_version_id: str
+    current_version_id: str
+    next_cursor: str | None = None
+    has_more: bool = False
+    page_size: int = 200
+
+
+class OfficeDocumentHistoryPage(BaseModel):
+    history_head_version_id: str
+    current_version_id: str
+    versions: tuple[OfficeDocumentVersion, ...]
 
 
 class OfficeDocumentCommit(BaseModel):
@@ -207,6 +222,11 @@ class OfficeDocumentRepository(Protocol):
     def can_write(self, *, user_context: UserContext, object_id: str) -> bool: ...
 
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]: ...
+
+    def history_page(
+        self, *, user_context: UserContext, object_id: str, history_head_version_id: str | None = None,
+        next_version_id: str | None = None, limit: int = 201,
+    ) -> OfficeDocumentHistoryPage: ...
 
     def get_version(self, *, user_context: UserContext, object_id: str, version_id: str) -> OfficeDocumentVersion: ...
 
@@ -370,14 +390,71 @@ class OfficeDocumentService:
         )
         return self._content_response(document, version, content, can_write, event_id)
 
-    def history(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentHistoryResponse:
-        versions = self.repository.versions(user_context=user_context, object_id=object_id)
-        event_id = self._audit(user_context, "office.documents.history", object_id=object_id, count=len(versions))
+    def _history_binding(self, user: UserContext, object_id: str, page_size: int) -> str:
+        payload = canonical_json({
+            "tenant": user.tenant_id, "actor": user.user_id, "roles": sorted(user.role_ids),
+            "object_id": object_id, "page_size": page_size,
+        }).encode("utf-8")
+        return hmac.new(self._list_cursor_key, b"office-history.v1:binding\0" + payload, sha256).hexdigest()
+
+    def _read_history_cursor(self, cursor: str, binding: str) -> tuple[str, str]:
+        try:
+            if not isinstance(cursor, str) or not 1 <= len(cursor) <= 1024:
+                raise ValueError
+            encoded, signature = cursor.split(".")
+            payload = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+            if base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=") != encoded:
+                raise ValueError
+            expected = hmac.new(self._list_cursor_key, b"office-history.v1:cursor\0" + payload, sha256).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise ValueError
+            value = json.loads(payload)
+            if not isinstance(value, dict) or set(value) != {"binding", "head", "next"}:
+                raise ValueError
+            if not isinstance(value["binding"], str) or not hmac.compare_digest(value["binding"], binding):
+                raise ValueError
+            head, next_version = value["head"], value["next"]
+            if any(not isinstance(item, str) or re.fullmatch(r"office-version-[a-f0-9]{32}", item) is None
+                   for item in (head, next_version)) or head == next_version:
+                raise ValueError
+            return head, next_version
+        except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
+            raise OfficeDocumentHistoryRequestError("Invalid version history request") from exc
+
+    def _write_history_cursor(self, head: str, next_version: str, binding: str) -> str:
+        payload = canonical_json({"binding": binding, "head": head, "next": next_version}).encode("utf-8")
+        encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        signature = hmac.new(self._list_cursor_key, b"office-history.v1:cursor\0" + payload, sha256).hexdigest()
+        return f"{encoded}.{signature}"
+
+    def history(
+        self, *, user_context: UserContext, object_id: str, page_size: int = 200, cursor: str | None = None,
+    ) -> OfficeDocumentHistoryResponse:
+        if type(page_size) is not int or not 1 <= page_size <= 200:
+            raise OfficeDocumentHistoryRequestError("Invalid version history request")
+        binding = self._history_binding(user_context, object_id, page_size)
+        head, next_version = self._read_history_cursor(cursor, binding) if cursor is not None else (None, None)
+        page = self.repository.history_page(
+            user_context=user_context, object_id=object_id, history_head_version_id=head,
+            next_version_id=next_version, limit=page_size + 1,
+        )
+        versions = page.versions[:page_size]
+        has_more = len(page.versions) > page_size
+        event_id = self._audit(
+            user_context, "office.documents.history", object_id=object_id, count=len(versions), has_more=has_more,
+        )
         return OfficeDocumentHistoryResponse(
             tenant_id=user_context.tenant_id,
             object_id=object_id,
             versions=[self._version_view(version) for version in versions],
             audit_event_id=event_id,
+            history_head_version_id=page.history_head_version_id,
+            current_version_id=page.current_version_id,
+            page_size=page_size,
+            has_more=has_more,
+            next_cursor=self._write_history_cursor(
+                page.history_head_version_id, page.versions[page_size].version_id, binding,
+            ) if has_more else None,
         )
 
     def create(

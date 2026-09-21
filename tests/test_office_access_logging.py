@@ -12,7 +12,16 @@ from suite.platform.office_access_logging import (
 
 
 @pytest.mark.parametrize("status", [200, 307, 400, 403, 404, 422, 503])
-@pytest.mark.parametrize("path", ["/v1/office/documents", "/v1/office/documents/"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/office/documents",
+        "/v1/office/documents/",
+        "/v1/office/documents/office-doc-0123456789abcdef0123456789abcdef/versions",
+        "/v1/office/documents/office-doc-0123456789abcdef0123456789abcdef/versions/",
+        "/v1/office/documents/invalid-object/versions",
+    ],
+)
 def test_discovery_access_records_redact_queries_before_formatting(status: int, path: str) -> None:
     secret_query = "private-title-%F0%9F%98%80"
     secret_cursor = "actor-bound-secret-cursor"
@@ -34,7 +43,13 @@ def test_discovery_access_records_redact_queries_before_formatting(status: int, 
 
 @pytest.mark.parametrize(
     "target",
-    ["/health", "/v1/office/documents", "/v1/office/documents/object/content?version_id=version", "/other?query=value"],
+    [
+        "/health",
+        "/v1/office/documents",
+        "/v1/office/documents/object/content?version_id=version",
+        "/v1/office/documents/object/versions/extra?cursor=value",
+        "/other?query=value",
+    ],
 )
 def test_discovery_filter_preserves_unrelated_access_records(target: str) -> None:
     arguments = ("127.0.0.1:1234", "GET", target, "1.1", 200)
@@ -43,7 +58,8 @@ def test_discovery_filter_preserves_unrelated_access_records(target: str) -> Non
     assert record.args == arguments
 
 
-def test_discovery_log_protection_is_idempotent_and_keeps_status_observable() -> None:
+@pytest.mark.parametrize("path", ["/v1/office/documents", "/v1/office/documents/object/versions"])
+def test_discovery_log_protection_is_idempotent_and_keeps_status_observable(path: str) -> None:
     logger = logging.getLogger("uvicorn.access")
     previous_filters, previous_handlers = logger.filters[:], logger.handlers[:]
     previous_level, previous_propagate, previous_disabled = logger.level, logger.propagate, logger.disabled
@@ -61,11 +77,11 @@ def test_discovery_log_protection_is_idempotent_and_keeps_status_observable() ->
             '%s - "%s %s HTTP/%s" %d',
             "client",
             "GET",
-            "/v1/office/documents?query=private&cursor=secret",
+            f"{path}?query=private&cursor=secret",
             "1.1",
             422,
         )
-        assert stream.getvalue() == 'client - "GET /v1/office/documents HTTP/1.1" 422\n'
+        assert stream.getvalue() == f'client - "GET {path} HTTP/1.1" 422\n'
     finally:
         logger.filters, logger.handlers = previous_filters, previous_handlers
         logger.setLevel(previous_level)
