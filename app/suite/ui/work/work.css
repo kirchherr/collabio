@@ -1425,9 +1425,32 @@ h2 {
     margin: 0 16px 0 0;
   }
 
-  .brand small,
-  .sidebar-links {
+  .brand small {
     display: none;
+  }
+
+  .sidebar-links {
+    display: flex;
+    margin: 0;
+    padding: 0 0 0 8px;
+    border: 0;
+  }
+
+  .sidebar-links a:not(.office-link),
+  .office-link-detail {
+    display: none;
+  }
+
+  .sidebar-links .office-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 7px 10px;
+    border: 1px solid #3b4d53;
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   .primary-nav {
@@ -1495,7 +1518,7 @@ h2 {
 
 @media (max-width: 620px) {
   .app-sidebar {
-    grid-template-columns: 42px minmax(0, 1fr);
+    grid-template-columns: 42px minmax(0, 1fr) auto;
   }
 
   .brand {
