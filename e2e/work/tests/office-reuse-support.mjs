@@ -81,8 +81,8 @@ export async function createReusableSource(page) {
         paragraph('<img src="https://reuse.invalid/leak" onerror="window.reuseExecuted=true">'),
         { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Saved list item")] }] },
         { type: "table", content: [
-          { type: "tableRow", content: ["Owner", "Decision"].map((text) => ({ type: "tableHeader", content: [paragraph(text)] })) },
-          { type: "tableRow", content: ["Team", "Keep original marks"].map((text) => ({ type: "tableCell", content: [paragraph(text, [{ type: "underline" }])] })) },
+          { type: "tableRow", content: ["Owner", "Decision"].map((text) => ({ type: "tableHeader", attrs: { colspan: 1, rowspan: 1 }, content: [paragraph(text)] })) },
+          { type: "tableRow", content: ["Team", "Keep original marks"].map((text) => ({ type: "tableCell", attrs: { colspan: 1, rowspan: 1 }, content: [paragraph(text, [{ type: "underline" }])] })) },
         ] },
       ] },
     },
