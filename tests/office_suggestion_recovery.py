@@ -24,9 +24,14 @@ from suite.storage.source_objects import (
 
 
 def verify_restored_suggestions(
-    *, suggestions: OfficeSuggestionService, sources: SourceObjectRepository,
-    receipts: SourceObjectWriteReceiptStore, user: UserContext, object_ids: tuple[str, ...],
-    expected_suggestion_ids: set[str], expected_decision_ids: set[str],
+    *,
+    suggestions: OfficeSuggestionService,
+    sources: SourceObjectRepository,
+    receipts: SourceObjectWriteReceiptStore,
+    user: UserContext,
+    object_ids: tuple[str, ...],
+    expected_suggestion_ids: set[str],
+    expected_decision_ids: set[str],
 ) -> dict[str, Any]:
     evidence: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -36,8 +41,9 @@ def verify_restored_suggestions(
     for object_id in object_ids:
         after: str | None = None
         while True:
-            listing = suggestions.list_suggestions(user_context=user, object_id=object_id, after=after, limit=50,
-                                                   write_enabled=True)
+            listing = suggestions.list_suggestions(
+                user_context=user, object_id=object_id, after=after, limit=50, write_enabled=True
+            )
             if listing.can_create or listing.rag_indexing_allowed or listing.search_indexing_allowed:
                 raise ValueError("Office suggestion recovery must remain read-only")
             for view in listing.suggestions:
@@ -45,74 +51,112 @@ def verify_restored_suggestions(
                     raise ValueError("Office restored suggestion inventory or capabilities are invalid")
                 seen.add(view.suggestion_id)
                 denied_target = (object_id, view.suggestion_id)
-                detail = suggestions.detail(user_context=user, object_id=object_id,
-                                            suggestion_id=view.suggestion_id, write_enabled=True)
-                snapshot = suggestions.repository.detail(user=user, object_id=object_id,
-                                                         suggestion_id=view.suggestion_id)
+                detail = suggestions.detail(
+                    user_context=user, object_id=object_id, suggestion_id=view.suggestion_id, write_enabled=True
+                )
+                snapshot = suggestions.repository.detail(
+                    user=user, object_id=object_id, suggestion_id=view.suggestion_id
+                )
                 proposal, decision = snapshot.suggestion, snapshot.decision
-                anchor = suggestions.documents.read_content(user_context=user, object_id=object_id,
-                                                             version_id=view.anchor_version_id)
+                anchor = suggestions.documents.read_content(
+                    user_context=user, object_id=object_id, version_id=view.anchor_version_id
+                )
                 quote = derive_review_quote(anchor.content, view.anchor)
-                if (detail.suggestion != view or detail.quote != quote or anchor.can_write
+                if (
+                    detail.suggestion != view
+                    or detail.quote != quote
+                    or anchor.can_write
                     or proposal.anchor_content_hash != anchor.version.content_hash
-                    or detail.rag_indexing_allowed or detail.search_indexing_allowed
-                    or (decision is None) != (detail.decision is None)):
+                    or detail.rag_indexing_allowed
+                    or detail.search_indexing_allowed
+                    or (decision is None) != (detail.decision is None)
+                ):
                     raise ValueError("Office restored suggestion anchor or state is invalid")
                 events = [proposal] if decision is None else [proposal, decision]
                 for event in events:
-                    source = sources.get(tenant_id=user.tenant_id, object_id=view.suggestion_id,
-                                         version_id=event.source_version_id)
+                    source = sources.get(
+                        tenant_id=user.tenant_id, object_id=view.suggestion_id, version_id=event.source_version_id
+                    )
                     payload = json.loads(source_object_content_bytes(source).decode("utf-8"))
                     receipt = receipts.get(tenant_id=user.tenant_id, receipt_hash=event.source_write_receipt_hash)
                     expected_receipt = build_source_object_write_receipt(
-                        record=source, receipt_reference=receipt.receipt_reference,
-                        audit_chain_ref=receipt.audit_chain_ref, captured_at_utc=receipt.captured_at_utc,
+                        record=source,
+                        receipt_reference=receipt.receipt_reference,
+                        audit_chain_ref=receipt.audit_chain_ref,
+                        captured_at_utc=receipt.captured_at_utc,
                     )
                     is_decision = event is decision
-                    if (receipt != expected_receipt or receipt.receipt_hash != event.source_write_receipt_hash
-                        or receipt.content_hash != event.content_hash or receipt.manifest_hash != event.source_manifest_hash
+                    if (
+                        receipt != expected_receipt
+                        or receipt.receipt_hash != event.source_write_receipt_hash
+                        or receipt.content_hash != event.content_hash
+                        or receipt.manifest_hash != event.source_manifest_hash
                         or source.metadata.object_type != SourceObjectType.COMMENT
-                        or source.metadata.parent_object_id != object_id or source.metadata.thread_id != view.suggestion_id
+                        or source.metadata.parent_object_id != object_id
+                        or source.metadata.thread_id != view.suggestion_id
                         or stable_hash(canonical_json(payload)) != event.content_hash
-                        or payload["quote"] != quote or payload["replacement_text"] != detail.replacement_text
+                        or payload["quote"] != quote
+                        or payload["replacement_text"] != detail.replacement_text
                         or payload["anchor_version_id"] != view.anchor_version_id
                         or payload["anchor_content_hash"] != anchor.version.content_hash
                         or payload["anchor"] != view.anchor.model_dump(by_alias=True)
-                        or payload["operation"] != (decision.operation if is_decision and decision else "create")):
+                        or payload["operation"] != (decision.operation if is_decision and decision else "create")
+                    ):
                         raise ValueError("Office restored suggestion source or receipt is invalid")
-                    evidence.append({"object_id": object_id, "suggestion_id": view.suggestion_id,
-                                     "source_version_id": event.source_version_id, "content_hash": event.content_hash,
-                                     "receipt_hash": receipt.receipt_hash})
+                    evidence.append(
+                        {
+                            "object_id": object_id,
+                            "suggestion_id": view.suggestion_id,
+                            "source_version_id": event.source_version_id,
+                            "content_hash": event.content_hash,
+                            "receipt_hash": receipt.receipt_hash,
+                        }
+                    )
                 if decision is None:
                     if view.status != "open" or view.revision != 1 or view.result_version_id is not None:
                         raise ValueError("Office restored open suggestion has a decision")
                     continue
-                if (decision.decision_id in decisions or decision.source_version_id != decision.decision_id
-                    or view.revision != 2 or detail.decision is None
+                if (
+                    decision.decision_id in decisions
+                    or decision.source_version_id != decision.decision_id
+                    or view.revision != 2
+                    or detail.decision is None
                     or detail.decision.decision_id != decision.decision_id
-                    or detail.decision.operation != decision.operation):
+                    or detail.decision.operation != decision.operation
+                ):
                     raise ValueError("Office restored suggestion decision is invalid")
                 decisions.add(decision.decision_id)
                 if decision.operation == "accept":
                     if not decision.result_version_id or view.status != "accepted":
                         raise ValueError("Office restored acceptance has no result")
-                    result = suggestions.documents.read_content(user_context=user, object_id=object_id,
-                                                                 version_id=decision.result_version_id)
+                    result = suggestions.documents.read_content(
+                        user_context=user, object_id=object_id, version_id=decision.result_version_id
+                    )
                     expected_content = replace_suggestion_text(anchor.content, view.anchor, detail.replacement_text)
                     result_metadata = suggestions.documents.repository.get_version(
-                        user_context=user, object_id=object_id, version_id=decision.result_version_id,
+                        user_context=user,
+                        object_id=object_id,
+                        version_id=decision.result_version_id,
                     )
-                    if (result.content != expected_content or result.can_write
+                    if (
+                        result.content != expected_content
+                        or result.can_write
+                        or result.version.title != anchor.version.title
                         or result.version.content_hash != decision.result_content_hash
                         or result.version.previous_version_id != view.anchor_version_id
                         or result.version.created_by != decision.created_by
                         or result_metadata.mutation_reference != f"office-suggestion-accept:{decision.decision_id}"
-                        or view.result_version_id != result.version.version_id):
+                        or view.result_version_id != result.version.version_id
+                    ):
                         raise ValueError("Office restored accepted document version is invalid")
                     accepted += 1
                 else:
-                    if (view.status != "rejected" or view.result_version_id is not None
-                        or decision.result_version_id is not None or decision.result_content_hash is not None):
+                    if (
+                        view.status != "rejected"
+                        or view.result_version_id is not None
+                        or decision.result_version_id is not None
+                        or decision.result_content_hash is not None
+                    ):
                         raise ValueError("Office restored rejection contains a document result")
                     rejected += 1
             if listing.next_cursor is None:
@@ -126,10 +170,12 @@ def verify_restored_suggestions(
         raise ValueError("Office recovery requires nonempty accepted and rejected suggestions")
     object_id, suggestion_id = denied_target
     for denied in (
-        UserContext(tenant_id="tenant-work-e2e-foreign", user_id=user.user_id,
-                    readable_object_ids={object_id, suggestion_id}),
-        UserContext(tenant_id=user.tenant_id, user_id="work-assignee-e2e",
-                    readable_object_ids={object_id, suggestion_id}),
+        UserContext(
+            tenant_id="tenant-work-e2e-foreign", user_id=user.user_id, readable_object_ids={object_id, suggestion_id}
+        ),
+        UserContext(
+            tenant_id=user.tenant_id, user_id="work-assignee-e2e", readable_object_ids={object_id, suggestion_id}
+        ),
     ):
         try:
             suggestions.detail(user_context=denied, object_id=object_id, suggestion_id=suggestion_id)
@@ -138,15 +184,30 @@ def verify_restored_suggestions(
         else:
             raise ValueError("Office restored suggestion access did not deny an unauthorized reader")
     try:
-        suggestions.mutate(user_context=user, object_id=object_id, suggestion_id=suggestion_id, write_enabled=True,
-                           command=SuggestionDecisionCommand(operation="reject", expected_revision=1,
-                               mutation_reference="synthetic-recovery-suggestion-write-denied", human_confirmation=True))
+        suggestions.mutate(
+            user_context=user,
+            object_id=object_id,
+            suggestion_id=suggestion_id,
+            write_enabled=True,
+            command=SuggestionDecisionCommand(
+                operation="reject",
+                expected_revision=1,
+                mutation_reference="synthetic-recovery-suggestion-write-denied",
+                human_confirmation=True,
+            ),
+        )
     except OfficeDocumentPermissionError:
         pass
     else:
         raise ValueError("Office suggestion recovery accepted a mutation")
-    return {"suggestion_evidence_hash": stable_hash(canonical_json(evidence)),
-            "verified_suggestion_count": len(seen), "verified_suggestion_decision_count": len(decisions),
-            "accepted_suggestion_count": accepted, "rejected_suggestion_count": rejected,
-            "suggestion_receipt_bindings_verified": True, "suggestion_result_versions_verified": True,
-            "suggestion_authoritative_acl_verified": True, "suggestion_read_only_verified": True}
+    return {
+        "suggestion_evidence_hash": stable_hash(canonical_json(evidence)),
+        "verified_suggestion_count": len(seen),
+        "verified_suggestion_decision_count": len(decisions),
+        "accepted_suggestion_count": accepted,
+        "rejected_suggestion_count": rejected,
+        "suggestion_receipt_bindings_verified": True,
+        "suggestion_result_versions_verified": True,
+        "suggestion_authoritative_acl_verified": True,
+        "suggestion_read_only_verified": True,
+    }

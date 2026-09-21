@@ -689,11 +689,28 @@ def test_restore_requires_native_office_controls() -> None:
     assert snapshot.office_document_controls_verified is True
 
 
+@pytest.mark.parametrize("replacement", ("NOT DEFERRABLE INITIALLY IMMEDIATE", "DEFERRABLE INITIALLY IMMEDIATE", ""))
+def test_restore_rejects_identical_suggestion_decision_trigger_deferral_drift(replacement: str) -> None:
+    def weaken(rows: dict[str, list[dict[str, object]]]) -> None:
+        trigger = next(row for row in rows["triggers"]
+                       if row["trigger_name"] == "office_versions_require_suggestion_decision")
+        trigger["trigger_definition"] = str(trigger["trigger_definition"]).replace(
+            "DEFERRABLE INITIALLY DEFERRED", replacement,
+        )
+
+    _assert_office_tamper_blocked(_office_tamper_report(weaken))
+
+
 @pytest.mark.parametrize(
     ("table_name", "definition"),
     [
         (table, definition)
-        for table in ("office.review_threads", "office.review_events", "office.text_suggestions", "office.text_suggestion_decisions")
+        for table in (
+            "office.review_threads",
+            "office.review_events",
+            "office.text_suggestions",
+            "office.text_suggestion_decisions",
+        )
         for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
     ],
 )
@@ -715,7 +732,12 @@ def test_restore_rejects_each_missing_review_identity_state_anchor_or_receipt_co
     ("table_name", "definition"),
     [
         (table, definition)
-        for table in ("office.review_threads", "office.review_events", "office.text_suggestions", "office.text_suggestion_decisions")
+        for table in (
+            "office.review_threads",
+            "office.review_events",
+            "office.text_suggestions",
+            "office.text_suggestion_decisions",
+        )
         for definition in sorted(OFFICE_REQUIRED_CONSTRAINTS[table])
         if definition.startswith("CHECK ")
     ],

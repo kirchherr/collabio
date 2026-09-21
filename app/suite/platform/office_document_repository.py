@@ -377,8 +377,12 @@ class PgOfficeDocumentRepository:
         return result
 
     def _persist_prepared_version(
-        self, connection: psycopg.Connection[Any], document: OfficeDocumentRecord,
-        version: OfficeDocumentVersion, source: SourceObjectRecord, receipt: SourceObjectWriteReceipt,
+        self,
+        connection: psycopg.Connection[Any],
+        document: OfficeDocumentRecord,
+        version: OfficeDocumentVersion,
+        source: SourceObjectRecord,
+        receipt: SourceObjectWriteReceipt,
     ) -> OfficeDocumentCommit:
         """Internal primitive; caller owns the tenant lock, authorization and CAS checks."""
         self.receipt_store.append_in_transaction(connection, receipt)
@@ -389,7 +393,13 @@ class PgOfficeDocumentRepository:
         connection.execute(
             "UPDATE office.documents SET title = %s, current_version_id = %s, updated_at_utc = %s "
             "WHERE tenant_id = %s AND object_id = %s",
-            (document.title, document.current_version_id, document.updated_at_utc, document.tenant_id, document.object_id),
+            (
+                document.title,
+                document.current_version_id,
+                document.updated_at_utc,
+                document.tenant_id,
+                document.object_id,
+            ),
         )
         return OfficeDocumentCommit(document=document, version=version)
 

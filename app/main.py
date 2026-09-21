@@ -450,7 +450,10 @@ from suite.platform.mvp_pilot_decisions import (
     build_mvp_pilot_decision_context,
 )
 from suite.platform.office_api import (
-    build_office_document_service, build_office_review_service, build_office_suggestion_service, register_office_routes,
+    build_office_document_service,
+    build_office_review_service,
+    build_office_suggestion_service,
+    register_office_routes,
 )
 from suite.platform.office_documents import (
     OFFICE_DOCUMENTS_MODULE_ID,

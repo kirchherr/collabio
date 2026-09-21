@@ -116,13 +116,19 @@ OFFICE_UPDATE_COLUMNS = {
 }
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ("office.text_suggestions", "office_text_suggestions_bind_source"): (
-        "enforce_text_suggestion_source", "BEFORE INSERT", False,
+        "enforce_text_suggestion_source",
+        "BEFORE INSERT",
+        False,
     ),
     ("office.text_suggestion_decisions", "office_text_suggestion_decisions_bind_source"): (
-        "enforce_text_suggestion_source", "BEFORE INSERT", False,
+        "enforce_text_suggestion_source",
+        "BEFORE INSERT",
+        False,
     ),
     ("office.document_versions", "office_versions_require_suggestion_decision"): (
-        "require_text_suggestion_decision", "AFTER INSERT", False,
+        "require_text_suggestion_decision",
+        "AFTER INSERT",
+        False,
     ),
     ("office.documents", "office_documents_bind_creator_acl"): ("bind_document_creator_acl", "AFTER INSERT", True),
     ("office.document_versions", "office_versions_bind_source"): (
@@ -312,16 +318,25 @@ OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
 }
 
 for _office_table in ("office.text_suggestions", "office.text_suggestion_decisions"):
-    OFFICE_REQUIRED_CONSTRAINTS[_office_table].update({
-        "CHECK ((created_by <> ''::text))",
-        "CHECK (((content_byte_length >= 1) AND (content_byte_length <= 80000)))",
-        "CHECK ((acl_version >= 1))",
-        "CHECK (((length(mutation_reference) >= 1) AND (length(mutation_reference) <= 128)))",
-        "CHECK ((audit_chain_ref ~~ 'audit:%'::text))",
-        *(f"CHECK (({column} ~ '^sha256:[a-f0-9]{{64}}$'::text))" for column in (
-            "content_hash", "source_manifest_hash", "source_write_receipt_hash", "acl_hash", "command_hash"
-        )),
-    })
+    OFFICE_REQUIRED_CONSTRAINTS[_office_table].update(
+        {
+            "CHECK ((created_by <> ''::text))",
+            "CHECK (((content_byte_length >= 1) AND (content_byte_length <= 80000)))",
+            "CHECK ((acl_version >= 1))",
+            "CHECK (((length(mutation_reference) >= 1) AND (length(mutation_reference) <= 128)))",
+            "CHECK ((audit_chain_ref ~~ 'audit:%'::text))",
+            *(
+                f"CHECK (({column} ~ '^sha256:[a-f0-9]{{64}}$'::text))"
+                for column in (
+                    "content_hash",
+                    "source_manifest_hash",
+                    "source_write_receipt_hash",
+                    "acl_hash",
+                    "command_hash",
+                )
+            ),
+        }
+    )
 
 TASKS_ACTIVITIES_WRITE_TABLES = {
     "tasks.items",

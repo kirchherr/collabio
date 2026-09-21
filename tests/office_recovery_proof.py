@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 import psycopg
 
 from office_suggestion_recovery import verify_restored_suggestions
-
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
 from suite.operations.postgres_restore_drill import run_postgres_restore_drill_from_environment
@@ -98,7 +97,14 @@ def _metadata_snapshot(database_dsn: str) -> dict[str, list[Any]]:
     rows: dict[str, list[Any]] = {}
     with psycopg.connect(database_dsn) as connection:
         connection.execute("SELECT set_config('app.tenant_id', %s, true)", (TENANT_ID,))
-        for table in ("documents", "document_versions", "review_threads", "review_events", "text_suggestions", "text_suggestion_decisions"):
+        for table in (
+            "documents",
+            "document_versions",
+            "review_threads",
+            "review_events",
+            "text_suggestions",
+            "text_suggestion_decisions",
+        ):
             result = connection.execute(
                 f"SELECT to_jsonb(record) FROM office.{table} AS record WHERE tenant_id = %s "
                 "ORDER BY to_jsonb(record)::text",
@@ -470,9 +476,12 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     suggestion_evidence = verify_restored_suggestions(
         suggestions=OfficeSuggestionService(
             repository=OfficeSuggestionRepositoryAdapter(document_service=restored),
-            document_service=restored, audit=InMemoryAuditLogger(),
+            document_service=restored,
+            audit=InMemoryAuditLogger(),
         ),
-        sources=restored_sources, receipts=receipt_store, user=user,
+        sources=restored_sources,
+        receipts=receipt_store,
+        user=user,
         object_ids=tuple(document.object_id for document in documents),
         expected_suggestion_ids={row["suggestion_id"] for row in inventory["text_suggestions"]},
         expected_decision_ids={row["decision_id"] for row in inventory["text_suggestion_decisions"]},

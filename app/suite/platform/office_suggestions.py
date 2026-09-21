@@ -190,20 +190,33 @@ class OfficeSuggestionRepository(Protocol):
     def detail(self, *, user: UserContext, object_id: str, suggestion_id: str) -> SuggestionSnapshot: ...
 
     def commit(
-        self, *, user: UserContext, object_id: str, suggestion_id: str | None,
+        self,
+        *,
+        user: UserContext,
+        object_id: str,
+        suggestion_id: str | None,
         command: SuggestionCreateCommand | SuggestionDecisionCommand,
     ) -> SuggestionSnapshot: ...
 
 
 def suggestion_command_hash(
-    user: UserContext, object_id: str, suggestion_id: str | None,
+    user: UserContext,
+    object_id: str,
+    suggestion_id: str | None,
     command: SuggestionCreateCommand | SuggestionDecisionCommand,
 ) -> str:
-    return stable_hash(canonical_json({
-        "tenant_id": user.tenant_id, "actor": user.user_id, "object_id": object_id,
-        "suggestion_id": suggestion_id, "command": command.model_dump(mode="json", by_alias=True),
-        "schema_version": SUGGESTION_SCHEMA,
-    }))
+    return stable_hash(
+        canonical_json(
+            {
+                "tenant_id": user.tenant_id,
+                "actor": user.user_id,
+                "object_id": object_id,
+                "suggestion_id": suggestion_id,
+                "command": command.model_dump(mode="json", by_alias=True),
+                "schema_version": SUGGESTION_SCHEMA,
+            }
+        )
+    )
 
 
 def replace_suggestion_text(document: dict[str, Any], anchor: ReviewAnchor, replacement: str) -> dict[str, Any]:
@@ -230,7 +243,7 @@ def replace_suggestion_text(document: dict[str, Any], anchor: ReviewAnchor, repl
             if child["type"] == "text" and offset < anchor.to and offset + size > anchor.from_:
                 encoded = child["text"].encode("utf-16-le")
                 start, end = max(0, anchor.from_ - offset), min(size, anchor.to - offset)
-                before, after = encoded[:start * 2].decode("utf-16-le"), encoded[end * 2:].decode("utf-16-le")
+                before, after = encoded[: start * 2].decode("utf-16-le"), encoded[end * 2 :].decode("utf-16-le")
                 if before:
                     updated.append({**child, "text": before})
                 if not inserted:
@@ -252,8 +265,10 @@ def replace_suggestion_text(document: dict[str, Any], anchor: ReviewAnchor, repl
 
 
 def read_suggestion_payload(
-    sources: SourceObjectRepository, document: OfficeDocumentRecord,
-    suggestion: TextSuggestionRecord, evidence: SuggestionEvidence,
+    sources: SourceObjectRepository,
+    document: OfficeDocumentRecord,
+    suggestion: TextSuggestionRecord,
+    evidence: SuggestionEvidence,
 ) -> dict[str, Any]:
     if not isinstance(sources, SourceObjectMetadataRepository):
         raise OfficeDocumentInvalidContentError("Suggestion metadata unavailable")
@@ -262,24 +277,39 @@ def read_suggestion_payload(
             tenant_id=suggestion.tenant_id, object_id=suggestion.suggestion_id, version_id=evidence.source_version_id
         )
         expected = {
-            "tenant_id": document.tenant_id, "object_id": suggestion.suggestion_id,
-            "version_id": evidence.source_version_id, "object_type": "comment",
-            "parent_object_id": document.object_id, "thread_id": suggestion.suggestion_id,
-            "source_system": SUGGESTION_SOURCE_SYSTEM, "schema_version": SUGGESTION_SCHEMA,
-            "mime_type": SUGGESTION_MIME, "lifecycle_state": "saved_version", "classification": "internal",
-            "retention_policy_id": "rp-standard", "legal_hold_state": "none",
-            "kms_key_ref": f"kms://{document.tenant_id}/internal/v1", "parser_profile_id": None,
-            "owner_principal_id": document.owner_principal_id, "created_by": evidence.created_by,
-            "title": "Office text suggestion", "created_at_utc": evidence.created_at_utc,
-            "updated_at_utc": evidence.created_at_utc, "audit_chain_ref": evidence.audit_chain_ref,
-            "content_hash": evidence.content_hash, "manifest_hash": evidence.source_manifest_hash,
-            "content_byte_length": evidence.content_byte_length, "acl_hash": evidence.acl_hash,
+            "tenant_id": document.tenant_id,
+            "object_id": suggestion.suggestion_id,
+            "version_id": evidence.source_version_id,
+            "object_type": "comment",
+            "parent_object_id": document.object_id,
+            "thread_id": suggestion.suggestion_id,
+            "source_system": SUGGESTION_SOURCE_SYSTEM,
+            "schema_version": SUGGESTION_SCHEMA,
+            "mime_type": SUGGESTION_MIME,
+            "lifecycle_state": "saved_version",
+            "classification": "internal",
+            "retention_policy_id": "rp-standard",
+            "legal_hold_state": "none",
+            "kms_key_ref": f"kms://{document.tenant_id}/internal/v1",
+            "parser_profile_id": None,
+            "owner_principal_id": document.owner_principal_id,
+            "created_by": evidence.created_by,
+            "title": "Office text suggestion",
+            "created_at_utc": evidence.created_at_utc,
+            "updated_at_utc": evidence.created_at_utc,
+            "audit_chain_ref": evidence.audit_chain_ref,
+            "content_hash": evidence.content_hash,
+            "manifest_hash": evidence.source_manifest_hash,
+            "content_byte_length": evidence.content_byte_length,
+            "acl_hash": evidence.acl_hash,
             "acl_version": evidence.acl_version,
         }
         values = metadata.model_dump(mode="json")
         if (
-            suggestion.tenant_id != document.tenant_id or suggestion.object_id != document.object_id
-            or evidence.tenant_id != suggestion.tenant_id or evidence.object_id != suggestion.object_id
+            suggestion.tenant_id != document.tenant_id
+            or suggestion.object_id != document.object_id
+            or evidence.tenant_id != suggestion.tenant_id
+            or evidence.object_id != suggestion.object_id
             or evidence.suggestion_id != suggestion.suggestion_id
             or not 0 < evidence.content_byte_length <= MAX_SUGGESTION_BYTES
             or any(values[key] != value for key, value in expected.items())
@@ -298,17 +328,22 @@ def read_suggestion_payload(
         payload = json.loads(content.decode("utf-8"))
         decision = evidence if isinstance(evidence, SuggestionDecisionRecord) else None
         bindings = {
-            "schema_version": SUGGESTION_SCHEMA, "suggestion_id": suggestion.suggestion_id,
-            "document_id": document.object_id, "anchor_version_id": suggestion.anchor_version_id,
-            "anchor_content_hash": suggestion.anchor_content_hash, "anchor": suggestion.anchor().model_dump(by_alias=True),
+            "schema_version": SUGGESTION_SCHEMA,
+            "suggestion_id": suggestion.suggestion_id,
+            "document_id": document.object_id,
+            "anchor_version_id": suggestion.anchor_version_id,
+            "anchor_content_hash": suggestion.anchor_content_hash,
+            "anchor": suggestion.anchor().model_dump(by_alias=True),
             "operation": decision.operation if decision else "create",
             "result_version_id": decision.result_version_id if decision else None,
             "result_content_hash": decision.result_content_hash if decision else None,
         }
         if (
-            not isinstance(payload, dict) or set(payload) != set(bindings) | {"quote", "replacement_text"}
+            not isinstance(payload, dict)
+            or set(payload) != set(bindings) | {"quote", "replacement_text"}
             or any(payload[key] != value for key, value in bindings.items())
-            or not isinstance(payload["quote"], str) or not 0 < len(payload["quote"]) <= 2000
+            or not isinstance(payload["quote"], str)
+            or not 0 < len(payload["quote"]) <= 2000
             or not isinstance(payload["replacement_text"], str)
             or payload["quote"] == payload["replacement_text"]
         ):
@@ -327,16 +362,26 @@ def read_suggestion_payload(
 
 class OfficeSuggestionService:
     def __init__(
-        self, *, repository: OfficeSuggestionRepository, document_service: OfficeDocumentService,
+        self,
+        *,
+        repository: OfficeSuggestionRepository,
+        document_service: OfficeDocumentService,
         audit: InMemoryAuditLogger,
     ) -> None:
         self.repository, self.documents, self.audit = repository, document_service, audit
 
     def _audit(self, user: UserContext, action: str, object_id: str, **metadata: Any) -> str:
         return self.audit.record(
-            user_context=user, event_type=f"office.suggestions.{action}", source_object_ids=[object_id],
-            metadata={"module_id": OFFICE_DOCUMENTS_MODULE_ID, "surface": "api", **metadata,
-                      "rag_indexing_allowed": False, "search_indexing_allowed": False},
+            user_context=user,
+            event_type=f"office.suggestions.{action}",
+            source_object_ids=[object_id],
+            metadata={
+                "module_id": OFFICE_DOCUMENTS_MODULE_ID,
+                "surface": "api",
+                **metadata,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
         ).event_id
 
     @staticmethod
@@ -344,17 +389,27 @@ class OfficeSuggestionService:
         suggestion, decision = snapshot.suggestion, snapshot.decision
         writable = enabled and snapshot.can_write and decision is None
         return SuggestionView(
-            suggestion_id=suggestion.suggestion_id, anchor_version_id=suggestion.anchor_version_id,
-            anchor=suggestion.anchor(), revision=2 if decision else 1,
+            suggestion_id=suggestion.suggestion_id,
+            anchor_version_id=suggestion.anchor_version_id,
+            anchor=suggestion.anchor(),
+            revision=2 if decision else 1,
             status="accepted" if decision and decision.operation == "accept" else "rejected" if decision else "open",
-            created_by=suggestion.created_by, created_at_utc=suggestion.created_at_utc,
+            created_by=suggestion.created_by,
+            created_at_utc=suggestion.created_at_utc,
             can_accept=writable and snapshot.document.current_version_id == suggestion.anchor_version_id,
-            can_reject=writable, result_version_id=decision.result_version_id if decision else None,
+            can_reject=writable,
+            result_version_id=decision.result_version_id if decision else None,
         )
 
     def list_suggestions(
-        self, *, user_context: UserContext, object_id: str, after: str | None = None, limit: int = 20,
-        anchor_version_id: str | None = None, write_enabled: bool = False,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        after: str | None = None,
+        limit: int = 20,
+        anchor_version_id: str | None = None,
+        write_enabled: bool = False,
     ) -> SuggestionListResponse:
         if not 1 <= limit <= 50:
             raise OfficeDocumentInvalidContentError("Suggestion page is invalid")
@@ -363,49 +418,72 @@ class OfficeSuggestionService:
         )
         enabled = write_enabled and self.documents.writes_available
         return SuggestionListResponse(
-            tenant_id=user_context.tenant_id, object_id=object_id,
+            tenant_id=user_context.tenant_id,
+            object_id=object_id,
             current_version_id=result.document.current_version_id,
             suggestions=[self._view(entry, enabled) for entry in result.entries],
-            can_create=enabled and result.can_write and (
-                anchor_version_id is None or anchor_version_id == result.document.current_version_id
-            ),
+            can_create=enabled
+            and result.can_write
+            and (anchor_version_id is None or anchor_version_id == result.document.current_version_id),
             next_cursor=result.entries[-1].suggestion.suggestion_id if result.has_more else None,
             audit_event_id=self._audit(user_context, "list", object_id, count=len(result.entries)),
         )
 
     def _detail_response(
-        self, snapshot: SuggestionSnapshot, enabled: bool, audit_event_id: str,
+        self,
+        snapshot: SuggestionSnapshot,
+        enabled: bool,
+        audit_event_id: str,
     ) -> SuggestionDetailResponse:
         payload = snapshot.payload or read_suggestion_payload(
             self.documents.source_repository, snapshot.document, snapshot.suggestion, snapshot.suggestion
         )
         if snapshot.decision:
-            decision_payload = read_suggestion_payload(
-                self.documents.source_repository, snapshot.document, snapshot.suggestion, snapshot.decision
-            ) if snapshot.payload is None else snapshot.payload
+            decision_payload = (
+                read_suggestion_payload(
+                    self.documents.source_repository, snapshot.document, snapshot.suggestion, snapshot.decision
+                )
+                if snapshot.payload is None
+                else snapshot.payload
+            )
             if any(decision_payload[key] != payload[key] for key in ("quote", "replacement_text")):
                 raise OfficeDocumentInvalidContentError("Suggestion source is invalid")
         return SuggestionDetailResponse(
-            tenant_id=snapshot.document.tenant_id, object_id=snapshot.document.object_id,
-            current_version_id=snapshot.document.current_version_id, suggestion=self._view(snapshot, enabled),
-            quote=payload["quote"], replacement_text=payload["replacement_text"],
-            decision=SuggestionDecisionView.model_validate(snapshot.decision.model_dump()) if snapshot.decision else None,
+            tenant_id=snapshot.document.tenant_id,
+            object_id=snapshot.document.object_id,
+            current_version_id=snapshot.document.current_version_id,
+            suggestion=self._view(snapshot, enabled),
+            quote=payload["quote"],
+            replacement_text=payload["replacement_text"],
+            decision=SuggestionDecisionView.model_validate(snapshot.decision.model_dump())
+            if snapshot.decision
+            else None,
             audit_event_id=audit_event_id,
         )
 
     def detail(
-        self, *, user_context: UserContext, object_id: str, suggestion_id: str, write_enabled: bool = False,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        suggestion_id: str,
+        write_enabled: bool = False,
     ) -> SuggestionDetailResponse:
         snapshot = self.repository.detail(user=user_context, object_id=object_id, suggestion_id=suggestion_id)
         return self._detail_response(
-            snapshot, write_enabled and self.documents.writes_available,
+            snapshot,
+            write_enabled and self.documents.writes_available,
             self._audit(user_context, "read", object_id, suggestion_id=suggestion_id),
         )
 
     def mutate(
-        self, *, user_context: UserContext, object_id: str,
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
         command: SuggestionCreateCommand | SuggestionDecisionCommand,
-        suggestion_id: str | None = None, write_enabled: bool = False,
+        suggestion_id: str | None = None,
+        write_enabled: bool = False,
     ) -> SuggestionMutationResponse:
         if not write_enabled or not self.documents.writes_available:
             raise OfficeDocumentPermissionError("Suggestion writes are unavailable")
@@ -414,16 +492,25 @@ class OfficeSuggestionService:
             user=user_context, object_id=object_id, suggestion_id=suggestion_id, command=command
         )
         event_id = self._audit(
-            user_context, "changed", object_id, suggestion_id=result.suggestion.suggestion_id,
+            user_context,
+            "changed",
+            object_id,
+            suggestion_id=result.suggestion.suggestion_id,
             decision_id=result.decision.decision_id if result.decision else None,
             result_version_id=result.result_version.version_id if result.result_version else None,
             replayed=result.replayed,
         )
         response = self._detail_response(result, True, event_id)
-        saved = self.documents._content_response(
-            result.document, result.result_version, result.result_content, True, event_id, replayed=result.replayed
-        ) if result.result_version is not None and result.result_content is not None else None
+        saved = (
+            self.documents._content_response(
+                result.document, result.result_version, result.result_content, True, event_id, replayed=result.replayed
+            )
+            if result.result_version is not None and result.result_content is not None
+            else None
+        )
         return SuggestionMutationResponse(
-            **response.model_dump(), applied_revision=2 if result.decision else 1,
-            replayed=result.replayed, document_result=saved,
+            **response.model_dump(by_alias=True),
+            applied_revision=2 if result.decision else 1,
+            replayed=result.replayed,
+            document_result=saved,
         )

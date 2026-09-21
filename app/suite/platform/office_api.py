@@ -42,8 +42,12 @@ from suite.platform.office_reviews import (
 )
 from suite.platform.office_suggestion_repository import OfficeSuggestionRepositoryAdapter
 from suite.platform.office_suggestions import (
-    OfficeSuggestionService, SuggestionCreateCommand, SuggestionDecisionCommand,
-    SuggestionDetailResponse, SuggestionListResponse, SuggestionMutationResponse,
+    OfficeSuggestionService,
+    SuggestionCreateCommand,
+    SuggestionDecisionCommand,
+    SuggestionDetailResponse,
+    SuggestionListResponse,
+    SuggestionMutationResponse,
 )
 from suite.storage.source_object_storage import PgSourceObjectRepository, SourceObjectStorageError
 from suite.storage.source_objects import (
@@ -185,11 +189,14 @@ def build_office_review_service(
 
 
 def build_office_suggestion_service(
-    *, document_service: OfficeDocumentService, audit: InMemoryAuditLogger,
+    *,
+    document_service: OfficeDocumentService,
+    audit: InMemoryAuditLogger,
 ) -> OfficeSuggestionService:
     return OfficeSuggestionService(
         repository=OfficeSuggestionRepositoryAdapter(document_service=document_service),
-        document_service=document_service, audit=audit,
+        document_service=document_service,
+        audit=audit,
     )
 
 
@@ -343,47 +350,70 @@ def register_office_routes(
 
     @router.get("/{object_id}/suggestions", response_model=SuggestionListResponse)
     def list_suggestions(
-        object_id: str, request: Request,
+        object_id: str,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
         after: str | None = Query(default=None, min_length=1, max_length=128),
         limit: int = Query(default=20, ge=1, le=50),
         anchor_version_id: str | None = Query(default=None, min_length=1, max_length=128),
     ) -> Any:
         return request.app.state.office_suggestion_service.list_suggestions(
-            user_context=context.user_context, object_id=object_id, after=after, limit=limit,
-            anchor_version_id=anchor_version_id, write_enabled=_write_enabled(request, context),
+            user_context=context.user_context,
+            object_id=object_id,
+            after=after,
+            limit=limit,
+            anchor_version_id=anchor_version_id,
+            write_enabled=_write_enabled(request, context),
         )
 
     @router.get("/{object_id}/suggestions/{suggestion_id}", response_model=SuggestionDetailResponse)
     def suggestion_detail(
-        object_id: str, suggestion_id: str, request: Request,
+        object_id: str,
+        suggestion_id: str,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_suggestion_service.detail(
-            user_context=context.user_context, object_id=object_id, suggestion_id=suggestion_id,
+            user_context=context.user_context,
+            object_id=object_id,
+            suggestion_id=suggestion_id,
             write_enabled=_write_enabled(request, context),
         )
 
-    @router.post("/{object_id}/suggestions", response_model=SuggestionMutationResponse, dependencies=[Depends(write_gate)])
+    @router.post(
+        "/{object_id}/suggestions", response_model=SuggestionMutationResponse, dependencies=[Depends(write_gate)]
+    )
     def create_suggestion(
-        object_id: str, command: SuggestionCreateCommand, request: Request,
+        object_id: str,
+        command: SuggestionCreateCommand,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_suggestion_service.mutate(
-            user_context=context.user_context, object_id=object_id, command=command, write_enabled=True,
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
         )
 
     @router.post(
-        "/{object_id}/suggestions/{suggestion_id}/decisions", response_model=SuggestionMutationResponse,
+        "/{object_id}/suggestions/{suggestion_id}/decisions",
+        response_model=SuggestionMutationResponse,
         dependencies=[Depends(write_gate)],
     )
     def decide_suggestion(
-        object_id: str, suggestion_id: str, command: SuggestionDecisionCommand, request: Request,
+        object_id: str,
+        suggestion_id: str,
+        command: SuggestionDecisionCommand,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_suggestion_service.mutate(
-            user_context=context.user_context, object_id=object_id, suggestion_id=suggestion_id,
-            command=command, write_enabled=True,
+            user_context=context.user_context,
+            object_id=object_id,
+            suggestion_id=suggestion_id,
+            command=command,
+            write_enabled=True,
         )
 
     app.include_router(router)
