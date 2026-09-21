@@ -124,7 +124,8 @@ def test_suggestion_deleting_last_text_preserves_empty_table_cell_and_other_cell
 
 
 def test_suggestion_memory_adapter_rolls_back_when_second_source_write_fails(
-    suggestions: SuggestionHarness, monkeypatch: pytest.MonkeyPatch,
+    suggestions: SuggestionHarness,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     created = suggestions.create()
     original = suggestions.sources.add
@@ -143,7 +144,9 @@ def test_suggestion_memory_adapter_rolls_back_when_second_source_write_fails(
     latest = suggestions.documents.read_content(user_context=suggestions.user, object_id=suggestions.object_id)
     assert latest.version.version_id == suggestions.version_id
     detail = suggestions.service.detail(
-        user_context=suggestions.user, object_id=suggestions.object_id, suggestion_id=created.suggestion.suggestion_id,
+        user_context=suggestions.user,
+        object_id=suggestions.object_id,
+        suggestion_id=created.suggestion.suggestion_id,
     )
     assert detail.suggestion.status == "open"
     monkeypatch.setattr(suggestions.sources, "add", original)
@@ -159,13 +162,17 @@ def test_suggestion_another_author_cannot_replay_an_accepted_decision(suggestion
     repository.grants[(other.tenant_id, suggestions.object_id, other.user_id)] = "write"
     with pytest.raises(OfficeDocumentConflictError):
         suggestions.service.mutate(
-            user_context=other, object_id=suggestions.object_id, suggestion_id=created.suggestion.suggestion_id,
-            command=decision_command("accept", suggestions.version_id), write_enabled=True,
+            user_context=other,
+            object_id=suggestions.object_id,
+            suggestion_id=created.suggestion.suggestion_id,
+            command=decision_command("accept", suggestions.version_id),
+            write_enabled=True,
         )
 
 
 def test_suggestion_feature_disabled_after_prepare_denies_decision_before_repository(
-    suggestion_api: SuggestionApiHarness, monkeypatch: pytest.MonkeyPatch,
+    suggestion_api: SuggestionApiHarness,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     created = suggestion_api.create()
     enable_office(write=False)
@@ -181,7 +188,8 @@ def test_suggestion_feature_disabled_after_prepare_denies_decision_before_reposi
 
 
 def test_suggestion_jwt_ignores_forged_read_grants_even_with_repository_write_permission(
-    suggestion_api: SuggestionApiHarness, monkeypatch: pytest.MonkeyPatch,
+    suggestion_api: SuggestionApiHarness,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     created = suggestion_api.create()
     principal = PrincipalRecord(
@@ -191,18 +199,27 @@ def test_suggestion_jwt_ignores_forged_read_grants_even_with_repository_write_pe
         memberships=[TenantMembership(tenant_id="tenant-demo", role_ids={"office-reader"})],
     )
     resolver = JwtPrincipalResolver(
-        verifier=HmacJwtVerifier(issuer=DEFAULT_JWT_ISSUER, audience=DEFAULT_JWT_AUDIENCE, secret=DEFAULT_DEV_JWT_SECRET),
+        verifier=HmacJwtVerifier(
+            issuer=DEFAULT_JWT_ISSUER, audience=DEFAULT_JWT_AUDIENCE, secret=DEFAULT_DEV_JWT_SECRET
+        ),
         directory=InMemoryPrincipalDirectory(principals=[principal], object_acls=[]),
     )
     monkeypatch.setattr(app.state, "principal_resolver", resolver)
     monkeypatch.setenv("SUITE_AUTH_MODE", "jwt")
     payload = {
-        "iss": DEFAULT_JWT_ISSUER, "aud": DEFAULT_JWT_AUDIENCE, "sub": principal.subject,
-        "tenant_id": "tenant-demo", "iat": int(time()) - 1, "exp": int(time()) + 120,
-        "roles": ["tenant-admin"], "readable_object_ids": [suggestion_api.object_id],
+        "iss": DEFAULT_JWT_ISSUER,
+        "aud": DEFAULT_JWT_AUDIENCE,
+        "sub": principal.subject,
+        "tenant_id": "tenant-demo",
+        "iat": int(time()) - 1,
+        "exp": int(time()) + 120,
+        "roles": ["tenant-admin"],
+        "readable_object_ids": [suggestion_api.object_id],
     }
-    segments = [base64.urlsafe_b64encode(json.dumps(part).encode()).decode().rstrip("=")
-                for part in ({"alg": "HS256", "typ": "JWT"}, payload)]
+    segments = [
+        base64.urlsafe_b64encode(json.dumps(part).encode()).decode().rstrip("=")
+        for part in ({"alg": "HS256", "typ": "JWT"}, payload)
+    ]
     signing_input = ".".join(segments)
     signature = hmac.new(DEFAULT_DEV_JWT_SECRET.encode(), signing_input.encode(), sha256).digest()
     token = f"{signing_input}.{base64.urlsafe_b64encode(signature).decode().rstrip('=')}"
@@ -211,8 +228,14 @@ def test_suggestion_jwt_ignores_forged_read_grants_even_with_repository_write_pe
     read = Mock(wraps=suggestion_api.office.service.source_repository.get)
     monkeypatch.setattr(suggestion_api.office.service.source_repository, "get", read)
     response = suggestion_api.office.client.get(
-        f"{suggestion_api.base}/{created['suggestion']['suggestion_id']}", headers=headers,
+        f"{suggestion_api.base}/{created['suggestion']['suggestion_id']}",
+        headers=headers,
     )
     assert response.status_code == 404 and response.json() == {"detail": "Document not found"}
-    assert suggestion_api.office.client.post(suggestion_api.base, headers=headers, json=suggestion_api.payload()).status_code == 404
+    assert (
+        suggestion_api.office.client.post(
+            suggestion_api.base, headers=headers, json=suggestion_api.payload()
+        ).status_code
+        == 404
+    )
     read.assert_not_called()

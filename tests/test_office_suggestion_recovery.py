@@ -194,9 +194,7 @@ def test_suggestion_recovery_requires_both_accepted_and_rejected_evidence() -> N
 def test_suggestion_recovery_rejects_consistently_renamed_accepted_version() -> None:
     fixture = suggestion_recovery_fixture()
     accepted = next(
-        row
-        for row in fixture.repository._memory["text_suggestion_decisions"].values()
-        if row["operation"] == "accept"
+        row for row in fixture.repository._memory["text_suggestion_decisions"].values() if row["operation"] == "accept"
     )
     tenant_id = fixture.user.tenant_id
     key = (tenant_id, fixture.object_id, accepted["result_version_id"])

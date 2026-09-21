@@ -692,10 +692,12 @@ def test_restore_requires_native_office_controls() -> None:
 @pytest.mark.parametrize("replacement", ("NOT DEFERRABLE INITIALLY IMMEDIATE", "DEFERRABLE INITIALLY IMMEDIATE", ""))
 def test_restore_rejects_identical_suggestion_decision_trigger_deferral_drift(replacement: str) -> None:
     def weaken(rows: dict[str, list[dict[str, object]]]) -> None:
-        trigger = next(row for row in rows["triggers"]
-                       if row["trigger_name"] == "office_versions_require_suggestion_decision")
+        trigger = next(
+            row for row in rows["triggers"] if row["trigger_name"] == "office_versions_require_suggestion_decision"
+        )
         trigger["trigger_definition"] = str(trigger["trigger_definition"]).replace(
-            "DEFERRABLE INITIALLY DEFERRED", replacement,
+            "DEFERRABLE INITIALLY DEFERRED",
+            replacement,
         )
 
     _assert_office_tamper_blocked(_office_tamper_report(weaken))
