@@ -20,7 +20,8 @@ def seed_principal(connection: psycopg.Connection[Any], tenant: str, user: str, 
     connection.execute(
         "INSERT INTO collabio.tenant_principal_memberships "
         "(tenant_id, issuer, subject, status, disabled_at_utc, audit_chain_ref) "
-        "VALUES (%s, 'https://synthetic.example', %s, %s, CASE WHEN %s THEN NULL ELSE now() END, 'audit:recovery-test')",
+        "VALUES (%s, 'https://synthetic.example', %s, %s, "
+        "CASE WHEN %s THEN NULL ELSE now() END, 'audit:recovery-test')",
         (tenant, user, "active" if active else "suspended", active),
     )
 
