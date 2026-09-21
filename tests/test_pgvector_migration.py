@@ -194,7 +194,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
     assert [migration.version for migration in office_documents_migrations] == ["0083", "0084", "0085"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "office_documents"
-    assert manifest[-1].name == "office_native_reviews"
+    assert manifest[-1].name == "office_native_suggestions"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)

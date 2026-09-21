@@ -10,7 +10,11 @@ from psycopg.rows import dict_row
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
-from suite.platform.office_document_schema import OFFICE_DOCUMENT_MIME_TYPE, OFFICE_DOCUMENT_SCHEMA_VERSION
+from suite.platform.office_document_schema import (
+    OFFICE_DOCUMENT_MIME_TYPE,
+    OFFICE_DOCUMENT_SCHEMA_VERSION,
+    OfficeDocumentInvalidContentError,
+)
 from suite.platform.office_documents import (
     OFFICE_DOCUMENT_OBJECT_TYPE,
     OFFICE_DOCUMENT_SOURCE_SYSTEM,
@@ -310,6 +314,8 @@ class PgOfficeDocumentRepository:
         command: OfficeDocumentCreateCommand,
     ) -> OfficeDocumentCommit:
         command = type(command).model_validate(command.model_dump(mode="python"))
+        if command.mutation_reference.startswith("office-suggestion-accept:"):
+            raise OfficeDocumentInvalidContentError("Document mutation reference is reserved")
         if object_id is None and not can_create_office_document(user_context):
             raise OfficeDocumentPermissionError("Document creation is not permitted")
         if object_id is not None and not isinstance(command, OfficeDocumentSaveCommand):
@@ -488,6 +494,8 @@ class InMemoryOfficeDocumentRepository:
         command: OfficeDocumentCreateCommand,
     ) -> OfficeDocumentCommit:
         command = type(command).model_validate(command.model_dump(mode="python"))
+        if command.mutation_reference.startswith("office-suggestion-accept:"):
+            raise OfficeDocumentInvalidContentError("Document mutation reference is reserved")
         with self._lock:
             if object_id is None and not can_create_office_document(user_context):
                 raise OfficeDocumentPermissionError("Document creation is not permitted")

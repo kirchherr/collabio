@@ -24,12 +24,32 @@ from suite.platform.office_documents import OfficeDocumentConflictError, OfficeD
 from suite.platform.office_reviews import ReviewAnchor
 from suite.platform.office_suggestions import SuggestionCreateCommand, replace_suggestion_text
 from suite.storage.source_object_storage import SourceObjectStorageError
-from test_office_documents_api import enable_office
+from test_office_documents_api import create_payload, enable_office
 from test_office_documents_api import office_api as office_api
 from test_office_suggestions import SuggestionHarness, decision_command, paragraph_text, text_document
 from test_office_suggestions import suggestions as suggestions
 from test_office_suggestions_api import SuggestionApiHarness
 from test_office_suggestions_api import suggestion_api as suggestion_api
+
+
+@pytest.mark.parametrize("operation", ("create", "save"))
+def test_document_api_rejects_reserved_suggestion_reference_before_source_put(
+    suggestion_api: SuggestionApiHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    harness = suggestion_api.office
+    source_write = Mock(side_effect=AssertionError("must not write source content"))
+    monkeypatch.setattr(harness.service.source_repository, "add", source_write)
+    payload = create_payload("office-suggestion-accept:forged")
+    path = "/v1/office/documents"
+    if operation == "save":
+        path += f"/{suggestion_api.object_id}/versions"
+        payload["expected_current_version_id"] = suggestion_api.version_id
+    response = harness.client.post(path, headers=harness.headers, json=payload)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Document validation failed"}
+    assert response.headers["Cache-Control"] == "no-store"
+    source_write.assert_not_called()
+    assert len(harness.repository.saved_versions) == 1
 
 
 def test_suggestion_postcommit_response_preserves_anchor_alias_and_exact_retry(suggestions: SuggestionHarness) -> None:
@@ -90,7 +110,12 @@ def test_suggestion_maximum_quote_and_replacement_unicode_fit_document_and_evide
 
 def test_suggestion_deleting_last_text_preserves_empty_table_cell_and_other_cells() -> None:
     cell = {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "cell"}]}]}
-    document = {"type": "doc", "content": [{"type": "table", "content": [{"type": "tableRow", "content": [cell, json.loads(json.dumps(cell))]}]}]}
+    document: dict[str, Any] = {
+        "type": "doc",
+        "content": [
+            {"type": "table", "content": [{"type": "tableRow", "content": [cell, json.loads(json.dumps(cell))]}]}
+        ],
+    }
     result = replace_suggestion_text(document, ReviewAnchor.model_validate({"from": 4, "to": 8}), "")
     cells = result["content"][0]["content"][0]["content"]
     assert cells[0] == {"type": "tableCell", "content": [{"type": "paragraph", "content": []}]}

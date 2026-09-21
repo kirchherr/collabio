@@ -164,8 +164,8 @@ def test_suggestion_recovery_denies_incomplete_content_lineage_or_permissions(ta
         key = (fixture.user.tenant_id, proposal["suggestion_id"], proposal["source_version_id"])
         fixture.sources._records[key] = fixture.sources._records[key].model_copy(update={"content_bytes": b"corrupt"})
     elif tamper == "receipt":
-        key = (fixture.user.tenant_id, proposal["source_write_receipt_hash"])
-        fixture.receipts._receipts[key] = fixture.receipts._receipts[key].model_copy(
+        receipt_key = (fixture.user.tenant_id, proposal["source_write_receipt_hash"])
+        fixture.receipts._receipts[receipt_key] = fixture.receipts._receipts[receipt_key].model_copy(
             update={"parent_object_id": "wrong"}
         )
     elif tamper == "result":

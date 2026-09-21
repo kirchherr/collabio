@@ -61,7 +61,10 @@ from suite.storage.source_objects import (
 )
 
 Connection = psycopg.Connection[Any] | None
-TABLE_MODELS = {"text_suggestions": TextSuggestionRecord, "text_suggestion_decisions": SuggestionDecisionRecord}
+TABLE_MODELS: dict[str, type[SuggestionEvidence]] = {
+    "text_suggestions": TextSuggestionRecord,
+    "text_suggestion_decisions": SuggestionDecisionRecord,
+}
 
 
 def _prepare_evidence(
@@ -227,7 +230,7 @@ class OfficeSuggestionRepositoryAdapter:
                 (row for row in rows if after is None or row["suggestion_id"] > after),
                 key=lambda row: row["suggestion_id"],
             )[:limit]
-        conditions = [sql.SQL("{}=%s").format(sql.Identifier(key)) for key in filters]
+        conditions: list[sql.Composable] = [sql.SQL("{}=%s").format(sql.Identifier(key)) for key in filters]
         params: list[Any] = list(filters.values())
         if after is not None:
             conditions.append(sql.SQL("suggestion_id>%s"))
@@ -406,7 +409,7 @@ class OfficeSuggestionRepositoryAdapter:
                 quote = derive_review_quote(content, command.anchor)
                 replace_suggestion_text(content, command.anchor, command.replacement_text)
                 new_id = f"office-suggestion-{uuid4().hex}"
-                payload = {
+                payload: dict[str, Any] = {
                     "schema_version": SUGGESTION_SCHEMA,
                     "suggestion_id": new_id,
                     "document_id": object_id,

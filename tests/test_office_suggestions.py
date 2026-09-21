@@ -245,7 +245,8 @@ def test_suggestion_writes_require_feature_and_durable_service(
 def test_suggestion_pagination_is_complete_and_historical_filter_validated(suggestions: SuggestionHarness) -> None:
     for index in range(7):
         suggestions.create(f"create-{index}")
-    after, seen = None, set()
+    after: str | None = None
+    seen: set[str] = set()
     while True:
         page = suggestions.service.list_suggestions(
             user_context=suggestions.user, object_id=suggestions.object_id, after=after, limit=3
@@ -340,7 +341,14 @@ def test_suggestion_corruption_and_outage_fail_closed(
 
 
 @pytest.mark.parametrize(
-    "overrides", ({"human_confirmation": False}, {"expected_revision": True}, {"expected_revision": 2})
+    "overrides",
+    (
+        {"human_confirmation": False},
+        {"expected_revision": True},
+        {"expected_revision": 1.0},
+        {"expected_revision": "1"},
+        {"expected_revision": 2},
+    ),
 )
 def test_suggestion_decisions_require_exact_confirmation_and_revision(overrides: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):

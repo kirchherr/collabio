@@ -8,10 +8,13 @@ import pytest
 import suite.platform.office_suggestion_repository as suggestion_repository
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.office_api import build_office_suggestion_service
+from suite.platform.office_document_repository import PgOfficeDocumentRepository, _prepare_version
+from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
+    office_document_command_hash,
 )
 from suite.platform.office_suggestions import SuggestionCreateCommand
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore, SourceObjectStorageError
@@ -233,7 +236,7 @@ def test_pg_suggestion_post_put_database_failure_rolls_back_both_records_and_det
 
 
 def test_pg_suggestion_rls_append_only_and_deferred_acceptance_binding(database: Database) -> None:
-    _, docs, user, saved, _, _ = prepared(database)
+    store, docs, user, saved, _, _ = prepared(database)
     with psycopg.connect(database.app_dsn) as connection:
         set_tenant(connection, "foreign")
         assert connection.execute("SELECT count(*) FROM office.text_suggestions").fetchone() == (0,)
@@ -242,14 +245,40 @@ def test_pg_suggestion_rls_append_only_and_deferred_acceptance_binding(database:
             for operation in (f"DELETE FROM office.{table}", f"UPDATE office.{table} SET created_by='forged'"):
                 with pytest.raises(psycopg.Error), connection.transaction():
                     connection.execute(operation)
-    with pytest.raises(psycopg.Error):
+    reserved = OfficeDocumentSaveCommand(
+        **command("office-suggestion-accept:office-suggestion-decision-" + "a" * 32, "forged").model_dump(),
+        expected_current_version_id=saved.version.version_id,
+    )
+    before_objects = len(store.list_stored_objects(tenant_id=user.tenant_id))
+    with pytest.raises(OfficeDocumentInvalidContentError):
         docs.save(
             user_context=user,
             object_id=saved.document.object_id,
             write_enabled=True,
-            command=OfficeDocumentSaveCommand(
-                **command("office-suggestion-accept:office-suggestion-decision-" + "a" * 32, "forged").model_dump(),
-                expected_current_version_id=saved.version.version_id,
-            ),
+            command=reserved,
         )
+    assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == before_objects
+    repository = docs.repository
+    assert isinstance(repository, PgOfficeDocumentRepository)
+    with (
+        pytest.raises(psycopg.Error, match="office accepted version requires its suggestion decision"),
+        psycopg.connect(database.app_dsn) as connection,
+        connection.transaction(),
+    ):
+        set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"office-document-write:{user.tenant_id}",)
+        )
+        document = repository._authorized_document(connection, user, saved.document.object_id, write=True)
+        prepared_version = _prepare_version(
+            user=user,
+            document=document,
+            previous_version_id=saved.version.version_id,
+            command=reserved,
+            command_hash=office_document_command_hash(
+                user_context=user, object_id=saved.document.object_id, command=reserved
+            ),
+            acl_rows=repository._acl_rows(connection, user.tenant_id, saved.document.object_id),
+        )
+        repository._persist_prepared_version(connection, *prepared_version)
     assert counts(database, user) == (1, 1, 0, 2, 2)
