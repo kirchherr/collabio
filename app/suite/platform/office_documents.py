@@ -57,8 +57,13 @@ class OfficeDocumentListRequestError(ValueError):
 
 
 def validate_office_document_query(query: str) -> str:
-    if not isinstance(query, str) or len(query) > 200 or any(
-        ord(character) < 32 or 0x7F <= ord(character) <= 0x9F or 0xD800 <= ord(character) <= 0xDFFF for character in query
+    if (
+        not isinstance(query, str)
+        or len(query) > 200
+        or any(
+            ord(character) < 32 or 0x7F <= ord(character) <= 0x9F or 0xD800 <= ord(character) <= 0xDFFF
+            for character in query
+        )
     ):
         raise OfficeDocumentListRequestError("Invalid document list request")
     return query.strip()
@@ -250,10 +255,15 @@ class OfficeDocumentService:
             raise ValueError("Office list cursor key must contain at least 32 bytes")
 
     def _list_binding(self, user: UserContext, query: str, page_size: int) -> str:
-        payload = canonical_json({
-            "tenant": user.tenant_id, "actor": user.user_id, "roles": sorted(user.role_ids),
-            "query": query, "page_size": page_size,
-        }).encode("utf-8")
+        payload = canonical_json(
+            {
+                "tenant": user.tenant_id,
+                "actor": user.user_id,
+                "roles": sorted(user.role_ids),
+                "query": query,
+                "page_size": page_size,
+            }
+        ).encode("utf-8")
         return hmac.new(self._list_cursor_key, payload, sha256).hexdigest()
 
     def _read_list_cursor(self, cursor: str, binding: str) -> tuple[str, str]:
@@ -285,9 +295,13 @@ class OfficeDocumentService:
             raise OfficeDocumentListRequestError("Invalid document list request") from exc
 
     def _write_list_cursor(self, record: OfficeDocumentRecord, binding: str) -> str:
-        payload = canonical_json({
-            "binding": binding, "created_at": record.created_at_utc, "object_id": record.object_id,
-        }).encode("utf-8")
+        payload = canonical_json(
+            {
+                "binding": binding,
+                "created_at": record.created_at_utc,
+                "object_id": record.object_id,
+            }
+        ).encode("utf-8")
         encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
         return f"{encoded}.{hmac.new(self._list_cursor_key, payload, sha256).hexdigest()}"
 

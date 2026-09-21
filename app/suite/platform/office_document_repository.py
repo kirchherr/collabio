@@ -244,8 +244,13 @@ class PgOfficeDocumentRepository:
         # Every returned row, including the lookahead, is authorized before LIMIT.
         columns = ", ".join(f"document.{name}" for name in OfficeDocumentRecord.model_fields)
         parameters: list[Any] = [
-            user_context.tenant_id, sorted(user_context.readable_object_ids), query,
-            OFFICE_DOCUMENT_OBJECT_TYPE, user_context.user_id, sorted(user_context.role_ids), user_context.user_id,
+            user_context.tenant_id,
+            sorted(user_context.readable_object_ids),
+            query,
+            OFFICE_DOCUMENT_OBJECT_TYPE,
+            user_context.user_id,
+            sorted(user_context.role_ids),
+            user_context.user_id,
         ]
         boundary = ""
         if after is not None:
@@ -271,10 +276,7 @@ class PgOfficeDocumentRepository:
                     """,
                     parameters,
                 ).fetchall()
-            return tuple(
-                OfficeDocumentRecord.model_validate(_model_values(row))
-                for row in rows
-            )
+            return tuple(OfficeDocumentRecord.model_validate(_model_values(row)) for row in rows)
 
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord:
         with psycopg.connect(self.database_dsn) as connection:
@@ -488,13 +490,20 @@ class InMemoryOfficeDocumentRepository:
             records = [
                 document
                 for (tenant_id, object_id), document in self.documents.items()
-                if tenant_id == user_context.tenant_id and self._permission(user_context, object_id)
+                if tenant_id == user_context.tenant_id
+                and self._permission(user_context, object_id)
                 and query.lower() in document.title.lower()
-                and (boundary is None or (datetime.fromisoformat(document.created_at_utc), document.object_id) < boundary)
+                and (
+                    boundary is None or (datetime.fromisoformat(document.created_at_utc), document.object_id) < boundary
+                )
             ]
-            return tuple(sorted(
-                records, key=lambda record: (datetime.fromisoformat(record.created_at_utc), record.object_id), reverse=True
-            )[:limit])
+            return tuple(
+                sorted(
+                    records,
+                    key=lambda record: (datetime.fromisoformat(record.created_at_utc), record.object_id),
+                    reverse=True,
+                )[:limit]
+            )
 
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord:
         if not self._permission(user_context, object_id):

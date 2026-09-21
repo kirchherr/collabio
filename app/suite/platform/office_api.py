@@ -26,8 +26,8 @@ from suite.platform.office_documents import (
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryResponse,
-    OfficeDocumentListResponse,
     OfficeDocumentListRequestError,
+    OfficeDocumentListResponse,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -242,8 +242,11 @@ def register_office_routes(
         cursor: str | None = Query(default=None, min_length=1, max_length=1024),
     ) -> Any:
         return request.app.state.office_document_service.list_documents(
-            user_context=context.user_context, write_enabled=_write_enabled(request, context),
-            query=query, page_size=page_size, cursor=cursor,
+            user_context=context.user_context,
+            write_enabled=_write_enabled(request, context),
+            query=query,
+            page_size=page_size,
+            cursor=cursor,
         )
 
     @router.post("", response_model=OfficeDocumentContentResponse, dependencies=[Depends(write_gate)])

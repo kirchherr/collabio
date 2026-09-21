@@ -12,11 +12,13 @@ from suite.storage.source_object_storage import InMemorySourceObjectContentStore
 from test_office_documents_pg import (
     Database,
     command,
-    database as database,
     editor,
     grant,
     service_for,
     set_tenant,
+)
+from test_office_documents_pg import (
+    database as database,
 )
 
 
@@ -25,17 +27,22 @@ def titled_command(index: int, title: str) -> OfficeDocumentCreateCommand:
 
 
 def test_pg_office_discovery_reaches_older_than_200_and_does_not_read_source_content(
-    database: Database, monkeypatch: pytest.MonkeyPatch,
+    database: Database,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = InMemorySourceObjectContentStore()
     service = service_for(database, store)
     user = editor()
     ids: list[str] = []
     for index in range(205):
-        saved = service.create(user_context=user, command=titled_command(index, f"Discovery {index:03d}"), write_enabled=True)
+        saved = service.create(
+            user_context=user, command=titled_command(index, f"Discovery {index:03d}"), write_enabled=True
+        )
         ids.append(saved.document.object_id)
         user.readable_object_ids.add(saved.document.object_id)
-    monkeypatch.setattr(service.source_repository, "get", Mock(side_effect=AssertionError("list must not read source bytes")))
+    monkeypatch.setattr(
+        service.source_repository, "get", Mock(side_effect=AssertionError("list must not read source bytes"))
+    )
     first = service.list_documents(user_context=user)
     assert len(first.documents) == 200 and first.has_more and first.next_cursor
     second = service.list_documents(user_context=user, cursor=first.next_cursor)
@@ -87,13 +94,17 @@ def test_pg_office_discovery_immutable_order_survives_saves_and_new_rows(databas
     user = editor()
     records: list[Any] = []
     for index in range(4):
-        saved = service.create(user_context=user, command=titled_command(index, f"Original {index}"), write_enabled=True)
+        saved = service.create(
+            user_context=user, command=titled_command(index, f"Original {index}"), write_enabled=True
+        )
         records.append(saved)
         user.readable_object_ids.add(saved.document.object_id)
     first = service.list_documents(user_context=user, page_size=2)
     assert first.next_cursor
     changed = service.save(
-        user_context=user, object_id=records[0].document.object_id, write_enabled=True,
+        user_context=user,
+        object_id=records[0].document.object_id,
+        write_enabled=True,
         command=OfficeDocumentSaveCommand(
             **{**command("discovery-save").model_dump(), "title": "Renamed older document"},
             expected_current_version_id=records[0].version.version_id,
@@ -102,6 +113,9 @@ def test_pg_office_discovery_immutable_order_survives_saves_and_new_rows(databas
     newest = service.create(user_context=user, command=titled_command(8, "Added later"), write_enabled=True)
     user.readable_object_ids.add(newest.document.object_id)
     second = service.list_documents(user_context=user, page_size=2, cursor=first.next_cursor)
-    assert [entry.object_id for entry in second.documents] == [records[1].document.object_id, changed.document.object_id]
+    assert [entry.object_id for entry in second.documents] == [
+        records[1].document.object_id,
+        changed.document.object_id,
+    ]
     assert second.documents[-1].title == "Renamed older document" and not second.has_more
     assert service.list_documents(user_context=user).documents[0].object_id == newest.document.object_id

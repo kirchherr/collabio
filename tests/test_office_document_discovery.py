@@ -31,9 +31,15 @@ def seed_discovery_record(
 ) -> OfficeDocumentRecord:
     created_at = (datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=index)).isoformat().replace("+00:00", "Z")
     record = OfficeDocumentRecord(
-        tenant_id=user.tenant_id, object_id=f"office-doc-{index:032x}", title=title,
-        current_version_id=f"office-version-{index:032x}", owner_principal_id="source-owner", created_by="source-owner",
-        created_at_utc=created_at, updated_at_utc=created_at, audit_chain_ref=f"audit:discovery-{index}",
+        tenant_id=user.tenant_id,
+        object_id=f"office-doc-{index:032x}",
+        title=title,
+        current_version_id=f"office-version-{index:032x}",
+        owner_principal_id="source-owner",
+        created_by="source-owner",
+        created_at_utc=created_at,
+        updated_at_utc=created_at,
+        audit_chain_ref=f"audit:discovery-{index}",
     )
     repository.documents[(user.tenant_id, record.object_id)] = record
     if permission:
@@ -92,9 +98,13 @@ def test_discovery_cursor_anchor_survives_revocation_and_title_or_head_changes(o
     anchor_id = first.documents[-1].object_id
     del repository.grants[(user.tenant_id, anchor_id, user.user_id)]
     older = repository.documents[(user.tenant_id, f"office-doc-{1:032x}")]
-    repository.documents[(user.tenant_id, older.object_id)] = older.model_copy(update={
-        "title": "Renamed", "updated_at_utc": "2027-01-01T00:00:00Z", "current_version_id": "new-head",
-    })
+    repository.documents[(user.tenant_id, older.object_id)] = older.model_copy(
+        update={
+            "title": "Renamed",
+            "updated_at_utc": "2027-01-01T00:00:00Z",
+            "current_version_id": "new-head",
+        }
+    )
     seed_discovery_record(repository, user, 8, title="New after first page")
     second = service.list_documents(user_context=user, page_size=2, cursor=first.next_cursor)
     assert [entry.object_id for entry in second.documents] == [f"office-doc-{index:032x}" for index in [2, 1]]
@@ -118,7 +128,9 @@ def test_discovery_same_timestamp_uses_immutable_object_id_tiebreaker(office: An
 
 
 @pytest.mark.parametrize("change", ["tenant", "actor", "roles", "query", "page_size", "tamper", "restart"])
-def test_discovery_cursors_reject_other_context_or_tampering_before_repository(office: Any, monkeypatch: Any, change: str) -> None:
+def test_discovery_cursors_reject_other_context_or_tampering_before_repository(
+    office: Any, monkeypatch: Any, change: str
+) -> None:
     service, repository, user = office
     for index in [1, 2]:
         seed_discovery_record(repository, user, index)
@@ -140,25 +152,40 @@ def test_discovery_cursors_reject_other_context_or_tampering_before_repository(o
     elif change == "tamper":
         cursor = cursor[:-1] + ("0" if cursor[-1] != "0" else "1")
     else:
-        service = OfficeDocumentService(repository=repository, source_repository=repository.source_repository, audit=service.audit)
+        service = OfficeDocumentService(
+            repository=repository, source_repository=repository.source_repository, audit=service.audit
+        )
     monkeypatch.setattr(repository, "list_documents", Mock(side_effect=AssertionError("cursor must fail before query")))
     with pytest.raises(OfficeDocumentListRequestError):
         service.list_documents(user_context=changed_user, query=query, page_size=page_size, cursor=cursor)
 
 
-@pytest.mark.parametrize("query,page_size,cursor", [
-    ("x" * 201, 20, None), ("\x00private", 20, None), ("\ud800", 20, None),
-    ("private\u0085", 20, None), ("private\u009f", 20, None),
-    ("", 0, None), ("", 201, None), ("", True, None), ("", 1.0, None),
-    ("", 20, ""), ("", 20, "x" * 1025), ("", 20, "invalid.base64.payload"),
-])
+@pytest.mark.parametrize(
+    "query,page_size,cursor",
+    [
+        ("x" * 201, 20, None),
+        ("\x00private", 20, None),
+        ("\ud800", 20, None),
+        ("private\u0085", 20, None),
+        ("private\u009f", 20, None),
+        ("", 0, None),
+        ("", 201, None),
+        ("", True, None),
+        ("", 1.0, None),
+        ("", 20, ""),
+        ("", 20, "x" * 1025),
+        ("", 20, "invalid.base64.payload"),
+    ],
+)
 def test_discovery_invalid_navigation_is_bounded(office: Any, query: str, page_size: Any, cursor: str | None) -> None:
     service, _, user = office
     with pytest.raises(OfficeDocumentListRequestError):
         service.list_documents(user_context=user, query=query, page_size=page_size, cursor=cursor)
 
 
-@pytest.mark.parametrize("key,value", [("created_at", "2026-01-01"), ("created_at", "not-a-timestamp"), ("object_id", "' OR true --")])
+@pytest.mark.parametrize(
+    "key,value", [("created_at", "2026-01-01"), ("created_at", "not-a-timestamp"), ("object_id", "' OR true --")]
+)
 def test_discovery_even_signed_malformed_anchor_is_rejected_before_sql(office: Any, key: str, value: str) -> None:
     service, repository, user = office
     for index in [1, 2]:
@@ -169,6 +196,10 @@ def test_discovery_even_signed_malformed_anchor_is_rejected_before_sql(office: A
     payload = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
     payload[key] = value
     raw = canonical_json(payload).encode()
-    changed = base64.urlsafe_b64encode(raw).decode().rstrip("=") + "." + hmac.new(service._list_cursor_key, raw, sha256).hexdigest()
+    changed = (
+        base64.urlsafe_b64encode(raw).decode().rstrip("=")
+        + "."
+        + hmac.new(service._list_cursor_key, raw, sha256).hexdigest()
+    )
     with pytest.raises(OfficeDocumentListRequestError):
         service.list_documents(user_context=user, page_size=1, cursor=changed)

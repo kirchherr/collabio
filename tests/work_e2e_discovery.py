@@ -19,7 +19,7 @@ def discovery_title(index: int) -> str:
     if not 0 <= index < DISCOVERY_DOCUMENT_COUNT:
         raise ValueError("Synthetic discovery index is outside the fixture")
     suffixes = (
-        '<img src=x onerror=alert(260)> & literal',
+        "<img src=x onerror=alert(260)> & literal",
         "Café Straße 東京",
         r"literal 100%_path\marker",
         "literal 100XXpathZmarker",
@@ -47,7 +47,10 @@ def seed_synthetic_office_discovery(
                 document={
                     "type": "doc",
                     "content": [
-                        {"type": "paragraph", "content": [{"type": "text", "text": f"Synthetic discovery document {index:03d}."}]}
+                        {
+                            "type": "paragraph",
+                            "content": [{"type": "text", "text": f"Synthetic discovery document {index:03d}."}],
+                        }
                     ],
                 },
                 mutation_reference=f"work-e2e-discovery-{index:03d}",

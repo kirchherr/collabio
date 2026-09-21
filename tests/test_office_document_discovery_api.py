@@ -12,6 +12,8 @@ from test_office_documents_api import (
     BASE,
     OfficeApiHarness,
     enable_office,
+)
+from test_office_documents_api import (
     office_api as office_api,
 )
 
@@ -34,9 +36,15 @@ def test_office_discovery_api_is_additive_and_current_capabilities_ignore_search
     assert len(body["documents"]) == 2 and body["has_more"] and body["next_cursor"]
     assert body["can_create"] and all(not entry["can_write"] for entry in body["documents"])
     enable_office(write=False)
-    second = office_api.client.get(BASE, headers=office_api.headers, params={
-        "query": "CAFÉ %_\\", "page_size": 2, "cursor": body["next_cursor"],
-    })
+    second = office_api.client.get(
+        BASE,
+        headers=office_api.headers,
+        params={
+            "query": "CAFÉ %_\\",
+            "page_size": 2,
+            "cursor": body["next_cursor"],
+        },
+    )
     assert second.status_code == 200 and len(second.json()["documents"]) == 1
     assert not second.json()["has_more"] and second.json()["next_cursor"] is None
     assert not second.json()["can_create"]
@@ -46,27 +54,41 @@ def test_office_discovery_api_is_additive_and_current_capabilities_ignore_search
     assert "CAFÉ" not in audit and "Missing private title" not in audit and body["next_cursor"] not in audit
 
 
-@pytest.mark.parametrize("params,status", [
-    ({"query": "x" * 201}, 422), ({"query": "\x00private"}, 400),
-    ({"query": "private\u0085"}, 400), ({"query": "private\u009f"}, 400),
-    ({"page_size": "0"}, 422), ({"page_size": "201"}, 422), ({"page_size": "not-integer"}, 422),
-    ({"cursor": "private-invalid-cursor"}, 400), ({"cursor": "x" * 1025}, 422),
-])
+@pytest.mark.parametrize(
+    "params,status",
+    [
+        ({"query": "x" * 201}, 422),
+        ({"query": "\x00private"}, 400),
+        ({"query": "private\u0085"}, 400),
+        ({"query": "private\u009f"}, 400),
+        ({"page_size": "0"}, 422),
+        ({"page_size": "201"}, 422),
+        ({"page_size": "not-integer"}, 422),
+        ({"cursor": "private-invalid-cursor"}, 400),
+        ({"cursor": "x" * 1025}, 422),
+    ],
+)
 def test_office_discovery_invalid_arguments_are_generic_and_uncacheable(
-    office_api: OfficeApiHarness, params: dict[str, str], status: int, monkeypatch: pytest.MonkeyPatch,
+    office_api: OfficeApiHarness,
+    params: dict[str, str],
+    status: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     enable_office()
     listing = Mock(side_effect=AssertionError("invalid request must fail before repository"))
     monkeypatch.setattr(office_api.repository, "list_documents", listing)
     response = office_api.client.get(BASE, headers=office_api.headers, params=params)
     assert response.status_code == status
-    assert response.json() == {"detail": "Invalid document list request" if status == 400 else "Invalid document request"}
+    assert response.json() == {
+        "detail": "Invalid document list request" if status == 400 else "Invalid document request"
+    }
     assert response.headers["Cache-Control"] == "no-store" and "private" not in response.text
     listing.assert_not_called()
 
 
 def test_office_discovery_cursor_does_not_bypass_fresh_module_or_principal_checks(
-    office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch,
+    office_api: OfficeApiHarness,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seed_api_list(office_api)
     cursor = office_api.client.get(BASE, headers=office_api.headers, params={"page_size": 1}).json()["next_cursor"]
@@ -84,10 +106,15 @@ def test_office_discovery_cursor_does_not_bypass_fresh_module_or_principal_check
 
 
 def test_office_discovery_database_failure_is_safe_with_search_parameters(
-    office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch,
+    office_api: OfficeApiHarness,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     enable_office()
-    monkeypatch.setattr(office_api.repository, "list_documents", Mock(side_effect=psycopg.OperationalError("private title")))
-    response = office_api.client.get(BASE, headers=office_api.headers, params={"query": "private title", "page_size": 10})
+    monkeypatch.setattr(
+        office_api.repository, "list_documents", Mock(side_effect=psycopg.OperationalError("private title"))
+    )
+    response = office_api.client.get(
+        BASE, headers=office_api.headers, params={"query": "private title", "page_size": 10}
+    )
     assert response.status_code == 503 and response.json() == {"detail": "Office storage unavailable"}
     assert response.headers["Cache-Control"] == "no-store"
