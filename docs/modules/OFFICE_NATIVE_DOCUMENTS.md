@@ -20,6 +20,24 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
+## Saved-version reuse (Roadmap 259, validation pending)
+
+"Als neues Dokument" starts an independent draft from the opened saved current or historical version. The dialog
+identifies that exact source and offers an editable title. Unsaved editor changes are not used; existing discard
+consent protects document, review and suggestion drafts before a replacement. Canceling keeps the original workspace.
+
+Before creating the local draft, fresh exact-version content and the authoritative creation capability are read through
+the existing APIs. Source read access is sufficient when the user can create documents; source write access is not
+required. The bounded document list does not decide source visibility. Busy, uncertain and conflicting saves are blocked;
+close, context and session changes invalidate pending responses. Transient failures preserve the workspace.
+
+The new draft has no source identity, history, ACL, discussions, suggestions or mutation key. Its first explicit save
+uses the normal create operation, with a new object and creator ACL. Source content and history stay unchanged. The
+draft's initial save and exact retries apply current create rights; the already independent draft does not
+reauthorize its former source at that later point. This is not an atomic server copy or a persisted provenance link.
+No API, schema, storage format, dependency or engine admission is added. See
+[ADR-0083](../../ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md).
+
 ## Saved-version print preview (Roadmap 258)
 
 "Drucken / PDF" or Ctrl/Cmd+P opens a preview only for a clean saved version, including a historical version or an
@@ -109,7 +127,8 @@ an approximate alignment is labelled. It is a block comparison, not tracked chan
 The existing history route returns at most 200 recent versions. A connected partial history is accepted and labelled;
 relative labels do not invent absolute version numbers for older unloaded entries.
 
-An authorized reader may compare but cannot take over content for editing. Taking a historical version into a draft
+An authorized reader may compare but cannot take over content as a successor of the same document without write access.
+Taking a historical version into a draft
 refreshes its exact content, the current head and current document capabilities. The new draft uses historical content
 and title while preserving the fresh head as its expected save base. Current write permission is required; historical
 write capability alone is insufficient. No POST occurs until the existing explicit save confirmation. The original

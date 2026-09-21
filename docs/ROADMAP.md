@@ -1596,6 +1596,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
      API-Rollout, Health und abschliessender Betriebszustand: docs/CURRENT_HANDOFF.md.
 
+259. [ ] Gespeicherte native Office-Fassung als unabhaengigen neuen Dokumententwurf verwenden:
+     frische Quell-Leserechte und Erstellungsfaehigkeit, eigener Titel, Schutz ungespeicherter Entwuerfe,
+     neue Objektidentitaet erst nach bestehender Speicherbestaetigung. Original, Versionen und ACLs bleiben
+     unveraendert; keine Uebernahme von Diskussionen/Vorschlaegen oder neue Server-Kopiertransaktion.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

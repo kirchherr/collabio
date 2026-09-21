@@ -17,7 +17,7 @@ const storageKey = "collabio.workspace.context";
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, discardResolve: null, compare: null, restore: null,
-  tableAction: null, review: null, suggestions: null, print: null, preparedPrint: null,
+  tableAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -170,6 +170,7 @@ function isDirty() {
 
 function updateEditorState() {
   if (state.print && !printCurrent(state.print)) closePrint();
+  updateReuseControls();
   const session = state.session;
   const editor = state.editor;
   const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && !session.loading &&
@@ -631,6 +632,7 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  closeReuse();
   closePrint();
   closeTableDialogs();
   $("table-message").textContent = "";
@@ -650,11 +652,9 @@ function contentChanged(session) {
   }
 }
 
-function mountEditor(content, session) {
+function prepareEditor(content, session) {
   const editorHost = document.createElement("div");
   const safeContent = normalizedDocument(content);
-  search.matches = [];
-  search.index = -1;
   const editor = new Editor({
     element: editorHost, injectCSS: false, content: { type: "doc", content: [{ type: "paragraph" }] },
     editable: false, enablePasteRules: false,
@@ -679,19 +679,27 @@ function mountEditor(content, session) {
       handleDrop() { notice("Dateien werden hier nicht eingefügt. Text lässt sich über die Zwischenablage übernehmen."); return true; },
     },
     onUpdate: () => contentChanged(session),
-    onSelectionUpdate: () => updateEditorState(),
+    onSelectionUpdate: () => { if (sessionCurrent(session)) updateEditorState(); },
   });
   try {
     validateEditorDocument(editor.schema.nodeFromJSON(safeContent));
     editor.chain().setMeta("addToHistory", false)
       .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true }).run();
   } catch (error) { editor.destroy(); throw error; }
+  return { editor, editorHost };
+}
+
+function mountEditor(content, session) {
+  const { editor, editorHost } = prepareEditor(content, session);
+  search.matches = [];
+  search.index = -1;
   state.editor?.destroy();
   $("office-editor").replaceChildren(editorHost);
   state.editor = editor;
 }
 
 function clearWorkspace() {
+  closeReuse();
   closePrint();
   clearReview();
   clearSuggestions();
@@ -827,6 +835,7 @@ function contentMatches(result, objectId, versionId = null) {
 }
 
 function acceptContent(result, session) {
+  closeReuse();
   closePrint();
   clearReview();
   clearSuggestions();
@@ -1121,6 +1130,165 @@ function validatedContent(result, objectId, versionId = null) {
   if (!state.editor) throw new ApiError(502);
   state.editor.schema.nodeFromJSON(content).check();
   return content;
+}
+
+function reuseSourceReady() {
+  const session = state.session;
+  const review = state.review;
+  const suggestions = state.suggestions;
+  return Boolean(session && sessionCurrent(session) && state.editor && session.objectId && session.version?.version_id &&
+    typeof session.version.title === "string" && typeof session.version.content_hash === "string" && session.version.content_hash &&
+    !session.loading && !session.saving && !session.restoring && !session.uncertain && !session.conflict &&
+    !review?.loading && !review?.pendingReads && !review?.saving && !review?.settling && !review?.uncertain &&
+    !suggestions?.loading && !suggestions?.pendingReads && !suggestionLocksDocument());
+}
+
+function reuseCurrent(reuse) {
+  return Boolean(reuse && state.reuse === reuse && $("reuse-dialog").open && reuseSourceReady() &&
+    reuse.context === state.context && sessionCurrent(reuse.session) && state.editor === reuse.editor &&
+    reuse.session.revision === reuse.revision && reuse.session.objectId === reuse.objectId &&
+    reuse.session.version?.version_id === reuse.versionId &&
+    state.review === reuse.review && state.review?.composer === reuse.reviewComposer &&
+    state.review?.composer?.revision === reuse.reviewRevision &&
+    state.suggestions === reuse.suggestions && state.suggestions?.composer === reuse.suggestionComposer &&
+    state.suggestions?.composer?.revision === reuse.suggestionRevision);
+}
+
+function closeReuse(returnFocus = false) {
+  const reuse = state.reuse;
+  state.reuse = null;
+  reuse?.controller?.abort();
+  if (reuse?.discardResolve && state.discardResolve === reuse.discardResolve) settleDiscard(false);
+  $("reuse-dialog").close();
+  $("reuse-title").value = "";
+  $("reuse-title").disabled = false;
+  $("reuse-title").setCustomValidity("");
+  $("reuse-source").textContent = "";
+  $("reuse-status").textContent = "";
+  $("reuse-submit").disabled = true;
+  $("document-reuse").disabled = !state.canCreate || !reuseSourceReady();
+  if (returnFocus && reuse?.session === state.session && !$("document-reuse").disabled) $("document-reuse").focus();
+}
+
+function updateReuseControls() {
+  $("document-reuse").disabled = !state.canCreate || !reuseSourceReady() || Boolean(state.reuse?.busy);
+  const reuse = state.reuse;
+  if (!reuse) return;
+  if (!reuseCurrent(reuse)) { closeReuse(); return; }
+  const title = $("reuse-title").value.trim();
+  $("reuse-title").disabled = reuse.busy;
+  $("reuse-title").setCustomValidity(title && !validReuseTitle(title) ? "Bitte verwenden Sie höchstens 200 Zeichen ohne Steuerzeichen." : "");
+  $("reuse-submit").disabled = reuse.busy || !validReuseTitle(title);
+}
+
+function validReuseTitle(title) {
+  return Boolean(title && title.length <= 200 && Array.from(title).every((character) => {
+    const code = character.codePointAt(0);
+    return code >= 32 && !(code >= 0xd800 && code <= 0xdfff);
+  }));
+}
+
+function reuseTitle(title) {
+  let result = "Kopie von ";
+  for (const character of title) {
+    if (result.length + character.length > 200) break;
+    result += character;
+  }
+  return result.trim();
+}
+
+function openReuse() {
+  if (!state.canCreate || !reuseSourceReady() || document.querySelector("dialog[open]")) return;
+  const session = state.session;
+  state.reuse = { session, editor: state.editor, context: state.context, revision: session.revision,
+    objectId: session.objectId, versionId: session.version.version_id, contentHash: session.version.content_hash,
+    sourceTitle: session.version.title, review: state.review, reviewComposer: state.review?.composer,
+    reviewRevision: state.review?.composer?.revision, suggestions: state.suggestions,
+    suggestionComposer: state.suggestions?.composer, suggestionRevision: state.suggestions?.composer?.revision,
+    request: 0, controller: null, busy: false, discardResolve: null };
+  $("reuse-title").value = reuseTitle(session.version.title);
+  $("reuse-source").textContent = `${session.version.title}\n${session.historical ? "Frühere gespeicherte Fassung" : "Geöffnete gespeicherte Fassung"} · ${dateLabel(session.version.created_at_utc)}`;
+  $("reuse-status").textContent = "Die gespeicherte Fassung und Ihr Erstellrecht werden vor der Übernahme erneut geprüft.";
+  $("reuse-dialog").showModal();
+  updateReuseControls();
+  $("reuse-title").select();
+}
+
+async function submitReuse(event) {
+  event.preventDefault();
+  const reuse = state.reuse;
+  if (!reuseCurrent(reuse) || reuse.busy || !$("reuse-form").reportValidity()) return;
+  const title = $("reuse-title").value.trim();
+  if (!validReuseTitle(title)) return;
+  const request = ++reuse.request;
+  const current = () => reuseCurrent(reuse) && reuse.request === request && $("reuse-title").value.trim() === title;
+  reuse.busy = true;
+  reuse.controller = new AbortController();
+  $("reuse-status").textContent = "Übernahme wird vorbereitet …";
+  updateReuseControls();
+  let prepared = null;
+  try {
+    // Consent does not discard anything. Authorization is read only after the
+    // user has decided, and the original workspace survives every failure.
+    const confirmation = confirmDiscard();
+    reuse.discardResolve = state.discardResolve;
+    const confirmed = await confirmation;
+    if (state.reuse === reuse && reuse.request === request) reuse.discardResolve = null;
+    if (!current()) return;
+    if (!confirmed) { $("reuse-status").textContent = "Übernahme abgebrochen. Ihr bisheriger Entwurf bleibt erhalten."; return; }
+    $("reuse-status").textContent = "Gespeicherte Fassung und Erstellrecht werden geprüft …";
+    const result = await api(`/v1/office/documents/${encodeURIComponent(reuse.objectId)}/content?version_id=${encodeURIComponent(reuse.versionId)}`,
+      { signal: reuse.controller.signal }, reuse.context);
+    if (!current()) return;
+    if (result?.tenant_id !== reuse.context.tenantId || result.version?.content_hash !== reuse.contentHash ||
+        result.version?.title !== reuse.sourceTitle) throw new ApiError(502);
+    const content = validatedContent(result, reuse.objectId, reuse.versionId);
+    validateEditorDocument(state.editor.schema.nodeFromJSON(content));
+    const listing = await api("/v1/office/documents", { signal: reuse.controller.signal }, reuse.context);
+    if (!current()) return;
+    if (listing?.tenant_id !== reuse.context.tenantId || typeof listing.can_create !== "boolean" ||
+        !Array.isArray(listing.documents)) throw new ApiError(502);
+    // The listing is bounded. Exact source authorization comes from content;
+    // source presence in this page, source write access and head equality do not.
+    if (listing.can_create !== true) {
+      state.canCreate = false;
+      renderDocuments();
+      $("reuse-status").textContent = "Sie dürfen derzeit kein neues Dokument anlegen. Ihr bisheriger Entwurf bleibt erhalten.";
+      return;
+    }
+    const replacement = freshSession();
+    replacement.canWrite = true;
+    prepared = prepareEditor(content, replacement);
+    if (!current()) return;
+    clearWorkspace();
+    state.canCreate = true;
+    state.session = replacement;
+    state.editor = prepared.editor;
+    $("office-editor").replaceChildren(prepared.editorHost);
+    prepared = null;
+    $("office-welcome").hidden = true;
+    $("document-workspace").hidden = false;
+    $("document-title").value = title;
+    $("document-mode").textContent = "Neuer Entwurf";
+    $("document-version").textContent = "Noch nicht gespeichert";
+    $("document-version").title = "";
+    $("history-status").textContent = "Mit dem ersten Speichern beginnt die Versionsgeschichte.";
+    replacement.loading = false;
+    $("office-shell").classList.remove("documents-open");
+    $("documents-toggle").setAttribute("aria-expanded", "false");
+    refreshDocumentTools();
+    renderDocuments();
+    notice("Gespeicherte Fassung als neues, ungespeichertes Dokument übernommen.");
+    state.editor.view.dispatch(state.editor.state.tr.setSelection(Selection.atStart(state.editor.state.doc)));
+    focusEditor();
+  } catch (error) {
+    if (!current()) return;
+    if (denied(error)) { officeAccessDenied(); return; }
+    $("reuse-status").textContent = "Die Fassung konnte nicht übernommen werden. Bitte versuchen Sie es erneut; Ihr bisheriger Entwurf bleibt erhalten.";
+  } finally {
+    prepared?.editor.destroy();
+    if (current()) { reuse.busy = false; updateReuseControls(); }
+  }
 }
 
 function printAllowed() {
@@ -1620,6 +1788,7 @@ function selectedReviewAnchor() {
   return { anchor: { from, to }, quote };
 }
 function updateReviewControls() {
+  updateReuseControls();
   const review = state.review;
   const busy = reviewBusy(review);
   $("comments-toggle").disabled = !state.editor || !state.session?.objectId || Boolean(state.session?.loading);
@@ -1742,6 +1911,8 @@ async function loadReviewThread(threadId, append = false) {
   const prior = append ? review.detail : null;
   if (append && (!prior || !prior.next_after_revision)) return;
   const request = ++review.detailRequest;
+  review.pendingReads = (review.pendingReads || 0) + 1;
+  updateReuseControls();
   review.selectedId = threadId;
   if (!append) { review.detail = null; clearReviewHighlight(); renderReviewThreads(review); }
   $("comments-status").textContent = "Diskussion wird geladen …";
@@ -1771,6 +1942,9 @@ async function loadReviewThread(threadId, append = false) {
     if (reviewCurrent(review) && review.detailRequest === request) {
       review.detail = null; renderReviewThreads(review); reviewReadFailure(error, review);
     }
+  } finally {
+    review.pendingReads -= 1;
+    if (reviewCurrent(review)) updateReuseControls();
   }
 }
 
@@ -1810,6 +1984,8 @@ function renderReviewDetail(card, review) {
 
 async function locateReviewThread(review, thread) {
   if (!reviewCurrent(review) || isDirty() || !thread.anchor || reviewBusy(review)) return;
+  review.pendingReads = (review.pendingReads || 0) + 1;
+  updateReuseControls();
   try {
     const fresh = await api(`/v1/office/documents/${encodeURIComponent(review.session.objectId)}/content?version_id=${encodeURIComponent(review.versionId)}`, { signal: review.controller.signal }, review.context);
     if (!reviewCurrent(review) || isDirty() || review.detail?.thread.thread_id !== thread.thread_id) return;
@@ -1823,6 +1999,10 @@ async function locateReviewThread(review, thread) {
     focusEditor();
     if (window.matchMedia("(max-width: 1000px)").matches) await hideInspectorWithReview();
   } catch (error) { reviewReadFailure(error, review); }
+  finally {
+    review.pendingReads -= 1;
+    if (reviewCurrent(review)) updateReuseControls();
+  }
 }
 
 async function beginReviewComposer(operation, thread = null, selection = null) {
@@ -2022,6 +2202,7 @@ function canAcceptSuggestion(suggestions, detail = suggestions?.detail) {
     !suggestions.session.historical && !suggestions.session.conflict && !isDirty() && suggestions.currentVersionId === suggestions.versionId;
 }
 function updateSuggestionControls() {
+  updateReuseControls();
   const suggestions = state.suggestions;
   const busy = suggestionBusy(suggestions);
   $("suggestions-toggle").disabled = !state.editor || !state.session?.objectId || Boolean(state.session?.loading);
@@ -2154,6 +2335,8 @@ async function loadSuggestionDetail(id) {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.preparing || suggestions.saving || suggestions.uncertain) return false;
   const request = ++suggestions.detailRequest;
+  suggestions.pendingReads = (suggestions.pendingReads || 0) + 1;
+  updateReuseControls();
   suggestions.attempt = null; closeSuggestionConfirmation();
   suggestions.selectedId = id; suggestions.detail = null; renderSuggestions(suggestions);
   $("suggestions-status").textContent = "Vorschlag wird geladen …";
@@ -2171,6 +2354,9 @@ async function loadSuggestionDetail(id) {
       suggestions.detail = null; renderSuggestions(suggestions); suggestionReadFailure(error, suggestions);
     }
     return false;
+  } finally {
+    suggestions.pendingReads -= 1;
+    if (suggestionCurrent(suggestions)) updateReuseControls();
   }
 }
 function clearSuggestionComposer(suggestions) {
@@ -2430,6 +2616,22 @@ $("save-confirm").addEventListener("change", () => { $("save-submit").disabled =
 $("document-title").addEventListener("input", () => { if (state.session) contentChanged(state.session); });
 $("document-reload").addEventListener("click", () => { if (state.session?.objectId) openDocument(state.session.objectId); });
 $("document-print").addEventListener("click", openPrint);
+$("document-reuse").addEventListener("click", openReuse);
+$("reuse-form").addEventListener("submit", submitReuse);
+$("reuse-title").addEventListener("input", () => {
+  const reuse = state.reuse;
+  if (!reuse) return;
+  reuse.request += 1;
+  reuse.controller?.abort();
+  if (reuse.discardResolve && state.discardResolve === reuse.discardResolve) settleDiscard(false);
+  reuse.discardResolve = null;
+  reuse.busy = false;
+  $("reuse-status").textContent = "";
+  updateReuseControls();
+});
+["reuse-close", "reuse-cancel"].forEach((id) => $(id).addEventListener("click", () => closeReuse(true)));
+$("reuse-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeReuse(true); });
+$("reuse-dialog").addEventListener("close", () => { if (!$("reuse-dialog").open && state.reuse) closeReuse(); });
 $("print-close").addEventListener("click", () => closePrint(true));
 $("print-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closePrint(true); });
 $("print-dialog").addEventListener("close", () => {

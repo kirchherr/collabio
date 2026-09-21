@@ -2,6 +2,10 @@
 
 Updated: 2026-09-21
 
+Active continuation: Roadmap 259 / PLANS 120 implements saved-version reuse as an independent new document draft.
+Source read and create permission are freshly checked before the local transition; existing confirmed Create supplies
+the new identity and creator ACL. No backend/schema change is planned. Development validation and rollout are pending.
+
 Roadmap 258 / PLANS 119 completes saved-version print preview and browser print/PDF output. Office development
 continues before CRM expansion. Full quality and all 170 browser/model checks passed on `cf2244c`; the final
 cleanup-only test guard on `d8300aa` passed its affected browser case. Actual PDF text, dimensions, pagination,

@@ -1244,6 +1244,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "version_comparison_revalidates_both_saved_sources",
         "historical_takeover_is_local_until_confirmed_cas_save",
         "browser_print_requires_fresh_exact_version_read_and_explicit_action",
+        "saved_version_reuse_requires_fresh_read_and_create_capability_before_local_draft",
+        "reused_drafts_create_independent_objects_without_source_acl_or_review_history",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",

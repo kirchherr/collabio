@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 170 passing checks: 135 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 180 passing checks: 145 browser cases and 35 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -174,6 +174,14 @@ PDF QA report: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3
 Final artifacts and rendered pages are under ignored `e2e/work/artifacts/roadmap-258/`. Later `d8300aa` changes only
 test cleanup and is not the source of the full report; its affected-case recheck and API-only rollout/health/cleanup
 are recorded separately in the operations log and current handoff. Item 257 recovery is retained, not newly executed.
+
+Roadmap 259 adds eight saved-version reuse workflows and two responsive runs (development acceptance pending).
+Existing real PostgreSQL/S3 APIs prove independent creation from current/historical rich content, unchanged source/history,
+new identity and creator ACL without copied reader grants, discussions or suggestions. Cases cover read-only source access
+with create permission, ordinary readers, fresh ACL/feature closure, discard consent and preserved drafts, transient failures,
+late close/context reads, uncertain-save restrictions, exact create retries and responsive title/source controls.
+No new test authorization bypass or failure-injection endpoint is added. Item 257 recovery evidence is retained for this
+UI-only workflow; it must not be reported as a fresh restore execution.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source

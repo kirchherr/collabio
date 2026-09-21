@@ -137,6 +137,8 @@ Current sprint:
 
 119. [x] Complete native Office saved-version print preview with A4/Letter and orientation, fresh exact-version authorization before browser print/PDF, safe literal content rendering, isolated print media and cleanup. Full quality on cf2244c passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest. All 170 browser/model checks passed in 562.234 seconds (135 browser + 35 model, zero skipped, unexpected or flaky), preserving the previous 162. Real PDF output passed text, pagination, semantic-structure and visual checks. The final test-cleanup guard on d8300aa passed its affected browser case. No new persistence, schema, API, dependency, server export or DOCX admission; item 257 recovery evidence is retained. Final rollout, health and safeguards are recorded in docs/CURRENT_HANDOFF.md.
 
+120. [ ] Reuse an exact saved native Office version as an independent new document draft: fresh source read and create capability, editable bounded title, protected dirty drafts and existing explicit create confirmation. Preserve source history and ACLs; do not copy discussion/suggestion state. Preserve all 170 existing checks and closed tenant/pilot/engine gates.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
