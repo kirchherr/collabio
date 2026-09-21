@@ -18,6 +18,15 @@ export function pdfPageCount(pdf, width, height) {
   return [...structure.matchAll(/\/Type\s*\/Page\b/g)].length;
 }
 
+export function expectPdfStructure(pdf, tags) {
+  // Chromium emits these structure dictionaries outside content streams. A
+  // tagged request or MarkInfo flag alone does not prove accessible content.
+  const structure = pdf.toString("latin1");
+  expect(structure).toMatch(/\/StructTreeRoot\b/);
+  expect(structure).toMatch(/\/Type\s*\/StructElem\b/);
+  for (const tag of tags) expect(structure, `PDF semantic structure ${tag}`).toMatch(new RegExp(`/S\\s*/${tag}\\b`));
+}
+
 export function collectOfficePrintRequests(page) {
   const requests = [];
   page.on("request", (request) => {

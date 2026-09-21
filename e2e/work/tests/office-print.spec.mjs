@@ -6,7 +6,7 @@ import {
   officeContent, officeEditor, officeVersions, openOffice, openOfficeDocument, saveOffice, setOfficeAcl,
 } from "./office-support.mjs";
 import {
-  PRINT_WHITESPACE, collectOfficePrintRequests, createPrintFixture, expectPrintCleared, installPrintProbe,
+  PRINT_WHITESPACE, collectOfficePrintRequests, createPrintFixture, expectPdfStructure, expectPrintCleared, installPrintProbe,
   observeLatePrint, openPrintHistory, openPrintPreview, pdfPageCount, refreshPrintPreview, submitOfficePrint,
 } from "./office-print-support.mjs";
 
@@ -50,6 +50,7 @@ test("Office prints the freshly authorized exact rich version to a real multipag
   expect(layout).toMatchObject({ rootVisible: true, shellVisible: false, dialogVisible: false, guidanceVisible: false });
   expect(layout.overflow).not.toContain(true);
   const pageCount = pdfPageCount(pdf, 792, 612);
+  expectPdfStructure(pdf, ["H1", "P", "Table", "TH", "TD", "L", "LI"]);
   expect(pageCount).toBeGreaterThan(1);
   expect(pageCount).toBeLessThan(30);
   await expectPrintCleared(page);
@@ -83,6 +84,7 @@ test("Office ordinary readers print an exact historical version with its histori
   await expect.poll(() => calls[0]?.pdf?.length || 0).toBeGreaterThan(1000);
   expect(calls).toHaveLength(1);
   expect(pdfPageCount(calls[0].pdf, 594.96, 841.92)).toBe(1);
+  expectPdfStructure(calls[0].pdf, ["H1", "P"]);
   expect(calls[0].snapshot.text).toContain("Historical printable wording");
   expect(calls[0].snapshot.text).not.toContain("Current protected text");
   expect(calls[0].snapshot.text).not.toContain(second.version.title);

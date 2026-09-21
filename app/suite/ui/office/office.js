@@ -1132,7 +1132,7 @@ function printAllowed() {
 }
 
 function printCurrent(print) {
-  return Boolean(print && state.print === print && $("print-dialog").open && print.context === state.context &&
+  return Boolean(print && state.print === print && ($("print-dialog").open || print.dialogTransition) && print.context === state.context &&
     sessionCurrent(print.session) && print.session.revision === print.revision &&
     print.session.objectId === print.objectId && print.session.version?.version_id === print.versionId && printAllowed());
 }
@@ -1179,6 +1179,20 @@ function updatePrintControls() {
   $("print-preview").className = printFormat();
 }
 
+function setPrintModal(print, modal) {
+  if (!printCurrent(print)) return;
+  // A modal dialog makes its sibling print root inert, which removes native
+  // content semantics from tagged PDFs. Keep the same visible preview open
+  // nonmodally only for the browser's print operation.
+  print.dialogTransition = true;
+  try {
+    $("print-dialog").close();
+    if (!printCurrent(print)) return;
+    if (modal) $("print-dialog").showModal();
+    else $("print-dialog").show();
+  } finally { print.dialogTransition = false; }
+}
+
 function validatePrintContent(result, print) {
   if (result?.tenant_id !== print.context.tenantId || result.version?.content_hash !== print.contentHash ||
     result.version?.title !== print.title) throw new ApiError(502);
@@ -1222,8 +1236,14 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       document.body.classList.add("office-print-ready");
       updatePrintControls();
       $("print-status").textContent = "Der Browser steuert Druck und PDF-Speicherung. Schließen Sie anschließend den Browserdialog.";
-      try { await window.print(); }
-      finally { clearPreparedPrint(print); }
+      try {
+        setPrintModal(print, false);
+        if (!current()) return;
+        await window.print();
+      } finally {
+        clearPreparedPrint(print);
+        if (current()) setPrintModal(print, true);
+      }
       if (!current()) return;
       $("print-status").textContent = "Druckansicht bereit. Ob gedruckt oder eine PDF gespeichert wurde, bestimmt der Browser.";
     }
@@ -1252,7 +1272,7 @@ function openPrint() {
   const session = state.session;
   const print = { session, context: state.context, revision: session.revision, objectId: session.objectId,
     versionId: session.version.version_id, contentHash: session.version.content_hash, title: session.version.title,
-    request: 0, content: null, controller: null, loading: false, printing: false };
+    request: 0, content: null, controller: null, loading: false, printing: false, dialogTransition: false };
   state.print = print;
   $("print-dialog").showModal();
   loadPrintContent(print);
@@ -2412,7 +2432,9 @@ $("document-reload").addEventListener("click", () => { if (state.session?.object
 $("document-print").addEventListener("click", openPrint);
 $("print-close").addEventListener("click", () => closePrint(true));
 $("print-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closePrint(true); });
-$("print-dialog").addEventListener("close", () => { if (!$("print-dialog").open && state.print) closePrint(); });
+$("print-dialog").addEventListener("close", () => {
+  if (!$("print-dialog").open && state.print && !state.print.dialogTransition) closePrint();
+});
 $("print-refresh").addEventListener("click", () => loadPrintContent());
 $("print-submit").addEventListener("click", () => loadPrintContent(state.print, true));
 ["print-paper", "print-orientation"].forEach((id) => $(id).addEventListener("change", updatePrintControls));
