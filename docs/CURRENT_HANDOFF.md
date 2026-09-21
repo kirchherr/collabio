@@ -63,6 +63,13 @@ The --no-deps disposable check started no auxiliary service, and Collabio remain
 record changes no runtime, tested behavior or authorization boundary. Independent final evidence review matched counts,
 durations, nine local report/log/screenshot hashes and both access-log redaction checks without finding a documentation
 blocker. The initially failed report was also retrieved from its retained dev001 copy and its hash reconfirmed by root.
+Roadmap 262 closeout `e567d76` and wording correction `3f38ffc` were published and synchronized. All eleven
+documentation/module/roadmap contract checks passed in 59.12 seconds with only the known Starlette/AnyIO warning;
+health remained ok at 2026-09-21 15:22:40 UTC. The --no-deps disposable check started no auxiliary service and Collabio
+remained running(3). Log hash: `sha256:d8d92e59d6331672bb55664e0cc854d4a16b0fdb205284738dacc7e3e9c5ec2c`.
+Independent review matched report/log/PDF/screenshot hashes and release evidence. Final wording distinguishes the normal
+creator ACL from manual fixture grants and saved formatting versions from historical-only versions. This evidence-only
+record changes no implementation, tested behavior or authorization boundary.
 
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
