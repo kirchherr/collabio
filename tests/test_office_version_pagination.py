@@ -127,7 +127,7 @@ def test_history_cursor_context_is_checked_before_repository(office: Any, monkey
         token += "tampered"
     read = Mock(side_effect=AssertionError("invalid cursor must precede repository"))
     monkeypatch.setattr(repository, "history_page", read)
-    with pytest.raises(OfficeDocumentHistoryRequestError, match="^Invalid version history request$"):
+    with pytest.raises(OfficeDocumentHistoryRequestError, match=r"^Invalid version history request$"):
         service.history(user_context=user, object_id=object_id, page_size=page_size, cursor=token)
     read.assert_not_called()
 
