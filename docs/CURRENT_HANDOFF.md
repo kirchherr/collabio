@@ -1,11 +1,11 @@
 # Current Project Handoff
 
-Updated: 2026-09-18
+Updated: 2026-09-21
 
-Publication state: runtime implementation `2305a96` is pushed, synchronized and verified on dev001. The local
-Roadmap 256 documentation closeout is prepared; its public GitHub push was rejected by automatic approval review
-because the package contains operational metadata. Await explicit publication approval before pushing this closeout.
-The final documentation-only remote contract run must follow that authorized synchronization.
+Publication state: on 2026-09-21 the operator explicitly approved publishing the prepared Roadmap 256 documentation,
+including its operational metadata, to the public `kirchherr/collabio` repository and instructed work to continue.
+The final documentation-only remote contract run follows that authorized synchronization. Runtime implementation
+`2305a96` is already pushed, synchronized and verified on dev001.
 
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
