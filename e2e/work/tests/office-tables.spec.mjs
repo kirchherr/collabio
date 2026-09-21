@@ -193,12 +193,18 @@ test("Office disables table mutations during a pending save and an uncertain sto
   const path = `${OFFICE_PATH}/${first.document.object_id}/versions`;
   let release;
   let started;
+  let captured;
   const gate = new Promise((resolve) => { release = resolve; });
   const ready = new Promise((resolve) => { started = resolve; });
+  const upstreamResponse = new Promise((resolve) => { captured = resolve; });
   await page.route(`**${path}`, async (route) => {
     started();
     await gate;
-    await route.continue({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" } });
+    const response = await route.fetch({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" }, maxRetries: 0, maxRedirects: 0 });
+    const body = await response.body();
+    const result = { status: response.status(), headers: response.headers(), json: JSON.parse(body.toString("utf8")) };
+    await route.fulfill({ response, body });
+    captured(result);
   }, { times: 1 });
   try {
     await page.locator("#document-save").click();
@@ -211,7 +217,11 @@ test("Office disables table mutations during a pending save and an uncertain sto
     release();
     const response = await failed;
     expect(response.status()).toBe(503);
-    expect((await response.json()).detail).toBe("Office storage unavailable");
+    expect(response.headers()["cache-control"]).toContain("no-store");
+    const upstream = await upstreamResponse;
+    expect(upstream.status).toBe(503);
+    expect(upstream.headers["cache-control"]).toContain("no-store");
+    expect(upstream.json.detail).toBe("Office storage unavailable");
     await expect(page.locator("#save-dialog")).toBeHidden();
     await expect(page.locator("#document-save")).toHaveText("Speicherung prüfen");
     await expectTableControlsDisabled(page);

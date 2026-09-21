@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import {
   OFFICE_HEADERS, OFFICE_PATH, OFFICE_READER_HEADERS, OFFICE_READER_ID,
-  createOfficeDocument, newOfficeDraft, officeContent, officeEditor, officeFeatures,
+  captureOfficeResponse, createOfficeDocument, newOfficeDraft, officeContent, officeEditor, officeFeatures,
   officeVersions, openOffice, openOfficeDocument, saveOffice, setOfficeAcl, setOfficeFeatures,
 } from "./office-support.mjs";
 import {
@@ -29,11 +29,18 @@ async function apiReply(page, objectId, threadId, revision, body) {
 }
 
 async function refreshComments(page, objectId, status = 200) {
+  const captured = status >= 400 ? await captureOfficeResponse(page, (url) => url.pathname === reviewPath(objectId)) : null;
   const pending = page.waitForResponse((response) => new URL(response.url()).pathname === reviewPath(objectId));
   await page.locator("#comments-refresh").click();
   const response = await pending;
   expect(response.status()).toBe(status);
-  await response.json();
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  if (captured) {
+    const upstream = await captured.received;
+    expect(upstream.status).toBe(status);
+    expect(upstream.headers["cache-control"]).toContain("no-store");
+    expect(upstream.json.detail).toBe("Document not found");
+  } else await response.json();
 }
 
 async function observeLateReview(page, text) {
@@ -193,12 +200,8 @@ test("Office uncertain review storage writes retry the identical command and fai
   const objectId = saved.document.object_id;
   await openComments(page, objectId);
   const writes = collectReviewWrites(page);
-  await page.route((url) => url.pathname === reviewPath(objectId), async (route) => {
-    if (route.request().method() !== "POST") return route.continue();
-    await route.continue({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" } });
-  }, { times: 1 });
   await prepareComment(page, "Retriable stored comment");
-  await confirmComment(page, objectId, { status: 503 });
+  await confirmComment(page, objectId, { status: 503, extraHeaders: { "X-Work-E2E-Fail-Storage": "1" } });
   await expect(page.locator("#comment-body")).toHaveValue("Retriable stored comment");
   await expect(page.locator("#comment-prepare")).toContainText("Speicherung prüfen");
   await page.locator("#comment-prepare").click();

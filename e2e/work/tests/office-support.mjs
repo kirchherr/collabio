@@ -15,7 +15,7 @@ export const officeContentPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id
 export const officeEditor = (page) => page.locator("#office-editor .tiptap");
 export const textDocument = (text) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
-export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {} } = {}) {
+export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {}, times = 1 } = {}) {
   let complete;
   const received = new Promise((resolve) => { complete = resolve; });
   await page.route(matches, async (route) => {
@@ -27,7 +27,7 @@ export async function captureOfficeResponse(page, matches, { method = "GET", ext
     const result = { status: response.status(), headers: response.headers(), json: JSON.parse(body.toString("utf8")) };
     await route.fulfill({ response, body });
     complete(result);
-  }, { times: 1 });
+  }, { times });
   return { received };
 }
 
@@ -52,20 +52,29 @@ export async function newOfficeDraft(page, title, { text, template = "blank" } =
   if (text !== undefined) await officeEditor(page).fill(text);
 }
 
-export async function saveOffice(page, { status = 200, objectId = null } = {}) {
+export async function saveOffice(page, { status = 200, objectId = null, extraHeaders = {} } = {}) {
   await page.locator("#document-save").click();
   await expect(page.locator("#save-dialog")).toBeVisible();
   await expect(page.locator("#save-submit")).toBeDisabled();
   await page.locator("#save-confirm").check();
   const path = objectId ? `${OFFICE_PATH}/${objectId}/versions` : OFFICE_PATH;
+  const captured = status >= 400 ? await captureOfficeResponse(page, (url) => url.pathname === path, { method: "POST", extraHeaders }) : null;
   const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST");
   await page.locator("#save-submit").click();
   const response = await pending;
   expect(response.status()).toBe(status);
-  const result = await response.json();
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const upstream = captured ? await captured.received : null;
+  const result = upstream ? upstream.json : await response.json();
+  if (upstream) {
+    expect(upstream.status).toBe(status);
+    expect(upstream.headers["cache-control"]).toContain("no-store");
+    expect(result.detail).toEqual(expect.any(String));
+    if (status === 409) expect(result.detail).toBe("The document has a newer or conflicting saved version");
+    if (status === 503) expect(result.detail).toBe("Office storage unavailable");
+  }
   await expect(page.locator("#save-dialog")).toBeHidden();
   if (status === 200) {
-    expect(response.headers()["cache-control"]).toContain("no-store");
     expect(result.tenant_id).toBe(TENANT_ID);
     expect(result.document.object_id).toMatch(/^office-doc-[a-f0-9]{32}$/);
     expect(result.version.version_id).toMatch(/^office-version-[a-f0-9]{32}$/);

@@ -218,9 +218,16 @@ test("Office current ACL revocation during comparison denies takeover and clears
   const writes = collectWrites(page);
   await setOfficeAcl(page, pair.objectId, { creator: true, status: "revoked" });
   try {
+    // Both fresh content reads can independently deny access and abort the other.
+    // Buffer their genuine upstream replies before the UI clears protected state.
+    const captured = await captureOfficeResponse(page, (url) => url.pathname === officeContentPath(pair.objectId), { times: 2 });
     const denied = page.waitForResponse((response) => new URL(response.url()).pathname === officeContentPath(pair.objectId) && response.status() === 404);
     await page.locator("#compare-restore").click();
-    expect((await (await denied).json()).detail).toBe("Document not found");
+    expect((await denied).headers()["cache-control"]).toContain("no-store");
+    const upstream = await captured.received;
+    expect(upstream.status).toBe(404);
+    expect(upstream.headers["cache-control"]).toContain("no-store");
+    expect(upstream.json.detail).toBe("Document not found");
     await expect(page.locator("#compare-dialog")).toBeHidden();
     await expect(page.locator("#compare-results")).toHaveText("");
     await expect(page.locator("#office-editor")).toHaveText("");

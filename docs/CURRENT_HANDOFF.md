@@ -15,6 +15,12 @@ failed while Playwright read the real 409 response body (`Network.getResponseBod
 The narrow test observation fix buffers the real upstream response unchanged, without retrying writes or changing
 product code; fresh complete validation, rollout and closeout remain pending. Failed report SHA-256:
 `18415b02c2ddc62922231905f297ba9dd7dbdf800e0fe64d1171de9d862191f9` (ignored `roadmap-258/failed-full`).
+On `4545d48`, the focused CAS case and full Python quality passed. The second full browser/model run passed
+168/170 in 560.111 seconds, with the same Chromium body-observation failure on existing review-storage 503 and
+comparison-revocation 404 checks. All eight print checks passed again. Failed report SHA-256:
+`0cb6cfd6cad7cc95d1d359f1ba3314e75978d0c4dde43349964bd58a9b1b5cb4` (ignored `roadmap-258/failed-full2`).
+Expected-error observations are now being consistently buffered from genuine upstream responses, including the
+independently identified table-save, content-read and review-refresh cases; fresh full acceptance is still pending.
 There is no schema, persistence, dependency or API change. Roadmap 257 recovery evidence is retained, not rerun.
 
 Publication state: on 2026-09-21 the operator explicitly approved publishing the prepared Roadmap 256 documentation,

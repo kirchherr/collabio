@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import {
   OFFICE_EDITOR_ID, OFFICE_HEADERS, OFFICE_PATH, OFFICE_READER_HEADERS, OFFICE_READER_ID,
-  createOfficeDocument, holdOfficeRead, newOfficeDraft, observeStaleOfficeContent,
+  captureOfficeResponse, createOfficeDocument, holdOfficeRead, newOfficeDraft, observeStaleOfficeContent,
   officeContent, officeContentPath, officeEditor, officeFeatures, officeVersions,
   openOffice, openOfficeDocument, saveOffice, setOfficeAcl, setOfficeFeatures, textDocument,
 } from "./office-support.mjs";
@@ -212,18 +212,14 @@ test("Office pre-PUT storage failure leaves head unchanged and retries the same 
   await officeEditor(page).fill("Recoverable saved draft");
   const attempts = [];
   const path = `${OFFICE_PATH}/${first.document.object_id}/versions`;
-  await page.route(`**${path}`, async (route) => {
-    attempts.push(route.request().postDataJSON());
-    await route.continue({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" } });
-  }, { times: 1 });
-  await saveOffice(page, { objectId: first.document.object_id, status: 503 });
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === path && request.method() === "POST") attempts.push(request.postDataJSON());
+  });
+  await saveOffice(page, { objectId: first.document.object_id, status: 503, extraHeaders: { "X-Work-E2E-Fail-Storage": "1" } });
   await expect(officeEditor(page)).toHaveText("Recoverable saved draft");
   await expect(page.locator("#document-save")).toHaveText("Speicherung prüfen");
   expect((await officeContent(page, first.document.object_id)).version.version_id).toBe(first.version.version_id);
   expect(await officeVersions(page, first.document.object_id)).toHaveLength(1);
-  page.on("request", (request) => {
-    if (new URL(request.url()).pathname === path && request.method() === "POST") attempts.push(request.postDataJSON());
-  });
   const retried = await saveOffice(page, { objectId: first.document.object_id });
   expect(attempts).toHaveLength(2);
   expect(attempts[1]).toEqual(attempts[0]);
@@ -260,14 +256,17 @@ test("Office lost success response replays the actual committed version without 
 test("Office storage read failure clears old content and retry recovers real source bytes", async ({ page }) => {
   await openOffice(page);
   const created = await createOfficeDocument(page, "Synthetic unavailable content", "Storage-backed text");
-  await page.route(`**${officeContentPath(created.document.object_id)}`, async (route) => {
-    await route.continue({ headers: { ...route.request().headers(), "X-Work-E2E-Fail-Storage": "1" } });
-  }, { times: 1 });
+  const captured = await captureOfficeResponse(page, (url) => url.pathname === officeContentPath(created.document.object_id), { extraHeaders: { "X-Work-E2E-Fail-Storage": "1" } });
   const pending = page.waitForResponse((response) => new URL(response.url()).pathname === officeContentPath(created.document.object_id));
   await page.locator("#document-reload").click();
   const failed = await pending;
   expect(failed.status()).toBe(503);
-  expect(await failed.text()).not.toContain("Storage-backed text");
+  expect(failed.headers()["cache-control"]).toContain("no-store");
+  const upstream = await captured.received;
+  expect(upstream.status).toBe(503);
+  expect(upstream.headers["cache-control"]).toContain("no-store");
+  expect(upstream.json.detail).toBe("Office storage unavailable");
+  expect(JSON.stringify(upstream.json)).not.toContain("Storage-backed text");
   await expect(page.locator("#office-editor")).toHaveText("");
   await expect(page.locator("#document-notice")).toContainText("konnte nicht geladen werden");
   await page.locator("#document-reload").click();

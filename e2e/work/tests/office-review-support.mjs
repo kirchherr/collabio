@@ -47,21 +47,23 @@ export async function prepareComment(page, body, { selection = false } = {}) {
   await expect(page.locator("#comment-confirm-submit")).toBeDisabled();
 }
 
-export async function confirmComment(page, objectId, { threadId = null, status = 200 } = {}) {
+export async function confirmComment(page, objectId, { threadId = null, status = 200, extraHeaders = {} } = {}) {
   const path = threadId ? `${threadPath(objectId, threadId)}/events` : reviewPath(objectId);
   await page.locator("#comment-confirm-checkbox").check();
-  const captured = status === 409 ? await captureOfficeResponse(page, (url) => url.pathname === path, { method: "POST" }) : null;
-  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST")
-    .then(async (response) => ({ response, result: captured ? (await captured.received).json : await response.json() }));
+  const captured = status >= 400 ? await captureOfficeResponse(page, (url) => url.pathname === path, { method: "POST", extraHeaders }) : null;
+  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST");
   await page.locator("#comment-confirm-submit").click();
-  const { response, result } = await pending;
+  const response = await pending;
   expect(response.status()).toBe(status);
   expect(response.headers()["cache-control"]).toContain("no-store");
-  if (captured) {
-    const upstream = await captured.received;
+  const upstream = captured ? await captured.received : null;
+  const result = upstream ? upstream.json : await response.json();
+  if (upstream) {
     expect(upstream.status).toBe(status);
     expect(upstream.headers["cache-control"]).toContain("no-store");
-    expect(result.detail).toBe("The document has a newer or conflicting saved version");
+    expect(result.detail).toEqual(expect.any(String));
+    if (status === 409) expect(result.detail).toBe("The document has a newer or conflicting saved version");
+    if (status === 503) expect(result.detail).toBe("Office storage unavailable");
   }
   await expect(page.locator("#comment-confirm-dialog")).toBeHidden();
   if (status === 200) {
