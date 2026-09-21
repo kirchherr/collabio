@@ -49,6 +49,51 @@ async function observeComparisonText(page, text) {
   }, text);
 }
 
+async function captureRevokedTakeoverReads(page, objectId) {
+  const matches = (url) => url.pathname === officeContentPath(objectId);
+  const failedRequests = new Map();
+  const failed = (request) => { if (matches(new URL(request.url()))) failedRequests.set(request, request.failure()?.errorText); };
+  page.on("requestfailed", failed);
+  const replies = [];
+  const jobs = [];
+  let complete;
+  let bothReady;
+  let failReady;
+  const received = new Promise((resolve) => { complete = resolve; });
+  const ready = new Promise((resolve, reject) => { bothReady = resolve; failReady = reject; });
+  const handler = (route) => {
+    const job = (async () => {
+      const request = route.request();
+      expect(request.method()).toBe("GET");
+      const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+      const body = await response.body();
+      const result = { status: response.status(), headers: response.headers(), json: JSON.parse(body.toString("utf8")) };
+      replies.push(result);
+      // Read both actual upstream replies while the ACL is still revoked. The
+      // first delivered denial may then abort its parallel browser request.
+      if (replies.length === 2) bothReady();
+      await ready;
+      try { await route.fulfill({ response, body }); }
+      catch (error) {
+        if (!String(error).includes("Route is already handled!")) throw error;
+        await expect.poll(() => failedRequests.get(request), { message: "The exact sibling request must have been aborted by the browser" }).toBe("net::ERR_ABORTED");
+        return;
+      }
+      complete(result);
+    })().catch((error) => { failReady(error); throw error; });
+    jobs.push(job);
+    return job;
+  };
+  await page.route(matches, handler, { times: 2 });
+  return { received, replies, async dispose() {
+    try {
+      await page.unroute(matches, handler);
+      const settled = await Promise.allSettled(jobs);
+      for (const result of settled) if (result.status === "rejected") throw result.reason;
+    } finally { page.off("requestfailed", failed); }
+  } };
+}
+
 test("Office compares exact saved text, formatting, titles and tables without writing, including equal versions", async ({ page }) => {
   const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
   await openOffice(page);
@@ -217,10 +262,10 @@ test("Office current ACL revocation during comparison denies takeover and clears
   await comparePair(page, pair);
   const writes = collectWrites(page);
   await setOfficeAcl(page, pair.objectId, { creator: true, status: "revoked" });
+  const captured = await captureRevokedTakeoverReads(page, pair.objectId);
   try {
     // Both fresh content reads can independently deny access and abort the other.
     // Buffer their genuine upstream replies before the UI clears protected state.
-    const captured = await captureOfficeResponse(page, (url) => url.pathname === officeContentPath(pair.objectId), { times: 2 });
     const denied = page.waitForResponse((response) => new URL(response.url()).pathname === officeContentPath(pair.objectId) && response.status() === 404);
     await page.locator("#compare-restore").click();
     expect((await denied).headers()["cache-control"]).toContain("no-store");
@@ -234,7 +279,16 @@ test("Office current ACL revocation during comparison denies takeover and clears
     await expect(page.locator("#document-title")).toHaveValue("");
     await expect(page.locator("#documents-status")).toContainText("nicht mehr freigegeben");
     expect(writes).toHaveLength(0);
-  } finally { await setOfficeAcl(page, pair.objectId, { creator: true }); }
+  } finally {
+    try { await captured.dispose(); }
+    finally { await setOfficeAcl(page, pair.objectId, { creator: true }); }
+  }
+  expect(captured.replies).toHaveLength(2);
+  for (const reply of captured.replies) {
+    expect(reply.status).toBe(404);
+    expect(reply.headers["cache-control"]).toContain("no-store");
+    expect(reply.json.detail).toBe("Document not found");
+  }
   expect(await officeVersions(page, pair.objectId)).toHaveLength(2);
 });
 

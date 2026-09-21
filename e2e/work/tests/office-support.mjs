@@ -15,7 +15,7 @@ export const officeContentPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id
 export const officeEditor = (page) => page.locator("#office-editor .tiptap");
 export const textDocument = (text) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
-export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {}, times = 1 } = {}) {
+export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {} } = {}) {
   let complete;
   const received = new Promise((resolve) => { complete = resolve; });
   await page.route(matches, async (route) => {
@@ -27,7 +27,7 @@ export async function captureOfficeResponse(page, matches, { method = "GET", ext
     const result = { status: response.status(), headers: response.headers(), json: JSON.parse(body.toString("utf8")) };
     await route.fulfill({ response, body });
     complete(result);
-  }, { times });
+  }, { times: 1 });
   return { received };
 }
 
