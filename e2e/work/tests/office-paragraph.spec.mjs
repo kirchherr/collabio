@@ -142,6 +142,22 @@ test("Office paragraph cancel reset and no-op preserve clean state and unsupport
   });
   await expect(page.locator("#paragraph-format")).toBeDisabled();
   expect(writes).toHaveLength(2);
+  await page.locator("#document-close").click();
+  const nearLimit = await createParagraphFixture(page, "Synthetic paragraph canonical byte limit", {
+    type: "doc", content: Array.from({ length: 600 }, () => paragraph("界".repeat(90))),
+  });
+  await openOffice(page);
+  await openOfficeDocument(page, nearLimit.document.object_id);
+  await selectParagraphBlocks(page, 0, 599);
+  await openParagraphDialog(page, 600);
+  await chooseParagraphFormat(page, PARAGRAPH_FORMAT);
+  await page.locator("#paragraph-apply").click();
+  await expect(page.locator("#paragraph-status")).toContainText("überschreitet die unterstützte Dokumentgröße");
+  await expect(page.locator("#document-save")).toBeDisabled();
+  await expect(page.locator('[data-command="undo"]')).toBeDisabled();
+  await page.locator("#paragraph-cancel").click();
+  expect((await officeContent(page, nearLimit.document.object_id)).content).toEqual(nearLimit.content);
+  expect(await officeVersions(page, nearLimit.document.object_id)).toHaveLength(1);
 });
 
 test("Office heading shortcuts split input rules list wrapping replacement and reuse retain paragraph attributes", async ({ page }) => {

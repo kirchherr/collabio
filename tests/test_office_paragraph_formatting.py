@@ -11,7 +11,11 @@ from suite.platform.office_document_repository import InMemoryOfficeDocumentRepo
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError, validate_office_document
 from suite.platform.office_documents import OfficeDocumentCreateCommand, OfficeDocumentService
 from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
-from suite.platform.office_suggestions import SuggestionCreateCommand, SuggestionDecisionCommand, replace_suggestion_text
+from suite.platform.office_suggestions import (
+    SuggestionCreateCommand,
+    SuggestionDecisionCommand,
+    replace_suggestion_text,
+)
 from suite.storage.source_objects import InMemorySourceObjectRepository, source_object_content_bytes
 
 FORMAT: dict[str, Any] = {"textAlign": "justify", "lineSpacing": "1.5", "spacingBefore": 6, "spacingAfter": 12}
@@ -41,7 +45,9 @@ def formatted_document() -> dict[str, Any]:
     + [(key, value) for key in ("spacingBefore", "spacingAfter") for value in (0, 6, 12, 18, 24)],
 )
 @pytest.mark.parametrize("kind", ["paragraph", "heading"])
-def test_paragraph_formatting_accepts_only_declared_values_without_normalization(key: str, value: Any, kind: str) -> None:
+def test_paragraph_formatting_accepts_only_declared_values_without_normalization(
+    key: str, value: Any, kind: str
+) -> None:
     attrs = {key: value, **({"level": 1} if kind == "heading" else {})}
     document: dict[str, Any] = {"type": "doc", "content": [{"type": kind, "attrs": attrs}]}
     before = deepcopy(document)
@@ -53,18 +59,35 @@ def test_paragraph_formatting_accepts_only_declared_values_without_normalization
 @pytest.mark.parametrize(
     "attrs",
     [
-        {"textAlign": None}, {"textAlign": "default"}, {"textAlign": "start"}, {"textAlign": []},
-        {"textAlign": "center;color:red"}, {"lineSpacing": 1}, {"lineSpacing": 1.5},
-        {"lineSpacing": True}, {"lineSpacing": "normal"}, {"lineSpacing": "1.50"},
-        {"lineSpacing": None}, {"lineSpacing": "url(https://example.invalid)"},
-        {"spacingBefore": True}, {"spacingAfter": 6.0}, {"spacingBefore": "6"},
-        {"spacingAfter": None}, {"spacingBefore": -6}, {"spacingAfter": 25},
-        {"spacingBefore": {}}, {"style": "text-align:center"}, {"alignment": "left"},
+        {"textAlign": None},
+        {"textAlign": "default"},
+        {"textAlign": "start"},
+        {"textAlign": []},
+        {"textAlign": "center;color:red"},
+        {"lineSpacing": 1},
+        {"lineSpacing": 1.5},
+        {"lineSpacing": True},
+        {"lineSpacing": "normal"},
+        {"lineSpacing": "1.50"},
+        {"lineSpacing": None},
+        {"lineSpacing": "url(https://example.invalid)"},
+        {"spacingBefore": True},
+        {"spacingAfter": 6.0},
+        {"spacingBefore": "6"},
+        {"spacingAfter": None},
+        {"spacingBefore": -6},
+        {"spacingAfter": 25},
+        {"spacingBefore": {}},
+        {"style": "text-align:center"},
+        {"alignment": "left"},
     ],
 )
 def test_paragraph_formatting_rejects_coercion_css_unknown_values_and_nulls(attrs: dict[str, Any]) -> None:
     for kind in ("paragraph", "heading"):
-        document: dict[str, Any] = {"type": "doc", "content": [{"type": kind, "attrs": {**attrs, **({"level": 1} if kind == "heading" else {})}}]}
+        document: dict[str, Any] = {
+            "type": "doc",
+            "content": [{"type": kind, "attrs": {**attrs, **({"level": 1} if kind == "heading" else {})}}],
+        }
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document(document)
 
@@ -75,7 +98,24 @@ def test_heading_still_requires_strict_supported_level(attrs: dict[str, Any]) ->
         validate_office_document({"type": "doc", "content": [{"type": "heading", "attrs": {**FORMAT, **attrs}}]})
 
 
-@pytest.mark.parametrize("kind", ["doc", "text", "hardBreak", "codeBlock", "blockquote", "table", "tableRow", "tableCell", "tableHeader", "bulletList", "orderedList", "listItem", "horizontalRule"])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "doc",
+        "text",
+        "hardBreak",
+        "codeBlock",
+        "blockquote",
+        "table",
+        "tableRow",
+        "tableCell",
+        "tableHeader",
+        "bulletList",
+        "orderedList",
+        "listItem",
+        "horizontalRule",
+    ],
+)
 def test_paragraph_attributes_remain_forbidden_on_other_node_types(kind: str) -> None:
     paragraph: dict[str, Any] = {"type": "paragraph"}
     node: dict[str, Any] = {"type": kind}
@@ -95,7 +135,10 @@ def test_paragraph_attributes_remain_forbidden_on_other_node_types(kind: str) ->
     elif kind == "listItem":
         wrapper = {"type": "bulletList", "content": [node]}
     elif kind in {"tableCell", "tableHeader", "tableRow"}:
-        wrapper = {"type": "table", "content": [node if kind == "tableRow" else {"type": "tableRow", "content": [node]}]}
+        wrapper = {
+            "type": "table",
+            "content": [node if kind == "tableRow" else {"type": "tableRow", "content": [node]}],
+        }
     document = wrapper if kind == "doc" else {"type": "doc", "content": [wrapper]}
     validate_office_document(document)
     node["attrs"] = dict(FORMAT)
@@ -110,21 +153,32 @@ def test_formatted_paragraphs_and_headings_are_valid_in_lists_quotes_and_cells()
         "content": [
             {"type": "bulletList", "content": [{"type": "listItem", "content": deepcopy(blocks)}]},
             {"type": "blockquote", "content": deepcopy(blocks)},
-            {"type": "table", "content": [{"type": "tableRow", "content": [
-                {"type": "tableHeader", "content": deepcopy(blocks)},
-                {"type": "tableCell", "content": deepcopy(blocks)},
-            ]}]},
+            {
+                "type": "table",
+                "content": [
+                    {
+                        "type": "tableRow",
+                        "content": [
+                            {"type": "tableHeader", "content": deepcopy(blocks)},
+                            {"type": "tableCell", "content": deepcopy(blocks)},
+                        ],
+                    }
+                ],
+            },
         ],
     }
     assert validate_office_document(document) == document
 
 
 def test_legacy_canonical_bytes_and_hash_are_unchanged_including_explicit_empty_attributes() -> None:
-    document: dict[str, Any] = {"type": "doc", "content": [
-        {"type": "paragraph", "content": [{"type": "text", "text": "é😀"}]},
-        {"type": "paragraph", "attrs": {}},
-        {"type": "heading", "attrs": {"level": 2}},
-    ]}
+    document: dict[str, Any] = {
+        "type": "doc",
+        "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": "é😀"}]},
+            {"type": "paragraph", "attrs": {}},
+            {"type": "heading", "attrs": {"level": 2}},
+        ],
+    }
     expected = (
         b'{"content":[{"content":[{"text":"\\u00e9\\ud83d\\ude00","type":"text"}],"type":"paragraph"},'
         b'{"attrs":{},"type":"paragraph"},{"attrs":{"level":2},"type":"heading"}],"type":"doc"}'
@@ -132,9 +186,21 @@ def test_legacy_canonical_bytes_and_hash_are_unchanged_including_explicit_empty_
     assert validate_office_document(document) is document
     assert canonical_json(document).encode("utf-8") == expected
     sources = InMemorySourceObjectRepository()
-    service = OfficeDocumentService(repository=InMemoryOfficeDocumentRepository(source_repository=sources), source_repository=sources, audit=InMemoryAuditLogger())
-    created = service.create(user_context=UserContext(tenant_id="legacy-format", user_id="editor", role_ids={"office-editor"}), write_enabled=True, command=OfficeDocumentCreateCommand(title="Legacy", document=document, mutation_reference="legacy", human_confirmation=True))
-    stored = sources.get(tenant_id="legacy-format", object_id=created.document.object_id, version_id=created.version.version_id)
+    service = OfficeDocumentService(
+        repository=InMemoryOfficeDocumentRepository(source_repository=sources),
+        source_repository=sources,
+        audit=InMemoryAuditLogger(),
+    )
+    created = service.create(
+        user_context=UserContext(tenant_id="legacy-format", user_id="editor", role_ids={"office-editor"}),
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title="Legacy", document=document, mutation_reference="legacy", human_confirmation=True
+        ),
+    )
+    stored = sources.get(
+        tenant_id="legacy-format", object_id=created.document.object_id, version_id=created.version.version_id
+    )
     assert source_object_content_bytes(stored) == expected
     assert created.version.content_hash == "sha256:" + sha256(expected).hexdigest()
 
@@ -167,22 +233,62 @@ def test_review_anchor_offsets_and_replacement_preserve_paragraph_formatting_and
 
 def test_accepting_saved_text_suggestion_preserves_formatting_and_immutable_anchor_version() -> None:
     sources = InMemorySourceObjectRepository()
-    documents = OfficeDocumentService(repository=InMemoryOfficeDocumentRepository(source_repository=sources), source_repository=sources, audit=InMemoryAuditLogger())
+    documents = OfficeDocumentService(
+        repository=InMemoryOfficeDocumentRepository(source_repository=sources),
+        source_repository=sources,
+        audit=InMemoryAuditLogger(),
+    )
     user = UserContext(tenant_id="formatted-suggestion", user_id="editor", role_ids={"office-editor"})
-    created = documents.create(user_context=user, write_enabled=True, command=OfficeDocumentCreateCommand(title="Formatted", document=formatted_document(), mutation_reference="initial", human_confirmation=True))
+    created = documents.create(
+        user_context=user,
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title="Formatted", document=formatted_document(), mutation_reference="initial", human_confirmation=True
+        ),
+    )
     object_id = created.document.object_id
     user.readable_object_ids.add(object_id)
     service = build_office_suggestion_service(document_service=documents, audit=InMemoryAuditLogger())
-    proposal = service.mutate(user_context=user, object_id=object_id, write_enabled=True, command=SuggestionCreateCommand(anchor_version_id=created.version.version_id, expected_current_version_id=created.version.version_id, anchor=ReviewAnchor.model_validate({"from": 5, "to": 9}), replacement_text="NEU", mutation_reference="propose", human_confirmation=True))
-    command = SuggestionDecisionCommand(operation="accept", expected_revision=1, expected_current_version_id=created.version.version_id, mutation_reference="accept", human_confirmation=True)
-    accepted = service.mutate(user_context=user, object_id=object_id, suggestion_id=proposal.suggestion.suggestion_id, write_enabled=True, command=command)
+    proposal = service.mutate(
+        user_context=user,
+        object_id=object_id,
+        write_enabled=True,
+        command=SuggestionCreateCommand(
+            anchor_version_id=created.version.version_id,
+            expected_current_version_id=created.version.version_id,
+            anchor=ReviewAnchor.model_validate({"from": 5, "to": 9}),
+            replacement_text="NEU",
+            mutation_reference="propose",
+            human_confirmation=True,
+        ),
+    )
+    command = SuggestionDecisionCommand(
+        operation="accept",
+        expected_revision=1,
+        expected_current_version_id=created.version.version_id,
+        mutation_reference="accept",
+        human_confirmation=True,
+    )
+    accepted = service.mutate(
+        user_context=user,
+        object_id=object_id,
+        suggestion_id=proposal.suggestion.suggestion_id,
+        write_enabled=True,
+        command=command,
+    )
     assert accepted.document_result is not None
     assert accepted.document_result.content["content"][0]["attrs"] == FORMAT
     assert accepted.document_result.version.previous_version_id == created.version.version_id
     assert accepted.document_result.version.content_hash != created.version.content_hash
     old = documents.read_content(user_context=user, object_id=object_id, version_id=created.version.version_id)
     assert old.content == formatted_document()
-    replay = service.mutate(user_context=user, object_id=object_id, suggestion_id=proposal.suggestion.suggestion_id, write_enabled=True, command=command)
+    replay = service.mutate(
+        user_context=user,
+        object_id=object_id,
+        suggestion_id=proposal.suggestion.suggestion_id,
+        write_enabled=True,
+        command=command,
+    )
     assert replay.replayed and replay.document_result is not None
     assert replay.document_result.version == accepted.document_result.version
     assert replay.document_result.content == accepted.document_result.content

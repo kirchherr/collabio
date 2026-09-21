@@ -369,9 +369,14 @@ def _restored_readers(database_dsn: str) -> tuple[UserContext, ...]:
     directory = PgPrincipalDirectory(database_dsn=database_dsn)
     return tuple(
         UserContext(
-            tenant_id=TENANT_ID, user_id=user_id, role_ids=roles,
+            tenant_id=TENANT_ID,
+            user_id=user_id,
+            role_ids=roles,
             readable_object_ids=directory.readable_object_ids(
-                tenant_id=TENANT_ID, user_id=user_id, role_ids=roles, group_ids=groups,
+                tenant_id=TENANT_ID,
+                user_id=user_id,
+                role_ids=roles,
+                group_ids=groups,
             ),
         )
         for user_id, roles, groups in identities
@@ -379,7 +384,10 @@ def _restored_readers(database_dsn: str) -> tuple[UserContext, ...]:
 
 
 def restored_document_inventory(
-    *, documents: OfficeDocumentService, users: tuple[UserContext, ...], expected_documents: list[Any],
+    *,
+    documents: OfficeDocumentService,
+    users: tuple[UserContext, ...],
+    expected_documents: list[Any],
 ) -> tuple[tuple[OfficeDocumentView, ...], dict[str, UserContext]]:
     expected_heads = {row["object_id"]: row["current_version_id"] for row in expected_documents}
     found: dict[str, OfficeDocumentView] = {}
@@ -395,9 +403,12 @@ def restored_document_inventory(
             if page.tenant_id != TENANT_ID or page.can_create or page.has_more != (page.next_cursor is not None):
                 raise ValueError("Office recovery document page or capabilities are invalid")
             for document in page.documents:
-                if (document.object_id in seen or document.can_write
+                if (
+                    document.object_id in seen
+                    or document.can_write
                     or expected_heads.get(document.object_id) != document.current_version_id
-                    or (document.object_id in found and found[document.object_id] != document)):
+                    or (document.object_id in found and found[document.object_id] != document)
+                ):
                     raise ValueError("Office recovery document inventory or head is invalid")
                 seen.add(document.object_id)
                 found[document.object_id] = document
@@ -414,7 +425,10 @@ def restored_document_inventory(
 
 
 def restored_version_inventory(
-    *, documents: OfficeDocumentService, user: UserContext, document: OfficeDocumentView,
+    *,
+    documents: OfficeDocumentService,
+    user: UserContext,
+    document: OfficeDocumentView,
 ) -> tuple[OfficeDocumentVersionView, ...]:
     versions: list[OfficeDocumentVersionView] = []
     seen: set[str] = set()
@@ -423,10 +437,14 @@ def restored_version_inventory(
     expected_version: str | None = document.current_version_id
     while True:
         page = documents.history(user_context=user, object_id=document.object_id, page_size=200, cursor=cursor)
-        if (page.tenant_id != TENANT_ID or page.object_id != document.object_id
+        if (
+            page.tenant_id != TENANT_ID
+            or page.object_id != document.object_id
             or page.history_head_version_id != document.current_version_id
-            or page.current_version_id != document.current_version_id or not page.versions
-            or page.has_more != (page.next_cursor is not None)):
+            or page.current_version_id != document.current_version_id
+            or not page.versions
+            or page.has_more != (page.next_cursor is not None)
+        ):
             raise ValueError("Office recovery history page or head is invalid")
         for version in page.versions:
             if version.version_id in seen or version.version_id != expected_version:
@@ -445,7 +463,10 @@ def restored_version_inventory(
 
 
 def verify_restored_paragraph_versions(
-    *, documents: OfficeDocumentService, readers: Mapping[str, UserContext], versions: list[Any],
+    *,
+    documents: OfficeDocumentService,
+    readers: Mapping[str, UserContext],
+    versions: list[Any],
 ) -> dict[str, Any]:
     """Bind the designated legacy and two formatted sources to their exact versions."""
     evidence: list[dict[str, str]] = []
@@ -460,12 +481,20 @@ def verify_restored_paragraph_versions(
         if version["object_id"] != object_id or version["previous_version_id"] != previous:
             raise ValueError("Office recovery paragraph fixture lineage is invalid")
         expected = paragraph_recovery_document(number)
-        read = documents.read_content(user_context=readers[object_id], object_id=object_id, version_id=version["version_id"])
-        if (read.content != expected or read.version.title != PARAGRAPH_RECOVERY_TITLE
+        read = documents.read_content(
+            user_context=readers[object_id], object_id=object_id, version_id=version["version_id"]
+        )
+        if (
+            read.content != expected
+            or read.version.title != PARAGRAPH_RECOVERY_TITLE
             or read.version.content_hash != stable_hash(canonical_json(expected))
-            or read.version.content_hash != version["content_hash"] or read.can_write):
+            or read.version.content_hash != version["content_hash"]
+            or read.can_write
+        ):
             raise ValueError("Office recovery paragraph content or canonical hash is invalid")
-        evidence.append({"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash})
+        evidence.append(
+            {"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash}
+        )
         previous = read.version.version_id
     return {
         "paragraph_formatting_evidence_hash": stable_hash(canonical_json(evidence)),
@@ -555,7 +584,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     )
     users = _restored_readers(target_dsn)
     documents, readers = restored_document_inventory(
-        documents=restored, users=users, expected_documents=inventory["documents"],
+        documents=restored,
+        users=users,
+        expected_documents=inventory["documents"],
     )
     evidence: list[dict[str, Any]] = []
     multi_version_documents = 0
@@ -594,7 +625,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(
-        documents=restored, readers=readers, versions=inventory["document_versions"],
+        documents=restored,
+        readers=readers,
+        versions=inventory["document_versions"],
     )
     review_evidence = verify_restored_reviews(
         documents=restored,

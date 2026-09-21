@@ -17,7 +17,12 @@ def test_api_formatting_is_saved_as_exact_versions_and_defaults_are_not_injected
     first = created.json()
     object_id = first["document"]["object_id"]
     office_api.headers["X-Readable-Object-Ids"] = object_id
-    payload = {**legacy, "document": formatted_document(), "mutation_reference": "formatting-save", "expected_current_version_id": first["version"]["version_id"]}
+    payload = {
+        **legacy,
+        "document": formatted_document(),
+        "mutation_reference": "formatting-save",
+        "expected_current_version_id": first["version"]["version_id"],
+    }
     saved = office_api.client.post(f"{BASE}/{object_id}/versions", headers=office_api.headers, json=payload)
     assert saved.status_code == 200
     result = saved.json()
@@ -26,7 +31,9 @@ def test_api_formatting_is_saved_as_exact_versions_and_defaults_are_not_injected
     assert result["version"]["content_hash"] != first["version"]["content_hash"]
     assert result["schema_version"] == first["schema_version"] == "collabio_document.v1"
     for version, expected in ((first["version"], legacy["document"]), (result["version"], formatted_document())):
-        read = office_api.client.get(f"{BASE}/{object_id}/content", headers=office_api.headers, params={"version_id": version["version_id"]})
+        read = office_api.client.get(
+            f"{BASE}/{object_id}/content", headers=office_api.headers, params={"version_id": version["version_id"]}
+        )
         assert read.status_code == 200
         assert read.headers["cache-control"] == "no-store"
         assert read.json()["content"] == expected
@@ -34,13 +41,28 @@ def test_api_formatting_is_saved_as_exact_versions_and_defaults_are_not_injected
     replay = office_api.client.post(f"{BASE}/{object_id}/versions", headers=office_api.headers, json=payload)
     assert replay.status_code == 200 and replay.json()["replayed"]
     assert replay.json()["version"]["version_id"] == result["version"]["version_id"]
-    stale = office_api.client.post(f"{BASE}/{object_id}/versions", headers=office_api.headers, json={**payload, "mutation_reference": "formatting-stale"})
+    stale = office_api.client.post(
+        f"{BASE}/{object_id}/versions",
+        headers=office_api.headers,
+        json={**payload, "mutation_reference": "formatting-stale"},
+    )
     assert stale.status_code == 409
     assert len(office_api.repository.saved_versions) == 2
 
 
-@pytest.mark.parametrize("attrs", [{"spacingBefore": True}, {"spacingAfter": 6.0}, {"lineSpacing": 1.5}, {"textAlign": "center;SECRET"}, {"lineSpacing": None}])
-def test_api_invalid_formatting_fails_before_commit_with_no_input_echo(office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch, attrs: dict[str, Any]) -> None:
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        {"spacingBefore": True},
+        {"spacingAfter": 6.0},
+        {"lineSpacing": 1.5},
+        {"textAlign": "center;SECRET"},
+        {"lineSpacing": None},
+    ],
+)
+def test_api_invalid_formatting_fails_before_commit_with_no_input_echo(
+    office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch, attrs: dict[str, Any]
+) -> None:
     enable_office()
     payload = create_payload("formatting-invalid")
     payload["document"] = formatted_document()
@@ -63,9 +85,22 @@ def test_api_format_reset_is_explicit_omission_and_read_feature_remains_required
     reset = deepcopy(formatted_document())
     del reset["content"][0]["attrs"]
     reset["content"][1]["attrs"] = {"level": 2}
-    result = office_api.client.post(f"{BASE}/{object_id}/versions", headers=office_api.headers, json={**payload, "document": reset, "mutation_reference": "reset", "expected_current_version_id": created["version"]["version_id"]})
+    result = office_api.client.post(
+        f"{BASE}/{object_id}/versions",
+        headers=office_api.headers,
+        json={
+            **payload,
+            "document": reset,
+            "mutation_reference": "reset",
+            "expected_current_version_id": created["version"]["version_id"],
+        },
+    )
     assert result.status_code == 200 and result.json()["content"] == reset
-    old = office_api.client.get(f"{BASE}/{object_id}/content", headers=office_api.headers, params={"version_id": created["version"]["version_id"]})
+    old = office_api.client.get(
+        f"{BASE}/{object_id}/content",
+        headers=office_api.headers,
+        params={"version_id": created["version"]["version_id"]},
+    )
     assert old.json()["content"]["content"][0]["attrs"] == FORMAT
     enable_office(read=False)
     denied = office_api.client.get(f"{BASE}/{object_id}/content", headers=office_api.headers)

@@ -60,7 +60,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if kind == "heading" and (type(attrs.get("level")) is not int or attrs["level"] not in {1, 2, 3}):
                 reject()
             if "textAlign" in attrs and (
-                not isinstance(attrs["textAlign"], str) or attrs["textAlign"] not in {"left", "center", "right", "justify"}
+                not isinstance(attrs["textAlign"], str)
+                or attrs["textAlign"] not in {"left", "center", "right", "justify"}
             ):
                 reject()
             if "lineSpacing" in attrs and (

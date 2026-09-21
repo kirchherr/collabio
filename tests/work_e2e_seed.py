@@ -78,7 +78,9 @@ def main() -> int:
 
     office_document_count = seed_synthetic_office_discovery(environment=os.environ, client=client)
     history_document_count, history_version_count = seed_synthetic_office_history(environment=os.environ, client=client)
-    paragraph_document_count, paragraph_version_count = seed_synthetic_office_paragraphs(environment=os.environ, client=client)
+    paragraph_document_count, paragraph_version_count = seed_synthetic_office_paragraphs(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -87,7 +89,9 @@ def main() -> int:
                 "tenant_id": WORK_E2E_TENANT_ID,
                 "principal_count": len(SYNTHETIC_PRINCIPALS),
                 "synthetic_crm_record_count": crm_record_count,
-                "synthetic_office_document_count": office_document_count + history_document_count + paragraph_document_count,
+                "synthetic_office_document_count": office_document_count
+                + history_document_count
+                + paragraph_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "tenant_content_included": False,

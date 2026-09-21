@@ -27,7 +27,9 @@ def seed_principal(connection: psycopg.Connection[Any], tenant: str, user: str, 
 
 
 @pytest.mark.parametrize("subject_type", ["role", "group"])
-def test_recovery_resolves_only_active_memberships_and_current_typed_acl_without_grants(database: Database, monkeypatch: pytest.MonkeyPatch, subject_type: str) -> None:
+def test_recovery_resolves_only_active_memberships_and_current_typed_acl_without_grants(
+    database: Database, monkeypatch: pytest.MonkeyPatch, subject_type: str
+) -> None:
     tenant = f"tenant-recovery-{uuid4().hex}"
     monkeypatch.setattr(proof, "TENANT_ID", tenant)
     service = service_for(database, InMemorySourceObjectContentStore())
@@ -40,28 +42,32 @@ def test_recovery_resolves_only_active_memberships_and_current_typed_acl_without
         seed_principal(connection, tenant, "reader")
         seed_principal(connection, tenant, "disabled")
         connection.execute(
-            "UPDATE collabio.tenant_principals SET status = 'disabled' "
-            "WHERE tenant_id = %s AND user_id = 'disabled'", (tenant,),
+            "UPDATE collabio.tenant_principals SET status = 'disabled' WHERE tenant_id = %s AND user_id = 'disabled'",
+            (tenant,),
         )
         if subject_type == "role":
             connection.execute(
                 "INSERT INTO collabio.tenant_roles (tenant_id, role_id, display_name, audit_chain_ref) "
-                "VALUES (%s, 'reviewer', 'Reviewer', 'audit:recovery-test')", (tenant,),
+                "VALUES (%s, 'reviewer', 'Reviewer', 'audit:recovery-test')",
+                (tenant,),
             )
             connection.execute(
                 "INSERT INTO collabio.tenant_principal_role_assignments "
                 "(tenant_id, issuer, subject, role_id, audit_chain_ref) "
-                "VALUES (%s, 'https://synthetic.example', 'reader', 'reviewer', 'audit:recovery-test')", (tenant,),
+                "VALUES (%s, 'https://synthetic.example', 'reader', 'reviewer', 'audit:recovery-test')",
+                (tenant,),
             )
         else:
             connection.execute(
                 "INSERT INTO collabio.tenant_groups (tenant_id, group_id, display_name, audit_chain_ref) "
-                "VALUES (%s, 'reviewer', 'Reviewer', 'audit:recovery-test')", (tenant,),
+                "VALUES (%s, 'reviewer', 'Reviewer', 'audit:recovery-test')",
+                (tenant,),
             )
             connection.execute(
                 "INSERT INTO collabio.tenant_principal_group_memberships "
                 "(tenant_id, issuer, subject, group_id, audit_chain_ref) "
-                "VALUES (%s, 'https://synthetic.example', 'reader', 'reviewer', 'audit:recovery-test')", (tenant,),
+                "VALUES (%s, 'https://synthetic.example', 'reader', 'reviewer', 'audit:recovery-test')",
+                (tenant,),
             )
         connection.execute(
             "INSERT INTO collabio.object_acl_entries (tenant_id, object_id, object_type, acl_subject_type, "
@@ -82,12 +88,14 @@ def test_recovery_resolves_only_active_memberships_and_current_typed_acl_without
         set_tenant(connection, tenant)
         rows = connection.execute(
             "SELECT acl_subject_id, permission FROM collabio.object_acl_entries "
-            "WHERE tenant_id = %s ORDER BY acl_subject_id", (tenant,),
+            "WHERE tenant_id = %s ORDER BY acl_subject_id",
+            (tenant,),
         ).fetchall()
         assert rows == [("owner", "admin"), ("reviewer", "read")]
         connection.execute(
             "UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
-            "WHERE tenant_id = %s AND acl_subject_id = 'reviewer'", (tenant,),
+            "WHERE tenant_id = %s AND acl_subject_id = 'reviewer'",
+            (tenant,),
         )
     # Even a previously resolved readable-ID set cannot bypass the current
     # repository ACL lookup on the next page/read.
