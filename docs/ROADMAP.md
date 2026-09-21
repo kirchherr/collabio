@@ -1575,11 +1575,16 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      17 Review-Ereignissen bestanden. API-Rollout, Health und Cleanup am 2026-09-18 um 13:14:20 UTC gruen.
      Keine reale Tenant-Aktivierung; Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen.
 
-257. [ ] Gespeicherte Textvorschlaege im nativen Office: bestaetigte Anlage an einer exakten gespeicherten Textstelle,
+257. [x] Gespeicherte Textvorschlaege im nativen Office: bestaetigte Anlage an einer exakten gespeicherten Textstelle,
      Vorher/Nachher-Vergleich und bestaetigtes Annehmen oder Ablehnen. Annahme muss Entscheidung und neue
      Dokumentversion in derselben PostgreSQL-Transaktion speichern; veraltete Anker bleiben unveraendert.
-     Migration 0085, aktuelle Rechte, exakte Wiederholungen, Browserpruefung und nichtleerer isolierter Restore
-     gehoeren zum Abschluss. Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
+     Volle Remote-Quality auf `9c17a31` gruen: 684 formatierte Dateien, Mypy fuer 541 Quelldateien und vollstaendiges
+     Pytest. 688 fokussierte Tests sowie alle 162 Browser-/Modellpruefungen in 535,956 Sekunden bestanden;
+     keine uebersprungenen, unerwarteten oder flakigen Faelle. Desktop/Tablet/Mobile visuell geprueft.
+     Migration 0085, Foundation mit 85 Migrationen/95 Tabellen und nichtleerer Restore von 67 Dokumenten,
+     109 Versionen, zehn Vorschlaegen und sieben Entscheidungen (fuenf angenommen, zwei abgelehnt) bestanden.
+     API-Rollout mit 13 Office-Operationen, Health und Cleanup am 2026-09-21 um 07:18:57 UTC gruen.
+     Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
@@ -1882,7 +1887,7 @@ Enthaelt:
 ## Aktueller Umsetzungsstand: Backend-Fundament
 
 - [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
-- [x] Exakter Quell-/Zielvergleich fuer aktuell 83 Migrationen und 91 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Exakter Quell-/Zielvergleich fuer aktuell 85 Migrationen und 95 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
 - [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
 - [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
 - [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.

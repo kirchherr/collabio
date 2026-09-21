@@ -6,7 +6,8 @@ Publication state: on 2026-09-21 the operator explicitly approved publishing the
 including its operational metadata, to the public `kirchherr/collabio` repository and instructed work to continue.
 Documentation commit `1545bb2` was pushed and synchronized. All 11 module/KB/roadmap contract checks passed in
 58.85 seconds; health remained ok at 2026-09-21 06:34:16 UTC. The --no-deps test started no auxiliary service.
-Runtime implementation `2305a96` remains verified on dev001; this documentation closeout changes no runtime state.
+That Roadmap 256 publication is complete. The subsequent authorized Office continuation is Roadmap 257 below;
+implementation `9c17a31` passed full validation, nonempty recovery and API rollout on dev001.
 
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
@@ -16,8 +17,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `2305a96` (full Python quality); all 152 browser/model checks passed on `7400b35`,
-  with only restore-verifier/test changes afterward. The commit containing this handoff is the continuation
+- Validated implementation: `9c17a31` (full Python quality and all 162 browser/model checks).
+  The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
 - Generated `e2e/work/artifacts/` output is ignored and must not be committed.
@@ -30,7 +31,18 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 256 host verification at 2026-09-18 13:14:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 257 host verification at 2026-09-21 07:18:57 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`b4e2756191a1`); bounded startup retries
+reached healthy at 07:17:41 UTC. Live checks verified thirteen Office operations, suggestion controls, previous editor
+workflows, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned for Office with
+non-cacheable 404; Office features closed, KB write false and pilot 0. Migration 0085 is applied: 85 migrations, 95 tables.
+Fresh verified backups, nonempty document/review/suggestion recovery and foundation/business gates passed before rollout.
+Exact Work-E2E services were removed; postgres-test, postgres-restore and minio-restore are stopped. The synthetic
+`collabio_work_e2e_restore` database and verified ignored dump remain retained; normal `collabio_restore` stays separate.
+Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) were not recreated. Webcut running(7), all three provider
+nodes/listener26443 unchanged, Tricert absent. No ordinary tenant activation or business-content write occurred.
+
+Previous item 256 host verification at 2026-09-18 13:14:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`da71b8ef4e53`); bounded startup retries
 reached healthy at 13:12:07 UTC. Live verification at 13:13:43 UTC confirmed nine Office operations, comments and existing
 version/find/table controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned for
@@ -92,7 +104,7 @@ with synthetic valid scope evidence separately proves its expected CRM 403; thes
 - Tenant isolation, authoritative ACL, ABAC, role and module/feature gates stay server-side.
 - The normal switch stays `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0`. Synthetic tests never authorize real users.
 - `knowledge_base.articles.write` defaults false. Only the isolated synthetic E2E tenant enabled it for this slice.
-- Native Office uses `office_documents.documents.read` and `.write`, both closed by default. Migrations 0083/0084 do not
+- Native Office uses `office_documents.documents.read` and `.write`, both closed by default. Migrations 0083–0085 do not
   provision or activate an ordinary tenant. Native documents do not authorize a DOCX engine or WOPI session.
 - No real tenant module activation, KB runtime activation, business article write, pilot admission or traffic
   authorization was performed. Tickets & Incidents remains readiness-only pending separate explicit authorization.
@@ -119,7 +131,62 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 256
+## Last completed slice: Roadmap 257
+
+Roadmap 257 / PLANS 118 completes explicit saved-text suggestions: select text in a clean current saved version,
+propose replacement (including deletion), inspect literal before/after and confirm accept or reject. Acceptance
+saves its immutable decision and exact new document version in one PostgreSQL transaction and shared Office tenant
+lock. Rejection appends only its decision. Historical anchors never move automatically; stale acceptance conflicts.
+Fresh current parent ACLs, write-feature gates, strict revisions and actor-bound exact retries apply to every mutation.
+The fourth inspector tab uses memory-only drafts, current capabilities, explicit confirmation, conflict preservation,
+uncertain-result retries and close/context invalidation; known success cannot trigger a second write after refresh failure.
+
+Migration 0085 adds append-only `office.text_suggestions` and `office.text_suggestion_decisions`, immutable COMMENT
+sources/receipts, forced RLS and exact source/result bindings. A deferred constraint trigger prevents an acceptance
+version without its decision. Public saves reject reserved internal acceptance references before any PUT. S3 remains
+outside PostgreSQL rollback; focused tests prove metadata rollback and detectable orphans after storage/DB failures.
+The restore gate pins all six Office tables, grants, policies, constraints and complete trigger functions, including
+the deferred requirement. Continuous keystroke tracking, automatic merge and live collaboration are not implemented.
+
+- On `0d5350d`, all 688 focused backend/API/PostgreSQL/recovery tests passed in 52.37 seconds and ten focused browser
+  runs passed in 50.1 seconds. Full Python quality on `9c17a31` passed Ruff, formatting across 684 files, Mypy across
+  541 sources and full Pytest; only the known Starlette/AnyIO warning remains.
+- The full matrix on `9c17a31` passed 162/162 in 535.956 seconds: 127 browser cases plus 35 model cases, zero skipped,
+  unexpected or flaky results. All previous 152 checks remain. Final desktop/tablet/mobile screenshots passed
+  independent visual review. Code review and independent recovery review also led to alias-safe success responses,
+  preserved-title validation and reserved-reference rejection before the final full run.
+- Fresh nonempty recovery restored 67 documents, 109 versions, 36 multi-version documents and 162 source objects.
+  Nine review threads/17 events include the complete prior review lifecycle. Ten proposals and seven decisions include
+  five acceptances and two rejections. Exact original/replacement bytes, receipts, result content/title/lineage,
+  current ACLs, foreign denial and read-only restored services passed. Report
+  `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`; synthetic backup
+  `sha256:06bbf77f9e41db9a7ecbc525bf17fd3e69c08b8dac7840ade2e7f10ecb9f4160`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-257/`:
+
+- `results.json`: `sha256:42317e268bb6cd56cff3d85615bc012aed06d28ccd88f99b62228cdc03168e47`.
+- Desktop: `sha256:79d78928d16ff5c35fdcbe95640037fbf07e92ba6af8b026b8cf2a6f3108983e`.
+- Tablet: `sha256:3325d16574ccea994966ad6e474821595c592a752c99fb0dbac5c7f00000fa79`.
+- Mobile: `sha256:199bf6260aea647f747ee875edb8d6b0899598cc87d9ec41786f1ef804ec7e77`.
+- `quality.log`: `sha256:6b49b2f2fa706fd0d42baee0a72a19111e404f66309eca3a554830804cd19a21`.
+
+Main migration/release evidence:
+
+- Pre-0085 `collabio-20260921T071612Z.dump`: `sha256:ed83da613feb5792a209bf428630df302804dcfe377af9b89e1e58182de63a83`.
+- Post-0085 `collabio-20260921T071618Z.dump`: `sha256:c937926687291d847cd07daaf36034a5318bead0c13926322ac3ba2035934aeb`.
+- Foundation-bound PostgreSQL restore: `sha256:1a2d6c846bd5617ffbf20175aed5a97155c85144f5be107b3d64b345a38f5045`.
+- Foundation: `sha256:f257c62d06ba81432a909f60161faba69c1d9e3db82f998c4cfdbd02c1294ffd`; 85 migrations/95 tables,
+  expanded Office controls and three existing main sources restored, with source seeding explicitly disabled.
+- Business release: `sha256:b14e152ee2355a82a1a22cb06457daac58fe2fa0149d32b8df31678e618dca63`; existing CRM/Tasks/Time
+  three-slice gate passed without business writes or tenant activation. Office has the separate nonempty proof above.
+
+Primary implementation: `office_suggestions.py`, `office_suggestion_repository.py`, the transaction-scoped document
+persist primitive, Office API/UI and migration 0085. Tests include `test_office_suggestion*.py`,
+`office_suggestion_recovery.py`, the shared restore gate and `office-suggestions*.spec.mjs`. See ADR-0081,
+the Office module document, Work E2E runbook and append-only operations log. The initial restore helper typo stopped
+after dump creation and before target modification; its corrected resume verified that dump and completed the proof.
+
+## Previous slice: Roadmap 256
 
 Roadmap 256 / PLANS 117 completes native Office review discussions: comments on an exact saved version or selected
 text, replies, resolve/reopen and explicit confirmation. Historical discussions keep their original version and quotation.
@@ -494,7 +561,7 @@ Primary code and runbooks:
 
 ## Existing product and platform status
 
-- `/office` provides native document authoring with version-bound review discussions, contextual table editing, find/replace, immutable history, saved-version comparison and historical takeover
+- `/office` provides native document authoring with explicit saved-text suggestions and atomic acceptance, version-bound review discussions, contextual table editing, find/replace, immutable history, saved-version comparison and historical takeover
   into an unsaved local draft. Explicitly confirmed save appends a new version, under the closed tenant gates.
 - `/roadmap` presents capabilities, including guarded native Office; KB shows authoring and ordinary reading, and CRM includes Work account
   details, with real API route paths.
@@ -515,10 +582,11 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 256 is complete. Preserve the 152-check matrix (117 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 257 is complete. Preserve the 162-check matrix (127 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-version-bound comments are complete; tracked changes and live collaboration remain open. Preserve fresh current access checks, immutable history,
-explicit confirmed CAS saves and memory-only draft semantics. No subsequent roadmap item is declared implemented.
+version-bound comments and explicit saved-text suggestions are complete; continuous tracked changes and live collaboration remain open.
+Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
+memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.
 Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
 authorization and executable-image admission must precede an engine proof. Productive saves and WOPI remain separate

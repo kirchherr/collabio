@@ -1,7 +1,7 @@
 # ADR-0081: Native Office saved text suggestions
 
 Date: 2026-09-21
-Status: accepted design; implementation and remote verification in progress
+Status: accepted; implementation, full quality, browser, recovery and dev001 rollout verified
 Scope: Roadmap 257 / PLANS 118, extending ADR-0079 and ADR-0080
 
 ## Context
@@ -57,7 +57,15 @@ the deferred decision requirement. A nonempty isolated PostgreSQL/S3 recovery mu
 bind exact bytes and receipts to original anchors, verify accepted result content and version lineage, prove rejected
 proposals have no result version and recheck current ACLs. Both accepted and rejected proposals are mandatory evidence.
 Focused policy/storage/concurrency tests, full Python quality and the complete existing browser/model matrix plus
-new suggestion cases are required before rollout. Results will be recorded after execution on dev001.
+new suggestion cases are required before rollout. These checks passed on dev001: full quality on `9c17a31`,
+688 focused tests and all 162 browser/model checks in 535.956 seconds, without skipped, unexpected or flaky results.
+Final desktop/tablet/mobile screenshots were independently reviewed. The nonempty proof restored 67 documents,
+109 versions, nine review threads/17 events and ten suggestions/seven decisions (five accepted, two rejected), with
+exact receipt, content, unchanged-title, result-lineage, current ACL and read-only checks. Report
+`sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`.
+Verified pre-/post-0085 backups, an 85-migration/95-table foundation and the existing three-slice business gate preceded
+the API-only rollout. Live checks verified thirteen operations and closed ordinary tenant/pilot state. Health and scoped
+cleanup passed at 2026-09-21 07:18:57 UTC; exact hashes are in the module document and append-only operations log.
 
 This is an explicit saved-text proposal workflow. Continuous keystroke tracking, live collaboration, automatic merging,
 notifications, proposal editing/deletion and DOCX interchange remain separate work. CRM remains behind Office.

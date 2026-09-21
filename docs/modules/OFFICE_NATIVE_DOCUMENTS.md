@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: Roadmap 252–256 complete on dev001; Roadmap 257 implementation and verification in progress; ordinary tenant and production admission remain closed
+Status: Roadmap 252–257 complete on dev001; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`
@@ -56,7 +56,7 @@ or stale-head conflicts, clears content when access is denied, preserves exact r
 closing or changing context. Only connection context,
 never content or credentials, is stored in browser localStorage.
 
-## Saved text suggestions (Roadmap 257, verification pending)
+## Saved text suggestions (Roadmap 257)
 
 Roadmap 257 adds explicit saved-text proposals, described in
 `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`. The fourth inspector tab shows original and
@@ -66,7 +66,7 @@ receipts under migration 0085. Acceptance requires an unchanged current head and
 version in one PostgreSQL transaction; rejection saves only the decision. Old anchors remain on their original version.
 Every mutation rechecks current parent rights and write features and requires explicit confirmation. Exact retries,
 memory-only drafts and current read-only capabilities use the existing Office boundaries. Remote verification and
-nonempty recovery of accepted/rejected proposals are required before Roadmap 257 can be marked complete.
+nonempty recovery of accepted/rejected proposals passed; exact evidence is recorded below.
 
 ## Version comparison and local takeover
 
@@ -332,9 +332,9 @@ artifacts are under `e2e/work/artifacts/roadmap-256/focused/`.
 
 ## Continuing Office work
 
-Roadmap 256 / PLANS 117 is complete with the verified quality, browser and recovery evidence above.
-Preserve confirmed document/review writes, exact version anchors, current access checks and
-memory-only drafts. Tracked changes and live collaboration remain future product work. Native Office continues before
+Roadmap 257 / PLANS 118 is complete with the verified quality, browser and recovery evidence below.
+Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
+memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
 pilot, indexing and provider activation remain outside this implementation.
 
@@ -346,3 +346,44 @@ no-store/CSP. The ordinary tenant remains unprovisioned with 404; Office feature
 At 2026-09-18 13:14:20 UTC, API `da71b8ef4e53` was healthy, Collabio was running only API/PostgreSQL/MinIO and exact
 test services were removed or stopped. Main storage and other projects were untouched. Backups, full hashes and
 the retained synthetic restore database are recorded in the operations log and current handoff.
+
+## Suggestion acceptance and recovery (Roadmap 257)
+
+Full quality on `9c17a31` passed Ruff, formatting across 684 files, Mypy across 541 sources and full Pytest; only the
+known Starlette/AnyIO warning remains. All 688 focused backend/API/PostgreSQL/recovery tests passed on `0d5350d` in
+52.37 seconds. Ten focused browser runs passed in 50.1 seconds. The complete matrix on `9c17a31` passed 162/162 in
+535.956 seconds: 127 browser cases and 35 model cases, zero skipped, unexpected or flaky. All prior 152 remain green;
+final desktop/tablet/mobile screenshots passed independent visual review.
+
+Independent review tightened the success-response anchor aliases, reserved acceptance-reference rejection before
+public writes and recovery's preserved-title check. PostgreSQL tests prove one terminal racing decision, atomically
+committed document/decision metadata, no loser PUT, rollback after either source write fails and detectable S3 orphans
+after a post-PUT database failure. No distributed rollback is claimed. The restore verifier pins the new append-only
+constraints, grants, source functions and deferred acceptance-decision requirement, including matching-drift rejection.
+
+The new nonempty recovery restored 67 documents, 109 exact versions, 36 multi-version documents and 162 total sources.
+It also verified nine review threads/17 events and ten text proposals/seven decisions: five accepted, two rejected and
+three still open. Original/replacement bytes, source receipts, accepted result content/title/predecessor/actor, current
+ACLs, foreign-tenant denial and read-only recovered services passed. This is synthetic development evidence.
+
+- Recovery: `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`.
+- Synthetic backup: `sha256:06bbf77f9e41db9a7ecbc525bf17fd3e69c08b8dac7840ade2e7f10ecb9f4160`.
+- Synthetic PostgreSQL restore: `sha256:90799804fabe0ca577fd9f29b9cc2ed8ae409d44e7f802a0f216d7eed02f5839`.
+- Exact-version storage restore: `sha256:3a74c8fe68490779ab65ec52099cac6b0262e7b01618df6c4d5a36db95e92e7b`.
+- Browser report: `sha256:42317e268bb6cd56cff3d85615bc012aed06d28ccd88f99b62228cdc03168e47`.
+- Quality log: `sha256:6b49b2f2fa706fd0d42baee0a72a19111e404f66309eca3a554830804cd19a21`.
+
+Migration 0085 is applied to the main development database. Verified pre-/post-migration backups are
+`collabio-20260921T071612Z.dump` (`sha256:ed83da613feb5792a209bf428630df302804dcfe377af9b89e1e58182de63a83`) and
+`collabio-20260921T071618Z.dump` (`sha256:c937926687291d847cd07daaf36034a5318bead0c13926322ac3ba2035934aeb`).
+The foundation passed with 85 migrations/95 tables, expanded Office controls and three existing main sources, with
+seeding disabled: `sha256:f257c62d06ba81432a909f60161faba69c1d9e3db82f998c4cfdbd02c1294ffd`.
+The existing CRM/Tasks/Time business gate passed without tenant activation or business writes:
+`sha256:b14e152ee2355a82a1a22cb06457daac58fe2fa0149d32b8df31678e618dca63`.
+Office's product recovery is the separate nonempty proof above.
+
+API-only rollout reached health at 2026-09-21 07:17:41 UTC. Live checks verified thirteen Office operations, suggestion
+and previous editor controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned with
+404; Office features, KB write and pilot remain closed. Scoped cleanup finished healthy at 07:18:57 UTC with only
+API/PostgreSQL/MinIO running. API is `b4e2756191a1`; main storage and other projects were unchanged. The synthetic
+restore database and verified dump remain retained. Final ignored artifacts are under `e2e/work/artifacts/roadmap-257/`.

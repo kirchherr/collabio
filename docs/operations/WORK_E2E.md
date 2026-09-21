@@ -135,12 +135,18 @@ failures, delayed close/context responses and fresh write-feature removal. The p
 Comment state uses the same real PostgreSQL/source/receipt repositories as documents; failure injection remains
 request-local and restricted to the exact synthetic review routes.
 
-Roadmap 257 adds eight suggestion workflows and two responsive runs, taking the intended matrix to 162 checks.
+Roadmap 257 adds eight suggestion workflows and two responsive runs, taking the matrix to 162 checks.
 They cover saved-selection creation, literal before/after text, explicit accept/reject, accepted version lineage,
 immutable history, stale anchors, ordinary readers/current ACLs/foreign tenants, fresh feature closure, exact uncertain
 retries, late responses and memory-only draft protection. The real document repository and suggestion adapter share
 one transaction for acceptance. Request-local failure controls are restricted to the exact synthetic suggestion routes.
-The matrix remains unverified until its dev001 execution is recorded; all 152 previous checks remain included.
+All 162 checks passed on `9c17a31` in 535.956 seconds, with zero skipped, unexpected or flaky results;
+all 152 previous checks remain included. Full Python quality and 688 focused tests passed, and final desktop/tablet/mobile
+screenshots were independently reviewed. The nonempty recovery restored 67 documents/109 versions, nine review
+threads/17 events and ten suggestions/seven decisions, including five accepted and two rejected proposals.
+Report `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`; ignored artifacts are under
+`e2e/work/artifacts/roadmap-257/`. The main migration/foundation/business gates, API-only rollout and cleanup passed;
+ordinary tenant, pilot, indexing and engine admission remain closed. Exact evidence is in the operations log and handoff.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
