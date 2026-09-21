@@ -175,13 +175,33 @@ Final artifacts and rendered pages are under ignored `e2e/work/artifacts/roadmap
 test cleanup and is not the source of the full report; its affected-case recheck and API-only rollout/health/cleanup
 are recorded separately in the operations log and current handoff. Item 257 recovery is retained, not newly executed.
 
-Roadmap 259 adds eight saved-version reuse workflows and two responsive runs (development acceptance pending).
+Roadmap 259 adds eight saved-version reuse workflows and two responsive runs.
 Existing real PostgreSQL/S3 APIs prove independent creation from current/historical rich content, unchanged source/history,
 new identity and creator ACL without copied reader grants, discussions or suggestions. Cases cover read-only source access
 with create permission, ordinary readers, fresh ACL/feature closure, discard consent and preserved drafts, transient failures,
 late close/context reads, uncertain-save restrictions, exact create retries and responsive title/source controls.
 No new test authorization bypass or failure-injection endpoint is added. Item 257 recovery evidence is retained for this
 UI-only workflow; it must not be reported as a fresh restore execution.
+
+The focused reuse run on `e7fec24` passed 10/10 in 41.7 seconds. Its report is
+`sha256:95646616c21d7d1d140dfc05ddda7998e035551440cc5a74ef5a203711240385`.
+The first run on `b4add9d` passed nine cases; its sole failure compared an API-created table without explicit unit-span
+attributes against the editor's normal serialized `colspan: 1` / `rowspan: 1` cells. The synthetic source fixture now
+includes those existing canonical attributes. Exact content equality and every source/history/access assertion remain;
+the correction changes no runtime behavior. Initial desktop/tablet/mobile screenshots passed visual review.
+
+Full verification on `e7fec24` passed all 180 checks in 664.306054 seconds: 145 browser cases and 35 model cases,
+zero skipped, unexpected or flaky; all previous 170 remain included. Full Python quality passed Ruff, formatting across
+691 files, Mypy across 541 sources and full Pytest, with only the known Starlette/AnyIO warning.
+Browser report: `sha256:9792822a6de9a37b6b92acd67805e3f52ae535ad63836a70be176d72ea8f3237`;
+quality log: `sha256:f66e1d0bacac61ebd7625e182d4293791b5b1c4856bd466d6b0a6db0f65a5cfe`.
+Final artifacts are under ignored `e2e/work/artifacts/roadmap-259/final/`. Independent review passed all three final
+screenshots with no clipping, horizontal overflow or unreachable controls. The API-only `--no-deps` rollout retained
+pilot 0 and reached healthy at 2026-09-21 12:21:23 UTC. Live checks passed all thirteen API operations, new and existing
+controls, assets/licenses, Work link and no-store/CSP. Cleanup finished healthy at 12:22:11 UTC with only regular
+API/PostgreSQL/MinIO running; the exact E2E services were removed and auxiliary test/restore services stopped.
+Ordinary Office remains unprovisioned, with its features, KB write and pilot closed. Roadmap 259 development is complete;
+no migration or recovery was run, and no ordinary-tenant or production admission follows from this evidence.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
@@ -218,6 +238,7 @@ The ignored directory `e2e/work/artifacts/` receives:
 - `office-print-desktop-chromium.png`, `office-print-tablet-chromium.png`, `office-print-mobile-chromium.png`;
 - `office-print-rich-letter-landscape.pdf`, `office-print-history-a4-portrait.pdf`, `office-print-unprepared.pdf`;
 - `pdf-qa/report.json`, extracted PDF text and rendered page PNGs from independent inspection.
+- `office-reuse-desktop-chromium.png`, `office-reuse-tablet-chromium.png`, `office-reuse-mobile-chromium.png`.
 
 Treat browser output as test evidence, not production evidence. It contains only synthetic data, is not an activation
 approval, and does not authorize real-user traffic. Record test counts, SHA-256 hashes and the exact source commit in

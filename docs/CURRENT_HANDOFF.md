@@ -2,9 +2,11 @@
 
 Updated: 2026-09-21
 
-Active continuation: Roadmap 259 / PLANS 120 implements saved-version reuse as an independent new document draft.
-Source read and create permission are freshly checked before the local transition; existing confirmed Create supplies
-the new identity and creator ACL. No backend/schema change is planned. Development validation and rollout are pending.
+Roadmap 259 / PLANS 120 completes saved-version reuse as an independent new document draft. Source read and create
+permission are freshly checked after discard consent; the existing confirmed Create supplies the new identity and
+creator ACL. Full quality and all 180 browser/model checks passed on `e7fec24`. Desktop/tablet/mobile visual review,
+API-only rollout and final health/gate checks passed. No backend/schema/persistence/dependency change was introduced;
+Roadmap 257 recovery evidence is retained, not rerun. Office development continues before CRM expansion.
 
 Roadmap 258 / PLANS 119 completes saved-version print preview and browser print/PDF output. Office development
 continues before CRM expansion. Full quality and all 170 browser/model checks passed on `cf2244c`; the final
@@ -35,8 +37,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `cf2244c` (full Python quality and all 170 browser/model checks); `d8300aa` adds only
-  a test-cleanup guard, with the affected browser case verified afterward.
+- Validated implementation: `e7fec24` (full Python quality and all 180 browser/model checks, including ten focused
+  reuse checks). Product changes are in `b4add9d`; `e7fec24` only corrects canonical table attributes in a test fixture.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -50,7 +52,17 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 258 host verification at 2026-09-21 11:32:51 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 259 host verification at 2026-09-21 12:22:11 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`a001838868f7`) with pilot explicitly 0;
+bounded startup retries reached healthy at 12:21:23 UTC. Live verification passed thirteen Office operations, new reuse
+and existing controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with
+non-cacheable 404; Office features closed, KB write false, pilot 0. The six remaining exact Work-E2E containers were
+removed, with the disposable runner already absent; postgres-test, postgres-restore and minio-restore are stopped.
+Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`) and retained synthetic recovery data were unchanged.
+Webcut running(7), all three provider nodes/listener 26443 unchanged, Tricert absent. No migration, business-content
+write, ordinary tenant, indexing, cloud provider or DOCX engine activation occurred.
+
+Previous item 258 host verification at 2026-09-21 11:32:51 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fc8312db43b7`) with pilot explicitly 0;
 bounded startup retries reached healthy at 11:31:16 UTC. Live verification passed thirteen Office operations, new print
 and existing editor controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned
@@ -159,7 +171,44 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 258
+## Last completed slice: Roadmap 259
+
+Saved current or historical native Office versions can now become independent memory-only drafts through
+"Als neues Dokument". The dialog identifies the saved title/version/date and accepts a bounded new title.
+Unsaved source edits are excluded. Canceling or a transient read failure preserves the current document and
+discussion/suggestion drafts. Existing discard consent precedes fresh exact-version content and create-capability
+reads; validation and detached editor preparation finish before the workspace is replaced.
+
+Source read access plus create capability suffices; source write access is unnecessary. The bounded listing is not
+used to authorize the source. Busy, uncertain or conflicting saves cannot be reused; close/context/session changes
+reject late responses. The fresh editor has no source object/version, mutation attempt, history, ACL or discussions.
+No write occurs until the existing explicit Create confirmation. That operation checks current create rights and
+retains exact retry after an unknown outcome. This is a local drafting workflow, not an atomic server-side copy or
+a persisted provenance link; later Create does not reauthorize the former source.
+
+Implementation `b4add9d` initially passed nine of ten focused checks. The rich-content fixture omitted standard
+unit-span table attributes that the established editor serializes explicitly. Test-only correction `e7fec24` supplies
+those attributes without weakening exact content equality. All ten focused checks then passed in 41.694688 seconds.
+Full quality and all 180 browser/model checks passed on the same immutable source at 2026-09-21 12:20:09 UTC:
+
+- Ruff and formatting across 691 files, Mypy across 541 sources and the complete Pytest suite passed;
+  only the known Starlette/AnyIO deprecation warning remains.
+- 180/180 in 664.306054 seconds: 145 browser and 35 model cases; zero skipped, unexpected or flaky results.
+- Final desktop/tablet/mobile screenshots passed independent visual review with no clipping, overflow or hidden actions.
+- Final report `sha256:9792822a6de9a37b6b92acd67805e3f52ae535ad63836a70be176d72ea8f3237`;
+  quality log `sha256:f66e1d0bacac61ebd7625e182d4293791b5b1c4856bd466d6b0a6db0f65a5cfe`.
+- Focused report `sha256:95646616c21d7d1d140dfc05ddda7998e035551440cc5a74ef5a203711240385`;
+  failed first report `sha256:54fb33988aaa253b66b662fcd19828c499890c43fbfb34554ae9c01f4cf8691b`.
+- Final screenshots: desktop `sha256:30606618ab192d770dc04d6a1e1ec3e24c5e58250703d33aa735c712cf841ca2`,
+  tablet `sha256:0f2adf14eca0cf9445f9c4051183e72f7855043fef27a9ebcbe8505d29d40b1a`,
+  mobile `sha256:1190b026f1d0f7ee0cbfab9d26573a137e56251528bd3f3b89299a82a14819f5`.
+
+Reports, logs, screenshots and failed-run diagnostics remain ignored under `e2e/work/artifacts/roadmap-259/`.
+All execution used dev001 Compose project collabio, required locks and fresh lifecycle inventories. Quality and browser
+tests used separate test databases. API rollout, live verification and cleanup are recorded above and in the append-only
+operations log. Thirteen API operations, schema, storage and gates remain unchanged. No new recovery execution is claimed.
+
+## Previous completed slice: Roadmap 258
 
 Roadmap 258 / PLANS 119 completes native saved-version printing. A clean current or historical version opens a
 literal, semantic print preview with A4/Letter and portrait/landscape settings. Readers may print without write rights.
@@ -657,11 +706,13 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 258 is complete. Preserve the 170-check matrix (135 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
+Item 259 is complete. Preserve the 180-check matrix (145 Work/KB/CRM/Office browser cases and 35 comparison/search-model cases)
 and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-version-bound comments, explicit saved-text suggestions and browser printing are complete. A suitable next bounded workflow is
-using a freshly authorized saved version as an independent new document draft, with a new object/creator ACL and existing
-explicit create confirmation. This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
+version-bound comments, explicit saved-text suggestions, browser printing and independent saved-version reuse are complete.
+A suitable next bounded workflow is server-side title search and cursor-based document-list loading: the current PostgreSQL
+listing returns at most 200 entries and the UI searches only those loaded titles. Preserve authoritative current ACL checks,
+stable pagination and drafts; absence from a filtered page must not be treated as access revocation. This is a recommendation,
+not an implemented item. Continuous tracked changes and live collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.

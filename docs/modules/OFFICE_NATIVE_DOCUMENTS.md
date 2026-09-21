@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–258 complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing
+Status: Roadmap 252–259 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`
 
 ## User workflow and scope
 
@@ -20,13 +20,15 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Saved-version reuse (Roadmap 259, validation pending)
+## Saved-version reuse (Roadmap 259)
 
 "Als neues Dokument" starts an independent draft from the opened saved current or historical version. The dialog
-identifies that exact source and offers an editable title. Unsaved editor changes are not used; existing discard
-consent protects document, review and suggestion drafts before a replacement. Canceling keeps the original workspace.
+shows the saved title and version/date label and offers an editable title. Unsaved editor changes are not used; existing
+discard consent protects document, review and suggestion drafts before a replacement. Canceling keeps the original
+workspace and sends no reuse reads or writes. Discard approval only gives consent: source content and drafts remain
+untouched until the subsequent fresh reads and staged editor validation all succeed.
 
-Before creating the local draft, fresh exact-version content and the authoritative creation capability are read through
+After that decision, fresh exact-version content and then the authoritative creation capability are read through
 the existing APIs. Source read access is sufficient when the user can create documents; source write access is not
 required. The bounded document list does not decide source visibility. Busy, uncertain and conflicting saves are blocked;
 close, context and session changes invalidate pending responses. Transient failures preserve the workspace.
@@ -384,6 +386,7 @@ artifacts are under `e2e/work/artifacts/roadmap-256/focused/`.
 
 Roadmap 258 / PLANS 119 has completed development validation with the print evidence below. Roadmap 257's verified
 recovery remains retained; printing introduces no new persistence and does not claim a new recovery execution.
+Roadmap 259 completed full quality, the 180-check matrix, independent final visual review and controlled API-only rollout.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
@@ -479,3 +482,43 @@ report. Its affected parallel-revocation case passed in 9.001 seconds. API-only 
 healthy at 11:32:51 UTC with only API/PostgreSQL/MinIO running; API is fc8312db43b7. Full host evidence is in
 `docs/operations/DEV001_OPERATIONS_LOG.md` and `docs/CURRENT_HANDOFF.md`. No schema, durable record, dependency,
 server export or ordinary tenant/pilot/index/engine admission changed.
+
+## Saved-version reuse validation (Roadmap 259)
+
+The focused run on `e7fec24` passed all ten reuse checks in 41.7 seconds: eight workflows and two responsive runs.
+It uses real PostgreSQL/S3 reads and confirmed creates, including historical native formatting/title, a distinct new
+object and first version, unchanged source history, independent creator ACLs and no copied reader grants, comments or
+suggestions. A create-capable source reader succeeds without source write permission. Fresh source revocation denies
+reuse; changing the create feature while discard consent waits preserves the dirty source after the fresh capability
+check. Eventual create still applies current rights. Cancellation, transient reads, delayed close/context responses,
+busy or unknown saves, literal titles and an identical retry after a lost successful create response are covered.
+
+The initial `b4add9d` run passed 9/10. Its only failure was a synthetic table fixture without the explicit unit-span
+attributes emitted by the existing editor serializer. `e7fec24` adds `colspan: 1` and `rowspan: 1` to those fixture cells;
+the full deep-equality assertion remains unchanged and no product behavior was changed by that correction.
+Initial desktop, tablet and mobile screenshots passed visual review.
+
+Full verification on the same immutable source `e7fec24` passed all 180 checks in 664.306054 seconds: 145 browser cases
+and 35 comparison/search-model cases, with zero skipped, unexpected or flaky results. All prior 170 checks remain.
+Full Python quality passed Ruff, formatting across 691 files, Mypy across 541 sources and full Pytest; only the known
+Starlette/AnyIO deprecation warning remains.
+
+- Focused report: `sha256:95646616c21d7d1d140dfc05ddda7998e035551440cc5a74ef5a203711240385`.
+- Full browser report: `sha256:9792822a6de9a37b6b92acd67805e3f52ae535ad63836a70be176d72ea8f3237`.
+- Quality log: `sha256:f66e1d0bacac61ebd7625e182d4293791b5b1c4856bd466d6b0a6db0f65a5cfe`.
+- Final desktop screenshot: `sha256:30606618ab192d770dc04d6a1e1ec3e24c5e58250703d33aa735c712cf841ca2`.
+- Final tablet screenshot: `sha256:0f2adf14eca0cf9445f9c4051183e72f7855043fef27a9ebcbe8505d29d40b1a`.
+- Final mobile screenshot: `sha256:1190b026f1d0f7ee0cbfab9d26573a137e56251528bd3f3b89299a82a14819f5`.
+
+Final artifacts are under ignored `e2e/work/artifacts/roadmap-259/final/`. Independent review passed the final desktop,
+tablet and mobile screenshots, with no clipping, horizontal overflow or unreachable controls.
+
+The API-only `--no-deps` rollout retained pilot 0 and reached healthy at 2026-09-21 12:21:23 UTC; API is `a001838868f7`.
+Live verification passed all thirteen API operations, new and previous controls, local assets/licenses, Work link and
+no-store/CSP. Tenant-demo Office remains unprovisioned with 404; Office features, KB write and pilot stay closed.
+Scoped cleanup finished healthy at 12:22:11 UTC with Collabio running only API/PostgreSQL/MinIO. Exact E2E services were
+removed; test and restore services are stopped. Main PostgreSQL/MinIO and other projects were unchanged.
+
+This completes Roadmap 259 / PLANS 120 development. The existing thirteen API operations, schema, storage and recovery
+contracts remain unchanged; no migration was added. Roadmap 257 recovery is retained, not rerun. Full host evidence is
+in the operations log and current handoff. No ordinary-tenant, pilot, indexing or engine admission is granted.

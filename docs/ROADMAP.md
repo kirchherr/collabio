@@ -1596,10 +1596,15 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
      API-Rollout, Health und abschliessender Betriebszustand: docs/CURRENT_HANDOFF.md.
 
-259. [ ] Gespeicherte native Office-Fassung als unabhaengigen neuen Dokumententwurf verwenden:
+259. [x] Gespeicherte native Office-Fassung als unabhaengigen neuen Dokumententwurf verwenden:
      frische Quell-Leserechte und Erstellungsfaehigkeit, eigener Titel, Schutz ungespeicherter Entwuerfe,
      neue Objektidentitaet erst nach bestehender Speicherbestaetigung. Original, Versionen und ACLs bleiben
      unveraendert; keine Uebernahme von Diskussionen/Vorschlaegen oder neue Server-Kopiertransaktion.
+     Volle Quality auf e7fec24 gruen: Ruff, 691 formatierte Dateien, Mypy 541 Quellen und vollstaendiges Pytest.
+     Zehn fokussierte sowie alle 180 Browser-/Modellpruefungen (145 + 35) in 664,306 Sekunden bestanden;
+     keine ausgelassenen, unerwarteten oder instabilen Ergebnisse. Desktop/Tablet/Mobile unabhaengig visuell geprueft.
+     API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 12:22:11 UTC gruen; alle Tenant-/Pilot-/Engine-Gates
+     bleiben geschlossen. Keine Schema-/Persistenzaenderung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
