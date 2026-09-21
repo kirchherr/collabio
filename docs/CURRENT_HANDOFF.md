@@ -28,6 +28,12 @@ Roadmap 258 closeout `61d7fce` was published and synchronized. All eleven module
 in 59.62 seconds, with only the known Starlette/AnyIO warning. Health remained ok at 2026-09-21 11:36:53 UTC;
 Collabio still running(3), with no auxiliary service started by the --no-deps disposable test. Independent final review
 matched all report/PDF/screenshot hashes and runtime evidence. This final evidence-only record changes no runtime or gate.
+Roadmap 259 closeout `dd65d5a` was published and synchronized. All eleven documentation/module/roadmap contract checks
+passed in 58.98 seconds, with only the known Starlette/AnyIO warning. Health remained ok at 2026-09-21 12:25:37 UTC;
+the --no-deps disposable test started no auxiliary service. Independent review matched all report/log/screenshot hashes.
+Final wording clarifies cancellation during reads, OpenAPI-definition verification and the absence of a main-database
+migration or new recovery drill; isolated test databases did run their required migrations. These evidence-only changes
+alter no runtime, tested behavior or gate.
 
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
@@ -54,8 +60,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 Final item 259 host verification at 2026-09-21 12:22:11 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`a001838868f7`) with pilot explicitly 0;
-bounded startup retries reached healthy at 12:21:23 UTC. Live verification passed thirteen Office operations, new reuse
-and existing controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with
+bounded startup retries reached healthy at 12:21:23 UTC. Live checks confirmed thirteen Office OpenAPI operation definitions,
+new reuse and existing controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with
 non-cacheable 404; Office features closed, KB write false, pilot 0. The six remaining exact Work-E2E containers were
 removed, with the disposable runner already absent; postgres-test, postgres-restore and minio-restore are stopped.
 Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`) and retained synthetic recovery data were unchanged.

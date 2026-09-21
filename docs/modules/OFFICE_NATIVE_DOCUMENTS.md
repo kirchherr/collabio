@@ -25,7 +25,8 @@ presentations and mail remain separate product work. Existing DOCX engine fideli
 "Als neues Dokument" starts an independent draft from the opened saved current or historical version. The dialog
 shows the saved title and version/date label and offers an editable title. Unsaved editor changes are not used; existing
 discard consent protects document, review and suggestion drafts before a replacement. Canceling keeps the original
-workspace and sends no reuse reads or writes. Discard approval only gives consent: source content and drafts remain
+workspace; no reuse reads begin before that decision, and reuse itself never writes. Closing during pending reads
+aborts them and prevents late adoption. Discard approval only gives consent: source content and drafts remain
 untouched until the subsequent fresh reads and staged editor validation all succeed.
 
 After that decision, fresh exact-version content and then the authoritative creation capability are read through
@@ -514,8 +515,9 @@ Final artifacts are under ignored `e2e/work/artifacts/roadmap-259/final/`. Indep
 tablet and mobile screenshots, with no clipping, horizontal overflow or unreachable controls.
 
 The API-only `--no-deps` rollout retained pilot 0 and reached healthy at 2026-09-21 12:21:23 UTC; API is `a001838868f7`.
-Live verification passed all thirteen API operations, new and previous controls, local assets/licenses, Work link and
-no-store/CSP. Tenant-demo Office remains unprovisioned with 404; Office features, KB write and pilot stay closed.
+Live verification confirmed all thirteen Office OpenAPI operation definitions and checked new and previous controls,
+local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with 404;
+Office features, KB write and pilot stay closed.
 Scoped cleanup finished healthy at 12:22:11 UTC with Collabio running only API/PostgreSQL/MinIO. Exact E2E services were
 removed; test and restore services are stopped. Main PostgreSQL/MinIO and other projects were unchanged.
 

@@ -197,11 +197,11 @@ Browser report: `sha256:9792822a6de9a37b6b92acd67805e3f52ae535ad63836a70be176d72
 quality log: `sha256:f66e1d0bacac61ebd7625e182d4293791b5b1c4856bd466d6b0a6db0f65a5cfe`.
 Final artifacts are under ignored `e2e/work/artifacts/roadmap-259/final/`. Independent review passed all three final
 screenshots with no clipping, horizontal overflow or unreachable controls. The API-only `--no-deps` rollout retained
-pilot 0 and reached healthy at 2026-09-21 12:21:23 UTC. Live checks passed all thirteen API operations, new and existing
-controls, assets/licenses, Work link and no-store/CSP. Cleanup finished healthy at 12:22:11 UTC with only regular
+pilot 0 and reached healthy at 2026-09-21 12:21:23 UTC. Live checks confirmed all thirteen Office OpenAPI operation
+definitions, new and existing controls, assets/licenses, Work link and no-store/CSP. Cleanup finished healthy at 12:22:11 UTC with only regular
 API/PostgreSQL/MinIO running; the exact E2E services were removed and auxiliary test/restore services stopped.
 Ordinary Office remains unprovisioned, with its features, KB write and pilot closed. Roadmap 259 development is complete;
-no migration or recovery was run, and no ordinary-tenant or production admission follows from this evidence.
+no main-database migration or new recovery drill was run, and no ordinary-tenant or production admission follows from this evidence.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
