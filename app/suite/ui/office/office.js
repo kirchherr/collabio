@@ -1174,10 +1174,15 @@ function freshHistory() {
 
 function cancelHistoryRead(owner) {
   if (!owner?.history) return;
+  const wasLoading = owner.history.loading;
   owner.history.request += 1;
   owner.history.controller?.abort();
   owner.history.controller = null;
   owner.history.loading = false;
+  if (wasLoading) {
+    owner.history.message = owner.versions.length ? historyMessage(owner) : "Bitte aktualisieren Sie die Versionsliste.";
+    if (owner === state.session) renderHistory(owner);
+  }
 }
 
 function historyMessage(owner) {
@@ -2806,6 +2811,7 @@ async function hideInspectorWithReview() {
 }
 
 function toggleInspector(show) {
+  if (!show) cancelHistoryRead(state.session);
   $("office-shell").classList.toggle("inspector-hidden", !show);
   $("inspector-toggle").setAttribute("aria-expanded", String(show));
 }
@@ -2814,15 +2820,18 @@ async function selectInspector(name) {
   const review = state.review;
   const suggestions = state.suggestions;
   const epoch = state.epoch;
-  if (name !== "comments" && review) {
+  if (name === "history" && (state.session?.saving || review?.saving || review?.settling ||
+      suggestions?.preparing || suggestions?.saving || suggestions?.settling)) return;
+  if (name !== "comments" && name !== "history" && review) {
     if (!(await confirmDiscard("comments")) || state.review !== review) return;
     clearReview();
   }
-  if (name !== "suggestions" && suggestions) {
+  if (name !== "suggestions" && name !== "history" && suggestions) {
     if (!(await confirmDiscard("suggestions")) || state.suggestions !== suggestions || state.epoch !== epoch) return;
     clearSuggestions();
     updateEditorState();
   }
+  if (name !== "history") cancelHistoryRead(state.session);
   ["outline", "history", "comments", "suggestions"].forEach((candidate) => {
     const active = name === candidate;
     $(`${candidate}-tab`).setAttribute("aria-selected", String(active));
@@ -2831,7 +2840,7 @@ async function selectInspector(name) {
   });
   $("document-inspector").classList.toggle("comments-active", name === "comments");
   $("document-inspector").classList.toggle("suggestions-active", name === "suggestions");
-  if (name === "history") loadHistory();
+  if (name === "history") { clearReviewHighlight(); loadHistory(); }
   if (name === "comments") {
     $("office-shell").classList.remove("focus-mode");
     $("focus-toggle").setAttribute("aria-pressed", "false");
@@ -3029,6 +3038,7 @@ $("focus-toggle").addEventListener("click", async () => {
     updateEditorState();
   }
   const active = $("office-shell").classList.toggle("focus-mode");
+  if (active) cancelHistoryRead(state.session);
   $("focus-toggle").setAttribute("aria-pressed", String(active));
 });
 $("find-toggle").addEventListener("click", () => toggleFind($("find-panel").hidden));

@@ -33,12 +33,12 @@ test("Office older-version history and comparison controls fit desktop tablet an
   const second = await appendHistory(page, objectId, comparison, { comparison: true });
   await loadOfficeComparison(page, objectId, second.versions.at(-1).version_id, saved.version.version_id);
   await expectHistoryDialogLayout(page);
-  await page.locator("#compare-dialog").evaluate((element) => { element.scrollTop = 0; });
+  await page.locator("#compare-dialog .compare-body").evaluate((element) => { element.scrollTop = 0; });
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-history-pagination-${testInfo.project.name}.png`, fullPage: true });
   if (testInfo.project.name === "desktop-chromium") {
     await page.setViewportSize({ width: 900, height: 900 });
     await expectHistoryDialogLayout(page);
-    await page.locator("#compare-dialog").evaluate((element) => { element.scrollTop = 0; });
+    await page.locator("#compare-dialog .compare-body").evaluate((element) => { element.scrollTop = 0; });
     await page.screenshot({ path: `${ARTIFACT_DIR}/office-history-pagination-tablet-chromium.png`, fullPage: true });
   }
   await page.locator("#compare-close").click();

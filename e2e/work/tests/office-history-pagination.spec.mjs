@@ -6,6 +6,7 @@ import {
   officeContentPath, officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl,
 } from "./office-support.mjs";
 import { openComments } from "./office-review-support.mjs";
+import { openSuggestions, prepareSuggestion } from "./office-suggestion-support.mjs";
 import {
   HISTORY_HEADERS, HISTORY_READER_ID, allHistory, appendAllHistory, appendHistory, historyPage,
   historyPath, historyResponse, historyRows, holdHistoryPage, matchesHistoryPage,
@@ -149,6 +150,33 @@ test("Office keeps the loaded history head and local document and review drafts 
   await expect(page.locator("#comment-body")).toHaveValue("History review draft remains local");
   await expect(page.locator("#document-version")).toContainText(saved.version.version_id);
   await expect(page.locator("#discard-dialog")).toBeHidden();
+  await page.locator("#comments-tab").click();
+  await expect(page.locator("#comment-body")).toBeVisible();
+  await expect(page.locator("#comment-body")).toHaveValue("History review draft remains local");
+  await page.locator("#document-close").click();
+  await expect(page.locator("#discard-dialog")).toBeVisible();
+  await page.locator("#discard-cancel").click();
+  await expect(officeEditor(page)).toHaveText("History document draft remains local");
+  await expect(page.locator("#comment-body")).toHaveValue("History review draft remains local");
+  expect(writes).toEqual([]);
+  await page.locator("#document-close").click();
+  await page.locator("#discard-confirm").click();
+  await openHistoryFixture(page);
+  await openSuggestions(page, objectId);
+  await prepareSuggestion(page, "Concurrent new history head", "History suggestion draft remains local");
+  await page.locator("#suggestion-confirm-cancel").click();
+  const suggestionHistory = await openHistoryPanel(page, objectId);
+  await appendHistory(page, objectId, suggestionHistory);
+  const suggestionRefresh = page.waitForResponse((response) => matchesHistoryPage(response, objectId));
+  await page.locator("#history-refresh").click();
+  await historyResponse(await suggestionRefresh, objectId);
+  await page.locator("#suggestions-tab").click();
+  await expect(page.locator("#suggestion-replacement")).toBeVisible();
+  await expect(page.locator("#suggestion-replacement")).toHaveValue("History suggestion draft remains local");
+  await page.locator("#document-close").click();
+  await expect(page.locator("#discard-dialog")).toBeVisible();
+  await page.locator("#discard-cancel").click();
+  await expect(page.locator("#suggestion-replacement")).toHaveValue("History suggestion draft remains local");
   expect(writes).toEqual([]);
 });
 
@@ -267,6 +295,20 @@ test("Office ignores late older-version pages after comparison close or a change
     await expect(page.locator("#document-version")).toContainText(saved.version.version_id);
     await expect(historyRows(page)).toHaveCount(50);
   } finally { await held.dispose(); }
+  for (const action of ["inspector", "tab", "focus"]) {
+    const before = await openHistoryPanel(page, objectId);
+    const pending = await holdHistoryPage(page, objectId, before.next_cursor);
+    try {
+      await page.locator("#history-more").click();
+      await pending.ready;
+      await page.locator(action === "inspector" ? "#inspector-toggle" : action === "tab" ? "#outline-tab" : "#focus-toggle").click();
+      await pending.finishCancelled();
+      await expect(historyRows(page)).toHaveCount(50);
+      await expect(page.locator("#history-status")).not.toContainText("werden geladen");
+      await expect(page.locator("#document-version")).toContainText(saved.version.version_id);
+      if (action === "focus") await page.locator("#focus-toggle").click();
+    } finally { await pending.dispose(); }
+  }
   const current = await openHistoryPanel(page, objectId);
   const contextRead = await holdHistoryPage(page, objectId, current.next_cursor);
   try {
