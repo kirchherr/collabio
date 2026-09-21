@@ -150,6 +150,11 @@ focus changes cancel pending reads. Full quality passed on 46a83b4; all 200 chec
 checks and 23 focused browser cases, independent code/visual review and actual access-log cursor redaction. API rollout
 and final health/gate evidence are recorded in docs/CURRENT_HANDOFF.md; no new schema, durable format or recovery drill.
 
+123. [ ] Implement native Office paragraph alignment and line/before/after spacing through a compact selection-aware
+dialog. Preserve optional attributes across saved versions, undo, comparison, reuse, print and recovery without changing
+legacy canonical bytes. Strict validation, complete paginated nonempty recovery, responsive/PDF review, full regression
+and remote quality are required before API rollout. See ADR-0086; Office remains ahead of CRM.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

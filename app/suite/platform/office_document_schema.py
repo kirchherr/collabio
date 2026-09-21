@@ -17,6 +17,7 @@ MAX_DOCUMENT_NODES = 10_000
 MAX_DOCUMENT_DEPTH = 32
 BLOCKS = {"paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "horizontalRule", "table"}
 MARKS = {"bold", "italic", "strike", "code", "underline"}
+PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
 
 
 class OfficeDocumentInvalidContentError(ValueError):
@@ -52,9 +53,23 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         attrs = node.get("attrs", {})
         if not isinstance(attrs, dict):
             reject()
-        if kind == "heading":
-            if set(attrs) != {"level"} or type(attrs["level"]) is not int or attrs["level"] not in {1, 2, 3}:
+        if kind in {"paragraph", "heading"}:
+            allowed = PARAGRAPH_FORMAT_ATTRIBUTES | ({"level"} if kind == "heading" else set())
+            if set(attrs) - allowed:
                 reject()
+            if kind == "heading" and (type(attrs.get("level")) is not int or attrs["level"] not in {1, 2, 3}):
+                reject()
+            if "textAlign" in attrs and (
+                not isinstance(attrs["textAlign"], str) or attrs["textAlign"] not in {"left", "center", "right", "justify"}
+            ):
+                reject()
+            if "lineSpacing" in attrs and (
+                not isinstance(attrs["lineSpacing"], str) or attrs["lineSpacing"] not in {"1", "1.15", "1.5", "2"}
+            ):
+                reject()
+            for key in ("spacingBefore", "spacingAfter"):
+                if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
+                    reject()
         elif kind == "orderedList":
             if (
                 set(attrs) - {"start"}

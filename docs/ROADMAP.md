@@ -1629,6 +1629,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md. Keine neue Schema-/
      Persistenzaenderung oder Recovery-Ausfuehrung; Nachweis aus Punkt257 und geschlossene Gates bleiben erhalten.
 
+262. [ ] Absatzformatierung im nativen Office: Ausrichtung, Zeilenabstand und Abstaende davor/danach in einem
+     kompakten auswahlgebundenen Dialog. Optionale Werte strikt validieren und durch Speichern, Undo, Vergleich,
+     Wiederverwendung, Druck und Recovery erhalten; bisherige kanonische Inhaltsbytes unveraendert lassen.
+     Vollstaendig paginierter nichtleerer Restore, Responsive-/PDF-Pruefung, Regression und Remote-Quality vor Rollout.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

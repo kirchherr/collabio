@@ -28,6 +28,7 @@ from work_e2e_controls import (
 from work_e2e_crm import synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
+from work_e2e_paragraph import seed_synthetic_office_paragraphs
 
 REPO_ROOT = Path(__file__).parents[1]
 
@@ -83,6 +84,15 @@ def test_office_history_seed_rejects_normal_environment_before_database_or_stora
     assert {HISTORY_EDITOR_ID, HISTORY_READER_ID}.isdisjoint(
         {WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID, DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID}
     )
+
+
+def test_office_paragraph_seed_rejects_normal_environment_before_database_or_storage_access() -> None:
+    environment = valid_environment()
+    environment["SUITE_DATABASE_DSN"] = "postgresql://app:secret@postgres:5432/collabio"
+    client = Mock(spec=Boto3S3CompatibleObjectStoreClient)
+    with pytest.raises(RuntimeError):
+        seed_synthetic_office_paragraphs(environment=environment, client=client)
+    assert not client.mock_calls
 
 
 def test_work_e2e_guard_accepts_only_same_database_source_receipt_and_office_overrides() -> None:

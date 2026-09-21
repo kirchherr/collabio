@@ -816,6 +816,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "seitenweise, ohne geoeffnete Entwuerfe durch einen Listenfilter zu verlieren. "
                         "Aeltere gespeicherte Fassungen lassen sich seitenweise in Historie und Vergleich laden; "
                         "aktuelle Rechte, Auswahl und Entwuerfe bleiben dabei erhalten. "
+                        "Ein Absatzdialog bearbeitet Ausrichtung, Zeilenabstand und Abstaende davor/danach; "
+                        "gespeicherte Fassungen, Vergleich und Druck erhalten diese Absatzformatierung. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -853,6 +855,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-versions.spec.mjs",
                         "app/suite/ui/office/office-search.mjs",
                         "app/suite/ui/office/office-print.mjs",
+                        "app/suite/ui/office/office-paragraph.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md",
                         "e2e/work/tests/office-print.spec.mjs",
                         "e2e/work/tests/office-reuse.spec.mjs",
                         "e2e/work/tests/office-reuse-responsive.spec.mjs",

@@ -106,6 +106,61 @@ test("native comparison exposes heading levels and ordered list starts", () => {
   preservesEveryBlock(result, before, after);
 });
 
+test("paragraph-only changes remain visible in comparison labels without changing literal content", () => {
+  const plain = freeze(paragraph("Gleicher Text", ["bold"]));
+  for (const attrs of [
+    { textAlign: "center" }, { lineSpacing: "1.5" }, { spacingBefore: 6 }, { spacingAfter: 0 },
+  ]) {
+    const formatted = freeze({ ...structuredClone(plain), attrs });
+    const result = compareOfficeDocuments(document(plain), document(formatted));
+    expect(result.counts).toEqual({ equal: 0, added: 0, removed: 0, changed: 1 });
+    expect(describeOfficeBlock(formatted).label).not.toBe(describeOfficeBlock(plain).label);
+    expect(describeOfficeBlock(formatted).text).toBe(describeOfficeBlock(plain).text);
+    expect(compareOfficeDocuments(document(formatted), document(plain)).counts.changed).toBe(1);
+  }
+});
+
+test("paragraph formatting is located inside lists quotations and individual table cells", () => {
+  const plain = paragraph("Identischer Inhalt");
+  const formatted = { ...structuredClone(plain), attrs: { textAlign: "right", lineSpacing: "2", spacingBefore: 12, spacingAfter: 24 } };
+  const wrappers = [
+    (p) => ({ type: "bulletList", content: [{ type: "listItem", content: [p] }] }),
+    (p) => ({ type: "blockquote", content: [p] }),
+    (p) => ({ type: "table", content: [{ type: "tableRow", content: [
+      { type: "tableCell", content: [paragraph("Unverändert")] }, { type: "tableCell", content: [p] },
+    ] }] }),
+  ];
+  for (const wrap of wrappers) {
+    const before = freeze(wrap(plain));
+    const after = freeze(wrap(formatted));
+    expect(compareOfficeDocuments(document(before), document(after)).counts.changed).toBe(1);
+    const description = describeOfficeBlock(after);
+    expect(description.text).not.toBe(describeOfficeBlock(before).text);
+    expect(description.text).toContain("Identischer Inhalt");
+    expect(description.text).toContain("24");
+    expect(description.text).toContain("12");
+  }
+});
+
+test("heading paragraph formatting is described at both top level and nested positions", () => {
+  const before = { type: "heading", attrs: { level: 2 }, content: paragraph("Abschnitt").content };
+  const after = { ...structuredClone(before), attrs: { level: 2, textAlign: "justify", spacingAfter: 18 } };
+  expect(describeOfficeBlock(after).label).toContain("Überschrift Ebene 2");
+  expect(describeOfficeBlock(after).label).not.toBe(describeOfficeBlock(before).label);
+  const nested = { type: "blockquote", content: [after] };
+  expect(describeOfficeBlock(nested).text).toContain("18");
+  expect(describeOfficeBlock(nested).text).toContain("Abschnitt");
+  expect(compareOfficeDocuments(document(before), document(after)).counts.changed).toBe(1);
+});
+
+test("format attributes retain exact values and ignore property order in comparison", () => {
+  const before = freeze({ ...paragraph("Unverändert"), attrs: { textAlign: "left", lineSpacing: "1", spacingBefore: 0, spacingAfter: 6 } });
+  const after = freeze({ ...paragraph("Unverändert"), attrs: { spacingAfter: 6, spacingBefore: 0, lineSpacing: "1", textAlign: "left" } });
+  expect(compareOfficeDocuments(document(before), document(after)).counts.equal).toBe(1);
+  expect(describeOfficeBlock(before)).toEqual(describeOfficeBlock(after));
+  expect(compareOfficeDocuments(document(paragraph("Unverändert")), document(after)).counts.changed).toBe(1);
+});
+
 test("native comparison retains table cells headers and literal hostile text", () => {
   const before = document(table());
   const after = document(table("Name", "<img src=x onerror=alert(1)>"));

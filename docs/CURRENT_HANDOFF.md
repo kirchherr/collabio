@@ -2,6 +2,11 @@
 
 Updated: 2026-09-21
 
+Roadmap 262 / PLANS 123 is in progress: native paragraph alignment and line/before/after spacing, with strict optional
+attributes and unchanged legacy canonical bytes. The user approved this next Office step. Save/undo/comparison/print,
+complete paginated nonempty recovery and full remote verification are pending; no completion or rollout is claimed.
+Decision: `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`.
+
 Roadmap 261 / PLANS 122 completes saved-version history beyond 200 entries with bounded pages along the immutable
 predecessor chain. Current parent ACLs remain mandatory for every page; selection, comparisons and local drafts survive
 loading and refresh. Full quality and all 200 browser/model checks passed on `46a83b4`. Independent code and visual

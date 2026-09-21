@@ -33,3 +33,25 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .compare-history-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}.compare-history-actions .button,.compare-history-actions .quiet-button{white-space:normal;min-height:36px}#compare-history-status{font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}#compare-history-status.error,#history-status.error{color:var(--danger)}#history-selected{padding:8px;border-left:2px solid var(--accent);background:#eef6f3;overflow-wrap:anywhere}
 @media(max-width:760px){.compare-history-actions{gap:6px}.compare-history-actions .button,.compare-history-actions .quiet-button{flex:1 1 140px;font-size:11px}#compare-history-status{font-size:11px}}
+.format-toolbar .paragraph-toggle{font-size:11px;white-space:nowrap;padding:0 8px}.paragraph-dialog h2{overflow-wrap:anywhere}.paragraph-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0 12px}.paragraph-fields label{display:grid;gap:7px;min-width:0;font-size:12px;font-weight:600}.paragraph-fields select{width:100%;min-width:0;min-height:40px;border:1px solid #bcd0c9;border-radius:5px;background:#fff;color:var(--ink);padding:8px;font:12px "Segoe UI",Arial,sans-serif}.paragraph-help,#paragraph-status{font-size:11px;line-height:1.65;color:#526b65;overflow-wrap:anywhere}#paragraph-selection{font-size:12px;font-weight:600}#paragraph-status{margin:12px 0 0}#paragraph-status.error{color:var(--danger)}#paragraph-reset{font-size:11px;padding-left:0}.paragraph-dialog footer .button{white-space:normal}
+/* Explicit native formatting outranks legacy list/cell/first-paragraph rules.
+   No attributes means the original editor and print defaults remain intact. */
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-align="left"]{text-align:left}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-align="center"]{text-align:center}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-align="right"]{text-align:right}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-align="justify"]{text-align:justify}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-line-spacing="1"]{line-height:1}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-line-spacing="1.15"]{line-height:1.15}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-line-spacing="1.5"]{line-height:1.5}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-line-spacing="2"]{line-height:2}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-before="0"]{margin-top:0}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-before="6"]{margin-top:6pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-before="12"]{margin-top:12pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-before="18"]{margin-top:18pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-before="24"]{margin-top:24pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="0"]{margin-bottom:0}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="6"]{margin-bottom:6pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="12"]{margin-bottom:12pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="18"]{margin-bottom:18pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="24"]{margin-bottom:24pt}
+@media(max-width:760px){.paragraph-dialog h2{font-size:19px}.paragraph-fields{grid-template-columns:minmax(0,1fr);gap:11px;margin-top:14px}.paragraph-fields label{font-size:11px;gap:4px}.paragraph-fields select{min-height:36px}.paragraph-dialog .dialog-body{padding-bottom:16px}.paragraph-dialog footer{gap:8px}.paragraph-dialog footer .button{flex:1;font-size:12px}.paragraph-help,#paragraph-status{font-size:10px}}

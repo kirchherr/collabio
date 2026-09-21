@@ -1,4 +1,6 @@
 // Native, already validated document JSON only. No DOM, HTML, network or storage.
+import { officeParagraphDescription } from "./office-paragraph.mjs";
+
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
   bold: "Fett", italic: "Kursiv", strike: "Durchgestrichen", code: "Code", underline: "Unterstrichen",
@@ -175,10 +177,16 @@ function blockText(block, nested = false) {
     case "text": return markedText(block);
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
-    case "paragraph": return children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
+    case "paragraph": {
+      const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
+      const formatting = nested ? officeParagraphDescription(block.attrs) : [];
+      return formatting.length ? `⟦${formatting.join(" · ")}⟧ ${text}` : text;
+    }
     case "heading": {
       const text = children.map((child) => blockText(child)).join("") || "(Leere Überschrift)";
-      return nested ? `Überschrift ${block.attrs.level}: ${text}` : text;
+      const formatting = nested ? officeParagraphDescription(block.attrs) : [];
+      const detail = formatting.length ? ` · ${formatting.join(" · ")}` : "";
+      return nested ? `Überschrift ${block.attrs.level}${detail}: ${text}` : text;
     }
     case "codeBlock": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Codeblock)";
@@ -206,6 +214,10 @@ function blockText(block, nested = false) {
 export function describeOfficeBlock(block) {
   let label = nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
+  if (["paragraph", "heading"].includes(block.type)) {
+    const formatting = officeParagraphDescription(block.attrs);
+    if (formatting.length) label += ` · ${formatting.join(" · ")}`;
+  }
   if (block.type === "orderedList") label += ` · Beginn ${(block.attrs?.start ?? 1)}`;
   if (block.type === "table") {
     const rows = block.content.length;

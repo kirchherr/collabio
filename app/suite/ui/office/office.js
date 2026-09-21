@@ -1,4 +1,4 @@
-import { Editor, Extension } from "@tiptap/core";
+import { Editor, Extension, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
@@ -11,6 +11,7 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
+import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes } from "./office-paragraph.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -18,7 +19,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -35,6 +36,42 @@ const commandNames = {
 };
 const OfficeTable = Table.extend({
   renderHTML() { return ["table", { class: "office-table" }, ["tbody", 0]]; },
+});
+const OfficeParagraphFormat = Extension.create({
+  name: "officeParagraphFormat",
+  priority: 1000,
+  addGlobalAttributes() {
+    return [{
+      types: ["paragraph", "heading"],
+      attributes: Object.fromEntries(Object.entries(OFFICE_PARAGRAPH_VALUES).map(([key, values]) => {
+        const domName = Object.keys(officeParagraphDOMAttributes({ [key]: values[0] }))[0];
+        return [key, {
+          default: null, keepOnSplit: true,
+          parseHTML: (element) => values.find((value) => String(value) === element.getAttribute(domName)) ?? null,
+          renderHTML: (attrs) => officeParagraphDOMAttributes({ [key]: attrs[key] }),
+        }];
+      })),
+    }];
+  },
+  addKeyboardShortcuts() {
+    return {
+      "Mod-Alt-0": () => changeTextStyle("paragraph"),
+      ...Object.fromEntries([1, 2, 3].map((level) => [`Mod-Alt-${level}`, () =>
+        changeTextStyle(this.editor.isActive("heading", { level }) ? "paragraph" : `heading-${level}`)])),
+      "Mod-Shift-7": () => formatEditor((chain) => chain.toggleOrderedList(), true),
+      "Mod-Shift-8": () => formatEditor((chain) => chain.toggleBulletList(), true),
+    };
+  },
+  addInputRules() {
+    return [textblockTypeInputRule({
+      find: /^(#{1,3})\s$/,
+      type: this.editor.schema.nodes.heading,
+      getAttributes: (match) => ({
+        level: match[1].length,
+        ...officeParagraphAttributes(this.editor.state.selection.$from.parent.attrs),
+      }),
+    })];
+  },
 });
 
 class ApiError extends Error {
@@ -126,6 +163,10 @@ function normalizedDocument(document) {
       if (![1, 2, 3].includes(value.attrs?.level)) throw new Error("document-heading");
       result.attrs = { level: value.attrs.level };
     }
+    if (["paragraph", "heading"].includes(value.type)) {
+      const attributes = officeParagraphAttributes(value.attrs ?? {});
+      if (Object.keys(attributes).length) result.attrs = { ...result.attrs, ...attributes };
+    }
     if (value.type === "orderedList") {
       const start = value.attrs?.start ?? 1;
       if (!Number.isInteger(start) || start < 1 || start > 1000000) throw new Error("document-list");
@@ -199,6 +240,7 @@ function updateEditorState() {
   $("text-style").disabled = !editable;
   $("insert-menu").disabled = !editable;
   updateTableControls();
+  updateParagraphControls();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -359,13 +401,193 @@ function focusEditor(editor = state.editor) {
   editor.commands.scrollIntoView();
 }
 
-function formatEditor(command) {
+function formatEditor(command, preserveParagraphs = false) {
   const editor = state.editor;
-  if (!editor?.isEditable) return;
+  if (!editor?.isEditable) return false;
+  const paragraphs = preserveParagraphs ? selectedParagraphs(editor) : [];
   editor.view.focus();
-  command(editor.chain()).run();
+  const chain = command(editor.chain());
+  if (paragraphs.length) chain.command(({ tr }) => {
+    // Wrapping a heading in a list can first turn it into a paragraph. Retain
+    // each surviving block's own format instead of applying the first to all.
+    for (const { entry, position } of paragraphs) {
+      const attributes = officeParagraphAttributes(entry.attrs);
+      if (!Object.keys(attributes).length) continue;
+      const mapped = tr.mapping.map(position + 1);
+      if (mapped < 0 || mapped > tr.doc.content.size) continue;
+      const resolved = tr.doc.resolve(mapped);
+      for (let depth = resolved.depth; depth > 0; depth -= 1) {
+        const current = resolved.node(depth);
+        if (!["paragraph", "heading"].includes(current.type.name)) continue;
+        if (current.content.eq(entry.content) && Object.entries(attributes).some(([key, value]) => current.attrs[key] !== value)) {
+          tr.setNodeMarkup(resolved.before(depth), undefined, { ...current.attrs, ...attributes });
+        }
+        break;
+      }
+    }
+    return true;
+  });
+  chain.run();
   focusEditor(editor);
   updateEditorState();
+  return true;
+}
+
+const paragraphFields = {
+  textAlign: "paragraph-align", lineSpacing: "paragraph-line-spacing",
+  spacingBefore: "paragraph-spacing-before", spacingAfter: "paragraph-spacing-after",
+};
+const paragraphHelp = "Die Änderungen gelten für die ausgewählten Absätze und bleiben bis zum Speichern im Entwurf.";
+const paragraphLimitMessage = "Die Absatzformatierung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
+
+function selectedParagraphs(editor = state.editor, includeCode = false) {
+  if (!editor || editor.isDestroyed) return [];
+  const { doc, selection } = editor.state;
+  const entries = new Map();
+  const supported = (entry) => ["paragraph", "heading"].includes(entry.type.name) || (includeCode && entry.type.name === "codeBlock");
+  if (selection.empty) {
+    for (let depth = selection.$from.depth; depth > 0; depth -= 1) {
+      const entry = selection.$from.node(depth);
+      if (supported(entry)) {
+        const position = selection.$from.before(depth);
+        entries.set(position, { entry, position });
+        break;
+      }
+    }
+  } else if (selection instanceof CellSelection) {
+    selection.forEachCell((cell, cellPosition) => {
+      cell.descendants((entry, offset) => {
+        if (!supported(entry)) return;
+        const position = cellPosition + 1 + offset;
+        entries.set(position, { entry, position });
+        return false;
+      });
+    });
+  } else {
+    for (const { $from, $to } of selection.ranges) {
+      doc.nodesBetween($from.pos, $to.pos, (entry, position) => {
+        if (!supported(entry)) return;
+        // An endpoint at the start of the next text block does not select it.
+        if ($to.pos !== position + 1) entries.set(position, { entry, position });
+        return false;
+      });
+    }
+  }
+  return [...entries.values()].sort((left, right) => left.position - right.position);
+}
+
+function paragraphAllowed() {
+  return replacementAllowed() && !state.review?.saving && !state.review?.settling && !state.review?.uncertain;
+}
+
+function paragraphActionCurrent(action) {
+  return Boolean(action && sessionCurrent(action.session) && action.context === state.context &&
+    action.editor === state.editor && action.revision === state.session.revision &&
+    action.document === state.editor.state.doc && action.selection.eq(state.editor.state.selection) && paragraphAllowed());
+}
+
+function closeParagraphDialog(restoreFocus = false) {
+  const action = state.paragraphAction;
+  state.paragraphAction = null;
+  $("paragraph-dialog").close();
+  $("paragraph-form").reset();
+  $("paragraph-selection").textContent = "";
+  $("paragraph-status").textContent = "";
+  $("paragraph-status").classList.remove("error");
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function updateParagraphControls() {
+  if (state.paragraphAction && !paragraphActionCurrent(state.paragraphAction)) closeParagraphDialog();
+  $("paragraph-format").disabled = !paragraphAllowed() || !selectedParagraphs().length;
+  $("paragraph-apply").disabled = !paragraphActionCurrent(state.paragraphAction);
+  $("paragraph-reset").disabled = $("paragraph-apply").disabled;
+}
+
+function openParagraphDialog() {
+  if (!paragraphAllowed()) return;
+  const paragraphs = selectedParagraphs();
+  if (!paragraphs.length) return;
+  closeParagraphDialog();
+  state.paragraphAction = {
+    session: state.session, editor: state.editor, context: state.context, revision: state.session.revision,
+    document: state.editor.state.doc, selection: state.editor.state.selection, paragraphs,
+  };
+  for (const [key, id] of Object.entries(paragraphFields)) {
+    const values = new Set(paragraphs.map(({ entry }) => entry.attrs[key] ?? "default"));
+    const mixed = values.size > 1;
+    $(id).querySelector('option[value="mixed"]').hidden = !mixed;
+    $(id).value = mixed ? "mixed" : String([...values][0]);
+  }
+  $("paragraph-selection").textContent = `${paragraphs.length} ${paragraphs.length === 1 ? "Absatz ausgewählt" : "Absätze ausgewählt"}.`;
+  $("paragraph-status").textContent = paragraphHelp;
+  updateParagraphControls();
+  $("paragraph-dialog").showModal();
+  $("paragraph-align").focus();
+}
+
+function applyParagraphFormat() {
+  const action = state.paragraphAction;
+  if (!paragraphActionCurrent(action)) { closeParagraphDialog(); return; }
+  const editor = action.editor;
+  let transaction;
+  try {
+    const changes = {};
+    for (const [key, id] of Object.entries(paragraphFields)) {
+      const choice = $(id).value;
+      if (choice === "mixed") continue;
+      if (choice === "default") changes[key] = null;
+      else {
+        const value = OFFICE_PARAGRAPH_VALUES[key].find((candidate) => String(candidate) === choice);
+        if (value === undefined) throw new Error("paragraph-choice");
+        changes[key] = value;
+      }
+    }
+    transaction = editor.state.tr;
+    for (const { entry, position } of action.paragraphs) {
+      if (Object.entries(changes).every(([key, value]) => (entry.attrs[key] ?? null) === value)) continue;
+      transaction.setNodeMarkup(position, undefined, { ...entry.attrs, ...changes });
+    }
+    if (!transaction.docChanged || transaction.doc.eq(editor.state.doc)) {
+      $("paragraph-status").textContent = "Keine Änderung: Die Auswahl hat bereits diese Absatzformatierung.";
+      $("paragraph-status").classList.remove("error");
+      return;
+    }
+    validateEditorDocument(transaction.doc);
+  } catch {
+    $("paragraph-status").textContent = paragraphLimitMessage;
+    $("paragraph-status").classList.add("error");
+    return;
+  }
+  if (!paragraphActionCurrent(action)) { closeParagraphDialog(); return; }
+  closeParagraphDialog();
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  focusEditor(editor);
+  updateEditorState();
+  notice("Absatzformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
+}
+
+function changeTextStyle(value) {
+  if (!replacementAllowed() || !["paragraph", "heading-1", "heading-2", "heading-3"].includes(value)) return false;
+  const editor = state.editor;
+  const type = editor.schema.nodes[value === "paragraph" ? "paragraph" : "heading"];
+  const level = value === "paragraph" ? {} : { level: Number(value.split("-")[1]) };
+  const transaction = editor.state.tr;
+  try {
+    for (const { entry, position } of selectedParagraphs(editor, true)) {
+      const start = transaction.mapping.map(position);
+      const end = transaction.mapping.map(position + entry.nodeSize);
+      transaction.setBlockType(start, end, type, { ...level, ...officeParagraphAttributes(entry.attrs) });
+    }
+    if (!transaction.docChanged || transaction.doc.eq(editor.state.doc)) { focusEditor(editor); updateEditorState(); return true; }
+    validateEditorDocument(transaction.doc);
+  } catch { notice(paragraphLimitMessage, true); updateEditorState(); return false; }
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  focusEditor(editor);
+  updateEditorState();
+  return true;
 }
 
 const tableCommands = { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, deleteTable };
@@ -638,6 +860,7 @@ function contentChanged(session) {
   closeReuse();
   closePrint();
   closeTableDialogs();
+  closeParagraphDialog();
   $("table-message").textContent = "";
   closeComparison();
   cancelRestore();
@@ -663,7 +886,8 @@ function prepareEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), SearchHighlights, NativeDocumentGuard, ReviewHighlight,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat,
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight,
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -707,6 +931,7 @@ function clearWorkspace() {
   clearReview();
   clearSuggestions();
   closeTableDialogs();
+  closeParagraphDialog();
   $("table-tools").hidden = true;
   $("table-info").textContent = "";
   $("table-message").textContent = "";
@@ -3059,12 +3284,27 @@ $("find-panel").addEventListener("keydown", (event) => {
 });
 document.querySelectorAll("[data-command]").forEach((button) => {
   button.addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
-  button.addEventListener("click", () => formatEditor((chain) => chain[commandNames[button.dataset.command]]()));
+  button.addEventListener("click", () => formatEditor((chain) => chain[commandNames[button.dataset.command]](),
+    ["bulletList", "orderedList", "blockquote"].includes(button.dataset.command)));
 });
-$("text-style").addEventListener("change", () => {
-  const value = $("text-style").value;
-  if (value === "paragraph") formatEditor((chain) => chain.setParagraph());
-  else formatEditor((chain) => chain.setHeading({ level: Number(value.split("-")[1]) }));
+$("text-style").addEventListener("change", () => changeTextStyle($("text-style").value));
+$("paragraph-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("paragraph-format").addEventListener("click", openParagraphDialog);
+$("paragraph-form").addEventListener("submit", (event) => { event.preventDefault(); applyParagraphFormat(); });
+$("paragraph-reset").addEventListener("click", () => {
+  if (!paragraphActionCurrent(state.paragraphAction)) { closeParagraphDialog(); return; }
+  Object.values(paragraphFields).forEach((id) => { $(id).value = "default"; });
+  $("paragraph-status").textContent = "Standard ist ausgewählt. Erst „Auf Auswahl anwenden“ ändert Ihren Entwurf.";
+  $("paragraph-status").classList.remove("error");
+});
+Object.values(paragraphFields).forEach((id) => $(id).addEventListener("change", () => {
+  $("paragraph-status").textContent = paragraphHelp;
+  $("paragraph-status").classList.remove("error");
+}));
+["paragraph-close", "paragraph-cancel"].forEach((id) => $(id).addEventListener("click", () => closeParagraphDialog(true)));
+$("paragraph-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeParagraphDialog(true); });
+$("paragraph-dialog").addEventListener("close", () => {
+  if (!$("paragraph-dialog").open && state.paragraphAction) closeParagraphDialog();
 });
 $("insert-menu").addEventListener("change", () => {
   const command = $("insert-menu").value;

@@ -25,6 +25,8 @@ from suite.platform.office_documents import (
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentService,
+    OfficeDocumentVersionView,
+    OfficeDocumentView,
 )
 from suite.platform.office_review_repository import PgOfficeReviewRepository
 from suite.platform.office_reviews import OfficeReviewService, ReviewEventCommand, derive_review_quote
@@ -52,6 +54,7 @@ from suite.storage.source_objects import (
     build_source_object_write_receipt_hash,
     source_object_content_bytes,
 )
+from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 
 TENANT_ID = "tenant-work-e2e"
 EDITOR_ID = "work-office-editor-e2e"
@@ -70,6 +73,11 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "SUITE_DATABASE_DSN": ("work-e2e-postgres", "collabio_work_e2e", "collabio_app"),
         "SUITE_OFFICE_RECOVERY_TARGET_DSN": ("postgres-restore", "collabio_work_e2e_restore", "collabio_app"),
     }
+    target_database = urlparse(env.get("SUITE_OFFICE_RECOVERY_TARGET_DSN", "")).path.removeprefix("/")
+    if target_database not in {"collabio_work_e2e_restore", "collabio_work_e2e_262_restore"}:
+        raise ValueError("Office recovery database is outside its isolated scope")
+    expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
+    expected["SUITE_OFFICE_RECOVERY_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_app")
     for key, (host, database, user) in expected.items():
         parsed = urlparse(env.get(key, ""))
         if (
@@ -135,6 +143,7 @@ def verify_restored_reviews(
     object_ids: tuple[str, ...],
     expected_thread_ids: set[str],
     expected_event_ids: set[str],
+    users_by_object: Mapping[str, UserContext] | None = None,
 ) -> dict[str, Any]:
     """Read all restored review pages and independently bind each immutable source."""
     evidence: list[dict[str, Any]] = []
@@ -144,7 +153,9 @@ def verify_restored_reviews(
     anchored_threads = 0
     historical_threads = 0
     denied_target: tuple[str, str] | None = None
+    denied_target_user = user
     for object_id in object_ids:
+        user = users_by_object[object_id] if users_by_object is not None else user
         after: str | None = None
         while True:
             listing = reviews.list_threads(user_context=user, object_id=object_id, after=after, limit=50)
@@ -155,6 +166,7 @@ def verify_restored_reviews(
                     raise ValueError("Office review recovery encountered a duplicate thread")
                 seen_threads.add(thread.thread_id)
                 denied_target = (object_id, thread.thread_id)
+                denied_target_user = user
                 anchor_version = documents.read_content(
                     user_context=user, object_id=object_id, version_id=thread.anchor_version_id
                 )
@@ -275,6 +287,7 @@ def verify_restored_reviews(
             "Office recovery requires nonempty anchored, historical and complete review lifecycle evidence"
         )
     object_id, thread_id = denied_target
+    user = denied_target_user
     for denied_user in (
         UserContext(
             tenant_id="tenant-work-e2e-foreign", user_id=user.user_id, readable_object_ids={object_id, thread_id}
@@ -318,27 +331,148 @@ def verify_restored_reviews(
     }
 
 
-def _restored_reader(database_dsn: str) -> UserContext:
-    # Resolve the existing seeded principal and its current DB grants. No role or
-    # readable-object browser headers are accepted by this proof.
+def _restored_readers(database_dsn: str) -> tuple[UserContext, ...]:
+    # Resolve only existing, active DB principals and memberships. Readable IDs
+    # are hints from the directory; each service page/read rechecks typed ACLs.
+    # No grants, role assignments or readable-object browser headers are added.
     with psycopg.connect(database_dsn) as connection:
         connection.execute("SELECT set_config('app.tenant_id', %s, true)", (TENANT_ID,))
-        principal = connection.execute(
-            "SELECT p.user_id FROM collabio.tenant_principals AS p "
+        principals = connection.execute(
+            "SELECT p.user_id, p.issuer, p.subject FROM collabio.tenant_principals AS p "
             "JOIN collabio.tenant_principal_memberships AS m "
             "ON m.tenant_id = p.tenant_id AND m.issuer = p.issuer AND m.subject = p.subject "
-            "WHERE p.tenant_id = %s AND p.user_id = %s AND p.status = 'active' AND m.status = 'active'",
-            (TENANT_ID, EDITOR_ID),
-        ).fetchone()
-    if principal is None:
+            "WHERE p.tenant_id = %s AND p.status = 'active' AND m.status = 'active' "
+            "ORDER BY p.user_id, p.issuer, p.subject",
+            (TENANT_ID,),
+        ).fetchall()
+        identities: list[tuple[str, set[str], set[str]]] = []
+        for user_id, issuer, subject in principals:
+            roles = connection.execute(
+                "SELECT assignment.role_id FROM collabio.tenant_principal_role_assignments AS assignment "
+                "JOIN collabio.tenant_roles AS role ON role.tenant_id = assignment.tenant_id "
+                "AND role.role_id = assignment.role_id WHERE assignment.tenant_id = %s "
+                "AND assignment.issuer = %s AND assignment.subject = %s "
+                "AND assignment.status = 'active' AND role.status = 'active'",
+                (TENANT_ID, issuer, subject),
+            ).fetchall()
+            groups = connection.execute(
+                "SELECT membership.group_id FROM collabio.tenant_principal_group_memberships AS membership "
+                "JOIN collabio.tenant_groups AS tenant_group ON tenant_group.tenant_id = membership.tenant_id "
+                "AND tenant_group.group_id = membership.group_id WHERE membership.tenant_id = %s "
+                "AND membership.issuer = %s AND membership.subject = %s "
+                "AND membership.status = 'active' AND tenant_group.status = 'active'",
+                (TENANT_ID, issuer, subject),
+            ).fetchall()
+            identities.append((str(user_id), {str(row[0]) for row in roles}, {str(row[0]) for row in groups}))
+    if not identities:
         raise ValueError("Office recovery synthetic reader membership is missing")
-    readable = PgPrincipalDirectory(database_dsn=database_dsn).readable_object_ids(
-        tenant_id=TENANT_ID,
-        user_id=EDITOR_ID,
-        role_ids=set(),
-        group_ids=set(),
+    directory = PgPrincipalDirectory(database_dsn=database_dsn)
+    return tuple(
+        UserContext(
+            tenant_id=TENANT_ID, user_id=user_id, role_ids=roles,
+            readable_object_ids=directory.readable_object_ids(
+                tenant_id=TENANT_ID, user_id=user_id, role_ids=roles, group_ids=groups,
+            ),
+        )
+        for user_id, roles, groups in identities
     )
-    return UserContext(tenant_id=TENANT_ID, user_id=EDITOR_ID, readable_object_ids=readable)
+
+
+def restored_document_inventory(
+    *, documents: OfficeDocumentService, users: tuple[UserContext, ...], expected_documents: list[Any],
+) -> tuple[tuple[OfficeDocumentView, ...], dict[str, UserContext]]:
+    expected_heads = {row["object_id"]: row["current_version_id"] for row in expected_documents}
+    found: dict[str, OfficeDocumentView] = {}
+    readers: dict[str, UserContext] = {}
+    for user in users:
+        if user.tenant_id != TENANT_ID:
+            raise ValueError("Office recovery principal is outside its isolated scope")
+        cursor: str | None = None
+        cursors: set[str] = set()
+        seen: set[str] = set()
+        while True:
+            page = documents.list_documents(user_context=user, page_size=200, cursor=cursor, write_enabled=True)
+            if page.tenant_id != TENANT_ID or page.can_create or page.has_more != (page.next_cursor is not None):
+                raise ValueError("Office recovery document page or capabilities are invalid")
+            for document in page.documents:
+                if (document.object_id in seen or document.can_write
+                    or expected_heads.get(document.object_id) != document.current_version_id
+                    or (document.object_id in found and found[document.object_id] != document)):
+                    raise ValueError("Office recovery document inventory or head is invalid")
+                seen.add(document.object_id)
+                found[document.object_id] = document
+                readers.setdefault(document.object_id, user)
+            if page.next_cursor is None:
+                break
+            if not page.documents or page.next_cursor in cursors:
+                raise ValueError("Office recovery document cursor is invalid")
+            cursor = page.next_cursor
+            cursors.add(cursor)
+    if set(found) != set(expected_heads):
+        raise ValueError("Office recovery did not read the complete document inventory")
+    return tuple(found[key] for key in sorted(found)), readers
+
+
+def restored_version_inventory(
+    *, documents: OfficeDocumentService, user: UserContext, document: OfficeDocumentView,
+) -> tuple[OfficeDocumentVersionView, ...]:
+    versions: list[OfficeDocumentVersionView] = []
+    seen: set[str] = set()
+    cursors: set[str] = set()
+    cursor: str | None = None
+    expected_version: str | None = document.current_version_id
+    while True:
+        page = documents.history(user_context=user, object_id=document.object_id, page_size=200, cursor=cursor)
+        if (page.tenant_id != TENANT_ID or page.object_id != document.object_id
+            or page.history_head_version_id != document.current_version_id
+            or page.current_version_id != document.current_version_id or not page.versions
+            or page.has_more != (page.next_cursor is not None)):
+            raise ValueError("Office recovery history page or head is invalid")
+        for version in page.versions:
+            if version.version_id in seen or version.version_id != expected_version:
+                raise ValueError("Office recovery version chain is invalid")
+            seen.add(version.version_id)
+            versions.append(version)
+            expected_version = version.previous_version_id
+        if page.has_more != (expected_version is not None):
+            raise ValueError("Office recovery version history is incomplete")
+        if page.next_cursor is None:
+            return tuple(versions)
+        if page.next_cursor in cursors:
+            raise ValueError("Office recovery history cursor is invalid")
+        cursor = page.next_cursor
+        cursors.add(cursor)
+
+
+def verify_restored_paragraph_versions(
+    *, documents: OfficeDocumentService, readers: Mapping[str, UserContext], versions: list[Any],
+) -> dict[str, Any]:
+    """Bind the designated legacy and two formatted sources to their exact versions."""
+    evidence: list[dict[str, str]] = []
+    object_id: str | None = None
+    previous: str | None = None
+    for number in range(1, PARAGRAPH_RECOVERY_VERSION_COUNT + 1):
+        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-paragraph-recovery-{number}"]
+        if len(candidates) != 1:
+            raise ValueError("Office recovery paragraph fixtures are missing or ambiguous")
+        version = candidates[0]
+        object_id = object_id or version["object_id"]
+        if version["object_id"] != object_id or version["previous_version_id"] != previous:
+            raise ValueError("Office recovery paragraph fixture lineage is invalid")
+        expected = paragraph_recovery_document(number)
+        read = documents.read_content(user_context=readers[object_id], object_id=object_id, version_id=version["version_id"])
+        if (read.content != expected or read.version.title != PARAGRAPH_RECOVERY_TITLE
+            or read.version.content_hash != stable_hash(canonical_json(expected))
+            or read.version.content_hash != version["content_hash"] or read.can_write):
+            raise ValueError("Office recovery paragraph content or canonical hash is invalid")
+        evidence.append({"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash})
+        previous = read.version.version_id
+    return {
+        "paragraph_formatting_evidence_hash": stable_hash(canonical_json(evidence)),
+        "verified_paragraph_fixture_version_count": len(evidence),
+        "verified_formatted_fixture_version_count": PARAGRAPH_RECOVERY_VERSION_COUNT - 1,
+        "legacy_paragraph_canonical_hash_verified": True,
+    }
 
 
 def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
@@ -419,16 +553,17 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         audit=InMemoryAuditLogger(),
         writes_available=False,
     )
-    user = _restored_reader(target_dsn)
-    documents = restored.list_documents(user_context=user).documents
-    if {document.object_id for document in documents} != {row["object_id"] for row in inventory["documents"]}:
-        raise ValueError("Office recovery did not read the complete document inventory")
+    users = _restored_readers(target_dsn)
+    documents, readers = restored_document_inventory(
+        documents=restored, users=users, expected_documents=inventory["documents"],
+    )
     evidence: list[dict[str, Any]] = []
     multi_version_documents = 0
     for document in documents:
-        history = restored.history(user_context=user, object_id=document.object_id)
-        multi_version_documents += int(len(history.versions) >= 2)
-        for version in history.versions:
+        user = readers[document.object_id]
+        versions = restored_version_inventory(documents=restored, user=user, document=document)
+        multi_version_documents += int(len(versions) >= 2)
+        for version in versions:
             read = restored.read_content(user_context=user, object_id=document.object_id, version_id=version.version_id)
             receipt = receipt_store.get(tenant_id=TENANT_ID, receipt_hash=version.source_write_receipt_hash)
             source = source_repository.get(
@@ -458,6 +593,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         raise ValueError("Office recovery requires a non-empty document with at least two saved versions")
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
+    paragraph_evidence = verify_restored_paragraph_versions(
+        documents=restored, readers=readers, versions=inventory["document_versions"],
+    )
     review_evidence = verify_restored_reviews(
         documents=restored,
         reviews=OfficeReviewService(
@@ -468,7 +606,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         ),
         sources=restored_sources,
         receipts=receipt_store,
-        user=user,
+        user=users[0],
+        users_by_object=readers,
         object_ids=tuple(document.object_id for document in documents),
         expected_thread_ids={row["thread_id"] for row in inventory["review_threads"]},
         expected_event_ids={row["event_id"] for row in inventory["review_events"]},
@@ -481,7 +620,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         ),
         sources=restored_sources,
         receipts=receipt_store,
-        user=user,
+        user=users[0],
+        users_by_object=readers,
         object_ids=tuple(document.object_id for document in documents),
         expected_suggestion_ids={row["suggestion_id"] for row in inventory["text_suggestions"]},
         expected_decision_ids={row["decision_id"] for row in inventory["text_suggestion_decisions"]},
@@ -511,6 +651,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         "restored_source_object_count": objects.restored_object_count,
         **review_evidence,
         **suggestion_evidence,
+        **paragraph_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,
         "foreign_tenant_denied": True,

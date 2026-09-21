@@ -20,6 +20,13 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
+## Paragraph formatting (Roadmap 262, in development)
+
+Roadmap 262 is being implemented under ADR-0086. Four optional paragraph/heading attributes select alignment,
+unitless line spacing and before/after spacing in points. Missing values retain the existing presentation; strict
+validation preserves exact old payloads. A selection-bound dialog, format-aware comparison and safe print rendering
+share the allowlist. Full validation, fresh paginated nonempty recovery and rollout remain pending.
+
 ## Older saved-version history (Roadmap 261)
 
 The existing versions endpoint gains bounded page_size and cursor parameters. Default calls keep a 200-entry page;

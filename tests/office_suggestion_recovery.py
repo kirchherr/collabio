@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
@@ -32,13 +33,16 @@ def verify_restored_suggestions(
     object_ids: tuple[str, ...],
     expected_suggestion_ids: set[str],
     expected_decision_ids: set[str],
+    users_by_object: Mapping[str, UserContext] | None = None,
 ) -> dict[str, Any]:
     evidence: list[dict[str, Any]] = []
     seen: set[str] = set()
     decisions: set[str] = set()
     accepted = rejected = 0
     denied_target: tuple[str, str] | None = None
+    denied_target_user = user
     for object_id in object_ids:
+        user = users_by_object[object_id] if users_by_object is not None else user
         after: str | None = None
         while True:
             listing = suggestions.list_suggestions(
@@ -51,6 +55,7 @@ def verify_restored_suggestions(
                     raise ValueError("Office restored suggestion inventory or capabilities are invalid")
                 seen.add(view.suggestion_id)
                 denied_target = (object_id, view.suggestion_id)
+                denied_target_user = user
                 detail = suggestions.detail(
                     user_context=user, object_id=object_id, suggestion_id=view.suggestion_id, write_enabled=True
                 )
@@ -169,6 +174,7 @@ def verify_restored_suggestions(
     if accepted < 1 or rejected < 1 or denied_target is None:
         raise ValueError("Office recovery requires nonempty accepted and rejected suggestions")
     object_id, suggestion_id = denied_target
+    user = denied_target_user
     for denied in (
         UserContext(
             tenant_id="tenant-work-e2e-foreign", user_id=user.user_id, readable_object_ids={object_id, suggestion_id}

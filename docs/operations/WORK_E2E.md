@@ -270,15 +270,27 @@ services were unchanged; Tricert was absent. Roadmap 261 development is complete
 recovery drill, ordinary-tenant write, indexing, cloud provider or engine activation occurred. Roadmap 257 recovery
 evidence remains retained; these checks grant no ordinary-tenant or production admission.
 
+Roadmap 262 adds paragraph alignment/spacing workflows and format-only comparison model cases. Acceptance includes
+mixed selection, targeted table cells, undo, strict legacy roundtrips, historical comparison/takeover, write revocation,
+exact save retry, context cancellation, responsive layout and a real multipage browser PDF. Validation is pending.
+The synthetic seed adds one existing-author document with three exact versions: original defaults and two different
+format profiles. It creates no additional principal or ACL grant. Reports include only counts and hashes.
+
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
-and `collabio_work_e2e_restore` target, with a read-only mount at `/proof-backup`; the normal restore database is rejected.
+and the fixed `collabio_work_e2e_restore` or `collabio_work_e2e_262_restore` target, with a read-only mount at `/proof-backup`;
+both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
+preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
+same read-only container path.
 The dump, checksum and restore receipt must result from a real operator-run pg_dump/pg_restore under the host locks.
 Its read path verifies at least one document with two versions, source/receipt hashes and restored current ACLs.
 Roadmap 256 extends the proof to nonempty review creation, reply, resolve and reopen events, complete review metadata
 hashes and exact COMMENT source versions/receipts; parent ACL denial must still apply after restoration.
 The Roadmap 257 extension also requires nonempty accepted and rejected suggestions, complete
 proposal/decision inventory, exact original/replacement bytes and receipts, accepted result versions and current ACLs.
+Roadmap 262 follows all document/history pages under existing active, currently ACL-authorized principals. Global
+inventory equality, immutable predecessor chains and read-only capabilities remain mandatory. The original unformatted
+fixture and both historical format profiles are pinned to exact canonical bytes, hashes and receipts after restoration.
 Never run it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
 before removing the exact test services; keep the synthetic dump under ignored `e2e/work/artifacts/office-recovery-backup`.
 
