@@ -21,12 +21,13 @@ MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
-PARAGRAPH_VALUES = {
+PARAGRAPH_VALUES: dict[str, set[Any]] = {
     "textAlign": {"left", "center", "right", "justify"},
     "lineSpacing": {"1", "1.15", "1.5", "2"},
     "spacingBefore": {0, 6, 12, 18, 24},
     "spacingAfter": {0, 6, 12, 18, 24},
 }
+STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS}
 
 
 class OfficeDocumentInvalidContentError(ValueError):
@@ -68,7 +69,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         style_names.add(name)
         for key, values in (
             ("paragraph", PARAGRAPH_VALUES),
-            ("character", {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS}),
+            ("character", STYLE_CHARACTER_VALUES),
         ):
             attributes = style[key]
             if not isinstance(attributes, dict) or set(attributes) - set(values):
