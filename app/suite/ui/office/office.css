@@ -79,3 +79,5 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="teal"]{color:#115e59;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="blue"]{color:#1d4ed8;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="purple"]{color:#7e22ce;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+/* Mobile document information needs room independently of the wrapping toolbar. */
+@media(max-width:760px){.document-inspector{position:fixed;top:56px;bottom:34px}}
