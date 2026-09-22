@@ -79,6 +79,15 @@ Independent review matched report/log/PDF/screenshot hashes and release evidence
 creator ACL from manual fixture grants and saved formatting versions from historical-only versions. This evidence-only
 record changes no implementation, tested behavior or authorization boundary.
 
+Roadmap 263 closeout `978f879` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.17 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 07:22:30 UTC.
+The --no-deps disposable check started no auxiliary service; only api, postgres and minio remain running in Collabio.
+Log hash: `sha256:0ae2a9878594eb015da4a60e5cb4b6d1841e7c3b81b90ddd05165aafd15e16bf`.
+Root verified report identity, recovery canonical hash and retained artifact hashes. The separate acceptance summary
+(`sha256:9d5800e0313752f3c2c19a17c03140d8c78f2b43a609778f1d299f695111ec50`) explicitly records 230 full-run passes
+plus the corrected eight-case history suite; no single all-green full run or independent subagent review is claimed.
+This final evidence-only record changes no implementation, tested behavior, runtime or gate.
+
 This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
 AGENTS.md and current code are authoritative. Green development evidence is not production or real-user approval.
