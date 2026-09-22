@@ -1669,11 +1669,17 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      264 Browser-/Modellfaelle auf fb8dbd3 gruen. Responsive Ansichten visuell geprueft; Betriebsnachweise und
      geschlossene Gates stehen in docs/CURRENT_HANDOFF.md.
 
-267. [ ] Dokumenteigene Formatvorlagen mit wiederverwendbaren Definitionen, gemeinsamer Aktualisierung,
+267. [x] Dokumenteigene Formatvorlagen mit wiederverwendbaren Definitionen, gemeinsamer Aktualisierung,
      kontextbezogener Bedienung und Vorschau. Direkte Formate, Undo, Historie, Vergleich, Druck und Wiederherstellung
-     erhalten. ADR-0090; Umsetzung und Abnahme laufen. Bilder-/Objektkonzept separat dokumentiert.
+     erhalten. ADR-0090; volle Qualitaet und alle280 Browser-/Modellfaelle auf1e09a10 gruen. PDF/Sichtpruefung,
+     frischer nichtleerer Restore, Release-Gates und API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 266 abgeschlossen, 267 in Arbeit.
+268. [ ] Native Bilder einfuegen: dokumenteigene versionierte Assets und isolierte PNG/JPEG-Normalisierung festlegen,
+     dann Upload, Einfuegen, Groesse/Ausrichtung, Alternativtext/Bildunterschrift, Undo, bestaetigtes Speichern,
+     Wiederoeffnen und Druck durchgaengig umsetzen. Aktuelle Dokument-/Asset-Rechte und nichtleeren Restore pruefen.
+     Konzept: docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Weitere Objekttypen folgen separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 267 abgeschlossen, 268 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

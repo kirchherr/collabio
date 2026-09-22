@@ -1,7 +1,7 @@
 # ADR-0090: Document-owned native Office format styles
 
 Date: 2026-09-22
-Status: accepted for implementation; acceptance evidence belongs in CURRENT_HANDOFF.md
+Status: accepted; development validation and API-only rollout complete on dev001, ordinary admission remains closed
 
 ## Decision
 
@@ -11,6 +11,8 @@ characters, paragraph values and character base values. Only existing enum-based
 colors are accepted. Unknown fields, duplicate IDs/names, invalid references, controls and unsupported placements
 fail closed. The complete catalog counts toward the existing canonical byte limit. Absent attributes preserve legacy
 canonical bytes. There is no new SQL table, endpoint, dependency or global template registry.
+Rollback readers, validators and editors must understand the catalog before styled versions are admitted for editing;
+an older editor must not silently strip style metadata. Existing no-store assets and closed tenant gates remain in force.
 
 Styles govern presentation; semantic paragraph/heading types remain the separate Texttyp choice. Presets for body,
 title and heading appearance become document definitions only on explicit application. The single Formatvorlagen
@@ -42,3 +44,8 @@ Ordinary tenant, pilot, engines and indexing remain closed. Office remains ahead
 - Existing ADR-0086/0087 paragraph and character enum contracts.
 - [ProseMirror document-attribute transactions](https://github.com/ProseMirror/prosemirror-transform/blob/master/src/transform.ts).
 - [Tiptap pinned extension manager](https://github.com/ueberdosis/tiptap/blob/v3.31.3/packages/core/src/ExtensionManager.ts).
+
+Development acceptance completed on 1e09a10: full quality and a single 280-case browser/model run, actual tagged PDF
+and responsive visual checks, fresh nonempty PostgreSQL/S3 recovery of legacy and styled versions, both release gates
+and API-only rollout. The first full run exposed a comparison-reference regression, corrected without weakening its
+existing assertions; original failed evidence is retained. See CURRENT_HANDOFF.md for exact reports and closed gates.

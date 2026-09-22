@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 264 passing checks: 221 browser cases and 43 pure comparison/search model cases. The original
+The expected matrix is 280 passing checks: 233 browser cases and 47 pure comparison/search/style model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -547,3 +547,34 @@ Final ignored evidence is under `roadmap-266/final/`:
   sha256:53ef3cb5f20f9d3ede79d9cf22e2e178802edc03654c7d0359fb0cf41d387225.
 
 API-only rollout and closed-gate evidence is recorded in CURRENT_HANDOFF.md.
+
+## Roadmap 267 document-owned format styles
+
+Four style-model cases and ten browser workflows plus two responsive projects exercise the version-owned catalog.
+Cases cover custom/preset creation, literal unique names, shared updates across nested paragraphs, inline and direct
+paragraph overrides, pending typing marks, heading/list/split/cell transforms, cancel/no-op/remove/undo, 20-entry and
+canonical-byte limits, readers/history/context, pending and uncertain saves, immutable history, replacement/comparison,
+real tagged PDF output and independent document reuse. The runner mounts the exact product office-styles.mjs read-only.
+
+Focused Python schema/API/PostgreSQL/recovery and related suites passed 414 cases on f7dcd55. All 16 focused browser/model
+cases passed on 94af79a in 39.855151s. The initial full run passed 270/280, including every browser case, but ten existing
+comparison-model cases rejected unnecessary copies of unchanged blocks. Commit 1e09a10 preserves unchanged subtree
+references, and all 20 comparison/style model cases passed in 7.250867s. Existing assertions remain intact. Failed reports,
+logs and traces remain under ignored roadmap-267/failed-focused and failed-full; the latter report hash is
+sha256:bb63aa048babb8003f74516e643d805141bab9fa97c735467ea8643f24d23401. The corrected full run on 1e09a10 passed all 280 cases in 1029.824630s, with zero skipped/unexpected/flaky. Full quality also passed. Final reports, visual/PDF and operational evidence are in CURRENT_HANDOFF.md.
+
+This adds durable native metadata. The synthetic seed includes one legacy and two different styled versions with an
+unused definition. A fresh nonempty restore must use collabio_work_e2e_267_restore and its own backup directory/receipt;
+all older synthetic targets remain retained. Verification includes exact catalogs, bindings, direct overrides, canonical
+hashes, source receipts and read-only authoritative access, alongside all prior review/suggestion/formatting checks.
+Main backup/restore and both release gates must precede the API-only rollout. Ordinary tenants, pilot, indexing and
+engines remain closed. The separate image/object proposal is design only.
+
+Final corrected acceptance is bound to 1e09a106be3505457d5eca9060797a132dc80f1e. Full report:
+sha256:0306d0e3226d31275a52d11d667e4c2d9f011804905dba73c1e08053d5fded88. Actual one-page A4 PDF:
+sha256:d85daa38834ea64bb9fc78a3f762cc11d32c39233e38ecd2099acf3221e64389. Root reviewed final desktop/tablet/mobile
+styles, mobile comments and rendered PDF. Fresh recovery verified 392 documents,763 Office versions and 818 sources,
+including legacy and both named-style states; recovery reporthashsha256:79d0a9f472f8cdefb7e854c882703126ae8c3f19c1240a1c2913985a72396a59.
+Main backup/isolated restore and both gates passed; API-only rollout, live checks and exact cleanup completed at
+2026-09-22 13:50:27 UTC. Collabio running(3), healthok, ordinary gates closed. See CURRENT_HANDOFF.md and the append-only
+operations log for hashes, preserved unsuccessful runs and exact host scope. Roadmap 268 native images remains planned.

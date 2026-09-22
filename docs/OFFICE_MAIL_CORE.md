@@ -23,6 +23,12 @@ Mail modules will add accounts, messages, threads, attachments, team inboxes, de
 
 Both surfaces must write and read through the same compliance APIs. No editor, mail client, previewer, or assistant may bypass object metadata, retention, authz, parser isolation, audit, or source indexing.
 
+The native image/object insertion proposal is in
+[OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md](modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md). It defines a first PNG/JPEG
+upload-to-print loop with document-owned, version-bound assets, then inert file/table/chart references. It is a design
+proposal, not implemented image support or an engine/tenant activation. Native authoring status is recorded in
+[OFFICE_NATIVE_DOCUMENTS.md](modules/OFFICE_NATIVE_DOCUMENTS.md).
+
 ## Source Object Types
 
 The indexing model already treats source type as metadata:

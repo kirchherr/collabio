@@ -183,17 +183,23 @@ read/history/context boundaries and confirmed immutable saves. All twelve focuse
 264-case browser/model matrix passed on fb8dbd3. Responsive visual review passed; see ADR-0089 and
 docs/CURRENT_HANDOFF.md for API rollout and closed gates.
 
-128. [ ] Add document-owned named paragraph styles with reusable definitions, shared updates, fixed presentation
+128. [x] Add document-owned named paragraph styles with reusable definitions, shared updates, fixed presentation
 values, contextual controls and preview. Preserve direct overrides, immutable versions, comparison/print/reuse,
-selection-bound undo and authorization gates; require fresh nonempty recovery. ADR-0090. Acceptance pending.
+selection-bound undo and authorization gates. ADR-0090; full quality and all 280 browser/model cases passed on 1e09a10.
+Actual PDF/visual checks, fresh nonempty recovery, release gates and API-only rollout passed; see CURRENT_HANDOFF.md.
 Image/object follow-up design is in docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md; implementation remains separate.
+
+129. [ ] Implement the first native image workflow: decide document-owned asset/version manifests and isolated
+PNG/JPEG normalization, then upload, insert, resize/align, alt/caption, undo, confirmed save, reopen and print.
+Require current document/asset ACLs, immutable history/reuse semantics and nonempty document-plus-asset recovery.
+The image/object concept is a proposal; no image or active-object support is claimed yet.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 266, including list levels/numbering, format transfer, character/paragraph formatting and confirmed whole-document keyboard replacement across rich tables. Preserve the single green 264-case browser/model matrix, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and retained nonempty recovery. Continue Office before CRM. Continuous tracked changes, live collaboration and DOCX interchange remain separate work; existing engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete through Roadmap 267, including document-owned format styles, list levels/numbering, format transfer, character/paragraph formatting and confirmed whole-document keyboard replacement across rich tables. Preserve the single green 280-case browser/model matrix, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh nonempty recovery. Continue with Roadmap 268 native images before CRM; the image/object concept defines the proposed scope. Continuous tracked changes, live collaboration and DOCX interchange remain separate work; existing engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

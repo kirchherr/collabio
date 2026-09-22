@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–266 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering
+Status: Roadmap 252–267 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,31 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Document-owned format styles (Roadmap 267)
+
+The **Formatvorlagen** control opens a single dialog for choosing, naming, previewing and applying a reusable
+paragraph style. Body, title and heading presets provide starting values. The separate **Texttyp** selector controls
+semantic paragraph/heading structure. A document owns at most 20 named definitions; each name is literal, unique and
+1–60 Unicode characters. Definitions contain only existing bounded font-size/color and paragraph presentation values.
+
+Applying a style binds the selected supported paragraphs, including list/table paragraphs, and clears their direct
+paragraph values. Inline character marks remain overrides. **Nur Vorlage aktualisieren** changes every paragraph
+bound to that definition; the dialog reports the affected count. Direct paragraph overrides still win, and choosing
+Standard in the paragraph dialog restores inheritance. Removing a binding preserves the catalog and text. There is
+no cross-document style library or catalog-deletion workflow in this slice.
+
+The optional root `attrs.styles` and paragraph/heading `styleId` are strict additive native v1 metadata. Invalid
+definitions/references/placements and excess canonical bytes fail before mutation. Legacy canonical bytes remain
+unchanged. Actions bind editor/session/context/revision/document/selection/pending marks and use one isolated undo
+group. Only confirmed CAS Save persists an immutable version. History, independent document reuse, comparison
+(including unused definitions) and actual browser print resolve the version-owned catalog. Direct format transfer
+continues to transfer direct values only. No SQL table, endpoint, dependency, cloud or engine admission is added.
+
+Decision: [ADR-0090](../../ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md). Acceptance and fresh nonempty
+recovery evidence are recorded in CURRENT_HANDOFF.md. The proposed follow-up for native images and inert versioned
+objects is [OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md](OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md); that insertion workflow is
+not implemented or activated by the format-style slice. Full quality and the single 280-case matrix passed on 1e09a10; actual PDF, responsive visual checks, fresh nonempty recovery and release gates passed before API-only rollout. See CURRENT_HANDOFF.md for exact evidence and closed admission boundaries.
 
 ## List levels and numbering (Roadmap 266)
 
