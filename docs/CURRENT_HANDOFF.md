@@ -2,9 +2,13 @@
 
 Updated: 2026-09-22
 
-Roadmap 263 / PLANS 124 is in progress following the user's approval: native character font sizes and named colors.
-Selection/caret, mixed/reset/undo, strict marks, safe comparison/replacement/print and new isolated nonempty recovery
-are being implemented under ADR-0087. Full acceptance and rollout are pending; item 262 remains the validated baseline.
+Roadmap 263 / PLANS 124 completes native character font sizes and named colors under ADR-0087.
+Selection/caret, mixed/reset/undo, strict marks, comparison/replacement/reuse/print and fresh nonempty recovery passed.
+Full Python quality passed; passing evidence covers all 231 distinct browser/model cases, combining 230 full-run
+successes with the corrected complete eight-case history suite. Both raw setup-failure reports remain retained;
+this is not a single 231-pass run. Recovery verified 460 documents, 935 versions and 1,045 sources. Release gates,
+API-only rollout, live verification and cleanup passed. Office remains ahead of CRM. Next: investigate whole-document
+keyboard replacement across rich tables, which the history-fixture isolation does not claim to fix.
 
 Roadmap 262 / PLANS 123 completes native paragraph alignment and line/before/after spacing, with strict optional
 attributes and unchanged legacy canonical bytes. Save, undo, comparison, reuse and print preserve formatting.
@@ -83,9 +87,10 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `8b61d8d` (full Python quality and all 215 browser/model checks, actual PDF inspection,
-  complete paginated nonempty recovery and both release gates). Paragraph formatting extends the native v1 format
-  through optional strictly validated attributes without changing legacy canonical bytes or requiring a migration.
+- Validated implementation: `75f381a` (product code unchanged since `d235b6b`; full Python quality on `a0b3001`,
+  230 full-matrix successes plus the corrected eight-case history suite cover all 231 distinct cases). Actual PDF,
+  complete nonempty recovery, release gates and API rollout passed. Character formatting extends native v1 through
+  optional strictly validated marks without changing legacy canonical bytes or requiring a migration.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -99,7 +104,20 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 262 host verification at 2026-09-21 15:18:55 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 263 host verification at 2026-09-22 07:17:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`2dd08092b687`) with pilot explicitly 0;
+bounded startup retries reached healthy at 07:16:02 UTC. Live verification at 07:16:54 UTC confirmed all thirteen
+Office OpenAPI operation definitions, discovery/history parameters, character and previous controls, local assets/licenses,
+Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations. Tenant-demo
+Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0. Six exact remaining
+Work-E2E containers were removed; disposable runners were already absent. Test PostgreSQL and both restore services
+are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged; all three synthetic recovery
+databases, dumps and receipts remain retained. The isolated main restore target was refreshed only from its verified
+current main backup. Webcut running(7), all three provider nodes/listener 26443 unchanged, Tricert absent. No main
+migration, ordinary business-content write, tenant/pilot/indexing/cloud/DOCX activation occurred. Recovery and both
+release gates preceded rollout. All operations used host locks and fresh lifecycle inventories.
+
+Previous item 262 host verification at 2026-09-21 15:18:55 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`132526da7a34`) with pilot explicitly 0;
 bounded startup retries reached healthy at 15:17:23 UTC. Live verification at 15:18:18 UTC confirmed all thirteen Office
 OpenAPI operation definitions, discovery/history parameters, paragraph and existing controls, local assets/licenses,
@@ -255,7 +273,90 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 262
+## Last completed slice: Roadmap 263
+
+The selection-aware **Zeichen …** dialog supports fourteen font sizes from 8 to 48 points and eight named colors.
+It changes selected text, including headings/lists/quotes/exact selected table cells, or the next typed text at a
+supported caret. Mixed values remain unchanged unless chosen. Standard removes one property; reset prepares both
+properties for explicit Apply. Cancel/no-op stays clean; caret choices do not dirty saved content. One selection
+application is one undo step separated from adjacent typing. Code remains excluded.
+
+The optional strict textStyle mark preserves native v1 identifiers and unchanged legacy canonical bytes, hashes and
+receipts. Invalid values, CSS strings, unknown attributes, empty marks, nulls, code combinations and block placements
+are rejected. There is no SQL migration, dependency or new endpoint. Rollback editors must understand the mark.
+Only fixed data attributes/CSS reach editor and print. Comparison names sizes/colors; replacement distinguishes full
+mark attributes so differently formatted adjacent text cannot merge. Fresh rights, exact version references, explicit
+confirmed CAS saves, uncertain retry and memory-only drafts retain their existing boundaries.
+
+Validation lineage: product implementation d235b6b; a0b3001 adds only explicit test-fixture types; 0fcf212 changes only
+one history-test input to keyboard replacement and asserts the draft before navigating history. The final test-only
+75f381a gives that history case its own starting head instead of inheriting a prior rich-table takeover. Full quality on
+a0b3001 passed Ruff, formatting, Mypy on 562 sources and complete Pytest at 2026-09-22 06:48:44 UTC, with only the known
+Starlette/AnyIO warning. The first full browser matrix passed 230/231 in 876.201937 seconds. The failing history test
+had already failed to enter its draft before navigation: Chromium's contenteditable fill produced an invalid empty
+table, and the existing document guard correctly rejected it. The keyboard-only correction still failed at the new
+immediate assertion. A second complete run on 0fcf212 retained
+230 passes and one setup failure in 1020.268560 seconds. The final isolated setup on 75f381a passed all eight history
+cases in 31.423815 seconds. All 231 distinct cases have passing evidence (188 browser and 43 model), combining the
+230 full-run successes with the corrected complete history suite. This is not a single 231-pass run; both raw failure
+reports remain retained. No product guard or assertion was weakened. Whole-document keyboard replacement across rich
+tables remains an explicit follow-up usability investigation; fixture isolation does not claim to fix that input path.
+
+Earlier focused checks passed 362 Python/API/PG/recovery tests in 19.18 seconds and all 21 browser cases; a comparison
+model assertion was corrected to inspect the description text and all four new model checks then passed. Root code
+review and six Office/Work screenshot reviews found no remaining character-formatting issue. This turn did not use
+independent subagents.
+
+Evidence under ignored e2e/work/artifacts/roadmap-263:
+
+- Initial full report: sha256:580e4e50f20e9694506ca105a1d4914942a9edeff65b2538e64647c763dad304.
+- Initial full browser log: sha256:04128a67d2bd6ee1e2132b7373d3e2e097bf3b72d9220113e983fcfac2322bc8.
+- Final quality log: sha256:50dc41d7ef0d6193a0a6552292e4efad0de6d4cedf9ff14934bbe55bce99e754.
+- Corrected character-model report: sha256:2e1e6e61c9e800d71bf11585564ebfd521df61dfebb89a76c3e05313ea3161e3.
+- Focused Python log: sha256:b2977274bc79683e51e22919dd6ac7854d455af6cd5e01540d167c2016267fbd.
+
+- Second full report (230 passes, one retained setup failure): `sha256:2c902182d91ffe224d63d70c503ae28e1ad509ae15acbd4bca76afbd17abbec0`.
+- Second full browser log: `sha256:ce700e10077611aca860a748648745863830102e503a6a71e775808c6da0250a`.
+- Corrected eight-case history report: `sha256:35d3111f2630f7b699ef822942f29484237d1604707db12e2f2cac3e49d165d0`.
+- Actual PDF: `sha256:caf2da90f8834ad3f10ea054929f318c5dca4db3dfefbcc65c8d9effafed761a`.
+- PDF QA report: `sha256:0330e6e9c8247b984db31452675a564d642630323034f8ffdbbfd73cba4845d3`.
+- Office desktop/tablet/mobile/print-preview hashes respectively:
+  `5713c2b51517a7a5f7c5fd8fbeaa9a5f286dc90457dddb0357c1063a90fb8ea3`,
+  `3a41543ec464917cfaa042096b0add557f547441a34c50bcbc42f52f1ace1a69`,
+  `f308f8d1333fdde9520b528ef799e06882f777fb3a6c9245150a14171f328b37`,
+  `501cc442fe57614cb113e7b849af6991118f4537905326038727f8f9468a76ac`.
+- Work desktop/mobile hashes: `d233fd33100538aa6382bd0b60d4f0797a44a38600c0b36517de8c945e6942f3`,
+  `3c315fd4e7fede1e8b526f5a3ff33b34ea2aed35b3c58a560714106b87b73965`.
+
+The actual PDF contains two nonempty A4 portrait pages, 2,108 extracted characters, all 24 ordered paragraphs and both
+sentinels with H1/H2/P structure. Root visually reviewed both rendered pages. Access-log inspection at 07:05:49 UTC
+verified 752 list and 445 history records without query/cursor values. No independent-review claim is made for this turn.
+
+Fresh recovery into `collabio_work_e2e_263_restore` completed at 2026-09-22 07:13:41 UTC. It verified 460 documents,
+935 saved versions, 116 multi-version documents and 1,045 source objects using complete authorized pagination.
+One unchanged legacy character version and two distinct saved size/color profiles passed, alongside all paragraph
+profiles, 20 review threads/36 events and 22 suggestions/14 decisions (ten accepted, four rejected). Exact source
+versions/receipts, current parent ACLs, read-only restored services and foreign-tenant denial passed. All earlier
+synthetic targets and their dumps/receipts remain retained. The complete test matrix ran twice against this synthetic
+store before the final targeted correction, explaining the larger inventory; this is not ordinary tenant content.
+
+- Synthetic dump: `sha256:9866eb2c501e7713efcb8661a20b3ae86917a71c4e8f773ddaf1f578ceaf5519`.
+- PostgreSQL restore: `sha256:891768bd28818c110c89beb665ff0b87db4cc0c3b482eeaadcf977eae464ce29`.
+- Exact S3 version restore: `sha256:f16f23b1d99a28bc9b8ecc063426cff4e4e2b0ca8d53e86ea05f31141f6d47de`.
+- Embedded recovery report hash: `sha256:9321026e05318ef59d6bd52216fa46c5a20bd9dc3532fd8a8c39ebf296deb0fd`.
+- Recovery JSON file hash: `sha256:f8b3f4fdd2545ce3ea5fc240d8d9701ce0569b3b0d24314dad7bae4d7e19ca64`.
+
+Root recomputed the canonical recovery report hash from its metadata. Main backup
+`collabio-20260922T071403Z.dump` (`sha256:7d65a6204400f7e044a102e073d96e219e5f07ffa83f008f0e1289746c053775`)
+was verified and restored only into the existing isolated main target. Foundation at 07:14:17 UTC verified 85 migrations,
+95 tables and three existing source objects with seeding explicitly disabled; no migration was applied.
+Foundation: `sha256:83a11bbd91525f416261d9a171ffc7c114b4eb11bd5eaa86a998d6d21a640428`;
+bound main PostgreSQL restore: `sha256:52d52f2b1270cee6a897af98a85f201171651cc90e899304ce3a1ee7eaef1d2a`.
+Business release at 07:15:03 UTC: `sha256:be604e0d9496af80d56d27f21683b2c9c68472fefe72f1bf6744e3495f166bef`;
+all three existing business slices passed, with business writes and tenant activation false. Native Office has the separate
+nonempty proof above. API rollout, live gates and final host state are recorded near the top of this handoff.
+
+## Previous completed slice: Roadmap 262
 
 The compact selection-aware paragraph dialog formats paragraphs and headings, including those inside lists, quotes
 and table cells. Alignment supports left, center, right and justify; line spacing supports the exact strings 1,
@@ -958,13 +1059,15 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 262 is complete. Preserve the 215-check matrix (176 Work/KB/CRM/Office browser cases and 39 model cases)
-and the closed normal pilot boundary. Continue user-visible native Office editing/review workflows before CRM expansion;
-version-bound comments, explicit saved-text suggestions, browser printing, independent saved-version reuse and paginated
-title discovery, older-version pagination and paragraph alignment/spacing are complete. A suitable next bounded workflow
-is character formatting with font sizes and text colors, strictly validated and preserved through saved versions, undo,
-comparison, print and recovery, while retaining current access checks and resource limits.
-This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain open.
+Item 263 is complete. Preserve the 231-case matrix (188 Work/KB/CRM/Office browser cases and 43 model cases)
+and its transparent acceptance lineage above. Continue native Office before CRM. Character sizes/colors now join
+paragraph formatting, history, comparison, printing, reuse, discussions and explicit suggestions.
+The next bounded usability investigation is whole-document keyboard replacement across rich tables: both direct
+contenteditable fill and Select All plus insertText rejected the inherited rich fixture before a draft existed.
+The history test now owns a simple starting head and proves preservation; it does not fix or validate that complex
+replacement path. Reproduce through real keyboard interaction and preserve table-removal confirmations, schema/size
+guards, undo, other marks and drafts. This follow-up is not implemented. Continuous tracked changes and live
+collaboration remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.

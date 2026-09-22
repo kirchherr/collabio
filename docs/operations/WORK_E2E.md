@@ -313,7 +313,37 @@ host/gate evidence is recorded in `docs/CURRENT_HANDOFF.md`; ordinary tenants, p
 Roadmap 263 adds character formatting, caret/mixed/reset/undo, exact text/cell selection, comparison/replacement/reuse,
 fresh write revocation and uncertain retry checks, with responsive screenshots and actual multipage PDF output.
 The additional seed creates one normal creator-owned document with three versions: legacy and two distinct saved size/
-color profiles. No additional principal or manual ACL fixture grant is introduced. Full acceptance remains pending.
+color profiles. No additional principal or manual ACL fixture grant is introduced.
+
+Development acceptance is complete through test-only `75f381a`; product code is unchanged since `d235b6b`.
+Full quality on `a0b3001` passed Ruff, formatting, Mypy on 562 sources and complete Pytest. Both complete 231-case runs
+retained 230 successes and one history-fixture setup failure. The first took 876.201937 seconds, the second 1020.268560.
+The trace and immediate assertion show that the inherited rich-table fixture never acquired its draft before history
+navigation. Keyboard input alone did not fix setup. After giving that case its own current head, all eight history
+cases passed in 31.423815 seconds. Passing evidence covers all 231 distinct cases (188 browser, 43 model); this is
+not a single 231-pass run, and both raw failure reports remain retained. No product guard or assertion was weakened.
+Whole-document keyboard replacement across rich tables remains a separate usability follow-up.
+
+Second full report: `sha256:2c902182d91ffe224d63d70c503ae28e1ad509ae15acbd4bca76afbd17abbec0`;
+corrected history report: `sha256:35d3111f2630f7b699ef822942f29484237d1604707db12e2f2cac3e49d165d0`;
+quality log: `sha256:50dc41d7ef0d6193a0a6552292e4efad0de6d4cedf9ff14934bbe55bce99e754`.
+The ignored `roadmap-263/acceptance.json` summary explicitly binds these reports and their passing case identities.
+The `final/results.json` filename is historical: it contains the second full run's one retained setup failure.
+
+Root reviewed six final Office/Work screenshots and both rendered PDF pages. The actual A4 portrait PDF has two
+nonempty pages, all 24 numbered paragraphs and both sentinels, 2,108 extracted characters and H1/H2/P structure.
+PDF: `sha256:caf2da90f8834ad3f10ea054929f318c5dca4db3dfefbcc65c8d9effafed761a`;
+PDF-QA report: `sha256:0330e6e9c8247b984db31452675a564d642630323034f8ffdbbfd73cba4845d3`.
+Actual logs verified 752 document-list and 445 history records without query/cursor values.
+
+Fresh recovery verified 460 documents, 935 exact versions, 116 multi-version documents and 1,045 source objects,
+including all three character fixture versions and retained paragraph/review/suggestion proofs. Twenty review threads,
+36 events, 22 suggestions and 14 decisions (ten accepted, four rejected) passed, with current ACLs, exact receipts,
+read-only capabilities and foreign-tenant denial. Embedded recovery hash:
+`sha256:9321026e05318ef59d6bd52216fa46c5a20bd9dc3532fd8a8c39ebf296deb0fd`; report file hash:
+`sha256:f8b3f4fdd2545ce3ea5fc240d8d9701ce0569b3b0d24314dad7bae4d7e19ca64`.
+Both release gates, API-only rollout and live verification passed; exact cleanup completed at 2026-09-22 07:17:20 UTC.
+Full host details and backup/gate hashes are in `docs/CURRENT_HANDOFF.md`. No ordinary tenant/pilot admission occurred.
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source

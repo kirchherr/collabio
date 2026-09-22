@@ -158,16 +158,19 @@ complete Pytest. All 215 checks (176 browser + 39 model) passed in 759.313613 se
 passed. Complete paginated nonempty recovery verified 330 documents, 666 versions and 721 sources; release gates passed.
 API rollout and final health/gate details are recorded in docs/CURRENT_HANDOFF.md. See ADR-0086; Office remains ahead of CRM.
 
-124. [ ] Add native Office character font sizes and named text colors with selection/caret formatting, mixed values,
+124. [x] Add native Office character font sizes and named text colors with selection/caret formatting, mixed values,
 explicit reset, strict validation, isolated undo and complete save/comparison/replacement/reuse/print/recovery preservation.
-Run full remote quality, prior browser regression and a fresh isolated nonempty restore before rollout. See ADR-0087.
+Full remote quality passed; all 231 distinct browser/model cases have passing evidence: 230 full-run passes plus
+the corrected complete eight-case history suite. The original setup failure remains in the raw reports. Actual PDF
+and responsive review passed. Fresh recovery verified 460 documents, 935 versions and 1,045 source objects; both
+release gates passed. See ADR-0087 and docs/CURRENT_HANDOFF.md for rollout and the remaining rich-table input follow-up.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native document authoring, paginated version history, comparison, historical takeover, find/replace, contextual table editing, version-bound discussions, explicit saved-text suggestions, saved-version browser printing, independent document reuse, paginated title discovery and paragraph formatting are complete through Roadmap 262. Preserve all 215 checks (176 browser cases and 39 model cases), immutable review/suggestion history, atomic accepted versions and nonempty recovery. Continue user-visible native Office development before CRM expansion; the next recommendation is bounded character formatting with font sizes and text colors, preserving current ACL, confirmed-save/CAS, undo, comparison, print and recovery boundaries. This is a recommendation, not an implemented item. Continuous tracked changes and live collaboration remain future work. DOCX interchange remains a separate Quick Edit/fidelity path; real Word/GenOffice results, calibrated thresholds and human review remain prerequisites, and DOCX saves/WOPI retain their gates. Do not resume Word/account/firewall interventions on the original workstation.
+- Native Office is complete through Roadmap 263, including character font sizes/colors. Preserve all 231 browser/model cases and their documented acceptance lineage, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves and nonempty recovery. Continue Office before CRM. Next investigate whole-document keyboard replacement across rich tables: the isolated history fixture does not fix that input path. Preserve table-removal confirmation, schema/size guards and undo. Continuous tracked changes, live collaboration and DOCX interchange remain separate work; existing engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

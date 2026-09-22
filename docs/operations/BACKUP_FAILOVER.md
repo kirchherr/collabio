@@ -39,6 +39,9 @@ Roadmap 263 adds optional native textStyle marks for strict font sizes and named
 document/source domain. The fresh proof must retain old canonical bytes and two distinct saved character profiles,
 in addition to the existing paragraph, review and suggestion proofs. Its fixed target is collabio_work_e2e_263_restore;
 retain the earlier 257 and 262 targets, dumps and receipts. No new SQL migration or continuity domain is introduced.
+The 2026-09-22 development drill passed with 460 documents, 935 versions and 1,045 source objects, including one
+unchanged legacy character version and two saved size/color profiles. Complete ACL/receipt/review/suggestion evidence
+and retained earlier targets are recorded in `docs/CURRENT_HANDOFF.md`; this is synthetic development evidence.
 
 This model covers the whole suite trajectory:
 

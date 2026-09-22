@@ -1,6 +1,6 @@
 # ADR-0087: Native Office character formatting
 
-Status: accepted for implementation; validation pending
+Status: accepted; development validation complete
 Date: 2026-09-22
 Roadmap: 263 / PLANS 124
 
@@ -30,3 +30,12 @@ caret/mixed/reset/undo/table/Unicode/permissions/retry/limits tests, actual PDF 
 and remote quality. A fresh nonempty PG/S3 recovery uses separate `collabio_work_e2e_263_restore`, retains both older
 targets and proves one legacy plus two distinct saved character profiles under existing authoritative principals.
 Keep all prior inventory/receipt/review/suggestion proofs; ordinary tenants, pilot, indexing and engine gates stay closed.
+
+Validation completed on the unchanged product implementation through test-only closeout `75f381a`:
+full Python quality, 362 focused Python checks, and passing coverage of all 231 browser/model cases.
+The complete matrix retained 230 passes and one history-fixture setup failure; after isolating its editable head,
+the complete eight-case history suite passed. Raw reports remain retained; this is not a single 231-pass run.
+Six responsive/print screenshots and both actual A4 PDF pages passed root visual review. Fresh nonempty recovery
+verified 460 documents, 935 saved versions and 1,045 source objects, including unchanged legacy bytes and both
+character profiles. Release and operational evidence is recorded in `docs/CURRENT_HANDOFF.md`.
+Whole-document keyboard replacement across rich tables remains a separate usability follow-up.

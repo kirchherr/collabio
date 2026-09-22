@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–262 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting
+Status: Roadmap 252–263 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`
 
 ## User workflow and scope
 
@@ -20,7 +20,7 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
-## Character formatting (Roadmap 263, validation pending)
+## Character formatting (Roadmap 263)
 
 The selection-aware **Zeichen …** dialog chooses font sizes (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36 or
 48 points) and named text colors (black, slate, red, dark orange, green, teal, blue or purple). It formats selected
@@ -36,7 +36,19 @@ exact size/color, and replacement preserves full mark-attribute boundaries. Exis
 suggestion acceptance, confirmed CAS saves, current rights and memory-only drafts remain authoritative.
 
 Decision: [ADR-0087](../../ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md).
-Full acceptance, new nonempty recovery and controlled rollout are pending; Roadmap 262 remains the validated baseline.
+Full Python quality passed on `a0b3001`, including Mypy on 562 sources; 362 focused Python checks also passed.
+Product code remained unchanged through test-only `75f381a`. Passing coverage includes all 231 distinct cases
+(188 browser and 43 model): the full run retained 230 passes and a history-fixture input failure, then the complete
+eight-case history suite passed after giving that case its own starting document. Both raw reports remain retained;
+this is not a single 231-pass run. No guard or assertion was weakened. Whole-document keyboard replacement across
+rich tables remains a separate usability follow-up.
+
+Root reviewed six Office/Work screenshots and both actual PDF pages. The A4 portrait PDF preserves sizes/colors,
+all 24 numbered paragraphs and both sentinels, with 2,108 extracted characters and H1/H2/P structure; no empty pages.
+Fresh complete recovery verified 460 documents, 935 saved versions and 1,045 source objects. All three designated
+character versions passed (legacy plus two saved profiles), alongside paragraph, review and suggestion evidence.
+Current ACLs, exact source/receipt bindings and read-only restored services passed. Both release gates passed;
+operational details are maintained in the [current handoff](../CURRENT_HANDOFF.md).
 
 ## Paragraph formatting (Roadmap 262)
 
@@ -546,8 +558,9 @@ rollout, live verification and cleanup passed. Roadmap 262 completes strictly bo
 preserving legacy canonical bytes and exact saved versions. Full quality, all 215 checks (176 browser and 39 model),
 responsive/PDF review, complete paginated nonempty recovery and release gates passed. Operational details remain in
 the [current handoff](../CURRENT_HANDOFF.md).
-The next recommendation is bounded character formatting with font sizes and text colors, preserving the same current
-ACL, confirmed-save/CAS, undo, comparison, print and recovery boundaries. This recommendation is not implemented.
+Roadmap 263 completes character sizes/colors with full quality, passing coverage of all 231 cases, actual PDF review,
+fresh nonempty recovery and controlled rollout. The next usability investigation is whole-document keyboard replacement
+across rich tables. The history fixture now owns its starting head; this does not claim to fix that input path.
 Preserve confirmed document/review/suggestion writes, atomic accepted versions, exact version anchors, current access checks and
 memory-only drafts. Continuous tracked changes and live collaboration remain future product work. Native Office continues before
 further CRM expansion; DOCX fidelity, engine admission and interchange keep their separate gates. Ordinary tenant,
