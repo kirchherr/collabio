@@ -80,9 +80,7 @@ def test_recovery_binds_designated_legacy_and_formatted_sources_without_body_evi
         with pytest.raises(ValueError):
             verify_restored_style_versions(documents=fixture.service, readers={object_id: user}, versions=versions)
     else:
-        report = verify_restored_style_versions(
-            documents=fixture.service, readers={object_id: user}, versions=versions
-        )
+        report = verify_restored_style_versions(documents=fixture.service, readers={object_id: user}, versions=versions)
         assert report["verified_style_fixture_version_count"] == 3
         assert report["verified_style_formatted_version_count"] == 2
         assert report["legacy_style_canonical_hash_verified"]

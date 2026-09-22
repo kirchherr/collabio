@@ -66,7 +66,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             reject()
         style_ids.add(identifier)
         style_names.add(name)
-        for key, values in (("paragraph", PARAGRAPH_VALUES), ("character", {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS})):
+        for key, values in (
+            ("paragraph", PARAGRAPH_VALUES),
+            ("character", {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS}),
+        ):
             attributes = style[key]
             if not isinstance(attributes, dict) or set(attributes) - set(values):
                 reject()

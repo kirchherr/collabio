@@ -10,9 +10,9 @@ from suite.platform.office_documents import (
 )
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore
 from suite.storage.source_objects import PgSourceObjectWriteReceiptStore, source_object_content_bytes
-from test_office_named_styles import styled_document
 from test_office_documents_pg import Database, command, counts, editor, grant, service_for
 from test_office_documents_pg import database as database
+from test_office_named_styles import styled_document
 
 
 def test_pg_named_style_versions_preserve_legacy_sources_receipts_cas_and_acl(database: Database) -> None:

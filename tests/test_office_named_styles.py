@@ -12,8 +12,23 @@ from suite.platform.office_suggestions import replace_suggestion_text
 def styled_document() -> dict[str, Any]:
     return {
         "type": "doc",
-        "attrs": {"styles": [{"id": "body", "name": "Fließtext 😀", "paragraph": {"lineSpacing": "1.5"}, "character": {"fontSize": 18, "textColor": "blue"}}]},
-        "content": [{"type": "paragraph", "attrs": {"styleId": "body", "textAlign": "right"}, "content": [{"type": "text", "text": "Café 😀 text", "marks": [{"type": "bold"}]}]}],
+        "attrs": {
+            "styles": [
+                {
+                    "id": "body",
+                    "name": "Fließtext 😀",
+                    "paragraph": {"lineSpacing": "1.5"},
+                    "character": {"fontSize": 18, "textColor": "blue"},
+                }
+            ]
+        },
+        "content": [
+            {
+                "type": "paragraph",
+                "attrs": {"styleId": "body", "textAlign": "right"},
+                "content": [{"type": "text", "text": "Café 😀 text", "marks": [{"type": "bold"}]}],
+            }
+        ],
     }
 
 
@@ -41,16 +56,36 @@ def test_styles_reject_invalid_catalog_shapes(value: Any) -> None:
         validate_office_document(document)
 
 
-@pytest.mark.parametrize("key,value", [
-    ("id", ""), ("id", "Upper"), ("id", "../file"), ("id", "x" * 49), ("id", None),
-    ("name", ""), ("name", " space"), ("name", "x" * 61), ("name", "secret\n"), ("name", "a\ud800"),
-    ("name", "a\x85b"), ("name", 5), ("paragraph", None), ("paragraph", {"fontSize": 18}),
-    ("paragraph", {"textAlign": "SECRET"}), ("paragraph", {"spacingAfter": True}),
-    ("paragraph", {"spacingAfter": 6.0}), ("paragraph", {"lineSpacing": 1.5}),
-    ("character", {"fontSize": "18"}), ("character", {"fontSize": 18.0}),
-    ("character", {"fontSize": True}), ("character", {"textColor": "#fff"}),
-    ("character", {"textColor": None}), ("character", {"style": "SECRET"}), ("url", "SECRET"),
-])
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("id", ""),
+        ("id", "Upper"),
+        ("id", "../file"),
+        ("id", "x" * 49),
+        ("id", None),
+        ("name", ""),
+        ("name", " space"),
+        ("name", "x" * 61),
+        ("name", "secret\n"),
+        ("name", "a\ud800"),
+        ("name", "a\x85b"),
+        ("name", 5),
+        ("paragraph", None),
+        ("paragraph", {"fontSize": 18}),
+        ("paragraph", {"textAlign": "SECRET"}),
+        ("paragraph", {"spacingAfter": True}),
+        ("paragraph", {"spacingAfter": 6.0}),
+        ("paragraph", {"lineSpacing": 1.5}),
+        ("character", {"fontSize": "18"}),
+        ("character", {"fontSize": 18.0}),
+        ("character", {"fontSize": True}),
+        ("character", {"textColor": "#fff"}),
+        ("character", {"textColor": None}),
+        ("character", {"style": "SECRET"}),
+        ("url", "SECRET"),
+    ],
+)
 def test_styles_reject_untrusted_definition_values_without_mutation(key: str, value: Any) -> None:
     document = styled_document()
     document["attrs"]["styles"][0][key] = value
@@ -60,14 +95,24 @@ def test_styles_reject_untrusted_definition_values_without_mutation(key: str, va
     assert document == before
 
 
-@pytest.mark.parametrize("tamper", ["duplicate-id", "duplicate-name", "limit", "dangling", "null", "wrong-node", "unknown-root"])
+@pytest.mark.parametrize(
+    "tamper", ["duplicate-id", "duplicate-name", "limit", "dangling", "null", "wrong-node", "unknown-root"]
+)
 def test_styles_reject_ambiguous_or_dangling_references(tamper: str) -> None:
     document = styled_document()
     styles = document["attrs"]["styles"]
     if tamper in {"duplicate-id", "duplicate-name"}:
-        styles.append({**deepcopy(styles[0]), "id": "other" if tamper == "duplicate-name" else "body", "name": "Other" if tamper == "duplicate-id" else styles[0]["name"]})
+        styles.append(
+            {
+                **deepcopy(styles[0]),
+                "id": "other" if tamper == "duplicate-name" else "body",
+                "name": "Other" if tamper == "duplicate-id" else styles[0]["name"],
+            }
+        )
     elif tamper == "limit":
-        document["attrs"]["styles"] = [{**deepcopy(styles[0]), "id": f"style-{n}", "name": f"Style {n}"} for n in range(21)]
+        document["attrs"]["styles"] = [
+            {**deepcopy(styles[0]), "id": f"style-{n}", "name": f"Style {n}"} for n in range(21)
+        ]
         document["content"][0]["attrs"]["styleId"] = "style-0"
     elif tamper in {"dangling", "null"}:
         document["content"][0]["attrs"]["styleId"] = None if tamper == "null" else "missing"
@@ -84,6 +129,8 @@ def test_style_catalog_is_counted_in_canonical_byte_limit() -> None:
     document["content"][0]["content"][0]["text"] = "界" * 66580
     assert len(canonical_json(document).encode()) < 400_000
     for n in range(1, 20):
-        document["attrs"]["styles"].append({"id": f"style-{n}", "name": "界" * 58 + str(n), "paragraph": {}, "character": {}})
+        document["attrs"]["styles"].append(
+            {"id": f"style-{n}", "name": "界" * 58 + str(n), "paragraph": {}, "character": {}}
+        )
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(document)

@@ -21,10 +21,17 @@ def style_recovery_document(number: int) -> dict[str, Any]:
         raise ValueError("Synthetic style version is outside the fixture")
     document = paragraph_recovery_document(1)
     if number > 1:
-        document["attrs"] = {"styles": [
-            {"id": "body", "name": "Fließtext", "paragraph": {"lineSpacing": "1.5", "spacingAfter": 6 if number == 2 else 12}, "character": {"fontSize": 18 if number == 2 else 24, "textColor": "blue" if number == 2 else "red"}},
-            {"id": "unused", "name": "Unbenutzte Vorlage", "paragraph": {}, "character": {"fontSize": 32}},
-        ]}
+        document["attrs"] = {
+            "styles": [
+                {
+                    "id": "body",
+                    "name": "Fließtext",
+                    "paragraph": {"lineSpacing": "1.5", "spacingAfter": 6 if number == 2 else 12},
+                    "character": {"fontSize": 18 if number == 2 else 24, "textColor": "blue" if number == 2 else "red"},
+                },
+                {"id": "unused", "name": "Unbenutzte Vorlage", "paragraph": {}, "character": {"fontSize": 32}},
+            ]
+        }
 
     def visit(node: dict[str, Any]) -> None:
         if node["type"] in {"paragraph", "heading"} and number > 1:

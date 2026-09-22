@@ -10,12 +10,12 @@ from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_character import seed_synthetic_office_characters
-from work_e2e_styles import seed_synthetic_office_styles
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
 from work_e2e_paragraph import seed_synthetic_office_paragraphs
+from work_e2e_styles import seed_synthetic_office_styles
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",

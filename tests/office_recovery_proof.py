@@ -54,9 +54,9 @@ from suite.storage.source_objects import (
     build_source_object_write_receipt_hash,
     source_object_content_bytes,
 )
-from work_e2e_styles import STYLE_RECOVERY_TITLE, style_recovery_document
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
+from work_e2e_styles import STYLE_RECOVERY_TITLE, style_recovery_document
 
 TENANT_ID = "tenant-work-e2e"
 EDITOR_ID = "work-office-editor-e2e"
@@ -720,7 +720,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         readers=readers,
         versions=inventory["document_versions"],
     )
-    style_evidence = verify_restored_style_versions(documents=restored, readers=readers, versions=inventory["document_versions"])
+    style_evidence = verify_restored_style_versions(
+        documents=restored, readers=readers, versions=inventory["document_versions"]
+    )
     character_evidence = verify_restored_character_versions(
         documents=restored,
         readers=readers,
