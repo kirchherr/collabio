@@ -11,8 +11,8 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
-import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes } from "./office-paragraph.mjs";
-import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes } from "./office-character.mjs";
+import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
+import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -20,7 +20,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -262,6 +262,7 @@ function updateEditorState() {
   updateTableControls();
   updateParagraphControls();
   updateCharacterControls();
+  updateFormatTransfer();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -700,6 +701,99 @@ function applyCharacterFormat() {
   notice(action.selection.empty ? "Zeichenformatierung für die nächste Eingabe gewählt." : "Zeichenformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
 }
 
+const transferableMarks = ["bold", "italic", "underline", "strike", "textStyle"];
+
+function transferMarks(marks) {
+  return transferableMarks.flatMap((name) => {
+    const mark = marks.find((entry) => entry.type.name === name);
+    if (!mark) return [];
+    const attrs = name === "textStyle" ? officeCharacterAttributes(mark.attrs) : {};
+    return name === "textStyle" && !Object.keys(attrs).length ? [] : [{ type: name, attrs }];
+  });
+}
+
+function updateFormatTransfer() {
+  const sample = state.formatSample;
+  if (sample && (sample.editor !== state.editor || sample.session !== state.session || sample.context !== state.context || !sessionCurrent(sample.session))) state.formatSample = null;
+  const allowed = paragraphAllowed();
+  const characters = selectedCharacters().length > 0, paragraphs = selectedParagraphs().length > 0;
+  const menu = $("format-transfer");
+  menu.disabled = !allowed;
+  menu.querySelector('[value="copy"]').disabled = !allowed || !characters || !paragraphs;
+  for (const scope of ["characters", "paragraphs", "both"]) {
+    menu.querySelector(`[value="${scope}"]`).disabled = !allowed || !state.formatSample ||
+      (scope !== "paragraphs" && !characters) || (scope !== "characters" && !paragraphs);
+  }
+  menu.querySelector('[value="clear"]').disabled = !state.formatSample;
+  menu.querySelector('[value=""]').textContent = state.formatSample ? "Format bereit …" : "Format übertragen …";
+  $("format-sample").textContent = state.formatSample?.description || "Noch kein Format aufgenommen.";
+}
+
+function copyFormat() {
+  if (!paragraphAllowed()) return;
+  const characters = selectedCharacters(), paragraphs = selectedParagraphs();
+  if (!characters.length || !paragraphs.length) return;
+  const marks = transferMarks(characters[0].marks);
+  const attrs = officeParagraphAttributes(paragraphs[0].entry.attrs);
+  if (characters.some((entry) => JSON.stringify(transferMarks(entry.marks)) !== JSON.stringify(marks)) ||
+      paragraphs.some(({ entry }) => JSON.stringify(officeParagraphAttributes(entry.attrs)) !== JSON.stringify(attrs))) {
+    state.formatSample = null;
+    updateFormatTransfer();
+    notice("Die Auswahl enthält unterschiedliche Formate. Setzen Sie den Cursor in die gewünschte Vorlage oder wählen Sie einheitlich formatierten Text.", true);
+    focusEditor();
+    return;
+  }
+  const labels = { bold: "Fett", italic: "Kursiv", underline: "Unterstrichen", strike: "Durchgestrichen" };
+  const description = [marks.map((mark) => labels[mark.type] || officeCharacterDescription(mark.attrs)).join("; ") || "Standardzeichen",
+    officeParagraphDescription(attrs).join("; ") || "Standardabsatz"].join(" · ");
+  // Only allowlisted presentation values are held in this document's memory.
+  // No source text, clipboard, browser storage or cross-document sample is used.
+  state.formatSample = { marks, attrs, description, editor: state.editor, session: state.session, context: state.context };
+  updateFormatTransfer();
+  notice(`Format aufgenommen: ${description}. Wählen Sie das Ziel und wenden Sie Zeichen, Absatz oder beides an. Code bleibt unverändert.`);
+  focusEditor();
+}
+
+function applyTransferredFormat(scope) {
+  updateFormatTransfer();
+  const sample = state.formatSample;
+  if (!sample || !paragraphAllowed() || !["characters", "paragraphs", "both"].includes(scope)) return;
+  const editor = state.editor, transaction = editor.state.tr;
+  const characters = scope === "paragraphs" ? [] : selectedCharacters();
+  const paragraphs = scope === "characters" ? [] : selectedParagraphs();
+  if ((scope !== "paragraphs" && !characters.length) || (scope !== "characters" && !paragraphs.length)) return;
+  try {
+    for (const { entry, position } of paragraphs) {
+      const attrs = { ...entry.attrs, ...Object.fromEntries(Object.keys(OFFICE_PARAGRAPH_VALUES).map((key) => [key, sample.attrs[key] ?? null])) };
+      if (JSON.stringify(officeParagraphAttributes(entry.attrs)) !== JSON.stringify(sample.attrs)) transaction.setNodeMarkup(position, undefined, attrs);
+    }
+    for (const { marks, from, to } of characters) {
+      if (JSON.stringify(transferMarks(marks)) === JSON.stringify(sample.marks) && !(from === to && transaction.docChanged)) continue;
+      const next = sample.marks.map((mark) => editor.schema.marks[mark.type].create(mark.attrs));
+      if (from === to) transaction.setStoredMarks(next);
+      else {
+        for (const name of transferableMarks) transaction.removeMark(from, to, editor.schema.marks[name]);
+        for (const mark of next) transaction.addMark(from, to, mark);
+      }
+    }
+    validateEditorDocument(transaction.doc);
+  } catch {
+    notice("Die Formatübertragung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.", true);
+    focusEditor();
+    return;
+  }
+  if (transaction.doc.eq(editor.state.doc) && !transaction.storedMarksSet) {
+    notice("Keine Änderung: Das Ziel hat bereits dieses Format.");
+    focusEditor();
+    return;
+  }
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr).setStoredMarks(editor.state.storedMarks));
+  focusEditor();
+  updateEditorState();
+  notice(transaction.docChanged ? "Format übertragen. Rückgängig ist möglich; gespeichert wird erst mit der nächsten bestätigten Version." : "Zeichenformat für die nächste Eingabe gewählt.");
+}
+
 function changeTextStyle(value) {
   if (!replacementAllowed() || !["paragraph", "heading-1", "heading-2", "heading-3"].includes(value)) return false;
   const editor = state.editor;
@@ -1118,6 +1212,7 @@ function prepareEditor(content, session) {
 }
 
 function mountEditor(content, session) {
+  state.formatSample = null;
   const { editor, editorHost } = prepareEditor(content, session);
   search.matches = [];
   search.index = -1;
@@ -1127,6 +1222,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  state.formatSample = null;
   closeReuse();
   closePrint();
   clearReview();
@@ -3499,6 +3595,13 @@ for (const [key, id] of Object.entries(characterFields)) {
 }
 $("character-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("character-format").addEventListener("click", openCharacterDialog);
+$("format-transfer").addEventListener("change", (event) => {
+  const choice = event.target.value;
+  event.target.value = "";
+  if (choice === "copy") copyFormat();
+  else if (choice === "clear") { state.formatSample = null; updateFormatTransfer(); notice("Aufgenommenes Format verworfen."); focusEditor(); }
+  else applyTransferredFormat(choice);
+});
 $("character-form").addEventListener("submit", (event) => { event.preventDefault(); applyCharacterFormat(); });
 $("character-reset").addEventListener("click", () => {
   if (!characterActionCurrent(state.characterAction)) { closeCharacterDialog(); return; }
