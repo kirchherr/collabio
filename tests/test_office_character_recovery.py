@@ -8,6 +8,20 @@ from test_office_recovery_proof import recovery_environment
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 
 
+def test_character_seed_rejects_normal_environment_before_database_access() -> None:
+    from unittest.mock import Mock
+
+    from test_work_e2e_harness import valid_environment
+    from work_e2e_character import seed_synthetic_office_characters
+
+    environment = valid_environment()
+    environment["SUITE_DATABASE_DSN"] = "postgresql://app:secret@postgres:5432/collabio"
+    client = Mock()
+    with pytest.raises(RuntimeError):
+        seed_synthetic_office_characters(environment=environment, client=client)
+    assert not client.mock_calls
+
+
 def test_character_restore_target_requires_matching_fixed_pair() -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):

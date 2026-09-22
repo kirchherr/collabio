@@ -34,6 +34,7 @@ def test_pg_character_versions_preserve_legacy_sources_receipts_cas_and_acl(data
     )
     second_content = deepcopy(first_content)
     second_content["content"][0]["attrs"] = {
+        **second_content["content"][0]["attrs"],
         "textAlign": "left",
         "lineSpacing": "2",
         "spacingBefore": 0,
