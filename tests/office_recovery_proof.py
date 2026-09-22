@@ -54,8 +54,8 @@ from suite.storage.source_objects import (
     build_source_object_write_receipt_hash,
     source_object_content_bytes,
 )
-from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
+from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 
 TENANT_ID = "tenant-work-e2e"
 EDITOR_ID = "work-office-editor-e2e"
@@ -75,7 +75,11 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "SUITE_OFFICE_RECOVERY_TARGET_DSN": ("postgres-restore", "collabio_work_e2e_restore", "collabio_app"),
     }
     target_database = urlparse(env.get("SUITE_OFFICE_RECOVERY_TARGET_DSN", "")).path.removeprefix("/")
-    if target_database not in {"collabio_work_e2e_restore", "collabio_work_e2e_262_restore", "collabio_work_e2e_263_restore"}:
+    if target_database not in {
+        "collabio_work_e2e_restore",
+        "collabio_work_e2e_262_restore",
+        "collabio_work_e2e_263_restore",
+    }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
     expected["SUITE_OFFICE_RECOVERY_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_app")
@@ -673,7 +677,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         versions=inventory["document_versions"],
     )
     character_evidence = verify_restored_character_versions(
-        documents=restored, readers=readers, versions=inventory["document_versions"],
+        documents=restored,
+        readers=readers,
+        versions=inventory["document_versions"],
     )
     review_evidence = verify_restored_reviews(
         documents=restored,

@@ -46,14 +46,18 @@ def seed_synthetic_office_characters(
             tenant_id=user.tenant_id, user_id=user.user_id, role_ids=user.role_ids, group_ids=set()
         )
         fields: dict[str, Any] = dict(
-            title=CHARACTER_RECOVERY_TITLE, document=character_recovery_document(number),
-            mutation_reference=f"work-e2e-character-recovery-{number}", human_confirmation=True,
+            title=CHARACTER_RECOVERY_TITLE,
+            document=character_recovery_document(number),
+            mutation_reference=f"work-e2e-character-recovery-{number}",
+            human_confirmation=True,
         )
         if saved is None:
             saved = service.create(user_context=user, write_enabled=True, command=OfficeDocumentCreateCommand(**fields))
         else:
             saved = service.save(
-                user_context=user, object_id=saved.document.object_id, write_enabled=True,
+                user_context=user,
+                object_id=saved.document.object_id,
+                write_enabled=True,
                 command=OfficeDocumentSaveCommand(**fields, expected_current_version_id=saved.version.version_id),
             )
     return 1, 3

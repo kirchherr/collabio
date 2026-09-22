@@ -10,9 +10,9 @@ from suite.platform.office_documents import (
 )
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore
 from suite.storage.source_objects import PgSourceObjectWriteReceiptStore, source_object_content_bytes
+from test_office_character_formatting import formatted_document
 from test_office_documents_pg import Database, command, counts, editor, grant, service_for
 from test_office_documents_pg import database as database
-from test_office_character_formatting import formatted_document
 
 
 def test_pg_character_versions_preserve_legacy_sources_receipts_cas_and_acl(database: Database) -> None:
@@ -39,7 +39,9 @@ def test_pg_character_versions_preserve_legacy_sources_receipts_cas_and_acl(data
         "spacingBefore": 0,
         "spacingAfter": 24,
     }
-    second_content["content"][0]["content"][0]["marks"] = [{"type": "textStyle", "attrs": {"fontSize": 24, "textColor": "red"}}]
+    second_content["content"][0]["content"][0]["marks"] = [
+        {"type": "textStyle", "attrs": {"fontSize": 24, "textColor": "red"}}
+    ]
     second_command = OfficeDocumentSaveCommand(
         **{**command("format-two").model_dump(), "document": second_content},
         expected_current_version_id=first.version.version_id,

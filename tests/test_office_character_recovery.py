@@ -1,5 +1,6 @@
 import pytest
-from office_recovery_proof import verify_restored_character_versions, require_office_recovery_environment
+
+from office_recovery_proof import require_office_recovery_environment, verify_restored_character_versions
 from suite.ai_control_plane.audit import canonical_json
 from suite.platform.office_documents import OfficeDocumentCreateCommand, OfficeDocumentSaveCommand
 from test_office_paragraph_recovery import recovery_documents
