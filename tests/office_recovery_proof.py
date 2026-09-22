@@ -55,6 +55,7 @@ from suite.storage.source_objects import (
     source_object_content_bytes,
 )
 from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
+from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 
 TENANT_ID = "tenant-work-e2e"
 EDITOR_ID = "work-office-editor-e2e"
@@ -74,7 +75,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "SUITE_OFFICE_RECOVERY_TARGET_DSN": ("postgres-restore", "collabio_work_e2e_restore", "collabio_app"),
     }
     target_database = urlparse(env.get("SUITE_OFFICE_RECOVERY_TARGET_DSN", "")).path.removeprefix("/")
-    if target_database not in {"collabio_work_e2e_restore", "collabio_work_e2e_262_restore"}:
+    if target_database not in {"collabio_work_e2e_restore", "collabio_work_e2e_262_restore", "collabio_work_e2e_263_restore"}:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
     expected["SUITE_OFFICE_RECOVERY_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_app")
@@ -504,6 +505,48 @@ def verify_restored_paragraph_versions(
     }
 
 
+def verify_restored_character_versions(
+    *,
+    documents: OfficeDocumentService,
+    readers: Mapping[str, UserContext],
+    versions: list[Any],
+) -> dict[str, Any]:
+    """Bind the designated legacy and two formatted sources to their exact versions."""
+    evidence: list[dict[str, str]] = []
+    object_id: str | None = None
+    previous: str | None = None
+    for number in range(1, 3 + 1):
+        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-character-recovery-{number}"]
+        if len(candidates) != 1:
+            raise ValueError("Office recovery character fixtures are missing or ambiguous")
+        version = candidates[0]
+        object_id = object_id or version["object_id"]
+        if version["object_id"] != object_id or version["previous_version_id"] != previous:
+            raise ValueError("Office recovery character fixture lineage is invalid")
+        expected = character_recovery_document(number)
+        read = documents.read_content(
+            user_context=readers[object_id], object_id=object_id, version_id=version["version_id"]
+        )
+        if (
+            read.content != expected
+            or read.version.title != CHARACTER_RECOVERY_TITLE
+            or read.version.content_hash != stable_hash(canonical_json(expected))
+            or read.version.content_hash != version["content_hash"]
+            or read.can_write
+        ):
+            raise ValueError("Office recovery character content or canonical hash is invalid")
+        evidence.append(
+            {"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash}
+        )
+        previous = read.version.version_id
+    return {
+        "character_formatting_evidence_hash": stable_hash(canonical_json(evidence)),
+        "verified_character_fixture_version_count": len(evidence),
+        "verified_character_formatted_version_count": 3 - 1,
+        "legacy_character_canonical_hash_verified": True,
+    }
+
+
 def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     require_office_recovery_environment(env)
     postgres = run_postgres_restore_drill_from_environment(env)
@@ -629,6 +672,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         readers=readers,
         versions=inventory["document_versions"],
     )
+    character_evidence = verify_restored_character_versions(
+        documents=restored, readers=readers, versions=inventory["document_versions"],
+    )
     review_evidence = verify_restored_reviews(
         documents=restored,
         reviews=OfficeReviewService(
@@ -685,6 +731,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         **review_evidence,
         **suggestion_evidence,
         **paragraph_evidence,
+        **character_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,
         "foreign_tenant_denied": True,

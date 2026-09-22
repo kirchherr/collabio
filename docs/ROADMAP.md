@@ -1641,7 +1641,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      sowie Releasegates gruen. API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md.
      Keine neue SQL-Migration, Abhaengigkeit oder API; normale Tenant-/Pilot-/Engine-Gates bleiben geschlossen.
 
-Naechste Empfehlung, nicht implementiert: begrenzte Zeichenformatierung mit Schriftgroessen und Textfarben unter
+263. [ ] Zeichenformatierung mit Schriftgroessen und benannten Textfarben fuer Auswahl oder folgende Eingabe.
+     Gemischte Werte, Standard/Reset, Undo, aktuelle ACLs und bestaetigte CAS-Saves erhalten; Vergleich, Ersetzungen,
+     Wiederverwendung, Druck/PDF und vollstaendige nichtleere Recovery pruefen. ADR-0087; Validierung steht aus.
+
+Aktuell in Arbeit: begrenzte Zeichenformatierung mit Schriftgroessen und Textfarben unter
 denselben aktuellen ACL-, bestaetigten Save/CAS-, Undo-, Vergleichs-, Druck- und Recovery-Grenzen. Native Office bleibt
 vor weiterem CRM-Ausbau priorisiert; Fortsetzungsstand ist Roadmap 262 mit 215 bestandenen Browser-/Modellpruefungen.
 

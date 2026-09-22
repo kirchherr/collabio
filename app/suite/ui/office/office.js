@@ -1,4 +1,4 @@
-import { Editor, Extension, textblockTypeInputRule } from "@tiptap/core";
+import { Editor, Extension, Mark, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
@@ -12,6 +12,7 @@ import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes } from "./office-paragraph.mjs";
+import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes } from "./office-character.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -19,7 +20,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -28,7 +29,7 @@ const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader",
 ]);
-const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline"]);
+const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle"]);
 const commandNames = {
   bold: "toggleBold", italic: "toggleItalic", underline: "toggleUnderline", strike: "toggleStrike",
   code: "toggleCode", bulletList: "toggleBulletList", orderedList: "toggleOrderedList",
@@ -36,6 +37,20 @@ const commandNames = {
 };
 const OfficeTable = Table.extend({
   renderHTML() { return ["table", { class: "office-table" }, ["tbody", 0]]; },
+});
+const OfficeCharacterFormat = Mark.create({
+  name: "textStyle",
+  addAttributes() {
+    return Object.fromEntries(Object.entries(OFFICE_CHARACTER_VALUES).map(([key, values]) => {
+      const domName = key === "fontSize" ? "data-office-font-size" : "data-office-text-color";
+      return [key, { default: null, keepOnSplit: true,
+        parseHTML: (element) => values.find((value) => String(value) === element.getAttribute(domName)) ?? null,
+        renderHTML: (attrs) => officeCharacterDOMAttributes({ [key]: attrs[key] }),
+      }];
+    }));
+  },
+  parseHTML() { return [{ tag: "span[data-office-font-size]" }, { tag: "span[data-office-text-color]" }]; },
+  renderHTML({ HTMLAttributes }) { return ["span", HTMLAttributes, 0]; },
 });
 const OfficeParagraphFormat = Extension.create({
   name: "officeParagraphFormat",
@@ -182,7 +197,12 @@ function normalizedDocument(document) {
       const types = value.marks.map((mark) => mark.type);
       if (value.type !== "text" || types.some((type) => !allowedMarks.has(type)) ||
           new Set(types).size !== types.length || (types.includes("code") && types.length > 1)) throw new Error("document-marks");
-      result.marks = value.marks.map((mark) => ({ type: mark.type }));
+      result.marks = value.marks.flatMap((mark) => {
+        if (mark.type !== "textStyle") return [{ type: mark.type }];
+        const attrs = officeCharacterAttributes(mark.attrs);
+        return Object.keys(attrs).length ? [{ type: mark.type, attrs }] : [];
+      });
+      if (!result.marks.length) delete result.marks;
     }
     if (value.content) {
       if (!Array.isArray(value.content)) throw new Error("document-content");
@@ -241,6 +261,7 @@ function updateEditorState() {
   $("insert-menu").disabled = !editable;
   updateTableControls();
   updateParagraphControls();
+  updateCharacterControls();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -568,6 +589,117 @@ function applyParagraphFormat() {
   notice("Absatzformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
 }
 
+const characterFields = { fontSize: "character-size", textColor: "character-color" };
+const characterHelp = "Die Formatierung bleibt bis zum Speichern im Entwurf. Code wird nicht verändert.";
+
+function selectedCharacters(editor = state.editor) {
+  if (!editor || editor.isDestroyed) return [];
+  const { doc, selection, storedMarks } = editor.state;
+  if (selection.empty) {
+    const marks = storedMarks || selection.$from.marks();
+    return selection.$from.parent.type.allowsMarkType(editor.schema.marks.textStyle) && !marks.some((mark) => mark.type.name === "code") ?
+      [{ marks, from: selection.from, to: selection.to }] : [];
+  }
+  const entries = new Map();
+  for (const { $from, $to } of selection.ranges) {
+    doc.nodesBetween($from.pos, $to.pos, (entry, position, parent) => {
+      if (!entry.isText || !parent.type.allowsMarkType(editor.schema.marks.textStyle) || entry.marks.some((mark) => mark.type.name === "code")) return;
+      const from = Math.max(position, $from.pos), to = Math.min(position + entry.nodeSize, $to.pos);
+      if (from < to) entries.set(`${from}:${to}`, { marks: entry.marks, from, to });
+    });
+  }
+  return [...entries.values()];
+}
+
+function characterActionCurrent(action) {
+  return paragraphActionCurrent(action) && action.storedMarks === state.editor.state.storedMarks;
+}
+
+function closeCharacterDialog(restoreFocus = false) {
+  const action = state.characterAction;
+  state.characterAction = null;
+  $("character-dialog").close();
+  $("character-form").reset();
+  $("character-status").textContent = "";
+  $("character-status").classList.remove("error");
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function updateCharacterControls() {
+  if (state.characterAction && !characterActionCurrent(state.characterAction)) closeCharacterDialog();
+  $("character-format").disabled = !paragraphAllowed() || !selectedCharacters().length;
+  $("character-apply").disabled = !characterActionCurrent(state.characterAction);
+  $("character-reset").disabled = $("character-apply").disabled;
+}
+
+function openCharacterDialog() {
+  if (!paragraphAllowed()) return;
+  const characters = selectedCharacters();
+  if (!characters.length) return;
+  closeCharacterDialog();
+  state.characterAction = {
+    session: state.session, editor: state.editor, context: state.context, revision: state.session.revision,
+    document: state.editor.state.doc, selection: state.editor.state.selection, storedMarks: state.editor.state.storedMarks, characters,
+  };
+  for (const [key, id] of Object.entries(characterFields)) {
+    const values = new Set(characters.map(({ marks }) => marks.find((mark) => mark.type.name === "textStyle")?.attrs[key] ?? "default"));
+    $(id).querySelector('option[value="mixed"]').hidden = values.size < 2;
+    $(id).value = values.size > 1 ? "mixed" : String([...values][0]);
+  }
+  $("character-selection").textContent = state.editor.state.selection.empty ?
+    "Gilt für den Text, den Sie als Nächstes am Cursor eingeben." : "Gilt nur für den ausgewählten Text, auch in Listen und Tabellenzellen.";
+  $("character-status").textContent = characterHelp;
+  updateCharacterControls();
+  $("character-dialog").showModal();
+  $("character-size").focus();
+}
+
+function applyCharacterFormat() {
+  const action = state.characterAction;
+  if (!characterActionCurrent(action)) { closeCharacterDialog(); return; }
+  const editor = action.editor, type = editor.schema.marks.textStyle;
+  const transaction = editor.state.tr;
+  let changed = false;
+  try {
+    const changes = {};
+    for (const [key, id] of Object.entries(characterFields)) {
+      const choice = $(id).value;
+      if (choice === "mixed") continue;
+      changes[key] = choice === "default" ? null : OFFICE_CHARACTER_VALUES[key].find((value) => String(value) === choice);
+      if (changes[key] === undefined) throw new Error("character-choice");
+    }
+    for (const { marks, from, to } of action.characters) {
+      const previous = marks.find((mark) => mark.type === type);
+      const before = officeCharacterAttributes(previous?.attrs || {});
+      const attrs = officeCharacterAttributes({ ...before, ...changes });
+      if (JSON.stringify(before) === JSON.stringify(attrs)) continue;
+      changed = true;
+      const next = Object.keys(attrs).length ? type.create(attrs) : null;
+      if (from === to) {
+        const other = type.removeFromSet(marks);
+        transaction.setStoredMarks(next ? next.addToSet(other) : other);
+      } else {
+        transaction.removeMark(from, to, type);
+        if (next) transaction.addMark(from, to, next);
+      }
+    }
+    if (!changed) { $("character-status").textContent = "Keine Änderung: Die Auswahl hat bereits diese Zeichenformatierung."; return; }
+    validateEditorDocument(transaction.doc);
+  } catch {
+    $("character-status").textContent = "Die Zeichenformatierung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
+    $("character-status").classList.add("error");
+    return;
+  }
+  if (!characterActionCurrent(action)) { closeCharacterDialog(); return; }
+  closeCharacterDialog();
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  // Keep pending typing marks while separating the edit from the next undo group.
+  editor.view.dispatch(closeHistory(editor.state.tr).setStoredMarks(editor.state.storedMarks));
+  focusEditor(editor);
+  updateEditorState();
+  notice(action.selection.empty ? "Zeichenformatierung für die nächste Eingabe gewählt." : "Zeichenformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
+}
+
 function changeTextStyle(value) {
   if (!replacementAllowed() || !["paragraph", "heading-1", "heading-2", "heading-3"].includes(value)) return false;
   const editor = state.editor;
@@ -861,6 +993,7 @@ function contentChanged(session) {
   closePrint();
   closeTableDialogs();
   closeParagraphDialog();
+  closeCharacterDialog();
   $("table-message").textContent = "";
   closeComparison();
   cancelRestore();
@@ -886,7 +1019,7 @@ function prepareEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight,
     ],
     editorProps: {
@@ -932,6 +1065,7 @@ function clearWorkspace() {
   clearSuggestions();
   closeTableDialogs();
   closeParagraphDialog();
+  closeCharacterDialog();
   $("table-tools").hidden = true;
   $("table-info").textContent = "";
   $("table-message").textContent = "";
@@ -3288,6 +3422,24 @@ document.querySelectorAll("[data-command]").forEach((button) => {
     ["bulletList", "orderedList", "blockquote"].includes(button.dataset.command)));
 });
 $("text-style").addEventListener("change", () => changeTextStyle($("text-style").value));
+for (const [key, id] of Object.entries(characterFields)) {
+  for (const value of OFFICE_CHARACTER_VALUES[key]) {
+    const option = node("option", key === "fontSize" ? `${value} pt` : OFFICE_TEXT_COLORS[value]);
+    option.value = String(value); $(id).append(option);
+  }
+  $(id).addEventListener("change", () => { $("character-status").textContent = characterHelp; $("character-status").classList.remove("error"); });
+}
+$("character-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("character-format").addEventListener("click", openCharacterDialog);
+$("character-form").addEventListener("submit", (event) => { event.preventDefault(); applyCharacterFormat(); });
+$("character-reset").addEventListener("click", () => {
+  if (!characterActionCurrent(state.characterAction)) { closeCharacterDialog(); return; }
+  Object.values(characterFields).forEach((id) => { $(id).value = "default"; });
+  $("character-status").textContent = "Standard ist ausgewählt. Erst „Anwenden“ ändert die Formatierung.";
+});
+["character-close", "character-cancel"].forEach((id) => $(id).addEventListener("click", () => closeCharacterDialog(true)));
+$("character-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeCharacterDialog(true); });
+$("character-dialog").addEventListener("close", () => { if (!$("character-dialog").open && state.characterAction) closeCharacterDialog(); });
 $("paragraph-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("paragraph-format").addEventListener("click", openParagraphDialog);
 $("paragraph-form").addEventListener("submit", (event) => { event.preventDefault(); applyParagraphFormat(); });

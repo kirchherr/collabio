@@ -1,6 +1,7 @@
 // Render validated native content as inert, semantic DOM. No HTML parsing,
 // editor decorations, browser grants, or remote attributes enter the print surface.
 import { officeParagraphDOMAttributes } from "./office-paragraph.mjs";
+import { officeCharacterDOMAttributes } from "./office-character.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -19,6 +20,12 @@ export function renderOfficePrintDocument(content, title, dom = document) {
       if (typeof value.text !== "string") throw new Error("Invalid print text");
       let text = dom.createTextNode(value.text);
       for (const mark of [...(value.marks || [])].reverse()) {
+        if (mark.type === "textStyle") {
+          const wrapper = dom.createElement("span");
+          for (const [name, attribute] of Object.entries(officeCharacterDOMAttributes(mark.attrs))) wrapper.setAttribute(name, attribute);
+          wrapper.append(text); text = wrapper;
+          continue;
+        }
         if (!Object.hasOwn(markTags, mark.type)) throw new Error("Invalid print mark");
         const wrapper = dom.createElement(markTags[mark.type]);
         wrapper.append(text); text = wrapper;

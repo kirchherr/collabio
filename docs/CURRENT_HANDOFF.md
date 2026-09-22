@@ -1,6 +1,10 @@
 # Current Project Handoff
 
-Updated: 2026-09-21
+Updated: 2026-09-22
+
+Roadmap 263 / PLANS 124 is in progress following the user's approval: native character font sizes and named colors.
+Selection/caret, mixed/reset/undo, strict marks, safe comparison/replacement/print and new isolated nonempty recovery
+are being implemented under ADR-0087. Full acceptance and rollout are pending; item 262 remains the validated baseline.
 
 Roadmap 262 / PLANS 123 completes native paragraph alignment and line/before/after spacing, with strict optional
 attributes and unchanged legacy canonical bytes. Save, undo, comparison, reuse and print preserve formatting.

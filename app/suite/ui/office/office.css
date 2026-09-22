@@ -55,3 +55,27 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="18"]{margin-bottom:18pt}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="24"]{margin-bottom:24pt}
 @media(max-width:760px){.paragraph-dialog h2{font-size:19px}.paragraph-fields{grid-template-columns:minmax(0,1fr);gap:11px;margin-top:14px}.paragraph-fields label{font-size:11px;gap:4px}.paragraph-fields select{min-height:36px}.paragraph-dialog .dialog-body{padding-bottom:16px}.paragraph-dialog footer{gap:8px}.paragraph-dialog footer .button{flex:1;font-size:12px}.paragraph-help,#paragraph-status{font-size:10px}}
+
+/* Character formatting: only enumerated native values, shared by editor and print. */
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="8"]{font-size:8pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="9"]{font-size:9pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="10"]{font-size:10pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="11"]{font-size:11pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="12"]{font-size:12pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="14"]{font-size:14pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="16"]{font-size:16pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="18"]{font-size:18pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="20"]{font-size:20pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="24"]{font-size:24pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="28"]{font-size:28pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="32"]{font-size:32pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="36"]{font-size:36pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="48"]{font-size:48pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="black"]{color:#111827;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="slate"]{color:#475569;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="red"]{color:#b91c1c;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="orange"]{color:#9a3412;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="green"]{color:#166534;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="teal"]{color:#115e59;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="blue"]{color:#1d4ed8;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="purple"]{color:#7e22ce;print-color-adjust:exact;-webkit-print-color-adjust:exact}

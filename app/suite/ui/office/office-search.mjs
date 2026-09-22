@@ -145,7 +145,10 @@ function isCharacterBoundary(text, offset) {
 }
 
 function markKey(node) {
-  return (node.marks || []).map((mark) => mark.type).sort().join(",");
+  // Attribute differences are formatting boundaries, even for the same mark type.
+  return JSON.stringify((node.marks || []).map((mark) => [mark.type,
+    Object.entries(mark.attrs || {}).sort(([left], [right]) => left.localeCompare(right, "en"))])
+    .sort(([left], [right]) => left.localeCompare(right, "en")));
 }
 
 // A forward cursor visits each old segment once. Text chunks are joined only at

@@ -16,7 +16,9 @@ MAX_DOCUMENT_CHARACTERS = 100_000
 MAX_DOCUMENT_NODES = 10_000
 MAX_DOCUMENT_DEPTH = 32
 BLOCKS = {"paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "horizontalRule", "table"}
-MARKS = {"bold", "italic", "strike", "code", "underline"}
+MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
+FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
+TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
 
 
@@ -98,10 +100,27 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             reject()
         seen: set[str] = set()
         for mark in marks:
-            if not isinstance(mark, dict) or set(mark) != {"type"}:
+            if not isinstance(mark, dict):
                 reject()
             name = mark.get("type")
             if not isinstance(name, str) or name not in MARKS or name in seen:
+                reject()
+            if name == "textStyle":
+                style = mark.get("attrs")
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(style, dict)
+                    or not style
+                    or set(style) - {"fontSize", "textColor"}
+                ):
+                    reject()
+                if "fontSize" in style and (type(style["fontSize"]) is not int or style["fontSize"] not in FONT_SIZES):
+                    reject()
+                if "textColor" in style and (
+                    not isinstance(style["textColor"], str) or style["textColor"] not in TEXT_COLORS
+                ):
+                    reject()
+            elif set(mark) != {"type"}:
                 reject()
             seen.add(name)
         if "code" in seen and len(seen) > 1:

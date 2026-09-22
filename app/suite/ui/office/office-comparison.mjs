@@ -1,5 +1,6 @@
 // Native, already validated document JSON only. No DOM, HTML, network or storage.
 import { officeParagraphDescription } from "./office-paragraph.mjs";
+import { officeCharacterDescription } from "./office-character.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -165,7 +166,7 @@ function markedText(node) {
   const marks = [...(node.marks || [])].sort((left, right) => left.type.localeCompare(right.type, "en"));
   let text = node.text;
   for (let index = marks.length - 1; index >= 0; index -= 1) {
-    const label = markLabels[marks[index].type];
+    const label = marks[index].type === "textStyle" ? officeCharacterDescription(marks[index].attrs) : markLabels[marks[index].type];
     text = `⟦${label}⟧${text}⟦/${label}⟧`;
   }
   return text;

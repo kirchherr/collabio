@@ -818,6 +818,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "aktuelle Rechte, Auswahl und Entwuerfe bleiben dabei erhalten. "
                         "Ein Absatzdialog bearbeitet Ausrichtung, Zeilenabstand und Abstaende davor/danach; "
                         "gespeicherte Fassungen, Vergleich und Druck erhalten diese Absatzformatierung. "
+                        "Zeichenformatierung waehlt Schriftgroessen und benannte Textfarben fuer Auswahl oder folgende Eingabe. "
                         "Tabellenbearbeitung und Ersetzungen bleiben "
                         "rueckgaengige lokale Aenderungen bis zum bestaetigten Speichern. Autorisierte Nutzer koennen "
                         "gespeicherte Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf "
@@ -856,6 +857,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/ui/office/office-search.mjs",
                         "app/suite/ui/office/office-print.mjs",
                         "app/suite/ui/office/office-paragraph.mjs",
+                        "app/suite/ui/office/office-character.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md",
                         "e2e/work/tests/office-print.spec.mjs",
                         "e2e/work/tests/office-reuse.spec.mjs",

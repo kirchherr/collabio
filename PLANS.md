@@ -158,6 +158,10 @@ complete Pytest. All 215 checks (176 browser + 39 model) passed in 759.313613 se
 passed. Complete paginated nonempty recovery verified 330 documents, 666 versions and 721 sources; release gates passed.
 API rollout and final health/gate details are recorded in docs/CURRENT_HANDOFF.md. See ADR-0086; Office remains ahead of CRM.
 
+124. [ ] Add native Office character font sizes and named text colors with selection/caret formatting, mixed values,
+explicit reset, strict validation, isolated undo and complete save/comparison/replacement/reuse/print/recovery preservation.
+Run full remote quality, prior browser regression and a fresh isolated nonempty restore before rollout. See ADR-0087.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

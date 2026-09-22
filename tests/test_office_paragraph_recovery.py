@@ -150,7 +150,7 @@ def test_recovery_new_target_keeps_257_snapshot_separate_and_rejects_mismatched_
         require_office_recovery_environment(environment)
 
 
-@pytest.mark.parametrize("name", ["collabio", "collabio_restore", "collabio_work_e2e", "collabio_work_e2e_263_restore"])
+@pytest.mark.parametrize("name", ["collabio", "collabio_restore", "collabio_work_e2e", "collabio_work_e2e_264_restore"])
 def test_recovery_target_remains_an_explicit_fixed_allowlist(name: str) -> None:
     environment = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
