@@ -131,7 +131,7 @@ test("Office paragraph-only transfer preserves pending character choices at the 
   await expect(page.locator("#document-save")).toBeDisabled();
 });
 
-test("Office format samples reset on document reload and context change and stay unavailable to readers", async ({ page, context }) => {
+test("Office format samples reset on reload and context change and stay unavailable to readers and history", async ({ page, context }) => {
   const first = await transferFixture(page);
   await captureSample(page);
   await page.locator("#document-reload").click();
@@ -142,6 +142,15 @@ test("Office format samples reset on document reload and context change and stay
   await openOffice(reader, { baseUrl: BLOCKED_BASE_URL, userId: OFFICE_READER_ID, roleIds: "office-reader" });
   await openOfficeDocument(reader, first.document.object_id);
   await expect(reader.locator("#format-transfer")).toBeDisabled();
+  await selectCharacters(page, 8, 29);
+  await page.keyboard.type(" current");
+  await saveOffice(page, { objectId: first.document.object_id });
+  await page.locator("#history-tab").click();
+  await page.locator(`[data-version-id="${first.version.version_id}"]`).click();
+  await expect(page.locator("#format-transfer")).toBeDisabled();
+  await expect(page.locator("#format-sample")).toHaveText("Noch kein Format aufgenommen.");
+  await page.locator("#document-reload").click();
+  await expect(officeEditor(page)).toHaveAttribute("contenteditable", "true");
   await captureSample(page);
   const changed = page.waitForResponse((response) => new URL(response.url()).pathname === OFFICE_PATH && response.request().method() === "GET");
   await page.evaluate(() => {
@@ -151,7 +160,7 @@ test("Office format samples reset on document reload and context change and stay
   });
   expect((await changed).status()).toBe(200);
   await expect(page.locator("#format-sample")).toHaveText("Noch kein Format aufgenommen.");
-  expect(await officeVersions(page, first.document.object_id)).toHaveLength(1);
+  expect(await officeVersions(page, first.document.object_id)).toHaveLength(2);
 });
 
 test("Office rejects format transfer beyond the canonical byte limit without changing the draft", async ({ page }) => {
