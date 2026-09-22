@@ -18,8 +18,8 @@ test("character comparison detects same-text size and color changes inside neste
   const after = structuredClone(before);
   after.content[0].content[0].content[0].marks[0].attrs = { fontSize: 24, textColor: "purple" };
   expect(compareOfficeDocuments(before, after).counts.changed).toBe(1);
-  expect(describeOfficeBlock(after.content[0])).toContain("Schriftgröße: 24 pt; Textfarbe: Violett");
-  expect(describeOfficeBlock(after.content[0])).toContain("Schriftgröße: 12 pt; Textfarbe: Rot");
+  expect(describeOfficeBlock(after.content[0]).text).toContain("Schriftgröße: 24 pt; Textfarbe: Violett");
+  expect(describeOfficeBlock(after.content[0]).text).toContain("Schriftgröße: 12 pt; Textfarbe: Rot");
 });
 
 test("replacement keeps adjacent mark attribute boundaries and inherits the first matched text style", () => {

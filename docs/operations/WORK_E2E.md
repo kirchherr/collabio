@@ -310,9 +310,15 @@ before the API-only rollout, which reached health at 15:17:23 UTC (`132526da7a34
 UTC; exact cleanup completed at 15:18:55 UTC with Collabio running(3), health ok and auxiliary services stopped. Full
 host/gate evidence is recorded in `docs/CURRENT_HANDOFF.md`; ordinary tenants, pilot and production remain closed.
 
+Roadmap 263 adds character formatting, caret/mixed/reset/undo, exact text/cell selection, comparison/replacement/reuse,
+fresh write revocation and uncertain retry checks, with responsive screenshots and actual multipage PDF output.
+The additional seed creates one normal creator-owned document with three versions: legacy and two distinct saved size/
+color profiles. No additional principal or manual ACL fixture grant is introduced. Full acceptance remains pending.
+
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
-and the fixed `collabio_work_e2e_restore` or `collabio_work_e2e_262_restore` target, with a read-only mount at `/proof-backup`;
+and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore` or `collabio_work_e2e_263_restore` target,
+with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
 same read-only container path.
@@ -328,7 +334,8 @@ fixture and both historical format profiles are pinned to exact canonical bytes,
 Never run it while browser writes are in flight. It neither enables a module nor creates or drops databases. Preserve its JSON report
 before removing the exact test services. Keep the prior synthetic dump under ignored
 `e2e/work/artifacts/office-recovery-backup` and the separate 262 dump under
-`e2e/work/artifacts/office-262-recovery-backup`; do not overwrite the earlier database, dump or receipt.
+`e2e/work/artifacts/office-262-recovery-backup`. The character proof uses `e2e/work/artifacts/office-263-recovery-backup`;
+do not overwrite any earlier database, dump or receipt.
 
 ## Evidence
 

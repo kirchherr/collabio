@@ -35,6 +35,11 @@ different formatting profiles through exact bytes, source hashes and receipts. D
 follow every page, using existing active principals with current parent ACLs and no synthetic grants. Prior recovery
 snapshots and reports remain retained. Rollback editors must understand these attributes before edits are admitted.
 
+Roadmap 263 adds optional native textStyle marks for strict font sizes and named colors. These use the same exact-version
+document/source domain. The fresh proof must retain old canonical bytes and two distinct saved character profiles,
+in addition to the existing paragraph, review and suggestion proofs. Its fixed target is collabio_work_e2e_263_restore;
+retain the earlier 257 and 262 targets, dumps and receipts. No new SQL migration or continuity domain is introduced.
+
 This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.

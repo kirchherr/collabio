@@ -20,6 +20,24 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
+## Character formatting (Roadmap 263, validation pending)
+
+The selection-aware **Zeichen …** dialog chooses font sizes (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36 or
+48 points) and named text colors (black, slate, red, dark orange, green, teal, blue or purple). It formats selected
+text, including nested headings/list/quote/table content, or the next typed text at a supported caret. Code is excluded.
+Mixed properties stay unchanged until chosen; Standard removes a property. Reset prepares both defaults for Apply.
+Cancel/no-op stays clean, caret choices alone do not save or dirty content, and selection edits form one undo group.
+
+The optional `textStyle` mark contains one or both strict attributes `fontSize` and `textColor`. Unknown properties,
+CSS strings, empty attributes, nulls, invalid placements and code combinations are rejected. Existing legacy canonical
+bytes and native v1 identifiers remain unchanged. No endpoint, SQL migration or dependency is added; rollback editors
+must understand the mark before allowing edits. Fixed data attributes/CSS serve editor and print. Comparison names the
+exact size/color, and replacement preserves full mark-attribute boundaries. Existing source versions, review offsets,
+suggestion acceptance, confirmed CAS saves, current rights and memory-only drafts remain authoritative.
+
+Decision: [ADR-0087](../../ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md).
+Full acceptance, new nonempty recovery and controlled rollout are pending; Roadmap 262 remains the validated baseline.
+
 ## Paragraph formatting (Roadmap 262)
 
 Roadmap 262 completes paragraph formatting under
