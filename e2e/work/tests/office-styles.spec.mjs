@@ -65,6 +65,8 @@ test("Office named styles survive heading list split and selected table cell tra
   const first = await styleFixture(page);
   await selectCharacters(page, 1, 3); await page.locator("#text-style").selectOption("heading-3");
   await expect(officeEditor(page).locator("h3")).toHaveAttribute("data-office-style-id", "body");
+  await page.locator("#text-style").selectOption("paragraph");
+  await expect(officeEditor(page).locator("p").first()).toHaveAttribute("data-office-style-id", "body");
   await page.locator('[data-command="bulletList"]').click();
   await expect(officeEditor(page).locator("ul").first().locator("p")).toHaveAttribute("data-office-style-id", "body");
   await selectCharacters(page, 2, 6); await officeEditor(page).press("Enter");
@@ -162,6 +164,7 @@ test("Office styles survive literal replacement comparison print PDF and indepen
   await submitOfficePrint(page, first.document.object_id, saved.version.version_id);
   await expect.poll(() => calls[0]?.pdf?.length || 0).toBeGreaterThan(1000);
   expectPdfStructure(calls[0].pdf, ["H1", "H2", "P"]); await expectPrintCleared(page);
+  await page.locator("#print-close").click();
   await openReuse(page, saved, "Independent styled copy"); await submitReuse(page, saved);
   const copied = await saveOffice(page); expect(copied.content).toEqual(saved.content); expect(copied.document.object_id).not.toBe(first.document.object_id);
   await selectCharacters(page, 1, 2); await applyStyle(page, { values: { fontSize: 32 }, update: true });

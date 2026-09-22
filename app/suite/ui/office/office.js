@@ -954,7 +954,7 @@ function commitDocumentStyle(mode) {
       for (const { entry, position } of action.paragraphs) transaction.setNodeMarkup(position, undefined, { ...entry.attrs, styleId: null });
     } else {
       if (mode === "update" && !existing) return;
-      const style = readDocumentStyle(existing?.id || `style-${crypto.randomUUID()}`);
+      const style = readDocumentStyle(existing?.id || `style-${mutationReference()}`);
       const styles = officeStyles(existing ? action.styles.map((entry) => entry.id === existing.id ? style : entry) : [...action.styles, style]);
       transaction.setDocAttribute("styles", styles);
       if (mode === "apply") for (const { entry, position } of action.paragraphs) {
