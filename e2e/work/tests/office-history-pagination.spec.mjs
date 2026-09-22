@@ -126,12 +126,13 @@ test("Office ordinary readers load and compare versions beyond 200 with the writ
 });
 
 test("Office keeps the loaded history head and local document and review drafts across a concurrent save and refresh", async ({ page }) => {
+  // Own the editable head instead of inheriting the previous test's rich takeover.
+  await prepareHistoryHead(page, "History draft base", "History draft preservation base");
   const { objectId, saved } = await openHistoryFixture(page);
   await openComments(page, objectId);
   await page.locator("#comment-new").click();
   await page.locator("#comment-body").fill("History review draft remains local");
-  // Use the editor's keyboard replacement for the rich fixture (including a table).
-  // Direct contenteditable fill can leave an invalid empty table in Chromium.
+  // Assert that a real editable draft exists before testing history preservation.
   await officeEditor(page).press("Control+a");
   await page.keyboard.insertText("History document draft remains local");
   await expect(officeEditor(page)).toHaveText("History document draft remains local");
