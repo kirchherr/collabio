@@ -1,7 +1,8 @@
 import { Editor, Extension, Mark, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
-import { AllSelection, Plugin, PluginKey, Selection } from "@tiptap/pm/state";
+import { AllSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
+import { sinkListItem, liftListItem } from "@tiptap/pm/schema-list";
 import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
@@ -20,7 +21,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -263,6 +264,7 @@ function updateEditorState() {
   updateParagraphControls();
   updateCharacterControls();
   updateFormatTransfer();
+  updateListControls();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -818,6 +820,122 @@ function changeTextStyle(value) {
   return true;
 }
 
+function selectedList(editor = state.editor) {
+  if (!editor || editor.isDestroyed || !(editor.state.selection instanceof TextSelection)) return null;
+  const { $from, $to } = editor.state.selection;
+  if ([$from, $to].some((position) => position.parent.type.name === "codeBlock")) return null;
+  const nearest = (position) => {
+    for (let depth = position.depth; depth > 0; depth -= 1) {
+      const entry = position.node(depth);
+      if (["bulletList", "orderedList"].includes(entry.type.name)) return { entry, position: position.before(depth), depth };
+    }
+    return null;
+  };
+  const first = nearest($from), last = nearest($to);
+  if (!first || !last || first.position !== last.position) return null;
+  return { ...first, count: $to.index(first.depth) - $from.index(first.depth) + 1 };
+}
+
+function closeListDialog(restoreFocus = false) {
+  const action = state.listAction;
+  state.listAction = null;
+  $("list-dialog").close();
+  $("list-form").reset();
+  $("list-status").textContent = "";
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function updateListControls() {
+  if (state.listAction && !characterActionCurrent(state.listAction)) closeListDialog();
+  const list = selectedList();
+  const allowed = paragraphAllowed() && Boolean(list);
+  $("list-options").disabled = !allowed;
+  for (const [id, command] of [["list-indent", sinkListItem], ["list-outdent", liftListItem]]) {
+    $(id).disabled = !allowed || !command(state.editor.schema.nodes.listItem)(state.editor.state);
+  }
+  $("list-start").disabled = !allowed || list.entry.type.name !== "orderedList";
+  $("list-apply").disabled = $("list-start").disabled;
+}
+
+function openListDialog() {
+  if (!paragraphAllowed()) return;
+  const list = selectedList();
+  if (!list) return;
+  closeListDialog();
+  const editor = state.editor;
+  state.listAction = { editor, session: state.session, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks, list };
+  $("list-selection").textContent = `${list.count} ${list.count === 1 ? "Listenpunkt" : "Listenpunkte"} ausgewählt · ${list.entry.type.name === "orderedList" ? "Nummerierte Liste" : "Aufzählung"}`;
+  $("list-numbering").hidden = list.entry.type.name !== "orderedList";
+  $("list-start").value = String(list.entry.attrs.start || 1);
+  updateListControls();
+  $("list-dialog").showModal();
+  (!$("list-indent").disabled ? $("list-indent") : $("list-outdent")).focus();
+}
+
+function commitListTransaction(transaction) {
+  const editor = state.editor;
+  try { validateEditorDocument(transaction.doc); }
+  catch {
+    const message = "Die Listenänderung überschreitet die unterstützte Dokumentgröße oder Verschachtelung. Ihr Entwurf bleibt unverändert.";
+    if (state.listAction) $("list-status").textContent = message;
+    else notice(message, true);
+    return true;
+  }
+  if (transaction.doc.eq(editor.state.doc)) {
+    $("list-status").textContent = "Keine Änderung: Die Liste beginnt bereits mit dieser Zahl.";
+    return true;
+  }
+  if (editor.state.storedMarks) transaction.setStoredMarks(editor.state.storedMarks);
+  closeListDialog();
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr).setStoredMarks(editor.state.storedMarks));
+  focusEditor();
+  updateEditorState();
+  notice("Liste geändert. Rückgängig ist möglich; gespeichert wird erst mit der nächsten bestätigten Version.");
+  return true;
+}
+
+function changeListLevel(direction) {
+  if (!paragraphAllowed() || !selectedList() || (state.listAction && !characterActionCurrent(state.listAction))) return false;
+  const command = direction === "indent" ? sinkListItem : direction === "outdent" ? liftListItem : null;
+  if (!command) return false;
+  let transaction;
+  if (!command(state.editor.schema.nodes.listItem)(state.editor.state, (candidate) => { transaction = candidate; }) || !transaction) return false;
+  return commitListTransaction(transaction);
+}
+
+function applyListStart() {
+  const action = state.listAction;
+  if (!characterActionCurrent(action)) { closeListDialog(); return; }
+  const raw = $("list-start").value;
+  if (!/^\d+$/.test(raw) || Number(raw) < 1 || Number(raw) > 1000000 || action.list.entry.type.name !== "orderedList") {
+    $("list-status").textContent = "Wählen Sie eine ganze Startzahl von 1 bis 1.000.000.";
+    return;
+  }
+  commitListTransaction(state.editor.state.tr.setNodeMarkup(action.list.position, undefined, { ...action.list.entry.attrs, start: Number(raw) }));
+}
+
+function handleListKey(view, event) {
+  if (state.editor?.view !== view || event.ctrlKey || event.metaKey) return false;
+  const tab = event.key === "Tab" && !event.altKey;
+  const arrow = event.altKey && event.shiftKey && ["ArrowLeft", "ArrowRight"].includes(event.key);
+  if (!tab && !arrow) return false;
+  const { $from, $to } = view.state.selection;
+  const inList = [$from, $to].some((position) => {
+    for (let depth = position.depth; depth > 0; depth -= 1) if (position.node(depth).type.name === "listItem") return true;
+    return false;
+  });
+  if (!inList) return false;
+  event.preventDefault();
+  if (!changeListLevel((tab ? event.shiftKey : event.key === "ArrowLeft") ? "outdent" : "indent") && tab) {
+    // Also consume unsupported list selections so the default list keymap cannot
+    // bypass this scope. Leave unavailable Tab actions through a reachable control.
+    (!$("list-options").disabled ? $("list-options") : $("find-toggle")).focus();
+  }
+  return true;
+}
+
 const tableCommands = { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, deleteTable };
 const tableSizeMessage = "Tabellen unterstützen höchstens 200 Zeilen und 20 Spalten.";
 const tableLimitMessage = "Die Tabellenänderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
@@ -1138,6 +1256,7 @@ function contentChanged(session) {
   closeParagraphDialog();
   closeCharacterDialog();
   $("table-message").textContent = "";
+  closeListDialog();
   closeComparison();
   cancelRestore();
   session.revision += 1;
@@ -1167,7 +1286,7 @@ function prepareEditor(content, session) {
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
-      handleKeyDown: handleTableKey,
+      handleKeyDown(view, event) { return handleTableKey(view, event) || handleListKey(view, event); },
       handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
       handleDOMEvents: {
         beforeinput(view, event) {
@@ -1233,6 +1352,7 @@ function clearWorkspace() {
   closeParagraphDialog();
   closeCharacterDialog();
   $("table-tools").hidden = true;
+  closeListDialog();
   $("table-info").textContent = "";
   $("table-message").textContent = "";
   closeComparison();
@@ -1242,6 +1362,7 @@ function clearWorkspace() {
   state.editor?.destroy();
   state.editor = null;
   updateFormatTransfer();
+  updateListControls();
   resetSearch();
   $("office-editor").replaceChildren();
   $("document-title").value = "";
@@ -3589,6 +3710,14 @@ document.querySelectorAll("[data-command]").forEach((button) => {
     ["bulletList", "orderedList", "blockquote"].includes(button.dataset.command)));
 });
 $("text-style").addEventListener("change", () => changeTextStyle($("text-style").value));
+$("list-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("list-options").addEventListener("click", openListDialog);
+$("list-indent").addEventListener("click", () => changeListLevel("indent"));
+$("list-outdent").addEventListener("click", () => changeListLevel("outdent"));
+$("list-form").addEventListener("submit", (event) => { event.preventDefault(); applyListStart(); });
+["list-close", "list-cancel"].forEach((id) => $(id).addEventListener("click", () => closeListDialog(true)));
+$("list-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeListDialog(true); });
+$("list-dialog").addEventListener("close", () => { if (!$("list-dialog").open && state.listAction) closeListDialog(); });
 for (const [key, id] of Object.entries(characterFields)) {
   for (const value of OFFICE_CHARACTER_VALUES[key]) {
     const option = node("option", key === "fontSize" ? `${value} pt` : OFFICE_TEXT_COLORS[value]);
