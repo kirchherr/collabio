@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ARTIFACT_DIR, BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import { OFFICE_READER_ID, officeEditor, openOffice, openOfficeDocument, saveOffice, officeVersions,
-  officeContent, setOfficeAcl, openOfficeComparison, loadOfficeComparison } from "./office-support.mjs";
+  officeContent, setOfficeAcl, openOfficeComparison, loadOfficeComparison, officeFeatures, setOfficeFeatures, officeContentPath } from "./office-support.mjs";
 import { createParagraphFixture, paragraph, richParagraphDocument, selectParagraphBlocks, paragraphWrites } from "./paragraph-helper.mjs";
 import { applyCharacters, openCharacters, selectCharacters, expectCharacterStyle, characterDocument, characterMark, characterText } from "./character-helper.mjs";
 import { openReuse, submitReuse, expectReuseDraft } from "./office-reuse-support.mjs";
@@ -152,6 +152,47 @@ test("Office character byte limits and context changes cannot alter or leak a pe
   });
   await expect(page.locator("#character-dialog")).toBeHidden(); await expect(page.locator("#office-editor")).toHaveText("");
   expect((await officeContent(page, first.document.object_id)).content).toEqual(first.content);
+});
+
+test("Office fresh write revocation closes pending character choices and keeps the unsaved draft", async ({ page }) => {
+  const first = await createParagraphFixture(page, "Character write revocation", characterDocument());
+  await openOffice(page); await openOfficeDocument(page, first.document.object_id);
+  await selectCharacters(page, 0, 0, 5); await applyCharacters(page, { size: 24, color: "purple" });
+  await openCharacters(page); await page.locator("#character-size").selectOption("36");
+  const features = await officeFeatures(page);
+  try {
+    await setOfficeFeatures(page, { ...features, "office_documents.documents.write": false });
+    const response = page.waitForResponse((value) => new URL(value.url()).pathname === officeContentPath(first.document.object_id));
+    // Model an external refresh arriving while the modal has pending choices.
+    await page.locator("#documents-refresh").evaluate((button) => button.click());
+    expect((await (await response).json()).can_write).toBe(false);
+    await expect(page.locator("#character-dialog")).toBeHidden();
+    await expect(page.locator("#character-format")).toBeDisabled();
+    await expect(page.locator("#document-save")).toBeDisabled();
+    await expectCharacterStyle(officeEditor(page).locator("span").first(), 24, "purple");
+    expect((await officeContent(page, first.document.object_id)).content).toEqual(first.content);
+  } finally { await setOfficeFeatures(page, features); }
+});
+
+test("Office character edits undo separately from typing and coexist with heading shortcuts and inline code", async ({ page }) => {
+  const first = await createParagraphFixture(page, "Character keyboard", { type: "doc", content: [paragraph("Alpha")] });
+  await openOffice(page); await openOfficeDocument(page, first.document.object_id);
+  await selectCharacters(page, 0, 5); await page.keyboard.type(" BEFORE");
+  await selectCharacters(page, 0, 0, 5); await applyCharacters(page, { size: 18, color: "blue" });
+  await selectCharacters(page, 0, 12); await page.keyboard.type(" AFTER");
+  await officeEditor(page).press("Control+z"); await expect(officeEditor(page)).toHaveText("Alpha BEFORE");
+  await expectCharacterStyle(officeEditor(page).locator("span"), 18, "blue");
+  await officeEditor(page).press("Control+z"); await expect(officeEditor(page).locator("span")).toHaveCount(0);
+  await officeEditor(page).press("Control+z"); await expect(officeEditor(page)).toHaveText("Alpha");
+  await expect(page.locator("#document-save")).toBeDisabled();
+  await selectCharacters(page, 0, 0, 5); await applyCharacters(page, { size: 18, color: "blue" });
+  await officeEditor(page).press("Control+Alt+2"); await expectCharacterStyle(officeEditor(page).locator("h2 span"), 18, "blue");
+  await page.locator('[data-command="code"]').click();
+  await expect(officeEditor(page).locator("code")).toHaveText("Alpha");
+  await expect(officeEditor(page).locator("span")).toHaveCount(0);
+  await expect(page.locator("#character-format")).toBeDisabled();
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  expect(saved.content.content[0].content[0].marks).toEqual([{ type: "code" }]);
 });
 
 test("Office prints exact saved character sizes and colors in a real multipage PDF", async ({ page }) => {
