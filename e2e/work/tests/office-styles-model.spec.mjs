@@ -34,8 +34,11 @@ test("named style definition changes are visible for bound blocks and unused cat
 });
 
 test("named styles preserve source identity search positions and replacement metadata", () => {
-  const before = document(), snapshot = structuredClone(before);
-  officeStyleComparisonDocument(before);
+  const before = document();
+  before.content.push({ type: "paragraph", content: [{ type: "text", text: "Unbound" }] });
+  const snapshot = structuredClone(before), expanded = officeStyleComparisonDocument(before);
+  expect(expanded.content[1]).toBe(before.content[1]);
+  expect(expanded.content[0].content).toBe(before.content[0].content);
   const result = replaceDocumentMatches(before, findDocumentMatches(before, "Café"), "New");
   expect(result.document.attrs).toEqual(before.attrs);
   expect(result.document.content[0].attrs).toEqual(before.content[0].attrs);

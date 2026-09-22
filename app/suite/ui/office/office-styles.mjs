@@ -55,12 +55,17 @@ export function officeTextblockAttributes(attrs = {}) {
 export function officeStyleComparisonDocument(document) {
   const styles = officeStyles(document.attrs?.styles || []);
   const visit = (entry) => {
-    const result = { ...entry };
+    let result = entry;
     if (["paragraph", "heading"].includes(entry.type)) {
       const style = officeStyleFor(entry.attrs, styles);
-      if (style) result.attrs = { ...style.paragraph, ...entry.attrs, styleDescription: officeStyleDescription(style) };
+      if (style) result = { ...entry, attrs: { ...style.paragraph, ...entry.attrs, styleDescription: officeStyleDescription(style) } };
     }
-    if (entry.content) result.content = entry.content.map(visit);
+    if (entry.content) {
+      const content = entry.content.map(visit);
+      // Preserve the established reference contract for every unchanged subtree.
+      // Only a bound style or a changed descendant needs a display-only copy.
+      if (content.some((child, index) => child !== entry.content[index])) result = { ...result, content };
+    }
     return result;
   };
   return visit(document);
