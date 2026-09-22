@@ -50,6 +50,16 @@ test("Office keyboard replacement confirms, cancels, undoes and saves rich docum
   await expect(page.locator("#table-remove-dialog")).toBeVisible();
   expect(await officeEditor(page).innerHTML()).toBe(original);
   await expect(page.locator("#document-save")).toBeDisabled();
+  for (const [name, viewport] of [["desktop", { width: 1440, height: 960 }], ["mobile", { width: 390, height: 844 }]]) {
+    await page.setViewportSize(viewport);
+    const dialog = page.locator("#table-remove-dialog");
+    const bounds = await dialog.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    await page.screenshot({ path: `${process.env.WORK_E2E_ARTIFACT_DIR || "/tmp/work-e2e-artifacts"}/office-keyboard-${name}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 960 });
   await page.keyboard.press("Escape");
   await expect(officeEditor(page)).toBeFocused();
   expect(await officeEditor(page).innerHTML()).toBe(original);
