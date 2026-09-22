@@ -130,7 +130,12 @@ test("Office keeps the loaded history head and local document and review drafts 
   await openComments(page, objectId);
   await page.locator("#comment-new").click();
   await page.locator("#comment-body").fill("History review draft remains local");
-  await officeEditor(page).fill("History document draft remains local");
+  // Use the editor's keyboard replacement for the rich fixture (including a table).
+  // Direct contenteditable fill can leave an invalid empty table in Chromium.
+  await officeEditor(page).press("Control+a");
+  await page.keyboard.insertText("History document draft remains local");
+  await expect(officeEditor(page)).toHaveText("History document draft remains local");
+  await expect(page.locator("#document-save")).toBeEnabled();
   const first = await openHistoryPanel(page, objectId);
   const newer = await saveHistoryVersion(page, saved, "Concurrent new history head", "History concurrent saved title");
   const writes = collectHistoryWrites(page);
