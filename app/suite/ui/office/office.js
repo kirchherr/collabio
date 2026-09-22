@@ -1,7 +1,7 @@
 import { Editor, Extension, Mark, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
-import { Plugin, PluginKey, Selection } from "@tiptap/pm/state";
+import { AllSelection, Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
@@ -777,6 +777,8 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-insert-form").reset();
   $("table-insert-message").textContent = "";
   $("table-remove-summary").textContent = "";
+  $("table-remove-title").textContent = "Tabelleninhalt entfernen?";
+  $("table-remove-confirm").textContent = "Aus Entwurf entfernen";
   if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
 }
 
@@ -931,8 +933,53 @@ function selectTablePart(part) {
   focusEditor();
 }
 
+function wholeDocumentHasTables(view) {
+  if (state.editor?.view !== view || !(view.state.selection instanceof AllSelection)) return false;
+  let found = false;
+  view.state.doc.descendants((entry) => { if (entry.type.name === "table") found = true; return !found; });
+  return found;
+}
+
+function replaceWholeDocument(view, text) {
+  if (!wholeDocumentHasTables(view)) return false;
+  if (!replacementAllowed()) return true;
+  let transaction;
+  try {
+    if (text.length > 100000) throw new Error("document-length");
+    const paragraphs = text.replaceAll("\r", "").split("\n").map((line) =>
+      view.state.schema.nodes.paragraph.create(null, line ? view.state.schema.text(line) : null));
+    // Replace complete top-level nodes. A text selection ending inside the last
+    // table can leave an empty table behind, which the strict guard must reject.
+    transaction = view.state.tr.replaceWith(0, view.state.doc.content.size, paragraphs);
+    transaction.setSelection(Selection.atEnd(transaction.doc)).setStoredMarks(null);
+    validateEditorDocument(transaction.doc);
+  } catch {
+    notice("Diese Änderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.", true);
+    return true;
+  }
+  closeTableDialogs();
+  state.tableAction = { ...tableActionSnapshot("remove"), transaction };
+  $("table-remove-title").textContent = text ? "Gesamten Inhalt ersetzen?" : "Gesamten Inhalt entfernen?";
+  $("table-remove-summary").textContent = `Möchten Sie den gesamten Dokumentinhalt einschließlich aller Tabellen ${text ? "durch den eingegebenen Text ersetzen" : "aus dem Entwurf entfernen"}? Die Änderung lässt sich rückgängig machen. Gespeicherte Versionen bleiben erhalten.`;
+  $("table-remove-confirm").textContent = text ? "Inhalt ersetzen" : "Inhalt entfernen";
+  $("table-remove-dialog").showModal();
+  $("table-remove-cancel").focus();
+  return true;
+}
+
 function handleTableKey(view, event) {
   if (state.editor?.view !== view || event.altKey) return false;
+  if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "a") {
+    event.preventDefault();
+    // Tiptap's text-based selectAll stops inside a terminal table. AllSelection
+    // also includes non-text boundaries, independently of the starting cell.
+    view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
+    return true;
+  }
+  if (["Backspace", "Delete", "Enter"].includes(event.key) && replaceWholeDocument(view, "")) {
+    event.preventDefault();
+    return true;
+  }
   const rect = currentTable();
   if (!rect) return false;
   if (["Backspace", "Delete"].includes(event.key) && state.editor.state.selection instanceof CellSelection &&
@@ -1025,10 +1072,31 @@ function prepareEditor(content, session) {
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
       handleKeyDown: handleTableKey,
+      handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
+      handleDOMEvents: {
+        beforeinput(view, event) {
+          if (!event.cancelable || !wholeDocumentHasTables(view)) return false;
+          const textInput = ["insertText", "insertReplacementText"].includes(event.inputType) && typeof event.data === "string";
+          const removeInput = ["deleteContentBackward", "deleteContentForward", "insertParagraph", "insertLineBreak"].includes(event.inputType);
+          if (!textInput && !removeInput) return false;
+          // Intercept before Chromium mutates table NodeViews. handleTextInput
+          // alone runs too late for a DOM change spanning structural boundaries.
+          event.preventDefault();
+          return replaceWholeDocument(view, textInput ? event.data : "");
+        },
+        cut(view, event) {
+          if (!wholeDocumentHasTables(view)) return false;
+          event.preventDefault();
+          if (!replacementAllowed() || !event.clipboardData) return true;
+          event.clipboardData.setData("text/plain", view.state.doc.textBetween(0, view.state.doc.content.size, "\n\n"));
+          return replaceWholeDocument(view, "");
+        },
+      },
       handlePaste(view, event) {
         event.preventDefault();
         if (state.editor?.view !== view || !replacementAllowed()) return true;
         const text = event.clipboardData?.getData("text/plain") || "";
+        if (replaceWholeDocument(view, text)) return true;
         if (text.length > 100000) { notice("Der eingefügte Text ist zu lang.", true); return true; }
         const paragraphs = text.replaceAll("\r", "").split("\n").map((line) => ({
           type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}),
@@ -3486,6 +3554,10 @@ $("table-insert-form").addEventListener("submit", (event) => {
 $("table-remove-confirm").addEventListener("click", () => {
   const action = state.tableAction;
   if (!tableActionCurrent(action) || action.kind !== "remove") { closeTableDialogs(); return; }
+  if (action.transaction) {
+    commitTableTransaction(action.transaction, "Dokumentinhalt geändert. Rückgängig ist möglich; gespeichert wird erst nach Ihrer Bestätigung.");
+    return;
+  }
   const command = action.command;
   closeTableDialogs();
   runTableCommand(command, true);
