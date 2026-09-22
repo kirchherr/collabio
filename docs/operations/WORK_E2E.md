@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 252 passing checks: 209 browser cases and 43 pure comparison/search model cases. The original
+The expected matrix is 264 passing checks: 221 browser cases and 43 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -514,3 +514,36 @@ Final ignored evidence under `roadmap-265/final/`:
 API-only rollout, live verification and exact cleanup passed. Ordinary Office remains unprovisioned/features closed,
 KB write false and pilot 0. No main migration or new recovery drill was required or claimed. This is a single green
 full run on the final product, with all unsuccessful exploratory reports retained separately.
+
+## Roadmap 266 native list levels and numbering
+
+Commit fb8dbd3 adds ten list workflow cases and two responsive projects. They cover selected sibling indentation,
+nested and outer-level outdent, exact text/mark/paragraph/sublist preservation, isolated undo/redo and immutable
+confirmed versions; nearest ordered-list start values survive saved comparison and print preview. Cancellation,
+invalid numbers and unchanged values remain clean. Pending typing marks, keyboard actions, table Tab priority,
+unsupported selections, reader/history/context invalidation and pending/uncertain saves are directly exercised.
+Depth and canonical-byte boundary fixtures prove that rejected candidate changes leave the draft unchanged.
+
+All twelve focused cases passed in 31.591574 seconds on fb8dbd3, starting at 2026-09-22 10:26:00.778 UTC, with zero
+skipped, unexpected or flaky results. Root reviewed desktop/tablet/mobile screenshots for visible and reachable
+controls and absence of horizontal overflow. Focused evidence is retained under ignored
+`e2e/work/artifacts/roadmap-266/focused/`; report sha256:a46840d97f7170b1bee7718e02bbb147f87b4840fc226eca2ac4b52e9cb80893.
+This uses the existing list format and changes no backend, schema, dependency or durable contract. Roadmap 263
+recovery/release evidence is retained; no new recovery or PDF-generation check is claimed for this UI-only slice.
+Full quality passed Ruff, formatting across 728 files, Mypy on 562 sources and complete Pytest, with only the known
+Starlette/AnyIO warning. The single full matrix on fb8dbd3 passed all 264 cases (221 browser + 43 model) in
+967.211454 seconds, zero skipped/unexpected/flaky, finishing at 2026-09-22 10:46:48 UTC. Both process exits were 0.
+Root reviewed final list desktop/tablet/mobile and mobile comments and matched all nine final hashes locally.
+Final ignored evidence is under `roadmap-266/final/`:
+
+- Report: sha256:7ae92a1f0dcdf8a9ede01bde58ab50ac460b534058a359963fd0d11220e86df8.
+- Browser log: sha256:78c9ecfddb0d714a9e7422dc433775b6c67c56382e65f5a21d5054008ee4b9ad.
+- Quality log: sha256:f86a759834d1f1adc1de1d063482db07b499767521a5e889bbaa0af28eabba4b.
+- List desktop/tablet/mobile: sha256:d099d8eb920c87ad1162e51649199da4bb8c9ce85328ccca6339d5d0f55e08bf,
+  sha256:16e167b29bc69ef07ca65930d1d5a680005ae0da8981160bf1c008565213b599,
+  sha256:12be4be53d18dc1f95bd26abe63d7b53755e92f0d3d4038a04d52be86850c841.
+- Review desktop/tablet/mobile: sha256:80b3f6a55f11b1dbf849b0e4f539afd8d06fe84ad10ca24b021df1c894764609,
+  sha256:54d20f45d54cb147486805307c8f6e0546f851995bca9b3ff6caba3cfeef61d0,
+  sha256:53ef3cb5f20f9d3ede79d9cf22e2e178802edc03654c7d0359fb0cf41d387225.
+
+API-only rollout and closed-gate evidence is recorded in CURRENT_HANDOFF.md.

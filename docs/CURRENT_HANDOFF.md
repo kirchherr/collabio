@@ -2,6 +2,10 @@
 
 Updated: 2026-09-22
 
+Roadmap 266 / PLANS 127 completes native list levels and numbering under ADR-0089. All twelve focused cases,
+full quality and a single complete 264-case browser/model run passed on fb8dbd3. Root reviewed desktop/tablet/mobile
+list controls and mobile comments. API-only rollout and closed-gate evidence are recorded below. Office remains ahead of CRM.
+
 Roadmap 265 / PLANS 126 completes in-document character/paragraph format transfer under ADR-0088.
 All 40 initial focused formatting/keyboard cases passed on 068152f. The first full run exposed a mobile review-layout
 regression, now corrected without weakening assertions. All 43 responsive/transfer cases and a single complete
@@ -13,7 +17,7 @@ The original Chromium failure was reproduced; cancelable beforeinput now prevent
 and a structural full selection is replaced through one validated transaction. All 26 focused keyboard/table/history
 checks passed on 460d632. Full quality and all 241 browser/model cases passed in a single run on d7270a7.
 Root reviewed the desktop/mobile confirmation. API-only rollout and closed-gate checks are recorded below.
-Office remains ahead of CRM; no subsequent roadmap item is declared implemented.
+Office remains ahead of CRM; subsequent completed slices are recorded above.
 
 Roadmap 263 / PLANS 124 completes native character font sizes and named colors under ADR-0087.
 Selection/caret, mixed/reset/undo, strict marks, comparison/replacement/reuse/print and fresh nonempty recovery passed.
@@ -122,8 +126,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `ac70c29` (full quality and a single all-green 252-case browser/model run).
-  Format transfer and its mobile layout correction change only the UI and tests. Roadmap 263 actual PDF, nonempty recovery
+- Validated implementation: `fb8dbd3` (full quality and a single all-green 264-case browser/model run).
+  List levels and numbering change only the UI and tests. Roadmap 263 actual PDF, nonempty recovery
   and release-gate evidence is retained, not rerun; native v1, backend, dependencies and durable format are unchanged.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
@@ -138,7 +142,20 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 265 host verification at 2026-09-22 10:05:54 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 266 host verification at 2026-09-22 10:49:44 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`641024fc56b5`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 10:48:16 UTC. Live verification at 10:49:40 UTC passed
+thirteen Office OpenAPI operation definitions, discovery/history contracts, prior controls, local assets/licenses,
+Work link and no-store/CSP, plus new list dialog controls and served bundle. Definition checks do not execute thirteen
+business operations. Office in tenant-demo remains unprovisioned/non-cacheable 404, features closed, KB write false,
+pilot 0. Exact E2E services were removed; disposable runners absent; postgres-test and both restore services stopped.
+Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged. All three synthetic restore databases,
+dumps and receipts remain retained. Webcut running(7), provider nodes/listener 26443 unchanged, Tricert absent.
+No main migration, ordinary business-content write or tenant/pilot/indexing/cloud/DOCX activation occurred.
+UI-only: Roadmap 263 recovery/release evidence remains retained, not rerun. Host locks and fresh inventories protected
+every lifecycle action; main rollout used build.lock before docker.lock, live verification/cleanup used docker.lock.
+
+Previous item 265 host verification at 2026-09-22 10:05:54 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fa32456a32a1`) with --no-deps and
 pilot explicitly 0; bounded startup retries reached healthy at 10:05:00 UTC. Live verification at 10:05:51 UTC passed
 thirteen Office OpenAPI operation definitions, discovery/history contracts, existing controls, assets/licenses,
@@ -333,7 +350,48 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 265
+## Last completed slice: Roadmap 266
+
+Roadmap 266 / PLANS 127 adds a selection-bound list dialog for indent/outdent and ordered-list starts from
+1 through 1,000,000. Selected siblings move together; contained sublists, text, marks and paragraph attributes
+survive. Outdent at the outer level produces paragraphs. Start changes apply to the nearest entire list, leaving
+other lists alone; automatic continuation and named numbering styles remain outside scope.
+
+Alt+Shift+Right/Left and outside-table Tab/Shift+Tab use the same prevalidated transactions; table Tab still moves
+between cells. Unsupported selections cannot fall through to default list commands, and unavailable Tab actions
+leave via a reachable toolbar control. Actions preserve pending typing marks and one isolated undo group. Invalid,
+cancelled or no-op changes stay clean. Schema, character, node, depth and canonical-byte guards run before dispatch.
+Editor/session/context/revision/document/selection/stored-mark snapshots invalidate stale dialogs. Existing
+reader/history/busy/uncertain/review/suggestion boundaries and confirmed CAS saves remain mandatory.
+
+All twelve focused cases passed on fb8dbd3 in 31.591574 seconds, zero skipped/unexpected/flaky, starting at
+2026-09-22 10:26:00.778 UTC. Ten workflow cases include genuine saved versions, unchanged historical content,
+comparison/print preview, keyboard priority, denied scopes, pending/uncertain saves and exact rejected depth/byte
+fixtures. Two responsive projects and root's three-viewport review confirmed reachable controls and no horizontal
+overflow. Report under ignored e2e/work/artifacts/roadmap-266/focused:
+sha256:a46840d97f7170b1bee7718e02bbb147f87b4840fc226eca2ac4b52e9cb80893.
+
+No backend, endpoint, schema, dependency, native format or durable contract changed. Roadmap 263 recovery and
+release-gate evidence is retained; no new recovery, PDF-generation, independent-agent or non-Chromium proof is
+claimed.
+
+Full quality passed Ruff, formatting across 728 files, Mypy on 562 sources and complete Pytest, with only the known
+Starlette/AnyIO warning. The complete matrix passed all 264 cases (221 browser + 43 model) in 967.211454 seconds,
+zero skipped/unexpected/flaky, starting at 2026-09-22 10:30:40.689 UTC and finishing at 10:46:48 UTC. Both process
+exits were 0 on immutable fb8dbd3. Root reviewed final list desktop/tablet/mobile and mobile comments, and matched
+all nine final artifact hashes locally. Ignored final evidence under e2e/work/artifacts/roadmap-266/final:
+
+- Report: sha256:7ae92a1f0dcdf8a9ede01bde58ab50ac460b534058a359963fd0d11220e86df8.
+- Browser log: sha256:78c9ecfddb0d714a9e7422dc433775b6c67c56382e65f5a21d5054008ee4b9ad.
+- Quality log: sha256:f86a759834d1f1adc1de1d063482db07b499767521a5e889bbaa0af28eabba4b.
+- List desktop/tablet/mobile: sha256:d099d8eb920c87ad1162e51649199da4bb8c9ce85328ccca6339d5d0f55e08bf,
+  sha256:16e167b29bc69ef07ca65930d1d5a680005ae0da8981160bf1c008565213b599,
+  sha256:12be4be53d18dc1f95bd26abe63d7b53755e92f0d3d4038a04d52be86850c841.
+- Review desktop/tablet/mobile: sha256:80b3f6a55f11b1dbf849b0e4f539afd8d06fe84ad10ca24b021df1c894764609,
+  sha256:54d20f45d54cb147486805307c8f6e0546f851995bca9b3ff6caba3cfeef61d0,
+  sha256:53ef3cb5f20f9d3ede79d9cf22e2e178802edc03654c7d0359fb0cf41d387225.
+
+## Previous slice: Roadmap 265
 
 The **Format übertragen** menu captures uniform direct character and paragraph formatting and applies characters,
 paragraphs or both to the target selection. Empty values are defaults, so a plain sample clears selected formatting.
@@ -1212,8 +1270,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 265 is complete. Preserve the single green 252-case matrix (209 Work/KB/CRM/Office browser cases and 43 model cases).
-Continue native Office before CRM. Format transfer supports direct character/paragraph values in one editable document,
+Item 266 is complete. Preserve the single green 264-case matrix (221 Work/KB/CRM/Office browser cases and 43 model cases).
+Continue native Office before CRM. List indentation/outdent and nearest-list start values preserve content and undo,
+with validated keyboard actions and table Tab priority. Automatic numbering continuation/styles remain separate work.
+Format transfer supports direct character/paragraph values in one editable document,
 with exact selection, default clearing, isolated undo and memory-only ownership. Mobile review drawers remain usable.
 Whole-document keyboard replacement across rich tables is fixed and directly tested;
 the history case owns a rich starting head and verifies local draft preservation after confirmed replacement.

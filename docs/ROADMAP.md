@@ -1663,7 +1663,13 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      ac70c29 gruen, ebenso 43 gezielte Responsive-/Formatfaelle und visuelle Abnahme. API-Rollout, geschlossene Gates
      und erhaltene fehlgeschlagene Vorlaeufe sind in docs/CURRENT_HANDOFF.md dokumentiert.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 265 abgeschlossen.
+266. [x] Native Listenbearbeitung: ausgewaehlte Punkte ein-/ausruecken und Startzahl der aktuellen nummerierten
+     Liste waehlen. Text, Zeichen-/Absatzformate, Unterlisten, Undo und Tabellen-Tab erhalten; Groessen-/Tiefenschutz
+     sowie Leser-/Historien-/Kontextgrenzen geprueft. ADR-0089; zwoelf gezielte Faelle, volle Qualitaet und alle
+     264 Browser-/Modellfaelle auf fb8dbd3 gruen. Responsive Ansichten visuell geprueft; Betriebsnachweise und
+     geschlossene Gates stehen in docs/CURRENT_HANDOFF.md.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 266 abgeschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

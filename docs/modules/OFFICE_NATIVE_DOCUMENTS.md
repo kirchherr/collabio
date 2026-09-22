@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–265 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer
+Status: Roadmap 252–266 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,27 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## List levels and numbering (Roadmap 266)
+
+The **Listenebenen und Nummerierung** button beside the list buttons opens options for an editable caret or text
+selection within one nearest list. Indent puts selected sibling items under their preceding item. Outdent raises
+them one level, or into paragraphs at the outer level, retaining contained sublists and document text/formatting.
+An ordered list also exposes a start value from 1 through 1,000,000 for the entire current list at that level.
+Other lists remain unchanged. Numbering continuity and named numbering styles are outside this slice.
+
+Alt+Shift+Right/Left and, outside tables, Tab/Shift+Tab use the same validated level actions. Table Tab navigation
+keeps precedence. Unsupported list selections cannot fall through to a default list keymap; unavailable Tab actions
+leave via a reachable toolbar control. Mixed lists, code, whole-document and cell selections are excluded.
+
+Actions preserve pending typing marks and form one undo group separated from typing. Cancel, invalid input and no-op
+stay clean. The existing complete schema/size/depth preflight validates each candidate before dispatch. Dialogs bind
+the editor, session, context, revision, document, selection and pending marks; a change invalidates the action.
+Current read/history/busy/uncertain/review/suggestion guards and explicit confirmed CAS saving remain mandatory.
+
+This uses existing native list nodes/start attributes, without a new backend, endpoint, dependency, SQL migration
+or durable format. Roadmap 263 recovery/release evidence remains retained; no new recovery drill or activation is
+claimed. Decision: [ADR-0089](../../ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md). All twelve focused cases, full quality and all 264 browser/model cases passed on fb8dbd3; desktop/tablet/mobile visual review passed. API rollout and closed-gate evidence is in CURRENT_HANDOFF.md.
 
 ## Format transfer (Roadmap 265)
 
