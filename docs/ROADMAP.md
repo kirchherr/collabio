@@ -1671,7 +1671,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
 
 267. [x] Dokumenteigene Formatvorlagen mit wiederverwendbaren Definitionen, gemeinsamer Aktualisierung,
      kontextbezogener Bedienung und Vorschau. Direkte Formate, Undo, Historie, Vergleich, Druck und Wiederherstellung
-     erhalten. ADR-0090; volle Qualitaet und alle280 Browser-/Modellfaelle auf1e09a10 gruen. PDF/Sichtpruefung,
+     erhalten. ADR-0090; volle Qualitaet und alle 280 Browser-/Modellfaelle auf 1e09a10 gruen. PDF/Sichtpruefung,
      frischer nichtleerer Restore, Release-Gates und API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
 
 268. [ ] Native Bilder einfuegen: dokumenteigene versionierte Assets und isolierte PNG/JPEG-Normalisierung festlegen,
