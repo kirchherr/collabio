@@ -2,6 +2,12 @@
 
 Updated: 2026-09-22
 
+Roadmap 265 / PLANS 126 completes in-document character/paragraph format transfer under ADR-0088.
+All 40 initial focused formatting/keyboard cases passed on 068152f. The first full run exposed a mobile review-layout
+regression, now corrected without weakening assertions. All 43 responsive/transfer cases and a single complete
+252-case browser/model run passed on ac70c29, together with full quality. Root reviewed the final three transfer
+viewports and mobile comments. API-only rollout, live checks and exact cleanup passed. Office remains ahead of CRM.
+
 Roadmap 264 / PLANS 125 completes confirmed whole-document keyboard replacement across rich tables.
 The original Chromium failure was reproduced; cancelable beforeinput now prevents native table DOM mutation,
 and a structural full selection is replaced through one validated transaction. All 26 focused keyboard/table/history
@@ -110,8 +116,8 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `d7270a7` (full quality and a single all-green 241-case browser/model run).
-  Whole-document keyboard replacement changes only the UI and its tests. Roadmap 263 actual PDF, nonempty recovery
+- Validated implementation: `ac70c29` (full quality and a single all-green 252-case browser/model run).
+  Format transfer and its mobile layout correction change only the UI and tests. Roadmap 263 actual PDF, nonempty recovery
   and release-gate evidence is retained, not rerun; native v1, backend, dependencies and durable format are unchanged.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
@@ -126,7 +132,20 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 264 host verification at 2026-09-22 08:04:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 265 host verification at 2026-09-22 10:05:54 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fa32456a32a1`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 10:05:00 UTC. Live verification at 10:05:51 UTC passed
+thirteen Office OpenAPI operation definitions, discovery/history contracts, existing controls, assets/licenses,
+Work link and no-store/CSP; new format-transfer controls and served bundle were also checked. These definition checks
+do not execute thirteen business operations. Tenant-demo Office remains unprovisioned/non-cacheable 404, features
+closed, KB write false, pilot 0. Six exact remaining Work-E2E containers were removed; disposable runners already
+absent. postgres-test and both restore services are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`)
+are unchanged; all three synthetic restore databases/dumps/receipts remain retained. Webcut running(7), provider
+nodes/listener 26443 unchanged, Tricert absent. No main migration, ordinary business-content write, tenant/pilot/indexing/
+cloud/DOCX activation occurred. Roadmap 263 recovery and release-gate evidence is retained, not rerun, for this UI-only
+slice. All lifecycle operations used fresh inventories and host coordination locks.
+
+Previous item 264 host verification at 2026-09-22 08:04:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`12c85d748e73`) with --no-deps and
 pilot explicitly 0; bounded startup retries reached healthy at 08:01:58 UTC. Live verification at 08:02:52 UTC passed
 all thirteen Office OpenAPI operation definitions, discovery/history contracts, prior controls, assets/licenses,
@@ -308,7 +327,64 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 264
+## Last completed slice: Roadmap 265
+
+The **Format übertragen** menu captures uniform direct character and paragraph formatting and applies characters,
+paragraphs or both to the target selection. Empty values are defaults, so a plain sample clears selected formatting.
+Character transfer respects exact Unicode/cell ranges or pending caret marks; paragraph-only application preserves
+pending character choices. Text, heading levels, lists, tables, code and unselected content remain intact. Mixed
+sources are rejected with guidance. Capture/discard/no-op stays clean; a document application forms one undo group
+separate from typing. The full schema/size preflight runs before dispatch. Only the normal confirmed CAS Save creates
+a durable version, and old versions remain immutable.
+
+Samples contain only normalized presentation plus editor/session/context references in memory. They are cleared on
+remount, close and context change, including the accessible status description. Reader/history and existing busy,
+uncertain-state/review/suggestion guards remain mandatory. There is no clipboard, browser storage, source-text copy,
+cross-document sample, computed CSS, named style or block-type transfer. ADR-0088 records the boundaries. No backend,
+dependency, migration, schema or durable-format change is introduced.
+
+The first focused run on 655a00c passed nine of ten cases and exposed the stale accessible sample description after a
+context change. Its report and diagnostics remain in ignored roadmap-265/failed-focused. Correction 068152f clears the
+description and preserves pending caret marks during paragraph-only changes. All 40 focused transfer/character/
+paragraph/keyboard cases passed on that commit in 147.939598 seconds, with zero skipped, unexpected or flaky results.
+Focused report: sha256:0fcb8da497f6c863a0ecb7f1857373109389321af40bc627c132ed1ef89ad336.
+Commit 2d42293 adds the ADR and an explicit historical-view assertion; product code is unchanged from the focused run.
+
+Nine workflow cases and two responsive project runs add eleven checks. Root reviewed desktop, tablet and mobile for
+readable content, reachable wrapping controls and no horizontal overflow. No independent subagent, non-Chromium or
+new PDF review is claimed. The first full run on 2d42293 passed quality and 251 of 252 browser/model cases. The
+additional toolbar row reduced the mobile review area enough to put the open thread quote below the viewport.
+Correction ac70c29 positions mobile comments/suggestions between the app bar and footer independently of toolbar
+height, retaining history/outline placement. The first layout correction fa00102 passed 41/43 but covered history
+controls; it was narrowed to review drawers with their own close actions. Existing assertions remain unchanged.
+That failed layout report/trace is retained under roadmap-265/failed-layout-focused, report
+sha256:acd6dd9bca3c25882359248c4ff835e5a7574fadca281395e4901c0ad8ed2e72.
+The failed full report/logs/trace are retained under
+roadmap-265/failed-full, report sha256:b2ce2c257f2575a0285f581886f3e752f80be890946728a1c005fa761505ccf9.
+Roadmap 263 nonempty recovery and release-gate evidence remain retained, not rerun, for this unchanged durable format.
+All 43 responsive/format-transfer cases passed on ac70c29 in 235.258831 seconds, zero skipped/unexpected/flaky.
+Report: sha256:60cdcd6a89e42b3afe5b04adec05ec035c48334b65e9c00a14ef493f73eeebba. Root inspected the corrected mobile
+review drawer and the desktop/tablet/mobile transfer screenshots.
+
+The final ac70c29 matrix passed all 252 cases (209 browser + 43 model) in 908.294889 seconds, with zero skipped,
+unexpected or flaky results, finishing at 10:04:02 UTC. Full quality on that source passed Ruff, formatting across
+727 files, Mypy on 562 sources and all Pytest tests, with only the known Starlette/AnyIO warning. Both process exit
+codes were 0. Root reviewed the final desktop/tablet/mobile transfer screenshots and mobile comments and matched all
+nine final report/log/screenshot hashes locally. API-only rollout and the final closed-gate host state are recorded above.
+
+Ignored final evidence under e2e/work/artifacts/roadmap-265/final:
+
+- Report: sha256:41e8cc172dbdba55b580f75e76ca09245b933f279b07fb806fce52e5d293a899.
+- Browser log: sha256:65cf557db8954241b6ac18ef6b5e9d065e87aff990908f1106ce93c87da43a4c.
+- Quality log: sha256:c79ea12ebf98aad1a48fcc5275cf8bd2e9c5f83cd2b5b50e2a2cbadf87bb2586.
+- Transfer desktop: sha256:099ebc2c36efc61c17b3b25150c631985f151ba30cce0fd994589bd34d908cec.
+- Transfer tablet: sha256:410ad13975e17cae399d9ab3099f5a11d50f9080ccf65796882f0256e57d2a41.
+- Transfer mobile: sha256:9c4743191e4357c33494899363226112a4adbca8b4cf34a3f158cf611f5ca136.
+- Review desktop: sha256:f90bfaaf675178988772e5e7382dd59ae10bf63466be6d8fd2370db7387b77bf.
+- Review tablet: sha256:7ae0506bfa275e0d2bc71c76335c875895ce98d008c56f7fdf4959723937f9aa.
+- Review mobile: sha256:6d10fc148dd04166d73ec7c983cf94758f31ab55b5b3e503852230f1d7dd23ab.
+
+## Previous completed slice: Roadmap 264
 
 Ctrl+A/Cmd+A uses structural AllSelection, including tables at either document boundary and a selection started
 inside a cell. Cancelable beforeinput prevents Chromium from mutating table NodeViews before validation. Whole-document
@@ -1130,8 +1206,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 264 is complete. Preserve the single green 241-case matrix (198 Work/KB/CRM/Office browser cases and 43 model cases).
-Continue native Office before CRM. Whole-document keyboard replacement across rich tables is fixed and directly tested;
+Item 265 is complete. Preserve the single green 252-case matrix (209 Work/KB/CRM/Office browser cases and 43 model cases).
+Continue native Office before CRM. Format transfer supports direct character/paragraph values in one editable document,
+with exact selection, default clearing, isolated undo and memory-only ownership. Mobile review drawers remain usable.
+Whole-document keyboard replacement across rich tables is fixed and directly tested;
 the history case owns a rich starting head and verifies local draft preservation after confirmed replacement.
 Character sizes/colors, paragraph formatting, history, comparison, printing, reuse, discussions and explicit suggestions
 remain intact. Preserve table-removal confirmation, schema/size guards, undo and other marks/drafts.

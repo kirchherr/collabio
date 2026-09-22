@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 200 passing checks: 165 browser cases and 35 pure comparison/search model cases. The original
+The expected matrix is 252 passing checks: 209 browser cases and 43 pure comparison/search model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -458,3 +458,59 @@ Evidence under ignored e2e/work/artifacts/roadmap-264/final:
 - Mobile screenshot: sha256:f3ce324e6d6f8b0b3b4c9fff089c235ac1602718e93b32cfb4154dc094a3662f.
 
 This is a single complete green run; the historical combined Roadmap 263 acceptance remains documented above.
+
+## Roadmap 265 format-transfer acceptance
+
+The new `office-format-transfer.spec.mjs` has nine workflow/boundary cases; the responsive specification runs on
+desktop and mobile, with an additional tablet screenshot. They cover combined and separate scopes, exact Unicode
+ranges, selected table cells, code exclusion, default clearing, mixed-source rejection, capture/discard/no-op,
+pending typing marks, isolated undo/redo, real confirmed versions, canonical-byte rejection, context invalidation
+and reader/historical views. The full matrix now has 252 cases: 209 browser and 43 model cases.
+
+The first focused run on 655a00c passed nine of ten cases and found that a context change cleared the in-memory
+sample but left its accessible DOM description stale. The correction clears both and retains pending character
+choices during paragraph-only application. All 40 focused format-transfer/character/paragraph/keyboard cases passed
+on 068152f in 147.939598 seconds, with zero skipped, unexpected or flaky results. The focused report hash is
+sha256:0fcb8da497f6c863a0ecb7f1857373109389321af40bc627c132ed1ef89ad336. The original failure remains in ignored
+`e2e/work/artifacts/roadmap-265/failed-focused/`; the corrected report is under `roadmap-265/focused/`.
+
+Commit 2d42293 adds ADR-0088 and an explicit historical-view assertion to the already corrected product. Root reviewed
+desktop, tablet and mobile screenshots for readable content, wrapping controls and absence of horizontal overflow.
+This transfers direct formatting inside one editable document; it does not copy content, computed styles, block types
+or code, and does not use the system clipboard or browser storage. There is no backend, schema, dependency or durable
+format change. Roadmap 263 recovery and release evidence remain retained; no new recovery drill is claimed.
+Full-run and rollout evidence is recorded in CURRENT_HANDOFF.md.
+
+The first full run on 2d42293 passed Python quality and 251 of 252 cases in 919.852864 seconds. Its single failure
+was the existing mobile review quote viewport assertion: the extra wrapping toolbar row shortened the inspector.
+Correction ac70c29 gives mobile comments/suggestions the viewport between app bar and footer, retaining history and
+outline placement. The first layout correction fa00102 passed 41/43 but covered history controls, so it was narrowed
+to review drawers with their own close actions. That failed layout report/trace is retained under
+`roadmap-265/failed-layout-focused/`, report sha256:acd6dd9bca3c25882359248c4ff835e5a7574fadca281395e4901c0ad8ed2e72.
+Existing assertions are unchanged. Failed full report, logs and trace are retained under `roadmap-265/failed-full/`, report
+sha256:b2ce2c257f2575a0285f581886f3e752f80be890946728a1c005fa761505ccf9. It is not an accepted full run.
+
+All 43 responsive/format-transfer cases subsequently passed on ac70c29 in 235.258831 seconds, with zero skipped,
+unexpected or flaky cases. Report under `roadmap-265/layout-focused/`:
+sha256:60cdcd6a89e42b3afe5b04adec05ec035c48334b65e9c00a14ef493f73eeebba. Root reviewed the corrected mobile comments
+and desktop/tablet/mobile format-transfer screenshots.
+
+The final full ac70c29 run passed all 252 cases (209 browser + 43 model) in 908.294889 seconds, zero skipped,
+unexpected or flaky, finishing at 2026-09-22 10:04:02 UTC. Full Python quality passed Ruff, 727-file formatting,
+Mypy on 562 sources and all Pytest tests, with only the known Starlette/AnyIO warning. Both process exits were 0.
+Root reviewed final transfer desktop/tablet/mobile and mobile comments and matched all nine artifact hashes locally.
+Final ignored evidence under `roadmap-265/final/`:
+
+- Report: sha256:41e8cc172dbdba55b580f75e76ca09245b933f279b07fb806fce52e5d293a899.
+- Browser log: sha256:65cf557db8954241b6ac18ef6b5e9d065e87aff990908f1106ce93c87da43a4c.
+- Quality log: sha256:c79ea12ebf98aad1a48fcc5275cf8bd2e9c5f83cd2b5b50e2a2cbadf87bb2586.
+- Transfer desktop/tablet/mobile: sha256:099ebc2c36efc61c17b3b25150c631985f151ba30cce0fd994589bd34d908cec,
+  sha256:410ad13975e17cae399d9ab3099f5a11d50f9080ccf65796882f0256e57d2a41,
+  sha256:9c4743191e4357c33494899363226112a4adbca8b4cf34a3f158cf611f5ca136.
+- Review desktop/tablet/mobile: sha256:f90bfaaf675178988772e5e7382dd59ae10bf63466be6d8fd2370db7387b77bf,
+  sha256:7ae0506bfa275e0d2bc71c76335c875895ce98d008c56f7fdf4959723937f9aa,
+  sha256:6d10fc148dd04166d73ec7c983cf94758f31ab55b5b3e503852230f1d7dd23ab.
+
+API-only rollout, live verification and exact cleanup passed. Ordinary Office remains unprovisioned/features closed,
+KB write false and pilot 0. No main migration or new recovery drill was required or claimed. This is a single green
+full run on the final product, with all unsuccessful exploratory reports retained separately.

@@ -1656,7 +1656,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Volle Qualitaet und alle 241 Browser-/Modellfaelle in einem Lauf auf d7270a7 gruen; Desktop/Mobil visuell geprueft.
      API-Rollout und geschlossene Gates sind in docs/CURRENT_HANDOFF.md dokumentiert. Keine Schema-/Backend-Aenderung.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 264 abgeschlossen.
+265. [x] Native Formatuebertragung innerhalb eines Dokuments: Zeichen und Absatz gemeinsam oder getrennt aufnehmen
+     und anwenden. Einheitliche Vorlage, explizite Standardwerte, exakte Text-/Zellauswahl, Code-Ausschluss,
+     ein Undo-Schritt sowie unveraenderte Inhalte, Struktur und alte Versionen. Mobile Review-Seitenleisten bleiben
+     trotz umgebrochener Werkzeugleiste bedienbar. ADR-0088; volle Qualitaet und alle 252 Browser-/Modellfaelle auf
+     ac70c29 gruen, ebenso 43 gezielte Responsive-/Formatfaelle und visuelle Abnahme. API-Rollout, geschlossene Gates
+     und erhaltene fehlgeschlagene Vorlaeufe sind in docs/CURRENT_HANDOFF.md dokumentiert.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 265 abgeschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

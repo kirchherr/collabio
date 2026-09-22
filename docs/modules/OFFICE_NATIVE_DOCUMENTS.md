@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–264 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement
+Status: Roadmap 252–265 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,38 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Format transfer (Roadmap 265)
+
+The **Format übertragen** menu captures direct character and paragraph presentation from an editable caret or a
+uniform selection. It supports bold, italic, underline, strike, font size/color and alignment/line/before/after spacing.
+Choose **Format aufnehmen**, select a target, then apply characters, paragraphs or both. The sample stays available
+for another target until explicitly discarded or the document is remounted/closed or the context changes. It contains
+only normalized presentation values and ownership references in memory; no text, system clipboard or browser storage
+is copied. Mixed sources are rejected with guidance; there is no silently chosen first style.
+
+An absent value means the standard direct format and clears that target property. Text, heading levels, lists, tables,
+code and unselected content remain intact. Character-only transfer can affect exact Unicode ranges or marks for the
+next typed text at a caret; paragraph-only transfer retains pending character choices. Selected table cells use their
+exact ranges. Copy, discard and no-op stay clean. One document application forms one undo group, separated from typing.
+The full schema/size preflight runs before dispatch, including the canonical-byte limit. Current editable-session and
+review/suggestion guards remain mandatory. Only the separate confirmed CAS Save persists a result; old versions remain
+immutable. Reader and historical views cannot capture or apply a format.
+
+This is direct formatting, not a named style or computed browser CSS. Block types, code and cross-document libraries
+remain outside the slice. There is no backend, dependency, schema, migration or durable-format change. Retained Roadmap
+263 recovery applies to the unchanged format; a new recovery drill is not claimed. Decision:
+[ADR-0088](../../ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md). Final validation and deployment evidence
+is recorded in the current handoff.
+
+On mobile, comment and suggestion drawers occupy the viewport between the app bar and footer independently of the
+wrapping formatting toolbar. Their own close actions remain reachable; history/outline retain their original placement.
+
+All 40 initial formatting/keyboard cases passed on 068152f. After correcting the mobile layout found by the first
+full run, all 43 responsive/transfer cases passed on ac70c29 in 235.258831 seconds. The final single 252-case matrix
+(209 browser + 43 model) passed on that same source in 908.294889 seconds, with zero skipped, unexpected or flaky
+results. Full Python quality passed; root reviewed final transfer desktop/tablet/mobile and mobile comments. Initial
+failed reports remain retained. API-only rollout and closed-gate verification passed; see the handoff for exact evidence.
 
 ## Whole-document keyboard replacement (Roadmap 264)
 

@@ -171,12 +171,18 @@ saved versions, reader/history gates and context invalidation. Ten new browser c
 suites cover this UI-only change. Full quality and all 241 browser/model checks passed on d7270a7; desktop/mobile
 confirmation review passed. Rollout and closed-gate evidence are recorded in docs/CURRENT_HANDOFF.md.
 
+126. [x] Add in-document native Office format transfer for direct character and paragraph formatting, together or
+separately. Preserve text/structure/code, exact text/cell selection, default values, pending typing marks, isolated undo,
+confirmed immutable versions, size guards and read/history/context boundaries. Mobile review drawers retain usable
+space independently of wrapping tools. Full quality and all 252 browser/model cases passed on ac70c29; the 43-case
+responsive/transfer run and visual review passed. See ADR-0088 and docs/CURRENT_HANDOFF.md for API rollout and closed gates.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 264, including character formatting and confirmed whole-document keyboard replacement across rich tables. Preserve the single green 241-case browser/model matrix, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and retained nonempty recovery. Continue Office before CRM. Continuous tracked changes, live collaboration and DOCX interchange remain separate work; existing engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete through Roadmap 265, including format transfer, character/paragraph formatting and confirmed whole-document keyboard replacement across rich tables. Preserve the single green 252-case browser/model matrix, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and retained nonempty recovery. Continue Office before CRM. Continuous tracked changes, live collaboration and DOCX interchange remain separate work; existing engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
