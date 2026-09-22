@@ -1,7 +1,7 @@
 # Native Office Documents
 
-Status: Roadmap 252–263 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting
+Status: Roadmap 252–264 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`
 
@@ -19,6 +19,33 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Whole-document keyboard replacement (Roadmap 264)
+
+Ctrl+A or Cmd+A inside the editor selects every structural boundary, including a final table and selections started
+inside a cell. Typing, plain-text paste, Backspace, Delete, Enter and cut across the whole document use an explicit
+confirmation when tables are present. The candidate replaces complete top-level nodes with plain paragraphs and is
+validated before confirmation and again before dispatch. Empty replacement leaves one editable paragraph. Cancel or
+Escape keeps the original content and selection. Cut copies plain text immediately; removal still requires confirmation.
+
+Chromium's native replacement can mutate table NodeViews before the normal text-input handler runs. A cancelable
+beforeinput handler prevents that mutation; structural AllSelection and a single validated transaction avoid invalid
+intermediate tables. The schema/character/node/depth/canonical-byte guard remains unchanged. Session, editor, revision,
+document, selection and editability checks invalidate stale confirmations. One confirmed replacement is one undo step,
+separate from adjacent typing; undo restores table structure, paragraph attributes and character marks. Saved versions
+remain immutable, and only the separate confirmed CAS Save persists the draft. Reader and historical views stay closed.
+
+Ten focused browser cases cover rich, table-only and multiple-table documents, Unicode/literal text, multiline paste,
+cancel, undo/redo, real version writes, size/control rejection, cut, Ctrl/Meta selection, reader/history gates and context
+changes. The previously isolated history case now owns a rich head ending in a table and confirms replacement before
+checking document/review/suggestion draft preservation. Clipboard cases dispatch browser ClipboardEvents with synthetic
+DataTransfer objects; they do not claim an operating-system clipboard roundtrip. No IME or non-Chromium proof is claimed.
+This is a UI-only change without a new endpoint, dependency, schema or durable format. Roadmap 263 recovery remains
+retained; no new recovery drill is required or claimed for this slice. Final acceptance is recorded in the current handoff.
+All 26 focused keyboard/table/history cases passed in 94.556794 seconds on 460d632. Full quality and the complete
+241-case matrix (198 browser and 43 model cases) passed on d7270a7 in 873.553288 seconds for the browser/model run,
+with zero skipped, unexpected or flaky results. Root reviewed desktop/mobile confirmation screenshots; no independent
+subagent or new PDF review is claimed. This single green matrix supersedes the combined acceptance method of Roadmap 263.
 
 ## Character formatting (Roadmap 263)
 
@@ -41,7 +68,7 @@ Product code remained unchanged through test-only `75f381a`. Passing coverage in
 (188 browser and 43 model): the full run retained 230 passes and a history-fixture input failure, then the complete
 eight-case history suite passed after giving that case its own starting document. Both raw reports remain retained;
 this is not a single 231-pass run. No guard or assertion was weakened. Whole-document keyboard replacement across
-rich tables remains a separate usability follow-up.
+rich tables was left as a separate usability follow-up and is addressed by Roadmap 264 above.
 
 Root reviewed six Office/Work screenshots and both actual PDF pages. The A4 portrait PDF preserves sizes/colors,
 all 24 numbered paragraphs and both sentinels, with 2,108 extracted characters and H1/H2/P structure; no empty pages.

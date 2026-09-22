@@ -2,13 +2,20 @@
 
 Updated: 2026-09-22
 
+Roadmap 264 / PLANS 125 completes confirmed whole-document keyboard replacement across rich tables.
+The original Chromium failure was reproduced; cancelable beforeinput now prevents native table DOM mutation,
+and a structural full selection is replaced through one validated transaction. All 26 focused keyboard/table/history
+checks passed on 460d632. Full quality and all 241 browser/model cases passed in a single run on d7270a7.
+Root reviewed the desktop/mobile confirmation. API-only rollout and closed-gate checks are recorded below.
+Office remains ahead of CRM; no subsequent roadmap item is declared implemented.
+
 Roadmap 263 / PLANS 124 completes native character font sizes and named colors under ADR-0087.
 Selection/caret, mixed/reset/undo, strict marks, comparison/replacement/reuse/print and fresh nonempty recovery passed.
 Full Python quality passed; passing evidence covers all 231 distinct browser/model cases, combining 230 full-run
 successes with the corrected complete eight-case history suite. Both raw setup-failure reports remain retained;
 this is not a single 231-pass run. Recovery verified 460 documents, 935 versions and 1,045 sources. Release gates,
-API-only rollout, live verification and cleanup passed. Office remains ahead of CRM. Next: investigate whole-document
-keyboard replacement across rich tables, which the history-fixture isolation does not claim to fix.
+API-only rollout, live verification and cleanup passed. Office remains ahead of CRM. Its then-open whole-document
+keyboard replacement follow-up is completed by Roadmap 264 above; the old fixture isolation alone did not fix it.
 
 Roadmap 262 / PLANS 123 completes native paragraph alignment and line/before/after spacing, with strict optional
 attributes and unchanged legacy canonical bytes. Save, undo, comparison, reuse and print preserve formatting.
@@ -96,10 +103,9 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `75f381a` (product code unchanged since `d235b6b`; full Python quality on `a0b3001`,
-  230 full-matrix successes plus the corrected eight-case history suite cover all 231 distinct cases). Actual PDF,
-  complete nonempty recovery, release gates and API rollout passed. Character formatting extends native v1 through
-  optional strictly validated marks without changing legacy canonical bytes or requiring a migration.
+- Validated implementation: `d7270a7` (full quality and a single all-green 241-case browser/model run).
+  Whole-document keyboard replacement changes only the UI and its tests. Roadmap 263 actual PDF, nonempty recovery
+  and release-gate evidence is retained, not rerun; native v1, backend, dependencies and durable format are unchanged.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -113,7 +119,20 @@ AGENTS.md and current code are authoritative. Green development evidence is not 
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 263 host verification at 2026-09-22 07:17:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+Final item 264 host verification at 2026-09-22 08:04:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`12c85d748e73`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 08:01:58 UTC. Live verification at 08:02:52 UTC passed
+all thirteen Office OpenAPI operation definitions, discovery/history contracts, prior controls, assets/licenses,
+Work link and no-store/CSP; the served bundle also contains the new whole-document confirmation/input path.
+Definition checks do not execute thirteen business operations. Tenant-demo Office remains unprovisioned with a
+non-cacheable 404, Office features closed, KB write false and pilot 0. Six exact remaining Work-E2E containers were
+removed, disposable runners already absent; postgres-test and both restore services are stopped. Main PostgreSQL
+(`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged. All three synthetic restore databases/dumps/receipts remain
+retained. Webcut running(7), provider nodes/listener26443 unchanged, Tricert absent. No main migration, new recovery
+drill, ordinary business-content write, tenant/pilot/indexing/cloud/DOCX activation occurred. Roadmap 263 recovery
+and release-gate evidence is retained for this UI-only change. Host locks and fresh lifecycle inventories were used.
+
+Previous item 263 host verification at 2026-09-22 07:17:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
 unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`2dd08092b687`) with pilot explicitly 0;
 bounded startup retries reached healthy at 07:16:02 UTC. Live verification at 07:16:54 UTC confirmed all thirteen
 Office OpenAPI operation definitions, discovery/history parameters, character and previous controls, local assets/licenses,
@@ -282,7 +301,43 @@ before adoption. The user's priority is Office development before further CRM ex
 workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
 Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
 
-## Last completed slice: Roadmap 263
+## Last completed slice: Roadmap 264
+
+Ctrl+A/Cmd+A uses structural AllSelection, including tables at either document boundary and a selection started
+inside a cell. Cancelable beforeinput prevents Chromium from mutating table NodeViews before validation. Whole-document
+typing, plain-text paste, Backspace/Delete/Enter and cut prepare plain paragraphs and require the existing table-removal
+confirmation when tables are present. Empty replacement leaves one paragraph. Cancel/Escape preserves content and
+selection; confirmation checks the session/editor/revision/document/selection/editability snapshot again. One replacement
+is one undo step separated from adjacent typing. Undo restores exact tables, paragraph properties and character marks.
+Saved versions remain immutable; only the separate confirmed CAS Save persists the new draft. Cut copies plain text
+before confirmation, but removes content only after it. No schema, backend, dependency or durable-format change exists.
+
+The original failure was reproduced in a dedicated rich fixture. AllSelection alone still failed, establishing the need
+to intercept native input before DOM mutation. The first early --no-deps rerun also exposed an API-readiness race in the
+exploratory script; subsequent focused starts use --wait. The final test contains no diagnostic content logging.
+All 26 focused keyboard/table/history cases passed on 460d632 in 94.556794 seconds. The history draft case now owns a rich
+head ending in a table and confirms replacement before exercising concurrent history and local review draft preservation.
+The complete d7270a7 matrix passed all 241 cases (198 browser + 43 model) in 873.553288 seconds, with zero skipped,
+unexpected or flaky cases, finishing at 08:00:32 UTC. Full quality on the same source passed Ruff, 722-file formatting,
+Mypy on 562 source files and all Pytest tests, with only the known Starlette/AnyIO warning. Both process exit codes were 0.
+Root reviewed desktop/mobile confirmation screenshots. Clipboard tests use synthetic DataTransfer/ClipboardEvents;
+no OS clipboard roundtrip, IME, non-Chromium, independent subagent review or new PDF proof is claimed.
+
+Ignored evidence under e2e/work/artifacts/roadmap-264:
+
+- Focused report: sha256:4c1ff3f7ec42e62a2a816ac32009f64034190137806eb5e39c8cc90cf0bdc310.
+- Focused browser log: sha256:4df089e6a79c005872706960be6c30186719bc6d702bb0afb5b412aae2092fee.
+- Complete report: sha256:a40528f367d8a032d2d2d2a0ae53304d5172b58e7c7c621a8bccdcaa0bf63efc.
+- Complete browser log: sha256:2c78d8b26e6ceddf22b4e3a80a1b771e21a3c3d44d2ca2ca24c3268f0695df61.
+- Full quality log: sha256:fa15e300bf3abc15289f6b91106e0085a63428d696806007097e570105e681c8.
+- Desktop screenshot: sha256:503846f9e257ec45d99b92807609639fa9887cd7208852116c296bda54ca0543.
+- Mobile screenshot: sha256:f3ce324e6d6f8b0b3b4c9fff089c235ac1602718e93b32cfb4154dc094a3662f.
+
+The original failing reproduction remains retained. This is a single all-green matrix, replacing the combined
+acceptance method of Roadmap 263 without erasing its historical reports. Its complete nonempty recovery and release
+gates remain retained; no new recovery drill or main migration was needed or claimed for this UI-only slice.
+
+## Previous completed slice: Roadmap 263
 
 The selection-aware **Zeichen …** dialog supports fourteen font sizes from 8 to 48 points and eight named colors.
 It changes selected text, including headings/lists/quotes/exact selected table cells, or the next typed text at a
@@ -1068,15 +1123,12 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 263 is complete. Preserve the 231-case matrix (188 Work/KB/CRM/Office browser cases and 43 model cases)
-and its transparent acceptance lineage above. Continue native Office before CRM. Character sizes/colors now join
-paragraph formatting, history, comparison, printing, reuse, discussions and explicit suggestions.
-The next bounded usability investigation is whole-document keyboard replacement across rich tables: both direct
-contenteditable fill and Select All plus insertText rejected the inherited rich fixture before a draft existed.
-The history test now owns a simple starting head and proves preservation; it does not fix or validate that complex
-replacement path. Reproduce through real keyboard interaction and preserve table-removal confirmations, schema/size
-guards, undo, other marks and drafts. This follow-up is not implemented. Continuous tracked changes and live
-collaboration remain open.
+Item 264 is complete. Preserve the single green 241-case matrix (198 Work/KB/CRM/Office browser cases and 43 model cases).
+Continue native Office before CRM. Whole-document keyboard replacement across rich tables is fixed and directly tested;
+the history case owns a rich starting head and verifies local draft preservation after confirmed replacement.
+Character sizes/colors, paragraph formatting, history, comparison, printing, reuse, discussions and explicit suggestions
+remain intact. Preserve table-removal confirmation, schema/size guards, undo and other marks/drafts.
+Continuous tracked changes, live collaboration and broader Office authoring/layout capabilities remain open.
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. No subsequent roadmap item is declared implemented.
 Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.

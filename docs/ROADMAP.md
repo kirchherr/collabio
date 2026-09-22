@@ -1649,10 +1649,14 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Recovery: 460 Dokumente, 935 Fassungen und 1.045 SourceObjects; Releasegates, API-Rollout und Live-Pruefung gruen.
      Schriftgroessen/Farben auf Desktop, Tablet, Mobil und zwei echten PDF-Seiten visuell geprueft.
 
-Naechste begrenzte Usability-Untersuchung: komplettes Dokument per Tastatur ueber komplexe Tabellen hinweg ersetzen,
-mit Schema-/Groessenschutz, expliziten Tabellenloeschgrenzen und Undo. Dieser Eingabepfad ist noch nicht behoben;
-die isolierte Historientest-Fixture belegt nur den Erhalt bereits vorhandener Entwuerfe. Native Office bleibt vor CRM.
-Fortsetzungsstand: Roadmap 263; Details und Evidenz stehen in docs/CURRENT_HANDOFF.md.
+264. [x] Vollstaendiges Ersetzen per Tastatur auch fuer Dokumente mit abschliessenden oder mehreren Tabellen.
+     Strukturelle Gesamtauswahl, Bestaetigung, Abbrechen und ein eigener Undo-Schritt; Schema-/Groessenschutz,
+     Leser-/Historiengrenzen, Kontextwechsel, unveraenderte alte Fassungen und lokale Review-Entwuerfe erhalten.
+     Zehn neue Browserfaelle sowie die bestehenden Tabellen-/Historienfaelle pruefen die Korrektur.
+     Volle Qualitaet und alle 241 Browser-/Modellfaelle in einem Lauf auf d7270a7 gruen; Desktop/Mobil visuell geprueft.
+     API-Rollout und geschlossene Gates sind in docs/CURRENT_HANDOFF.md dokumentiert. Keine Schema-/Backend-Aenderung.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 264 abgeschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

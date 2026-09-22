@@ -322,7 +322,8 @@ The trace and immediate assertion show that the inherited rich-table fixture nev
 navigation. Keyboard input alone did not fix setup. After giving that case its own current head, all eight history
 cases passed in 31.423815 seconds. Passing evidence covers all 231 distinct cases (188 browser, 43 model); this is
 not a single 231-pass run, and both raw failure reports remain retained. No product guard or assertion was weakened.
-Whole-document keyboard replacement across rich tables remains a separate usability follow-up.
+Whole-document keyboard replacement across rich tables was left as a separate usability follow-up;
+Roadmap 264 now exercises that path directly in `office-keyboard.spec.mjs` and the rich-head history regression.
 
 Second full report: `sha256:2c902182d91ffe224d63d70c503ae28e1ad509ae15acbd4bca76afbd17abbec0`;
 corrected history report: `sha256:35d3111f2630f7b699ef822942f29484237d1604707db12e2f2cac3e49d165d0`;
@@ -429,3 +430,31 @@ database and new object buckets.
 
 - [Playwright Docker](https://playwright.dev/docs/docker)
 - [Playwright releases](https://github.com/microsoft/playwright/releases)
+
+## Roadmap 264 whole-document keyboard acceptance
+
+On d7270a7, all 241 browser/model cases (198 browser plus 43 model) passed in a single run in 873.553288 seconds,
+with zero skipped, unexpected or flaky results, finishing at 2026-09-22 08:00:32 UTC. Full Python quality also passed:
+Ruff, 722-file formatting, Mypy on 562 sources and complete Pytest, with only the known Starlette/AnyIO warning.
+The earlier focused keyboard/table/history run on 460d632 passed all 26 cases in 94.556794 seconds. Ten new cases
+exercise replacement across rich/table-only/multiple-table documents, cancel, exact undo/redo, confirmed real saves,
+Unicode/literal multiline input, canonical-byte/character/control limits, cut, Ctrl/Meta selection, read/history gates
+and invalidated context. The existing history case now owns a rich head ending in a table and confirms replacement
+before checking preservation of document and review drafts across concurrent history operations.
+
+The original failing reproduction remains in ignored roadmap-264/repro. AllSelection alone did not stop native DOM
+mutation; cancelable beforeinput plus a validated full-document transaction fixes the keyboard path. The strict guard
+was not weakened. Clipboard cases use browser ClipboardEvents and synthetic DataTransfer objects, without claiming
+an OS clipboard roundtrip. Root reviewed desktop/mobile confirmation screenshots. No new IME, non-Chromium, PDF or
+independent subagent proof is claimed. The prior Roadmap 263 recovery remains retained; the UI-only correction changes
+no schema, persistence format, dependency or backend. Operational rollout details are in CURRENT_HANDOFF.md.
+
+Evidence under ignored e2e/work/artifacts/roadmap-264/final:
+
+- Report: sha256:a40528f367d8a032d2d2d2a0ae53304d5172b58e7c7c621a8bccdcaa0bf63efc.
+- Browser log: sha256:2c78d8b26e6ceddf22b4e3a80a1b771e21a3c3d44d2ca2ca24c3268f0695df61.
+- Quality log: sha256:fa15e300bf3abc15289f6b91106e0085a63428d696806007097e570105e681c8.
+- Desktop screenshot: sha256:503846f9e257ec45d99b92807609639fa9887cd7208852116c296bda54ca0543.
+- Mobile screenshot: sha256:f3ce324e6d6f8b0b3b4c9fff089c235ac1602718e93b32cfb4154dc094a3662f.
+
+This is a single complete green run; the historical combined Roadmap 263 acceptance remains documented above.
