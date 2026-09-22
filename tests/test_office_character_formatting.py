@@ -9,6 +9,9 @@ from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
 from suite.platform.office_suggestions import replace_suggestion_text
 from work_e2e_character import character_recovery_document
 
+INVALID_FONT_SIZES: tuple[Any, ...] = (True, 12.0, "12", "12pt", None, 0, 13, 49, [], {})
+INVALID_TEXT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ff0000", "RED", "default", "red;SECRET")
+
 
 def formatted_document() -> dict[str, Any]:
     return character_recovery_document(2)
@@ -34,14 +37,8 @@ def test_character_values_preserve_exact_canonical_payload_without_mutation(attr
         {"type": "textStyle"},
         {"type": "textStyle", "attrs": {}},
         {"type": "textStyle", "attrs": None},
-        *[
-            {"type": "textStyle", "attrs": {"fontSize": size}}
-            for size in (True, 12.0, "12", "12pt", None, 0, 13, 49, [], {})
-        ],
-        *[
-            {"type": "textStyle", "attrs": {"textColor": color}}
-            for color in (None, True, [], {}, "#ff0000", "RED", "default", "red;SECRET")
-        ],
+        *[{"type": "textStyle", "attrs": {"fontSize": size}} for size in INVALID_FONT_SIZES],
+        *[{"type": "textStyle", "attrs": {"textColor": color}} for color in INVALID_TEXT_COLORS],
         {"type": "textStyle", "attrs": {"fontSize": 12, "style": "SECRET"}},
         {"type": "textStyle", "attrs": {"textColor": "red"}, "extra": "SECRET"},
         {"type": "bold", "attrs": {"fontSize": 12}},
@@ -74,7 +71,7 @@ def test_character_marks_reject_duplicate_and_invalid_placements(placement: str)
 
 
 def test_character_legacy_bytes_and_suggestion_offsets_and_outside_attributes() -> None:
-    document = {
+    document: dict[str, Any] = {
         "type": "doc",
         "content": [
             {
@@ -108,7 +105,7 @@ def test_character_legacy_bytes_and_suggestion_offsets_and_outside_attributes() 
 
 
 def test_character_attributes_count_toward_canonical_byte_limit() -> None:
-    plain = {
+    plain: dict[str, Any] = {
         "type": "doc",
         "content": [{"type": "paragraph", "content": [{"type": "text", "text": "界" * 90}]} for _ in range(620)],
     }

@@ -20,7 +20,11 @@ def character_recovery_document(number: int) -> dict[str, Any]:
     if number not in (1, 2, 3):
         raise ValueError("Synthetic character version is outside the fixture")
     document = paragraph_recovery_document(1)
-    profiles = ({}, {"fontSize": 18, "textColor": "blue"}, {"fontSize": 24, "textColor": "red"})
+    profiles: tuple[dict[str, int | str], ...] = (
+        {},
+        {"fontSize": 18, "textColor": "blue"},
+        {"fontSize": 24, "textColor": "red"},
+    )
 
     def visit(node: dict[str, Any]) -> None:
         if node["type"] == "text" and number > 1:
