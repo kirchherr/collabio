@@ -6,6 +6,7 @@ import {
   officeContentPath, officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl,
 } from "./office-support.mjs";
 import { openComments } from "./office-review-support.mjs";
+import { richParagraphDocument } from "./paragraph-helper.mjs";
 import { openSuggestions, prepareSuggestion } from "./office-suggestion-support.mjs";
 import {
   HISTORY_HEADERS, HISTORY_READER_ID, allHistory, appendAllHistory, appendHistory, historyPage,
@@ -126,8 +127,10 @@ test("Office ordinary readers load and compare versions beyond 200 with the writ
 });
 
 test("Office keeps the loaded history head and local document and review drafts across a concurrent save and refresh", async ({ page }) => {
-  // Own the editable head instead of inheriting the previous test's rich takeover.
-  await prepareHistoryHead(page, "History draft base", "History draft preservation base");
+  // Own a rich head ending in a table and exercise the corrected keyboard path.
+  const richHead = richParagraphDocument();
+  richHead.content.pop();
+  await prepareHistoryHead(page, "History draft base", "History draft preservation base", richHead);
   const { objectId, saved } = await openHistoryFixture(page);
   await openComments(page, objectId);
   await page.locator("#comment-new").click();
@@ -135,6 +138,8 @@ test("Office keeps the loaded history head and local document and review drafts 
   // Assert that a real editable draft exists before testing history preservation.
   await officeEditor(page).press("Control+a");
   await page.keyboard.insertText("History document draft remains local");
+  await expect(page.locator("#table-remove-dialog")).toBeVisible();
+  await page.locator("#table-remove-confirm").click();
   await expect(officeEditor(page)).toHaveText("History document draft remains local");
   await expect(page.locator("#document-save")).toBeEnabled();
   const first = await openHistoryPanel(page, objectId);

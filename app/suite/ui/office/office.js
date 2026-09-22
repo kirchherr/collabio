@@ -971,8 +971,8 @@ function handleTableKey(view, event) {
   if (state.editor?.view !== view || event.altKey) return false;
   if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "a") {
     event.preventDefault();
-    // Tiptap's text-based selectAll stops inside a terminal table. AllSelection
-    // also includes non-text boundaries, independently of the starting cell.
+    // Include non-text boundaries, independently of the starting cell or the
+    // browser's DOM selection inside a terminal table.
     view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
     return true;
   }

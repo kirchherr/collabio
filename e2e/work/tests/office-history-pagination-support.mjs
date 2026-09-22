@@ -109,10 +109,10 @@ export async function appendAllHistory(page, objectId, first, options = {}) {
   return versions;
 }
 
-export async function saveHistoryVersion(page, source, text, label) {
+export async function saveHistoryVersion(page, source, text, label, document = null) {
   const response = await page.request.post(`${BASE_URL}${historyPath(source.document.object_id)}`, {
     headers: HISTORY_HEADERS,
-    data: { title: label, document: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+    data: { title: label, document: document ?? { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
       expected_current_version_id: source.version.version_id,
       mutation_reference: `history-pagination-${Date.now()}-${source.version.version_id}`, human_confirmation: true },
   });
@@ -123,13 +123,13 @@ export async function saveHistoryVersion(page, source, text, label) {
   return saved;
 }
 
-export async function prepareHistoryHead(page, text, label) {
+export async function prepareHistoryHead(page, text, label, document = null) {
   const listResponse = await page.request.get(`${BASE_URL}${OFFICE_PATH}`, { headers: HISTORY_HEADERS });
   expect(listResponse.status()).toBe(200);
   const list = await listResponse.json();
   expect(list.documents).toHaveLength(1);
   const current = await officeContent(page, list.documents[0].object_id, { headers: HISTORY_HEADERS });
-  return saveHistoryVersion(page, current, text, label);
+  return saveHistoryVersion(page, current, text, label, document);
 }
 
 export async function holdHistoryPage(page, objectId, cursor) {
