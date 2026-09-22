@@ -5,6 +5,7 @@ This is a Collabio JSON format, not an OOXML import or an engine admission.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from suite.ai_control_plane.audit import canonical_json
@@ -20,6 +21,12 @@ MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
+PARAGRAPH_VALUES = {
+    "textAlign": {"left", "center", "right", "justify"},
+    "lineSpacing": {"1", "1.15", "1.5", "2"},
+    "spacingBefore": {0, 6, 12, 18, 24},
+    "spacingAfter": {0, 6, 12, 18, 24},
+}
 
 
 class OfficeDocumentInvalidContentError(ValueError):
@@ -33,6 +40,40 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
+
+    style_ids: set[str] = set()
+    style_names: set[str] = set()
+    root_attrs = document.get("attrs", {})
+    if not isinstance(root_attrs, dict) or set(root_attrs) - {"styles"}:
+        reject()
+    styles = root_attrs.get("styles", [])
+    if not isinstance(styles, list) or len(styles) > 20:
+        reject()
+    for style in styles:
+        if not isinstance(style, dict) or set(style) != {"id", "name", "paragraph", "character"}:
+            reject()
+        identifier, name = style["id"], style["name"]
+        if (
+            not isinstance(identifier, str)
+            or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", identifier) is None
+            or identifier in style_ids
+            or not isinstance(name, str)
+            or not 1 <= len(name) <= 60
+            or name != name.strip()
+            or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in name)
+            or name in style_names
+        ):
+            reject()
+        style_ids.add(identifier)
+        style_names.add(name)
+        for key, values in (("paragraph", PARAGRAPH_VALUES), ("character", {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS})):
+            attributes = style[key]
+            if not isinstance(attributes, dict) or set(attributes) - set(values):
+                reject()
+            for attribute, value in attributes.items():
+                expected_type = int if attribute in {"fontSize", "spacingBefore", "spacingAfter"} else str
+                if type(value) is not expected_type or value not in values[attribute]:
+                    reject()
 
     def visit(node: Any, depth: int) -> None:
         nonlocal nodes, characters
@@ -56,8 +97,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(attrs, dict):
             reject()
         if kind in {"paragraph", "heading"}:
-            allowed = PARAGRAPH_FORMAT_ATTRIBUTES | ({"level"} if kind == "heading" else set())
+            allowed = PARAGRAPH_FORMAT_ATTRIBUTES | {"styleId"} | ({"level"} if kind == "heading" else set())
             if set(attrs) - allowed:
+                reject()
+            if "styleId" in attrs and (not isinstance(attrs["styleId"], str) or attrs["styleId"] not in style_ids):
                 reject()
             if kind == "heading" and (type(attrs.get("level")) is not int or attrs["level"] not in {1, 2, 3}):
                 reject()
@@ -89,6 +132,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if any(type(attrs.get(key, 1)) is not int or attrs.get(key, 1) != 1 for key in ("colspan", "rowspan")):
                 reject()
             if attrs.get("colwidth") is not None:
+                reject()
+        elif kind == "doc":
+            if depth != 0 or set(attrs) - {"styles"}:
                 reject()
         elif attrs:
             reject()

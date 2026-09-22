@@ -14,6 +14,7 @@ import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } f
 import { renderOfficePrintDocument } from "./office-print.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
+import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -21,7 +22,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, styleAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -38,6 +39,40 @@ const commandNames = {
 };
 const OfficeTable = Table.extend({
   renderHTML() { return ["table", { class: "office-table" }, ["tbody", 0]]; },
+});
+const OfficeNamedStyles = Extension.create({
+  name: "officeNamedStyles",
+  addGlobalAttributes() {
+    return [
+      { types: ["doc"], attributes: { styles: { default: [], rendered: false } } },
+      { types: ["paragraph", "heading"], attributes: { styleId: { default: null, keepOnSplit: true,
+        parseHTML: () => null,
+        renderHTML: (attrs) => attrs.styleId == null ? {} : { "data-office-style-id": attrs.styleId },
+      } } },
+    ];
+  },
+  addProseMirrorPlugins() {
+    const decorations = (doc) => {
+      const styles = officeStyles(doc.attrs.styles || []), entries = [];
+      doc.descendants((entry, position) => {
+        if (!["paragraph", "heading"].includes(entry.type.name) || entry.attrs.styleId == null) return;
+        const style = officeStyleFor(entry.attrs, styles);
+        // Direct paragraph attributes already render on the node and take priority.
+        const inherited = { ...style.paragraph };
+        for (const key of Object.keys(officeParagraphAttributes(entry.attrs))) delete inherited[key];
+        entries.push(Decoration.node(position, position + entry.nodeSize, {
+          ...officeParagraphDOMAttributes(inherited), ...officeCharacterDOMAttributes(style.character),
+        }));
+      });
+      return DecorationSet.create(doc, entries);
+    };
+    const key = new PluginKey("officeNamedStyles");
+    return [new Plugin({ key,
+      state: { init: (_, editorState) => decorations(editorState.doc),
+        apply: (transaction, previous) => transaction.docChanged ? decorations(transaction.doc) : previous },
+      props: { decorations: (editorState) => key.getState(editorState) },
+    })];
+  },
 });
 const OfficeCharacterFormat = Mark.create({
   name: "textStyle",
@@ -84,7 +119,7 @@ const OfficeParagraphFormat = Extension.create({
       type: this.editor.schema.nodes.heading,
       getAttributes: (match) => ({
         level: match[1].length,
-        ...officeParagraphAttributes(this.editor.state.selection.$from.parent.attrs),
+        ...officeTextblockAttributes(this.editor.state.selection.$from.parent.attrs),
       }),
     })];
   },
@@ -164,6 +199,7 @@ function notice(text = "", error = false) {
 }
 
 function normalizedDocument(document) {
+  const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
   const walk = (value, depth = 0) => {
@@ -180,7 +216,8 @@ function normalizedDocument(document) {
       result.attrs = { level: value.attrs.level };
     }
     if (["paragraph", "heading"].includes(value.type)) {
-      const attributes = officeParagraphAttributes(value.attrs ?? {});
+      const attributes = officeTextblockAttributes(value.attrs ?? {});
+      officeStyleFor(attributes, styles);
       if (Object.keys(attributes).length) result.attrs = { ...result.attrs, ...attributes };
     }
     if (value.type === "orderedList") {
@@ -219,7 +256,9 @@ function normalizedDocument(document) {
     return result;
   };
   if (document?.type !== "doc") throw new Error("document-root");
-  return walk(document);
+  const result = walk(document);
+  if (styles.length) result.attrs = { styles };
+  return result;
 }
 
 function draftSnapshot() {
@@ -265,6 +304,7 @@ function updateEditorState() {
   updateCharacterControls();
   updateFormatTransfer();
   updateListControls();
+  updateStyleControls();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -435,7 +475,7 @@ function formatEditor(command, preserveParagraphs = false) {
     // Wrapping a heading in a list can first turn it into a paragraph. Retain
     // each surviving block's own format instead of applying the first to all.
     for (const { entry, position } of paragraphs) {
-      const attributes = officeParagraphAttributes(entry.attrs);
+      const attributes = officeTextblockAttributes(entry.attrs);
       if (!Object.keys(attributes).length) continue;
       const mapped = tr.mapping.map(position + 1);
       if (mapped < 0 || mapped > tr.doc.content.size) continue;
@@ -808,7 +848,7 @@ function changeTextStyle(value) {
     for (const { entry, position } of selectedParagraphs(editor, true)) {
       const start = transaction.mapping.map(position);
       const end = transaction.mapping.map(position + entry.nodeSize);
-      transaction.setBlockType(start, end, type, { ...level, ...officeParagraphAttributes(entry.attrs) });
+      transaction.setBlockType(start, end, type, { ...level, ...officeTextblockAttributes(entry.attrs) });
     }
     if (!transaction.docChanged || transaction.doc.eq(editor.state.doc)) { focusEditor(editor); updateEditorState(); return true; }
     validateEditorDocument(transaction.doc);
@@ -818,6 +858,124 @@ function changeTextStyle(value) {
   focusEditor(editor);
   updateEditorState();
   return true;
+}
+
+const styleFields = {
+  ...Object.fromEntries(Object.keys(OFFICE_PARAGRAPH_VALUES).map((key) => [key, `style-${key}`])),
+  ...Object.fromEntries(Object.keys(OFFICE_CHARACTER_VALUES).map((key) => [key, `style-${key}`])),
+};
+
+function closeStyleDialog(restoreFocus = false) {
+  const action = state.styleAction;
+  state.styleAction = null;
+  $("style-dialog").close(); $("style-form").reset();
+  $("style-choice").replaceChildren(); $("style-status").textContent = "";
+  $("style-selection").textContent = ""; $("style-impact").textContent = "";
+  $("style-preview").replaceChildren();
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function updateStyleControls() {
+  if (state.styleAction && !characterActionCurrent(state.styleAction)) closeStyleDialog();
+  const paragraphs = selectedParagraphs(), styles = state.editor?.state.doc.attrs.styles || [];
+  $("style-options").disabled = !paragraphAllowed() || !paragraphs.length;
+  const ids = new Set(paragraphs.map(({ entry }) => entry.attrs.styleId));
+  const current = ids.size === 1 ? styles.find((style) => style.id === [...ids][0]) : null;
+  $("style-options").textContent = current ? current.name : ids.size > 1 ? "Vorlagen: gemischt" : "Vorlagen …";
+  $("style-options").title = current ? `Formatvorlage: ${current.name}` : "Formatvorlagen verwalten und anwenden";
+  $("style-remove").disabled = !state.styleAction || !paragraphs.some(({ entry }) => entry.attrs.styleId != null);
+}
+
+function openStyleDialog() {
+  if (!paragraphAllowed() || !selectedParagraphs().length) return;
+  closeStyleDialog();
+  const editor = state.editor, paragraphs = selectedParagraphs(), styles = officeStyles(editor.state.doc.attrs.styles);
+  state.styleAction = { editor, session: state.session, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks, paragraphs, styles };
+  const option = (value, label) => { const element = node("option", label); element.value = value; $("style-choice").append(element); };
+  for (const style of styles) option(style.id, style.name);
+  for (const preset of OFFICE_STYLE_PRESETS) option(`preset:${preset.id}`, `Neu: ${preset.name}`);
+  option("new", "Neue eigene Vorlage");
+  const ids = new Set(paragraphs.map(({ entry }) => entry.attrs.styleId));
+  $("style-choice").value = ids.size === 1 && styles.some((style) => style.id === [...ids][0]) ? [...ids][0] : "preset:body";
+  $("style-selection").textContent = `${paragraphs.length} ${paragraphs.length === 1 ? "Absatz ausgewählt" : "Absätze ausgewählt"}. ${styles.length} von ${OFFICE_STYLE_LIMIT} Dokumentvorlagen angelegt.`;
+  chooseDocumentStyle(); updateStyleControls();
+  $("style-dialog").showModal(); $("style-choice").focus();
+}
+
+function chooseDocumentStyle() {
+  const action = state.styleAction;
+  if (!characterActionCurrent(action)) { closeStyleDialog(); return; }
+  const choice = $("style-choice").value;
+  const saved = action.styles.find((style) => style.id === choice);
+  const preset = OFFICE_STYLE_PRESETS.find((style) => `preset:${style.id}` === choice);
+  const style = saved || preset || { name: "", paragraph: {}, character: {} };
+  $("style-name").value = style.name;
+  for (const [key, id] of Object.entries(styleFields)) $(id).value = String(style.paragraph[key] ?? style.character[key] ?? "default");
+  let count = 0;
+  action.document.descendants((entry) => { if (saved && entry.attrs.styleId === saved.id) count += 1; });
+  $("style-impact").textContent = saved ? `Diese Vorlage ist mit ${count} Absätzen verbunden. Änderungen an der Vorlage gelten für alle. Direkte Formatierungen haben Vorrang.` :
+    "Die neue Vorlage wird in diesem Dokument gespeichert. Sie kann anschließend auf weitere Absätze angewendet werden.";
+  $("style-update").disabled = !saved;
+  $("style-apply").disabled = !saved && action.styles.length >= OFFICE_STYLE_LIMIT;
+  $("style-status").textContent = !saved && action.styles.length >= OFFICE_STYLE_LIMIT ? "Dieses Dokument enthält bereits 20 Vorlagen. Bearbeiten Sie eine bestehende Vorlage." : "";
+  previewDocumentStyle();
+}
+
+function readDocumentStyle(id) {
+  const paragraph = {}, character = {};
+  for (const [key, control] of Object.entries(styleFields)) {
+    if ($(control).value === "default") continue;
+    const values = OFFICE_PARAGRAPH_VALUES[key] || OFFICE_CHARACTER_VALUES[key];
+    const value = values.find((candidate) => String(candidate) === $(control).value);
+    if (value === undefined) throw new Error("style-choice");
+    (Object.hasOwn(OFFICE_PARAGRAPH_VALUES, key) ? paragraph : character)[key] = value;
+  }
+  return { id, name: $("style-name").value.trim(), paragraph, character };
+}
+
+function previewDocumentStyle() {
+  $("style-preview").replaceChildren();
+  if (!state.styleAction) return;
+  try {
+    const style = readDocumentStyle("preview"), sample = node("p", "So sieht Ihre Vorlage aus. Café und Ideen.");
+    for (const [name, value] of Object.entries({ ...officeParagraphDOMAttributes(style.paragraph), ...officeCharacterDOMAttributes(style.character) })) sample.setAttribute(name, value);
+    $("style-preview").append(sample);
+  } catch { /* Invalid select values never become CSS or preview attributes. */ }
+}
+
+function commitDocumentStyle(mode) {
+  const action = state.styleAction;
+  if (!characterActionCurrent(action)) { closeStyleDialog(); return; }
+  const editor = action.editor, transaction = editor.state.tr;
+  try {
+    const existing = action.styles.find((style) => style.id === $("style-choice").value);
+    if (mode === "remove") {
+      for (const { entry, position } of action.paragraphs) transaction.setNodeMarkup(position, undefined, { ...entry.attrs, styleId: null });
+    } else {
+      if (mode === "update" && !existing) return;
+      const style = readDocumentStyle(existing?.id || `style-${crypto.randomUUID()}`);
+      const styles = officeStyles(existing ? action.styles.map((entry) => entry.id === existing.id ? style : entry) : [...action.styles, style]);
+      transaction.setDocAttribute("styles", styles);
+      if (mode === "apply") for (const { entry, position } of action.paragraphs) {
+        // Application starts with the template's paragraph values. Character
+        // highlights stay explicit and continue overriding inherited values.
+        transaction.setNodeMarkup(position, undefined, { ...entry.attrs, styleId: style.id,
+          ...Object.fromEntries(Object.keys(OFFICE_PARAGRAPH_VALUES).map((key) => [key, null])) });
+      }
+    }
+    validateEditorDocument(transaction.doc);
+  } catch {
+    $("style-status").textContent = "Prüfen Sie den eindeutigen Namen (1–60 Zeichen) und die Werte. Höchstens 20 Vorlagen und die Dokumentgrößenlimits sind erlaubt. Der Entwurf bleibt unverändert.";
+    return;
+  }
+  if (transaction.doc.eq(editor.state.doc)) { $("style-status").textContent = "Keine Änderung: Die Vorlage und Auswahl sind bereits so eingestellt."; return; }
+  if (editor.state.storedMarks) transaction.setStoredMarks(editor.state.storedMarks);
+  closeStyleDialog();
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr).setStoredMarks(editor.state.storedMarks));
+  focusEditor(); updateEditorState();
+  notice("Formatvorlage geändert. Rückgängig ist möglich; gespeichert wird erst mit der nächsten bestätigten Version.");
 }
 
 function selectedList(editor = state.editor) {
@@ -1257,6 +1415,7 @@ function contentChanged(session) {
   closeCharacterDialog();
   $("table-message").textContent = "";
   closeListDialog();
+  closeStyleDialog();
   closeComparison();
   cancelRestore();
   session.revision += 1;
@@ -1282,7 +1441,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
-      SearchHighlights, NativeDocumentGuard, ReviewHighlight,
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles,
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -1327,7 +1486,8 @@ function prepareEditor(content, session) {
   try {
     validateEditorDocument(editor.schema.nodeFromJSON(safeContent));
     editor.chain().setMeta("addToHistory", false)
-      .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true }).run();
+      .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true })
+      .command(({ tr }) => { tr.setDocAttribute("styles", safeContent.attrs?.styles || []); return true; }).run();
   } catch (error) { editor.destroy(); throw error; }
   return { editor, editorHost };
 }
@@ -1343,6 +1503,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  closeStyleDialog();
   state.formatSample = null;
   closeReuse();
   closePrint();
@@ -1363,6 +1524,7 @@ function clearWorkspace() {
   state.editor = null;
   updateFormatTransfer();
   updateListControls();
+  updateStyleControls();
   resetSearch();
   $("office-editor").replaceChildren();
   $("document-title").value = "";
@@ -3725,6 +3887,21 @@ for (const [key, id] of Object.entries(characterFields)) {
   }
   $(id).addEventListener("change", () => { $("character-status").textContent = characterHelp; $("character-status").classList.remove("error"); });
 }
+for (const [key, id] of Object.entries(styleFields)) {
+  for (const option of $(paragraphFields[key] || characterFields[key]).options) {
+    if (option.value !== "mixed") $(id).append(option.cloneNode(true));
+  }
+  $(id).addEventListener("change", previewDocumentStyle);
+}
+$("style-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("style-options").addEventListener("click", openStyleDialog);
+$("style-choice").addEventListener("change", chooseDocumentStyle);
+$("style-form").addEventListener("submit", (event) => { event.preventDefault(); commitDocumentStyle("apply"); });
+$("style-update").addEventListener("click", () => commitDocumentStyle("update"));
+$("style-remove").addEventListener("click", () => commitDocumentStyle("remove"));
+["style-close", "style-cancel"].forEach((id) => $(id).addEventListener("click", () => closeStyleDialog(true)));
+$("style-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeStyleDialog(true); });
+$("style-dialog").addEventListener("close", () => { if (!$("style-dialog").open && state.styleAction) closeStyleDialog(); });
 $("character-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("character-format").addEventListener("click", openCharacterDialog);
 $("format-transfer").addEventListener("change", (event) => {

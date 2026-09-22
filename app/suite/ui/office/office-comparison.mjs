@@ -1,6 +1,7 @@
 // Native, already validated document JSON only. No DOM, HTML, network or storage.
 import { officeParagraphDescription } from "./office-paragraph.mjs";
 import { officeCharacterDescription } from "./office-character.mjs";
+import { officeStyleComparisonDocument, officeStyleDescription } from "./office-styles.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -67,8 +68,12 @@ function uniqueAnchors(left, right, leftStart, leftEnd, rightStart, rightEnd) {
 }
 
 export function compareOfficeDocuments(leftDoc, rightDoc) {
-  const before = leftDoc.content || [];
-  const after = rightDoc.content || [];
+  const blocks = (document) => {
+    const expanded = officeStyleComparisonDocument(document);
+    return [...(expanded.content || []), ...(expanded.attrs?.styles?.length ? [{ type: "styleCatalog", styles: expanded.attrs.styles }] : [])];
+  };
+  const before = blocks(leftDoc);
+  const after = blocks(rightDoc);
   const identities = new Map();
   const identity = (block) => {
     const key = canonical(block);
@@ -175,17 +180,18 @@ function markedText(node) {
 function blockText(block, nested = false) {
   const children = block.content || [];
   switch (block.type) {
+    case "styleCatalog": return block.styles.map(officeStyleDescription).join("\n");
     case "text": return markedText(block);
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
-      const formatting = nested ? officeParagraphDescription(block.attrs) : [];
+      const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];
       return formatting.length ? `⟦${formatting.join(" · ")}⟧ ${text}` : text;
     }
     case "heading": {
       const text = children.map((child) => blockText(child)).join("") || "(Leere Überschrift)";
-      const formatting = nested ? officeParagraphDescription(block.attrs) : [];
+      const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];
       const detail = formatting.length ? ` · ${formatting.join(" · ")}` : "";
       return nested ? `Überschrift ${block.attrs.level}${detail}: ${text}` : text;
     }
@@ -213,10 +219,10 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = nodeLabels[block.type];
+  let label = block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
-    const formatting = officeParagraphDescription(block.attrs);
+    const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);
     if (formatting.length) label += ` · ${formatting.join(" · ")}`;
   }
   if (block.type === "orderedList") label += ` · Beginn ${(block.attrs?.start ?? 1)}`;

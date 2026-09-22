@@ -10,6 +10,7 @@ from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_character import seed_synthetic_office_characters
+from work_e2e_styles import seed_synthetic_office_styles
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
@@ -85,6 +86,7 @@ def main() -> int:
     character_document_count, character_version_count = seed_synthetic_office_characters(
         environment=os.environ, client=client
     )
+    style_document_count, style_version_count = seed_synthetic_office_styles(environment=os.environ, client=client)
 
     print(
         json.dumps(
@@ -96,10 +98,12 @@ def main() -> int:
                 "synthetic_office_document_count": office_document_count
                 + history_document_count
                 + paragraph_document_count
-                + character_document_count,
+                + character_document_count
+                + style_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
+                "synthetic_office_style_version_count": style_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

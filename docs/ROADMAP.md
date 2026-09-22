@@ -1669,7 +1669,11 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      264 Browser-/Modellfaelle auf fb8dbd3 gruen. Responsive Ansichten visuell geprueft; Betriebsnachweise und
      geschlossene Gates stehen in docs/CURRENT_HANDOFF.md.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 266 abgeschlossen.
+267. [ ] Dokumenteigene Formatvorlagen mit wiederverwendbaren Definitionen, gemeinsamer Aktualisierung,
+     kontextbezogener Bedienung und Vorschau. Direkte Formate, Undo, Historie, Vergleich, Druck und Wiederherstellung
+     erhalten. ADR-0090; Umsetzung und Abnahme laufen. Bilder-/Objektkonzept separat dokumentiert.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 266 abgeschlossen, 267 in Arbeit.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

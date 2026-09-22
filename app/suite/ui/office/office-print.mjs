@@ -1,7 +1,7 @@
 // Render validated native content as inert, semantic DOM. No HTML parsing,
 // editor decorations, browser grants, or remote attributes enter the print surface.
-import { officeParagraphDOMAttributes } from "./office-paragraph.mjs";
 import { officeCharacterDOMAttributes } from "./office-character.mjs";
+import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -14,6 +14,7 @@ export function renderOfficePrintDocument(content, title, dom = document) {
     throw new Error("Invalid print document");
   }
   let count = 0;
+  const styles = officeStyles(content.attrs?.styles || []);
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
     if (value.type === "text") {
@@ -62,7 +63,7 @@ export function renderOfficePrintDocument(content, title, dom = document) {
     else throw new Error("Unsupported print node");
     const element = dom.createElement(tag);
     if (["paragraph", "heading"].includes(value.type)) {
-      for (const [name, attribute] of Object.entries(officeParagraphDOMAttributes(value.attrs))) {
+      for (const [name, attribute] of Object.entries(officeStyledDOMAttributes(value.attrs, styles))) {
         element.setAttribute(name, attribute);
       }
     }

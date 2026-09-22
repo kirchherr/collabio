@@ -54,6 +54,7 @@ from suite.storage.source_objects import (
     build_source_object_write_receipt_hash,
     source_object_content_bytes,
 )
+from work_e2e_styles import STYLE_RECOVERY_TITLE, style_recovery_document
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 
@@ -79,6 +80,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_restore",
         "collabio_work_e2e_262_restore",
         "collabio_work_e2e_263_restore",
+        "collabio_work_e2e_267_restore",
     }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
@@ -551,6 +553,48 @@ def verify_restored_character_versions(
     }
 
 
+def verify_restored_style_versions(
+    *,
+    documents: OfficeDocumentService,
+    readers: Mapping[str, UserContext],
+    versions: list[Any],
+) -> dict[str, Any]:
+    """Bind the designated legacy and two formatted sources to their exact versions."""
+    evidence: list[dict[str, str]] = []
+    object_id: str | None = None
+    previous: str | None = None
+    for number in range(1, 3 + 1):
+        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-style-recovery-{number}"]
+        if len(candidates) != 1:
+            raise ValueError("Office recovery style fixtures are missing or ambiguous")
+        version = candidates[0]
+        object_id = object_id or version["object_id"]
+        if version["object_id"] != object_id or version["previous_version_id"] != previous:
+            raise ValueError("Office recovery style fixture lineage is invalid")
+        expected = style_recovery_document(number)
+        read = documents.read_content(
+            user_context=readers[object_id], object_id=object_id, version_id=version["version_id"]
+        )
+        if (
+            read.content != expected
+            or read.version.title != STYLE_RECOVERY_TITLE
+            or read.version.content_hash != stable_hash(canonical_json(expected))
+            or read.version.content_hash != version["content_hash"]
+            or read.can_write
+        ):
+            raise ValueError("Office recovery style content or canonical hash is invalid")
+        evidence.append(
+            {"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash}
+        )
+        previous = read.version.version_id
+    return {
+        "style_formatting_evidence_hash": stable_hash(canonical_json(evidence)),
+        "verified_style_fixture_version_count": len(evidence),
+        "verified_style_formatted_version_count": 3 - 1,
+        "legacy_style_canonical_hash_verified": True,
+    }
+
+
 def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     require_office_recovery_environment(env)
     postgres = run_postgres_restore_drill_from_environment(env)
@@ -676,6 +720,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         readers=readers,
         versions=inventory["document_versions"],
     )
+    style_evidence = verify_restored_style_versions(documents=restored, readers=readers, versions=inventory["document_versions"])
     character_evidence = verify_restored_character_versions(
         documents=restored,
         readers=readers,
@@ -738,6 +783,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         **suggestion_evidence,
         **paragraph_evidence,
         **character_evidence,
+        **style_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,
         "foreign_tenant_denied": True,

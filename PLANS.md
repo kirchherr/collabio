@@ -183,6 +183,11 @@ read/history/context boundaries and confirmed immutable saves. All twelve focuse
 264-case browser/model matrix passed on fb8dbd3. Responsive visual review passed; see ADR-0089 and
 docs/CURRENT_HANDOFF.md for API rollout and closed gates.
 
+128. [ ] Add document-owned named paragraph styles with reusable definitions, shared updates, fixed presentation
+values, contextual controls and preview. Preserve direct overrides, immutable versions, comparison/print/reuse,
+selection-bound undo and authorization gates; require fresh nonempty recovery. ADR-0090. Acceptance pending.
+Image/object follow-up design is in docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md; implementation remains separate.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

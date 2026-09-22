@@ -81,3 +81,7 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="purple"]{color:#7e22ce;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 /* Mobile review drawers have their own close action and need room beyond the toolbar. */
 @media(max-width:760px){.document-inspector.comments-active,.document-inspector.suggestions-active{position:fixed;top:56px;bottom:34px}}
+/* One contextual entry owns all document-style creation, preview and update controls. */
+.format-toolbar .style-toggle{display:block;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-dark);background:var(--accent-soft)}
+.style-dialog{width:min(680px,calc(100vw - 32px))}.style-dialog .paragraph-fields{gap:10px;margin:10px 0}.style-dialog .paragraph-fields input{width:100%;min-width:0;min-height:40px;border:1px solid #bcd0c9;border-radius:5px;padding:8px;font:12px "Segoe UI",Arial,sans-serif}.style-dialog footer .button{white-space:normal}.style-preview.document-page{min-height:0;max-height:140px;overflow:auto;padding:12px 18px;margin:14px 0;box-shadow:none}.style-preview .tiptap{min-height:0;font-size:16px}.style-preview .tiptap p{margin:0}.style-dialog .paragraph-help{margin:8px 0}
+@media(max-width:760px){.style-dialog .style-identity{grid-template-columns:minmax(0,1fr)}.style-dialog header{padding:16px 20px}.style-dialog .dialog-body{padding-bottom:10px}.style-dialog .paragraph-fields label{font-size:11px}.style-dialog .paragraph-fields select{min-height:36px;padding:6px}}
