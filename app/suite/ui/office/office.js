@@ -726,7 +726,8 @@ function updateFormatTransfer() {
   }
   menu.querySelector('[value="clear"]').disabled = !state.formatSample;
   menu.querySelector('[value=""]').textContent = state.formatSample ? "Format bereit …" : "Format übertragen …";
-  $("format-sample").textContent = state.formatSample?.description || "Noch kein Format aufgenommen.";
+  const description = state.formatSample?.description || "Noch kein Format aufgenommen.";
+  if ($("format-sample").textContent !== description) $("format-sample").textContent = description;
 }
 
 function copyFormat() {
@@ -776,6 +777,7 @@ function applyTransferredFormat(scope) {
         for (const mark of next) transaction.addMark(from, to, mark);
       }
     }
+    if (scope === "paragraphs" && transaction.docChanged && editor.state.storedMarks) transaction.setStoredMarks(editor.state.storedMarks);
     validateEditorDocument(transaction.doc);
   } catch {
     notice("Die Formatübertragung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.", true);
@@ -1239,6 +1241,7 @@ function clearWorkspace() {
   state.session = null;
   state.editor?.destroy();
   state.editor = null;
+  updateFormatTransfer();
   resetSearch();
   $("office-editor").replaceChildren();
   $("document-title").value = "";

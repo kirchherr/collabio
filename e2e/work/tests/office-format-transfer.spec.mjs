@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { BASE_URL, BLOCKED_BASE_URL, monitorPage } from "./support.mjs";
 import { OFFICE_PATH, OFFICE_READER_ID, officeContent, officeEditor, officeVersions, openOffice, openOfficeDocument, saveOffice, setOfficeAcl } from "./office-support.mjs";
 import { paragraph, paragraphWrites, selectParagraphBlocks, expectParagraphStyle } from "./paragraph-helper.mjs";
-import { selectCharacters } from "./character-helper.mjs";
+import { selectCharacters, applyCharacters } from "./character-helper.mjs";
 import { SAMPLE_MARKS, SAMPLE_PARAGRAPH, captureSample, transfer, transferFixture } from "./format-transfer-helper.mjs";
 
 test("Office transfers characters and paragraph presentation together with exact undo and immutable saved versions", async ({ page }) => {
@@ -110,6 +110,25 @@ test("Office format transfer targets only selected cells and excludes code", asy
   const next = await saveOffice(page, { objectId: first.document.object_id });
   expect(next.content.content[6]).toEqual(first.content.content[6]);
   expect(next.content.content[5].content[0].content[1]).toEqual(first.content.content[5].content[0].content[1]);
+});
+
+test("Office paragraph-only transfer preserves pending character choices at the caret", async ({ page }) => {
+  await transferFixture(page);
+  await captureSample(page);
+  await selectCharacters(page, 8, 29);
+  await applyCharacters(page, { size: 18, color: "green" });
+  await transfer(page, "paragraphs");
+  await page.keyboard.type(" pending");
+  const last = officeEditor(page).locator("p").last();
+  await expect(last.locator("span")).toHaveText(" pending");
+  await expect(last.locator("span")).toHaveAttribute("data-office-font-size", "18");
+  await expect(last.locator("span")).toHaveAttribute("data-office-text-color", "green");
+  await expectParagraphStyle(last, SAMPLE_PARAGRAPH);
+  await officeEditor(page).press("Control+z");
+  await expect(last.locator("span")).toHaveCount(0);
+  await expectParagraphStyle(last, SAMPLE_PARAGRAPH);
+  await officeEditor(page).press("Control+z");
+  await expect(page.locator("#document-save")).toBeDisabled();
 });
 
 test("Office format samples reset on document reload and context change and stay unavailable to readers", async ({ page, context }) => {
