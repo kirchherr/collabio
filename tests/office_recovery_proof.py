@@ -663,7 +663,9 @@ def verify_restored_page_settings_versions(
     object_id: str | None = None
     previous: str | None = None
     for number in range(1, 4 + 1):
-        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-page-settings-recovery-{number}"]
+        candidates = [
+            row for row in versions if row["mutation_reference"] == f"work-e2e-page-settings-recovery-{number}"
+        ]
         if len(candidates) != 1:
             raise ValueError("Office recovery page_settings fixtures are missing or ambiguous")
         version = candidates[0]
@@ -840,7 +842,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         ("_269_restore", "_270_restore", "_271_restore", "_272_restore")
     ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
-    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(("_270_restore", "_271_restore", "_272_restore")):
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
+        ("_270_restore", "_271_restore", "_272_restore")
+    ):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
@@ -867,7 +871,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     page_settings_evidence = (
         verify_restored_page_settings_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
-        ) if target_dsn.endswith("_272_restore") else {}
+        )
+        if target_dsn.endswith("_272_restore")
+        else {}
     )
     review_evidence = verify_restored_reviews(
         documents=restored,

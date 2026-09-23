@@ -21,12 +21,15 @@ def page_settings_recovery_document(number: int) -> dict[str, Any]:
         raise ValueError("Synthetic page settings version is outside the fixture")
     document = page_break_recovery_document(2)
     if number in (2, 3):
-        document["attrs"] = {"page": {
-            "paper": "letter" if number == 2 else "a4",
-            "orientation": "landscape" if number == 2 else "portrait",
-            "margins": {"top": 12, "right": 25, "bottom": 30, "left": 40} if number == 2 else
-                       {"top": 5, "right": 50, "bottom": 50, "left": 5},
-        }}
+        document["attrs"] = {
+            "page": {
+                "paper": "letter" if number == 2 else "a4",
+                "orientation": "landscape" if number == 2 else "portrait",
+                "margins": {"top": 12, "right": 25, "bottom": 30, "left": 40}
+                if number == 2
+                else {"top": 5, "right": 50, "bottom": 50, "left": 5},
+            }
+        }
     return document
 
 

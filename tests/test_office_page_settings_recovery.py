@@ -78,7 +78,9 @@ def test_recovery_binds_designated_legacy_and_formatted_sources_without_body_evi
         versions[1]["previous_version_id"] = None
     if tamper is not None:
         with pytest.raises(ValueError):
-            verify_restored_page_settings_versions(documents=fixture.service, readers={object_id: user}, versions=versions)
+            verify_restored_page_settings_versions(
+                documents=fixture.service, readers={object_id: user}, versions=versions
+            )
     else:
         report = verify_restored_page_settings_versions(
             documents=fixture.service, readers={object_id: user}, versions=versions
