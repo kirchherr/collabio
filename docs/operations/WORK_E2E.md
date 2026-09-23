@@ -670,3 +670,38 @@ sha256:81eec6eb1cf69a55ba420575ae212fef984b8a28a3ccef8662d8f393c8fb417a. Fresh r
 required sequence. Recovery hash sha256:09b91cc7a6f32168fe136956fdf46ba124cb04804f65ad63d0efb49d165360ce. Both release
 gates, API-only rollout and live/exact cleanup passed. Final 2026-09-23 09:30:13 UTC: health ok, Collabio running(4),
 ordinary gates closed. Full evidence and earlier focused diagnostics are in CURRENT_HANDOFF.md and the operations log.
+
+## Roadmap 271 explicit native page breaks
+
+Two model cases and five desktop/mobile browser workflows extend the matrix to 325 cases:
+269 browser and 56 model cases. They cover formatted paragraph/heading splitting, isolated
+undo, menu and keyboard removal, exact history/copy, read-only controls, rejected nested
+contexts and text selections, the 100-marker bound and insertion after selected images.
+Search and comparison model tests pin exact positions; Python tests also pin review and
+suggestion offsets after a marker. Synthetic range setup waits for browser focus restoration.
+Explicit keyboard commands must run before Android Chromium's native Enter behavior.
+
+Capture actual A4 and Letter PDFs from the authenticated product print root on both
+viewports. A4 fixtures have three pages; Letter includes coalesced leading markers and
+therefore has a title page plus three content pages. Verify exact sentinel-to-page bindings,
+wrapped image/caption containment, heading/table placement, no extra page from repeated or
+trailing markers, margins, image pixels and Figure/Alt semantics. The one-cell table fixture
+proves content placement; Chromium emits no Table tag for it, so it does not prove table
+tagging. Existing rich-table PDF structure cases retain their own assertions. Render and inspect
+all fourteen pages and responsive editor screenshots. Keep PDF hashes in the QA report.
+
+Fresh nonempty recovery uses its own 271 target/dump/receipt and verifies all versions,
+including the designated legacy/two-boundary/reset fixture's exact JSON/hash/predecessor
+chain. Preserve all seven older targets and the previous image/crop/wrap proofs. Main
+backup/isolated restore and both release gates precede API-only rollout; the regular decoder
+and main schema stay unchanged. Exact counts, hashes, acceptance and host state belong in
+CURRENT_HANDOFF.md and the append-only operations log.
+
+Final page-break recheck on 31aa72a passed all 12 cases in 79.960380s, with zero skipped,
+unexpected or flaky. The second complete matrix on b6809f3 passed 324/325 in 1340.967017s,
+including every previous 313 case. Its one Letter PDF instrumentation failure is covered by
+that corrected recheck. Report identities and unchanged runtime sources were cross-checked:
+325 distinct passing cases (269 browser + 56 model), not one all-green full run. Both failed
+full reports remain retained. Targeted report sha256:
+f30d36912d6ed2abe729282da6b6bcfad169d1baadffcf34ce68385b62ee45d3;
+combined acceptance metadata sha256:2ecff5d4fc23088bebe8cc02ecd7e9ca36c92bb57458913596d3bdaea45458fc.

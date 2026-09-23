@@ -2,11 +2,104 @@
 
 Updated: 2026-09-23
 
+Roadmap 271 / PLANS 132 is complete: explicit native page breaks with safe insertion/removal, undo, immutable
+history/copies and actual PDF boundaries. Full quality passed; all 325 distinct browser/model cases are covered by
+a 324/325 full run plus the corrected 12/12 subset, not one all-green full run. Four PDFs/14 pages, fresh nonempty
+recovery and both release gates passed before API-only rollout. Final health at 11:20:24 UTC is ok, Collabio running(4).
+Office remains ahead of CRM; next is Roadmap 272 / PLANS 133 document-owned page settings. Ordinary tenant/pilot/
+indexing/engine admission remains closed.
+
+## Roadmap 271 validation evidence
+
+ADR-0094 implements explicit native page breaks: visible root-only markers, menu/Mod+Enter insertion,
+keyboard/menu removal and isolated undo. Splitting preserves paragraph/heading attributes and inline marks;
+selected images/tables/rules remain intact. Nested contexts, text ranges and more than 100 markers are rejected.
+Legacy canonical bytes remain unchanged. History, comparison, owned copies, reviews and suggestions retain
+exact positions. Print clears preceding image floats; repeated and trailing markers add no empty pages,
+while leading markers separate the printed title from body content. Continuous pagination remains separate.
+
+Final implementation/test source: 31aa72a2682f9d115143cae92eb41bed78e1839e. Product sources have not changed
+since 87de370. Full Python quality passed on b6809f3: Ruff, 769-file formatting, Mypy 578 sources and full Pytest,
+with only the known Starlette/AnyIO warning. Quality log sha256:
+47ad5bf3f5519e1206c15025bb1c32c5ff1d51302d79b205517228dad6f37967.
+
+Passing evidence covers all 325 distinct cases (269 browser + 56 model), not one all-green full run:
+
+- First full attempt on 87de370 passed 324/325; a crop-dialog helper did not wait for authenticated image
+  readiness and unconditionally toggled its details. All four affected crop cases passed after the test-only fix.
+  Retained report sha256:068c36d24ed152de7dc8f60f22c2176ce6d4d1c4c3d0649af875d059a550eef6.
+- Second full attempt on b6809f3 passed 324/325 in 1340.967017s, including all prior 313 cases. The desktop
+  Letter PDF case timed out before printing; its final image request was pending in the trace and absent from
+  server logs. The test now observes actual document/image responses without request routing, retaining the
+  geometry/content assertions. Report sha256:039f78ee0bb3a8add557a0a7b329aa3f752a85dd04fe51ce13af8b951c027d18.
+- Final complete page-break subset on 31aa72a passed 12/12 in 79.960380s, zero skipped/unexpected/flaky.
+  Report sha256:f30d36912d6ed2abe729282da6b6bcfad169d1baadffcf34ce68385b62ee45d3.
+  Exact case identities and unchanged runtime sources were cross-checked; combined metadata sha256:
+  2ecff5d4fc23088bebe8cc02ecd7e9ca36c92bb57458913596d3bdaea45458fc. Both original failed traces are retained.
+
+Root reviewed final desktop/mobile editor screenshots and all 14 pages from four fresh actual PDFs:
+each A4 file has three pages; each Letter file has a title page plus three content pages. Exact text boundaries,
+wrapped image/caption containment, table/heading placement, margins and Figure/Alt tags passed. The one-cell
+table fixture has no PDF Table tag; it proves placement, not table tagging. The initial ad-hoc QA assumption
+was corrected and this limitation is explicit in the report; existing rich-table structure tests remain intact.
+No independent-agent or non-Chromium proof is claimed. PDF-QA JSON sha256:
+5eb7e2d04686a02a7dd95f371c69df9d01747fee2a983acf4505d020cf0d04a9.
+
+| Actual PDF | SHA-256 |
+| --- | --- |
+| A4 desktop | 142d9c8ba826d000d5900ba039267b0aa4350628ea73fee8eae3793af21146ec |
+| A4 mobile | 7051b6b705e2697953b25034ade64f207d7cc6875cf7c857e71f75adac76a507 |
+| Letter desktop | bc64866f54c6ad5ddb8ee7ba3f7cdf29946a8731679bc30176e916de9d1b59f6 |
+| Letter mobile | c9e11cd41c553209e1b1311a87d9eb21ef35f916b3ebcc94cf85d1431cf25055 |
+
+Fresh nonempty recovery completed at 2026-09-23 11:15:27 UTC into the separate
+`collabio_work_e2e_271_restore`: 451 documents, 896 Office versions, 119 multiversion documents, 991 sources,
+40 image assets and 58 saved image references (36 cropped, 32 wrapped). Exact legacy/insert/remove page-break
+versions, canonical legacy hash, wrap/reset and crop/reset, paragraph/character/style, 10 review threads/18 events,
+11 suggestions/7 decisions, source bytes/receipts, read-only access and foreign-tenant denial passed.
+All eight synthetic restore targets and their dumps/receipts remain retained.
+
+- Recovery JSON: sha256:46851e4c76352ef7a135f72e084f66307bd1994bcaa1eab54d70c71b37fcebf8.
+- Embedded recovery hash: sha256:b0eccfa29f7cc10d0229c298cf39a3b710f1267902a9fc1d3a44018a7fde8e0c.
+- Checked dump: sha256:7a723f89fcab251cbe03cadac60cbc69561b321f59f13505f1fb7b4298c62c31.
+- Exact three-version page-break evidence: sha256:1e66193f9ea6b91b77e7f75442386a35ea33055b7335b5c357d404ac0097e69e.
+
+All builds/tests/restore operations used dev001, explicit `collabio`, fresh project/container/port inventories and
+build.lock before docker.lock. No source sync ran during acceptance/recovery. Synthetic page-break content was
+absent from normal and both E2E API logs at 11:12:14 UTC.
+
+Fresh main backup `collabio-20260923T111656Z.dump` was verified before refreshing only the ordinary isolated restore
+target. Main schema remains 85 migrations/95 tables; foundation verified three restored sources/two tenants with
+seed explicitly 0. Both release gates passed without blockers or business writes:
+
+- Main backup: sha256:22eb9d8b213ab00dc987dd9d3351b20e14027761c5264b6aea56bef0cdb777ee.
+- Ordinary isolated restore: sha256:bbe05c1b1508d7cd11c09bea1861dfe2cd115f5fff53075a2c416ec493e24ddd.
+- Foundation gate, 11:17:09 UTC: sha256:797de1c213712823ae4a2b76db0604d503c40dd71efe6536ba46f870f42b8916.
+- Business gate, 11:17:58 UTC: sha256:f4dceefe67d9d6692dd079633003daf8e7b9f15641dab8b12683495b8382a3e0.
+
+API-only `--no-deps` rollout with pilot explicitly 0 reached health ok at 11:19:14 UTC. API `fd3fae191cf9` runs
+image `sha256:ee33ffeb954adb775b76f5eb71f5a43794648250b094c8de3dedebabc345d52f`. Regular decoder
+`30766f16f16a` and its image remain unchanged: network none, user 10001:10001, read-only root, ALL capabilities
+dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only the shared socket volume. Live checks at 11:20:12
+verified 15 OpenAPI operation definitions, served prior/new controls, assets/licenses, Work link, no-store and CSP.
+Office remains unprovisioned with non-cacheable 404/features closed; KB write is false and pilot is 0. Definition
+checks do not execute the 15 business operations. Live JSON sha256:
+ad969af5bb3c03a9c0356f32a8920e76d68faeb12dd4c90ab16add3109ecd957.
+
+Exact eight E2E services including their decoder were removed; test and both restore services were stopped.
+Final health at 11:20:24 UTC is ok, Collabio running(4), loopback 8000/5433/29000/29001 unchanged. Main PostgreSQL
+`87a6b37942c8`, MinIO `98ce365f455b`, Webcut running(7), provider nodes/26443 remain unchanged; Tricert is absent.
+Cleanup log sha256:4b3000810261e343b8f7a6945e69ffa63487ef56ea4c6432519622f97d522fd4. No main migration,
+ordinary content write or tenant/pilot/indexing/cloud/DOCX activation occurred. All raw evidence is retained under
+ignored `e2e/work/artifacts/roadmap-271` and the dev001 operation logs; production continuity admission is separate.
+
+## Prior completed development slices
+
 Roadmap 270 / PLANS 131 completes native image text wrapping under ADR-0093: left/right placement, bounded text gap,
 stable ordered anchors, narrow-column/nested block fallback and guarded preview/reset/undo. Full quality and one
 complete 313-case browser/model run passed on 1d8a58f. Actual PDF/visual checks, fresh nonempty left/right/reset
 recovery and both release gates passed before API-only rollout. Final health at 09:30:13 UTC is ok; Collabio runs
-four regular services. Office remains ahead of CRM; next is Roadmap 271 / PLANS 132 explicit native page breaks.
+four regular services. Its then-next Roadmap 271 / PLANS 132 explicit native page breaks is recorded above.
 Ordinary tenant/pilot/indexing/engine admission stays closed. Detailed evidence is recorded below.
 
 Roadmap 270 closeout 97b777e was published and synchronized. All eleven documentation/module/roadmap checks passed
@@ -1662,13 +1755,14 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 270 is complete. Preserve the single complete 313-case acceptance (259 Work/KB/CRM/Office browser cases and
-54 model cases), full quality and exact document/image/crop/wrap-reset recovery. Continue with Roadmap 271 / PLANS 132
-explicit native page breaks: visible editor markers, keyboard insertion/removal and isolated undo. Decide top-level
-placement and interaction with images/headings/tables before implementation. Preserve exact break positions in
-history, comparison, owned copies and actual PDFs, unchanged legacy bytes and fresh nonempty recovery. Continuous
-paginated editing and section layouts remain separate. Preserve bounded image wrapping, crop/source pixels and
-responsive block fallback. Arbitrary page-positioned objects and other object types remain separate. See ADR-0091/0092/0093 and
+Item 271 is complete. Preserve the combined 325-distinct-case acceptance (269 Work/KB/CRM/Office browser cases and
+56 model cases; full 324/325 plus targeted 12/12, not a single all-green full run), full quality and exact
+document/image/crop/wrap-reset/page-break recovery. Continue with Roadmap 272 / PLANS 133 document-owned page settings:
+A4/Letter, portrait/landscape and bounded margins, accessible preview and isolated undo. Define optional canonical
+metadata and unchanged legacy defaults before implementation. Preserve explicit page breaks, image flow, tables,
+history, copies, exact PDF geometry and fresh nonempty recovery. Section layouts, headers/footers and continuous
+pagination remain separate. Preserve crop/source pixels and responsive block fallback. Arbitrary page-positioned
+objects and other object types remain separate. See ADR-0091/0092/0093/0094 and
 docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Image ownership follows current parent ACLs; copies own new
 assets after fresh source authorization. Keep the isolated network-none decoder and historical manifests intact.
 Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.

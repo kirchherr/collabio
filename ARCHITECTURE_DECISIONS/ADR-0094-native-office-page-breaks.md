@@ -1,7 +1,7 @@
 # ADR-0094: Explicit native page breaks
 
 Date: 2026-09-23
-Status: accepted; implementation and remote validation pending
+Status: accepted; implemented, remotely validated and API-only development rollout complete
 
 Represent an explicit page boundary by the inert, attribute-free leaf
 `{"type":"pageBreak"}` at document root depth only, with at most 100 per

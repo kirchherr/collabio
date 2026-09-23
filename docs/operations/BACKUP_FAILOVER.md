@@ -59,6 +59,15 @@ Require consecutive left, right and block-reset versions of the same document-ow
 plus the prior crop/reset, complete document/asset/receipt and authoritative ACL checks. Layout is never reconstructed
 from browser pixels during restore. A pre-wrap reader is incompatible; retain compatible historical reads on rollback.
 
+Roadmap 271 adds the root-only `pageBreak` leaf to the same exact-version JSON domain.
+Use the separate `collabio_work_e2e_271_restore`, checked dump/catalog/receipt and
+`office-native-page-break-recovery-proof.json`; retain all seven earlier synthetic targets.
+Require the designated three-version legacy/insert/remove chain, exact boundary positions,
+canonical hashes and predecessor links, alongside all existing document/image/crop/wrap,
+review, suggestion, receipt and current-ACL checks. An empty fixture or a matching count
+alone is insufficient. Compatible readers are required after rollback. No new SQL migration,
+source domain or production continuity admission is introduced.
+
 This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.

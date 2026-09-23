@@ -66,6 +66,13 @@ This distinction preserves normal image/chart/file usability without granting em
 
 ## Acceptance and sequencing
 
+Roadmap 271 / ADR-0094 adds an explicit top-level page boundary. Insertion after a
+selected image preserves its asset, crop and wrap metadata. Printing contains the
+preceding image and its float before the next page's content. An image immediately
+following a boundary belongs to the following content flow. Markers inside image
+captions, list items, quotes or table cells are not admitted. This does not introduce
+absolute page coordinates, floating object anchors or section layouts.
+
 Roadmap 268 follows named styles as an independent roadmap item. ADR-0091 defines native asset ownership,
 schema/API/version manifest and orphan lifecycle for the complete upload-insert-save-reopen-print loop. Require
 malformed/decompression/size tests, tenant/ACL and revoked-reference tests, immutable version/reuse/undo tests, literal

@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–270 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping
+Status: Roadmap 252–271 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`
 
 ## User workflow and scope
 
@@ -103,7 +103,41 @@ gates, API-only rollout and live/cleanup checks passed. Recovery verified 426 do
 32 image assets, including consecutive left/right/reset versions of the same cropped rendition. Each actual PDF
 has three A4 pages with intact left/right images, complete text and no text/image overlap. Detailed evidence is in
 CURRENT_HANDOFF.md; ordinary tenant/pilot/indexing/engine admission remains closed. Explicit native page breaks are
-proposed next as Roadmap 271 / PLANS 132.
+completed below as Roadmap 271 / PLANS 132.
+
+## Explicit native page breaks (Roadmap 271)
+
+**Einfügen → Seitenumbruch** and **Ctrl/Mod+Enter** insert a visible, selectable boundary.
+At a caret in a top-level paragraph or heading, insertion splits the text and preserves
+both fragments' paragraph attributes and inline marks. A selected root image, rule or
+table remains intact; insertion occurs after it. Text ranges and insertion inside lists,
+quotes, code or table cells are rejected. Removing a selected marker through the menu
+or Delete/Backspace, or deleting it from the adjacent text boundary, preserves surrounding
+blocks. Insertion and removal each form an isolated undo step. Current read-only,
+historical, pending-save and document-size guards apply on every action.
+
+The native leaf is exactly `{"type":"pageBreak"}`, only at document root depth, with
+at most 100 per document. Attributes, marks, content and unknown fields are rejected.
+Legacy documents retain their canonical bytes. Search, review anchors and text suggestions
+count the leaf as one native position; comparison identifies its exact ordered boundary.
+History and independently owned copies preserve the leaf without rewriting neighboring blocks.
+
+The print renderer contains preceding image floats before starting the following content
+on a new physical page. Markers are visible in screen preview; their labels and borders are
+absent from printed output. Repeated markers at one boundary coalesce. A trailing marker
+alone adds no final blank page; leading markers separate the printed title from body content.
+This does not add blank-page commands, section layouts or a continuously paginated editor.
+Paper/orientation settings remain print-session choices. DOCX remains a separate lane.
+
+Decision: [ADR-0094](../../ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md).
+The designated recovery fixture has three consecutive versions: legacy, two explicit
+boundaries, and exact reset. Fresh isolated PostgreSQL/S3 verification checks every source,
+receipt, immutable version, current ACL and the fixture's exact canonical bytes/lineage.
+Implementation acceptance and runtime evidence are recorded in CURRENT_HANDOFF.md.
+Full quality passed; all 325 distinct cases are covered by a 324/325 full run and a corrected
+12/12 subset, not a single all-green full run. Four actual PDFs/14 pages, fresh nonempty
+451-document/896-version recovery, both release gates, API-only rollout and live checks passed.
+Next is Roadmap 272 / PLANS 133 document-owned page settings, ahead of CRM.
 
 ## Document-owned format styles (Roadmap 267)
 

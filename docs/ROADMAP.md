@@ -1692,13 +1692,19 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      313-Faelle-Lauf auf 1d8a58f; frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
      Nachweise in CURRENT_HANDOFF.md. Beliebige Seitenpositionen und weitere Objekttypen bleiben separat.
 
-271. [ ] Explizite native Seitenumbrueche ergaenzen: sichtbare Markierung im Editor, tastaturbedienbares Einfuegen
-     und Entfernen sowie isoliertes Undo. Platzierung auf Dokumentebene und Zusammenspiel mit Bildern, Ueberschriften
-     und Tabellen vor Implementierung festlegen. Exakte Positionen in Historie, Vergleich, Kopien und echten PDFs
-     erhalten; unveraenderte Altformate und frischen nichtleeren Restore nachweisen. Durchgaengig paginierter Editor,
-     Abschnittslayout und DOCX-Interchange bleiben separate Arbeit.
+271. [x] Explizite native Seitenumbrueche unter ADR-0094 umgesetzt: sichtbare Markierung auf Dokumentebene,
+     Einfuegen/Entfernen per Menue und Tastatur sowie isoliertes Undo. Formatierung, Bilder, Tabellen, Historie,
+     Vergleich, Kopien und Altformat-Bytes bleiben erhalten. Volle Qualitaet bestanden; 325 unterschiedliche Faelle
+     durch den Gesamtlauf mit 324/325 und die korrigierte Nachpruefung mit 12/12 abgedeckt, kein einzelner komplett
+     gruener Gesamtlauf. Vier echte PDFs/14 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout
+     bestanden; Nachweise in CURRENT_HANDOFF.md. Durchgaengige Pagination, Abschnittslayout und DOCX bleiben separat.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 270 abgeschlossen, 271 als naechster Schritt geplant.
+272. [ ] Dokumenteigene Seiteneinstellungen ergaenzen: A4/Letter, Hoch-/Querformat und begrenzte Seitenraender
+     mit bedienbarer Vorschau und isoliertem Undo. Optionale Metadaten und unveraenderte Altformat-Defaults vor
+     Implementierung festlegen. Seitenumbrueche, Bilder, Tabellen, Historie, Kopien und echte PDF-Geometrie erhalten;
+     frischen nichtleeren Restore nachweisen. Abschnittslayout, Kopf-/Fusszeilen und durchgaengige Pagination bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 271 abgeschlossen, 272 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
