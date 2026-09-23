@@ -9,6 +9,13 @@ recovery and both release gates passed before API-only rollout. Final health at 
 Office remains ahead of CRM; next is Roadmap 272 / PLANS 133 document-owned page settings. Ordinary tenant/pilot/
 indexing/engine admission remains closed.
 
+Roadmap 271 closeout 1e19eda was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 60.08s, with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 11:23:37 UTC. Log sha256:
+b3c40ea2e86e4df2bc297df18c90d596fad89149a78b9df068e59186c10bf114. Root matched final acceptance, full/targeted
+reports, quality, all four PDFs, recovery, release and live/cleanup evidence locally. The --no-deps disposable check
+started no auxiliary service; Collabio remains running(4), API fd3fae191cf9 and decoder30766f16f16a. Main stores,
+Webcut and provider resources remain unchanged. This final evidence-only record changes no runtime or admission.
+
 ## Roadmap 271 validation evidence
 
 ADR-0094 implements explicit native page breaks: visible root-only markers, menu/Mod+Enter insertion,
