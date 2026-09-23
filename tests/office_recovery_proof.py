@@ -58,6 +58,7 @@ from suite.storage.source_objects import (
 )
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 from work_e2e_page_breaks import PAGE_BREAK_RECOVERY_TITLE, page_break_recovery_document
+from work_e2e_page_settings import PAGE_SETTINGS_RECOVERY_TITLE, page_settings_recovery_document
 from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 from work_e2e_styles import STYLE_RECOVERY_TITLE, style_recovery_document
 
@@ -88,6 +89,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_269_restore",
         "collabio_work_e2e_270_restore",
         "collabio_work_e2e_271_restore",
+        "collabio_work_e2e_272_restore",
     }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
@@ -650,6 +652,48 @@ def verify_restored_page_break_versions(
     }
 
 
+def verify_restored_page_settings_versions(
+    *,
+    documents: OfficeDocumentService,
+    readers: Mapping[str, UserContext],
+    versions: list[Any],
+) -> dict[str, Any]:
+    """Bind the designated legacy, two formatted and reset sources to their exact versions."""
+    evidence: list[dict[str, str]] = []
+    object_id: str | None = None
+    previous: str | None = None
+    for number in range(1, 4 + 1):
+        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-page-settings-recovery-{number}"]
+        if len(candidates) != 1:
+            raise ValueError("Office recovery page_settings fixtures are missing or ambiguous")
+        version = candidates[0]
+        object_id = object_id or version["object_id"]
+        if version["object_id"] != object_id or version["previous_version_id"] != previous:
+            raise ValueError("Office recovery page_settings fixture lineage is invalid")
+        expected = page_settings_recovery_document(number)
+        read = documents.read_content(
+            user_context=readers[object_id], object_id=object_id, version_id=version["version_id"]
+        )
+        if (
+            read.content != expected
+            or read.version.title != PAGE_SETTINGS_RECOVERY_TITLE
+            or read.version.content_hash != stable_hash(canonical_json(expected))
+            or read.version.content_hash != version["content_hash"]
+            or read.can_write
+        ):
+            raise ValueError("Office recovery page_settings content or canonical hash is invalid")
+        evidence.append(
+            {"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash}
+        )
+        previous = read.version.version_id
+    return {
+        "page_settings_formatting_evidence_hash": stable_hash(canonical_json(evidence)),
+        "verified_page_settings_fixture_version_count": len(evidence),
+        "page_settings_and_reset_verified": True,
+        "legacy_page_settings_canonical_hash_verified": True,
+    }
+
+
 def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     require_office_recovery_environment(env)
     postgres = run_postgres_restore_drill_from_environment(env)
@@ -793,10 +837,10 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         bindings=image_bindings,
     )
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
-        ("_269_restore", "_270_restore", "_271_restore")
+        ("_269_restore", "_270_restore", "_271_restore", "_272_restore")
     ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
-    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(("_270_restore", "_271_restore")):
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(("_270_restore", "_271_restore", "_272_restore")):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
@@ -817,8 +861,13 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         verify_restored_page_break_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
-        if target_dsn.endswith("_271_restore")
+        if target_dsn.endswith(("_271_restore", "_272_restore"))
         else {}
+    )
+    page_settings_evidence = (
+        verify_restored_page_settings_versions(
+            documents=restored, readers=readers, versions=inventory["document_versions"]
+        ) if target_dsn.endswith("_272_restore") else {}
     )
     review_evidence = verify_restored_reviews(
         documents=restored,
@@ -879,6 +928,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         **character_evidence,
         **style_evidence,
         **page_break_evidence,
+        **page_settings_evidence,
         **image_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,

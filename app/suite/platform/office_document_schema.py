@@ -59,8 +59,20 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     style_ids: set[str] = set()
     style_names: set[str] = set()
     root_attrs = document.get("attrs", {})
-    if not isinstance(root_attrs, dict) or set(root_attrs) - {"styles"}:
+    if not isinstance(root_attrs, dict) or set(root_attrs) - {"styles", "page"}:
         reject()
+    if "page" in root_attrs:
+        page = root_attrs["page"]
+        if (
+            not isinstance(page, dict)
+            or set(page) != {"paper", "orientation", "margins"}
+            or page["paper"] not in ("a4", "letter")
+            or page["orientation"] not in ("portrait", "landscape")
+            or not isinstance(page["margins"], dict)
+            or set(page["margins"]) != {"top", "right", "bottom", "left"}
+            or any(type(value) is not int or not 5 <= value <= 50 for value in page["margins"].values())
+        ):
+            reject()
     styles = root_attrs.get("styles", [])
     if not isinstance(styles, list) or len(styles) > 20:
         reject()
@@ -164,7 +176,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if attrs.get("colwidth") is not None:
                 reject()
         elif kind == "doc":
-            if depth != 0 or set(attrs) - {"styles"}:
+            if depth != 0 or set(attrs) - {"styles", "page"}:
                 reject()
         elif attrs:
             reject()

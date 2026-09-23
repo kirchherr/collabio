@@ -2,6 +2,7 @@
 import { officeParagraphDescription } from "./office-paragraph.mjs";
 import { officeCharacterDescription } from "./office-character.mjs";
 import { officeStyleComparisonDocument, officeStyleDescription } from "./office-styles.mjs";
+import { officePageSettings, officePageDescription } from "./office-page.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -68,9 +69,11 @@ function uniqueAnchors(left, right, leftStart, leftEnd, rightStart, rightEnd) {
 }
 
 export function compareOfficeDocuments(leftDoc, rightDoc) {
+  const includePage = leftDoc.attrs?.page != null || rightDoc.attrs?.page != null;
   const blocks = (document) => {
     const expanded = officeStyleComparisonDocument(document);
-    return [...(expanded.content || []), ...(expanded.attrs?.styles?.length ? [{ type: "styleCatalog", styles: expanded.attrs.styles }] : [])];
+    return [...(expanded.content || []), ...(expanded.attrs?.styles?.length ? [{ type: "styleCatalog", styles: expanded.attrs.styles }] : []),
+      ...(includePage ? [{ type: "pageSettings", page: officePageSettings(document.attrs?.page) }] : [])];
   };
   const before = blocks(leftDoc);
   const after = blocks(rightDoc);
@@ -181,6 +184,7 @@ function blockText(block, nested = false) {
   const children = block.content || [];
   switch (block.type) {
     case "styleCatalog": return block.styles.map(officeStyleDescription).join("\n");
+    case "pageSettings": return officePageDescription(block.page);
     case "text": return markedText(block);
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
@@ -221,7 +225,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
+  let label = block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

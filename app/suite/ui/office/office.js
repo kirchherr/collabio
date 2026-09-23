@@ -12,6 +12,8 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
+import { officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
+import { installOfficePageControls } from "./office-page-controls.mjs";
 import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
@@ -52,7 +54,7 @@ const OfficeNamedStyles = Extension.create({
   name: "officeNamedStyles",
   addGlobalAttributes() {
     return [
-      { types: ["doc"], attributes: { styles: { default: [], rendered: false } } },
+      { types: ["doc"], attributes: { styles: { default: [], rendered: false }, page: { default: null, rendered: false } } },
       { types: ["paragraph", "heading"], attributes: { styleId: { default: null, keepOnSplit: true,
         parseHTML: () => null,
         renderHTML: (attrs) => attrs.styleId == null ? {} : { "data-office-style-id": attrs.styleId },
@@ -270,6 +272,7 @@ function normalizedDocument(document) {
   if (document?.type !== "doc") throw new Error("document-root");
   const result = walk(document);
   if (styles.length) result.attrs = { styles };
+  if (document.attrs?.page != null) result.attrs = { ...result.attrs, page: officePageSettings(document.attrs.page) };
   return result;
 }
 
@@ -319,6 +322,7 @@ function updateEditorState() {
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
+  pageControls.update();
   imageControls.update();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
@@ -1492,6 +1496,7 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  pageControls.close();
   imageControls.close();
   closeReuse();
   closePrint();
@@ -1576,7 +1581,10 @@ function prepareEditor(content, session) {
     validateEditorDocument(editor.schema.nodeFromJSON(safeContent));
     editor.chain().setMeta("addToHistory", false)
       .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true })
-      .command(({ tr }) => { tr.setDocAttribute("styles", safeContent.attrs?.styles || []); return true; }).run();
+      .command(({ tr }) => {
+        tr.setDocAttribute("styles", safeContent.attrs?.styles || []);
+        tr.setDocAttribute("page", safeContent.attrs?.page ?? null); return true;
+      }).run();
   } catch (error) { editor.destroy(); throw error; }
   return { editor, editorHost };
 }
@@ -1592,6 +1600,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  pageControls.close();
   imageControls.close();
   closeStyleDialog();
   state.formatSample = null;
@@ -1612,6 +1621,7 @@ function clearWorkspace() {
   state.session = null;
   state.editor?.destroy();
   state.editor = null;
+  pageControls.update();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -2432,6 +2442,8 @@ function closePrint(returnFocus = false) {
   $("print-status").textContent = "";
   $("print-paper").value = "a4";
   $("print-orientation").value = "portrait";
+  $("print-page-description").textContent = "";
+  $("print-preview").removeAttribute("style");
   $("print-submit").disabled = true;
   $("print-dialog").close();
   if (returnFocus && print?.session === state.session && !$("document-print").disabled) $("document-print").focus();
@@ -2443,6 +2455,11 @@ function printFormat() {
   return `paper-${paper} orientation-${orientation}`;
 }
 
+function printPage() {
+  return officePageSettings({ paper: $("print-paper").value, orientation: $("print-orientation").value,
+    margins: state.print?.margins || officePageSettings().margins });
+}
+
 function updatePrintControls() {
   const print = state.print;
   const current = printCurrent(print);
@@ -2451,7 +2468,10 @@ function updatePrintControls() {
   $("print-paper").disabled = !current || busy;
   $("print-orientation").disabled = !current || busy;
   $("print-submit").disabled = !current || busy || !print.content;
+  $("print-document-settings").disabled = !current || busy || !print.content;
   $("print-preview").className = printFormat();
+  officePagePreview($("print-preview"), printPage());
+  $("print-page-description").textContent = print.content ? officePageDescription(printPage()) : "";
 }
 
 function setPrintModal(print, modal) {
@@ -2502,6 +2522,12 @@ async function loadPrintContent(print = state.print, finalAction = false) {
     const preview = renderOfficePrintDocument(content, result.version.title, document, images);
     if (!current()) return;
     print.content = content;
+    const savedPage = officePageSettings(content.attrs?.page);
+    print.margins = savedPage.margins;
+    if (!print.settingsInitialized) {
+      $("print-paper").value = savedPage.paper; $("print-orientation").value = savedPage.orientation;
+      print.settingsInitialized = true;
+    }
     $("print-preview").replaceChildren(preview);
     $("print-version").textContent = `${result.version.title} · ${dateLabel(result.version.created_at_utc)} · Version ${print.versionId}`;
     $("print-status").textContent = "Druckansicht bereit. Vor dem Drucken wird diese Fassung erneut geprüft.";
@@ -2513,6 +2539,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       await Promise.all([...root.querySelectorAll("img")].map((image) => image.decode()));
       if (!current()) return;
       root.className = printFormat();
+      configureOfficePrintPage(printPage());
       print.printing = true;
       state.preparedPrint = print;
       document.body.classList.add("office-print-ready");
@@ -3806,6 +3833,12 @@ $("print-dialog").addEventListener("close", () => {
 $("print-refresh").addEventListener("click", () => loadPrintContent());
 $("print-submit").addEventListener("click", () => loadPrintContent(state.print, true));
 ["print-paper", "print-orientation"].forEach((id) => $(id).addEventListener("change", updatePrintControls));
+$("print-document-settings").addEventListener("click", () => {
+  if (!printCurrent(state.print) || state.print.loading || state.print.printing || !state.print.content) return;
+  const page = officePageSettings(state.print.content.attrs?.page);
+  $("print-paper").value = page.paper; $("print-orientation").value = page.orientation;
+  updatePrintControls();
+});
 window.addEventListener("beforeprint", () => {
   if (!state.preparedPrint || !printCurrent(state.preparedPrint) || !state.preparedPrint.printing) clearPreparedPrint();
 });
@@ -4139,6 +4172,8 @@ window.addEventListener("beforeunload", (event) => {
   if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving || hasSuggestionDraft() || state.suggestions?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
 
+const pageControls = installOfficePageControls({ state, allowed: paragraphAllowed, actionCurrent: characterActionCurrent,
+  sessionCurrent, validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
 const imageControls = installOfficeImageControls({ state,
   allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || state.editor.state.selection.node?.type.name === "image"),
   current: characterActionCurrent,
