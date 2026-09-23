@@ -110,6 +110,16 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
         )
     with pytest.raises(OfficeDocumentNotFoundError):
         service.read_content(user_context=user, object_id=object_id)
+    before_denied_copy = counts(database, user)
+    with pytest.raises(OfficeDocumentNotFoundError):
+        service.create(
+            user_context=user,
+            command=OfficeDocumentCreateCommand(**{**command("revoked-copy").model_dump(), "document": document}),
+            write_enabled=True,
+        )
+    assert counts(database, user) == before_denied_copy
+    after_revocation_replay = service.create(user_context=user, command=copy_command, write_enabled=True)
+    assert after_revocation_replay.replayed and after_revocation_replay.content == copied.content
     own_document = repository.get_document(user_context=user, object_id=copied.document.object_id)
     assert read_image(service.source_repository, own_document, copy_attrs)[1] == png
     assert service.read_content(user_context=user, object_id=copied.document.object_id).content == copied.content
@@ -154,6 +164,8 @@ def test_pg_wrong_owner_hash_and_foreign_tenant_images_fail_without_document_wri
         tenant_id=user.tenant_id, object_id=attrs["assetId"], version_id=attrs["versionId"]
     )
     with monkeypatch.context() as patch:
-        patch.setattr(service.source_repository, "get", lambda **kwargs: source.model_copy(update={"content_bytes": b"bad"}))
+        patch.setattr(
+            service.source_repository, "get", lambda **kwargs: source.model_copy(update={"content_bytes": b"bad"})
+        )
         with pytest.raises(OfficeDocumentInvalidContentError):
             read_image(service.source_repository, owner, attrs)
