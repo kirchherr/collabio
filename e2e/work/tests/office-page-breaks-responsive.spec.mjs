@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { BASE_URL, ARTIFACT_DIR } from "./support.mjs";
 import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeContent, OFFICE_HEADERS } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint, pdfPageCount } from "./office-print-support.mjs";
+import { installPrintProbe, pdfPageCount } from "./office-print-support.mjs";
 import { openReuse, submitReuse, expectReuseDraft, openReuseHistory } from "./office-reuse-support.mjs";
 
 const p = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
@@ -110,6 +110,7 @@ test("Office page breaks reject nested contexts text selections and excess marke
 });
 
 for (const paper of ["a4", "letter"]) test(`Office page breaks produce exact ${paper} PDF boundaries around wrapped images headings and tables`, async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
   let saved = await fixture(page, [p("PAGE-ONE-BOUNDARY")]);
   const bytes = Buffer.from(await page.evaluate(() => {
     const canvas = document.createElement("canvas"); canvas.width = 80; canvas.height = 80;
@@ -133,11 +134,28 @@ for (const paper of ["a4", "letter"]) test(`Office page breaks produce exact ${p
   await page.keyboard.press("Control+z"); await expect(markers(page)).toHaveCount(expectedMarkers);
   await expect(page.locator("#document-save")).toBeDisabled();
   const prints = await installPrintProbe(page, { pdfName: `office-page-break-${paper}-${testInfo.project.name}.pdf` });
-  await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
+  const readForPrint = async (button) => {
+    // Observe both real authorized reads without routing/intercepting them. The
+    // final image request must reach the server before PDF generation is tested.
+    const contentRead = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === `/v1/office/documents/${saved.document.object_id}/content` &&
+        url.searchParams.get("version_id") === saved.version.version_id;
+    });
+    const imageRead = page.waitForResponse((response) => new URL(response.url()).pathname ===
+      `/v1/office/documents/${saved.document.object_id}/images/${image.attrs.assetId}/${image.attrs.versionId}`);
+    await page.locator(button).click();
+    for (const response of await Promise.all([contentRead, imageRead])) {
+      expect(response.status()).toBe(200); expect(response.headers()["cache-control"]).toContain("no-store");
+    }
+  };
+  await readForPrint("#document-print");
+  await expect(page.locator("#print-submit")).toBeEnabled();
+  await expect(page.locator("#print-version")).toContainText(saved.version.version_id);
   await page.locator("#print-paper").selectOption(paper);
   await expect(page.locator("#print-preview .office-page-break")).toHaveCount(paper === "a4" ? 4 : 6);
-  await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf?.length || 0).toBeGreaterThan(0);
+  await readForPrint("#print-submit");
+  await expect.poll(() => prints[0]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);
   expect(pdfPageCount(prints[0].pdf, paper === "a4" ? 595 : 612, paper === "a4" ? 842 : 792)).toBe(paper === "a4" ? 3 : 4);
   expect(prints[0].snapshot.text).toContain("PAGE-THREE-END");
 });
