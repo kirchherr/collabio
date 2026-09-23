@@ -9,6 +9,14 @@ fresh nonempty recovery and both release gates passed before API-only rollout. F
 16:29:54 UTC is ok, Collabio running(4). Next: Roadmap 273 / PLANS 134 headers/footers and page numbers.
 Continue Office before CRM. Ordinary tenant/pilot/indexing/cloud/engine admission remains closed.
 
+Roadmap 272 closeout 6fad853 was published and synchronized. All eleven documentation/module/roadmap
+checks passed in 59.25s, with only the known Starlette/AnyIO warning; health remained ok at
+2026-09-23 16:33:53 UTC. Log sha256:8de7507f8e39557ffa658b12aac4dec3e59bf0d7a1ff1b7885c95b37f20e0ffd,
+matched locally with acceptance, PDF, recovery, release and live/cleanup evidence. The --no-deps check
+started no auxiliary service; Collabio remains running(4), API315d76369cae and decoder30766f16f16a.
+Main stores, Webcut and provider resources remain unchanged. This final evidence-only record changes
+no implementation, runtime or ordinary admission boundary.
+
 ## Roadmap 272 validation evidence
 
 Final implementation/test source: 800a3a5a7403993de236a3207f9900ce0fe3094d, under ADR-0095.
