@@ -348,7 +348,8 @@ Full host details and backup/gate hashes are in `docs/CURRENT_HANDOFF.md`. No or
 
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
-and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore` or `collabio_work_e2e_263_restore` target,
+and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `collabio_work_e2e_263_restore`,
+`collabio_work_e2e_267_restore` or `collabio_work_e2e_268_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -408,7 +409,7 @@ After preserving hashes or failure diagnostics, repeat the preflight and remove 
 ```bash
 flock -w 300 /home/extern/.codex-coordination/docker.lock \
   docker compose -p collabio --profile work-e2e rm -f -s \
-  work-e2e work-e2e-api work-e2e-blocked-api work-e2e-seed work-e2e-migrate work-e2e-postgres work-e2e-minio
+  work-e2e work-e2e-api work-e2e-blocked-api work-e2e-image-decoder work-e2e-seed work-e2e-migrate work-e2e-postgres work-e2e-minio
 ```
 
 Never use `docker compose down` on the shared host. Repeat the preflight, verify that regular services and published
@@ -577,4 +578,34 @@ styles, mobile comments and rendered PDF. Fresh recovery verified 392 documents,
 including legacy and both named-style states; recovery reporthashsha256:79d0a9f472f8cdefb7e854c882703126ae8c3f19c1240a1c2913985a72396a59.
 Main backup/isolated restore and both gates passed; API-only rollout, live checks and exact cleanup completed at
 2026-09-22 13:50:27 UTC. Collabio running(3), healthok, ordinary gates closed. See CURRENT_HANDOFF.md and the append-only
-operations log for hashes, preserved unsuccessful runs and exact host scope. Roadmap 268 native images remains planned.
+operations log for hashes, preserved unsuccessful runs and exact host scope. The then-planned Roadmap 268 native images is completed below.
+
+## Roadmap 268 native images
+
+The matrix adds three pure-model cases and seven browser workflows in each of desktop and mobile Chromium (17 new
+cases). It exercises real PNG/JPEG normalization, upload/insert/edit/undo/save/history, independent copied assets,
+current parent ACLs, revocation between document and print-image fetch, foreign/wrong-parent references, malformed
+and oversized input, decorative images, cancellation, moving/removing nodes, responsive dialogs and actual PDFs.
+The product image model is mounted read-only into the runner. The complete matrix now contains 297 cases.
+
+`work-e2e-image-decoder` inherits the product decoder's network-none, credential-free, non-root/read-only restrictions
+and resource limits, but owns `work_e2e_image_socket` and never restarts automatically. The test API waits for its health
+and mounts only that socket. The normal `office-images` profile uses `office_image_socket` instead. Neither decoder
+exposes a host port. The explicit cleanup list above includes the test decoder and preserves the regular image service.
+
+For this durable image slice, retain a separate checked dump/catalog/receipt and restore target
+`collabio_work_e2e_268_restore`. Do not overwrite the 257/262/263/267 targets. The recovery checker requires nonempty
+image assets and saved references, then compares every retained rendition, parent ownership, exact metadata and
+write receipt plus all image bindings across every saved version. Unattached uploads are included in the inventory.
+Existing document, paragraph, character, style, discussion and suggestion evidence remains mandatory. Run main
+backup/isolated restore and both release gates before the controlled decoder/API rollout; no main migration is needed.
+Acceptance hashes, reviewed PDFs and actual counts are recorded in CURRENT_HANDOFF.md and the operations log.
+
+Final acceptance: all297 cases passed in1157.649996s on96a299f, zero skipped/unexpected/flaky. Full quality passed on
+5d3eb35; only Python test formatting and additional ACL/replay assertions differ, with identical runtime/browser sources.
+Reportsha256:70439ccf0416762c42befb4c037ff413ee64a72cf1ec2fb74519907b213280bb. Both actual PDFs passed image/text/tag
+checks and root visual review; all three responsive dialog views passed. Fresh recovery verified410 documents,
+787 Office versions,858 sources,16 image assets and8 saved references. Recoveryhashsha256:
+c40f85de4b5e11725eec576286ab16546f5eb57aba30d11271f3ebd457713eb3. Both release gates, controlled decoder/API rollout,
+live verification and exact cleanup passed. Final2026-09-23 07:29:06 UTC: healthok, Collabio running(4), gatesclosed.
+Roadmap269 non-destructive image cropping is the next proposed slice. Full evidence is in CURRENT_HANDOFF.md.

@@ -1674,12 +1674,17 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      erhalten. ADR-0090; volle Qualitaet und alle 280 Browser-/Modellfaelle auf 1e09a10 gruen. PDF/Sichtpruefung,
      frischer nichtleerer Restore, Release-Gates und API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
 
-268. [ ] Native Bilder einfuegen: dokumenteigene versionierte Assets und isolierte PNG/JPEG-Normalisierung festlegen,
-     dann Upload, Einfuegen, Groesse/Ausrichtung, Alternativtext/Bildunterschrift, Undo, bestaetigtes Speichern,
-     Wiederoeffnen und Druck durchgaengig umsetzen. Aktuelle Dokument-/Asset-Rechte und nichtleeren Restore pruefen.
-     Konzept: docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Weitere Objekttypen folgen separat.
+268. [x] Native PNG/JPEG-Bilder mit dokumenteigenen versionierten Assets und isolierter Normalisierung umgesetzt:
+     Upload, Einfuegen, Groesse/Ausrichtung, Alternativtext/Bildunterschrift, Verschieben/Entfernen/Undo,
+     bestaetigtes Speichern, Historie, unabhaengige Kopie und Druck. ADR-0091; alle297 Browser-/Modellfaelle auf96a299f
+     und volle Qualitaet auf5d3eb35 bei identischen Produktquellen bestanden. PDF/Sichtpruefung, frischer nichtleerer
+     Dokument-/Bild-Restore und beide Release-Gates vor Decoder/API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 267 abgeschlossen, 268 als naechster Schritt geplant.
+269. [ ] Nativen Bildzuschnitt ergaenzen: interaktive Vorschau, Zuruecksetzen und tastaturbedienbare begrenzte
+     Einstellungen. Zuschnitt als versionierte Dokumenteigenschaft speichern und die exakte Bildquelle erhalten;
+     Undo, Vergleich, Wiederverwendung, Druck und Restore pruefen. Textumfluss und weitere Objekttypen separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 268 abgeschlossen, 269 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

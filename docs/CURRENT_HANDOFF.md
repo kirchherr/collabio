@@ -1,11 +1,18 @@
 # Current Project Handoff
 
-Updated: 2026-09-22
+Updated: 2026-09-23
+
+Roadmap 268 / PLANS 129 completes document-owned PNG/JPEG images under ADR-0091: upload, insert, resize/align,
+alt/caption, move/remove/undo, confirmed save, history, independent copy and print. All 297 browser/model cases passed
+on 96a299f. Full quality passed on 5d3eb35, whose only difference is Python test formatting and added ACL/replay
+assertions; runtime and browser sources are identical. Actual PDF/visual checks, fresh nonempty document-plus-image
+recovery and both release gates passed before decoder/API rollout. Office remains ahead of CRM. The next proposed
+slice is Roadmap 269 / PLANS 130 non-destructive image cropping. Ordinary tenant/pilot/indexing/engine admission stays closed.
 
 Roadmap 267 / PLANS 128 completes document-owned named format styles under ADR-0090. Full quality and a single
 complete 280-case browser/model run passed on 1e09a10 after correcting a comparison-reference regression. Actual PDF,
 responsive visual review, fresh nonempty PostgreSQL/S3 recovery, release gates, API-only rollout and live checks passed.
-The proposed next slice is Roadmap 268 / PLANS 129 native images; its image/object concept is documented but not implemented.
+Its then-proposed native image follow-up is completed by Roadmap 268 above; further object types remain proposed.
 Office remains ahead of CRM; ordinary tenant/pilot/indexing/engine admission remains closed.
 
 Roadmap 266 / PLANS 127 completes native list levels and numbering under ADR-0089. All twelve focused cases,
@@ -140,13 +147,80 @@ This is the canonical continuation document. Read `AGENTS.md` fully first, then 
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
 AGENTS.md and current code are authoritative. Green development evidence is not production or real-user approval.
 
+## Current slice: Roadmap 268 native images
+
+Decision: ADR-0091. Native PNG/JPEG upload, insertion, dimensions/aspect lock/alignment, literal alt/caption,
+decorative choice, move/remove/undo, confirmed CAS save, historical reads, independent document reuse and actual
+print/PDF are implemented. Upload requires an already saved writable document; it does not change the saved head.
+Up to 40 image nodes/document and 200 retained uploads/document are admitted. Originals, filenames and EXIF are not
+stored. Crop, wrapping/floating anchors, shared media libraries, active objects and DOCX interchange remain separate.
+
+Immutable ATTACHMENT sources use the existing PostgreSQL/S3 storage and receipts. Each image node binds exact asset,
+version, parent, manifest/content hashes and pixel dimensions. The current authoritative parent ACL is the asset ACL;
+independent asset grants cannot authorize reads. Save verifies source bytes under the tenant write lock. Create/reuse
+reauthorizes source parents and clones normalized bytes into new document-owned assets; exact replay returns the
+committed rewritten references. No cross-document reference is accepted by ordinary Save. Removal/cancel never
+deletes historical or unattached assets; retention-aware cleanup remains separate. PostgreSQL cannot roll back S3 PUTs.
+
+The isolated decoder admits PNG/JPEG up to 8 MiB, 4096 pixels/axis and 4 million pixels. It has no network, credentials,
+host port or host socket; only a named Unix socket volume connects it to the API. It uses the existing hash-locked
+Pillow version in bounded child processes and returns raw pixels for minimal PNG reconstruction in the API. The
+regular service uses the office-images profile; the test service has its own socket volume. Missing decoder access
+blocks uploads, while stored-image reads remain available. A downgrade to a pre-image native reader is incompatible
+with saved image versions; retain compatible reads and immutable assets when disabling further writes.
+
+Acceptance:
+
+- Single complete browser/model run on 96a299f: 297/297 in 1157.649996s (247 browser+50 model), zero skipped/unexpected/flaky.
+  Full quality on 5d3eb35: Ruff, 758-file formatting, Mypy on 575 sources and complete Pytest passed. Only the known
+  Starlette/AnyIO warning remains. The sole post-browser difference is test_office_images_pg.py formatting and added
+  revoked-source Create/replay assertions; runtime/browser sources are identical. Initial fixture/infrastructure
+  failures remain retained under ignored roadmap-268/first-focus,second-focus,third-focus and final logs.
+- Root reviewed final desktop/tablet/mobile dialogs and both rendered PDF pages. Each is one A4 page with the exact
+ 320x160 image, expected text/literal caption, Figure/Alt structure and no application chrome. Checked image text
+  markers are absent from regular and E2E application logs. No independent-agent or non-Chromium proof is claimed.
+- Fresh collabio_work_e2e_268_restore verified 410 documents, 787 Office versions, 86 multiversion documents, 858 sources,
+  16 retained image assets and 8 saved image references. Exact metadata/bytes/receipts/parent ownership and all saved
+  image bindings passed, alongside paragraph/character/style fixtures, 10 review threads/18 events and 11 suggestions/
+  7 decisions. Current authoritative read-only access and foreign-tenant denial passed. All five synthetic targets remain.
+- Main backup collabio-20260923T072600Z.dump, isolated restore and both release gates passed. Foundation verifies 85
+  migrations, 95 tables and three restored main sources/two tenants. No main migration or ordinary business write occurred.
+
+Key evidence, retained locally under ignored e2e/work/artifacts/roadmap-268/ and on dev001:
+
+- Browser report: sha256:70439ccf0416762c42befb4c037ff413ee64a72cf1ec2fb74519907b213280bb.
+- Browser log: sha256:1f4098935ddf06260f852c19fb11347e8fcc9a1dc632881d9869fe84eec3adca.
+- Full quality log: sha256:e29aa39fa497c81fde6da6d03d5c66a60772a039c5fe46727819dbd97c826dfb.
+- Desktop PDF: sha256:a2d6a65ec258736db043b99333f61f1f32c4d47437d44a0e161aaf74607b9042.
+- Mobile PDF: sha256:61c56f16b53455956e1b08ee821c8eeb000069692703291a36234e997d650e30.
+- PDF-QA report: sha256:b1689ff842db2c40b4d261df0d5c4441208042e35e7b5307e96c53b6378bff97.
+- Recovery embedded hash: sha256:c40f85de4b5e11725eec576286ab16546f5eb57aba30d11271f3ebd457713eb3;
+  file hash: sha256:95af9c94d4e3677cb845b93fe756293df62222bad4a3fcc0f2977deb3bc898dc.
+- Synthetic dump: sha256:3b2ae22cd33a4138ee5651b9bd84fac8d8b54df573ae33310281ace2c4cd9147.
+- Main dump: sha256:4691780d168f77d2e04e9464d1aceb8ad1d49579c8f72c0c2ad0ec2b109fc8f3.
+- Main restore report: sha256:afce1dc3691f488aad86b61cdde819beba750a21c60d52ed30881ff6ce44c56a.
+- Foundation gate: sha256:9c46c1d9748b2f700a08ab1b080efc0c1ea7d16cf364b89c3e1b72a2228bdd2b.
+- Business gate: sha256:901fdd1051cf03c89ba4fe8c8eb76a4defb13c40895500eefa942a3a091ae1e8.
+
+Controlled rollout reached health ok at 2026-09-23 07:27:57 UTC. API d83a791253d4 and new decoder 30766f16f16a run;
+decoder image sha256:d3f95af20d18819e15a49e8ef499821b74a89743c8ed6b2fe1b3e4d0fa8b1276 was inspected for
+networknone,user10001:10001,readonly,ALLcapdrop,no-new-privileges,384MiB,pids16,CPU1 and its sole socket volume.
+Live checks verify 15 Office OpenAPI operation definitions, discovery/history parameters, image/style/list and prior
+controls, served bundle/local assets/licenses, Work link and no-store/CSP. These checks do not execute 15 business writes.
+Office remains unprovisioned/non-cacheable404, features closed, KB write false and pilot 0. Exact E2E services including
+the test decoder were removed; postgres-test and both restore services stopped. Final cleanup 07:29:06 health ok,
+Collabio running (4), unchanged loopback 8000/5433/29000/29001. Main stores and other projects remain unchanged.
+Live JSONsha256:9658792f48b72118525b4195c1545936273957674e7a1ad14eb5f51c9a012661;
+cleanup logsha256:3d358a7277f83212b982356d77111f42c1ba0d1600dbf16d09a80efc2a4134a7.
+
 ## Repository and host
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `1e09a10` (full quality and a single all-green 280-case browser/model run).
-  Named styles add strict optional durable native v1 metadata without a SQL migration, endpoint or dependency.
-  Fresh Roadmap 267 actual PDF, nonempty recovery and release-gate evidence passed before API-only rollout.
+- Validated implementation: `5d3eb35` (full quality); the single all-green 297-case browser/model run uses `96a299f`.
+  The sole later difference is Python test formatting plus additional ACL/replay assertions; product sources match.
+  Images extend native v1 metadata and add two guarded endpoints plus an isolated decoder, without a SQL migration
+  or additional dependency version. Fresh Roadmap 268 actual PDF, nonempty recovery and release gates passed.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -1406,11 +1480,14 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 267 is complete. Preserve the single green 280-case matrix (233 Work/KB/CRM/Office browser cases and 47 model cases).
-Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions. Continue
-with Roadmap 268 / PLANS 129 native images using docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Decide the asset
-ownership/version manifest and isolated PNG/JPEG normalization first, then ship upload/insert/save/reopen/print with
-current document/asset ACLs and fresh document-plus-asset recovery. Images and other object insertion are not implemented.
+Item 268 is complete. Preserve the green 297-case matrix (247 Work/KB/CRM/Office browser cases and 50 model cases),
+full quality and exact document-plus-image recovery. Continue with Roadmap 269 / PLANS 130 non-destructive image
+cropping: interactive preview/reset, bounded keyboard-accessible controls, version-owned crop geometry, isolated undo,
+comparison/reuse/print and fresh recovery. Preserve exact original normalized renditions; decide the geometry before
+implementation. Crop, floating anchors/text wrapping and other object types are not implemented yet. See ADR-0091
+and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Image ownership follows current parent ACLs; copies own new
+assets after fresh source authorization. Keep the isolated network-none decoder and historical manifests intact.
+Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.
 Continue native Office before CRM. List indentation/outdent and nearest-list start values preserve content and undo,
 with validated keyboard actions and table Tab priority. Automatic numbering continuation/styles remain separate work.
 Format transfer supports direct character/paragraph values in one editable document,

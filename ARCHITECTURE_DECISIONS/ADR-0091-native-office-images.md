@@ -1,7 +1,7 @@
 # ADR-0091: Document-owned native image renditions
 
 Date: 2026-09-23
-Status: implementation in progress; acceptance and rollout pending
+Status: accepted for development; implementation, recovery and decoder/API rollout verified
 
 Native Office needs an upload, insert, edit, save, reopen and print loop. The existing
 versioned source store already supplies tenant separation, hashes, receipts, retention,
@@ -51,3 +51,10 @@ image upload before first Save, shared media libraries, active objects and DOCX 
 The normal tenant/pilot/indexing/engine gates remain closed. Acceptance requires real
 decoder/browser tests, malformed/limit/ACL/reuse cases, PDF/visual inspection and a fresh
 nonempty document-plus-asset PostgreSQL/S3 recovery proof before rollout.
+
+Operate the decoder through the explicit `office-images` Compose profile; it has no host
+port. Existing saved-image reads do not need the decoder, but uploads fail closed when it
+is unavailable. After image versions exist, a downgrade to a pre-image native schema is
+not a compatible reader rollback. Disable further writes and retain a compatible reader
+while repairing the decoder; never delete assets or rewrite historical manifests as a
+rollback shortcut. Exact document-plus-asset recovery remains the durable recovery path.

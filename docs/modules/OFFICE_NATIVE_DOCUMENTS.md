@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–267 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles
+Status: Roadmap 252–268 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,38 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Document-owned images (Roadmap 268)
+
+**Bild einfuegen** opens file selection and preview for a saved editable document. Explicit upload accepts PNG/JPEG
+up to 8 MiB, 4096 pixels per axis and four million decoded pixels. The isolated decoder returns only normalized
+pixels; original filenames, EXIF and original files are not retained. An upload belongs to the current document
+but does not advance its saved version. A new document must be saved once before its first upload.
+
+The dialog supports bounded width/height, aspect lock, left/center/right alignment, literal alternative text and
+caption, moving the whole image, removal and cancellation. Decorative images require an explicit choice. Insertion
+and property edits change the local draft in isolated undo groups; confirmed CAS Save creates the immutable version.
+Keyboard selection and responsive controls remain available. The first slice uses in-flow block images; crop,
+floating anchors, text wrapping, shared media libraries and other embedded object types remain separate work.
+
+Each node binds exact parent, asset and source-version IDs, content/manifest hashes and pixel dimensions. The asset
+inherits its current authoritative parent document ACL; independent asset grants do not authorize access. Every
+content fetch and final print rechecks access. Revocation during an image fetch clears the protected workspace.
+Save validates all referenced bytes under the tenant write lock. Create/reuse freshly authorizes each source parent
+and copies the normalized bytes into independently owned assets. Replays return the committed rewritten manifest.
+Ordinary Save rejects cross-document references. History retains exact renditions; removal never deletes old assets.
+
+At most 40 images can occur in a document and 200 uploads can be retained per document. Retention-aware orphan
+cleanup is a separate confirmed lifecycle workflow. PostgreSQL metadata transactions cannot roll back S3 PUTs;
+existing reconciliation still applies. Printing freshly loads and decodes every exact rendition and aborts on an
+unavailable image. Short-lived authenticated blob URLs never enter stored native JSON and are revoked on close.
+
+The credential-free `office-image-decoder` Compose service has no network, uses a non-root read-only filesystem,
+drops all capabilities and bounds memory, CPU, child processes and decode time. Only a shared Unix socket connects
+the API. The test profile owns a separate socket volume. Start it with the `office-images` profile before image
+traffic; missing decoder access fails closed. No SQL migration or additional dependency version is introduced.
+Decision: [ADR-0091](../../ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md). Development acceptance and the
+fresh document-plus-asset recovery proof are recorded in CURRENT_HANDOFF.md; ordinary admission remains closed.
 
 ## Document-owned format styles (Roadmap 267)
 
@@ -304,9 +336,11 @@ close, context and session changes invalidate pending responses. Transient failu
 
 The new draft has no source identity, history, ACL, discussions, suggestions or mutation key. Its first explicit save
 uses the normal create operation, with a new object and creator ACL. Source content and history stay unchanged. The
-draft's initial save and exact retries apply current create rights; the already independent draft does not
-reauthorize its former source at that later point. This is not an atomic server copy or a persisted provenance link.
-No API, schema, storage format, dependency or engine admission is added. See
+draft's initial save and exact retries apply current create rights. For text-only reuse, the independent draft does
+not reauthorize its former source at that later point. Roadmap 268 image references additionally require a fresh
+source-parent read check during first Create and copy their normalized assets into the new document; exact replay
+returns those committed assets. There is no persisted provenance link. The original Roadmap 259 slice added no API,
+schema, storage format, dependency or engine admission. See
 [ADR-0083](../../ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md).
 
 ## Saved-version print preview (Roadmap 258)
@@ -367,6 +401,8 @@ read-only state does not itself determine permission to discuss an existing thre
 | `POST /v1/office/documents/{object_id}/suggestions` | Confirm replacement text on an exact current saved selection |
 | `GET /v1/office/documents/{object_id}/suggestions/{suggestion_id}` | Literal before/after text and immutable decision |
 | `POST /v1/office/documents/{object_id}/suggestions/{suggestion_id}/decisions` | Confirm rejection or atomically accept and save a successor |
+| `POST /v1/office/documents/{object_id}/images` | Explicitly upload and normalize a document-owned PNG/JPEG without changing its head |
+| `GET /v1/office/documents/{object_id}/images/{asset_id}/{version_id}` | Read exact normalized PNG bytes under the current parent ACL |
 
 Content and error responses use `no-store`. Invalid JSON/schema errors do not echo submitted content. Storage/database
 failures use constant messages. The UI uses local assets under a restrictive CSP, retains drafts after transient failures

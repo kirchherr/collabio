@@ -1,14 +1,15 @@
-# Native Office images and objects: proposed product design
+# Native Office images and objects: product design
 
-Date: 2026-09-22
-Status: proposal for a subsequent product slice; no image/object support or activation is implemented by this document
+Updated: 2026-09-23
+Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded in CURRENT_HANDOFF.md.
+Other object types, crop and text wrapping remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
 
 OFFICE_MAIL_CORE.md and SOURCE_OBJECT_MODEL.md supply versioned source storage, tenant authorization, classification,
 retention, Legal Hold, content hashes, audit and recovery. ADR-0060/0061 separate preview from editing and isolate
-format engines. These are reusable boundaries, not a finished native image insertion workflow. ADR-0079 and the current
-native schema reject image nodes, external resources and active objects. ADR-0071 rejects OLE and embedded packages in
+format engines. Roadmap 268 adds document-owned native images under ADR-0091 to the original ADR-0079 schema.
+External resources and active objects remain rejected. ADR-0071 rejects OLE and embedded packages in
 the constrained DOCX preflight. Embedded-object semantics require a separate decision and fidelity corpus.
 
 ## First product slice: images
@@ -50,8 +51,8 @@ This distinction preserves normal image/chart/file usability without granting em
 
 ## Acceptance and sequencing
 
-Implement after the current named-style slice as an independent roadmap item. First decide native asset ownership,
-schema/API/version manifest and orphan lifecycle, then ship the complete upload-insert-save-reopen-print loop. Require
+Roadmap 268 follows named styles as an independent roadmap item. ADR-0091 defines native asset ownership,
+schema/API/version manifest and orphan lifecycle for the complete upload-insert-save-reopen-print loop. Require
 malformed/decompression/size tests, tenant/ACL and revoked-reference tests, immutable version/reuse/undo tests, literal
 captions, keyboard/mobile review and nonempty PostgreSQL/S3 document-plus-asset restore. DOCX roundtrips additionally
 need the existing engine admission and measured fidelity lane. This proposal does not open those gates.
