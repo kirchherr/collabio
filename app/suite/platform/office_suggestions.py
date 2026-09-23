@@ -235,7 +235,7 @@ def replace_suggestion_text(document: dict[str, Any], anchor: ReviewAnchor, repl
             return len(node["text"].encode("utf-16-le")) // 2
         children = node.get("content", [])
         if not children:
-            return 1 if kind in {"hardBreak", "horizontalRule", "image"} else 2
+            return 1 if kind in {"hardBreak", "horizontalRule", "image", "pageBreak"} else 2
         offset = position + (0 if kind == "doc" else 1)
         updated: list[dict[str, Any]] = []
         for child in children:

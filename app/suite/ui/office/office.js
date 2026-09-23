@@ -1,4 +1,4 @@
-import { Editor, Extension, Mark, textblockTypeInputRule } from "@tiptap/core";
+import { Editor, Extension, Mark, Node, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
 import { AllSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
@@ -31,7 +31,7 @@ const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" }
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle"]);
 const commandNames = {
@@ -41,6 +41,12 @@ const commandNames = {
 };
 const OfficeTable = Table.extend({
   renderHTML() { return ["table", { class: "office-table" }, ["tbody", 0]]; },
+});
+const OfficePageBreak = Node.create({
+  name: "pageBreak", group: "block", atom: true, selectable: true, draggable: false,
+  parseHTML: () => [],
+  renderHTML: () => ["div", { class: "office-page-break", contenteditable: "false", role: "separator", "aria-label": "Seitenumbruch" }],
+  renderText: () => "",
 });
 const OfficeNamedStyles = Extension.create({
   name: "officeNamedStyles",
@@ -205,9 +211,11 @@ function normalizedDocument(document) {
   const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
+  let pageBreaks = 0;
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
+    if (value.type === "pageBreak" && (depth !== 1 || Object.keys(value).length !== 1 || ++pageBreaks > 100)) throw new Error("document-page-break");
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
@@ -303,6 +311,8 @@ function updateEditorState() {
   });
   $("text-style").disabled = !editable;
   $("insert-menu").disabled = !editable;
+  $("insert-menu").querySelector('[value="pageBreak"]').disabled = !pageBreakAllowed();
+  $("insert-menu").querySelector('[value="removePageBreak"]').disabled = !paragraphAllowed() || pageBreakPosition() === null;
   updateTableControls();
   updateParagraphControls();
   updateCharacterControls();
@@ -547,6 +557,72 @@ function selectedParagraphs(editor = state.editor, includeCode = false) {
 
 function paragraphAllowed() {
   return replacementAllowed() && !state.review?.saving && !state.review?.settling && !state.review?.uncertain;
+}
+
+function pageBreakAllowed() {
+  if (!paragraphAllowed()) return false;
+  const { selection } = state.editor.state;
+  return selection.empty ? selection.$from.depth === 0 ||
+    (selection.$from.depth === 1 && ["paragraph", "heading"].includes(selection.$from.parent.type.name)) :
+    selection.$from.depth === 0 && ["image", "horizontalRule", "table"].includes(selection.node?.type.name);
+}
+
+function pageBreakPosition(direction = null) {
+  const selection = state.editor?.state.selection;
+  if (!selection) return null;
+  if (selection.node?.type.name === "pageBreak") return selection.from;
+  if (!selection.empty) return null;
+  const { $from } = selection;
+  const boundary = $from.depth === 0 ? $from.pos : $from.depth === 1 && $from.parent.isTextblock ?
+    $from.parentOffset === 0 ? $from.before() : $from.parentOffset === $from.parent.content.size ? $from.after() : null : null;
+  if (boundary === null) return null;
+  const resolved = selection.$from.doc.resolve(boundary);
+  if (direction !== "forward" && resolved.nodeBefore?.type.name === "pageBreak") return boundary - 1;
+  if (direction !== "backward" && resolved.nodeAfter?.type.name === "pageBreak") return boundary;
+  return null;
+}
+
+function changePageBreak(remove = false, direction = null) {
+  const editor = state.editor;
+  if (!paragraphAllowed() || (!remove && !pageBreakAllowed())) return false;
+  const { selection } = editor.state;
+  const tr = editor.state.tr;
+  if (remove) {
+    const position = pageBreakPosition(direction);
+    if (position === null) return false;
+    tr.delete(position, position + 1);
+  } else {
+    const marker = editor.schema.nodes.pageBreak.create();
+    const { $from } = selection;
+    if ($from.depth === 1) {
+      const block = $from.parent, offset = $from.parentOffset, start = $from.before();
+      const left = block.copy(block.content.cut(0, offset)), right = block.copy(block.content.cut(offset));
+      tr.replaceWith(start, $from.after(), [left, marker, right]);
+      tr.setSelection(TextSelection.create(tr.doc, start + left.nodeSize + 2));
+    } else {
+      const position = selection.node ? selection.to : selection.from;
+      tr.insert(position, marker);
+      tr.setSelection(Selection.near(tr.doc.resolve(position + 1), 1));
+    }
+  }
+  try { validateEditorDocument(tr.doc); }
+  catch { notice("Der Seitenumbruch überschreitet die Dokumentgrenzen (höchstens 100 Umbrüche).", true); return false; }
+  editor.view.dispatch(closeHistory(tr).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr));
+  focusEditor(editor); updateEditorState(); return true;
+}
+
+function handlePageBreakKey(event) {
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key === "Enter") {
+    event.preventDefault();
+    if (!changePageBreak()) notice("Setzen Sie die Schreibmarke in einen Absatz oder eine Überschrift außerhalb von Tabellen, Listen und Zitaten.");
+    return true;
+  }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && ["Backspace", "Delete"].includes(event.key)) {
+    const direction = event.key === "Backspace" ? "backward" : "forward";
+    if (pageBreakPosition(direction) !== null) { event.preventDefault(); changePageBreak(true, direction); return true; }
+  }
+  return false;
 }
 
 function paragraphActionCurrent(action) {
@@ -1447,12 +1523,12 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
-      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles,
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
-      handleKeyDown(view, event) { return handleTableKey(view, event) || handleListKey(view, event); },
+      handleKeyDown(view, event) { return handlePageBreakKey(event) || handleTableKey(view, event) || handleListKey(view, event); },
       handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
       handleDOMEvents: {
         beforeinput(view, event) {
@@ -3959,6 +4035,8 @@ $("insert-menu").addEventListener("change", () => {
   if (command) {
     if (command === "insertTable") insertTable();
     else if (command === "insertTableCustom") openTableInsert();
+    else if (command === "pageBreak") changePageBreak();
+    else if (command === "removePageBreak") changePageBreak(true);
     else if (command === "horizontalRule") formatEditor((chain) => chain.setHorizontalRule());
     else if (command === "codeBlock") formatEditor((chain) => chain.toggleCodeBlock());
     else runTableCommand(command);

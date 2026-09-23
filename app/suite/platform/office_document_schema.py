@@ -27,6 +27,7 @@ BLOCKS = {
     "horizontalRule",
     "table",
     "image",
+    "pageBreak",
 }
 MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
@@ -50,6 +51,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     nodes = 0
     characters = 0
     images = 0
+    page_breaks = 0
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -92,7 +94,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
 
     def visit(node: Any, depth: int) -> None:
-        nonlocal nodes, characters, images
+        nonlocal nodes, characters, images, page_breaks
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -132,6 +134,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             for key in ("spacingBefore", "spacingAfter"):
                 if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
                     reject()
+        elif kind == "pageBreak":
+            page_breaks += 1
+            if depth != 1 or set(node) != {"type"} or page_breaks > 100:
+                reject()
         elif kind == "image":
             images += 1
             if images > 40:

@@ -16,6 +16,7 @@ from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_sy
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
 from work_e2e_paragraph import seed_synthetic_office_paragraphs
 from work_e2e_styles import seed_synthetic_office_styles
+from work_e2e_page_breaks import seed_synthetic_office_page_breaks
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",
@@ -87,6 +88,9 @@ def main() -> int:
         environment=os.environ, client=client
     )
     style_document_count, style_version_count = seed_synthetic_office_styles(environment=os.environ, client=client)
+    page_break_document_count, page_break_version_count = seed_synthetic_office_page_breaks(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -99,11 +103,13 @@ def main() -> int:
                 + history_document_count
                 + paragraph_document_count
                 + character_document_count
-                + style_document_count,
+                + style_document_count
+                + page_break_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
                 "synthetic_office_style_version_count": style_version_count,
+                "synthetic_office_page_break_version_count": page_break_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

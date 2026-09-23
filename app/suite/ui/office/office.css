@@ -134,3 +134,8 @@
 @container office-image-flow (max-width: 480px) {
   :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { float: none; width: auto; margin: 1rem 0; }
 }
+/* Explicit page boundaries stay selectable on screen and contain preceding floats. */
+.office-page-break{display:block;clear:both;position:relative;margin:18px 0;padding:8px;border-block:1px dashed #94a3b8;text-align:center;color:#475569;cursor:pointer;user-select:none;font:12px/1.4 system-ui,sans-serif}
+.office-page-break::before{content:"Seitenumbruch"}
+.office-page-break.ProseMirror-selectednode{outline:2px solid #2563eb;background:#eff6ff}
+@media print{.office-page-break{display:none!important}.office-print-page-start{break-before:page;page-break-before:always}}

@@ -18,6 +18,12 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   const styles = officeStyles(content.attrs?.styles || []);
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
+    if (value.type === "pageBreak") {
+      if (depth !== 1 || Object.keys(value).length !== 1) throw new Error("Invalid page break");
+      const marker = dom.createElement("div"); marker.className = "office-page-break";
+      marker.setAttribute("role", "separator"); marker.setAttribute("aria-label", "Seitenumbruch");
+      return marker;
+    }
     if (value.type === "image") return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("Invalid print text");
@@ -81,8 +87,16 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   };
   const article = dom.createElement("article"); article.className = "office-print-document";
   const heading = dom.createElement("h1"); heading.className = "office-print-title"; heading.textContent = title;
-  const body = dom.createElement("div"); body.className = "office-print-content";
-  for (const child of content.content) body.append(render(child, 1));
+  let body = dom.createElement("div"); body.className = "office-print-content";
   article.append(heading, body);
+  let boundary = false;
+  for (const child of content.content) {
+    if (child.type !== "pageBreak" && boundary) {
+      body = dom.createElement("div"); body.className = "office-print-content office-print-page-start";
+      article.append(body); boundary = false;
+    }
+    body.append(render(child, 1));
+    if (child.type === "pageBreak") boundary = true;
+  }
   return article;
 }
