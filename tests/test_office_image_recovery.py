@@ -61,14 +61,25 @@ def test_crop_recovery_requires_reset_after_crop_of_exact_same_owned_rendition()
 
 
 def test_wrap_recovery_requires_consecutive_layouts_with_same_owner_source_and_crop() -> None:
-    left = {"object_id": "doc", "asset_id": "asset", "asset_version_id": "pixels",
-            "document_version_id": "left", "previous_document_version_id": "initial",
-            "crop": {"x": 1, "y": 0, "width": 1, "height": 1}, "wrap": {"side": "left", "gap": 16}}
-    right = {**left, "document_version_id": "right", "previous_document_version_id": "left",
-             "wrap": {"side": "right", "gap": 24}}
+    left = {
+        "object_id": "doc",
+        "asset_id": "asset",
+        "asset_version_id": "pixels",
+        "document_version_id": "left",
+        "previous_document_version_id": "initial",
+        "crop": {"x": 1, "y": 0, "width": 1, "height": 1},
+        "wrap": {"side": "left", "gap": 16},
+    }
+    right = {
+        **left,
+        "document_version_id": "right",
+        "previous_document_version_id": "left",
+        "wrap": {"side": "right", "gap": 24},
+    }
     reset = {**right, "document_version_id": "reset", "previous_document_version_id": "right", "wrap": None}
     assert verify_restored_wrap_reset([left, right, reset]) == {
-        "verified_wrapped_image_reference_count": 2, "wrapped_and_reset_versions_verified": True,
+        "verified_wrapped_image_reference_count": 2,
+        "wrapped_and_reset_versions_verified": True,
     }
     for index in (1, 2):
         for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id", "crop"):

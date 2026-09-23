@@ -40,10 +40,15 @@ def verify_restored_crop_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]
 
 def verify_restored_wrap_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]:
     def identity(binding: dict[str, Any], previous: bool = False) -> tuple[str, ...]:
-        return tuple(binding[key] for key in (
-            "object_id", "asset_id", "asset_version_id",
-            "previous_document_version_id" if previous else "document_version_id",
-        ))
+        return tuple(
+            binding[key]
+            for key in (
+                "object_id",
+                "asset_id",
+                "asset_version_id",
+                "previous_document_version_id" if previous else "document_version_id",
+            )
+        )
 
     left = {identity(row): row for row in bindings if (row.get("wrap") or {}).get("side") == "left"}
     right: dict[tuple[str, ...], dict[str, Any]] = {}
@@ -52,8 +57,7 @@ def verify_restored_wrap_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]
         if (row.get("wrap") or {}).get("side") == "right" and predecessor and row["crop"] == predecessor["crop"]:
             right[identity(row)] = row
     if not any(
-        row.get("wrap") is None and identity(row, True) in right
-        and row["crop"] == right[identity(row, True)]["crop"]
+        row.get("wrap") is None and identity(row, True) in right and row["crop"] == right[identity(row, True)]["crop"]
         for row in bindings
     ):
         raise ValueError("Wrap recovery requires consecutive left/right/reset versions of the same cropped image")

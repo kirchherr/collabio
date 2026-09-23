@@ -160,10 +160,20 @@ def test_crop_preserves_legacy_attributes_and_exact_source_reference() -> None:
 
 @pytest.mark.parametrize(
     "wrap",
-    [None, {}, [], "left", {"side": "center", "gap": 16}, {"side": [], "gap": 16},
-     {"side": "left", "gap": -1}, {"side": "right", "gap": 49}, {"side": "left", "gap": True},
-     {"side": "left", "gap": 0.5}, {"side": "left", "gap": "16"},
-     {"side": "left", "gap": 16, "position": "absolute"}],
+    [
+        None,
+        {},
+        [],
+        "left",
+        {"side": "center", "gap": 16},
+        {"side": [], "gap": 16},
+        {"side": "left", "gap": -1},
+        {"side": "right", "gap": 49},
+        {"side": "left", "gap": True},
+        {"side": "left", "gap": 0.5},
+        {"side": "left", "gap": "16"},
+        {"side": "left", "gap": 16, "position": "absolute"},
+    ],
 )
 def test_image_wrap_rejects_ambiguous_unbounded_or_active_layout(wrap: Any) -> None:
     document = image_document()
