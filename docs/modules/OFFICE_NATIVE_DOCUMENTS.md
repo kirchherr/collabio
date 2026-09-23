@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–269 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping
+Status: Roadmap 252–270 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`
 
 ## User workflow and scope
 
@@ -31,7 +31,8 @@ The dialog supports bounded width/height, aspect lock, left/center/right alignme
 caption, moving the whole image, removal and cancellation. Decorative images require an explicit choice. Insertion
 and property edits change the local draft in isolated undo groups; confirmed CAS Save creates the immutable version.
 Keyboard selection and responsive controls remain available. The first slice uses in-flow block images. Roadmap 269
-adds cropping below; floating anchors, text wrapping, shared media libraries and other object types remain separate.
+adds cropping below; Roadmap 270 adds bounded paragraph text wrapping. Arbitrary floating anchors, shared media
+libraries and other object types remain separate.
 
 Each node binds exact parent, asset and source-version IDs, content/manifest hashes and pixel dimensions. The asset
 inherits its current authoritative parent document ACL; independent asset grants do not authorize access. Every
@@ -73,7 +74,7 @@ raster/semantic/responsive review passed. Passing evidence covers all 303 distin
 full attempt plus the corrected 57-case helper suite, explicitly not a single all-green full run. Fresh PostgreSQL/S3
 recovery verified 488 documents, 913 versions and 43 image assets, including reset immediately after crop of the same
 owned rendition. Both release gates, API-only rollout and live/cleanup checks passed. Ordinary admission remains
-closed. Evidence is in CURRENT_HANDOFF.md; Roadmap 270 / PLANS 131 proposes bounded image text wrapping next.
+closed. Evidence is in CURRENT_HANDOFF.md; Roadmap 270 / PLANS 131 adds bounded image text wrapping below.
 
 ## Image text wrapping (Roadmap 270)
 
@@ -92,11 +93,17 @@ explicit API null, CSS strings, other coordinates and unknown keys are rejected.
 owned copies retain these exact values. No new endpoint, asset, migration, dependency or decoder change is introduced.
 
 Printing uses the physical page's text column, independently of the device viewport. Image and caption request staying
-together; a figure fitting a page moves to the next page when insufficient room remains. Over-page captions may still
+together; a figure fitting a page moves to the next page when insufficient room remains. Following text can start on
+the preceding page and continue beside that figure. Over-page captions may still
 fragment according to browser rules. Arbitrary page positioning and DOCX anchors remain separate. Fresh recovery must
 verify consecutive left/right/reset versions of the same owned rendition without changing crop or source pixels.
-Decision: [ADR-0093](../../ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md). Development acceptance
-is tracked in CURRENT_HANDOFF.md; ordinary tenant/pilot/indexing/engine admission remains closed.
+Decision: [ADR-0093](../../ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md). Full quality and one
+complete 313-case browser/model run passed on 1d8a58f. Actual PDF/visual review, fresh nonempty recovery, both release
+gates, API-only rollout and live/cleanup checks passed. Recovery verified 426 documents, 829 Office versions and
+32 image assets, including consecutive left/right/reset versions of the same cropped rendition. Each actual PDF
+has three A4 pages with intact left/right images, complete text and no text/image overlap. Detailed evidence is in
+CURRENT_HANDOFF.md; ordinary tenant/pilot/indexing/engine admission remains closed. Explicit native page breaks are
+proposed next as Roadmap 271 / PLANS 132.
 
 ## Document-owned format styles (Roadmap 267)
 

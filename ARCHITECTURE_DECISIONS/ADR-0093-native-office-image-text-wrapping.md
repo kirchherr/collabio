@@ -1,7 +1,7 @@
 # ADR-0093: Native image text wrapping
 
 Date: 2026-09-23
-Status: implementation; acceptance pending
+Status: accepted; development validation and controlled dev001 rollout complete
 
 Add optional image `wrap` metadata with exactly `side` (left/right) and integer
 `gap` (0 through 48 CSS pixels). Absence preserves the previous block layout and
@@ -25,7 +25,8 @@ transaction. Keyboard-accessible selects/numeric fields, cancel and block reset 
 
 Print uses the physical page's text-column width, independent of the screen viewport.
 Image and caption request break-inside avoidance; a figure fitting a page moves to
-the next page when necessary. Over-page captions remain subject to the browser's
+the next page when necessary. Following text may begin on the preceding page and
+continue beside the deferred figure, as normal float pagination allows. Over-page captions remain subject to the browser's
 fragmentation rules; no universal pagination/fidelity guarantee is made. Actual
 left/right, crop, paragraph clearance and multi-page PDF checks are required.
 References: [CSS floats](https://www.w3.org/TR/CSS22/visuren.html#floats) and

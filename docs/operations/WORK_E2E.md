@@ -86,7 +86,7 @@ flock -w 900 /home/extern/.codex-coordination/build.lock \
     docker compose -p collabio --profile work-e2e run --rm --build work-e2e'
 ```
 
-The expected matrix is 280 passing checks: 233 browser cases and 47 pure comparison/search/style model cases. The original
+The current expected matrix is 313 checks: 259 browser cases and 54 pure model cases. The original
 73-case browser foundation consists of the original 32 cases (28 independent availability cases, one closed-pilot
 case, one real reassignment/correction/resubmission workflow, and two responsive project runs), seven Knowledge Base
 workflow cases, and two Knowledge Base editor responsive runs. The Knowledge Base cases cover successful create/edit,
@@ -349,7 +349,8 @@ Full host details and backup/gate hashes are in `docs/CURRENT_HANDOFF.md`. No or
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `collabio_work_e2e_263_restore`,
-`collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore` or `collabio_work_e2e_269_restore` target,
+`collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore` or
+`collabio_work_e2e_270_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -640,3 +641,32 @@ document/image contract, require a cropped saved version immediately followed by
 rendition. Reset omits the optional crop property; the original normalized image bytes and all historical geometries
 must survive. Older synthetic targets remain retained. Main backup/isolated restore and both release gates precede
 API-only rollout; the regular isolated decoder is unchanged. Final counts, hashes and host state are in CURRENT_HANDOFF.md.
+
+## Roadmap 270 image text wrapping
+
+Two pure-model cases and four desktop/mobile browser workflows extend the matrix to 313 cases: 259 browser and
+54 model cases. Coverage includes strict optional side/gap validation, legacy bytes, left/right/reset and undo,
+anchor movement, immutable versions, owned copies, invalid-gap/cancel/no-op behavior, three viewport widths without
+document rewrites, structural-block clearance and nested-table block fallback. The PDF fixture puts a cropped float
+at a physical page boundary and retains following text, a clearing heading, a right float and further paragraphs.
+
+Actual PDFs require raster, text and Figure/Alt checks in addition to browser assertions. For the boundary fixture,
+verify the intact first crop moved to page 2, both sides contain adjacent text, all expected text remains, no text
+overlaps images and no cropped-away blue pixels appear. Sort components by page and position rather than pixel-set
+iteration order; use sufficient raster resolution for the fixed geometric tolerance. Review every rendered page.
+Store PDF hashes alongside the QA report. Screen viewport fallback must not change physical print-column wrapping.
+
+Fresh recovery uses its own checked dump/catalog/receipt and collabio_work_e2e_270_restore. Preserve all six older
+synthetic targets. In addition to every prior document/image/crop proof, require consecutive left/right/reset versions
+of the same parent, asset and rendition with the same crop; compare every saved version's exact metadata and bytes.
+Main backup, isolated restore and both release gates precede API-only rollout. The regular decoder and main database
+schema remain unchanged. Final validation, recovery, hashes and host state are recorded in CURRENT_HANDOFF.md.
+
+Full acceptance on immutable 1d8a58f passed all 313 cases in 1255.726974s, zero skipped/unexpected/flaky, plus complete
+Python quality. Report sha256:354dc941b20bef9bdcd44d8d4af1558849dba6a0dd3e19661eec62537841efff. Root reviewed the final
+responsive screenshots and all six PDF pages; hash-bound QA report
+sha256:81eec6eb1cf69a55ba420575ae212fef984b8a28a3ccef8662d8f393c8fb417a. Fresh recovery verified 426 documents,
+829 Office versions, 916 sources, 32 image assets and 50 saved references, including 24 wrapped references and the
+required sequence. Recovery hash sha256:09b91cc7a6f32168fe136956fdf46ba124cb04804f65ad63d0efb49d165360ce. Both release
+gates, API-only rollout and live/exact cleanup passed. Final 2026-09-23 09:30:13 UTC: health ok, Collabio running(4),
+ordinary gates closed. Full evidence and earlier focused diagnostics are in CURRENT_HANDOFF.md and the operations log.
