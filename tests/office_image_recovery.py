@@ -14,6 +14,30 @@ from suite.storage.source_objects import (
 )
 
 
+def verify_restored_crop_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    cropped = [binding for binding in bindings if binding["crop"] is not None]
+    predecessors = {
+        (binding["object_id"], binding["asset_id"], binding["asset_version_id"], binding["document_version_id"])
+        for binding in cropped
+    }
+    if not any(
+        binding["crop"] is None
+        and (
+            binding["object_id"],
+            binding["asset_id"],
+            binding["asset_version_id"],
+            binding["previous_document_version_id"],
+        )
+        in predecessors
+        for binding in bindings
+    ):
+        raise ValueError("Crop recovery requires a reset version following a crop of the same image")
+    return {
+        "verified_cropped_image_reference_count": len(cropped),
+        "cropped_and_reset_versions_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

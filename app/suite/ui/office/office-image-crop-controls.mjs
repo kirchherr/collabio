@@ -5,7 +5,7 @@ export function installImageCropControls(getAction, isCurrent) {
   const stage = $("image-crop-stage"), rectangle = $("image-crop-rectangle");
   let drag = null;
   const current = () => { const owner = getAction(); return owner?.attrs && !owner.busy && isCurrent() ? owner : null; };
-  const read = (owner) => officeImageCrop({ ...owner.attrs, crop: Object.fromEntries(names.map((name) => [name, Number($(`image-crop-${name}`).value)])) });
+  const read = (owner) => officeImageCrop({ ...owner.attrs, crop: Object.fromEntries(names.map((name) => [name, $(`image-crop-${name}`).valueAsNumber])) });
   const preview = (owner) => {
     if (!owner?.url) return;
     const width = Number($("image-width").value), height = Number($("image-height").value);

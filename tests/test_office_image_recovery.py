@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from office_image_recovery import verify_restored_images
+from office_image_recovery import verify_restored_crop_reset, verify_restored_images
 from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
@@ -36,3 +36,25 @@ def test_image_recovery_denies_empty_and_unbound_assets_before_source_access() -
                 bindings=bindings,
             )
     assert not sources.mock_calls
+
+
+def test_crop_recovery_requires_reset_after_crop_of_exact_same_owned_rendition() -> None:
+    cropped = {
+        "object_id": "doc",
+        "asset_id": "asset",
+        "asset_version_id": "pixels",
+        "document_version_id": "cropped",
+        "previous_document_version_id": "initial",
+        "crop": {"x": 1, "y": 0, "width": 1, "height": 1},
+    }
+    reset = {**cropped, "document_version_id": "reset", "previous_document_version_id": "cropped", "crop": None}
+    assert verify_restored_crop_reset([cropped, reset]) == {
+        "verified_cropped_image_reference_count": 1,
+        "cropped_and_reset_versions_verified": True,
+    }
+    for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id"):
+        with pytest.raises(ValueError):
+            verify_restored_crop_reset([cropped, {**reset, key: "different"}])
+    for bindings in ([], [cropped], [reset]):
+        with pytest.raises(ValueError):
+            verify_restored_crop_reset(bindings)

@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 import psycopg
 
-from office_image_recovery import verify_restored_images
+from office_image_recovery import verify_restored_crop_reset, verify_restored_images
 from office_suggestion_recovery import verify_restored_suggestions
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
@@ -703,6 +703,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                     {
                         "object_id": document.object_id,
                         "document_version_id": version.version_id,
+                        "previous_document_version_id": version.previous_version_id,
                         "asset_id": attrs["assetId"],
                         "asset_version_id": attrs["versionId"],
                         "content_hash": attrs["contentHash"],
@@ -746,13 +747,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         bindings=image_bindings,
     )
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_269_restore"):
-        cropped = [binding for binding in image_bindings if binding["crop"] is not None]
-        reset = [binding for binding in image_bindings if binding["crop"] is None]
-        crop_assets = {binding["asset_id"] for binding in cropped}
-        if not cropped or not any(binding["asset_id"] in crop_assets for binding in reset):
-            raise ValueError("Crop recovery requires cropped and reset versions of the same image")
-        image_evidence["verified_cropped_image_reference_count"] = len(cropped)
-        image_evidence["cropped_and_reset_versions_verified"] = True
+        image_evidence.update(verify_restored_crop_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(

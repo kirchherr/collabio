@@ -18,7 +18,7 @@ async function setup(page) {
   const attrs = { ...(await uploaded.json()).image, alt: "Orange half of the image", decorative: false, caption: "<crop caption>" };
   const response = await page.request.post(`${BASE_URL}/v1/office/documents/${first.document.object_id}/versions`, {
     headers: OFFICE_HEADERS, data: { title: first.version.title, document: { ...first.content, content: [...first.content.content, { type: "image", attrs }] },
-      mutation_reference: "crop-fixture", expected_current_version_id: first.version.version_id, human_confirmation: true },
+      mutation_reference: `crop-fixture-${first.document.object_id}`, expected_current_version_id: first.version.version_id, human_confirmation: true },
   }); expect(response.status()).toBe(200);
   await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toBeVisible();
   return { saved: await response.json(), attrs };
