@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–268 development complete on dev001; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images
+Status: Roadmap 252–269 development complete on dev001; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`
 
 ## User workflow and scope
 
@@ -30,8 +30,8 @@ but does not advance its saved version. A new document must be saved once before
 The dialog supports bounded width/height, aspect lock, left/center/right alignment, literal alternative text and
 caption, moving the whole image, removal and cancellation. Decorative images require an explicit choice. Insertion
 and property edits change the local draft in isolated undo groups; confirmed CAS Save creates the immutable version.
-Keyboard selection and responsive controls remain available. The first slice uses in-flow block images; crop,
-floating anchors, text wrapping, shared media libraries and other embedded object types remain separate work.
+Keyboard selection and responsive controls remain available. The first slice uses in-flow block images. Roadmap 269
+adds cropping below; floating anchors, text wrapping, shared media libraries and other object types remain separate.
 
 Each node binds exact parent, asset and source-version IDs, content/manifest hashes and pixel dimensions. The asset
 inherits its current authoritative parent document ACL; independent asset grants do not authorize access. Every
@@ -51,6 +51,29 @@ the API. The test profile owns a separate socket volume. Start it with the `offi
 traffic; missing decoder access fails closed. No SQL migration or additional dependency version is introduced.
 Decision: [ADR-0091](../../ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md). Development acceptance and the
 fresh document-plus-asset recovery proof are recorded in CURRENT_HANDOFF.md; ordinary admission remains closed.
+
+## Non-destructive image cropping (Roadmap 269)
+
+**Bild zuschneiden** expands the image dialog with the original image, a visible selection rectangle, exact pixel
+fields and **Ganzes Bild wiederherstellen**. Drag selects a rectangle; arrow keys move it one source pixel and Shift
+moves ten. Numeric fields provide a keyboard-only alternative for both size and origin. Preview updates locally.
+Aspect lock follows the chosen rectangle and adjusts display height within existing limits; unlocked display sizes
+remain unchanged. Cancel discards all changes, and Apply creates one isolated undo action in the current draft.
+
+The optional native `crop` contains exactly integer x/y/width/height within the normalized source dimensions. Reset
+omits it, preserving legacy canonical bytes. No new rendition, endpoint, dependency, decoder behavior or SQL migration
+is needed. Original normalized bytes, hashes and ownership remain unchanged. Saved versions retain their exact crop;
+comparison describes its geometry, independently owned copies preserve it and browser print clips the same rectangle.
+Cropping is presentation, not redaction: authorized readers can still retrieve the complete normalized source image.
+The dialog states this explicitly. A pre-crop reader cannot safely read cropped versions; disabling new writes must
+retain compatible historical reads. Fresh ACL checks, confirmed CAS save and all ordinary admission gates remain.
+
+Decision: [ADR-0092](../../ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md). Full quality and actual PDF
+raster/semantic/responsive review passed. Passing evidence covers all 303 distinct browser/model cases via the 302/303
+full attempt plus the corrected 57-case helper suite, explicitly not a single all-green full run. Fresh PostgreSQL/S3
+recovery verified 488 documents, 913 versions and 43 image assets, including reset immediately after crop of the same
+owned rendition. Both release gates, API-only rollout and live/cleanup checks passed. Ordinary admission remains
+closed. Evidence is in CURRENT_HANDOFF.md; Roadmap 270 / PLANS 131 proposes bounded image text wrapping next.
 
 ## Document-owned format styles (Roadmap 267)
 

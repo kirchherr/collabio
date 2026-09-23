@@ -195,17 +195,23 @@ passed on96a299f and full quality on5d3eb35 with identical runtime/browser sourc
 document-plus-asset recovery and both release gates passed before decoder/API rollout. See CURRENT_HANDOFF.md.
 Active objects and other object types remain separate work; ordinary admission stays closed.
 
-130. [ ] Add non-destructive native image cropping with an interactive preview, reset and keyboard-accessible
-bounded controls. Persist crop geometry in immutable document versions while retaining exact original renditions;
-preserve undo, comparison, reuse, print and recovery. Floating anchors/text wrapping and other object types remain
-separate decisions. Continue native Office before CRM.
+130. [x] Add non-destructive native image cropping with interactive preview, reset and keyboard-accessible bounded
+controls under ADR-0092. Immutable versions retain geometry and exact normalized renditions; undo, comparison, reuse,
+actual PDF and fresh nonempty recovery passed. Full quality passed on 54fe1ff; passing browser/model evidence covers
+all 303 distinct cases via the 302/303 full attempt and corrected 57-case helper suite on 3da08b8, not a single green
+full run. Both release gates passed before API-only rollout. See CURRENT_HANDOFF.md.
+
+131. [ ] Add native image text wrapping with stable in-flow anchors, left/right placement and bounded text distance.
+Define narrow-screen fallback and page-break behavior before implementation. Preserve crop, accessible controls,
+undo, exact immutable history, owned copies and matching editor/PDF layout; require fresh nonempty recovery.
+Arbitrary page-positioned floating objects and other object types remain separate. Continue native Office before CRM.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 268, including document-owned images and format styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve the green297-case browser/model matrix, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document-plus-image recovery. Continue with Roadmap269 non-destructive image cropping before CRM. Floating anchors/text wrapping, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete through Roadmap 269, including non-destructive crop, document-owned images/styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve passing evidence for all 303 distinct browser/model cases, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document/image/crop recovery. Continue with Roadmap 270 / PLANS 131 bounded image text wrapping before CRM. Arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

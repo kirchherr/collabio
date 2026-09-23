@@ -2,7 +2,8 @@
 
 Updated: 2026-09-23
 Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded in CURRENT_HANDOFF.md.
-Other object types, crop and text wrapping remain proposals. This document does not activate ordinary tenants.
+Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is recorded in CURRENT_HANDOFF.md.
+Other object types and text wrapping remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
 
@@ -21,7 +22,7 @@ SVG, remote image URLs, animated formats and arbitrary HTML are outside the firs
 
 The native node references an exact tenant-owned asset/version/hash, never a public URL or inline base64 body. It
 contains bounded display dimensions, aspect-ratio lock, inline/block alignment, literal alternative text and an
-optional caption. Start with in-flow layout; wrapping, cropping and floating anchors can follow with explicit print
+optional caption. Start with in-flow layout; wrapping and floating anchors can follow with explicit print
 and interchange behavior. Keyboard selection, resize fields, move, remove, undo and mobile reachability are required.
 Alternative text describes the image; an explicit decorative choice can suppress redundant screen-reader output.
 
@@ -37,7 +38,18 @@ Retention-aware orphan cleanup is a separate confirmed lifecycle action. A copie
 authorized asset ownership/reference contract instead of silently inheriting source sharing. Print/export uses the
 same exact renditions, reauthorizes them and fails visibly on missing/denied assets rather than fetching fallbacks.
 
-## Next slice: inert linked or embedded objects
+## Non-destructive crop and subsequent layout
+
+ADR-0092 keeps the normalized source immutable and stores a bounded integer source-pixel rectangle in each document
+version. Pointer selection, keyboard movement, numeric controls, local preview/reset and isolated undo share that
+geometry. Reset omits the optional property. History, comparison, independent copy and print preserve the exact
+rectangle. The complete source remains readable to authorized readers; this feature is not a redaction mechanism.
+
+A subsequent text-wrapping slice should first define stable in-flow anchors, left/right placement, bounded text
+distance, narrow-screen fallback and page-break behavior. Editor, history, independent reuse and actual PDF must
+agree. Arbitrary page-positioned floating objects and DOCX anchors require separate layout/interchange decisions.
+
+## Later slice: inert linked or embedded objects
 
 Represent files, native tables, charts and later sheets/slides through a typed, version-bound object reference and an
 inert preview. Show object type, title, source version and whether it is a fixed snapshot or an explicitly refreshable

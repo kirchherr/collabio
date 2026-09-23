@@ -43,6 +43,16 @@ The 2026-09-22 development drill passed with 460 documents, 935 versions and 1,0
 unchanged legacy character version and two saved size/color profiles. Complete ACL/receipt/review/suggestion evidence
 and retained earlier targets are recorded in `docs/CURRENT_HANDOFF.md`; this is synthetic development evidence.
 
+Roadmap 268 document-owned images and Roadmap 269 crop geometry share this existing continuity domain. Retain every
+normalized ATTACHMENT rendition, parent ownership, source manifest and write receipt, including unattached uploads;
+document versions contain the exact asset/version/hash binding and optional source-pixel crop. Never regenerate
+renditions or discard cropped-away pixels during recovery. The fresh 269 proof uses its own checked dump, receipt and
+`collabio_work_e2e_269_restore`, preserving all earlier synthetic targets. It compares all retained image bytes and
+every saved binding, and requires a reset version immediately following a cropped version of the same document-owned
+asset and rendition. Complete document/style/format/review/suggestion and current ACL evidence remains mandatory.
+Use compatible readers after rollback; a pre-crop reader rejects the new attributes. The exact proof and both release
+gates must pass before API rollout. This is synthetic development recovery, not production continuity admission.
+
 This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.

@@ -2,12 +2,20 @@
 
 Updated: 2026-09-23
 
+Roadmap 269 / PLANS 130 completes non-destructive native image cropping under ADR-0092: pointer/numeric/keyboard
+preview, reset and isolated undo, preserving source pixels, immutable history, comparison, owned copies and print.
+Full quality passed on 54fe1ff. Passing evidence covers all 303 distinct browser/model cases: the full attempt passed
+302/303, then all 57 cases affected by the test-only reuse-helper correction passed on 3da08b8. This is not a single
+all-green full run. Actual PDF/visual checks, fresh nonempty crop/reset recovery and both release gates passed before
+API-only rollout. Final health at 08:29:39 UTC is ok, Collabio running(4). Office remains ahead of CRM; next is
+Roadmap 270 / PLANS 131 bounded image text wrapping. Ordinary tenant/pilot/indexing/engine admission stays closed.
+
 Roadmap 268 / PLANS 129 completes document-owned PNG/JPEG images under ADR-0091: upload, insert, resize/align,
 alt/caption, move/remove/undo, confirmed save, history, independent copy and print. All 297 browser/model cases passed
 on 96a299f. Full quality passed on 5d3eb35, whose only difference is Python test formatting and added ACL/replay
 assertions; runtime and browser sources are identical. Actual PDF/visual checks, fresh nonempty document-plus-image
-recovery and both release gates passed before decoder/API rollout. Office remains ahead of CRM. The next proposed
-slice is Roadmap 269 / PLANS 130 non-destructive image cropping. Ordinary tenant/pilot/indexing/engine admission stays closed.
+recovery and both release gates passed before decoder/API rollout. Its then-proposed Roadmap 269 / PLANS 130
+non-destructive crop is completed above. Ordinary tenant/pilot/indexing/engine admission stays closed.
 
 Roadmap 268 closeout94f56c3 was published and synchronized. All eleven documentation/module/roadmap checks passed
 in59.72s with only the known Starlette/AnyIO warning; health remained ok at2026-09-23 07:32:20 UTC. Logsha256:
@@ -154,13 +162,88 @@ This is the canonical continuation document. Read `AGENTS.md` fully first, then 
 `docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
 AGENTS.md and current code are authoritative. Green development evidence is not production or real-user approval.
 
-## Current slice: Roadmap 268 native images
+## Current slice: Roadmap 269 non-destructive image cropping
+
+Decision: ADR-0092. Optional integer source-pixel `crop` geometry is strictly bounded to the normalized image.
+Absence means the full image; reset removes the optional property and legacy canonical bytes remain unchanged.
+Pointer selection, pixel fields and arrow/Shift-arrow movement share one validator. Preview/cancel remain local;
+Apply is one selection/context-bound undo action. Aspect lock follows the crop ratio; unlocked dimensions remain.
+Editor, comparison, history, owned copies and actual print preserve the exact rectangle and caption/Alt semantics.
+Crop is presentation, not redaction: authorized readers can still obtain the complete normalized source image.
+No new endpoint, SQL migration, dependency, image asset or decoder behavior was introduced. Older readers reject
+crop metadata; rollback must close further writes while retaining a compatible reader and exact historical data.
+
+Implementation is frozen at 54fe1ffe5ba460dbfa4f00aab7ec42e6f0d141a4. Test-only
+3da08b89989fe440abe734f90bdfdf9778b4d6a8 observes successful reuse responses passively instead of intercepting them;
+all identity/content/no-store/authorization assertions and explicit fault interception remain. Product/Python sources
+are identical. Initial focused failures (20/23) were fixture mutation-reference collisions and a stopped test database;
+bb37cba corrected setup and passed 113 focused Python cases and all 23 focused browser/model cases.
+
+Full quality passed Ruff, formatting across 762 files, Mypy across 575 sources and full Pytest, with only the known
+Starlette/AnyIO warning. The complete 303-case run on 54fe1ff passed 302 in 1185.579592s; an existing image-copy case
+stalled while fetching an image after reuse interception. Trace showed a pending fetch and no corresponding API
+request, with saved content and the draft image node intact. All 57 cases in the seven helper-importing suites then
+passed on 3da08b8 in 417.950193s, zero skipped/unexpected/flaky. The explicit acceptance aggregation matches file,
+title and project to cover all 303 distinct cases (251 browser, 52 model); no single all-green full run is claimed.
+Raw failed/focused/full/affected reports, logs and traces remain separately retained under ignored roadmap-269/.
+
+- Full report sha256:e2786696db0b960c4c36219d053e8d6c2436840b863163efa87b5978592c1d54.
+- Affected report sha256:cd1ab0ebcf2740feb7479fc3ec556282bd80644f0c5c9813a6b0d0c9b3721f2a.
+- Acceptance JSON sha256:987e2f67ac36b86212f53b7c0507d88b9a9a159bb46d4cb6f7074623393c7905.
+- Quality log sha256:c24384dff141d298e2c76b7471846dcaf77249b625fc04fbcbc5dbeff6ab9b3e.
+- Focused report sha256:a0898f001f578f9e64db2091df1d0d49bde290509489be667de8a5ddc55cd3a4.
+- Initial failed report sha256:165366ffcecadd1d54e634f9c97b54913809e6fe78a9cbaabf954dc808d57fd0.
+
+Root reviewed desktop/tablet/mobile crop controls, mobile comments and both actual rendered PDFs. Each PDF is one
+A4 page (594.96x841.92pt), retaining original 320x160 image pixels, Figure/Alt, literal caption and expected text,
+with no application chrome. Each 1000px raster check finds 31,683 orange pixels and zero cropped-away blue pixels.
+PDF QA ran in the pinned network-none, read-only disposable tool container. No non-Chromium or independent-agent
+acceptance is claimed. Checked synthetic content markers are absent from normal and both isolated API logs.
+
+- Desktop PDF sha256:7b5647b3b8799071e373ecb9ddb1807c9f60c6bd5780ab27f150aa34a3cc4dd8.
+- Mobile PDF sha256:74f7e857470ca3f09e694cbcf84003d2131d2e5169a7d9c74b4192294b2285b0.
+- PDF QA sha256:1052c52735d273e95389a6e10208e7e77e2a906819813ef110c790e152826b94.
+
+Fresh recovery completed 08:26:06 UTC on 3da08b8 using separate checked dump/catalog/receipt and
+collabio_work_e2e_269_restore: 488 documents, 913 exact Office versions, 122 multiversion documents, 1,013 sources,
+43 image assets, 35 saved image references including eight cropped references. A reset immediately following a
+cropped version binds the same parent, asset and rendition. All exact bytes/receipts, prior formatting, 11 review
+threads/19 events, 12 suggestions/7 decisions, authoritative read-only access and foreign-tenant denial passed.
+All six synthetic recovery databases and their dumps/receipts remain retained; no source sync occurred during proof.
+
+- Recovery report hash sha256:70928c5c10e9e6e5a337e61f14ae8d8d0614a185cf95c0ad919a5bc4d9046937.
+- Recovery JSON sha256:0747b846b2bd02ab6929919bc03d88c985e41778aa841b94a3169c82b671d606.
+- Dump sha256:d40221acfda9093809148eeec4ded2b819fd99729d91cc84793e738265c412cc.
+
+Main backup collabio-20260923T082635Z.dump verified; sha256:6e75168bce3e737375caad3d0bb2d552a36ece548f821a9b99e7580e063990ac.
+Only the ordinary isolated restore target was refreshed, hash sha256:ca4696f2651c61e30cb3d1a05da887902a99cede3bb1885f8292cd6e6cc00797.
+Foundation 08:26:48 verified 85 migrations, 95 tables, three restored sources/two tenants;
+gate sha256:cad9b4210da57702a0aa5762f718ef80943fcb0214f450f65690a3ade3eb80d9.
+Business 08:27:37 was release_ready without blockers;
+gate sha256:fb753f69820091758fc44d53d8330a12ea9ce9725287e23f5e5dd6d79990f80a.
+Both gates used --no-deps with foundation seed explicitly 0; no main migration, business write or tenant activation.
+
+API-only rollout with --no-deps and pilot explicitly 0 reached health ok at 08:28:23 UTC. API a67cdfa88bdb,
+image sha256:ba8bea9aeb2bb4118d3e34237d7bea6463b16edf910041540fd06fb7b5805308. Regular decoder 30766f16f16a and
+its image remain unchanged; network none, user10001:10001, read-only, ALL capabilities dropped, no-new-privileges,
+384MiB, pids16, CPU1 and sole collabio_office_image_socket volume were inspected. Live checks verify 15 Office OpenAPI
+operation definitions, old controls, new crop controls and served bundle, assets/licenses, Work link and no-store/CSP.
+Definition checks do not execute 15 business operations. Office remains unprovisioned/non-cacheable404, features closed,
+KB write false and pilot0. Exact E2E services including test decoder were removed; disposable runners absent;
+postgres-test and both restore services stopped. Final 08:29:39 health ok, Collabio running(4), unchanged loopback
+8000/5433/29000/29001. Main PG87a6b37942c8, MinIO98ce365f455b, Webcut and provider nodes/26443 unchanged; Tricert absent.
+Rollout held build.lock before docker.lock; live/cleanup held docker.lock, all with fresh inventories.
+Live JSON sha256:dddb510cd5b8de466a2ed828a5049abecdd4a2ec8c340a4fa3a483a4310131af;
+cleanup log sha256:b5326b7d91f54a66213a86e31489afb864d96f1f51cb72a58554571757baab48.
+
+## Previous slice: Roadmap 268 native images
 
 Decision: ADR-0091. Native PNG/JPEG upload, insertion, dimensions/aspect lock/alignment, literal alt/caption,
 decorative choice, move/remove/undo, confirmed CAS save, historical reads, independent document reuse and actual
 print/PDF are implemented. Upload requires an already saved writable document; it does not change the saved head.
 Up to 40 image nodes/document and 200 retained uploads/document are admitted. Originals, filenames and EXIF are not
-stored. Crop, wrapping/floating anchors, shared media libraries, active objects and DOCX interchange remain separate.
+stored. Crop is completed by Roadmap 269 above; wrapping/floating anchors, shared media libraries, active objects and
+DOCX interchange remain separate.
 
 Immutable ATTACHMENT sources use the existing PostgreSQL/S3 storage and receipts. Each image node binds exact asset,
 version, parent, manifest/content hashes and pixel dimensions. The current authoritative parent ACL is the asset ACL;
@@ -224,10 +307,10 @@ cleanup logsha256:3d358a7277f83212b982356d77111f42c1ba0d1600dbf16d09a80efc2a4134
 
 - Repository: `git@github.com:kirchherr/collabio.git`.
 - Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
-- Validated implementation: `5d3eb35` (full quality); the single all-green 297-case browser/model run uses `96a299f`.
-  The sole later difference is Python test formatting plus additional ACL/replay assertions; product sources match.
-  Images extend native v1 metadata and add two guarded endpoints plus an isolated decoder, without a SQL migration
-  or additional dependency version. Fresh Roadmap 268 actual PDF, nonempty recovery and release gates passed.
+- Validated implementation: `54fe1ff` (full quality and 302/303 full browser/model attempt), plus test-only reuse-helper
+  correction `3da08b8` (all 57 affected cases passed). Product/Python sources match; all 303 distinct cases have passing
+  evidence, not a single all-green full run. Crop extends native v1 optional metadata without a new endpoint, migration,
+  dependency or decoder change. Fresh Roadmap 269 actual PDF, nonempty crop/reset recovery and release gates passed.
   The commit containing this handoff is the continuation
   baseline. Verify local and remote HEAD before continuing.
 - The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
@@ -241,7 +324,7 @@ cleanup logsha256:3d358a7277f83212b982356d77111f42c1ba0d1600dbf16d09a80efc2a4134
 - Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
   Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
 
-Final item 267 host verification at 2026-09-22 13:50:27 UTC: Collabio running(3), healthok, unchanged loopback
+Previous item 267 host verification at 2026-09-22 13:50:27 UTC: Collabio running(3), healthok, unchanged loopback
 8000/5433/29000/29001. Only API was rebuilt/recreated (bdcb65aa540c) with --no-deps and pilot explicitly0;
 bounded startup retries reached healthy at13:49:21 UTC. Live13:50:24 verified thirteen Office OpenAPI operation
 definitions, discovery/history contracts, old controls, new style dialog and served bundle, local assets/licenses,
@@ -1487,12 +1570,14 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 268 is complete. Preserve the green 297-case matrix (247 Work/KB/CRM/Office browser cases and 50 model cases),
-full quality and exact document-plus-image recovery. Continue with Roadmap 269 / PLANS 130 non-destructive image
-cropping: interactive preview/reset, bounded keyboard-accessible controls, version-owned crop geometry, isolated undo,
-comparison/reuse/print and fresh recovery. Preserve exact original normalized renditions; decide the geometry before
-implementation. Crop, floating anchors/text wrapping and other object types are not implemented yet. See ADR-0091
-and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Image ownership follows current parent ACLs; copies own new
+Item 269 is complete. Preserve passing evidence for all 303 distinct cases (251 Work/KB/CRM/Office browser cases and
+52 model cases), full quality and exact document/image/crop-reset recovery. The 302/303 full attempt plus corrected
+57-case affected suite is not a single green full run. Continue with Roadmap 270 / PLANS 131 native image text wrapping:
+stable in-flow anchors, left/right placement, bounded text distance, keyboard-accessible controls, narrow-screen
+fallback and page-break behavior. Decide layout before implementation, preserving exact crop/source pixels, undo,
+history, owned copies and actual editor/PDF agreement; require fresh recovery for durable geometry. Arbitrary
+page-positioned objects and other object types remain separate. See ADR-0091/0092 and
+docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Image ownership follows current parent ACLs; copies own new
 assets after fresh source authorization. Keep the isolated network-none decoder and historical manifests intact.
 Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.
 Continue native Office before CRM. List indentation/outdent and nearest-list start values preserve content and undo,

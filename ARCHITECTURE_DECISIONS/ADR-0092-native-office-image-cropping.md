@@ -1,7 +1,7 @@
 # ADR-0092: Non-destructive native image cropping
 
 Date: 2026-09-23
-Status: implementation; acceptance pending
+Status: accepted; Roadmap 269 development evidence in docs/CURRENT_HANDOFF.md
 
 Extend the ADR-0091 image node with an optional `crop` object containing exactly
 integer `x`, `y`, `width`, `height` in normalized source-image pixels. Origins are
@@ -27,6 +27,8 @@ can still obtain the complete source image, including the cropped-away pixels.
 
 No new endpoint, dependency, decoder behavior, SQL migration or asset is introduced.
 All current parent ACLs, fresh print reads, owned-copy rules and closed admission
-remain. Acceptance requires strict geometry/legacy-byte tests, real browser pointer/
+remain. Older native readers reject crop metadata; a rollback must disable further
+writes while retaining a compatible reader, never strip historical geometry or pixels.
+Acceptance requires strict geometry/legacy-byte tests, real browser pointer/
 keyboard/numeric/undo/history/copy/print tests, actual PDF visual review and a fresh
 nonempty restore including cropped and reset versions before API rollout.

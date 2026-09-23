@@ -1680,11 +1680,18 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      und volle Qualitaet auf5d3eb35 bei identischen Produktquellen bestanden. PDF/Sichtpruefung, frischer nichtleerer
      Dokument-/Bild-Restore und beide Release-Gates vor Decoder/API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
 
-269. [ ] Nativen Bildzuschnitt ergaenzen: interaktive Vorschau, Zuruecksetzen und tastaturbedienbare begrenzte
-     Einstellungen. Zuschnitt als versionierte Dokumenteigenschaft speichern und die exakte Bildquelle erhalten;
-     Undo, Vergleich, Wiederverwendung, Druck und Restore pruefen. Textumfluss und weitere Objekttypen separat.
+269. [x] Nativen Bildzuschnitt ergaenzt: interaktive Vorschau, Zuruecksetzen und tastaturbedienbare begrenzte
+     Einstellungen unter ADR-0092. Versionierte Geometrie erhaelt die exakte Bildquelle; Undo, Vergleich, Kopie,
+     echte PDFs und frischer nichtleerer Restore bestanden. Volle Qualitaet auf 54fe1ff; bestandene Nachweise fuer
+     alle 303 unterschiedlichen Browser-/Modellfaelle aus 302/303 im Volllauf plus korrigierter 57-Faelle-Nachpruefung
+     auf 3da08b8, kein einzelner vollstaendig gruener Lauf. Beide Release-Gates vor API-Rollout bestanden.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 268 abgeschlossen, 269 als naechster Schritt geplant.
+270. [ ] Nativen Textumfluss um Bilder ergaenzen: stabiler Anker im Dokumentfluss, Links-/Rechtsplatzierung und
+     begrenzter Textabstand. Verhalten auf schmalen Ansichten und an Seitenumbruechen vor Implementierung festlegen;
+     Zuschnitt, Tastaturbedienung, Undo, Historie, unabhaengige Kopien und identisches Editor-/PDF-Layout erhalten.
+     Frischen nichtleeren Restore nachweisen; beliebige Seitenpositionen und weitere Objekttypen separat entscheiden.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 269 abgeschlossen, 270 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

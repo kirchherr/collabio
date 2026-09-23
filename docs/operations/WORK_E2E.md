@@ -349,7 +349,7 @@ Full host details and backup/gate hashes are in `docs/CURRENT_HANDOFF.md`. No or
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `collabio_work_e2e_263_restore`,
-`collabio_work_e2e_267_restore` or `collabio_work_e2e_268_restore` target,
+`collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore` or `collabio_work_e2e_269_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -608,4 +608,35 @@ checks and root visual review; all three responsive dialog views passed. Fresh r
 787 Office versions,858 sources,16 image assets and8 saved references. Recoveryhashsha256:
 c40f85de4b5e11725eec576286ab16546f5eb57aba30d11271f3ebd457713eb3. Both release gates, controlled decoder/API rollout,
 live verification and exact cleanup passed. Final2026-09-23 07:29:06 UTC: healthok, Collabio running(4), gatesclosed.
-Roadmap269 non-destructive image cropping is the next proposed slice. Full evidence is in CURRENT_HANDOFF.md.
+The then-proposed Roadmap 269 non-destructive image cropping is recorded below. Full evidence is in CURRENT_HANDOFF.md.
+
+## Roadmap 269 non-destructive image cropping
+
+The matrix adds two pure-model cases and two browser workflows in each of desktop and mobile Chromium: 303 distinct
+cases total (251 browser and 52 model). Coverage includes strict source-pixel bounds and legacy bytes, pointer/numeric/
+keyboard selection, local preview/cancel/reset, aspect lock and unlocked dimensions, isolated undo, confirmed save,
+history/comparison, independent owned copies and actual cropped PDF output. Crop is presentation, not redaction.
+
+Full quality passed on 54fe1ff. Its complete browser/model run passed 302/303 in 1185.579592s; one existing image-copy
+case stalled on an image fetch after one-shot reuse interception. The report and trace remain in roadmap-269/full-attempt.
+Test-only 3da08b8 changes successful reuse reads to passive response observation, retaining explicit fault interception
+and all assertions. All 57 cases in the seven importing files then passed in 417.950193s, with no skipped/unexpected/
+flaky cases. Runtime and Python sources are identical between these commits. The acceptance aggregation verifies all
+303 distinct cases have passing evidence; this is explicitly not a single all-green full run.
+
+Full report sha256:e2786696db0b960c4c36219d053e8d6c2436840b863163efa87b5978592c1d54;
+affected report sha256:cd1ab0ebcf2740feb7479fc3ec556282bd80644f0c5c9813a6b0d0c9b3721f2a;
+acceptance summary sha256:987e2f67ac36b86212f53b7c0507d88b9a9a159bb46d4cb6f7074623393c7905.
+The initial 20/23 setup-failure report and corrected 23/23 focused report remain retained separately.
+
+Root reviewed desktop/tablet/mobile crop controls, mobile comments and both actual rendered PDFs. Each PDF is one A4
+page, preserves the original 320x160 image with Figure/Alt semantics and literal caption, and shows only the selected
+orange half: 31,683 orange pixels and zero blue pixels in each 1000px raster check. PDF QA report:
+sha256:1052c52735d273e95389a6e10208e7e77e2a906819813ef110c790e152826b94. Checked synthetic text markers are absent
+from normal and isolated API logs. No independent-agent or non-Chromium acceptance is claimed.
+
+Fresh recovery uses collabio_work_e2e_269_restore and its own checked dump/catalog/receipt. In addition to every prior
+document/image contract, require a cropped saved version immediately followed by reset on the same parent, asset and
+rendition. Reset omits the optional crop property; the original normalized image bytes and all historical geometries
+must survive. Older synthetic targets remain retained. Main backup/isolated restore and both release gates precede
+API-only rollout; the regular isolated decoder is unchanged. Final counts, hashes and host state are in CURRENT_HANDOFF.md.
