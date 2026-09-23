@@ -118,7 +118,7 @@
 .image-fields { margin-block: 12px; }
 .image-fields > label { display: grid; gap: 6px; font-weight: 600; }
 .image-fields input, .image-fields select { min-height: 40px; padding: 8px 10px; border: 1px solid #c8d5d7; border-radius: 5px; background: white; font: inherit; color: inherit; }
-.image-toolbar { flex: none; background: white; border-color: var(--line); }
+.image-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: none; background: white; border-color: var(--line); }
 /* Ordered image nodes anchor wrapping; only following top-level paragraphs flow beside them. */
 :is(.document-page .tiptap, .office-print-content, .image-layout-preview) { display: flow-root; container: office-image-flow / inline-size; }
 :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > :is(h1,h2,h3,ul,ol,blockquote,pre,hr,table,.tableWrapper,.office-image-node,.office-image) { clear: both; }
