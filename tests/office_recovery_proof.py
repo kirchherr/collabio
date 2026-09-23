@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import psycopg
+from office_image_recovery import verify_restored_images
 
 from office_suggestion_recovery import verify_restored_suggestions
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
@@ -28,6 +29,7 @@ from suite.platform.office_documents import (
     OfficeDocumentVersionView,
     OfficeDocumentView,
 )
+from suite.platform.office_image_schema import image_references
 from suite.platform.office_review_repository import PgOfficeReviewRepository
 from suite.platform.office_reviews import OfficeReviewService, ReviewEventCommand, derive_review_quote
 from suite.platform.office_suggestion_repository import OfficeSuggestionRepositoryAdapter
@@ -81,6 +83,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_262_restore",
         "collabio_work_e2e_263_restore",
         "collabio_work_e2e_267_restore",
+        "collabio_work_e2e_268_restore",
     }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
@@ -133,6 +136,12 @@ def _metadata_snapshot(database_dsn: str) -> dict[str, list[Any]]:
             (TENANT_ID,),
         ).fetchall()
         rows["acls"] = [row[0] for row in result]
+        result = connection.execute(
+            "SELECT to_jsonb(record) FROM collabio.source_object_metadata AS record "
+            "WHERE tenant_id = %s AND source_system = 'collabio_office_image' ORDER BY object_id, version_id",
+            (TENANT_ID,),
+        ).fetchall()
+        rows["images"] = [row[0] for row in result]
     return rows
 
 
@@ -680,6 +689,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         expected_documents=inventory["documents"],
     )
     evidence: list[dict[str, Any]] = []
+    image_bindings: list[dict[str, str]] = []
     multi_version_documents = 0
     for document in documents:
         user = readers[document.object_id]
@@ -687,6 +697,17 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         multi_version_documents += int(len(versions) >= 2)
         for version in versions:
             read = restored.read_content(user_context=user, object_id=document.object_id, version_id=version.version_id)
+            for attrs in image_references(read.content):
+                image_bindings.append(
+                    {
+                        "object_id": document.object_id,
+                        "document_version_id": version.version_id,
+                        "asset_id": attrs["assetId"],
+                        "asset_version_id": attrs["versionId"],
+                        "content_hash": attrs["contentHash"],
+                        "manifest_hash": attrs["manifestHash"],
+                    }
+                )
             receipt = receipt_store.get(tenant_id=TENANT_ID, receipt_hash=version.source_write_receipt_hash)
             source = source_repository.get(
                 tenant_id=TENANT_ID, object_id=document.object_id, version_id=version.version_id
@@ -713,6 +734,15 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             )
     if multi_version_documents < 1 or len(evidence) < 2:
         raise ValueError("Office recovery requires a non-empty document with at least two saved versions")
+    image_evidence = verify_restored_images(
+        documents=restored,
+        readers=readers,
+        original_sources=source_repository,
+        restored_sources=restored_sources,
+        receipts=receipt_store,
+        images=inventory["images"],
+        bindings=image_bindings,
+    )
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(
@@ -786,6 +816,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         **paragraph_evidence,
         **character_evidence,
         **style_evidence,
+        **image_evidence,
         "authoritative_acl_verified": True,
         "receipt_bindings_verified": True,
         "foreign_tenant_denied": True,

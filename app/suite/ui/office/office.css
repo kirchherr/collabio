@@ -104,3 +104,7 @@
 .office-image[data-image-align="right"] img { margin-left: auto; }
 .office-image figcaption { font-size: .875rem; color: #475569; overflow-wrap: anywhere; }
 .office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
+.image-fields { margin-block: 12px; }
+.image-fields > label { display: grid; gap: 6px; font-weight: 600; }
+.image-fields input, .image-fields select { min-height: 40px; padding: 8px 10px; border: 1px solid #c8d5d7; border-radius: 5px; background: white; font: inherit; color: inherit; }
+.image-toolbar { flex: none; background: white; border-color: var(--line); }

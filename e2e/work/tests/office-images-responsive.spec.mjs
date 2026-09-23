@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { BASE_URL, ARTIFACT_DIR } from "./support.mjs";
 import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeContent, OFFICE_HEADERS, OFFICE_READER_HEADERS, setOfficeAcl } from "./office-support.mjs";
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { openReuse, submitReuse, expectReuseDraft } from "./office-reuse-support.mjs";
 
 async function fixture(page, mime = "image/png") {
   const value = await page.evaluate((type) => {
@@ -32,7 +33,7 @@ async function insert(page, bytes, mime = "image/png") {
   await expect(officeEditor(page).locator("img")).toBeVisible();
 }
 
-test("Office image upload insert resize undo save reopen and real PDF preserve exact assets", async ({ page }) => {
+test("Office image upload insert resize undo save reopen and real PDF preserve exact assets", async ({ page }, testInfo) => {
   await openOffice(page);
   const first = await createOfficeDocument(page, "Image workflow", "Before the image");
   const bytes = await fixture(page); await insert(page, bytes);
@@ -48,13 +49,57 @@ test("Office image upload insert resize undo save reopen and real PDF preserve e
   expect(attrs).toMatchObject({ width: 240, height: 120, align: "center", alt: "Blue and orange squares", decorative: false });
   expect((await officeContent(page, first.document.object_id, { versionId: first.version.version_id })).content).toEqual(first.content);
   await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toBeVisible();
-  const prints = await installPrintProbe(page, { pdfName: "office-images-output.pdf" });
+  const prints = await installPrintProbe(page, { pdfName: `office-images-${testInfo.project.name}.pdf` });
   await openPrintPreview(page, first.document.object_id, saved.version.version_id);
   await expect(page.locator("#print-preview img")).toHaveAttribute("alt", attrs.alt);
   await submitOfficePrint(page, first.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Image");
   expect(prints[0].snapshot.text).toContain("<literal image caption>");
+});
+
+test("Office image copy owns new assets after source revocation and print rechecks current access", async ({ page }) => {
+  await openOffice(page); const first = await createOfficeDocument(page, "Image copy source", "Source image");
+  await insert(page, await fixture(page));
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  const source = saved.content.content.find((entry) => entry.type === "image").attrs;
+  await openReuse(page, saved, "Independent image copy"); await submitReuse(page, saved);
+  await expectReuseDraft(page, "Independent image copy"); await expect(officeEditor(page).locator("img")).toBeVisible();
+  const copied = await saveOffice(page);
+  const own = copied.content.content.find((entry) => entry.type === "image").attrs;
+  expect(own.documentId).toBe(copied.document.object_id); expect(own.assetId).not.toBe(source.assetId);
+  expect(own.contentHash).toBe(source.contentHash);
+  try {
+    await setOfficeAcl(page, first.document.object_id, { creator: true, status: "revoked" });
+    await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toBeVisible();
+    expect((await page.request.get(`${BASE_URL}/v1/office/documents/${source.documentId}/images/${source.assetId}/${source.versionId}`, { headers: OFFICE_HEADERS })).status()).toBe(404);
+    const prints = await installPrintProbe(page);
+    await openPrintPreview(page, copied.document.object_id, copied.version.version_id);
+    await setOfficeAcl(page, copied.document.object_id, { creator: true, status: "revoked" });
+    await submitOfficePrint(page, copied.document.object_id, copied.version.version_id, { status: 404 });
+    await expect(page.locator("#print-dialog")).toBeHidden(); expect(prints).toHaveLength(0);
+  } finally {
+    await setOfficeAcl(page, first.document.object_id, { creator: true });
+    await setOfficeAcl(page, copied.document.object_id, { creator: true });
+  }
+});
+
+test("Office image placement moves whole nodes without changing text and supports keyboard selection", async ({ page }) => {
+  await openOffice(page); await createOfficeDocument(page, "Image positioning", "Unchanged paragraph");
+  await insert(page, await fixture(page));
+  await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();
+  await page.locator("#image-up").click();
+  await expect(officeEditor(page).locator(":scope > div").first()).toHaveClass(/office-image-node/);
+  await expect(officeEditor(page).locator("p").first()).toHaveText("Unchanged paragraph");
+  await officeEditor(page).press("Control+z");
+  await expect(officeEditor(page).locator(":scope > p").first()).toHaveText("Unchanged paragraph");
+  await officeEditor(page).press("Control+End"); await officeEditor(page).press("ArrowLeft");
+  await expect(page.locator("#image-options")).toBeEnabled();
+  await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();
+  await page.locator("#image-lock").uncheck(); await page.locator("#image-width").fill("160");
+  await page.locator("#image-height").fill("160"); await page.locator("#image-apply").click();
+  await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "160");
+  const box = await officeEditor(page).locator("img").boundingBox(); expect(box.width).toBeCloseTo(box.height, 0);
 });
 
 test("Office image JPEG normalization strips original metadata and decoder rejects malformed and oversized pixels", async ({ page }) => {

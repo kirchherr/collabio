@@ -79,7 +79,7 @@ def test_images_are_bounded_leaf_nodes_and_preserve_review_offsets() -> None:
     assert derive_review_quote(document, ReviewAnchor.model_validate({"from": 2, "to": 7})) == "After"
     replaced = replace_suggestion_text(document, ReviewAnchor.model_validate({"from": 2, "to": 7}), "Before")
     assert replaced["content"][0] == document["content"][0]
-    assert replaced["content"][1]["content"][0]["text"] == "Before image"
+    assert "".join(node["text"] for node in replaced["content"][1]["content"]) == "Before image"
     excessive = deepcopy(document)
     excessive["content"] = [excessive["content"][0]] * 41
     with pytest.raises(OfficeDocumentInvalidContentError):

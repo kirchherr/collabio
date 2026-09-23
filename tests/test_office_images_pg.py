@@ -64,7 +64,8 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, user.tenant_id)
         connection.execute(
-            "UPDATE collabio.object_acl_entries SET status = 'revoked' WHERE tenant_id = %s AND object_id = %s",
+            "UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
+            "WHERE tenant_id = %s AND object_id = %s",
             (user.tenant_id, object_id),
         )
     with pytest.raises(OfficeDocumentNotFoundError):
