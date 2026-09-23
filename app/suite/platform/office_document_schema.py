@@ -9,6 +9,7 @@ import re
 from typing import Any
 
 from suite.ai_control_plane.audit import canonical_json
+from suite.platform.office_image_schema import validate_image_attributes
 
 OFFICE_DOCUMENT_SCHEMA_VERSION = "collabio_document.v1"
 OFFICE_DOCUMENT_MIME_TYPE = "application/vnd.collabio.document+json"
@@ -16,7 +17,7 @@ MAX_DOCUMENT_BYTES = 400_000
 MAX_DOCUMENT_CHARACTERS = 100_000
 MAX_DOCUMENT_NODES = 10_000
 MAX_DOCUMENT_DEPTH = 32
-BLOCKS = {"paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "horizontalRule", "table"}
+BLOCKS = {"paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "horizontalRule", "table", "image"}
 MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
@@ -38,6 +39,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     """Validate structure and resource limits before canonicalization or storage."""
     nodes = 0
     characters = 0
+    images = 0
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -80,7 +82,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
 
     def visit(node: Any, depth: int) -> None:
-        nonlocal nodes, characters
+        nonlocal nodes, characters, images
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -120,6 +122,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             for key in ("spacingBefore", "spacingAfter"):
                 if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
                     reject()
+        elif kind == "image":
+            images += 1
+            if images > 40:
+                reject()
+            try:
+                validate_image_attributes(attrs)
+            except ValueError:
+                reject()
         elif kind == "orderedList":
             if (
                 set(attrs) - {"start"}

@@ -274,7 +274,7 @@ def derive_review_quote(document: dict[str, Any], anchor: ReviewAnchor | None) -
             return len(node["text"].encode("utf-16-le")) // 2
         children = node.get("content", [])
         if not children:
-            return 1 if kind in {"hardBreak", "horizontalRule"} else 2
+            return 1 if kind in {"hardBreak", "horizontalRule", "image"} else 2
         offset = position + (0 if kind == "doc" else 1)
         if kind in {"paragraph", "heading", "codeBlock"}:
             start = offset

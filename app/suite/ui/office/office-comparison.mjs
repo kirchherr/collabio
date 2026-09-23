@@ -184,6 +184,7 @@ function blockText(block, nested = false) {
     case "text": return markedText(block);
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
+    case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
       const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];
@@ -219,7 +220,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
+  let label = block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

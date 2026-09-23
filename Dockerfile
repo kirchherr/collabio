@@ -63,6 +63,19 @@ USER 10001:10001
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
+FROM base AS office-image-decoder
+
+COPY requirements-preview.lock .
+RUN python -m pip install --require-hashes --requirement requirements-preview.lock \
+    && addgroup -S -g 10001 images \
+    && adduser -S -D -H -u 10001 -G images images \
+    && mkdir -p /run/office-images \
+    && chown 10001:10001 /run/office-images
+COPY app/suite/platform/office_image_codec.py app/suite/platform/office_image_worker.py /workspace/app/suite/platform/
+ENV PYTHONPATH=/workspace/app
+USER 10001:10001
+ENTRYPOINT ["python", "-m", "suite.platform.office_image_worker"]
+
 FROM base AS preview-renderer
 
 COPY requirements-preview.lock .

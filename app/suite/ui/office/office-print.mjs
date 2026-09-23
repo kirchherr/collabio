@@ -2,6 +2,7 @@
 // editor decorations, browser grants, or remote attributes enter the print surface.
 import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
+import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -9,7 +10,7 @@ const blockTags = {
 };
 const markTags = { bold: "strong", italic: "em", underline: "u", strike: "s", code: "code" };
 
-export function renderOfficePrintDocument(content, title, dom = document) {
+export function renderOfficePrintDocument(content, title, dom = document, images = new Map()) {
   if (content?.type !== "doc" || !Array.isArray(content.content) || typeof title !== "string") {
     throw new Error("Invalid print document");
   }
@@ -17,6 +18,7 @@ export function renderOfficePrintDocument(content, title, dom = document) {
   const styles = officeStyles(content.attrs?.styles || []);
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
+    if (value.type === "image") return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("Invalid print text");
       let text = dom.createTextNode(value.text);

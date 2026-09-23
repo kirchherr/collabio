@@ -6,9 +6,10 @@ from typing import Any
 from uuid import uuid4
 
 import psycopg
+import json
 from psycopg.rows import dict_row
 
-from suite.ai_control_plane.audit import canonical_json, stable_hash
+from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
 from suite.platform.office_document_schema import (
     OFFICE_DOCUMENT_MIME_TYPE,
@@ -414,6 +415,8 @@ class PgOfficeDocumentRepository:
         object_id: str | None,
         command: OfficeDocumentCreateCommand,
     ) -> OfficeDocumentCommit:
+        from suite.platform.office_images import prepare_image_references
+
         command = type(command).model_validate(command.model_dump(mode="python"))
         if command.mutation_reference.startswith("office-suggestion-accept:"):
             raise OfficeDocumentInvalidContentError("Document mutation reference is reserved")
@@ -440,7 +443,10 @@ class PgOfficeDocumentRepository:
                     if version.command_hash != command_hash:
                         raise OfficeDocumentConflictError("Mutation reference was already used for another command")
                     document = self._authorized_document(connection, user_context, version.object_id, write=True)
-                    return OfficeDocumentCommit(document=document, version=version, replayed=True)
+                    saved = OfficeDocumentService(repository=self, source_repository=self.source_repository,
+                        audit=InMemoryAuditLogger())
+                    return OfficeDocumentCommit(document=document, version=version, replayed=True,
+                        content=saved._read_content(document, version))
                 previous_version_id: str | None = None
                 if object_id is None:
                     document = _new_document(user_context, command.title)
@@ -470,6 +476,9 @@ class PgOfficeDocumentRepository:
                 acl_rows = self._acl_rows(connection, user_context.tenant_id, document.object_id)
                 if not acl_rows:
                     raise OfficeDocumentPermissionError("Document saving is not permitted")
+                content = prepare_image_references(self, connection, user_context, document, command.document,
+                    creating=object_id is None)
+                command = command.model_copy(update={"document": content})
                 document, version, source, receipt = _prepare_version(
                     user=user_context,
                     document=document,
@@ -508,7 +517,7 @@ class PgOfficeDocumentRepository:
                 document.object_id,
             ),
         )
-        return OfficeDocumentCommit(document=document, version=version)
+        return OfficeDocumentCommit(document=document, version=version, content=json.loads(source.content_bytes or b"{}"))
 
     @staticmethod
     def _insert_document(connection: psycopg.Connection[Any], document: OfficeDocumentRecord) -> None:
@@ -640,6 +649,10 @@ class InMemoryOfficeDocumentRepository:
         command: OfficeDocumentCreateCommand,
     ) -> OfficeDocumentCommit:
         command = type(command).model_validate(command.model_dump(mode="python"))
+        from suite.platform.office_image_schema import image_references
+
+        if image_references(command.document):
+            raise OfficeDocumentInvalidContentError("Image writes require the durable Office repository")
         if command.mutation_reference.startswith("office-suggestion-accept:"):
             raise OfficeDocumentInvalidContentError("Document mutation reference is reserved")
         with self._lock:

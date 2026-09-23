@@ -4030,6 +4030,36 @@ services:
         bind:
           create_host_path: false
 
+  office-image-decoder:
+    profiles: ["office-images"]
+    build:
+      context: .
+      target: office-image-decoder
+    restart: unless-stopped
+    network_mode: none
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 16
+    mem_limit: 384m
+    cpus: 1
+    tmpfs: ["/tmp:size=32m,noexec,nosuid,nodev"]
+    volumes:
+      - office_image_socket:/run/office-images
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(2); s.connect('/run/office-images/decoder.sock'); s.close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  work-e2e-image-decoder:
+    extends: office-image-decoder
+    profiles: ["work-e2e"]
+    restart: "no"
+    volumes:
+      - work_e2e_image_socket:/run/office-images
+
   api:
     build:
       context: .
@@ -4116,6 +4146,7 @@ services:
       - ./data:/workspace/data
       - ./docs:/workspace/docs:ro
       - ./backups:/workspace/backups:ro
+      - office_image_socket:/run/office-images:ro
 
   work-e2e-postgres:
     profiles: ["work-e2e"]
@@ -4286,9 +4317,12 @@ services:
       target: dev
     command: uvicorn work_e2e_server:app --app-dir /workspace/tests --host 0.0.0.0 --port 8000
     depends_on:
+      work-e2e-image-decoder:
+        condition: service_healthy
       work-e2e-seed:
         condition: service_completed_successfully
     user: "1000:1000"
+    group_add: ["10001"]
     read_only: true
     cap_drop:
       - ALL
@@ -4331,6 +4365,7 @@ services:
       - ./app:/workspace/app:ro
       - ./tests:/workspace/tests:ro
       - ./docs:/workspace/docs:ro
+      - work_e2e_image_socket:/run/office-images:ro
     mem_limit: 1024m
     pids_limit: 256
     cpus: 2
@@ -4435,6 +4470,12 @@ services:
       - type: bind
         source: ./app/suite/ui/office/office-print.mjs
         target: /work-e2e/office-print.mjs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./app/suite/ui/office/office-images.mjs
+        target: /work-e2e/office-images.mjs
         read_only: true
         bind:
           create_host_path: false
@@ -4599,6 +4640,8 @@ networks:
     internal: false
 
 volumes:
+  office_image_socket:
+  work_e2e_image_socket:
   postgres18_data:
   postgres18_test_data:
   postgres18_restore_data:

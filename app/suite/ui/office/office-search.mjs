@@ -1,6 +1,6 @@
 // Already schema-validated native Office JSON. No DOM, storage, HTML or regex input.
 const TEXT_BLOCKS = new Set(["paragraph", "heading", "codeBlock"]);
-const LEAVES = new Set(["hardBreak", "horizontalRule"]);
+const LEAVES = new Set(["hardBreak", "horizontalRule", "image"]);
 const WORD_CHARACTER = /[\p{L}\p{N}\p{M}\p{Pc}\u200c\u200d]/u;
 const MAX_CHARACTERS = 100000;
 const MAX_NODES = 10000;

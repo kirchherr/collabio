@@ -85,3 +85,22 @@
 .format-toolbar .style-toggle{display:block;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-dark);background:var(--accent-soft)}
 .style-dialog{width:min(680px,calc(100vw - 32px))}.style-dialog .paragraph-fields{gap:10px;margin:10px 0}.style-dialog .paragraph-fields input{width:100%;min-width:0;min-height:40px;border:1px solid #bcd0c9;border-radius:5px;padding:8px;font:12px "Segoe UI",Arial,sans-serif}.style-dialog footer .button{white-space:normal}.style-preview.document-page{min-height:0;max-height:140px;overflow:auto;padding:12px 18px;margin:14px 0;box-shadow:none}.style-preview .tiptap{min-height:0;font-size:16px}.style-preview .tiptap p{margin:0}.style-dialog .paragraph-help{margin:8px 0}
 @media(max-width:760px){.style-dialog .style-identity{grid-template-columns:minmax(0,1fr)}.style-dialog header{padding:16px 20px}.style-dialog .dialog-body{padding-bottom:10px}.style-dialog .paragraph-fields label{font-size:11px}.style-dialog .paragraph-fields select{min-height:36px;padding:6px}}
+
+/* Image controls remain in document flow on narrow screens. */
+.image-toolbar { padding: .4rem .8rem; border-bottom: 1px solid var(--border); }
+.image-fields { display: flex; flex-wrap: wrap; gap: .8rem; }
+.image-fields > label { flex: 1 1 120px; min-width: 0; }
+.image-fields input, .image-fields select { width: 100%; }
+.image-dialog { max-height: 90dvh; }
+.image-dialog .dialog-body { overflow-y: auto; max-height: 65dvh; }
+#image-file { max-width: 100%; }
+#image-preview { max-height: 220px; overflow: auto; background: #f3f5f8; border-radius: 8px; }
+#image-preview img { max-height: 180px; object-fit: contain; }
+.office-image { margin: 1rem 0; max-width: 100%; break-inside: avoid; }
+.office-image img { display: block; max-width: 100%; height: auto; object-fit: fill; }
+.office-image[data-image-align="center"] { text-align: center; }
+.office-image[data-image-align="right"] { text-align: right; }
+.office-image[data-image-align="center"] img { margin-inline: auto; }
+.office-image[data-image-align="right"] img { margin-left: auto; }
+.office-image figcaption { font-size: .875rem; color: #475569; overflow-wrap: anywhere; }
+.office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }

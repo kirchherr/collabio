@@ -205,6 +205,7 @@ class OfficeDocumentCommit(BaseModel):
     document: OfficeDocumentRecord
     version: OfficeDocumentVersion
     replayed: bool = False
+    content: dict[str, Any] | None = None
 
 
 class OfficeDocumentRepository(Protocol):
@@ -533,7 +534,7 @@ class OfficeDocumentService:
         )
         # Return the committed transaction snapshot: a later save cannot invalidate this success.
         return self._content_response(
-            result.document, result.version, command.document, True, event_id, replayed=result.replayed
+            result.document, result.version, result.content or command.document, True, event_id, replayed=result.replayed
         )
 
     def _read_content(self, document: OfficeDocumentRecord, version: OfficeDocumentVersion) -> dict[str, Any]:
@@ -560,6 +561,11 @@ class OfficeDocumentService:
             if not isinstance(value, dict):
                 raise OfficeDocumentInvalidContentError("Document source is invalid")
             validate_office_document(value)
+            from suite.platform.office_image_schema import image_references
+            from suite.platform.office_images import read_image
+
+            for attrs in image_references(value):
+                read_image(self.source_repository, document, attrs, load=False)
             if canonical_json(value).encode("utf-8") != content:
                 raise OfficeDocumentInvalidContentError("Document source is invalid")
             return value

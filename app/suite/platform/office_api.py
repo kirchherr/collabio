@@ -4,9 +4,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.routing import APIRoute
 from psycopg import Error as PsycopgError
 from starlette.datastructures import MutableHeaders
@@ -17,6 +17,8 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
 from suite.platform.office_access_logging import protect_office_discovery_access_logs
+from suite.platform.office_image_codec import MAX_IMAGE_INPUT, OfficeImageInvalid, OfficeImageUnavailable, normalize_image
+from suite.platform.office_images import read_image, store_uploaded_image
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -61,7 +63,7 @@ from suite.storage.source_objects import (
 
 MAX_OFFICE_REQUEST_BYTES = 512_000
 OFFICE_CSP = (
-    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; "
     "connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 )
 
@@ -95,7 +97,8 @@ class OfficeBoundaryMiddleware:
                 if message["type"] == "http.disconnect":
                     return
                 body.extend(message.get("body", b""))
-                if len(body) > MAX_OFFICE_REQUEST_BYTES:
+                maximum = MAX_IMAGE_INPUT if path.endswith("/images") else MAX_OFFICE_REQUEST_BYTES
+                if len(body) > maximum:
                     await JSONResponse({"detail": "Document request is too large"}, status_code=413)(
                         scope, receive, protected_send
                     )
@@ -138,9 +141,9 @@ class OfficeRoute(APIRoute):
                 return JSONResponse(
                     {"detail": "The document has a newer or conflicting saved version"}, status_code=409
                 )
-            except OfficeDocumentInvalidContentError:
+            except (OfficeDocumentInvalidContentError, OfficeImageInvalid):
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
-            except (SourceObjectStorageError, PsycopgError):
+            except (SourceObjectStorageError, PsycopgError, OfficeImageUnavailable):
                 return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
 
         return guarded
@@ -235,6 +238,42 @@ def register_office_routes(
         return FileResponse("/opt/collabio-office/THIRD_PARTY_NOTICES.txt", media_type="text/plain")
 
     router = APIRouter(prefix="/v1/office/documents", route_class=OfficeRoute, dependencies=[Depends(read_gate)])
+
+    @router.post("/{object_id}/images", dependencies=[Depends(write_gate)])
+    def upload_image(
+        object_id: str, request: Request,
+        content: bytes = Body(media_type="application/octet-stream"),
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        service = request.app.state.office_document_service
+        repository = service.repository
+        if not service.writes_available or not isinstance(repository, PgOfficeDocumentRepository):
+            raise OfficeDocumentPermissionError("Image writes unavailable")
+        repository.get_document(user_context=context.user_context, object_id=object_id)
+        if not repository.can_write(user_context=context.user_context, object_id=object_id):
+            raise OfficeDocumentPermissionError("Image writing is not permitted")
+        if request.headers.get("X-Office-Upload-Confirmed") != "true":
+            raise OfficeDocumentInvalidContentError("Image upload requires explicit confirmation")
+        normalized, width, height = normalize_image(content, request.headers.get("Content-Type", ""))
+        attrs = store_uploaded_image(repository, context.user_context, object_id, normalized, width, height)
+        event = service._audit(context.user_context, "office.images.uploaded", object_id=object_id,
+            asset_id=attrs["assetId"], version_id=attrs["versionId"], content_hash=attrs["contentHash"])
+        return {"image": attrs, "audit_event_id": event}
+
+    @router.get("/{object_id}/images/{asset_id}/{version_id}")
+    def image_content(
+        object_id: str, asset_id: str, version_id: str, request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Response:
+        service = request.app.state.office_document_service
+        document = service.repository.get_document(user_context=context.user_context, object_id=object_id)
+        metadata, content = read_image(service.source_repository, document,
+            {"documentId": object_id, "assetId": asset_id, "versionId": version_id})
+        service._audit(context.user_context, "office.images.read", object_id=object_id,
+            asset_id=asset_id, version_id=version_id, content_hash=metadata.content_hash)
+        return Response(content, media_type="image/png", headers={
+            "X-Office-Content-Hash": metadata.content_hash, "X-Office-Manifest-Hash": metadata.manifest_hash,
+        })
 
     @router.get("", response_model=OfficeDocumentListResponse)
     def list_documents(

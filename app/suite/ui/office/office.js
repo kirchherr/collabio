@@ -12,6 +12,8 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
+import { officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
+import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
@@ -29,7 +31,7 @@ const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" }
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle"]);
 const commandNames = {
@@ -199,12 +201,14 @@ function notice(text = "", error = false) {
 }
 
 function normalizedDocument(document) {
+  officeImageReferences(document);
   const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
+    if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
       characters += Array.from(value.text).length;
@@ -305,6 +309,7 @@ function updateEditorState() {
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
+  imageControls.update();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -1408,6 +1413,7 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  imageControls.close();
   closeReuse();
   closePrint();
   closeTableDialogs();
@@ -1441,7 +1447,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
-      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles,
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, officeImageExtension(state.context),
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -1503,6 +1509,7 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  imageControls.close();
   closeStyleDialog();
   state.formatSample = null;
   closeReuse();
@@ -2333,6 +2340,7 @@ function closePrint(returnFocus = false) {
   const print = state.print;
   state.print = null;
   print?.controller?.abort();
+  for (const url of print?.images?.values() || []) URL.revokeObjectURL(url);
   if (print) print.content = null;
   clearPreparedPrint();
   $("print-preview").replaceChildren();
@@ -2392,6 +2400,8 @@ async function loadPrintContent(print = state.print, finalAction = false) {
   print.controller = new AbortController();
   print.loading = true;
   print.content = null;
+  for (const url of print.images?.values() || []) URL.revokeObjectURL(url);
+  print.images = new Map();
   clearPreparedPrint();
   $("print-preview").replaceChildren();
   $("print-version").textContent = "";
@@ -2403,7 +2413,10 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       { signal: print.controller.signal }, print.context);
     if (!current()) return;
     const content = validatePrintContent(result, print);
-    const preview = renderOfficePrintDocument(content, result.version.title);
+    const images = await loadOfficePrintImages(content, print.context, print.controller.signal);
+    if (!current()) { for (const url of images.values()) URL.revokeObjectURL(url); return; }
+    print.images = images;
+    const preview = renderOfficePrintDocument(content, result.version.title, document, images);
     if (!current()) return;
     print.content = content;
     $("print-preview").replaceChildren(preview);
@@ -2413,7 +2426,9 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       // The print surface is made from this fresh response, never from the live
       // editor, the preview DOM, or an older cached authorization result.
       const root = $("office-print-root");
-      root.replaceChildren(renderOfficePrintDocument(content, result.version.title));
+      root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images));
+      await Promise.all([...root.querySelectorAll("img")].map((image) => image.decode()));
+      if (!current()) return;
       root.className = printFormat();
       print.printing = true;
       state.preparedPrint = print;
@@ -4039,6 +4054,10 @@ window.addEventListener("beforeunload", (event) => {
   if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving || hasSuggestionDraft() || state.suggestions?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
 
+const imageControls = installOfficeImageControls({ state,
+  allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || state.editor.state.selection.node?.type.name === "image"),
+  current: characterActionCurrent,
+  validate: validateEditorDocument, focus: focusEditor, notice });
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {
