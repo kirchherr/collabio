@@ -14,7 +14,7 @@ def paragraph(text: str) -> dict[str, Any]:
 
 
 def test_page_breaks_preserve_legacy_bytes_and_exact_root_positions() -> None:
-    legacy = {"type": "doc", "content": [paragraph("Before"), paragraph("After")]}
+    legacy: dict[str, Any] = {"type": "doc", "content": [paragraph("Before"), paragraph("After")]}
     before = canonical_json(legacy)
     assert validate_office_document(legacy) is legacy
     assert canonical_json(legacy) == before
@@ -45,7 +45,7 @@ def test_page_break_cannot_be_nested(parent: str) -> None:
 
 
 def test_page_break_limit_includes_leading_trailing_and_repeated_markers() -> None:
-    content = {"type": "doc", "content": [{"type": "pageBreak"}] * 100}
+    content: dict[str, Any] = {"type": "doc", "content": [{"type": "pageBreak"}] * 100}
     assert validate_office_document(content) == content
     content["content"].append({"type": "pageBreak"})
     with pytest.raises(OfficeDocumentInvalidContentError):

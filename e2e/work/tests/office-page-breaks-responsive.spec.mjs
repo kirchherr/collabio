@@ -25,8 +25,11 @@ async function publish(page, previous, content) {
   return saved;
 }
 async function selectText(locator, from = 0, to = from) {
+  await locator.click();
   await locator.evaluate(async (element, offsets) => {
     element.closest('[contenteditable="true"]').focus();
+    // Let the editor's focus restoration finish before selecting the fixture range.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT), text = walker.nextNode();
     if (!text) throw new Error("Missing fixture text");
     const range = document.createRange(); range.setStart(text, offsets.from); range.setEnd(text, offsets.to);
@@ -92,7 +95,9 @@ test("Office page breaks reject nested contexts text selections and excess marke
   ];
   const baseline = await fixture(page, nested), editor = officeEditor(page);
   for (const selector of ["li p", "blockquote p", "td p", "pre"]) {
-    await selectText(editor.locator(selector)); await page.keyboard.press("Control+Enter");
+    await selectText(editor.locator(selector));
+    await expect(page.locator('#insert-menu option[value="pageBreak"]')).toBeDisabled();
+    await page.keyboard.press("Control+Enter");
     await expect(markers(page)).toHaveCount(0); await expect(page.locator("#document-save")).toBeDisabled();
   }
   await selectText(editor.locator(":scope > p"), 0, 13);
@@ -120,6 +125,13 @@ for (const paper of ["a4", "letter"]) test(`Office page breaks produce exact ${p
     { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "PAGE-TWO-HEADING" }] },
     { type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", attrs: { colspan: 1, rowspan: 1 }, content: [p("PAGE-TWO-TABLE")] }] }] },
     marker, marker, p("PAGE-THREE-END"), marker]);
+  const expectedMarkers = paper === "a4" ? 4 : 6;
+  await officeEditor(page).locator("img").click();
+  await expect(officeEditor(page).locator(".office-image-node")).toHaveClass(/ProseMirror-selectednode/);
+  await page.keyboard.press("Control+Enter"); await expect(markers(page)).toHaveCount(expectedMarkers + 1);
+  await expect(officeEditor(page).locator(".office-image-node + .office-page-break")).toHaveCount(1);
+  await page.keyboard.press("Control+z"); await expect(markers(page)).toHaveCount(expectedMarkers);
+  await expect(page.locator("#document-save")).toBeDisabled();
   const prints = await installPrintProbe(page, { pdfName: `office-page-break-${paper}-${testInfo.project.name}.pdf` });
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await page.locator("#print-paper").selectOption(paper);

@@ -1533,6 +1533,9 @@ function prepareEditor(content, session) {
       handleKeyDown(view, event) { return handlePageBreakKey(event) || handleTableKey(view, event) || handleListKey(view, event); },
       handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
       handleDOMEvents: {
+        // Android Chromium can bypass ProseMirror's ordinary Enter keymap.
+        // Handle this explicit command before native paragraph insertion.
+        keydown(_view, event) { return handlePageBreakKey(event); },
         beforeinput(view, event) {
           if (!event.cancelable || !wholeDocumentHasTables(view)) return false;
           const textInput = ["insertText", "insertReplacementText"].includes(event.inputType) && typeof event.data === "string";

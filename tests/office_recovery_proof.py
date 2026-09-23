@@ -814,7 +814,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         versions=inventory["document_versions"],
     )
     page_break_evidence = (
-        verify_restored_page_break_versions(documents=restored, readers=readers, versions=inventory["document_versions"])
+        verify_restored_page_break_versions(
+            documents=restored, readers=readers, versions=inventory["document_versions"]
+        )
         if target_dsn.endswith("_271_restore")
         else {}
     )
