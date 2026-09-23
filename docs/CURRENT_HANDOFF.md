@@ -10,6 +10,13 @@ all-green full run. Actual PDF/visual checks, fresh nonempty crop/reset recovery
 API-only rollout. Final health at 08:29:39 UTC is ok, Collabio running(4). Office remains ahead of CRM; next is
 Roadmap 270 / PLANS 131 bounded image text wrapping. Ordinary tenant/pilot/indexing/engine admission stays closed.
 
+Roadmap 269 closeout 85a93a6 was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.17s with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 08:33:20 UTC. Log sha256:
+cef31c0199805c9d65ca29ce881885618cd1269b393528fb67d04bc6d7045d44. The --no-deps disposable check started no
+auxiliary service; Collabio remains running(4), API a67cdfa88bdb and decoder30766f16f16a. Root matched acceptance,
+full/affected reports, quality, PDF, recovery, live/cleanup and release evidence locally. Normal stores, Webcut and
+provider nodes remain unchanged. This final evidence-only record changes no implementation, runtime or admission.
+
 Roadmap 268 / PLANS 129 completes document-owned PNG/JPEG images under ADR-0091: upload, insert, resize/align,
 alt/caption, move/remove/undo, confirmed save, history, independent copy and print. All 297 browser/model cases passed
 on 96a299f. Full quality passed on 5d3eb35, whose only difference is Python test formatting and added ACL/replay
