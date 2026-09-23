@@ -349,7 +349,7 @@ Full host details and backup/gate hashes are in `docs/CURRENT_HANDOFF.md`. No or
 After a green matrix, `office-native-recovery-proof` can verify a separately restored synthetic database and exact S3
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `collabio_work_e2e_263_restore`,
-`collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore` or
+`collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore`,
 `collabio_work_e2e_270_restore`, `collabio_work_e2e_271_restore` or `collabio_work_e2e_272_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
@@ -705,3 +705,34 @@ that corrected recheck. Report identities and unchanged runtime sources were cro
 full reports remain retained. Targeted report sha256:
 f30d36912d6ed2abe729282da6b6bcfad169d1baadffcf34ce68385b62ee45d3;
 combined acceptance metadata sha256:2ecff5d4fc23088bebe8cc02ecd7e9ca36c92bb57458913596d3bdaea45458fc.
+
+## Roadmap 272 document-owned page settings
+
+Four model cases and eight desktop/mobile workflows extend the complete matrix to 345 cases
+(285 browser plus 60 model). They cover strict geometry/defaults, Unicode positions and comparison,
+cancel/no-op, pending bold marks and isolated undo, styles/breaks/history/reset/owned copies,
+read-only and pending/uncertain/context boundaries, canonical-byte overflow and eight real PDFs.
+Each A4/Letter portrait/landscape PDF contains two pages, a freshly authorized wrapped image and
+caption on the first, and a tagged two-column table after an explicit break on the second.
+Every actual PDF probe asserts the computed `office-document` page name, preventing legacy CSS selectors
+from silently overriding document margins. Assertions bind all four CSSOM margins and MediaBox sizes; external PDF QA verifies text
+boundaries, asymmetric margin containment, exact left offset, Figure/Alt and Table/TH/TD structure.
+Sparse fixtures prove the bottom margin as a containment bound, not a measured last-line offset.
+
+Require a fresh checked dump/catalog/receipt into only `collabio_work_e2e_272_restore`, retaining
+the eight previous synthetic targets. The new four-version fixture binds legacy, custom Letter
+landscape, a second A4 profile and reset to exact JSON, canonical hashes and version lineage.
+`page_settings_and_reset_verified` and `legacy_page_settings_canonical_hash_verified` must be true,
+alongside previous page-break, wrap/reset, crop/reset and document/image recovery proofs.
+Main backup, isolated restore with foundation seed 0 and both release gates precede API-only
+rollout. The regular decoder, main schema, ports and ordinary admission boundaries stay unchanged.
+See CURRENT_HANDOFF.md for the executed acceptance results and hashes.
+
+Final acceptance on 800a3a5 passed all 345 cases in one complete run, zero skipped/unexpected/flaky,
+with full Python quality (2875 cases). The final eight PDFs/16 pages passed independent geometry,
+text, image and tagging checks; all final raster hashes match the root-reviewed pages. Fresh272 recovery
+verified 458 documents/902 versions and the exact four-version page-settings fixture. Main backup,
+isolated restore, both release gates, API-only rollout and live/cleanup checks passed. The earlier
+b3985b4 green browser report was insufficient: external PDF QA caught legacy page selectors overriding
+saved margins. Their removal is covered by the shared computed-page assertion and actual PDF bounds.
+All nine synthetic recovery targets remain retained; ordinary admission stays closed.

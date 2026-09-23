@@ -214,17 +214,24 @@ the 324/325 complete run plus the 12/12 corrected subset (not one all-green full
 nonempty insert/remove recovery, both release gates and API-only rollout passed. Evidence: CURRENT_HANDOFF.md.
 Continuous pagination, section layouts and DOCX interchange remain separate. Continue native Office before CRM.
 
-133. [ ] Add document-owned page settings: A4/Letter, portrait/landscape and bounded margins with
-an accessible preview and isolated undo. Define canonical optional metadata and unchanged legacy defaults before
-implementation. Preserve explicit breaks, images, tables, saved history, independent copies and exact PDF layout;
-require fresh nonempty recovery. Section-specific layouts, headers/footers and continuous pagination remain separate.
+133. [x] Add document-owned page settings under ADR-0095: A4/Letter, portrait/landscape and bounded margins,
+accessible preview/reset and isolated undo. Exact optional metadata preserves legacy bytes, saved history and copies.
+Full Python quality and one complete 345-case browser/model run passed on 800a3a5. Eight actual PDFs/16 pages,
+fresh four-version recovery, both release gates and API-only rollout passed. Independent PDF QA caught and verified
+the correction of a legacy CSS cascade override. Evidence: CURRENT_HANDOFF.md. Section layouts and pagination remain separate.
+
+134. [ ] Add document-owned headers/footers and page numbers after page-settings acceptance:
+bounded literal text and explicit numbering choices, accessible preview, reset and isolated undo.
+Preserve exact saved-version history/copies, current authorization and confirmed CAS saves; prove actual
+multi-page PDF placement, no body overlap and fresh nonempty recovery. Section-specific layouts,
+arbitrary fields, continuous editor pagination and DOCX interchange remain separate.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 271, including explicit page breaks, bounded image text wrapping, non-destructive crop, document-owned images/styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve the combined 325-distinct-case browser/model acceptance, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document/image/crop/wrap/page-break recovery. Continue with Roadmap 272 / PLANS 133 document-owned page settings before CRM. Arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete through Roadmap 272, including document-owned page settings, explicit page breaks, bounded image text wrapping, non-destructive crop, document-owned images/styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve the single full 345-case browser/model acceptance, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document/image/crop/wrap/page-break/page-settings recovery. Continue with Roadmap 273 / PLANS 134 document-owned headers/footers and page numbers before CRM. Arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

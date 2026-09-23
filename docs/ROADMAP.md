@@ -1699,12 +1699,20 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      gruener Gesamtlauf. Vier echte PDFs/14 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout
      bestanden; Nachweise in CURRENT_HANDOFF.md. Durchgaengige Pagination, Abschnittslayout und DOCX bleiben separat.
 
-272. [ ] Dokumenteigene Seiteneinstellungen ergaenzen: A4/Letter, Hoch-/Querformat und begrenzte Seitenraender
-     mit bedienbarer Vorschau und isoliertem Undo. Optionale Metadaten und unveraenderte Altformat-Defaults vor
-     Implementierung festlegen. Seitenumbrueche, Bilder, Tabellen, Historie, Kopien und echte PDF-Geometrie erhalten;
-     frischen nichtleeren Restore nachweisen. Abschnittslayout, Kopf-/Fusszeilen und durchgaengige Pagination bleiben separat.
+272. [x] Dokumenteigene Seiteneinstellungen unter ADR-0095 umgesetzt: A4/Letter, Hoch-/Querformat, begrenzte
+     Seitenraender, Vorschau, Reset und isoliertes Undo. Altformat-Bytes, Historie und Kopien bleiben erhalten.
+     Volle Python-Qualitaet und ein kompletter Lauf mit 345/345 Browser-/Modellfaellen bestanden auf 800a3a5.
+     Acht echte PDFs/16 Seiten, frischer Vier-Versionen-Restore, beide Release-Gates und API-only-Rollout bestanden.
+     Externe PDF-Pruefung deckte eine alte CSS-Uebersteuerung auf und bestaetigte die Korrektur der echten Raender.
+     Nachweise in CURRENT_HANDOFF.md. Abschnittslayout und durchgaengige Pagination bleiben separat.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 271 abgeschlossen, 272 als naechster Schritt geplant.
+273. [ ] Nach Abnahme der Seiteneinstellungen dokumenteigene Kopf-/Fusszeilen und Seitenzahlen ergaenzen:
+     begrenzte Klartexte und ausdrueckliche Nummerierungsoptionen, bedienbare Vorschau, Reset und isoliertes Undo.
+     Gespeicherte Versionen/Kopien und aktuelle Berechtigungen erhalten; echte mehrseitige PDFs ohne
+     Inhaltsueberlagerung sowie frischen nichtleeren Restore nachweisen. Abschnittslayout, freie Felder,
+     durchgaengige Editor-Pagination und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 272 abgeschlossen, 273 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

@@ -1,7 +1,7 @@
 # ADR-0095: Document-owned native page settings
 
 Date: 2026-09-23
-Status: accepted; implementation and remote validation in progress
+Status: implemented and validated on dev001; ordinary tenant and production admission remain closed
 
 Optional root `attrs.page` contains exactly `paper` (a4/letter), `orientation`
 (portrait/landscape) and `margins` with integer `top`, `right`, `bottom`, `left`

@@ -2,6 +2,97 @@
 
 Updated: 2026-09-23
 
+Roadmap 272 / PLANS 133 is complete on dev001: document-owned A4/Letter, portrait/landscape and
+bounded margins with preview/reset/isolated undo, immutable history/copies and saved print geometry.
+Full quality and one complete 345-case browser/model run passed. Eight actual PDFs/16 pages,
+fresh nonempty recovery and both release gates passed before API-only rollout. Final health at
+16:29:54 UTC is ok, Collabio running(4). Next: Roadmap 273 / PLANS 134 headers/footers and page numbers.
+Continue Office before CRM. Ordinary tenant/pilot/indexing/cloud/engine admission remains closed.
+
+## Roadmap 272 validation evidence
+
+Final implementation/test source: 800a3a5a7403993de236a3207f9900ce0fe3094d, under ADR-0095.
+Optional root attrs.page contains complete paper/orientation/four integer margins (5-50 mm).
+Absence retains unchanged canonical legacy bytes and A4 portrait/18 mm defaults. Reset removes the
+optional metadata. Styles, breaks, image flow, tables, exact saved versions and independent copies
+retain their contracts. Only confirmed CAS Save persists changes. Print reauthorizes saved content
+and images; temporary paper/orientation overrides never alter the document. The editor stays continuous;
+exact on-screen pagination, sections, headers/footers and DOCX interchange remain separate.
+
+Full quality: all 2875 Python cases, Ruff, 776-file formatting and Mypy/581 sources passed;
+only the known Starlette/AnyIO deprecation warning. Quality log sha256:
+0ef48f6744a69a5cdf7f2e0c75cc7882545a405fc16d566d0892cc7df92645c3.
+One complete run passed all 345 distinct cases (285 browser + 60 model) in 1414.565233s,
+2026-09-23 15:58:18.688-16:21:53 UTC, with zero skipped/unexpected/flaky/retries.
+Every prior 325 case identity is retained. Full report sha256:
+2137fea9b12a0c18f4ad0a028c2610650d0443d51b26bdbca9faa5f2d994b9bd.
+Acceptance metadata sha256:0ba7b99487f54bb171f9b68f697f28a8ed985b5c8d00704559e7961d32fd9f14.
+
+Earlier runs are retained honestly:
+- First full run on 4424707 passed 343/345. An existing routed image-read PDF test stalled;
+  test-only 5071632 observes actual authorized content/image responses. A real mobile toolbar
+  regression reduced the search canvas; b3985b4 moves Page beside Image. Both corrected workflows
+  passed 4/4 without weakening assertions. First report sha256:
+  365c90210acee9f0812734076c191991473c28c107491765d6a11484ed3934f9.
+- Second full run on b3985b4 passed 345/345, but independent PDF QA exposed legacy CSS selectors
+  overriding the correct new CSSOM margins with 18 mm. Its green browser result was insufficient
+  for acceptance. 800a3a5 removes obsolete rules/selectors and every actual PDF probe now asserts
+  the computed office-document page name. Second report sha256:
+  d3334d73bfeac1f99e8568669b0059bb837e5fc7f5e2847cd80634bd3b85b8b5.
+- All 20 focused page-settings cases then passed in 93.173697s before the final full run.
+  Focused report sha256:2742e6a79ad7b909ceed9a69fc185765de61a369a216633a307e28d336d3aeea.
+
+Final PDF QA at 16:22:22 UTC verifies all eight A4/Letter portrait/landscape desktop/mobile
+PDFs, two pages each: exact dimensions, four CSSOM margins, asymmetric text containment,
+40 mm left offset, explicit page boundaries, blue image pixels and Figure/Alt/Table/TH/TD tags.
+Sparse fixtures prove bottom-margin containment, not a measured last-line offset. Caption text
+extraction accepts ordinary line wrapping while enforcing unique markers and exact page placement.
+Root reviewed all 16 rendered pages and desktop/mobile dialogs. Every final raster page hash
+matches the reviewed pixels exactly. No independent-agent or non-Chromium proof is claimed.
+Final QA JSON sha256:e3f5d79968e55e023ecb8712087c6bb81bd1de829403b10b3b0b7ca634d8931d.
+Reviewed pixel manifest sha256:58c70559c2010ca67cbb28e78e651785e5654e8f9c8e062bd89ea1090f588ec4.
+
+Fresh nonempty recovery completed at 16:26:31 UTC into collabio_work_e2e_272_restore:
+458 documents, 902 Office versions, 124 multiversion documents, 1001 sources, 44 image assets
+and 62 saved image references (36 cropped, 36 wrapped). The designated four-version
+legacy/custom Letter landscape/second A4 profile/reset fixture matches exact JSON, canonical
+hashes and lineage. Previous breaks/wrap-reset/crop-reset/paragraph/character/style proofs,
+10 review threads/18 events, 11 suggestions/7 decisions, bytes/receipts, read-only access and
+foreign-tenant denial passed. All nine synthetic targets and their dumps/receipts remain retained.
+- Recovery JSON: sha256:80512cfc53ddcf92fc221df22366c2f60d3276e2c9a82694ba6484de36876a4e.
+- Embedded report: sha256:7fe3e73ee453489cacc364893ea49e69ceda35d4685aa6e99f705375fd6a19ca.
+- Checked dump: sha256:5df20a490e8202262caa8cf9bff16fb46a04dfa44c75601ae02f0437bc18ccbd.
+- Page-settings fixture: sha256:869b33da3e1f300ca2ae6eec7e0c2d2c700cf1df295766e3f5d1145319bf76e0.
+
+Main backup collabio-20260923T162702Z.dump was checked before refreshing only the ordinary
+isolated restore target. Foundation seed was explicitly 0; 85 migrations/95 tables and three
+source objects/two tenants passed. Both release gates passed without blockers or business writes.
+- Main backup: sha256:e0ecc608a0f37716fd993c0e3a29ae94ea033613b04aa3b9bd32151a9e5a1b12.
+- Ordinary restore: sha256:749394338c77026b61725e09919e6b9edcb337d95c6990cc42fbebdbcc5dbf1a.
+- Foundation, 16:27:14 UTC: sha256:683e256a3f1b3098daa850654032c602d197f4890f913af745a8856d55d9994a.
+- Business, 16:28:03 UTC: sha256:07c7b4ed8be1ff039b11c4bae4abc1f614e8466ee1ad75a1f993cd9930c33c6e.
+Synthetic page-settings content was absent from normal and both E2E API logs at 16:27:45 UTC.
+
+API-only --no-deps rollout with pilot explicitly 0 reached health ok at 16:28:44 UTC.
+API 315d76369cae runs image sha256:51136c5be6bb2ee8d86e4905d1b0aa4980636b68120844059218841bacf193a5.
+Regular decoder 30766f16f16a/image unchanged: network none, user10001:10001, readonly root,
+ALL capabilities dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only its socket volume.
+Live checks verified 15 Office OpenAPI operation definitions, prior/new page controls, served
+assets/licenses, Work link, no-store and CSP. Ordinary Office remains unprovisioned/non-cacheable404,
+features closed, KB write false and pilot0. Definition checks do not execute business operations.
+Live JSON sha256:7c0ebf0ce6233831dc47f73d943e9053762070e397887020c9a4fd10809edac1.
+Exact eight E2E services including their decoder were removed; test and both restore services stopped.
+Final 16:29:54 UTC health ok, Collabio running(4), loopback8000/5433/29000/29001 unchanged.
+Main PostgreSQL87a6b37942c8, MinIO98ce365f455b, Webcut running(7), provider nodes/26443 unchanged;
+Tricert absent. Cleanup log sha256:8ad210900cddf9597fee27dc849d6b0d0f6a5f79fd590d75f4f9646de932c80b.
+All operations used dev001/collabio, fresh inventories and build.lock before docker.lock; source sync
+used git.lock and never ran during acceptance/recovery. No main migration, normal content write or
+ordinary tenant/pilot/indexing/cloud/DOCX activation occurred. Root matched all downloaded hashes.
+Raw reports, eight PDF hashes/files, rendered pages and logs remain under ignored
+ e2e/work/artifacts/roadmap-272 and the operation logs. Production continuity admission stays separate.
+
+## Previous Roadmap 271 closeout
+
 Roadmap 271 / PLANS 132 is complete: explicit native page breaks with safe insertion/removal, undo, immutable
 history/copies and actual PDF boundaries. Full quality passed; all 325 distinct browser/model cases are covered by
 a 324/325 full run plus the corrected 12/12 subset, not one all-green full run. Four PDFs/14 pages, fresh nonempty
@@ -1762,16 +1853,16 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 271 is complete. Preserve the combined 325-distinct-case acceptance (269 Work/KB/CRM/Office browser cases and
-56 model cases; full 324/325 plus targeted 12/12, not a single all-green full run), full quality and exact
-document/image/crop/wrap-reset/page-break recovery. Continue with Roadmap 272 / PLANS 133 document-owned page settings:
-A4/Letter, portrait/landscape and bounded margins, accessible preview and isolated undo. Define optional canonical
-metadata and unchanged legacy defaults before implementation. Preserve explicit page breaks, image flow, tables,
-history, copies, exact PDF geometry and fresh nonempty recovery. Section layouts, headers/footers and continuous
-pagination remain separate. Preserve crop/source pixels and responsive block fallback. Arbitrary page-positioned
-objects and other object types remain separate. See ADR-0091/0092/0093/0094 and
-docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md. Image ownership follows current parent ACLs; copies own new
-assets after fresh source authorization. Keep the isolated network-none decoder and historical manifests intact.
+Item 272 is complete. Preserve the single full 345-case acceptance (285 browser/60 model), full quality,
+actual eight PDFs/16 pages and exact document/image/crop/wrap/page-break/page-settings recovery.
+Continue with Roadmap 273 / PLANS 134 document-owned headers/footers and page numbers: bounded literal text,
+explicit numbering choices, accessible preview/reset/isolated undo, exact saved-version history/copies,
+current authorization and confirmed CAS saves. Prove actual multi-page placement without body overlap
+and fresh nonempty recovery. Section layouts, arbitrary fields, continuous editor pagination and DOCX
+remain separate. Preserve legacy bytes, the effective named print-page rule and asymmetric margins.
+See ADR-0091/0092/0093/0094/0095 and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md.
+Images retain current parent ACLs; independent copies own freshly authorized assets. Keep the isolated
+network-none decoder, source pixels, responsive block fallback and historical manifests intact.
 Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.
 Continue native Office before CRM. List indentation/outdent and nearest-list start values preserve content and undo,
 with validated keyboard actions and table Tab priority. Automatic numbering continuation/styles remain separate work.
