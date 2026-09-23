@@ -25,7 +25,13 @@ async function setup(page) {
 }
 async function edit(page) {
   await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();
-  await page.locator("#image-crop-section summary").click();
+  // The authenticated preview changes dialog geometry after opening. Wait for
+  // its pixels before interacting with the details summary below it.
+  await expect(page.locator("#image-preview img")).toBeVisible();
+  await expect.poll(() => page.locator("#image-preview img").evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  if (!(await page.locator("#image-crop-section").evaluate((section) => section.open))) {
+    await page.locator("#image-crop-section summary").click();
+  }
   await expect(page.locator("#image-crop-source")).toBeVisible();
 }
 async function orangeCrop(page) {
