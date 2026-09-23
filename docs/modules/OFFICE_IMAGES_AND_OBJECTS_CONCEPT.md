@@ -3,7 +3,8 @@
 Updated: 2026-09-23
 Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded in CURRENT_HANDOFF.md.
 Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is recorded in CURRENT_HANDOFF.md.
-Other object types and text wrapping remain proposals. This document does not activate ordinary tenants.
+Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is tracked in CURRENT_HANDOFF.md.
+Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
 
@@ -45,9 +46,11 @@ version. Pointer selection, keyboard movement, numeric controls, local preview/r
 geometry. Reset omits the optional property. History, comparison, independent copy and print preserve the exact
 rectangle. The complete source remains readable to authorized readers; this feature is not a redaction mechanism.
 
-A subsequent text-wrapping slice should first define stable in-flow anchors, left/right placement, bounded text
-distance, narrow-screen fallback and page-break behavior. Editor, history, independent reuse and actual PDF must
-agree. Arbitrary page-positioned floating objects and DOCX anchors require separate layout/interchange decisions.
+ADR-0093 defines the ordered image node as a stable anchor for following top-level paragraphs. Left/right wrapping
+has an integer 0-48px gap, a 45% column-width limit and a 480px displayed-image-height limit. Narrow columns and nested
+images use block fallback without rewriting stored metadata. Structural blocks clear prior floats. Image/caption
+request page-break avoidance in actual PDF; over-page content remains browser-fragmented. Editor, history and owned
+reuse retain the exact layout choice and crop. Arbitrary page-positioned objects and DOCX anchors remain separate.
 
 ## Later slice: inert linked or embedded objects
 

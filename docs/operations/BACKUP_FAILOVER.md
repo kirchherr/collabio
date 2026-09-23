@@ -53,6 +53,12 @@ asset and rendition. Complete document/style/format/review/suggestion and curren
 Use compatible readers after rollback; a pre-crop reader rejects the new attributes. The exact proof and both release
 gates must pass before API rollout. This is synthetic development recovery, not production continuity admission.
 
+Roadmap 270 adds optional image wrap side/gap to the same immutable JSON domain. Its fresh proof uses
+`collabio_work_e2e_270_restore` and a separate checked dump/catalog/receipt, retaining all six older synthetic targets.
+Require consecutive left, right and block-reset versions of the same document-owned rendition with unchanged crop,
+plus the prior crop/reset, complete document/asset/receipt and authoritative ACL checks. Layout is never reconstructed
+from browser pixels during restore. A pre-wrap reader is incompatible; retain compatible historical reads on rollback.
+
 This model covers the whole suite trajectory:
 
 - PostgreSQL metadata, policies, audit events, vector worker audit events, embedding model approval audit events, migration history, vector metadata, and embedding model version approvals.

@@ -70,6 +70,9 @@ test("Office image wrapping applies left right reset undo immutable history and 
   await officeEditor(page).press("Control+z"); await expect(officeEditor(page).locator(".office-image-node")).not.toHaveAttribute("data-image-wrap");
   await wrap(page, "left"); const left = await saveOffice(page, { objectId });
   expect(left.content.content[1].attrs).toEqual({ ...attrs, wrap: { side: "left", gap: 16 } });
+  await edit(page); await page.locator("#image-up").click();
+  await expect(officeEditor(page).locator(":scope > :first-child")).toHaveClass(/office-image-node/);
+  await officeEditor(page).press("Control+z"); await expect(page.locator("#document-save")).toBeDisabled();
   await wrap(page, "right", 24); await layout(page, "right"); const right = await saveOffice(page, { objectId });
   expect(right.version.previous_version_id).toBe(left.version.version_id);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-wrap-document-${testInfo.project.name}.png`, fullPage: true });
@@ -87,6 +90,7 @@ test("Office image wrapping previews invalid gaps cancel no-op and responsive fa
   const { saved } = await fixture(page); await edit(page);
   await page.locator("#image-wrap").selectOption("left");
   await expect(page.locator("#image-preview .image-layout-sample")).toBeVisible();
+  if (testInfo.project.name.includes("desktop")) await expect(page.locator("#image-preview figure")).toHaveCSS("float", "left");
   for (const value of ["49", "-1", "0.5", ""]) {
     await page.locator("#image-wrap-gap").fill(value); await page.locator("#image-apply").click();
     await expect(page.locator("#image-dialog")).toBeVisible();
@@ -103,6 +107,31 @@ test("Office image wrapping previews invalid gaps cancel no-op and responsive fa
   }
   await page.setViewportSize({ width: 900, height: 960 });
   if (testInfo.project.name.includes("desktop")) await page.screenshot({ path: `${ARTIFACT_DIR}/office-wrap-tablet.png`, fullPage: true });
+});
+
+test("Office wrapped anchors clear lists tables code and quotes and nested images stay contained", async ({ page }) => {
+  const { saved, attrs } = await fixture(page), objectId = saved.document.object_id;
+  const image = { type: "image", attrs: { ...attrs, wrap: { side: "left", gap: 16 } } };
+  const blocks = [
+    { type: "bulletList", content: [{ type: "listItem", content: [paragraph("List below image")] }] },
+    { type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", attrs: { colspan: 1, rowspan: 1 }, content: [paragraph("Table below image"), image, paragraph("Nested image text")] }] }] },
+    { type: "codeBlock", content: [{ type: "text", text: "Code below image" }] },
+    { type: "blockquote", content: [paragraph("Quote below image")] },
+    { type: "horizontalRule" },
+  ];
+  const content = blocks.flatMap((block) => [image, paragraph("Short paragraph"), block]);
+  const response = await page.request.post(`${BASE_URL}/v1/office/documents/${objectId}/versions`, {
+    headers: OFFICE_HEADERS, data: { title: saved.version.title, document: { type: "doc", content },
+      mutation_reference: `wrap-structures-${objectId}`, expected_current_version_id: saved.version.version_id, human_confirmation: true },
+  }); expect(response.status()).toBe(200);
+  await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveCount(6);
+  await expect.poll(() => officeEditor(page).locator("img").evaluateAll((images) => images.every((image) => image.complete && image.naturalWidth > 0))).toBe(true);
+  const clearances = await officeEditor(page).evaluate((root) => [...root.children].filter((element) => element.classList.contains("office-image-node")).map((image) => {
+    const block = image.nextElementSibling.nextElementSibling;
+    return block.getBoundingClientRect().top >= image.getBoundingClientRect().bottom - 1;
+  }));
+  expect(clearances).toEqual(Array(5).fill(true));
+  await expect(officeEditor(page).locator("td .office-image-node")).toHaveCSS("float", "none");
 });
 
 test("Office image wrapping clears structural blocks and prints cropped images across real PDF pages", async ({ page }, testInfo) => {

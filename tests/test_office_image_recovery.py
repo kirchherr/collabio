@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -61,7 +62,7 @@ def test_crop_recovery_requires_reset_after_crop_of_exact_same_owned_rendition()
 
 
 def test_wrap_recovery_requires_consecutive_layouts_with_same_owner_source_and_crop() -> None:
-    left = {
+    left: dict[str, Any] = {
         "object_id": "doc",
         "asset_id": "asset",
         "asset_version_id": "pixels",
