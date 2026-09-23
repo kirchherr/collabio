@@ -48,12 +48,14 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
         const root = document.querySelector("#office-print-root");
         return {
           rootVisible: getComputedStyle(root).display !== "none",
+          pageName: getComputedStyle(root).page,
           shellVisible: getComputedStyle(document.querySelector("#office-shell")).display !== "none",
           dialogVisible: getComputedStyle(document.querySelector("#print-dialog")).display !== "none",
           guidanceVisible: getComputedStyle(document.querySelector("#office-print-guidance")).display !== "none",
           overflow: [...root.querySelectorAll("table,pre")].map((element) => element.scrollWidth > element.clientWidth + 1),
         };
       });
+      expect(call.layout.pageName).toBe("office-document");
       try {
         call.pdf = await page.pdf({ path: `${ARTIFACT_DIR}/${pdfName}`, preferCSSPageSize: true, printBackground: true, tagged: true });
       } finally { await page.emulateMedia({ media: "screen" }); }
