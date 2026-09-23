@@ -20,6 +20,28 @@ This slice stores native structured documents. Roadmap 256 adds review discussio
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
 
+## Document-owned page settings (Roadmap 272)
+
+**Seite ...** opens paper, orientation and four margin fields with a proportionate preview.
+Supported values are A4/Letter, portrait/landscape and integer margins from 5 to 50 mm.
+Cancel and unchanged values leave the draft clean. Apply retains the current selection and
+pending character formatting, validates the complete document and creates one isolated undo
+action. Reset removes optional metadata and restores A4 portrait with 18 mm margins.
+Read-only/history, pending or uncertain saves and changed identity contexts stay guarded.
+
+Optional root `attrs.page` belongs to the exact document version, alongside any named styles.
+Legacy documents remain byte-for-byte unchanged; history, comparisons and owned copies retain
+the settings. Only the existing confirmed CAS Save makes them durable. The continuous editor
+shows the geometry with responsive padding; it does not promise exact on-screen pagination.
+
+Print starts from the freshly authorized saved settings. Paper/orientation overrides apply
+only to that print session; **Dokumenteinstellungen** restores the saved choices. The four saved
+margins feed a named page rule through the trusted local stylesheet's CSSOM, using only validated
+enums and numbers. Final printing reauthorizes content and images. CSP remains unchanged.
+Actual PDF geometry and a separate four-version legacy/custom/second-profile/reset recovery
+fixture are required for acceptance. See [ADR-0095](../../ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md)
+and CURRENT_HANDOFF.md. Section layouts, headers/footers and continuous pagination remain separate.
+
 ## Document-owned images (Roadmap 268)
 
 **Bild einfuegen** opens file selection and preview for a saved editable document. Explicit upload accepts PNG/JPEG

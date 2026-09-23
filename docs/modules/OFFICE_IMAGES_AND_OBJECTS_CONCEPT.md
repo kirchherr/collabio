@@ -66,6 +66,11 @@ This distinction preserves normal image/chart/file usability without granting em
 
 ## Acceptance and sequencing
 
+Roadmap 272 / ADR-0095 adds version-owned paper, orientation and four bounded margins.
+It preserves ordered image anchors, crop and wrap, explicit breaks and tables. Saved settings
+initialize printing and drive actual PDF geometry; the editor remains a continuous responsive
+sheet. This does not introduce arbitrary page-positioned objects or section layouts.
+
 Roadmap 271 / ADR-0094 adds an explicit top-level page boundary. Insertion after a
 selected image preserves its asset, crop and wrap metadata. Printing contains the
 preceding image and its float before the next page's content. An image immediately

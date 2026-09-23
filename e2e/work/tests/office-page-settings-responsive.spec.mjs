@@ -124,6 +124,11 @@ for (const paper of ["a4", "letter"]) for (const orientation of ["portrait", "la
     const [short, long] = paper === "a4" ? [595, 842] : [612, 792];
     expect(pdfPageCount(prints[0].pdf, orientation === "portrait" ? short : long, orientation === "portrait" ? long : short)).toBe(2);
     expectPdfStructure(prints[0].pdf, ["Figure", "Table", "TH", "TD"]);
+    expect(await page.evaluate(() => {
+      const sheet = [...document.styleSheets].find((entry) => entry.href && new URL(entry.href).pathname === "/office/assets/office.css");
+      const rule = [...sheet.cssRules].find((entry) => entry.cssText.startsWith("@page office-document"));
+      return Object.fromEntries(["top", "right", "bottom", "left"].map((side) => [side, rule.style.getPropertyValue(`margin-${side}`)]));
+    })).toEqual({ top: "12mm", right: "25mm", bottom: "30mm", left: "40mm" });
     await page.locator("#print-close").click(); await expect(page.locator("#document-save")).toBeDisabled();
     expect((await officeContent(page, saved.document.object_id)).content).toEqual(document);
   });
