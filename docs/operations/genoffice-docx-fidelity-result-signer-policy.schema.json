@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "GenOfficeDocxFidelityResultSigner": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "ed25519_public_key_base64": {
+          "title": "Ed25519 Public Key Base64",
+          "type": "string"
+        },
+        "engine_id": {
+          "enum": [
+            "microsoft_word",
+            "libreoffice",
+            "genoffice"
+          ],
+          "title": "Engine Id",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "key_id",
+        "engine_id",
+        "ed25519_public_key_base64"
+      ],
+      "title": "GenOfficeDocxFidelityResultSigner",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "effective_at_utc": {
+      "format": "date-time",
+      "title": "Effective At Utc",
+      "type": "string"
+    },
+    "policy_hash": {
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_result_signer_policy.v1",
+      "default": "genoffice_docx_fidelity_result_signer_policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signers": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxFidelityResultSigner"
+      },
+      "title": "Signers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "policy_id",
+    "effective_at_utc",
+    "signers",
+    "policy_hash"
+  ],
+  "title": "GenOfficeDocxFidelityResultSignerPolicy",
+  "type": "object"
+}

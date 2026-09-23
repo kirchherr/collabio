@@ -1,0 +1,68 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStore
+metadata:
+  name: collabio-objects
+  namespace: rook-ceph
+  labels:
+    app.kubernetes.io/part-of: collabio-provider-stack
+    collabio.io/environment: development
+spec:
+  preservePoolsOnDelete: true
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+  gateway:
+    instances: 2
+    securePort: 443
+    sslCertificateRef: collabio-rgw-tls
+    caBundleRef: collabio-provider-ca
+    dashboardEnabled: false
+    placement:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - rook-ceph-rgw
+            topologyKey: kubernetes.io/hostname
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+  security:
+    sslOptions:
+      tlsv1_2: true
+      tlsv1_1: false
+      tlsv1_0: false
+    cipherSuites:
+      - TLS_AES_256_GCM_SHA384
+      - TLS_CHACHA20_POLY1305_SHA256
+    tlsGroups:
+      - X25519
+      - P-256
+    kms:
+      connectionDetails:
+        KMS_PROVIDER: vault
+        VAULT_ADDR: https://openbao-active.openbao.svc.cluster.local:8200
+        VAULT_BACKEND_PATH: collabio-storage
+        VAULT_SECRET_ENGINE: transit
+        VAULT_AUTH_METHOD: token
+        VAULT_VERIFY_SSL: "true"
+        VAULT_CACERT: collabio-openbao-ca
+      tokenSecretName: collabio-rgw-openbao-token
+  healthCheck:
+    readinessProbe:
+      disabled: false
+    startupProbe:
+      disabled: false

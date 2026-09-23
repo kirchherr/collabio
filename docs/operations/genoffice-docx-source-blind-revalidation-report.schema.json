@@ -1,0 +1,124 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "active_content_absent": {
+      "const": true,
+      "default": true,
+      "title": "Active Content Absent",
+      "type": "boolean"
+    },
+    "candidate_only_validation": {
+      "const": true,
+      "default": true,
+      "title": "Candidate Only Validation",
+      "type": "boolean"
+    },
+    "candidate_origin": {
+      "const": "synthetic_policy_fixture",
+      "default": "synthetic_policy_fixture",
+      "title": "Candidate Origin",
+      "type": "string"
+    },
+    "candidate_sha256": {
+      "title": "Candidate Sha256",
+      "type": "string"
+    },
+    "candidate_size_bytes": {
+      "title": "Candidate Size Bytes",
+      "type": "integer"
+    },
+    "document_content_included_in_report": {
+      "const": false,
+      "default": false,
+      "title": "Document Content Included In Report",
+      "type": "boolean"
+    },
+    "embedded_objects_absent": {
+      "const": true,
+      "default": true,
+      "title": "Embedded Objects Absent",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "external_network_used": {
+      "const": false,
+      "default": false,
+      "title": "External Network Used",
+      "type": "boolean"
+    },
+    "external_relationships_absent": {
+      "const": true,
+      "default": true,
+      "title": "External Relationships Absent",
+      "type": "boolean"
+    },
+    "independent_preflight_passed": {
+      "const": true,
+      "default": true,
+      "title": "Independent Preflight Passed",
+      "type": "boolean"
+    },
+    "package_signatures_absent": {
+      "const": true,
+      "default": true,
+      "title": "Package Signatures Absent",
+      "type": "boolean"
+    },
+    "persistent_document_write_performed": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Document Write Performed",
+      "type": "boolean"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "preflight_report_hash": {
+      "title": "Preflight Report Hash",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_source_blind_revalidation_report.v1",
+      "default": "genoffice_docx_source_blind_revalidation_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_bytes_available": {
+      "const": false,
+      "default": false,
+      "title": "Source Bytes Available",
+      "type": "boolean"
+    },
+    "source_object_accessed": {
+      "const": false,
+      "default": false,
+      "title": "Source Object Accessed",
+      "type": "boolean"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "candidate_sha256",
+    "candidate_size_bytes",
+    "preflight_policy_hash",
+    "preflight_report_hash",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxSourceBlindRevalidationReport",
+  "type": "object"
+}

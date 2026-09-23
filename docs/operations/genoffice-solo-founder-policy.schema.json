@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "GenOfficeSoloFounderSigner": {
+      "additionalProperties": false,
+      "properties": {
+        "ed25519_public_key_base64": {
+          "title": "Ed25519 Public Key Base64",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        },
+        "signer_role": {
+          "const": "founder_risk_owner",
+          "default": "founder_risk_owner",
+          "title": "Signer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "key_id",
+        "ed25519_public_key_base64"
+      ],
+      "title": "GenOfficeSoloFounderSigner",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "effective_at_utc": {
+      "format": "date-time",
+      "title": "Effective At Utc",
+      "type": "string"
+    },
+    "policy_hash": {
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_solo_founder_policy.v1",
+      "default": "genoffice_solo_founder_policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signer": {
+      "$ref": "#/$defs/GenOfficeSoloFounderSigner"
+    }
+  },
+  "required": [
+    "policy_id",
+    "effective_at_utc",
+    "signer",
+    "policy_hash"
+  ],
+  "title": "GenOfficeSoloFounderPolicy",
+  "type": "object"
+}

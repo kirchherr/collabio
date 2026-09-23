@@ -1,0 +1,205 @@
+{
+  "$defs": {
+    "GenOfficeDocxFidelityEvidenceArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "content_sha256": {
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "relative_path": {
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "size_bytes": {
+          "maximum": 536870912,
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "relative_path",
+        "size_bytes",
+        "content_sha256"
+      ],
+      "title": "GenOfficeDocxFidelityEvidenceArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxFidelityEvidenceArtifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "authorization_evidence_hash": {
+      "title": "Authorization Evidence Hash",
+      "type": "string"
+    },
+    "command_hash": {
+      "title": "Command Hash",
+      "type": "string"
+    },
+    "completed_at_utc": {
+      "format": "date-time",
+      "title": "Completed At Utc",
+      "type": "string"
+    },
+    "document_content_in_receipt": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Receipt",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": true,
+      "default": true,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "engine_execution_authorized": {
+      "const": true,
+      "default": true,
+      "title": "Engine Execution Authorized",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "enum": [
+        "microsoft_word",
+        "libreoffice",
+        "genoffice"
+      ],
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "engine_identity_hash": {
+      "title": "Engine Identity Hash",
+      "type": "string"
+    },
+    "executor_environment_hash": {
+      "title": "Executor Environment Hash",
+      "type": "string"
+    },
+    "exit_code": {
+      "const": 0,
+      "default": 0,
+      "title": "Exit Code",
+      "type": "integer"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "macro_execution_disabled": {
+      "const": true,
+      "default": true,
+      "title": "Macro Execution Disabled",
+      "type": "boolean"
+    },
+    "network_isolation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Network Isolation Verified",
+      "type": "boolean"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "persistent_product_version_written": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Product Version Written",
+      "type": "boolean"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "receipt_hash": {
+      "title": "Receipt Hash",
+      "type": "string"
+    },
+    "runner_mode": {
+      "enum": [
+        "interactive_windows_client",
+        "isolated_headless_worker",
+        "authorized_runsc_kvm_worker"
+      ],
+      "title": "Runner Mode",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_execution_receipt.v1",
+      "default": "genoffice_docx_fidelity_execution_receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_blind_revalidation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Verified",
+      "type": "boolean"
+    },
+    "source_content_sha256": {
+      "title": "Source Content Sha256",
+      "type": "string"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "started_at_utc": {
+      "format": "date-time",
+      "title": "Started At Utc",
+      "type": "string"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "tenant_credentials_available": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Credentials Available",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "study_plan_hash",
+    "fidelity_policy_hash",
+    "engine_id",
+    "runner_mode",
+    "source_content_sha256",
+    "output_docx_sha256",
+    "engine_identity_hash",
+    "executor_environment_hash",
+    "authorization_evidence_hash",
+    "command_hash",
+    "started_at_utc",
+    "completed_at_utc",
+    "artifacts",
+    "receipt_hash"
+  ],
+  "title": "GenOfficeDocxFidelityExecutionReceipt",
+  "type": "object"
+}

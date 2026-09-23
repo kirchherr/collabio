@@ -1,0 +1,1167 @@
+{
+  "$schema": "https://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:npm/%40nodable/entities@3.0.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@nodable/entities/-/entities-3.0.0.tgz"
+        }
+      ],
+      "group": "@nodable",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f0bf7115e4d82a19b8f717c8ca9a1ed96e705759bfdd9e7c913fbb911f40f0ec85c5c3ddb88e159b1694310c8a62b4635282cb497bfa10a2880f94ef8fd71457"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "entities",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/%40nodable/entities@3.0.0",
+      "type": "library",
+      "version": "3.0.0"
+    },
+    {
+      "bom-ref": "pkg:npm/anynum@1.0.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/anynum/-/anynum-1.0.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "37afff14b113fed5d834cfc5e8005c6b5a07e9f581f8a953b7dd3d2dedbc58c0c193ca1a4f8bd8d7b0c2af083632f9aea942addcd8b837974627f12806070ee8"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "anynum",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/anynum@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
+    },
+    {
+      "bom-ref": "pkg:npm/core-util-is@1.0.3",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "65006f8b50dca49e060ea6a78ee719d878f7c043b9a590d2f3d0566e472bbddc64b09a2bc140c365a997f65745929f5ac369660432e090e6c40380d6349f4561"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "core-util-is",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/core-util-is@1.0.3",
+      "type": "library",
+      "version": "1.0.3"
+    },
+    {
+      "bom-ref": "pkg:npm/emf-converter@2.0.2",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/emf-converter/-/emf-converter-2.0.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/ChristopherVR/emf-converter.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "40b52e7dbe393f72e53ae742a22cc1b49a4ef1c070f0b6b21f49a4be446f223bcc95bea3ba7c0fd045e0524743c9950417641211950f57cacef034b9aec26690"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "emf-converter",
+      "properties": [
+        {
+          "name": "collabio:genoffice:byte-provenance",
+          "value": "verified"
+        },
+        {
+          "name": "collabio:genoffice:legal-review",
+          "value": "required"
+        },
+        {
+          "name": "collabio:genoffice:registry-attestation",
+          "value": "present-unverified"
+        },
+        {
+          "name": "collabio:genoffice:registry-signature",
+          "value": "present-unverified"
+        },
+        {
+          "name": "collabio:genoffice:source-manifest-hash",
+          "value": "sha256:acd97fc121a4a5a22f4d08c24a89917b863c65a554298ffe8062de9ee66dde3e"
+        },
+        {
+          "name": "collabio:genoffice:source-root",
+          "value": "packages/docx-engine/src/vendor/emf-converter"
+        },
+        {
+          "name": "collabio:genoffice:tarball-sha256",
+          "value": "sha256:acf0927871d783efe2defe4fdf4e66d09915776570aa81c23781199e58424e9b"
+        }
+      ],
+      "purl": "pkg:npm/emf-converter@2.0.2",
+      "type": "library",
+      "version": "2.0.2"
+    },
+    {
+      "bom-ref": "pkg:npm/fast-xml-builder@1.3.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fast-xml-builder/-/fast-xml-builder-1.3.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "17be1c644742beec3d3f8d46002deba1de17d388e358633524f12ffc6592a854d62ec77231204c04c966f4793718b0602c16dd04d63cc9e7b4a5087644154449"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "fast-xml-builder",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/fast-xml-builder@1.3.0",
+      "type": "library",
+      "version": "1.3.0"
+    },
+    {
+      "bom-ref": "pkg:npm/fast-xml-parser@5.10.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fast-xml-parser/-/fast-xml-parser-5.10.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "2043087fbdbdf245ee652445a067cc62b97b8acf0ba5abce0e06cdcf573022e76fecac15167b94f94b0ca68adfaba3c3e9a5d295ac19940462037532c024df33"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "fast-xml-parser",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "direct"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "^5.3.4"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/fast-xml-parser@5.10.1",
+      "type": "library",
+      "version": "5.10.1"
+    },
+    {
+      "bom-ref": "pkg:npm/immediate@3.0.6",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5d7385b72a838cd0c043155f631b85ee0f4897f21b5a69a5420d8c60a387f04c484f5aa0eb1738cf24b71da10401382cd5bb5fcf1ab5e5c894898ee08d25d119"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "immediate",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/immediate@3.0.6",
+      "type": "library",
+      "version": "3.0.6"
+    },
+    {
+      "bom-ref": "pkg:npm/inherits@2.0.4",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "93fbc6697e3f6256b75b3c8c0af4d039761e207bea38ab67a8176ecd31e9ce9419cc0b2428c859d8af849c189233dcc64a820578ca572b16b8758799210a9ec1"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "name": "inherits",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/inherits@2.0.4",
+      "type": "library",
+      "version": "2.0.4"
+    },
+    {
+      "bom-ref": "pkg:npm/is-unsafe@2.0.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/is-unsafe/-/is-unsafe-2.0.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d8b755f36d91fb0988f3aba75c0f775821692fa83e6aff329d69349eb1f226a1a8a79568a1c62c48b16037c8eb7da953ea219e2cd338297b954ac50b3f9de410"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "is-unsafe",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/is-unsafe@2.0.0",
+      "type": "library",
+      "version": "2.0.0"
+    },
+    {
+      "bom-ref": "pkg:npm/isarray@1.0.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "54b82121634ce842d0ce8ef3c26720d0d99357258a623bc878cf37ca3a74c110d39949eb33aefc7d06dc281a3a9f6089105d2cce81bfff2b60f932a56bcf402d"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "isarray",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/isarray@1.0.0",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "pkg:npm/jszip@3.10.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/jszip/-/jszip-3.10.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "c570ef79cc93a462eba85aef92b512a31c5f248e401fb53ccf1c6d55c969b14b4c0aae09436f742d8f005b973b1a09ebfd8fe82be6d031ba8adaa9ad937a4de2"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "(MIT OR GPL-3.0-or-later)"
+        }
+      ],
+      "name": "jszip",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "direct"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "^3.10.1"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/jszip@3.10.1",
+      "type": "library",
+      "version": "3.10.1"
+    },
+    {
+      "bom-ref": "pkg:npm/lie@3.3.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lie/-/lie-3.3.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "51a88c27379646512e8f302ec392e8918d4be5e70d41864a7e6c99f4bef00c76ffa797ad29ac5786884172bc341186f2f86fcd039daf452378377f5dc47008c1"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "lie",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/lie@3.3.0",
+      "type": "library",
+      "version": "3.3.0"
+    },
+    {
+      "bom-ref": "pkg:npm/pako@1.0.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "(MIT AND Zlib)"
+        }
+      ],
+      "name": "pako",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/pako@1.0.11",
+      "type": "library",
+      "version": "1.0.11"
+    },
+    {
+      "bom-ref": "pkg:npm/path-expression-matcher@1.6.2",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/path-expression-matcher/-/path-expression-matcher-1.6.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7a74a56a26add3989ab27ce680dc518fcade15d8f7a6e6364293603f568f21a55f4fa9e7f480ae3e816528793c10ddb61dcc1ec2c84efa63760c66e40843ada9"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "path-expression-matcher",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/path-expression-matcher@1.6.2",
+      "type": "library",
+      "version": "1.6.2"
+    },
+    {
+      "bom-ref": "pkg:npm/process-nextick-args@2.0.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "de8b943a9421b60adb39ad7b27bfaec4e4e92136166863fbfc0868477f80fbfd5ef6c92bcde9468bf757cc4632bdbc6e6c417a5a7db2a6c7132a22891459f56a"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "process-nextick-args",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/process-nextick-args@2.0.1",
+      "type": "library",
+      "version": "2.0.1"
+    },
+    {
+      "bom-ref": "pkg:npm/readable-stream@2.3.8",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f29d00524e173838087b04a2d25f04a63b3e1159d688aecda03204194d07844efe67263c0f520c63ba1dbb9951ac55c683bd4bd79286f10acf9ae9b8e514ed74"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "readable-stream",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/readable-stream@2.3.8",
+      "type": "library",
+      "version": "2.3.8"
+    },
+    {
+      "bom-ref": "pkg:npm/safe-buffer@5.1.2",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "19dd94641243917958ec66c9c5fb04f3f9ef2a45045351b7f1cd6c88de903fa6bd3d3f4c98707c1a7a6c71298c252a05f0b388aedf2e77fc0fb688f2b381bafa"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "safe-buffer",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/safe-buffer@5.1.2",
+      "type": "library",
+      "version": "5.1.2"
+    },
+    {
+      "bom-ref": "pkg:npm/setimmediate@1.0.5",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3004c9759a7cb0ba8397febc2df4266cff3328f2d0355e81219a0882bb1c14343e46cbcafc1c5e0d03a0cb128aa21d32ffc87706a5459c2a90fe077eade8885c"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "setimmediate",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/setimmediate@1.0.5",
+      "type": "library",
+      "version": "1.0.5"
+    },
+    {
+      "bom-ref": "pkg:npm/string_decoder@1.1.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9ff4a19ef0e2e851db6d57ef8aba3e5a88e2173bfeb3c30f30705ccd578f7d4a4324bc282d3d21b759786300426e2f29240bde104767907c8fc933ff9b345fc2"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "string_decoder",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/string_decoder@1.1.1",
+      "type": "library",
+      "version": "1.1.1"
+    },
+    {
+      "bom-ref": "pkg:npm/strnum@2.4.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/strnum/-/strnum-2.4.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "33d79448c4f674207671334f1bb5188fa2ae2bb44947648ddbec8257f7d35b7c734c24ba11a199e6948c80322307bafccd27d31a4f9dbef9fdad38e9552f4cc2"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "strnum",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/strnum@2.4.1",
+      "type": "library",
+      "version": "2.4.1"
+    },
+    {
+      "bom-ref": "pkg:npm/util-deprecate@1.0.2",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "10f0f9ab5b97c85c49a42acb9c27359c79eade039ae83641a1c008888d93692080ed5089d5424331a802cc891736c5187c3d5d68afff2d3110f318886eb1ed73"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "util-deprecate",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/util-deprecate@1.0.2",
+      "type": "library",
+      "version": "1.0.2"
+    },
+    {
+      "bom-ref": "pkg:npm/xml-naming@0.3.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/xml-naming/-/xml-naming-0.3.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8218a0d93044fc7d7568e56099a840dcc8629af901afa2486249c7fc385d935d275f075b22a049b1b7ccc69bc53c6f1b030efb80ddbd6905af2a9995a0f96f3d"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "name": "xml-naming",
+      "properties": [
+        {
+          "name": "collabio:genoffice:dependency-relationship",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:install-script-declared",
+          "value": "false"
+        },
+        {
+          "name": "collabio:genoffice:requested-range",
+          "value": "transitive"
+        },
+        {
+          "name": "collabio:genoffice:source-evidence",
+          "value": "npm-lock-v3"
+        }
+      ],
+      "purl": "pkg:npm/xml-naming@0.3.0",
+      "type": "library",
+      "version": "0.3.0"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependsOn": [
+        "pkg:npm/emf-converter@2.0.2",
+        "pkg:npm/fast-xml-parser@5.10.1",
+        "pkg:npm/jszip@3.10.1"
+      ],
+      "ref": "pkg:npm/%40genoffice/docx-engine@0.1.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/%40nodable/entities@3.0.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/anynum@1.0.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/core-util-is@1.0.3"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/emf-converter@2.0.2"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/path-expression-matcher@1.6.2",
+        "pkg:npm/xml-naming@0.3.0"
+      ],
+      "ref": "pkg:npm/fast-xml-builder@1.3.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/%40nodable/entities@3.0.0",
+        "pkg:npm/fast-xml-builder@1.3.0",
+        "pkg:npm/is-unsafe@2.0.0",
+        "pkg:npm/path-expression-matcher@1.6.2",
+        "pkg:npm/strnum@2.4.1",
+        "pkg:npm/xml-naming@0.3.0"
+      ],
+      "ref": "pkg:npm/fast-xml-parser@5.10.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/immediate@3.0.6"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/inherits@2.0.4"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/is-unsafe@2.0.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/isarray@1.0.0"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/lie@3.3.0",
+        "pkg:npm/pako@1.0.11",
+        "pkg:npm/readable-stream@2.3.8",
+        "pkg:npm/setimmediate@1.0.5"
+      ],
+      "ref": "pkg:npm/jszip@3.10.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/immediate@3.0.6"
+      ],
+      "ref": "pkg:npm/lie@3.3.0"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/pako@1.0.11"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/path-expression-matcher@1.6.2"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/process-nextick-args@2.0.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/core-util-is@1.0.3",
+        "pkg:npm/inherits@2.0.4",
+        "pkg:npm/isarray@1.0.0",
+        "pkg:npm/process-nextick-args@2.0.1",
+        "pkg:npm/safe-buffer@5.1.2",
+        "pkg:npm/string_decoder@1.1.1",
+        "pkg:npm/util-deprecate@1.0.2"
+      ],
+      "ref": "pkg:npm/readable-stream@2.3.8"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/safe-buffer@5.1.2"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/setimmediate@1.0.5"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/safe-buffer@5.1.2"
+      ],
+      "ref": "pkg:npm/string_decoder@1.1.1"
+    },
+    {
+      "dependsOn": [
+        "pkg:npm/anynum@1.0.1"
+      ],
+      "ref": "pkg:npm/strnum@2.4.1"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/util-deprecate@1.0.2"
+    },
+    {
+      "dependsOn": [],
+      "ref": "pkg:npm/xml-naming@0.3.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "bom-ref": "pkg:npm/%40genoffice/docx-engine@0.1.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/genspark-ai/genoffice/tree/fd33934dab1fdf8666af3f88b9794e7b4e19474a/packages/docx-engine"
+        }
+      ],
+      "group": "@genoffice",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "27b3ff723354bf3dad848b0f3f781b0c54712fbbb8c1942ceddc346066a4636d"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "name": "docx-engine",
+      "properties": [
+        {
+          "name": "collabio:genoffice:execution-state",
+          "value": "blocked"
+        },
+        {
+          "name": "collabio:genoffice:source-admission-report-hash",
+          "value": "sha256:7a4eb66cfeefbf6defad574f33b07c904b62c7f076ecb21277e99ae87e2b951d"
+        },
+        {
+          "name": "collabio:genoffice:source-archive-sha256",
+          "value": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040"
+        },
+        {
+          "name": "collabio:genoffice:source-import-state",
+          "value": "blocked"
+        }
+      ],
+      "purl": "pkg:npm/%40genoffice/docx-engine@0.1.0",
+      "type": "library",
+      "version": "0.1.0"
+    },
+    "lifecycles": [
+      {
+        "phase": "pre-build"
+      }
+    ],
+    "properties": [
+      {
+        "name": "collabio:genoffice:dependency-manifest-hash",
+        "value": "sha256:821aa8dd4d1b647dca34f7f0e8f2daf033ff1cea5b47dd40979ed0d5caffd733"
+      },
+      {
+        "name": "collabio:genoffice:inventory-completeness",
+        "value": "selected-docx-source-and-runtime-closure"
+      },
+      {
+        "name": "collabio:genoffice:legal-review-state",
+        "value": "pending"
+      },
+      {
+        "name": "collabio:genoffice:sbom-schema-version",
+        "value": "genoffice_docx_prebuild_sbom.v1"
+      },
+      {
+        "name": "collabio:genoffice:source-admission-report-hash",
+        "value": "sha256:7a4eb66cfeefbf6defad574f33b07c904b62c7f076ecb21277e99ae87e2b951d"
+      },
+      {
+        "name": "collabio:genoffice:source-manifest-hash",
+        "value": "sha256:27b3ff723354bf3dad848b0f3f781b0c54712fbbb8c1942ceddc346066a4636d"
+      },
+      {
+        "name": "collabio:genoffice:upstream-commit",
+        "value": "fd33934dab1fdf8666af3f88b9794e7b4e19474a"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "author": "Collabio",
+          "bom-ref": "pkg:generic/collabio-genoffice-docx-prebuild-sbom@1",
+          "name": "genoffice-docx-prebuild-sbom",
+          "type": "application",
+          "version": "1"
+        }
+      ]
+    }
+  },
+  "specVersion": "1.6",
+  "version": 1
+}

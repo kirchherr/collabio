@@ -1,0 +1,137 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "compatibility_claim_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claim Allowed",
+      "type": "boolean"
+    },
+    "document_content_in_report": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Report",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": true,
+      "default": true,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "engine_identity_hash": {
+      "title": "Engine Identity Hash",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "evidence_artifact_count": {
+      "minimum": 1,
+      "title": "Evidence Artifact Count",
+      "type": "integer"
+    },
+    "evidence_independently_verified": {
+      "const": false,
+      "default": false,
+      "title": "Evidence Independently Verified",
+      "type": "boolean"
+    },
+    "evidence_materialized": {
+      "const": true,
+      "default": true,
+      "title": "Evidence Materialized",
+      "type": "boolean"
+    },
+    "evidence_total_bytes": {
+      "maximum": 536870912,
+      "minimum": 1,
+      "title": "Evidence Total Bytes",
+      "type": "integer"
+    },
+    "execution_receipt_hash": {
+      "title": "Execution Receipt Hash",
+      "type": "string"
+    },
+    "executor_environment_hash": {
+      "title": "Executor Environment Hash",
+      "type": "string"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "quick_edit_spike_complete": {
+      "const": false,
+      "default": false,
+      "title": "Quick Edit Spike Complete",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "result_payload_hash": {
+      "title": "Result Payload Hash",
+      "type": "string"
+    },
+    "result_signed": {
+      "const": false,
+      "default": false,
+      "title": "Result Signed",
+      "type": "boolean"
+    },
+    "run_request_hash": {
+      "title": "Run Request Hash",
+      "type": "string"
+    },
+    "runner_image_ref": {
+      "title": "Runner Image Ref",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_libreoffice_runner_report.v1",
+      "default": "genoffice_docx_libreoffice_runner_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "run_request_hash",
+    "runner_image_ref",
+    "engine_version",
+    "engine_identity_hash",
+    "executor_environment_hash",
+    "output_docx_sha256",
+    "execution_receipt_hash",
+    "result_payload_hash",
+    "signature_message_sha256",
+    "evidence_artifact_count",
+    "evidence_total_bytes",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxLibreOfficeRunnerReport",
+  "type": "object"
+}

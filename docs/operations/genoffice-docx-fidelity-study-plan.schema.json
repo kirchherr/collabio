@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "GenOfficeDocxFidelityRunAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "assignment_id": {
+          "title": "Assignment Id",
+          "type": "string"
+        },
+        "engine_id": {
+          "enum": [
+            "microsoft_word",
+            "libreoffice",
+            "genoffice"
+          ],
+          "title": "Engine Id",
+          "type": "string"
+        },
+        "execution_authorized": {
+          "const": false,
+          "default": false,
+          "title": "Execution Authorized",
+          "type": "boolean"
+        },
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "required_fidelity_axes": {
+          "default": [
+            "ooxml_schema_conformance",
+            "semantic_feature_preservation",
+            "package_structure_preservation",
+            "markup_compatibility_preservation",
+            "visual_layout_measurement",
+            "source_blind_security_revalidation"
+          ],
+          "items": {
+            "enum": [
+              "ooxml_schema_conformance",
+              "semantic_feature_preservation",
+              "package_structure_preservation",
+              "markup_compatibility_preservation",
+              "visual_layout_measurement",
+              "source_blind_security_revalidation"
+            ],
+            "type": "string"
+          },
+          "title": "Required Fidelity Axes",
+          "type": "array"
+        },
+        "runner_mode": {
+          "enum": [
+            "interactive_windows_client",
+            "isolated_headless_worker",
+            "authorized_runsc_kvm_worker"
+          ],
+          "title": "Runner Mode",
+          "type": "string"
+        },
+        "source_content_sha256": {
+          "title": "Source Content Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "assignment_id",
+        "engine_id",
+        "runner_mode",
+        "fixture_id",
+        "source_content_sha256"
+      ],
+      "title": "GenOfficeDocxFidelityRunAssignment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "assignment_count": {
+      "const": 9,
+      "default": 9,
+      "title": "Assignment Count",
+      "type": "integer"
+    },
+    "assignments": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxFidelityRunAssignment"
+      },
+      "title": "Assignments",
+      "type": "array"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "engine_execution_authorized": {
+      "const": false,
+      "default": false,
+      "title": "Engine Execution Authorized",
+      "type": "boolean"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "plan_hash": {
+      "title": "Plan Hash",
+      "type": "string"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_study_plan.v1",
+      "default": "genoffice_docx_fidelity_study_plan.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "study_id": {
+      "const": "genoffice-docx-fidelity-study-01",
+      "default": "genoffice-docx-fidelity-study-01",
+      "title": "Study Id",
+      "type": "string"
+    },
+    "synthetic_content_only": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Content Only",
+      "type": "boolean"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "fidelity_policy_hash",
+    "preflight_policy_hash",
+    "corpus_manifest_hash",
+    "assignments",
+    "plan_hash"
+  ],
+  "title": "GenOfficeDocxFidelityStudyPlan",
+  "type": "object"
+}

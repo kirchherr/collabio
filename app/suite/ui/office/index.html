@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Office · Collabio</title>
+    <link rel="stylesheet" href="/office/assets/office.css?v=1" />
+  </head>
+  <body>
+    <a class="skip-link" href="#office-main">Zum Dokument</a>
+    <header class="app-bar">
+      <a class="brand" href="/work" aria-label="Zurück zu Collabio Arbeit"><span class="brand-mark" aria-hidden="true">C</span><span>Collabio <strong>Office</strong></span></a>
+      <div class="app-actions">
+        <button class="icon-button mobile-only" id="documents-toggle" type="button" aria-label="Dokumentliste öffnen" aria-expanded="false" aria-controls="documents-panel">☰</button>
+        <span class="tenant-label" id="tenant-label"></span>
+        <button class="quiet-button" id="context-toggle" type="button" aria-expanded="false" aria-controls="context-panel">Kontext</button>
+        <a class="quiet-button" href="/work">Arbeitsbereich ↗</a>
+      </div>
+    </header>
+    <section class="context-panel" id="context-panel" aria-label="Entwicklungskontext" hidden>
+      <form id="context-form">
+        <label>Tenant<input id="tenant-id" autocomplete="off" /></label>
+        <label>User<input id="user-id" autocomplete="off" /></label>
+        <label>Rollen<input id="role-ids" autocomplete="off" /></label>
+        <label>Lesbare Objekte<input id="readable-object-ids" autocomplete="off" /></label>
+        <button class="button primary" type="submit">Kontext anwenden</button>
+      </form>
+    </section>
+    <div class="office-shell" id="office-shell">
+      <aside class="documents-panel" id="documents-panel" aria-label="Dokumente">
+        <div class="panel-heading"><div><p class="eyebrow">Ihr Arbeitsraum</p><h1>Dokumente</h1></div><button class="icon-button" id="documents-refresh" type="button" aria-label="Dokumentliste aktualisieren" title="Liste aktualisieren">↻</button></div>
+        <button class="button primary new-document" id="document-new" type="button" disabled><span aria-hidden="true">＋</span> Neues Dokument</button>
+        <div class="list-search-controls"><label class="list-search"><span class="visually-hidden">Dokumenttitel durchsuchen</span><input type="search" id="documents-search" placeholder="Dokumenttitel suchen" maxlength="400" autocomplete="off" aria-describedby="documents-search-hint" /></label><button class="icon-button" id="documents-clear" type="button" aria-label="Suche zurücksetzen" title="Suche zurücksetzen" hidden>×</button></div>
+        <p class="list-hint" id="documents-search-hint">Titelsuche · Zuletzt erstellte zuerst</p>
+        <p class="list-status" id="documents-status" role="status" aria-live="polite">Dokumente werden geladen …</p>
+        <nav class="document-list" id="documents-list" aria-label="Dokument auswählen"></nav>
+        <div class="list-pagination"><button class="button secondary" id="documents-load-more" type="button" hidden>Weitere Dokumente laden</button><button class="button secondary" id="documents-retry" type="button" hidden>Erneut versuchen</button></div>
+        <p class="sidebar-note">Native Dokumente<br /><span>Text, Struktur und Tabellen an einem Ort.</span></p>
+      </aside>
+      <main id="office-main" class="document-main" tabindex="-1">
+        <section class="welcome" id="office-welcome">
+          <div class="welcome-mark" aria-hidden="true">Aa</div>
+          <p class="eyebrow">Raum für Ihre Gedanken</p>
+          <h2>Aus einer Idee wird<br />ein gutes Dokument.</h2>
+          <p>Öffnen Sie ein Dokument oder beginnen Sie mit einer leeren Seite, einer Besprechungsnotiz oder einem Projektbrief.</p>
+          <button class="button primary" id="welcome-new" type="button" disabled>Dokument erstellen</button>
+          <p class="format-note">Collabio-Dokumentformat · DOCX-Import und -Export werden in diesem Arbeitsbereich noch nicht unterstützt.</p>
+        </section>
+        <section class="document-workspace" id="document-workspace" aria-label="Dokument bearbeiten" hidden>
+          <header class="document-header">
+            <div class="document-heading"><p class="eyebrow" id="document-mode">Neues Dokument</p><label class="visually-hidden" for="document-title">Dokumenttitel</label><input id="document-title" maxlength="200" placeholder="Unbenanntes Dokument" autocomplete="off" /><p id="document-status" class="document-status" role="status" aria-live="polite"></p></div>
+            <div class="document-actions"><button class="quiet-button" id="document-reuse" type="button" disabled title="Gespeicherte Fassung als neues Dokument verwenden">Als neues Dokument</button><button class="quiet-button" id="document-print" type="button" disabled title="Gespeicherte Fassung drucken (Strg+P)">Drucken / PDF</button><button class="quiet-button" id="document-reload" type="button">Neu laden</button><button class="button primary" id="document-save" type="button" disabled>Version speichern</button><button class="icon-button" id="document-close" type="button" aria-label="Dokument schließen" title="Dokument schließen">×</button></div>
+          </header>
+          <div class="document-notice" id="document-notice" role="status" hidden></div>
+          <div class="historical-actions" id="historical-actions" hidden><span>Mit dieser Fassung weiterarbeiten?</span><button class="button secondary" id="document-restore" type="button">Als Entwurf übernehmen</button></div>
+          <div class="format-toolbar" id="format-toolbar" role="toolbar" aria-label="Text formatieren">
+            <div class="tool-group"><label class="visually-hidden" for="format-transfer">Format übertragen</label><select id="format-transfer" aria-describedby="format-sample" disabled><option value="">Format übertragen …</option><option value="copy">Format aufnehmen</option><option value="both" disabled>Zeichen und Absatz anwenden</option><option value="characters" disabled>Nur Zeichen anwenden</option><option value="paragraphs" disabled>Nur Absatz anwenden</option><option value="clear" disabled>Aufgenommenes Format verwerfen</option></select><span class="visually-hidden" id="format-sample" role="status">Noch kein Format aufgenommen.</span></div>
+            <div class="tool-group"><button class="tool-button" type="button" data-command="undo" aria-label="Rückgängig" title="Rückgängig (Strg+Z)">↶</button><button class="tool-button" type="button" data-command="redo" aria-label="Wiederholen" title="Wiederholen (Strg+Umschalt+Z)">↷</button></div>
+            <div class="tool-group"><label class="visually-hidden" for="text-style">Texttyp</label><select id="text-style"><option value="paragraph">Normaler Text</option><option value="heading-1">Überschrift 1</option><option value="heading-2">Überschrift 2</option><option value="heading-3">Überschrift 3</option></select><button class="tool-button paragraph-toggle style-toggle" id="style-options" type="button" aria-label="Formatvorlagen" aria-haspopup="dialog" aria-controls="style-dialog" disabled>Vorlagen …</button><button class="tool-button paragraph-toggle" id="paragraph-format" type="button" aria-haspopup="dialog" aria-controls="paragraph-dialog" title="Ausrichtung und Absatzabstände" disabled>Absatz …</button></div>
+            <div class="tool-group"><button class="tool-button paragraph-toggle" id="character-format" type="button" aria-haspopup="dialog" aria-controls="character-dialog" title="Schriftgröße und Textfarbe" disabled>Zeichen …</button><button class="tool-button bold" type="button" data-command="bold" aria-label="Fett" aria-pressed="false" title="Fett (Strg+B)">B</button><button class="tool-button italic" type="button" data-command="italic" aria-label="Kursiv" aria-pressed="false" title="Kursiv (Strg+I)">I</button><button class="tool-button underline" type="button" data-command="underline" aria-label="Unterstrichen" aria-pressed="false" title="Unterstrichen (Strg+U)">U</button><button class="tool-button strike" type="button" data-command="strike" aria-label="Durchgestrichen" aria-pressed="false" title="Durchgestrichen">S</button><button class="tool-button" type="button" data-command="code" aria-label="Code im Text" aria-pressed="false" title="Code im Text">&lt;/&gt;</button></div>
+            <div class="tool-group"><button class="tool-button" type="button" data-command="bulletList" aria-label="Aufzählung" aria-pressed="false" title="Aufzählung">• ≡</button><button class="tool-button" type="button" data-command="orderedList" aria-label="Nummerierte Liste" aria-pressed="false" title="Nummerierte Liste">1. ≡</button><button class="tool-button" id="list-options" type="button" aria-label="Listenebenen und Nummerierung" title="Listenebenen und Nummerierung" aria-haspopup="dialog" aria-controls="list-dialog" disabled>⋯</button><button class="tool-button" type="button" data-command="blockquote" aria-label="Zitat" aria-pressed="false" title="Zitat">❞</button></div>
+            <div class="tool-group"><label class="visually-hidden" for="insert-menu">Einfügen und Tabelle bearbeiten</label><select id="insert-menu"><option value="">Einfügen …</option><option value="insertTable">Tabelle (3 × 3)</option><option value="insertTableCustom">Tabelle mit eigener Größe …</option><option value="pageBreak">Seitenumbruch (Strg+Enter)</option><option value="removePageBreak">Seitenumbruch entfernen</option><option value="horizontalRule">Trennlinie</option><option value="codeBlock">Codeblock</option><optgroup label="Aktuelle Tabelle"><option value="addRowAfter">Zeile darunter</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteRow">Zeile entfernen</option><option value="deleteColumn">Spalte entfernen</option><option value="deleteTable">Tabelle entfernen</option></optgroup></select></div>
+            <div class="tool-group view-tools"><button class="tool-button" type="button" id="find-toggle" aria-label="Im Dokument suchen" title="Suchen (Strg+F)" aria-expanded="false" aria-controls="find-panel">⌕</button><button class="tool-button" type="button" id="comments-toggle" aria-label="Kommentare öffnen" title="Kommentare" aria-controls="comments-panel">▤</button><button class="tool-button" type="button" id="suggestions-toggle" aria-label="Änderungsvorschläge öffnen" title="Vorschläge" aria-controls="suggestions-panel">±</button><button class="tool-button" type="button" id="focus-toggle" aria-label="Fokusmodus" aria-pressed="false" title="Fokusmodus">⛶</button><button class="tool-button" type="button" id="inspector-toggle" aria-label="Gliederung, Versionen, Kommentare und Vorschläge" aria-expanded="true" aria-controls="document-inspector" title="Dokumentinformationen">☷</button></div>
+          </div>
+          <div class="image-toolbar" role="group" aria-label="Seite und Bilder"><button class="button secondary" id="page-options" type="button" aria-haspopup="dialog" aria-controls="page-dialog" disabled>Seite …</button><button class="button secondary" id="image-options" type="button" aria-haspopup="dialog" aria-controls="image-dialog" disabled>Bild einfügen …</button></div>
+          <section class="table-tools" id="table-tools" aria-label="Aktuelle Tabelle bearbeiten" hidden>
+            <div class="table-tools-heading"><strong>Tabelle</strong><span id="table-info"></span></div>
+            <div class="table-controls">
+              <label>Zeilen<select id="table-row-action"><option value="">Zeilen …</option><option value="addRowBefore">Zeile darüber</option><option value="addRowAfter">Zeile darunter</option><option value="deleteRow">Ausgewählte Zeilen entfernen …</option></select></label>
+              <label>Spalten<select id="table-column-action"><option value="">Spalten …</option><option value="addColumnBefore">Spalte links</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteColumn">Ausgewählte Spalten entfernen …</option></select></label>
+              <label>Auswahl<select id="table-select"><option value="">Auswählen …</option><option value="cell">Zelle</option><option value="row">Zeile</option><option value="column">Spalte</option><option value="table">Ganze Tabelle</option></select></label>
+              <button class="button secondary" id="table-header-toggle" type="button" aria-pressed="false">Kopfzeile</button>
+              <button class="quiet-button" id="table-delete" type="button">Tabelle entfernen …</button>
+            </div>
+            <p class="table-help">Kopfzeile formatiert die erste Zeile. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
+            <p id="table-message" role="status" aria-live="polite"></p>
+          </section>
+          <section class="find-panel" id="find-panel" aria-label="Suchen und Ersetzen" hidden>
+            <div class="find-row"><label class="find-field" for="find-query"><span>Suchen</span><input type="search" id="find-query" placeholder="Im Dokument suchen" maxlength="100000" autocomplete="off" /></label><output id="find-count" aria-live="polite">0 Treffer</output><button class="icon-button" id="find-previous" type="button" aria-label="Vorheriger Treffer" title="Vorheriger Treffer (Umschalt+Enter)">↑</button><button class="icon-button" id="find-next" type="button" aria-label="Nächster Treffer" title="Nächster Treffer (Enter)">↓</button><button class="icon-button" id="find-close" type="button" aria-label="Suche schließen" title="Suche schließen (Esc)">×</button></div>
+            <div class="find-options"><label><input id="find-case-sensitive" type="checkbox" />Groß-/Kleinschreibung</label><label><input id="find-whole-word" type="checkbox" />Ganze Wörter</label></div>
+            <div class="find-row replace-row"><label class="find-field" for="replace-query"><span>Ersetzen durch</span><input type="text" id="replace-query" placeholder="Ersatztext; leer zum Entfernen" maxlength="100000" autocomplete="off" /></label><button class="button secondary" id="replace-current" type="button" disabled>Treffer ersetzen</button><button class="button secondary" id="replace-all" type="button" disabled>Alle ersetzen</button></div>
+            <p class="find-help">Ersetzungen ändern nur Ihren Entwurf und lassen sich rückgängig machen. Gespeichert wird erst mit „Version speichern“.</p>
+            <p id="find-highlight-note" class="find-help" hidden></p><p id="find-message" role="status" aria-live="polite"></p>
+          </section>
+          <div class="editor-layout">
+            <div class="page-canvas" id="page-canvas"><div class="document-page" id="document-page"><div id="office-editor"></div></div></div>
+            <aside class="document-inspector" id="document-inspector" aria-label="Dokumentstruktur">
+              <div class="inspector-tabs" role="tablist" aria-label="Dokumentinformationen"><button id="outline-tab" type="button" role="tab" aria-selected="true" aria-controls="outline-panel">Gliederung</button><button id="history-tab" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1">Versionen</button><button id="comments-tab" type="button" role="tab" aria-selected="false" aria-controls="comments-panel" tabindex="-1">Kommentare</button><button id="suggestions-tab" type="button" role="tab" aria-selected="false" aria-controls="suggestions-panel" tabindex="-1">Vorschläge</button></div>
+              <section id="outline-panel" role="tabpanel" aria-labelledby="outline-tab"><p class="inspector-hint" id="outline-empty">Überschriften machen Ihr Dokument übersichtlich.</p><nav id="document-outline" aria-label="Überschriften"></nav></section>
+              <section id="history-panel" role="tabpanel" aria-labelledby="history-tab" hidden><p class="inspector-hint" id="history-status" role="status" aria-live="polite"></p><p class="inspector-hint" id="history-selected" hidden></p><div class="history-actions"><button class="quiet-button" id="history-refresh" type="button">Versionen aktualisieren</button><button class="button secondary" id="history-compare" type="button" disabled>Versionen vergleichen</button><button class="button secondary" id="history-more" type="button" hidden>Ältere Fassungen laden</button><button class="button secondary" id="history-retry" type="button" hidden>Erneut versuchen</button></div><div id="document-history"></div></section>
+              <section id="comments-panel" role="tabpanel" aria-labelledby="comments-tab" hidden>
+                <div class="review-heading"><strong>Zur gespeicherten Fassung</strong><button class="icon-button" id="comments-close" type="button" aria-label="Kommentare schließen">×</button></div>
+                <p class="inspector-hint" id="comments-version"></p>
+                <div class="review-actions"><button class="quiet-button" id="comments-refresh" type="button">Aktualisieren</button><button class="button secondary" id="comment-new" type="button" disabled>Fassung kommentieren</button><button class="button secondary" id="comment-selection" type="button" disabled>Auswahl kommentieren</button></div>
+                <p id="comments-status" role="status" aria-live="polite"></p><p class="review-hint" id="comments-hint"></p>
+                <section id="comment-composer" class="review-composer" aria-labelledby="comment-composer-title" hidden><h3 id="comment-composer-title">Neuer Kommentar</h3><blockquote id="comment-anchor"></blockquote><label for="comment-body">Kommentar<textarea id="comment-body" rows="5" maxlength="8000" autocomplete="off"></textarea></label><p id="comment-body-count" class="review-hint"></p><div class="review-actions"><button class="button primary" id="comment-prepare" type="button">Speicherung vorbereiten</button><button class="quiet-button" id="comment-cancel" type="button">Verwerfen</button></div><p class="review-hint">Der Kommentar wird separat gespeichert. Er ändert weder Dokumenttext noch Versionsgeschichte.</p></section>
+                <div id="comments-list"></div><button class="quiet-button" id="comments-more" type="button" hidden>Weitere Diskussionen laden</button>
+              </section>
+              <section id="suggestions-panel" role="tabpanel" aria-labelledby="suggestions-tab" hidden>
+                <div class="review-heading"><strong>Textänderungen vorschlagen</strong><button class="icon-button" id="suggestions-close" type="button" aria-label="Vorschläge schließen">×</button></div>
+                <p class="inspector-hint" id="suggestions-version"></p>
+                <div class="review-actions"><button class="quiet-button" id="suggestions-refresh" type="button">Aktualisieren</button><button class="button secondary" id="suggestion-new" type="button" disabled>Änderung zur Auswahl vorschlagen</button></div>
+                <p id="suggestions-status" role="status" aria-live="polite"></p><p class="review-hint" id="suggestions-hint"></p>
+                <section id="suggestion-composer" class="review-composer" aria-labelledby="suggestion-composer-title" hidden><h3 id="suggestion-composer-title">Neuer Änderungsvorschlag</h3><p class="review-hint">Vorher</p><blockquote id="suggestion-before"></blockquote><label for="suggestion-replacement">Nachher<textarea id="suggestion-replacement" rows="5" maxlength="8000" autocomplete="off"></textarea></label><p id="suggestion-count" class="review-hint"></p><p class="review-hint">Leer lassen, um die ausgewählte Textstelle zur Löschung vorzuschlagen. Der Dokumenttext ändert sich erst nach bestätigter Annahme.</p><div class="review-actions"><button class="button primary" id="suggestion-prepare" type="button">Speicherung vorbereiten</button><button class="quiet-button" id="suggestion-cancel" type="button">Verwerfen</button></div></section>
+                <div id="suggestions-list"></div><button class="quiet-button" id="suggestions-more" type="button" hidden>Weitere Vorschläge laden</button>
+              </section>
+            </aside>
+          </div>
+          <footer class="document-footer"><span id="word-count">0 Wörter</span><span id="document-version">Noch nicht gespeichert</span><span class="keyboard-hint">Strg+S · Version speichern</span></footer>
+        </section>
+      </main>
+    </div>
+    <dialog class="office-dialog" id="new-document-dialog" aria-labelledby="new-document-title"><form method="dialog" id="new-document-form"><header><div><p class="eyebrow">Ein guter Anfang</p><h2 id="new-document-title">Neues Dokument</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Schließen">×</button></header><div class="dialog-body"><label>Titel<input name="title" maxlength="200" value="Unbenanntes Dokument" required autocomplete="off" /></label><fieldset class="template-options"><legend>Vorlage</legend><label><input type="radio" name="template" value="blank" checked /><span><strong>Leeres Dokument</strong><small>Platz für Ihre Ideen.</small></span></label><label><input type="radio" name="template" value="meeting" /><span><strong>Besprechungsnotiz</strong><small>Agenda, Entscheidungen und nächste Schritte.</small></span></label><label><input type="radio" name="template" value="brief" /><span><strong>Projektbrief</strong><small>Ziele, Rahmen und Meilensteine.</small></span></label></fieldset></div><footer><button class="button secondary" type="button" data-close-dialog>Abbrechen</button><button class="button primary" type="submit">Entwurf beginnen</button></footer></form></dialog>
+    <dialog class="office-dialog" id="save-dialog" aria-labelledby="save-dialog-title"><form method="dialog" id="save-form"><header><div><p class="eyebrow">Verbindlich speichern</p><h2 id="save-dialog-title">Neue Version speichern</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Schließen">×</button></header><div class="dialog-body"><p id="save-summary"></p><p class="muted">Die aktuelle Fassung wird als neue Version gespeichert. Bisherige Versionen bleiben erhalten.</p><label class="confirmation"><input id="save-confirm" type="checkbox" required /><span>Ich bestätige, dass diese Dokumentversion gespeichert werden soll.</span></label><p id="save-message" role="status"></p></div><footer><button class="button secondary" type="button" data-close-dialog>Weiter bearbeiten</button><button class="button primary" id="save-submit" type="submit" disabled>Version verbindlich speichern</button></footer></form></dialog>
+    <dialog class="office-dialog compact" id="discard-dialog" aria-labelledby="discard-title"><div><header><h2 id="discard-title">Entwurf verlassen?</h2></header><div class="dialog-body"><p id="discard-message">Ihre ungespeicherten Änderungen gehen verloren.</p></div><footer><button class="button secondary" id="discard-cancel" type="button">Weiter bearbeiten</button><button class="button danger" id="discard-confirm" type="button">Änderungen verwerfen</button></footer></div></dialog>
+    <dialog class="office-dialog" id="comment-confirm-dialog" aria-labelledby="comment-confirm-title"><form id="comment-confirm-form"><header><h2 id="comment-confirm-title">Kommentar speichern</h2></header><div class="dialog-body"><p id="comment-confirm-summary"></p><blockquote class="review-confirm-body" id="comment-confirm-anchor"></blockquote><p class="review-confirm-body" id="comment-confirm-body"></p><label class="confirmation"><input id="comment-confirm-checkbox" type="checkbox" required /><span>Ich bestätige, dass diese Kommentaraktion verbindlich gespeichert werden soll.</span></label><p id="comment-confirm-message" role="status"></p></div><footer><button class="button secondary" id="comment-confirm-cancel" type="button">Zurück</button><button class="button primary" id="comment-confirm-submit" type="submit" disabled>Verbindlich speichern</button></footer></form></dialog>
+    <dialog class="office-dialog" id="suggestion-confirm-dialog" aria-labelledby="suggestion-confirm-title"><form id="suggestion-confirm-form"><header><h2 id="suggestion-confirm-title">Vorschlag speichern</h2></header><div class="dialog-body"><p id="suggestion-confirm-summary"></p><strong>Vorher</strong><p class="review-confirm-body" id="suggestion-confirm-before"></p><strong>Nachher</strong><p class="review-confirm-body" id="suggestion-confirm-after"></p><label class="confirmation"><input id="suggestion-confirm-checkbox" type="checkbox" required /><span id="suggestion-confirm-label">Ich bestätige, dass dieser Vorschlag verbindlich gespeichert werden soll.</span></label><p id="suggestion-confirm-message" role="status"></p></div><footer><button class="button secondary" id="suggestion-confirm-cancel" type="button">Zurück</button><button class="button primary" id="suggestion-confirm-submit" type="submit" disabled>Verbindlich speichern</button></footer></form></dialog>
+    <dialog class="office-dialog compare-dialog" id="compare-dialog" aria-labelledby="compare-title">
+      <header><div><p class="eyebrow">Versionsgeschichte</p><h2 id="compare-title">Versionen vergleichen</h2></div><button class="icon-button" id="compare-close" type="button" aria-label="Vergleich schließen">×</button></header>
+      <div class="compare-body">
+        <p class="compare-hint">Vergleichen Sie zwei gespeicherte Fassungen. Formatierungen stehen in ⟦…⟧. Eine Übernahme erstellt zunächst nur einen Entwurf; gespeichert wird erst nach Ihrer Bestätigung.</p>
+        <div class="compare-controls"><label>Linke Fassung<select id="compare-left" disabled></select></label><label>Rechte Fassung<select id="compare-right" disabled></select></label><button class="button secondary" id="compare-load" type="button" disabled>Vergleich laden</button></div>
+        <div class="compare-history-actions"><button class="quiet-button" id="compare-history-refresh" type="button">Versionsliste aktualisieren</button><button class="button secondary" id="compare-history-more" type="button" hidden>Ältere Fassungen laden</button><button class="button secondary" id="compare-history-retry" type="button" hidden>Erneut versuchen</button></div>
+        <p id="compare-history-status" role="status" aria-live="polite"></p>
+        <p id="compare-status" role="status" aria-live="polite"></p>
+        <p id="compare-summary"></p>
+        <div id="compare-results" tabindex="-1" aria-label="Versionsunterschiede"></div>
+      </div>
+      <footer><div class="compare-pagination"><button class="quiet-button" id="compare-previous" type="button" disabled>Zurück</button><span id="compare-page" aria-live="polite"></span><button class="quiet-button" id="compare-next" type="button" disabled>Weiter</button></div><button class="button primary" id="compare-restore" type="button" disabled>Linke Fassung als Entwurf übernehmen</button></footer>
+    </dialog>
+    <dialog class="office-dialog image-dialog" id="image-dialog" aria-labelledby="image-title">
+      <form id="image-form"><header><h2 id="image-title">Bild einfügen</h2><button class="icon-button" id="image-close" type="button" aria-label="Bilddialog schließen">×</button></header>
+        <div class="dialog-body">
+          <section id="image-upload-section"><label>Bilddatei<input id="image-file" type="file" accept="image/png,image/jpeg" /></label><button class="button secondary" id="image-upload" type="button" disabled>Bild hochladen und prüfen</button></section>
+          <div id="image-preview" aria-label="Bildvorschau"></div>
+          <details id="image-crop-section" hidden><summary>Bild zuschneiden</summary>
+            <p id="image-crop-help">Ziehen Sie einen Ausschnitt im Originalbild auf. Pfeiltasten verschieben ihn um einen Pixel, Umschalt um zehn. Alternativ die Zahlenfelder verwenden.</p>
+            <div id="image-crop-stage" tabindex="0" role="group" aria-label="Bildausschnitt verschieben" aria-describedby="image-crop-help image-crop-status"><img id="image-crop-source" alt="" draggable="false" /><span id="image-crop-rectangle" aria-hidden="true"></span></div>
+            <div class="image-fields"><label>Links (Pixel)<input id="image-crop-x" type="number" min="0" step="1" value="0" required /></label><label>Oben (Pixel)<input id="image-crop-y" type="number" min="0" step="1" value="0" required /></label><label>Ausschnittbreite<input id="image-crop-width" type="number" min="1" step="1" value="1" required /></label><label>Ausschnitthöhe<input id="image-crop-height" type="number" min="1" step="1" value="1" required /></label></div>
+            <button id="image-crop-reset" class="button secondary" type="button">Ganzes Bild wiederherstellen</button>
+            <p id="image-crop-status" role="status" aria-live="polite"></p><p>Der Zuschnitt blendet Bereiche nur aus. Das vollständige Bild bleibt für berechtigte Leser zugänglich.</p>
+          </details>
+          <div class="image-fields"><label>Breite (Pixel)<input id="image-width" type="number" min="1" max="1600" step="1" required /></label><label>Höhe (Pixel)<input id="image-height" type="number" min="1" max="1600" step="1" required /></label>
+          <label>Ausrichtung<select id="image-align"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div>
+          <div class="image-fields"><label>Textumfluss<select id="image-wrap" aria-describedby="image-wrap-help"><option value="none">Eigener Absatz (kein Umfluss)</option><option value="left">Bild links, Text rechts</option><option value="right">Bild rechts, Text links</option></select></label>
+          <label>Abstand zum Text (Pixel)<input id="image-wrap-gap" type="number" min="0" max="48" step="1" value="16" required disabled /></label></div>
+          <p id="image-wrap-help">Im Haupttext fließen die folgenden Absätze am Bild vorbei. Überschriften, Listen, Tabellen und das nächste Bild beginnen darunter. In schmalen Ansichten und innerhalb von Listen, Zitaten oder Tabellen steht das Bild einzeln. Beim Umfluss wird es auf höchstens 45 % der Textbreite und 480 Pixel Höhe verkleinert.</p>
+          <label class="confirmation"><input id="image-lock" type="checkbox" checked />Seitenverhältnis beibehalten</label>
+          <label>Alternativtext<input id="image-alt" maxlength="500" autocomplete="off" /></label>
+          <label class="confirmation"><input id="image-decorative" type="checkbox" />Dekorativ – benötigt keinen Alternativtext</label>
+          <label>Bildunterschrift (optional)<input id="image-caption" maxlength="1000" autocomplete="off" /></label>
+          <div id="image-edit-actions" class="image-fields"><button class="button secondary" id="image-up" type="button">Nach oben</button><button class="button secondary" id="image-down" type="button">Nach unten</button><button class="button danger" id="image-remove" type="button">Aus Entwurf entfernen</button></div>
+          <p id="image-status" role="status" aria-live="polite"></p>
+        </div><footer><button class="button secondary" id="image-cancel" type="button">Abbrechen</button><button class="button primary" id="image-apply" type="submit" disabled>In Entwurf übernehmen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog style-dialog" id="style-dialog" aria-labelledby="style-title">
+      <form id="style-form" novalidate><header><h2 id="style-title">Formatvorlagen</h2><button class="icon-button" id="style-close" type="button" aria-label="Formatvorlagen schließen">×</button></header>
+        <div class="dialog-body"><p id="style-selection" class="paragraph-help"></p>
+          <div class="paragraph-fields style-identity"><label>Vorlage auswählen<select id="style-choice"></select></label><label>Name<input id="style-name" maxlength="120" autocomplete="off" /></label></div>
+          <p id="style-impact" class="paragraph-help"></p>
+          <div class="paragraph-fields">
+            <label>Schriftgröße<select id="style-fontSize"></select></label><label>Textfarbe<select id="style-textColor"></select></label>
+            <label>Ausrichtung<select id="style-textAlign"></select></label><label>Zeilenabstand<select id="style-lineSpacing"></select></label>
+            <label>Abstand davor<select id="style-spacingBefore"></select></label><label>Abstand danach<select id="style-spacingAfter"></select></label>
+          </div>
+          <div class="style-preview document-page" aria-label="Vorschau"><div class="tiptap" id="style-preview"></div></div>
+          <p class="paragraph-help">Beim Anwenden werden direkte Absatzwerte durch die Vorlage ersetzt. Zeichenhervorhebungen bleiben erhalten. Texttyp, Listen und Tabellen ändern sich nicht. „Standard“ erbt das Grundformat des Texttyps.</p>
+          <div class="review-actions"><button class="button secondary" id="style-update" type="button">Nur Vorlage aktualisieren</button><button class="quiet-button" id="style-remove" type="button">Vorlage von Auswahl lösen</button></div>
+          <p class="paragraph-help">Beim Lösen gelten wieder direkte Formate und Standardwerte. Änderungen bleiben bis zum bestätigten Speichern im Entwurf.</p>
+          <p id="style-status" class="paragraph-help" role="status" aria-live="polite"></p>
+        </div><footer><button class="button secondary" id="style-cancel" type="button">Abbrechen</button><button class="button primary" id="style-apply" type="submit">Vorlage auf Auswahl anwenden</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog" id="list-dialog" aria-labelledby="list-title">
+      <form id="list-form" novalidate><header><h2 id="list-title">Liste bearbeiten</h2><button class="icon-button" id="list-close" type="button" aria-label="Listenoptionen schließen">×</button></header>
+        <div class="dialog-body"><p id="list-selection"></p><p class="paragraph-help">Einrücken ordnet die ausgewählten Punkte dem vorherigen Punkt unter. Ausrücken hebt sie eine Ebene an; auf oberster Ebene werden sie zu Absätzen. Unterpunkte bleiben erhalten.</p>
+          <div class="review-actions"><button class="button secondary" id="list-indent" type="button">Eine Ebene einrücken</button><button class="button secondary" id="list-outdent" type="button">Eine Ebene ausrücken</button></div>
+          <p class="paragraph-help">Tastatur: Alt+Umschalt+Pfeil rechts/links. Außerhalb von Tabellen auch Tab/Umschalt+Tab; in Tabellen wechselt Tab weiterhin die Zelle.</p>
+          <div id="list-numbering"><label>Beginnen mit<input id="list-start" type="text" inputmode="numeric" maxlength="7" autocomplete="off" aria-describedby="list-numbering-help" /></label><p id="list-numbering-help" class="paragraph-help">Startzahl von 1 bis 1.000.000 für die gesamte aktuelle Liste dieser Ebene.</p><button class="button primary" id="list-apply" type="submit">Startzahl anwenden</button></div>
+          <p id="list-status" class="paragraph-help" role="status" aria-live="polite"></p>
+        </div><footer><button class="button secondary" id="list-cancel" type="button">Schließen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog paragraph-dialog" id="character-dialog" aria-labelledby="character-title">
+      <form id="character-form"><header><h2 id="character-title">Zeichen formatieren</h2><button class="icon-button" id="character-close" type="button" aria-label="Zeichenformatierung schließen">×</button></header>
+        <div class="dialog-body"><p id="character-selection"></p><p class="paragraph-help">„Standard“ übernimmt Schriftgröße und Farbe des Absatzes. Gemischte Werte bleiben unverändert, bis Sie einen Wert wählen.</p>
+          <div class="paragraph-fields">
+            <label>Schriftgröße<select id="character-size"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option></select></label>
+            <label>Textfarbe<select id="character-color"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option></select></label>
+          </div><p id="character-status" class="paragraph-help" role="status" aria-live="polite"></p>
+          <button class="quiet-button" id="character-reset" type="button">Standard wiederherstellen</button>
+        </div><footer><button class="button secondary" id="character-cancel" type="button">Abbrechen</button><button class="button primary" id="character-apply" type="submit">Anwenden</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog paragraph-dialog" id="paragraph-dialog" aria-labelledby="paragraph-title">
+      <form id="paragraph-form"><header><h2 id="paragraph-title">Absatz formatieren</h2><button class="icon-button" id="paragraph-close" type="button" aria-label="Absatzformatierung schließen">×</button></header>
+        <div class="dialog-body"><p id="paragraph-selection"></p><p class="paragraph-help">Gilt für Absätze und Überschriften, auch in Listen, Zitaten und ausgewählten Tabellenzellen. „Standard“ verwendet das bisherige Format des jeweiligen Texttyps.</p>
+          <div class="paragraph-fields">
+            <label>Ausrichtung<select id="paragraph-align"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option><option value="left">Linksbündig</option><option value="center">Zentriert</option><option value="right">Rechtsbündig</option><option value="justify">Blocksatz</option></select></label>
+            <label>Zeilenabstand<select id="paragraph-line-spacing"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option><option value="1">Einfach (1)</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2">Doppelt (2)</option></select></label>
+            <label>Abstand davor<select id="paragraph-spacing-before"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option><option value="0">0 pt</option><option value="6">6 pt</option><option value="12">12 pt</option><option value="18">18 pt</option><option value="24">24 pt</option></select></label>
+            <label>Abstand danach<select id="paragraph-spacing-after"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default" selected>Standard</option><option value="0">0 pt</option><option value="6">6 pt</option><option value="12">12 pt</option><option value="18">18 pt</option><option value="24">24 pt</option></select></label>
+          </div>
+          <button class="quiet-button" id="paragraph-reset" type="button">Standard wiederherstellen</button><p id="paragraph-status" role="status" aria-live="polite"></p>
+        </div>
+        <footer><button class="button secondary" id="paragraph-cancel" type="button">Abbrechen</button><button class="button primary" id="paragraph-apply" type="submit">Auf Auswahl anwenden</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog" id="table-insert-dialog" aria-labelledby="table-insert-title">
+      <form id="table-insert-form"><header><h2 id="table-insert-title">Tabelle einfügen</h2><button class="icon-button" id="table-insert-close" type="button" aria-label="Tabelle einfügen schließen">×</button></header>
+        <div class="dialog-body"><p>Wählen Sie eine Größe. Zeilen und Spalten können Sie später ergänzen.</p><div class="table-size-fields"><label>Zeilen<input id="table-rows" type="number" min="1" max="200" step="1" value="3" required /></label><label>Spalten<input id="table-columns" type="number" min="1" max="20" step="1" value="3" required /></label></div><label class="confirmation"><input id="table-with-header" type="checkbox" checked /><span>Erste Zeile als Kopfzeile</span></label><p class="muted">Bis zu 200 Zeilen und 20 Spalten, innerhalb der Dokumentgröße. Die Tabelle wird zunächst nur in Ihren Entwurf eingefügt.</p><p id="table-insert-message" role="status"></p></div>
+        <footer><button class="button secondary" id="table-insert-cancel" type="button">Abbrechen</button><button class="button primary" id="table-insert-submit" type="submit">Tabelle einfügen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-remove-dialog" aria-labelledby="table-remove-title"><header><h2 id="table-remove-title">Tabelleninhalt entfernen?</h2></header><div class="dialog-body"><p id="table-remove-summary"></p></div><footer><button class="button secondary" id="table-remove-cancel" type="button">Behalten</button><button class="button danger" id="table-remove-confirm" type="button">Aus Entwurf entfernen</button></footer></dialog>
+    <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">
+      <form id="reuse-form"><header><div><p class="eyebrow">Ein neuer Anfang</p><h2 id="reuse-heading">Als neues Dokument verwenden</h2></div><button class="icon-button" id="reuse-close" type="button" aria-label="Übernahme schließen">×</button></header>
+        <div class="dialog-body"><p>Verwenden Sie Titel und Inhalt dieser gespeicherten Fassung als unabhängigen Entwurf. Das ursprüngliche Dokument bleibt unverändert. Ungespeicherte Änderungen werden nicht übernommen.</p><p class="reuse-source" id="reuse-source"></p><label>Neuer Dokumenttitel<input id="reuse-title" type="text" maxlength="200" required autocomplete="off" /></label><p class="muted">Freigaben, Kommentare, Vorschläge und Versionsgeschichte werden nicht kopiert. Dauerhaft gespeichert wird erst mit Ihrer anschließenden Speicherbestätigung.</p><p id="reuse-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="button secondary" id="reuse-cancel" type="button">Abbrechen</button><button class="button primary" id="reuse-submit" type="submit">Entwurf beginnen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog page-dialog" id="page-dialog" aria-labelledby="page-title">
+      <form id="page-form"><header><h2 id="page-title">Seite einrichten</h2><button class="icon-button" id="page-close" type="button" aria-label="Seiteneinstellungen schließen">×</button></header>
+        <div class="dialog-body"><p>Diese Einstellungen gelten für das ganze Dokument. Sie werden mit der nächsten bestätigten Version gespeichert.</p>
+          <div class="page-fields"><label>Papierformat<select id="page-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="page-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label></div>
+          <fieldset class="page-fields"><legend>Seitenränder in Millimetern</legend>
+            <label>Oben<input id="page-top" type="number" min="5" max="50" step="1" required /></label><label>Rechts<input id="page-right" type="number" min="5" max="50" step="1" required /></label>
+            <label>Unten<input id="page-bottom" type="number" min="5" max="50" step="1" required /></label><label>Links<input id="page-left" type="number" min="5" max="50" step="1" required /></label>
+          </fieldset>
+          <div class="page-preview-canvas"><div id="page-preview" role="img" aria-label="Vorschau von Papierformat und Seitenrändern" aria-describedby="page-description"><div class="page-preview-content" aria-hidden="true"></div></div></div>
+          <p id="page-description"></p><p class="muted">Die Vorschau zeigt die Proportionen. Der Editor bleibt fortlaufend; die endgültigen Seiten sehen Sie beim Drucken.</p>
+          <button class="quiet-button" id="page-reset" type="button">Standard: A4, Hochformat, 18 mm</button><p id="page-status" role="status" aria-live="polite"></p>
+        </div><footer><button class="button secondary" id="page-cancel" type="button">Abbrechen</button><button class="button primary" id="page-apply" type="submit">Auf Dokument anwenden</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog print-dialog" id="print-dialog" aria-labelledby="print-title">
+      <header><div><p class="eyebrow">Gespeicherte Fassung</p><h2 id="print-title">Druckansicht</h2></div><button class="icon-button" id="print-close" type="button" aria-label="Druckansicht schließen">×</button></header>
+      <div class="print-controls"><label>Papierformat<select id="print-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="print-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label><button class="quiet-button" id="print-document-settings" type="button">Dokumenteinstellungen</button><button class="quiet-button" id="print-refresh" type="button">Erneut laden</button></div>
+      <p class="print-help" id="print-page-description"></p><p class="print-help">Papierformat und Ausrichtung starten mit den Dokumenteinstellungen. Änderungen hier gelten nur für diesen Druck; die gespeicherten Ränder bleiben erhalten. Fortlaufende Vorschau: Seitenumbrüche und endgültiges Papierformat bestimmt Ihr Browser. Gedruckt werden nur Titel und Dokumentinhalt. Kommentare, Vorschläge und diese Versionsangaben werden nicht mitgedruckt.</p>
+      <p id="print-version" class="print-version"></p><p id="print-status" role="status" aria-live="polite"></p>
+      <div class="print-preview-canvas"><div id="print-preview" class="paper-a4 orientation-portrait" aria-label="Vorschau der gespeicherten Fassung"></div></div>
+      <footer><p>Wählen Sie im Browserdialog einen Drucker oder „Als PDF speichern“, sofern verfügbar.</p><button class="button primary" id="print-submit" type="button" disabled>Drucken / als PDF speichern</button></footer>
+    </dialog>
+    <div id="office-print-root"></div>
+    <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
+    <script type="module" src="/office/editor.js?v=1"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+# Allow only the package-managed gVisor runtime to create user namespaces.
+# Ubuntu keeps the global unprivileged-userns restriction enabled.
+abi <abi/4.0>,
+include <tunables/global>
+
+/usr/bin/runsc flags=(default_allow) {
+  userns,
+}

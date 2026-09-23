@@ -1,6 +1,6 @@
 # Open Source Stack Candidates
 
-Stand: 2026-06-10
+Stand: 2026-09-18
 
 Dieses Dokument sammelt bewährte Open-Source- und offene Standard-Bausteine. "Empfohlen" bedeutet: gut als erste Richtung. Es ersetzt keine ADR, Lizenzpruefung oder Sicherheitsreview.
 
@@ -48,7 +48,7 @@ Dieses Dokument sammelt bewährte Open-Source- und offene Standard-Bausteine. "E
 | --- | --- | --- | --- |
 | Crypto API | Eigene Adapter-Schicht | default | Keine direkte Krypto im Business-Code. |
 | Dev KMS | Lokaler Software-KMS / OpenBao-Kandidat | candidate | Lizenz, Security und Betriebsmodell pruefen. |
-| Enterprise KMS | HSM/PKCS#11, Cloud KMS Adapter, OpenBao/Vault-kompatible Adapter | candidate | Kunden brauchen unterschiedliche Betriebsmodelle. |
+| Enterprise KMS | OpenBao Transit, optional self-hosted HSM/PKCS#11 | selected | Der Produktionsreferenzpfad bleibt selbst gehostet; externe Provider erfordern spaetere gesonderte Zulassung. |
 | Envelope Encryption | Pflicht | default | Tenant-, Datenklassen- und Objekt-Key-Hierarchie. |
 | Key Rotation | Pflicht | default | Muss von Anfang an modelliert werden. |
 | Crypto Shredding | Nur policy-gesteuert | default | Nie pauschal fuer GoBD oder Legal Hold. |
@@ -98,12 +98,19 @@ search/vector candidate ids -> authoritative ACL -> source fetch -> redaction ->
 
 | Bereich | Empfehlung | Status | Warum |
 | --- | --- | --- | --- |
-| Rich Text Core | ProseMirror | candidate | Bewaehrt, tief kontrollierbar. |
-| Product Editor Layer | Tiptap | candidate | Schnellere Produktentwicklung, ProseMirror-basiert; Lizenz/Pro Features pruefen. |
+| Rich Text Core | ProseMirror | selected for native Office documents | Striktes strukturiertes Format, lokale Transaktionen und getestete Editorbefehle; ADR-0079. |
+| Product Editor Layer | Tiptap 3.31.3, open-source core | implemented; isolated acceptance passed | Lokal gebuendelt, exakter Integrity-Lock, Lizenztexte und SBOM-Inventar; native Office-Grundlage mit 73/73 Browserfaellen und nichtleerem Recovery-Nachweis abgenommen, ohne Pro-/Cloud-Dienste oder Tenant-Freigabe. |
 | CRDT | Yjs | candidate | Bewaehrte CRDT-Basis, Editor-Bindings, netzwerkagnostisch. |
+| DOCX Quick Edit Engine | Selektiv evaluierter GenOffice `docx-engine` hinter `OfficeEditAdapter.v1` | development image admitted; executable proof pending two-person runtime authorization | Byte-erhaltende Patch-Architektur; 23 Komponenten ohne Findings gescannt, npm-Signatur/SLSA/Fulcio/Rekor verifiziert sowie 21 Runtime-Archive und 42 Rechtsdateien hashgebunden. Der engine-unabhaengige 19-Faelle-OOXML-Preflight, Safe-/High-Fidelity-Vertraege und die source-blinde Revalidierung stehen. Der status-only Worker und ein harter Harness-Gate verhindern Engine-, Tenant-, Hosted-, On-Prem- oder Produktionsnutzung. |
+| Full Collaboration | Collabora Online ueber separaten WOPI-Adapter | candidate | Self-hosted und LibreOffice-basiert; Sessions, Locks, Tokens, Callbacks und Writes bleiben ausserhalb von Preview und Quick Edit. |
+| Full Collaboration Alternative | ONLYOFFICE Docs ueber separaten WOPI-Adapter | defer | Gute OOXML-Ausrichtung; Lizenz, Edition, Einbettung und Betriebsgrenzen vor Auswahl gesondert pruefen. |
 | Spreadsheet Engine | Noch offen | research | Formeltreue ist ein eigenes Risiko. |
 | DOCX/ODF Parsing | LibreOffice headless / Pandoc / custom workers | research | Nur in isolierten, netzwerklosen Containern. |
 | PDF Rendering | LibreOffice / headless Chromium / dedicated workers | research | Kein Renderer im API-Prozess. |
+
+Die native Office-Grundlage aus Roadmap 252 ist abgeschlossen; Details und commitgebundene Entwicklungsnachweise stehen
+in `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`. Naechster offener Schritt ist Versionsvergleich mit einer frueheren Fassung
+als neuem, explizit zu speicherndem Entwurf (Roadmap 253). DOCX-Fidelity und Engine-Freigaben bleiben davon getrennt.
 
 Compliance rule:
 

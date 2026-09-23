@@ -1,0 +1,141 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "collector_identity_hash": {
+      "title": "Collector Identity Hash",
+      "type": "string"
+    },
+    "compatibility_claim_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claim Allowed",
+      "type": "boolean"
+    },
+    "engine_identity_hash": {
+      "title": "Engine Identity Hash",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "evidence_artifact_count": {
+      "minimum": 1,
+      "title": "Evidence Artifact Count",
+      "type": "integer"
+    },
+    "evidence_independently_verified": {
+      "const": false,
+      "default": false,
+      "title": "Evidence Independently Verified",
+      "type": "boolean"
+    },
+    "evidence_materialized": {
+      "const": true,
+      "default": true,
+      "title": "Evidence Materialized",
+      "type": "boolean"
+    },
+    "evidence_total_bytes": {
+      "maximum": 536870912,
+      "minimum": 1,
+      "title": "Evidence Total Bytes",
+      "type": "integer"
+    },
+    "execution_receipt_hash": {
+      "title": "Execution Receipt Hash",
+      "type": "string"
+    },
+    "executor_environment_hash": {
+      "title": "Executor Environment Hash",
+      "type": "string"
+    },
+    "host_readiness_report_sha256": {
+      "title": "Host Readiness Report Sha256",
+      "type": "string"
+    },
+    "interactive_engine_execution_verified": {
+      "const": true,
+      "default": true,
+      "title": "Interactive Engine Execution Verified",
+      "type": "boolean"
+    },
+    "interactive_receipt_sha256": {
+      "title": "Interactive Receipt Sha256",
+      "type": "string"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "result_payload_hash": {
+      "title": "Result Payload Hash",
+      "type": "string"
+    },
+    "result_signed": {
+      "const": false,
+      "default": false,
+      "title": "Result Signed",
+      "type": "boolean"
+    },
+    "run_request_hash": {
+      "title": "Run Request Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_word_collector_report.v1",
+      "default": "genoffice_docx_word_collector_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "source_blind_collection_verified": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Collection Verified",
+      "type": "boolean"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "run_request_hash",
+    "host_readiness_report_sha256",
+    "interactive_receipt_sha256",
+    "engine_version",
+    "engine_identity_hash",
+    "executor_environment_hash",
+    "collector_identity_hash",
+    "output_docx_sha256",
+    "execution_receipt_hash",
+    "result_payload_hash",
+    "signature_message_sha256",
+    "evidence_artifact_count",
+    "evidence_total_bytes",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxWordCollectorReport",
+  "type": "object"
+}

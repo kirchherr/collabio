@@ -4,7 +4,11 @@ This file tracks the active implementation sequence. The canonical roadmap is `d
 
 ## Current Journey
 
-Theme: Build proof capability before product surface.
+Theme: Turn the proven foundation into coherent product workflows without weakening its gates.
+
+User priority (2026-09-18): Office development comes before further CRM expansion. Continue native document and version
+workflows; keep DOCX Quick Edit/fidelity on its separate gated path. Defer CRM account onboarding in `/work` and
+subsequent CRM mutations until after the Office work.
 
 Current sprint:
 
@@ -94,14 +98,146 @@ Current sprint:
 84. [x] PostgreSQL-backed Knowledge Base article/version/source-evidence/restore-evidence transaction adapter for guarded create/edit writes.
 85. [x] Durable metadata-only source-object write receipts with PostgreSQL/RLS store, API execution evidence, and backup/failover coverage.
 86. [x] PostgreSQL/RLS source-object metadata and storage-manifest bridge with explicit content-store interface.
+87. [x] Coordinated Knowledge Base write unit-of-work that binds source-object receipts, source metadata, storage manifests, article/version metadata, source-version evidence, and restore evidence.
+88. [x] Shared PostgreSQL metadata transaction for Knowledge Base write unit-of-work across receipts, source metadata/storage manifests, and article/version/source/restore evidence.
+89. [x] Content-store recovery evidence for Knowledge Base writes with inventory comparison, orphan detection, restore-drill hash, and API-wiring gate signal.
+90. [x] S3/MinIO-compatible content-store adapter port with Object-Lock/WORM capability checks, metadata-only orphan-reconciliation worker output, and clean recovery-evidence gate for `PostgresKnowledgeBaseWriteUnitOfWork`.
+91. [x] Knowledge Base production write deployment gate that requires clean source-content recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence before Postgres UoW API wiring can be enabled.
+92. [x] Concrete boto3/MinIO-compatible SDK client behind `S3CompatibleObjectStoreClient`, Compose `object-storage` profile, bucket bootstrap, and provider-profile evidence check service.
+93. [x] Default API runtime on PostgreSQL source manifests plus S3-compatible exact-version content, with isolated test database and metadata-only runtime report.
+94. [x] Exact-version restore drill to an independently addressed MinIO target with source/target version reads, manifest/content verification, Object Lock, Legal Hold, and metadata-only report.
+95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
+96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
+97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
+98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
+99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
+100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
+101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
+102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
+103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
+104. [x] First end-user Work surface over the existing guarded Tasks, Time, Tickets, Knowledge Base, and CRM APIs, with partial-failure isolation and explicit business mutations.
+105. [x] Append-only task lifecycle workflow with atomic status activities, optimistic state checks, database-enforced hash-chain continuity, exact destructive confirmation, restore coverage, API, and Work UI actions.
+106. [x] Append-only time-entry submission and maker-checker approval workflow with database-enforced chain integrity, hash-only exact confirmation, restore coverage, API, and Work UI actions.
+107. [x] Append-only task reassignment and due-date amendments with optimistic checks, active-principal validation, precise ACL rebinding, activity evidence, shared serialization with lifecycle transitions, restore coverage, API, and Work UI actions.
+108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
+109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
+110. [x] Guarded Knowledge Base create/edit in `/work` with server-prepared source metadata, authoritative ACLs, explicit approval/confirmation, tenant-serialized PostgreSQL/S3 writes, conflict/failure recovery, migration 0082 ACL restore verification, and 41 passing isolated browser cases; full remote quality and backup/restore/release gates passed with pilot and indexing closed.
+111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
+112. [x] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling; full remote quality and 60 isolated browser cases pass with current PostgreSQL ACLs and the existing pilot boundary closed.
+
+113. [x] Complete the native Office product foundation at `/office`: rich-text editing, tables, outline, search, focus mode, confirmed version saves, current ACLs, PostgreSQL/S3, CAS and exact retries. Backend quality passed on `7bba74f`; all 73 browser cases and nonempty recovery passed on `5917bdf`, with desktop/tablet/mobile visual review. Migration 0083 and the 83-migration/91-table foundation gate passed; ordinary tenant activation, pilot, indexing and DOCX engine gates remain closed. Business/API rollout verification is recorded separately.
+114. [x] Compare authorized saved Office versions, including text, titles, formatting, lists and tables, and take an earlier version into a new local draft. Refresh the current head and capabilities; require a confirmed CAS save to append without rewriting history. Full remote quality and all 100 checks (88 browser cases plus 12 comparison-model cases) pass on `3aa0069`, including desktop/tablet/mobile review, current access removal, late responses, partial history and no-op takeover. Existing migration/recovery contracts and closed tenant/pilot/engine gates remain unchanged.
+115. [x] Complete native Office find and replace: literal Unicode-safe positions, case/whole-word options, full counts and current/all replacement as one reversible local edit. Preserve structure, outside formatting, limits and read-only/history boundaries. Loaded content stays outside undo history. Full remote quality and all 132 checks (97 browser cases plus 35 model cases) pass on `f4c37e5`; desktop/tablet/mobile visually reviewed. Existing confirmed CAS saves and closed tenant/pilot/engine gates remain unchanged.
+
+116. [x] Complete contextual native Office table editing: configurable insertion, row/column operations, first-row headers, cell/row/column/table selection and bounded keyboard navigation. Validate prospective changes before dispatch, separate each edit in undo history, confirm removals and preserve current read-only/history/save-state boundaries. Full remote quality and all 142 checks (107 browser cases and 35 model cases) passed on `e3cf88c`, preserving the previous 132. Desktop/tablet/mobile reviewed; entering tablet width closes the inspector to keep the table visible. Existing schema, recovery and closed tenant/pilot/engine gates remain unchanged.
+
+117. [x] Complete version-bound native Office review discussions: confirmed create/reply/resolve/reopen, server-validated text anchors, fresh parent ACLs, thread revision conflicts and exact retries, backed by immutable PostgreSQL/S3 event evidence. Full quality passed on `2305a96` (Ruff/format across 674 files, Mypy across 532 files and full Pytest); all 152 checks (117 browser cases and 35 model cases) passed on `7400b35` in 432.486 seconds, with zero skipped, unexpected or flaky cases. Migration 0084, the 84-migration/93-table foundation and nonempty isolated recovery of 57 documents, 93 versions, nine review threads and 17 events passed. API rollout, health and cleanup were verified green at 2026-09-18 13:14:20 UTC. Ordinary tenant activation, pilot, indexing and DOCX/engine gates remain closed.
+
+118. [x] Complete saved-version native Office text suggestions: confirmed creation, literal before/after review, atomic acceptance/new document version, immutable rejection, current ACLs, exact retries and version conflicts. Full quality passed on `9c17a31` (684 formatted files, Mypy 541 sources and full Pytest); 688 focused tests passed and all 162 browser/model checks passed in 535.956 seconds, preserving the prior 152 with zero skipped, unexpected or flaky results. Migration 0085, 85-migration/95-table foundation and nonempty PostgreSQL/S3 recovery verified 67 documents, 109 versions, ten suggestions and seven decisions (five accepted, two rejected). API rollout, thirteen Office operations, health and cleanup passed at 2026-09-21 07:18:57 UTC. Ordinary tenant, pilot, indexing and engine gates remain closed.
+
+119. [x] Complete native Office saved-version print preview with A4/Letter and orientation, fresh exact-version authorization before browser print/PDF, safe literal content rendering, isolated print media and cleanup. Full quality on cf2244c passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest. All 170 browser/model checks passed in 562.234 seconds (135 browser + 35 model, zero skipped, unexpected or flaky), preserving the previous 162. Real PDF output passed text, pagination, semantic-structure and visual checks. The final test-cleanup guard on d8300aa passed its affected browser case. No new persistence, schema, API, dependency, server export or DOCX admission; item 257 recovery evidence is retained. Final rollout, health and safeguards are recorded in docs/CURRENT_HANDOFF.md.
+
+120. [x] Reuse an exact saved native Office version as an independent new document draft: fresh source read and create capability after discard consent, editable bounded title, protected dirty drafts and existing explicit create confirmation. Preserve source history and ACLs; do not copy discussion/suggestion state. Full quality and all 180 checks (145 browser + 35 model) passed on e7fec24; API-only rollout and final health/gates passed on dev001. No new persistence or recovery execution; closed tenant/pilot/engine gates remain.
+
+121. [x] Make native Office documents discoverable beyond the initial 200 records: bounded server-side literal title search, current ACL checks before pagination, authenticated context-bound cursors, and clear next-page/retry controls. Preserve open and dirty documents independently of list membership; reauthorize exact saved sources for refresh/takeover/acceptance. Search values stay outside normal logs; mobile Work navigation exposes Office. Full quality passed on 5bcb7d2; all 190 checks (155 browser + 35 model) passed in 651.284899 seconds, and 180 focused Python and ten focused browser cases passed. API-only rollout, live checks and cleanup completed at 2026-09-21 13:04:19 UTC with closed gates. No new schema/persistence or recovery drill; item 257 evidence remains retained.
+
+122. [x] Load older saved native Office versions beyond the 200-version window through authenticated, document-bound
+pagination along the immutable predecessor chain. Revalidate current parent ACLs for every page; preserve drafts,
+comparison selections and already rendered results while appending. Clearly identify newer saved heads and restart
+history without silently replacing content. Discussion/suggestion drafts survive history navigation; hide, tab and
+focus changes cancel pending reads. Full quality passed on 46a83b4; all 200 checks (165 browser + 35 model) passed in
+688.743181 seconds, with zero skipped/unexpected/flaky and all previous 190 preserved. Also passed: 249 focused Python
+checks and 23 focused browser cases, independent code/visual review and actual access-log cursor redaction. API rollout
+and final health/gate evidence are recorded in docs/CURRENT_HANDOFF.md; no new schema, durable format or recovery drill.
+
+123. [x] Implement native Office paragraph alignment and line/before/after spacing through a compact selection-aware
+dialog. Strict optional attributes survive saved versions, undo, comparison, reuse, print and recovery without changing
+legacy canonical bytes. Full quality on 8b61d8d passed Ruff, formatting across 712 files, Mypy across 557 sources and
+complete Pytest. All 215 checks (176 browser + 39 model) passed in 759.313613 seconds, zero skipped/unexpected/flaky;
+294 focused Python and 46 focused browser/model checks also passed. Independent responsive and three-page PDF review
+passed. Complete paginated nonempty recovery verified 330 documents, 666 versions and 721 sources; release gates passed.
+API rollout and final health/gate details are recorded in docs/CURRENT_HANDOFF.md. See ADR-0086; Office remains ahead of CRM.
+
+124. [x] Add native Office character font sizes and named text colors with selection/caret formatting, mixed values,
+explicit reset, strict validation, isolated undo and complete save/comparison/replacement/reuse/print/recovery preservation.
+Full remote quality passed; all 231 distinct browser/model cases have passing evidence: 230 full-run passes plus
+the corrected complete eight-case history suite. The original setup failure remains in the raw reports. Actual PDF
+and responsive review passed. Fresh recovery verified 460 documents, 935 versions and 1,045 source objects; both
+release gates passed. See ADR-0087 and docs/CURRENT_HANDOFF.md for rollout and the remaining rich-table input follow-up.
+
+125. [x] Make whole-document keyboard replacement reliable across rich tables, with structural full selection,
+confirmation, cancellation, isolated undo and unchanged schema/size guards. Preserve local review drafts, immutable
+saved versions, reader/history gates and context invalidation. Ten new browser cases and the existing table/history
+suites cover this UI-only change. Full quality and all 241 browser/model checks passed on d7270a7; desktop/mobile
+confirmation review passed. Rollout and closed-gate evidence are recorded in docs/CURRENT_HANDOFF.md.
+
+126. [x] Add in-document native Office format transfer for direct character and paragraph formatting, together or
+separately. Preserve text/structure/code, exact text/cell selection, default values, pending typing marks, isolated undo,
+confirmed immutable versions, size guards and read/history/context boundaries. Mobile review drawers retain usable
+space independently of wrapping tools. Full quality and all 252 browser/model cases passed on ac70c29; the 43-case
+responsive/transfer run and visual review passed. See ADR-0088 and docs/CURRENT_HANDOFF.md for API rollout and closed gates.
+
+127. [x] Add selection-bound native Office list levels and ordered-list start values using the existing format.
+Preserve text/marks/paragraphs/sublists, table Tab navigation, pending typing marks, isolated undo, size/depth guards,
+read/history/context boundaries and confirmed immutable saves. All twelve focused cases, full quality and the single
+264-case browser/model matrix passed on fb8dbd3. Responsive visual review passed; see ADR-0089 and
+docs/CURRENT_HANDOFF.md for API rollout and closed gates.
+
+128. [x] Add document-owned named paragraph styles with reusable definitions, shared updates, fixed presentation
+values, contextual controls and preview. Preserve direct overrides, immutable versions, comparison/print/reuse,
+selection-bound undo and authorization gates. ADR-0090; full quality and all 280 browser/model cases passed on 1e09a10.
+Actual PDF/visual checks, fresh nonempty recovery, release gates and API-only rollout passed; see CURRENT_HANDOFF.md.
+Image/object follow-up design is in docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md; implementation remains separate.
+
+129. [x] Implement document-owned native images with isolated PNG/JPEG normalization, upload/insert, resize/align,
+alt/caption, move/remove/undo, confirmed save, history, independent copy and print. ADR-0091; all297 browser/model cases
+passed on96a299f and full quality on5d3eb35 with identical runtime/browser sources. PDF/visual checks, fresh nonempty
+document-plus-asset recovery and both release gates passed before decoder/API rollout. See CURRENT_HANDOFF.md.
+Active objects and other object types remain separate work; ordinary admission stays closed.
+
+130. [x] Add non-destructive native image cropping with interactive preview, reset and keyboard-accessible bounded
+controls under ADR-0092. Immutable versions retain geometry and exact normalized renditions; undo, comparison, reuse,
+actual PDF and fresh nonempty recovery passed. Full quality passed on 54fe1ff; passing browser/model evidence covers
+all 303 distinct cases via the 302/303 full attempt and corrected 57-case helper suite on 3da08b8, not a single green
+full run. Both release gates passed before API-only rollout. See CURRENT_HANDOFF.md.
+
+131. [x] Add native image text wrapping with stable in-flow anchors, left/right placement and bounded text distance
+under ADR-0093. Narrow-screen/nested block fallback, physical page-break behavior, crop, accessible controls, isolated
+undo, exact history and owned copies are verified. Full quality and one complete 313-case browser/model run passed
+on 1d8a58f. Actual PDF/visual checks, fresh nonempty wrap/reset recovery, both release gates and API-only rollout passed.
+See CURRENT_HANDOFF.md. Arbitrary page-positioned objects and other object types remain separate.
+
+132. [x] Add explicit native page breaks under ADR-0094: visible root-only markers, menu/keyboard insertion and
+removal, isolated undo and preserved text/image/table placement. History, comparison, owned copies, actual PDFs and
+legacy bytes retain their exact contracts. Full quality passed; all 325 distinct browser/model cases are covered by
+the 324/325 complete run plus the 12/12 corrected subset (not one all-green full run). Four PDFs/14 pages, fresh
+nonempty insert/remove recovery, both release gates and API-only rollout passed. Evidence: CURRENT_HANDOFF.md.
+Continuous pagination, section layouts and DOCX interchange remain separate. Continue native Office before CRM.
+
+133. [x] Add document-owned page settings under ADR-0095: A4/Letter, portrait/landscape and bounded margins,
+accessible preview/reset and isolated undo. Exact optional metadata preserves legacy bytes, saved history and copies.
+Full Python quality and one complete 345-case browser/model run passed on 800a3a5. Eight actual PDFs/16 pages,
+fresh four-version recovery, both release gates and API-only rollout passed. Independent PDF QA caught and verified
+the correction of a legacy CSS cascade override. Evidence: CURRENT_HANDOFF.md. Section layouts and pagination remain separate.
+
+134. [ ] Add document-owned headers/footers and page numbers after page-settings acceptance:
+bounded literal text and explicit numbering choices, accessible preview, reset and isolated undo.
+Preserve exact saved-version history/copies, current authorization and confirmed CAS saves; prove actual
+multi-page PDF placement, no body overlap and fresh nonempty recovery. Section-specific layouts,
+arbitrary fields, continuous editor pagination and DOCX interchange remain separate.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, and a PostgreSQL source metadata/storage-manifest bridge. The next narrow step is the Knowledge Base write unit-of-work:
+Close the next coherent product loop instead of extending preparation-only boundaries:
 
-- Add a coordinated commit contract that binds source-object receipt, source metadata, storage manifest, article/version metadata, source-version evidence, and restore evidence.
-- Wire API execution to PostgreSQL-backed writes only when the source-object bridge and KB transaction adapter are configured together.
-- Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
+- Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
+- Native Office is complete through Roadmap 272, including document-owned page settings, explicit page breaks, bounded image text wrapping, non-destructive crop, document-owned images/styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve the single full 345-case browser/model acceptance, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document/image/crop/wrap/page-break/page-settings recovery. Continue with Roadmap 273 / PLANS 134 document-owned headers/footers and page numbers before CRM. Arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
+- Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
+- Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
+- Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until a new evidence chain, four-eyes approvals, and the hash-only closure path pass together.
+- Keep productive Legacy SQL writes, DOCX engine/WOPI and Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
 
 ## Module Expansion Stance
 
