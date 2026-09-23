@@ -614,7 +614,8 @@ function changePageBreak(remove = false, direction = null) {
   focusEditor(editor); updateEditorState(); return true;
 }
 
-function handlePageBreakKey(event) {
+function handlePageBreakKey(view, event) {
+  if (state.editor?.view !== view || event.isComposing) return false;
   if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key === "Enter") {
     event.preventDefault();
     if (!changePageBreak()) notice("Setzen Sie die Schreibmarke in einen Absatz oder eine Überschrift außerhalb von Tabellen, Listen und Zitaten.");
@@ -1530,12 +1531,12 @@ function prepareEditor(content, session) {
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
-      handleKeyDown(view, event) { return handlePageBreakKey(event) || handleTableKey(view, event) || handleListKey(view, event); },
+      handleKeyDown(view, event) { return handlePageBreakKey(view, event) || handleTableKey(view, event) || handleListKey(view, event); },
       handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
       handleDOMEvents: {
         // Android Chromium can bypass ProseMirror's ordinary Enter keymap.
         // Handle this explicit command before native paragraph insertion.
-        keydown(_view, event) { return handlePageBreakKey(event); },
+        keydown(view, event) { return handlePageBreakKey(view, event); },
         beforeinput(view, event) {
           if (!event.cancelable || !wholeDocumentHasTables(view)) return false;
           const textInput = ["insertText", "insertReplacementText"].includes(event.inputType) && typeof event.data === "string";
