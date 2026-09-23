@@ -184,7 +184,7 @@ function blockText(block, nested = false) {
     case "text": return markedText(block);
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
-    case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
+    case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
       const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];

@@ -84,6 +84,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_263_restore",
         "collabio_work_e2e_267_restore",
         "collabio_work_e2e_268_restore",
+        "collabio_work_e2e_269_restore",
     }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
@@ -689,7 +690,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         expected_documents=inventory["documents"],
     )
     evidence: list[dict[str, Any]] = []
-    image_bindings: list[dict[str, str]] = []
+    image_bindings: list[dict[str, Any]] = []
     multi_version_documents = 0
     for document in documents:
         user = readers[document.object_id]
@@ -706,6 +707,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                         "asset_version_id": attrs["versionId"],
                         "content_hash": attrs["contentHash"],
                         "manifest_hash": attrs["manifestHash"],
+                        "crop": attrs.get("crop"),
                     }
                 )
             receipt = receipt_store.get(tenant_id=TENANT_ID, receipt_hash=version.source_write_receipt_hash)
@@ -743,6 +745,14 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         images=inventory["images"],
         bindings=image_bindings,
     )
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_269_restore"):
+        cropped = [binding for binding in image_bindings if binding["crop"] is not None]
+        reset = [binding for binding in image_bindings if binding["crop"] is None]
+        crop_assets = {binding["asset_id"] for binding in cropped}
+        if not cropped or not any(binding["asset_id"] in crop_assets for binding in reset):
+            raise ValueError("Crop recovery requires cropped and reset versions of the same image")
+        image_evidence["verified_cropped_image_reference_count"] = len(cropped)
+        image_evidence["cropped_and_reset_versions_verified"] = True
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(

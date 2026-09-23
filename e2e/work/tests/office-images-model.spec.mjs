@@ -30,3 +30,18 @@ test("Office image comparison retains untouched nodes and reports presentation e
   expect(result.rows.some((row) => row.before === content.content[1] || row.after === content.content[1])).toBe(true);
   expect(describeOfficeBlock(changed.content[0]).text).toContain("100 × 100");
 });
+
+test("Office crop preserves source identity and omits the editor's empty default", () => {
+  expect(officeImageAttributes({ ...attrs, crop: null })).toEqual(attrs);
+  const crop = { x: 100, y: 10, width: 100, height: 80 };
+  expect(officeImageAttributes({ ...attrs, crop })).toEqual({ ...attrs, crop });
+  expect(describeOfficeBlock({ ...image, attrs: { ...attrs, crop } }).text).toContain("Zuschnitt: 100, 10 · 100 × 80");
+});
+
+test("Office crop rejects out-of-source noninteger and ambiguous geometry", () => {
+  for (const crop of [{}, { x: -1, y: 0, width: 1, height: 1 }, { x: 100, y: 0, width: 101, height: 1 },
+    { x: 0, y: 0, width: 1, height: 101 }, { x: false, y: 0, width: 1, height: 1 },
+    { x: 0.5, y: 0, width: 1, height: 1 }, { x: 0, y: 0, width: 1, height: 1, source: "other" }]) {
+    expect(() => officeImageAttributes({ ...attrs, crop })).toThrow();
+  }
+});

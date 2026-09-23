@@ -104,6 +104,17 @@
 .office-image[data-image-align="right"] img { margin-left: auto; }
 .office-image figcaption { font-size: .875rem; color: #475569; overflow-wrap: anywhere; }
 .office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
+.office-image-viewport { display: block; position: relative; overflow: hidden; max-width: 100%; }
+.office-image .office-image-viewport img { position: absolute; max-width: none; max-height: none; margin: 0; object-fit: fill; }
+.office-image[data-image-align="center"] .office-image-viewport { margin-inline: auto; }
+.office-image[data-image-align="right"] .office-image-viewport { margin-left: auto; }
+#image-preview .office-image-viewport img { max-height: none; }
+#image-crop-stage { position: relative; width: 100%; overflow: hidden; touch-action: none; cursor: crosshair; margin-block: 12px; }
+#image-crop-stage:focus-visible { outline: 3px solid #087e8b; outline-offset: 3px; }
+#image-crop-source { display: block; width: 100%; height: 100%; pointer-events: none; }
+#image-crop-rectangle { position: absolute; border: 2px solid white; outline: 1px solid #087e8b; box-shadow: 0 0 0 1000px #14212bb3; pointer-events: none; box-sizing: border-box; }
+#image-crop-section { padding: 10px; border: 1px solid #c8d5d7; border-radius: 8px; margin-block: 12px; }
+#image-crop-section summary { cursor: pointer; font-weight: 600; }
 .image-fields { margin-block: 12px; }
 .image-fields > label { display: grid; gap: 6px; font-weight: 600; }
 .image-fields input, .image-fields select { min-height: 40px; padding: 8px 10px; border: 1px solid #c8d5d7; border-radius: 5px; background: white; font: inherit; color: inherit; }

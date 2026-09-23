@@ -126,3 +126,33 @@ def test_image_normalization_rejects_input_before_contacting_worker() -> None:
         normalize_image(png, "image/png", socket_path="/missing-office-image-worker")
     with pytest.raises(OfficeImageInvalid):
         png_from_pixels(4096, 4096, b"")
+
+
+@pytest.mark.parametrize(
+    "crop",
+    [
+        None,
+        {},
+        {"x": 0, "y": 0, "width": 0, "height": 1},
+        {"x": -1, "y": 0, "width": 1, "height": 1},
+        {"x": 1, "y": 0, "width": 2, "height": 1},
+        {"x": 0, "y": 1, "width": 1, "height": 1},
+        {"x": False, "y": 0, "width": 1, "height": 1},
+        {"x": 0.5, "y": 0, "width": 1, "height": 1},
+        {"x": 0, "y": 0, "width": 1, "height": 1, "url": "external"},
+    ],
+)
+def test_image_crop_rejects_invalid_geometry(crop: Any) -> None:
+    document = image_document()
+    document["content"][0]["attrs"]["crop"] = crop
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_crop_preserves_legacy_attributes_and_exact_source_reference() -> None:
+    document = image_document()
+    legacy = deepcopy(document)
+    assert validate_office_document(document) == legacy
+    document["content"][0]["attrs"]["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
+    assert validate_office_document(document) == document
+    assert {key: value for key, value in image_references(document)[0].items() if key != "crop"} == image_attrs()

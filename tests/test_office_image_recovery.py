@@ -7,10 +7,11 @@ from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
 
-def test_image_restore_target_requires_a_matching_separate_pair() -> None:
+@pytest.mark.parametrize("number", [268, 269])
+def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
-        env[key] = env[key].replace("/collabio_work_e2e_restore", "/collabio_work_e2e_268_restore")
+        env[key] = env[key].replace("/collabio_work_e2e_restore", f"/collabio_work_e2e_{number}_restore")
     require_office_recovery_environment(env)
     env["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = recovery_environment()["SUITE_POSTGRES_RESTORE_TARGET_DSN"]
     with pytest.raises(ValueError):

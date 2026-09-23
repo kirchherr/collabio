@@ -22,7 +22,7 @@ def verify_restored_images(
     restored_sources: SourceObjectRepository,
     receipts: SourceObjectWriteReceiptStore,
     images: list[Any],
-    bindings: list[dict[str, str]],
+    bindings: list[dict[str, Any]],
 ) -> dict[str, Any]:
     if not images or not bindings:
         raise ValueError("Office image recovery requires nonempty saved image references")

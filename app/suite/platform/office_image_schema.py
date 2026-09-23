@@ -24,7 +24,7 @@ IMAGE_ATTRIBUTES = {
 
 
 def validate_image_attributes(attrs: dict[str, Any]) -> None:
-    if set(attrs) != IMAGE_ATTRIBUTES:
+    if set(attrs) - {"crop"} != IMAGE_ATTRIBUTES:
         raise ValueError("Invalid image attributes")
     for key, prefix in (
         ("documentId", "office-doc-"),
@@ -41,6 +41,17 @@ def validate_image_attributes(attrs: dict[str, Any]) -> None:
             raise ValueError("Invalid image dimensions")
     if attrs["pixelWidth"] * attrs["pixelHeight"] > 4_000_000:
         raise ValueError("Invalid image pixel count")
+    if "crop" in attrs:
+        crop = attrs["crop"]
+        if not isinstance(crop, dict) or set(crop) != {"x", "y", "width", "height"}:
+            raise ValueError("Invalid image crop")
+        if any(type(value) is not int for value in crop.values()) or not (
+            0 <= crop["x"] < attrs["pixelWidth"]
+            and 0 <= crop["y"] < attrs["pixelHeight"]
+            and 1 <= crop["width"] <= attrs["pixelWidth"] - crop["x"]
+            and 1 <= crop["height"] <= attrs["pixelHeight"] - crop["y"]
+        ):
+            raise ValueError("Invalid image crop bounds")
     if not isinstance(attrs["align"], str) or attrs["align"] not in {"left", "center", "right"}:
         raise ValueError("Invalid image alignment")
     if type(attrs["decorative"]) is not bool or type(attrs["lockAspect"]) is not bool:

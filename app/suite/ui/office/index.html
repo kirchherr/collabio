@@ -133,6 +133,13 @@
         <div class="dialog-body">
           <section id="image-upload-section"><label>Bilddatei<input id="image-file" type="file" accept="image/png,image/jpeg" /></label><button class="button secondary" id="image-upload" type="button" disabled>Bild hochladen und prüfen</button></section>
           <div id="image-preview" aria-label="Bildvorschau"></div>
+          <details id="image-crop-section" hidden><summary>Bild zuschneiden</summary>
+            <p id="image-crop-help">Ziehen Sie einen Ausschnitt im Originalbild auf. Pfeiltasten verschieben ihn um einen Pixel, Umschalt um zehn. Alternativ die Zahlenfelder verwenden.</p>
+            <div id="image-crop-stage" tabindex="0" role="group" aria-label="Bildausschnitt verschieben" aria-describedby="image-crop-help image-crop-status"><img id="image-crop-source" alt="" draggable="false" /><span id="image-crop-rectangle" aria-hidden="true"></span></div>
+            <div class="image-fields"><label>Links (Pixel)<input id="image-crop-x" type="number" min="0" step="1" value="0" required /></label><label>Oben (Pixel)<input id="image-crop-y" type="number" min="0" step="1" value="0" required /></label><label>Ausschnittbreite<input id="image-crop-width" type="number" min="1" step="1" value="1" required /></label><label>Ausschnitthöhe<input id="image-crop-height" type="number" min="1" step="1" value="1" required /></label></div>
+            <button id="image-crop-reset" class="button secondary" type="button">Ganzes Bild wiederherstellen</button>
+            <p id="image-crop-status" role="status" aria-live="polite"></p><p>Der Zuschnitt blendet Bereiche nur aus. Das vollständige Bild bleibt für berechtigte Leser zugänglich.</p>
+          </details>
           <div class="image-fields"><label>Breite (Pixel)<input id="image-width" type="number" min="1" max="1600" step="1" required /></label><label>Höhe (Pixel)<input id="image-height" type="number" min="1" max="1600" step="1" required /></label>
           <label>Ausrichtung<select id="image-align"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div>
           <label class="confirmation"><input id="image-lock" type="checkbox" checked />Seitenverhältnis beibehalten</label>

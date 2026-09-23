@@ -31,7 +31,8 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
     attrs = store_uploaded_image(repository, user, object_id, png, 2, 1)
     assert service.read_content(user_context=user, object_id=object_id).content == created.content
     document = deepcopy(created.content)
-    document["content"].append({"type": "image", "attrs": attrs})
+    cropped_attrs = {**attrs, "crop": {"x": 1, "y": 0, "width": 1, "height": 1}}
+    document["content"].append({"type": "image", "attrs": cropped_attrs})
     saved = service.save(
         user_context=user,
         object_id=object_id,
@@ -45,6 +46,7 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
     copied = service.create(user_context=user, command=copy_command, write_enabled=True)
     user.readable_object_ids.add(copied.document.object_id)
     copy_attrs = copied.content["content"][-1]["attrs"]
+    assert copy_attrs["crop"] == cropped_attrs["crop"]
     assert copy_attrs["documentId"] == copied.document.object_id
     assert copy_attrs["assetId"] != attrs["assetId"] and copy_attrs["versionId"] != attrs["versionId"]
     assert copy_attrs["contentHash"] == attrs["contentHash"] and copy_attrs["manifestHash"] != attrs["manifestHash"]

@@ -2,6 +2,7 @@ import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage } from "./office-images.mjs";
+import { installImageCropControls } from "./office-image-crop-controls.mjs";
 
 export function officeImageExtension(context, accessDenied) {
   return Node.create({
@@ -42,9 +43,11 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   const $ = (id) => document.getElementById(id);
   let action = null;
   const valid = () => action && current(action);
+  const cropControls = installImageCropControls(() => action, valid);
   const close = (restore = false) => {
     const previous = action; action = null; previous?.controller?.abort();
     if (previous?.url) URL.revokeObjectURL(previous.url);
+    cropControls.close();
     $("image-dialog").close(); $("image-form").reset(); $("image-preview").replaceChildren(); $("image-status").textContent = "";
     if (restore && previous?.editor === state.editor) focus();
   };
@@ -62,13 +65,14 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
     $("image-lock").checked = attrs.lockAspect;
     $("image-decorative").checked = uploaded ? false : attrs.decorative;
+    cropControls.fill(action);
     update();
   };
   const preview = async (owner) => {
     const url = await fetchOfficeImage(owner.attrs, owner.context, owner.controller.signal);
     if (action !== owner || !valid()) { URL.revokeObjectURL(url); return; }
     if (owner.url) URL.revokeObjectURL(owner.url); owner.url = url;
-    $("image-preview").replaceChildren(officeImageFigure(owner.attrs, url));
+    cropControls.source(owner);
   };
   const open = () => {
     if (!allowed()) return;
@@ -111,6 +115,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       const result = await response.json();
       if (action !== owner || !valid()) return;
       owner.attrs = officeImageAttributes(result.image);
+      delete owner.crop;
       if (owner.attrs.documentId !== owner.session.objectId) throw new Error("owner");
       await preview(owner);
       if (action !== owner || !valid()) return;
@@ -130,7 +135,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
         const attrs = officeImageAttributes({ ...owner.attrs,
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
-          caption: $("image-caption").value, lockAspect: $("image-lock").checked,
+          caption: $("image-caption").value, lockAspect: $("image-lock").checked, crop: cropControls.value(),
         });
         if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
         else tr.replaceSelectionWith(editor.schema.nodes.image.create(attrs));
@@ -156,9 +161,12 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-upload").addEventListener("click", upload);
   $("image-decorative").addEventListener("change", update);
   for (const name of ["width", "height"]) $(`image-${name}`).addEventListener("input", () => {
-    if (!action?.attrs || !$("image-lock").checked) return;
-    const ratio = action.attrs.pixelWidth / action.attrs.pixelHeight;
-    $(`image-${name === "width" ? "height" : "width"}`).value = String(Math.max(1, Math.round(Number($(`image-${name}`).value) * (name === "width" ? 1 / ratio : ratio))));
+    if (!action?.attrs) return;
+    if ($("image-lock").checked) {
+      const ratio = action.crop.width / action.crop.height;
+      $(`image-${name === "width" ? "height" : "width"}`).value = String(Math.max(1, Math.round(Number($(`image-${name}`).value) * (name === "width" ? 1 / ratio : ratio))));
+    }
+    cropControls.preview(action);
   });
   $("image-form").addEventListener("submit", (event) => { event.preventDefault(); change("apply"); });
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
