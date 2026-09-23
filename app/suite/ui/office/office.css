@@ -119,3 +119,17 @@
 .image-fields > label { display: grid; gap: 6px; font-weight: 600; }
 .image-fields input, .image-fields select { min-height: 40px; padding: 8px 10px; border: 1px solid #c8d5d7; border-radius: 5px; background: white; font: inherit; color: inherit; }
 .image-toolbar { flex: none; background: white; border-color: var(--line); }
+/* Ordered image nodes anchor wrapping; only following top-level paragraphs flow beside them. */
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) { display: flow-root; container: office-image-flow / inline-size; }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > :is(h1,h2,h3,ul,ol,blockquote,pre,hr,table,.tableWrapper,.office-image-node,.office-image) { clear: both; }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { width: min(45%, var(--image-wrap-width)); break-inside: avoid; margin: 0 0 var(--image-wrap-gap); }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap="left"] { float: left; margin-right: var(--image-wrap-gap); }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap="right"] { float: right; margin-left: var(--image-wrap-gap); }
+.office-image-node[data-image-wrap] > .office-image { margin: 0; }
+.image-layout-preview { padding: 12px; }
+.image-layout-sample { font: 14px/1.65 "Segoe UI",Arial,sans-serif; color: #475569; margin: 0; }
+#image-preview .image-layout-preview > [data-image-wrap] img { max-height: none; object-fit: fill; }
+#image-wrap-help { font-size: 12px; line-height: 1.6; color: #475569; }
+@container office-image-flow (max-width: 480px) {
+  :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { float: none; width: auto; margin: 1rem 0; }
+}

@@ -156,3 +156,33 @@ def test_crop_preserves_legacy_attributes_and_exact_source_reference() -> None:
     document["content"][0]["attrs"]["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
     assert validate_office_document(document) == document
     assert {key: value for key, value in image_references(document)[0].items() if key != "crop"} == image_attrs()
+
+
+@pytest.mark.parametrize(
+    "wrap",
+    [None, {}, [], "left", {"side": "center", "gap": 16}, {"side": [], "gap": 16},
+     {"side": "left", "gap": -1}, {"side": "right", "gap": 49}, {"side": "left", "gap": True},
+     {"side": "left", "gap": 0.5}, {"side": "left", "gap": "16"},
+     {"side": "left", "gap": 16, "position": "absolute"}],
+)
+def test_image_wrap_rejects_ambiguous_unbounded_or_active_layout(wrap: Any) -> None:
+    document = image_document()
+    document["content"][0]["attrs"]["wrap"] = wrap
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+@pytest.mark.parametrize("side,gap", [("left", 0), ("right", 48)])
+def test_image_wrap_preserves_source_crop_and_legacy_bytes(side: str, gap: int) -> None:
+    from suite.ai_control_plane.audit import canonical_json
+
+    document = image_document()
+    before = canonical_json(document)
+    attrs = document["content"][0]["attrs"]
+    attrs["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
+    attrs["wrap"] = {"side": side, "gap": gap}
+    assert validate_office_document(document) == document
+    assert image_references(document)[0] == attrs
+    del attrs["wrap"]
+    del attrs["crop"]
+    assert canonical_json(validate_office_document(document)) == before

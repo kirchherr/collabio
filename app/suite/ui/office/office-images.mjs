@@ -1,6 +1,22 @@
 const keys = ["documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
   "width", "height", "align", "alt", "caption", "decorative", "lockAspect"];
-export const officeImageKeys = [...keys, "crop"];
+export const officeImageKeys = [...keys, "crop", "wrap"];
+export function officeImageWrap(wrap) {
+  if (!wrap || Object.keys(wrap).length !== 2 || !["left", "right"].includes(wrap.side) ||
+      !Number.isInteger(wrap.gap) || wrap.gap < 0 || wrap.gap > 48) throw new Error("image-wrap");
+  return { side: wrap.side, gap: wrap.gap };
+}
+export function applyOfficeImageLayout(element, attrs) {
+  if (attrs.wrap != null) {
+    const wrap = officeImageWrap(attrs.wrap);
+    element.setAttribute("data-image-wrap", wrap.side);
+    element.style.setProperty("--image-wrap-gap", `${wrap.gap}px`);
+    element.style.setProperty("--image-wrap-width", `${Math.min(attrs.width, 480 * attrs.width / attrs.height)}px`);
+  } else {
+    element.removeAttribute("data-image-wrap");
+    element.style.removeProperty("--image-wrap-gap"); element.style.removeProperty("--image-wrap-width");
+  }
+}
 export function officeImageCrop(attrs) {
   const crop = attrs.crop ?? { x: 0, y: 0, width: attrs.pixelWidth, height: attrs.pixelHeight };
   if (!crop || Object.keys(crop).length !== 4 || ["x", "y", "width", "height"].some((key) => !Number.isInteger(crop[key])) ||
@@ -29,6 +45,7 @@ export function officeImageAttributes(attrs) {
   if ((attrs.decorative && attrs.alt) || (!attrs.decorative && !attrs.alt.trim())) throw new Error("image-alt");
   const result = Object.fromEntries(keys.map((key) => [key, attrs[key]]));
   if (attrs.crop != null) result.crop = officeImageCrop(attrs);
+  if (attrs.wrap != null) result.wrap = officeImageWrap(attrs.wrap);
   return result;
 }
 
@@ -48,6 +65,7 @@ export function officeImageFigure(attrs, url, dom = document) {
   if (typeof url !== "string" || !url.startsWith("blob:")) throw new Error("image-url");
   const figure = dom.createElement("figure"); figure.className = "office-image";
   figure.setAttribute("data-image-align", attrs.align);
+  applyOfficeImageLayout(figure, attrs);
   const image = dom.createElement("img"); image.src = url; image.alt = attrs.decorative ? "" : attrs.alt;
   image.width = attrs.width; image.height = attrs.height;
   image.style.width = `${attrs.width}px`; image.style.aspectRatio = `${attrs.width} / ${attrs.height}`;

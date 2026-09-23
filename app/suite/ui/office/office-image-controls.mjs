@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage } from "./office-images.mjs";
+import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
 import { installImageCropControls } from "./office-image-crop-controls.mjs";
 
 export function officeImageExtension(context, accessDenied) {
@@ -14,6 +14,7 @@ export function officeImageExtension(context, accessDenied) {
       return ({ node }) => {
         const dom = document.createElement("div"); dom.className = "office-image-node";
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
+        applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
@@ -27,7 +28,8 @@ export function officeImageExtension(context, accessDenied) {
           update(next) {
             if (next.type !== current.type || next.attrs.assetId !== current.attrs.assetId || next.attrs.versionId !== current.attrs.versionId ||
                 next.attrs.manifestHash !== current.attrs.manifestHash) return false;
-            current = next; if (url) dom.replaceChildren(officeImageFigure(next.attrs, url)); return true;
+            current = next; applyOfficeImageLayout(dom, next.attrs);
+            if (url) dom.replaceChildren(officeImageFigure(next.attrs, url)); return true;
           },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
@@ -60,11 +62,14 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const id of ["image-remove", "image-up", "image-down"]) $(id).disabled = !valid() || action?.busy || !action?.selected;
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
+    $("image-wrap-gap").disabled = $("image-wrap").value === "none";
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
     $("image-lock").checked = attrs.lockAspect;
     $("image-decorative").checked = uploaded ? false : attrs.decorative;
+    $("image-wrap").value = attrs.wrap?.side ?? "none";
+    $("image-wrap-gap").value = attrs.wrap?.gap ?? 16;
     cropControls.fill(action);
     update();
   };
@@ -136,6 +141,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
           caption: $("image-caption").value, lockAspect: $("image-lock").checked, crop: cropControls.value(),
+          wrap: $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
         });
         if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
         else tr.replaceSelectionWith(editor.schema.nodes.image.create(attrs));
@@ -160,6 +166,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-file").addEventListener("change", update);
   $("image-upload").addEventListener("click", upload);
   $("image-decorative").addEventListener("change", update);
+  for (const id of ["image-wrap", "image-wrap-gap", "image-align"]) $(id).addEventListener("input", () => {
+    if (!valid()) return;
+    update(); cropControls.preview(action);
+  });
   for (const name of ["width", "height"]) $(`image-${name}`).addEventListener("input", () => {
     if (!action?.attrs) return;
     if ($("image-lock").checked) {

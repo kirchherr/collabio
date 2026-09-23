@@ -24,7 +24,7 @@ IMAGE_ATTRIBUTES = {
 
 
 def validate_image_attributes(attrs: dict[str, Any]) -> None:
-    if set(attrs) - {"crop"} != IMAGE_ATTRIBUTES:
+    if set(attrs) - {"crop", "wrap"} != IMAGE_ATTRIBUTES:
         raise ValueError("Invalid image attributes")
     for key, prefix in (
         ("documentId", "office-doc-"),
@@ -54,6 +54,17 @@ def validate_image_attributes(attrs: dict[str, Any]) -> None:
             raise ValueError("Invalid image crop bounds")
     if not isinstance(attrs["align"], str) or attrs["align"] not in {"left", "center", "right"}:
         raise ValueError("Invalid image alignment")
+    if "wrap" in attrs:
+        wrap = attrs["wrap"]
+        if (
+            not isinstance(wrap, dict)
+            or set(wrap) != {"side", "gap"}
+            or not isinstance(wrap["side"], str)
+            or wrap["side"] not in {"left", "right"}
+            or type(wrap["gap"]) is not int
+            or not 0 <= wrap["gap"] <= 48
+        ):
+            raise ValueError("Invalid image text wrapping")
     if type(attrs["decorative"]) is not bool or type(attrs["lockAspect"]) is not bool:
         raise ValueError("Invalid image options")
     for key, maximum in (("alt", 500), ("caption", 1000)):

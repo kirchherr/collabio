@@ -10,7 +10,17 @@ export function installImageCropControls(getAction, isCurrent) {
     if (!owner?.url) return;
     const width = Number($("image-width").value), height = Number($("image-height").value);
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 1600 || height > 1600) return;
-    $("image-preview").replaceChildren(officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height }, owner.url));
+    const wrap = $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber };
+    try {
+      const figure = officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height, wrap, align: $("image-align").value }, owner.url);
+      const layout = document.createElement("div"); layout.className = "image-layout-preview"; layout.append(figure);
+      if (wrap) {
+        const sample = document.createElement("p"); sample.className = "image-layout-sample";
+        sample.textContent = "Vorschautext: Der nachfolgende Absatz fließt am Bild vorbei. Der Abstand hält Bild und Text auseinander. ".repeat(4);
+        layout.append(sample);
+      }
+      $("image-preview").replaceChildren(layout);
+    } catch { /* Keep the last valid preview while a numeric field is incomplete. */ }
   };
   const paint = (owner, resize = false) => {
     const crop = owner.crop;

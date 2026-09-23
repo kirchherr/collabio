@@ -45,3 +45,20 @@ test("Office crop rejects out-of-source noninteger and ambiguous geometry", () =
     expect(() => officeImageAttributes({ ...attrs, crop })).toThrow();
   }
 });
+
+test("Office wrapping keeps crop source and legacy defaults and describes layout changes", () => {
+  expect(officeImageAttributes({ ...attrs, crop: null, wrap: null })).toEqual(attrs);
+  const crop = { x: 100, y: 0, width: 100, height: 100 }, wrap = { side: "right", gap: 48 };
+  expect(officeImageAttributes({ ...attrs, crop, wrap })).toEqual({ ...attrs, crop, wrap });
+  const after = { ...image, attrs: { ...attrs, crop, wrap } };
+  expect(describeOfficeBlock(after).text).toContain("Textumfluss: Bild rechts · Abstand 48 px");
+  expect(compareOfficeDocuments(content, { ...content, content: [after, content.content[1]] }).rows.some((row) => row.before === content.content[1] || row.after === content.content[1])).toBe(true);
+});
+
+test("Office wrapping rejects CSS coordinates invalid sides and noninteger gaps", () => {
+  for (const wrap of [{}, [], "left", { side: "center", gap: 16 }, { side: "left", gap: -1 },
+    { side: "left", gap: 49 }, { side: "right", gap: true }, { side: "left", gap: "16" },
+    { side: "right", gap: 0.5 }, { side: "left", gap: 16, position: "absolute" }]) {
+    expect(() => officeImageAttributes({ ...attrs, wrap })).toThrow();
+  }
+});

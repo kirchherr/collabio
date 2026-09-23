@@ -38,6 +38,31 @@ def verify_restored_crop_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]
     }
 
 
+def verify_restored_wrap_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    def identity(binding: dict[str, Any], previous: bool = False) -> tuple[str, ...]:
+        return tuple(binding[key] for key in (
+            "object_id", "asset_id", "asset_version_id",
+            "previous_document_version_id" if previous else "document_version_id",
+        ))
+
+    left = {identity(row): row for row in bindings if (row.get("wrap") or {}).get("side") == "left"}
+    right: dict[tuple[str, ...], dict[str, Any]] = {}
+    for row in bindings:
+        predecessor = left.get(identity(row, True))
+        if (row.get("wrap") or {}).get("side") == "right" and predecessor and row["crop"] == predecessor["crop"]:
+            right[identity(row)] = row
+    if not any(
+        row.get("wrap") is None and identity(row, True) in right
+        and row["crop"] == right[identity(row, True)]["crop"]
+        for row in bindings
+    ):
+        raise ValueError("Wrap recovery requires consecutive left/right/reset versions of the same cropped image")
+    return {
+        "verified_wrapped_image_reference_count": sum(row.get("wrap") is not None for row in bindings),
+        "wrapped_and_reset_versions_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

@@ -2,12 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from office_image_recovery import verify_restored_crop_reset, verify_restored_images
+from office_image_recovery import verify_restored_crop_reset, verify_restored_images, verify_restored_wrap_reset
 from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
 
-@pytest.mark.parametrize("number", [268, 269])
+@pytest.mark.parametrize("number", [268, 269, 270])
 def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
@@ -58,3 +58,24 @@ def test_crop_recovery_requires_reset_after_crop_of_exact_same_owned_rendition()
     for bindings in ([], [cropped], [reset]):
         with pytest.raises(ValueError):
             verify_restored_crop_reset(bindings)
+
+
+def test_wrap_recovery_requires_consecutive_layouts_with_same_owner_source_and_crop() -> None:
+    left = {"object_id": "doc", "asset_id": "asset", "asset_version_id": "pixels",
+            "document_version_id": "left", "previous_document_version_id": "initial",
+            "crop": {"x": 1, "y": 0, "width": 1, "height": 1}, "wrap": {"side": "left", "gap": 16}}
+    right = {**left, "document_version_id": "right", "previous_document_version_id": "left",
+             "wrap": {"side": "right", "gap": 24}}
+    reset = {**right, "document_version_id": "reset", "previous_document_version_id": "right", "wrap": None}
+    assert verify_restored_wrap_reset([left, right, reset]) == {
+        "verified_wrapped_image_reference_count": 2, "wrapped_and_reset_versions_verified": True,
+    }
+    for index in (1, 2):
+        for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id", "crop"):
+            broken = [left, right, reset]
+            broken[index] = {**broken[index], key: "different"}
+            with pytest.raises(ValueError):
+                verify_restored_wrap_reset(broken)
+    for rows in ([], [left], [right, reset], [left, reset]):
+        with pytest.raises(ValueError):
+            verify_restored_wrap_reset(rows)

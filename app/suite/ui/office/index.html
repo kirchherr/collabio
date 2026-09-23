@@ -142,6 +142,9 @@
           </details>
           <div class="image-fields"><label>Breite (Pixel)<input id="image-width" type="number" min="1" max="1600" step="1" required /></label><label>Höhe (Pixel)<input id="image-height" type="number" min="1" max="1600" step="1" required /></label>
           <label>Ausrichtung<select id="image-align"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div>
+          <div class="image-fields"><label>Textumfluss<select id="image-wrap" aria-describedby="image-wrap-help"><option value="none">Eigener Absatz (kein Umfluss)</option><option value="left">Bild links, Text rechts</option><option value="right">Bild rechts, Text links</option></select></label>
+          <label>Abstand zum Text (Pixel)<input id="image-wrap-gap" type="number" min="0" max="48" step="1" value="16" required disabled /></label></div>
+          <p id="image-wrap-help">Im Haupttext fließen die folgenden Absätze am Bild vorbei. Überschriften, Listen, Tabellen und das nächste Bild beginnen darunter. In schmalen Ansichten und innerhalb von Listen, Zitaten oder Tabellen steht das Bild einzeln. Beim Umfluss wird es auf höchstens 45 % der Textbreite und 480 Pixel Höhe verkleinert.</p>
           <label class="confirmation"><input id="image-lock" type="checkbox" checked />Seitenverhältnis beibehalten</label>
           <label>Alternativtext<input id="image-alt" maxlength="500" autocomplete="off" /></label>
           <label class="confirmation"><input id="image-decorative" type="checkbox" />Dekorativ – benötigt keinen Alternativtext</label>
