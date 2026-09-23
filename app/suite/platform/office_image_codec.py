@@ -22,8 +22,9 @@ class OfficeImageUnavailable(RuntimeError):
 
 
 def image_dimensions(width: int, height: int) -> None:
-    if not (1 <= width <= MAX_IMAGE_DIMENSION and 1 <= height <= MAX_IMAGE_DIMENSION
-            and width * height <= MAX_IMAGE_PIXELS):
+    if not (
+        1 <= width <= MAX_IMAGE_DIMENSION and 1 <= height <= MAX_IMAGE_DIMENSION and width * height <= MAX_IMAGE_PIXELS
+    ):
         raise OfficeImageInvalid("Image dimensions exceed the admitted limits")
 
 
@@ -46,9 +47,13 @@ def png_from_pixels(width: int, height: int, rgba: bytes) -> bytes:
         return struct.pack(">I", len(content)) + kind + content + struct.pack(">I", zlib.crc32(kind + content))
 
     stride = width * 4
-    rows = b"".join(b"\0" + rgba[offset:offset + stride] for offset in range(0, len(rgba), stride))
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+    rows = b"".join(b"\0" + rgba[offset : offset + stride] for offset in range(0, len(rgba), stride))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(rows))
+        + chunk(b"IEND", b"")
+    )
 
 
 def normalize_image(content: bytes, mime_type: str, *, socket_path: str = IMAGE_SOCKET) -> tuple[bytes, int, int]:

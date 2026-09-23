@@ -17,7 +17,17 @@ MAX_DOCUMENT_BYTES = 400_000
 MAX_DOCUMENT_CHARACTERS = 100_000
 MAX_DOCUMENT_NODES = 10_000
 MAX_DOCUMENT_DEPTH = 32
-BLOCKS = {"paragraph", "heading", "blockquote", "codeBlock", "bulletList", "orderedList", "horizontalRule", "table", "image"}
+BLOCKS = {
+    "paragraph",
+    "heading",
+    "blockquote",
+    "codeBlock",
+    "bulletList",
+    "orderedList",
+    "horizontalRule",
+    "table",
+    "image",
+}
 MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}

@@ -17,8 +17,6 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
 from suite.platform.office_access_logging import protect_office_discovery_access_logs
-from suite.platform.office_image_codec import MAX_IMAGE_INPUT, OfficeImageInvalid, OfficeImageUnavailable, normalize_image
-from suite.platform.office_images import read_image, store_uploaded_image
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -36,6 +34,13 @@ from suite.platform.office_documents import (
     OfficeDocumentSaveCommand,
     OfficeDocumentService,
 )
+from suite.platform.office_image_codec import (
+    MAX_IMAGE_INPUT,
+    OfficeImageInvalid,
+    OfficeImageUnavailable,
+    normalize_image,
+)
+from suite.platform.office_images import read_image, store_uploaded_image
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository, PgOfficeReviewRepository
 from suite.platform.office_reviews import (
     OfficeReviewService,
@@ -241,7 +246,8 @@ def register_office_routes(
 
     @router.post("/{object_id}/images", dependencies=[Depends(write_gate)])
     def upload_image(
-        object_id: str, request: Request,
+        object_id: str,
+        request: Request,
         content: bytes = Body(media_type="application/octet-stream"),
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
@@ -256,24 +262,45 @@ def register_office_routes(
             raise OfficeDocumentInvalidContentError("Image upload requires explicit confirmation")
         normalized, width, height = normalize_image(content, request.headers.get("Content-Type", ""))
         attrs = store_uploaded_image(repository, context.user_context, object_id, normalized, width, height)
-        event = service._audit(context.user_context, "office.images.uploaded", object_id=object_id,
-            asset_id=attrs["assetId"], version_id=attrs["versionId"], content_hash=attrs["contentHash"])
+        event = service._audit(
+            context.user_context,
+            "office.images.uploaded",
+            object_id=object_id,
+            asset_id=attrs["assetId"],
+            version_id=attrs["versionId"],
+            content_hash=attrs["contentHash"],
+        )
         return {"image": attrs, "audit_event_id": event}
 
     @router.get("/{object_id}/images/{asset_id}/{version_id}")
     def image_content(
-        object_id: str, asset_id: str, version_id: str, request: Request,
+        object_id: str,
+        asset_id: str,
+        version_id: str,
+        request: Request,
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Response:
         service = request.app.state.office_document_service
         document = service.repository.get_document(user_context=context.user_context, object_id=object_id)
-        metadata, content = read_image(service.source_repository, document,
-            {"documentId": object_id, "assetId": asset_id, "versionId": version_id})
-        service._audit(context.user_context, "office.images.read", object_id=object_id,
-            asset_id=asset_id, version_id=version_id, content_hash=metadata.content_hash)
-        return Response(content, media_type="image/png", headers={
-            "X-Office-Content-Hash": metadata.content_hash, "X-Office-Manifest-Hash": metadata.manifest_hash,
-        })
+        metadata, content = read_image(
+            service.source_repository, document, {"documentId": object_id, "assetId": asset_id, "versionId": version_id}
+        )
+        service._audit(
+            context.user_context,
+            "office.images.read",
+            object_id=object_id,
+            asset_id=asset_id,
+            version_id=version_id,
+            content_hash=metadata.content_hash,
+        )
+        return Response(
+            content,
+            media_type="image/png",
+            headers={
+                "X-Office-Content-Hash": metadata.content_hash,
+                "X-Office-Manifest-Hash": metadata.manifest_hash,
+            },
+        )
 
     @router.get("", response_model=OfficeDocumentListResponse)
     def list_documents(

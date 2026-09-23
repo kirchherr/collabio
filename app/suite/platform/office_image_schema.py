@@ -6,15 +6,31 @@ import re
 from typing import Any
 
 IMAGE_ATTRIBUTES = {
-    "documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
-    "width", "height", "align", "alt", "caption", "decorative", "lockAspect",
+    "documentId",
+    "assetId",
+    "versionId",
+    "contentHash",
+    "manifestHash",
+    "pixelWidth",
+    "pixelHeight",
+    "width",
+    "height",
+    "align",
+    "alt",
+    "caption",
+    "decorative",
+    "lockAspect",
 }
 
 
 def validate_image_attributes(attrs: dict[str, Any]) -> None:
     if set(attrs) != IMAGE_ATTRIBUTES:
         raise ValueError("Invalid image attributes")
-    for key, prefix in (("documentId", "office-doc-"), ("assetId", "office-image-"), ("versionId", "office-image-version-")):
+    for key, prefix in (
+        ("documentId", "office-doc-"),
+        ("assetId", "office-image-"),
+        ("versionId", "office-image-version-"),
+    ):
         if not isinstance(attrs[key], str) or re.fullmatch(prefix + r"[a-f0-9]{32}", attrs[key]) is None:
             raise ValueError("Invalid image identity")
     for key in ("contentHash", "manifestHash"):
@@ -31,8 +47,10 @@ def validate_image_attributes(attrs: dict[str, Any]) -> None:
         raise ValueError("Invalid image options")
     for key, maximum in (("alt", 500), ("caption", 1000)):
         value = attrs[key]
-        if not isinstance(value, str) or len(value) > maximum or any(
-            ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in value
+        if (
+            not isinstance(value, str)
+            or len(value) > maximum
+            or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in value)
         ):
             raise ValueError("Invalid image description")
     if (attrs["decorative"] and attrs["alt"]) or (not attrs["decorative"] and not attrs["alt"].strip()):

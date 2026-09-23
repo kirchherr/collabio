@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from threading import RLock
 from typing import Any
 from uuid import uuid4
 
 import psycopg
-import json
 from psycopg.rows import dict_row
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
@@ -443,10 +443,15 @@ class PgOfficeDocumentRepository:
                     if version.command_hash != command_hash:
                         raise OfficeDocumentConflictError("Mutation reference was already used for another command")
                     document = self._authorized_document(connection, user_context, version.object_id, write=True)
-                    saved = OfficeDocumentService(repository=self, source_repository=self.source_repository,
-                        audit=InMemoryAuditLogger())
-                    return OfficeDocumentCommit(document=document, version=version, replayed=True,
-                        content=saved._read_content(document, version))
+                    saved = OfficeDocumentService(
+                        repository=self, source_repository=self.source_repository, audit=InMemoryAuditLogger()
+                    )
+                    return OfficeDocumentCommit(
+                        document=document,
+                        version=version,
+                        replayed=True,
+                        content=saved._read_content(document, version),
+                    )
                 previous_version_id: str | None = None
                 if object_id is None:
                     document = _new_document(user_context, command.title)
@@ -476,8 +481,9 @@ class PgOfficeDocumentRepository:
                 acl_rows = self._acl_rows(connection, user_context.tenant_id, document.object_id)
                 if not acl_rows:
                     raise OfficeDocumentPermissionError("Document saving is not permitted")
-                content = prepare_image_references(self, connection, user_context, document, command.document,
-                    creating=object_id is None)
+                content = prepare_image_references(
+                    self, connection, user_context, document, command.document, creating=object_id is None
+                )
                 command = command.model_copy(update={"document": content})
                 document, version, source, receipt = _prepare_version(
                     user=user_context,
@@ -517,7 +523,9 @@ class PgOfficeDocumentRepository:
                 document.object_id,
             ),
         )
-        return OfficeDocumentCommit(document=document, version=version, content=json.loads(source.content_bytes or b"{}"))
+        return OfficeDocumentCommit(
+            document=document, version=version, content=json.loads(source.content_bytes or b"{}")
+        )
 
     @staticmethod
     def _insert_document(connection: psycopg.Connection[Any], document: OfficeDocumentRecord) -> None:

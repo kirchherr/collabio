@@ -534,7 +534,12 @@ class OfficeDocumentService:
         )
         # Return the committed transaction snapshot: a later save cannot invalidate this success.
         return self._content_response(
-            result.document, result.version, result.content or command.document, True, event_id, replayed=result.replayed
+            result.document,
+            result.version,
+            result.content or command.document,
+            True,
+            event_id,
+            replayed=result.replayed,
         )
 
     def _read_content(self, document: OfficeDocumentRecord, version: OfficeDocumentVersion) -> dict[str, Any]:

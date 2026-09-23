@@ -11,9 +11,16 @@ import subprocess
 import sys
 import tempfile
 import warnings
+from contextlib import suppress
 from pathlib import Path
 
-from suite.platform.office_image_codec import IMAGE_SOCKET, MAX_IMAGE_INPUT, MAX_IMAGE_PIXELS, image_dimensions, receive_exact
+from suite.platform.office_image_codec import (
+    IMAGE_SOCKET,
+    MAX_IMAGE_INPUT,
+    MAX_IMAGE_PIXELS,
+    image_dimensions,
+    receive_exact,
+)
 
 
 def decode() -> None:
@@ -60,16 +67,18 @@ def serve() -> None:
                     with tempfile.TemporaryFile() as output:
                         subprocess.run(
                             [sys.executable, "-m", "suite.platform.office_image_worker", "decode"],
-                            input=header[:1] + content, stdout=output, stderr=subprocess.DEVNULL,
-                            timeout=8, check=True, env={"PYTHONPATH": "/workspace/app", "PYTHONDONTWRITEBYTECODE": "1"},
+                            input=header[:1] + content,
+                            stdout=output,
+                            stderr=subprocess.DEVNULL,
+                            timeout=8,
+                            check=True,
+                            env={"PYTHONPATH": "/workspace/app", "PYTHONDONTWRITEBYTECODE": "1"},
                         )
                         output.seek(0)
                         connection.sendall(output.read(MAX_IMAGE_PIXELS * 4 + 9))
                 except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
-                    try:
+                    with suppress(OSError):
                         connection.sendall(b"E" + b"\0" * 8)
-                    except OSError:
-                        pass
 
 
 if __name__ == "__main__":
