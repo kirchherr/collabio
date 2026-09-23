@@ -9,6 +9,13 @@ recovery and both release gates passed before API-only rollout. Final health at 
 four regular services. Office remains ahead of CRM; next is Roadmap 271 / PLANS 132 explicit native page breaks.
 Ordinary tenant/pilot/indexing/engine admission stays closed. Detailed evidence is recorded below.
 
+Roadmap 270 closeout 97b777e was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.10s with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 09:33:57 UTC. Log sha256:
+dc69e15ec3051377f05ebc452388fc0504b986f74169b29be3610622e2a533ea. Root matched it locally alongside the full report,
+quality, PDF, recovery, release, live and cleanup evidence. The --no-deps disposable check started no auxiliary service;
+Collabio remains running(4), API e031e3e9b941 and decoder 30766f16f16a. Main stores, Webcut and provider resources remain
+unchanged. This final evidence-only record changes no implementation, runtime or admission boundary.
+
 Roadmap 269 / PLANS 130 completes non-destructive native image cropping under ADR-0092: pointer/numeric/keyboard
 preview, reset and isolated undo, preserving source pixels, immutable history, comparison, owned copies and print.
 Full quality passed on 54fe1ff. Passing evidence covers all 303 distinct browser/model cases: the full attempt passed
