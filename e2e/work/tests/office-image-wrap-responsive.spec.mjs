@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { BASE_URL, ARTIFACT_DIR } from "./support.mjs";
 import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeContent, OFFICE_HEADERS } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint, pdfPageCount } from "./office-print-support.mjs";
+import { installPrintProbe, pdfPageCount } from "./office-print-support.mjs";
 import { openReuse, submitReuse, expectReuseDraft, openReuseHistory } from "./office-reuse-support.mjs";
 
 const paragraph = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
@@ -135,15 +135,33 @@ test("Office wrapped anchors clear lists tables code and quotes and nested image
 });
 
 test("Office image wrapping clears structural blocks and prints cropped images across real PDF pages", async ({ page }, testInfo) => {
-  const { saved } = await fixture(page, true);
+  test.setTimeout(60_000);
+  const { saved, attrs } = await fixture(page, true);
   const prints = await installPrintProbe(page, { pdfName: `office-wrap-${testInfo.project.name}.pdf` });
-  await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
+  const readForPrint = async (button) => {
+    // Observe actual content and image reads. Routing the content request can
+    // leave the following image request pending before it reaches the server.
+    const contentRead = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === `/v1/office/documents/${saved.document.object_id}/content` &&
+        url.searchParams.get("version_id") === saved.version.version_id;
+    });
+    const imageRead = page.waitForResponse((response) => new URL(response.url()).pathname ===
+      `/v1/office/documents/${saved.document.object_id}/images/${attrs.assetId}/${attrs.versionId}`);
+    await page.locator(button).click();
+    for (const response of await Promise.all([contentRead, imageRead])) {
+      expect(response.status()).toBe(200); expect(response.headers()["cache-control"]).toContain("no-store");
+    }
+  };
+  await readForPrint("#document-print");
+  await expect(page.locator("#print-submit")).toBeEnabled();
+  await expect(page.locator("#print-version")).toContainText(saved.version.version_id);
   await expect(page.locator("#print-preview [data-image-wrap]")).toHaveCount(2);
   const heading = await page.locator("#print-preview h2").boundingBox();
   const first = await page.locator("#print-preview figure").first().boundingBox();
   expect(heading.y).toBeGreaterThanOrEqual(first.y + first.height);
-  await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf?.length || 0).toBeGreaterThan(0);
+  await readForPrint("#print-submit");
+  await expect.poll(() => prints[0]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);
   expect(pdfPageCount(prints[0].pdf, 595, 842)).toBeGreaterThan(1);
   expect(prints[0].snapshot.text).toContain("WRAP-END");
   expect(prints[0].snapshot.html).toContain('data-image-wrap="left"');
