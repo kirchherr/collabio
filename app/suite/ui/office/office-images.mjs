@@ -1,6 +1,9 @@
 const keys = ["documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
   "width", "height", "align", "alt", "caption", "decorative", "lockAspect"];
 export const officeImageKeys = keys;
+export class OfficeImageReadError extends Error {
+  constructor(status) { super("Image unavailable"); this.status = status; }
+}
 
 export function officeImageAttributes(attrs) {
   if (!attrs || Object.keys(attrs).length !== keys.length || keys.some((key) => !Object.hasOwn(attrs, key))) throw new Error("image-attributes");
@@ -56,9 +59,10 @@ export async function fetchOfficeImage(attrs, context, signal) {
     "X-Tenant-Id": context.tenantId, "X-User-Id": context.userId,
     "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds,
   } });
-  if (!response.ok || response.headers.get("Content-Type") !== "image/png" ||
+  if (!response.ok) throw new OfficeImageReadError(response.status);
+  if (response.headers.get("Content-Type") !== "image/png" ||
       response.headers.get("X-Office-Content-Hash") !== attrs.contentHash ||
-      response.headers.get("X-Office-Manifest-Hash") !== attrs.manifestHash) throw new Error("image-unavailable");
+      response.headers.get("X-Office-Manifest-Hash") !== attrs.manifestHash) throw new OfficeImageReadError(502);
   const blob = await response.blob();
   if (!blob.size || blob.size > 16065536) throw new Error("image-size");
   return URL.createObjectURL(blob);

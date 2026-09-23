@@ -3,7 +3,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage } from "./office-images.mjs";
 
-export function officeImageExtension(context) {
+export function officeImageExtension(context, accessDenied) {
   return Node.create({
     name: "image", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(officeImageKeys.map((key) => [key, { default: null, rendered: false }])),
@@ -17,7 +17,11 @@ export function officeImageExtension(context) {
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
           url = value; dom.replaceChildren(officeImageFigure(current.attrs, url));
-        }).catch(() => { if (!destroyed) { dom.textContent = "Bild nicht verfügbar. Zugriff prüfen und Dokument neu laden."; dom.setAttribute("role", "alert"); } });
+        }).catch((error) => {
+          if (destroyed) return;
+          if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
+          dom.textContent = "Bild nicht verfügbar. Zugriff prüfen und Dokument neu laden."; dom.setAttribute("role", "alert");
+        });
         return { dom,
           update(next) {
             if (next.type !== current.type || next.attrs.assetId !== current.attrs.assetId || next.attrs.versionId !== current.attrs.versionId ||
@@ -34,7 +38,7 @@ export function officeImageExtension(context) {
   });
 }
 
-export function installOfficeImageControls({ state, allowed, current, validate, focus, notice }) {
+export function installOfficeImageControls({ state, allowed, current, validate, focus, notice, accessDenied }) {
   const $ = (id) => document.getElementById(id);
   let action = null;
   const valid = () => action && current(action);
@@ -79,7 +83,11 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-edit-actions").hidden = !selected;
     $("image-status").textContent = !state.session.objectId ? "Speichern Sie das neue Dokument zuerst. Danach können Sie ein Bild hochladen." :
       "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Das Bild wird diesem Dokument zugeordnet; Einfügen ändert zunächst Ihren Entwurf.";
-    if (selected) { fill(action.attrs); preview(action).catch(() => { if (valid()) $("image-status").textContent = "Bildvorschau nicht verfügbar."; }); }
+    if (selected) { const owner = action; fill(owner.attrs); preview(owner).catch((error) => {
+      if (action !== owner || !valid()) return;
+      if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
+      $("image-status").textContent = "Bildvorschau nicht verfügbar.";
+    }); }
     update(); $("image-dialog").showModal();
   };
   const upload = async () => {
@@ -96,7 +104,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
         headers: { "Content-Type": file.type, "X-Office-Upload-Confirmed": "true", "X-Tenant-Id": context.tenantId,
           "X-User-Id": context.userId, "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds },
       });
-      if (!response.ok) throw new Error("upload");
+      if (!response.ok) {
+        if (action === owner && valid() && [401, 403, 404, 423].includes(response.status)) { accessDenied(); return; }
+        throw new Error("upload");
+      }
       const result = await response.json();
       if (action !== owner || !valid()) return;
       owner.attrs = officeImageAttributes(result.image);
@@ -104,7 +115,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       await preview(owner);
       if (action !== owner || !valid()) return;
       fill(owner.attrs, true); $("image-status").textContent = "Bild bereit. Beschreiben Sie es mit Alternativtext oder kennzeichnen Sie es ausdrücklich als dekorativ.";
-    } catch {
+    } catch (error) {
+      if (action === owner && valid() && [401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
       if (action === owner && valid()) $("image-status").textContent = "Bild nicht verfügbar: Datei, Größenlimit und Zugriff prüfen. Bei einer unterbrochenen Übertragung kann das Bild bereits hinterlegt sein; der Entwurf wurde nicht geändert.";
     } finally { if (action === owner) { owner.busy = false; update(); } }
   };

@@ -12,7 +12,7 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
-import { officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
+import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
@@ -181,7 +181,7 @@ async function api(path, { method = "GET", body, signal } = {}, context = state.
   try { return await response.json(); } catch { throw new ApiError(502, true); }
 }
 
-function denied(error) { return error instanceof ApiError && [401, 403, 404, 423].includes(error.status); }
+function denied(error) { return (error instanceof ApiError || error instanceof OfficeImageReadError) && [401, 403, 404, 423].includes(error.status); }
 function sessionCurrent(session) { return state.session === session && session.epoch === state.epoch; }
 function dateLabel(value) {
   const date = new Date(value || "");
@@ -1447,7 +1447,8 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
-      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, officeImageExtension(state.context),
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles,
+      officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -4057,7 +4058,7 @@ window.addEventListener("beforeunload", (event) => {
 const imageControls = installOfficeImageControls({ state,
   allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || state.editor.state.selection.node?.type.name === "image"),
   current: characterActionCurrent,
-  validate: validateEditorDocument, focus: focusEditor, notice });
+  validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied });
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -388,7 +389,9 @@ def test_artifacts_and_schemas_are_private_write_once(tmp_path: Path) -> None:
 
 def test_compose_ceremony_services_are_no_network_and_private_key_free() -> None:
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
-    block = compose.split("  genoffice-docx-fidelity-ceremony-schema:", 1)[1].split("\n  api:", 1)[0]
+    blocks = re.findall(r"(?m)^  genoffice-docx-fidelity-ceremony-[a-z]+:\n(?:    .*\n|\n)*", compose)
+    assert len(blocks) == 4
+    block = "\n".join(blocks)
 
     assert "  genoffice-docx-fidelity-ceremony-schema:" in compose
     for service in ("policy", "request", "assemble"):

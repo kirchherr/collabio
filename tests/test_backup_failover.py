@@ -1327,10 +1327,11 @@ def test_compose_restarts_only_long_lived_services_after_host_reboot() -> None:
             block.append(line)
         return "\n".join(block)
 
-    for service_name in ("postgres", "minio", "api"):
+    for service_name in ("postgres", "minio", "api", "office-image-decoder"):
         assert "\n    restart: unless-stopped\n" in service_block(service_name)
 
-    assert compose.count("\n    restart: unless-stopped\n") == 3
+    assert compose.count("\n    restart: unless-stopped\n") == 4
+    assert '\n    restart: "no"\n' in service_block("work-e2e-image-decoder")
     for service_name in (
         "migrate",
         "backup",

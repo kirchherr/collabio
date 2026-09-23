@@ -54,6 +54,7 @@ test("Office image upload insert resize undo save reopen and real PDF preserve e
   await expect(page.locator("#print-preview img")).toHaveAttribute("alt", attrs.alt);
   await submitOfficePrint(page, first.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1);
+  await expect.poll(() => prints[0]?.pdf?.length || 0).toBeGreaterThan(0);
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Image");
   expect(prints[0].snapshot.text).toContain("<literal image caption>");
 });
@@ -75,8 +76,12 @@ test("Office image copy owns new assets after source revocation and print rechec
     expect((await page.request.get(`${BASE_URL}/v1/office/documents/${source.documentId}/images/${source.assetId}/${source.versionId}`, { headers: OFFICE_HEADERS })).status()).toBe(404);
     const prints = await installPrintProbe(page);
     await openPrintPreview(page, copied.document.object_id, copied.version.version_id);
-    await setOfficeAcl(page, copied.document.object_id, { creator: true, status: "revoked" });
-    await submitOfficePrint(page, copied.document.object_id, copied.version.version_id, { status: 404 });
+    await page.route((url) => url.pathname.endsWith(`/images/${own.assetId}/${own.versionId}`), async (route) => {
+      await setOfficeAcl(page, copied.document.object_id, { creator: true, status: "revoked" });
+      await route.continue();
+    }, { times: 1 });
+    // The document read succeeds; revocation occurs before the separate asset read.
+    await submitOfficePrint(page, copied.document.object_id, copied.version.version_id);
     await expect(page.locator("#print-dialog")).toBeHidden(); expect(prints).toHaveLength(0);
   } finally {
     await setOfficeAcl(page, first.document.object_id, { creator: true });

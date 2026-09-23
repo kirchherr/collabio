@@ -115,7 +115,9 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
     assert service.read_content(user_context=user, object_id=copied.document.object_id).content == copied.content
 
 
-def test_pg_wrong_owner_hash_and_foreign_tenant_images_fail_without_document_write(database: Database) -> None:
+def test_pg_wrong_owner_hash_and_foreign_tenant_images_fail_without_document_write(
+    database: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service = service_for(database, InMemorySourceObjectContentStore())
     user = editor()
     first = service.create(user_context=user, command=command("first"), write_enabled=True)
@@ -145,3 +147,13 @@ def test_pg_wrong_owner_hash_and_foreign_tenant_images_fail_without_document_wri
     foreign.readable_object_ids.add(first.document.object_id)
     with pytest.raises(OfficeDocumentNotFoundError):
         store_uploaded_image(repository, foreign, first.document.object_id, png_from_pixels(1, 1, b"\0\0\0\xff"), 1, 1)
+    owner = repository.get_document(user_context=user, object_id=first.document.object_id)
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        read_image(service.source_repository, owner, {**attrs, "pixelWidth": 2})
+    source = service.source_repository.get(
+        tenant_id=user.tenant_id, object_id=attrs["assetId"], version_id=attrs["versionId"]
+    )
+    with monkeypatch.context() as patch:
+        patch.setattr(service.source_repository, "get", lambda **kwargs: source.model_copy(update={"content_bytes": b"bad"}))
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            read_image(service.source_repository, owner, attrs)

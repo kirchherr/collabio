@@ -74,7 +74,10 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
     assert "httpx2==2.9.1" in dev_requirements
     assert "Pillow==12.3.0" in preview_requirements
 
-    assert dockerfile.count("pip install --require-hashes --requirement") == 3
+    assert dockerfile.count("pip install --require-hashes --requirement") == 4
+    image_stage = dockerfile.split("FROM base AS office-image-decoder", 1)[1].split("\nFROM ", 1)[0]
+    assert "pip install --require-hashes --requirement requirements-preview.lock" in image_stage
+    assert "USER 10001:10001" in image_stage
     assert "COPY requirements.lock ." in dockerfile
     assert "COPY requirements-dev.lock ." in dockerfile
     assert "COPY requirements-preview.lock ." in dockerfile

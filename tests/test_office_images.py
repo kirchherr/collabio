@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,6 +14,30 @@ from suite.platform.office_image_codec import (
 from suite.platform.office_image_schema import image_references
 from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
 from suite.platform.office_suggestions import replace_suggestion_text
+
+
+def test_image_worker_is_isolated_without_credentials_or_network() -> None:
+    compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+    worker = compose.split("\n  office-image-decoder:\n", 1)[1].split("\n  work-e2e-image-decoder:", 1)[0]
+    for requirement in (
+        'profiles: ["office-images"]',
+        "network_mode: none",
+        'user: "10001:10001"',
+        "read_only: true",
+        "cap_drop: [ALL]",
+        'security_opt: ["no-new-privileges:true"]',
+        "pids_limit: 16",
+        "mem_limit: 384m",
+        "cpus: 1",
+        "/tmp:size=32m,noexec,nosuid,nodev",
+        "office_image_socket:/run/office-images",
+    ):
+        assert requirement in worker
+    for forbidden in ("environment:", "env_file:", "secrets:", "ports:", "./app:", "docker.sock"):
+        assert forbidden not in worker
+    synthetic = compose.split("\n  work-e2e-image-decoder:\n", 1)[1].split("\n  api:", 1)[0]
+    assert "extends: office-image-decoder" in synthetic
+    assert "work_e2e_image_socket:/run/office-images" in synthetic
 
 
 def image_attrs() -> dict[str, Any]:

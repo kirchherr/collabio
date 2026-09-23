@@ -106,6 +106,8 @@ def read_image(
         return metadata, content
     except KeyError as exc:
         raise OfficeDocumentNotFoundError("Document not found") from exc
+    except (ValueError, TypeError, struct.error) as exc:
+        raise OfficeDocumentInvalidContentError("Image source validation failed") from exc
 
 
 def persist_image(
