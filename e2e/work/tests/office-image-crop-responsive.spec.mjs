@@ -83,6 +83,7 @@ test("Office crop pointer keyboard invalid bounds cancellation and reset stay lo
   await page.locator("#image-cancel").click(); await expect(page.locator("#document-save")).toBeDisabled();
   expect((await officeContent(page, saved.document.object_id)).version.version_id).toBe(saved.version.version_id);
   await edit(page); await page.locator("#image-lock").uncheck(); await orangeCropUnlocked(page);
+  await expect(page.locator("#image-preview img")).toHaveCSS("object-fit", "fill");
   await page.locator("#image-crop-reset").click(); await expect(page.locator("#image-height")).toHaveValue("160");
   await page.locator("#image-lock").check();
   await page.locator("#image-apply").click(); await expect(page.locator("#document-save")).toBeDisabled();
