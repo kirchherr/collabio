@@ -24,12 +24,18 @@ export async function openReuse(page, saved, title = null) {
 
 export async function submitReuse(page, saved, { status = 200, extraHeaders = {} } = {}) {
   const matches = reuseContentMatch(saved.document.object_id, saved.version.version_id);
-  const captured = await captureOfficeResponse(page, matches, { extraHeaders });
-  const listing = status === 200 ? await captureOfficeResponse(page, (url) => url.pathname === OFFICE_PATH) : null;
+  // Successful reads can be observed directly. Removing one-shot interception
+  // during reuse can strand the immediately following image request in Chromium.
+  // Keep interception only where error bodies or explicit fault headers need it.
+  const captured = status !== 200 || Object.keys(extraHeaders).length ? await captureOfficeResponse(page, matches, { extraHeaders }) : null;
+  const listing = status === 200 ? page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === OFFICE_PATH && !url.search && response.request().method() === "GET";
+  }) : null;
   const pending = page.waitForResponse((response) => matches(new URL(response.url())) && response.request().method() === "GET");
   await page.locator("#reuse-submit").click();
   const browser = await pending;
-  const source = await captured.received;
+  const source = captured ? await captured.received : { status: browser.status(), headers: browser.headers(), json: await browser.json() };
   expect(browser.status()).toBe(status);
   expect(browser.headers()["cache-control"]).toContain("no-store");
   expect(source.status).toBe(status);
@@ -41,11 +47,12 @@ export async function submitReuse(page, saved, { status = 200, extraHeaders = {}
   expect(source.json.document.object_id).toBe(saved.document.object_id);
   expect(source.json.version.version_id).toBe(saved.version.version_id);
   expect(source.json.content).toEqual(saved.content);
-  const capabilities = await listing.received;
-  expect(capabilities.status).toBe(200);
-  expect(capabilities.headers["cache-control"]).toContain("no-store");
-  expect(capabilities.json.tenant_id).toBe(source.json.tenant_id);
-  return { source: source.json, listing: capabilities.json };
+  const capabilities = await listing;
+  expect(capabilities.status()).toBe(200);
+  expect(capabilities.headers()["cache-control"]).toContain("no-store");
+  const permissions = await capabilities.json();
+  expect(permissions.tenant_id).toBe(source.json.tenant_id);
+  return { source: source.json, listing: permissions };
 }
 
 export async function expectReuseDraft(page, title) {
