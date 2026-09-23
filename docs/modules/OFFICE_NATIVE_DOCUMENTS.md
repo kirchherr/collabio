@@ -75,6 +75,29 @@ recovery verified 488 documents, 913 versions and 43 image assets, including res
 owned rendition. Both release gates, API-only rollout and live/cleanup checks passed. Ordinary admission remains
 closed. Evidence is in CURRENT_HANDOFF.md; Roadmap 270 / PLANS 131 proposes bounded image text wrapping next.
 
+## Image text wrapping (Roadmap 270)
+
+The image dialog adds **Textumfluss**: own paragraph, image left/text right, or image right/text left. A bounded integer
+**Abstand zum Text** sets 0-48 CSS pixels. The local preview uses sample text and the same layout rules; changing or
+canceling fields performs no save. Apply is one context/selection-bound undo action. **Eigener Absatz** removes wrap
+metadata, while the ordinary alignment controls the block fallback. Moving the image moves its ordered anchor.
+
+Following top-level paragraphs flow beside the image; headings, lists, tables, quotes, code, rules and the next image
+begin below it. Wrapping reserves at most 45% of the text column and scales the image's display height to at most 480px.
+Captions remain inside the image width. Columns of 480px or less and nested images inside lists, quotes or table cells
+use block layout, preserving stored dimensions, crop and wrap choices. Resizing a view never changes the document.
+
+Optional native `wrap` has exactly `side` (left/right) and integer `gap` (0-48). Absent metadata preserves legacy bytes;
+explicit API null, CSS strings, other coordinates and unknown keys are rejected. Versions, comparison, history and
+owned copies retain these exact values. No new endpoint, asset, migration, dependency or decoder change is introduced.
+
+Printing uses the physical page's text column, independently of the device viewport. Image and caption request staying
+together; a figure fitting a page moves to the next page when insufficient room remains. Over-page captions may still
+fragment according to browser rules. Arbitrary page positioning and DOCX anchors remain separate. Fresh recovery must
+verify consecutive left/right/reset versions of the same owned rendition without changing crop or source pixels.
+Decision: [ADR-0093](../../ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md). Development acceptance
+is tracked in CURRENT_HANDOFF.md; ordinary tenant/pilot/indexing/engine admission remains closed.
+
 ## Document-owned format styles (Roadmap 267)
 
 The **Formatvorlagen** control opens a single dialog for choosing, naming, previewing and applying a reusable

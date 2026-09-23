@@ -21,7 +21,7 @@ async function fixture(page, multipage = false) {
     caption: "<wrap caption>", crop: { x: 160, y: 0, width: 160, height: 160 } };
   const image = { type: "image", attrs };
   const content = multipage ? [
-    ...Array.from({ length: 8 }, (_, index) => paragraph(`Before-wrap-${index + 1}: ${body.repeat(2)}`)),
+    ...Array.from({ length: 10 }, (_, index) => paragraph(`Before-wrap-${index + 1}: ${body.repeat(2)}`)),
     { ...image, attrs: { ...attrs, wrap: { side: "left", gap: 24 } } }, paragraph(`LEFT-WRAP ${body.repeat(4)}`),
     { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "CLEAR-HEADING" }] },
     { ...image, attrs: { ...attrs, wrap: { side: "right", gap: 16 } } }, paragraph(`RIGHT-WRAP ${body.repeat(4)}`),
