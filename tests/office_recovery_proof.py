@@ -15,8 +15,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import psycopg
-from office_image_recovery import verify_restored_images
 
+from office_image_recovery import verify_restored_images
 from office_suggestion_recovery import verify_restored_suggestions
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext

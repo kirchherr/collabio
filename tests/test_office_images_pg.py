@@ -1,8 +1,10 @@
 from copy import deepcopy
+from typing import Any
 
 import psycopg
 import pytest
 
+from office_image_recovery import verify_restored_images
 from suite.platform.office_document_repository import PgOfficeDocumentRepository
 from suite.platform.office_documents import (
     OfficeDocumentCreateCommand,
@@ -61,6 +63,44 @@ def test_pg_images_save_history_copy_and_replay_are_exact_and_independently_owne
         service.read_content(user_context=user, object_id=object_id, version_id=saved.version.version_id).content
         == document
     )
+    with psycopg.connect(database.app_dsn) as connection:
+        set_tenant(connection, user.tenant_id)
+        rows = connection.execute(
+            "SELECT to_jsonb(record) FROM collabio.source_object_metadata AS record "
+            "WHERE tenant_id = %s AND source_system = 'collabio_office_image' ORDER BY object_id",
+            (user.tenant_id,),
+        ).fetchall()
+    bindings = [
+        {
+            "object_id": item["documentId"],
+            "asset_id": item["assetId"],
+            "asset_version_id": item["versionId"],
+            "content_hash": item["contentHash"],
+            "manifest_hash": item["manifestHash"],
+        }
+        for item in (attrs, copy_attrs)
+    ]
+    for tamper in (False, True):
+        inventory = deepcopy([row[0] for row in rows])
+        if tamper:
+            inventory[0]["content_hash"] = "sha256:" + "0" * 64
+        arguments: dict[str, Any] = dict(
+            documents=service,
+            readers={object_id: user, copied.document.object_id: user},
+            original_sources=service.source_repository,
+            restored_sources=service.source_repository,
+            receipts=repository.receipt_store,
+            images=inventory,
+            bindings=bindings,
+        )
+        if tamper:
+            with pytest.raises(ValueError):
+                verify_restored_images(**arguments)
+        else:
+            proof = verify_restored_images(**arguments)
+            assert proof["verified_image_asset_count"] == 2
+            assert proof["verified_saved_image_reference_count"] == 2
+            assert proof["image_bytes_and_receipts_verified"]
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, user.tenant_id)
         connection.execute(

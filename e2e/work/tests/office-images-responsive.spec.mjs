@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { BASE_URL, ARTIFACT_DIR } from "./support.mjs";
-import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeContent, OFFICE_HEADERS, OFFICE_READER_HEADERS, setOfficeAcl } from "./office-support.mjs";
+import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeContent, OFFICE_HEADERS, OFFICE_READER_HEADERS, setOfficeAcl, showDocumentList } from "./office-support.mjs";
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 import { openReuse, submitReuse, expectReuseDraft } from "./office-reuse-support.mjs";
 
@@ -123,6 +123,7 @@ test("Office image reader and forged cross-document references cannot upload or 
   await openOffice(page); const first = await createOfficeDocument(page, "Image source rights", "Source");
   const bytes = await fixture(page); const response = await upload(page, first.document.object_id, bytes);
   expect(response.status()).toBe(200); const attrs = (await response.json()).image;
+  await showDocumentList(page);
   const second = await createOfficeDocument(page, "Image target rights", "Target");
   const save = await page.request.post(`${BASE_URL}/v1/office/documents/${second.document.object_id}/versions`, { headers: OFFICE_HEADERS, data: {
     title: "Wrong image", document: { type: "doc", content: [{ type: "image", attrs }] }, mutation_reference: "wrong-image-reference",

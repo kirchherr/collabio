@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
 import pytest
-from office_image_recovery import verify_restored_images
 
+from office_image_recovery import verify_restored_images
 from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
