@@ -9,6 +9,13 @@ assertions; runtime and browser sources are identical. Actual PDF/visual checks,
 recovery and both release gates passed before decoder/API rollout. Office remains ahead of CRM. The next proposed
 slice is Roadmap 269 / PLANS 130 non-destructive image cropping. Ordinary tenant/pilot/indexing/engine admission stays closed.
 
+Roadmap 268 closeout94f56c3 was published and synchronized. All eleven documentation/module/roadmap checks passed
+in59.72s with only the known Starlette/AnyIO warning; health remained ok at2026-09-23 07:32:20 UTC. Logsha256:
+10995f0a81d453f2b86dfe21d7e552f25a44260912d6edc254a909512a1bb1c1. The --no-deps disposable check started no
+auxiliary service; Collabio remains running(4), API d83a791253d4 and decoder30766f16f16a. Root matched final report,
+PDF, recovery, live/cleanup and release evidence locally. Main PostgreSQL87a6b37942c8, MinIO98ce365f455b, Webcut and
+provider nodes remain unchanged. This final evidence-only record changes no implementation, runtime or admission.
+
 Roadmap 267 / PLANS 128 completes document-owned named format styles under ADR-0090. Full quality and a single
 complete 280-case browser/model run passed on 1e09a10 after correcting a comparison-reference regression. Actual PDF,
 responsive visual review, fresh nonempty PostgreSQL/S3 recovery, release gates, API-only rollout and live checks passed.
