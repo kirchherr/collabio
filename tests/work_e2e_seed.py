@@ -14,9 +14,9 @@ from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
+from work_e2e_page_breaks import seed_synthetic_office_page_breaks
 from work_e2e_paragraph import seed_synthetic_office_paragraphs
 from work_e2e_styles import seed_synthetic_office_styles
-from work_e2e_page_breaks import seed_synthetic_office_page_breaks
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",

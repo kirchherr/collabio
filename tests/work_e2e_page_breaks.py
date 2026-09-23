@@ -25,6 +25,7 @@ def page_break_recovery_document(number: int) -> dict[str, Any]:
         document["content"].insert(3, {"type": "pageBreak"})
     return document
 
+
 def seed_synthetic_office_page_breaks(
     *, environment: Mapping[str, str], client: Boto3S3CompatibleObjectStoreClient
 ) -> tuple[int, int]:

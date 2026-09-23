@@ -574,6 +574,7 @@ function pageBreakPosition(direction = null) {
   if (!selection.empty) return null;
   const { $from } = selection;
   const boundary = $from.depth === 0 ? $from.pos : $from.depth === 1 && $from.parent.isTextblock ?
+    direction === "forward" ? ($from.parentOffset === $from.parent.content.size ? $from.after() : null) :
     $from.parentOffset === 0 ? $from.before() : $from.parentOffset === $from.parent.content.size ? $from.after() : null : null;
   if (boundary === null) return null;
   const resolved = selection.$from.doc.resolve(boundary);
@@ -601,8 +602,9 @@ function changePageBreak(remove = false, direction = null) {
       tr.setSelection(TextSelection.create(tr.doc, start + left.nodeSize + 2));
     } else {
       const position = selection.node ? selection.to : selection.from;
-      tr.insert(position, marker);
-      tr.setSelection(Selection.near(tr.doc.resolve(position + 1), 1));
+      const atEnd = position === tr.doc.content.size;
+      tr.insert(position, atEnd ? [marker, editor.schema.nodes.paragraph.create()] : marker);
+      tr.setSelection(atEnd ? TextSelection.create(tr.doc, position + 2) : Selection.near(tr.doc.resolve(position + 1), 1));
     }
   }
   try { validateEditorDocument(tr.doc); }

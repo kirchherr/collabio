@@ -80,7 +80,9 @@ def test_recovery_binds_designated_legacy_and_formatted_sources_without_body_evi
         with pytest.raises(ValueError):
             verify_restored_page_break_versions(documents=fixture.service, readers={object_id: user}, versions=versions)
     else:
-        report = verify_restored_page_break_versions(documents=fixture.service, readers={object_id: user}, versions=versions)
+        report = verify_restored_page_break_versions(
+            documents=fixture.service, readers={object_id: user}, versions=versions
+        )
         assert report["verified_page_break_fixture_version_count"] == 3
         assert report["page_break_insert_remove_verified"]
         assert report["legacy_page_break_canonical_hash_verified"]

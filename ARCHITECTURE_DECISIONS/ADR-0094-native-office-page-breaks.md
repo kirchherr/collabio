@@ -25,6 +25,8 @@ content boundary, not a blank-page or section-layout feature. Markers remain vis
 in the screen preview but their labels/borders do not appear in printed output.
 Actual A4/Letter PDFs must prove the resulting page boundaries, including images
 and tables. Continuous paginated editing and DOCX interchange remain separate.
+The print renderer separates bounded content flows at each effective boundary,
+using [CSS forced breaks](https://www.w3.org/TR/css-break-3/#forced-breaks).
 
 History, comparison, independent copies and exact source/receipt hashes preserve
 the leaf's position. Fresh nonempty isolated recovery must prove a consecutive

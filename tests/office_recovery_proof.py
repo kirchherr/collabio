@@ -57,9 +57,9 @@ from suite.storage.source_objects import (
     source_object_content_bytes,
 )
 from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
+from work_e2e_page_breaks import PAGE_BREAK_RECOVERY_TITLE, page_break_recovery_document
 from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, PARAGRAPH_RECOVERY_VERSION_COUNT, paragraph_recovery_document
 from work_e2e_styles import STYLE_RECOVERY_TITLE, style_recovery_document
-from work_e2e_page_breaks import PAGE_BREAK_RECOVERY_TITLE, page_break_recovery_document
 
 TENANT_ID = "tenant-work-e2e"
 EDITOR_ID = "work-office-editor-e2e"
@@ -792,7 +792,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         images=inventory["images"],
         bindings=image_bindings,
     )
-    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(("_269_restore", "_270_restore", "_271_restore")):
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
+        ("_269_restore", "_270_restore", "_271_restore")
+    ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(("_270_restore", "_271_restore")):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
@@ -811,9 +813,11 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         readers=readers,
         versions=inventory["document_versions"],
     )
-    page_break_evidence = verify_restored_page_break_versions(
-        documents=restored, readers=readers, versions=inventory["document_versions"]
-    ) if target_dsn.endswith("_271_restore") else {}
+    page_break_evidence = (
+        verify_restored_page_break_versions(documents=restored, readers=readers, versions=inventory["document_versions"])
+        if target_dsn.endswith("_271_restore")
+        else {}
+    )
     review_evidence = verify_restored_reviews(
         documents=restored,
         reviews=OfficeReviewService(

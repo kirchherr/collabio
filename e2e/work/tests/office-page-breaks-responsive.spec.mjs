@@ -20,15 +20,27 @@ async function publish(page, previous, content) {
   expect(response.status()).toBe(200);
   const saved = await response.json(); await page.locator("#document-reload").click();
   await expect(page.locator("#document-version")).toContainText(saved.version.version_id);
+  await expect(officeEditor(page)).toHaveAttribute("contenteditable", "true");
+  await expect(page.locator("#document-save")).toBeDisabled();
   return saved;
+}
+async function selectText(locator, from = 0, to = from) {
+  await locator.evaluate(async (element, offsets) => {
+    element.closest('[contenteditable="true"]').focus();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT), text = walker.nextNode();
+    if (!text) throw new Error("Missing fixture text");
+    const range = document.createRange(); range.setStart(text, offsets.from); range.setEnd(text, offsets.to);
+    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }, { from, to });
 }
 
 test("Office page breaks split formatted text preserve isolated undo history and independent copies", async ({ page }, testInfo) => {
   const baseline = await fixture(page, [{ type: "heading", attrs: { level: 2, textAlign: "right", spacingAfter: 12 },
     content: [{ type: "text", text: "BeforeAfter", marks: [{ type: "bold" }] }] }]);
   const editor = officeEditor(page), objectId = baseline.document.object_id;
-  await editor.locator("h2").click(); await page.keyboard.press("Home");
-  for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowRight");
+  await selectText(editor.locator("h2"), 6);
   await page.keyboard.press("Control+Enter"); await expect(markers(page)).toHaveCount(1);
   await page.keyboard.insertText("X"); await page.keyboard.press("Control+z");
   await expect(editor.locator("h2").last()).toHaveText("After"); await expect(markers(page)).toHaveCount(1);
@@ -58,15 +70,15 @@ test("Office page breaks split formatted text preserve isolated undo history and
 test("Office page breaks support menu and adjacent keyboard removal without deleting surrounding text", async ({ page }) => {
   await fixture(page, [p("Before"), marker, p("After")]);
   const editor = officeEditor(page);
-  await editor.locator("p").last().click(); await page.keyboard.press("Home");
+  await selectText(editor.locator("p").last());
   await page.keyboard.press("Backspace"); await expect(markers(page)).toHaveCount(0);
   await expect(editor.locator("p")).toHaveText(["Before", "After"]);
   await page.keyboard.press("Control+z"); await expect(markers(page)).toHaveCount(1);
-  await editor.locator("p").first().click(); await page.keyboard.press("End");
+  await selectText(editor.locator("p").first(), 6);
   await page.keyboard.press("Delete"); await expect(markers(page)).toHaveCount(0);
   await page.keyboard.press("Control+z"); await expect(markers(page)).toHaveCount(1);
   await markers(page).click(); await page.keyboard.press("Delete"); await expect(markers(page)).toHaveCount(0);
-  await editor.locator("p").last().click(); await page.keyboard.press("Home");
+  await selectText(editor.locator("p").last());
   await page.locator("#insert-menu").selectOption("pageBreak"); await expect(markers(page)).toHaveCount(1);
   await expect(editor.locator("p").last()).toHaveText("After");
 });
@@ -80,14 +92,14 @@ test("Office page breaks reject nested contexts text selections and excess marke
   ];
   const baseline = await fixture(page, nested), editor = officeEditor(page);
   for (const selector of ["li p", "blockquote p", "td p", "pre"]) {
-    await editor.locator(selector).click(); await page.keyboard.press("Control+Enter");
+    await selectText(editor.locator(selector)); await page.keyboard.press("Control+Enter");
     await expect(markers(page)).toHaveCount(0); await expect(page.locator("#document-save")).toBeDisabled();
   }
-  await editor.locator(":scope > p").click(); await page.keyboard.press("Home"); await page.keyboard.press("Shift+End");
+  await selectText(editor.locator(":scope > p"), 0, 13);
   await page.keyboard.press("Control+Enter"); await expect(markers(page)).toHaveCount(0);
   await expect(page.locator("#document-save")).toBeDisabled();
   await publish(page, baseline, [...Array.from({ length: 100 }, () => marker), p("Limit remains intact")]);
-  await editor.locator("p").click(); await page.keyboard.press("End"); await page.keyboard.press("Control+Enter");
+  await selectText(editor.locator("p")); await page.keyboard.press("Control+Enter");
   await expect(markers(page)).toHaveCount(100); await expect(page.locator("#document-save")).toBeDisabled();
   await expect(editor.locator("p")).toHaveText("Limit remains intact");
 });
@@ -104,16 +116,16 @@ for (const paper of ["a4", "letter"]) test(`Office page breaks produce exact ${p
   }); expect(upload.status()).toBe(200);
   const image = { type: "image", attrs: { ...(await upload.json()).image, width: 160, height: 160, alt: "Blue boundary image",
     decorative: false, caption: "PAGE-ONE-IMAGE", wrap: { side: "left", gap: 16 }, align: "left" } };
-  saved = await publish(page, saved, [p("PAGE-ONE-BOUNDARY"), image, p("Text beside the image."), marker,
+  saved = await publish(page, saved, [...(paper === "letter" ? [marker, marker] : []), p("PAGE-ONE-BOUNDARY"), image, p("Text beside the image."), marker,
     { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "PAGE-TWO-HEADING" }] },
     { type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", attrs: { colspan: 1, rowspan: 1 }, content: [p("PAGE-TWO-TABLE")] }] }] },
     marker, marker, p("PAGE-THREE-END"), marker]);
   const prints = await installPrintProbe(page, { pdfName: `office-page-break-${paper}-${testInfo.project.name}.pdf` });
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await page.locator("#print-paper").selectOption(paper);
-  await expect(page.locator("#print-preview .office-page-break")).toHaveCount(4);
+  await expect(page.locator("#print-preview .office-page-break")).toHaveCount(paper === "a4" ? 4 : 6);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints[0]?.pdf?.length || 0).toBeGreaterThan(0);
-  expect(pdfPageCount(prints[0].pdf, paper === "a4" ? 595 : 612, paper === "a4" ? 842 : 792)).toBe(3);
+  expect(pdfPageCount(prints[0].pdf, paper === "a4" ? 595 : 612, paper === "a4" ? 842 : 792)).toBe(paper === "a4" ? 3 : 4);
   expect(prints[0].snapshot.text).toContain("PAGE-THREE-END");
 });
