@@ -224,7 +224,7 @@ the correction of a legacy CSS cascade override. Evidence: CURRENT_HANDOFF.md. S
 page/page-total choices, accessible preview, independent reset and isolated undo. Exact history/copies remain.
 All 2924 Python cases passed; full 367 browser/model cases plus 42 affected cases after a final reset correction
 passed, not a single full run on final source. Twelve PDFs/36 pages, fresh nonempty recovery, both release
-gates and API-only rollout passed. Evidence: CURRENT_HANDOFF.md. GitHub publication awaits explicit approval.
+gates and API-only rollout passed. Published as implementation commit `9892e41`. Evidence: CURRENT_HANDOFF.md.
 
 135. [ ] Add first-page header/footer differences and explicit first-page number suppression, with clear
 preview/reset, unchanged legacy content, exact history/copies, actual multi-page PDF and recovery proofs.
@@ -235,7 +235,7 @@ General sections, arbitrary fields, continuous editor pagination and DOCX interc
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete on dev001 through Roadmap 273, including document-owned headers/footers/page numbers, page settings, explicit page breaks, bounded image text wrapping, crop, images/styles, list levels, format transfer and rich-text editing. Preserve the 367-case full evidence plus 42 final affected checks, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Publication remains pending explicit GitHub approval. Continue with Roadmap 274 / PLANS 135 first-page header/footer differences before CRM. General sections, arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete and published through Roadmap 273, including document-owned headers/footers/page numbers, page settings, explicit page breaks, bounded image text wrapping, crop, images/styles, list levels, format transfer and rich-text editing. Preserve the 367-case full evidence plus 42 final affected checks, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue with Roadmap 274 / PLANS 135 first-page header/footer differences before CRM. General sections, arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

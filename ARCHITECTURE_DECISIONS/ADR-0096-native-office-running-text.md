@@ -1,7 +1,7 @@
 # ADR-0096: Document-owned headers, footers and page numbering
 
 Date: 2026-09-24
-Status: accepted; development validation and dev001 rollout complete; GitHub publication pending
+Status: accepted; development validation, dev001 rollout and GitHub publication complete
 
 Optional root `attrs.running` contains exactly header/footer literal strings (each at
 most 64 Unicode code points, no C0/C1 controls, surrogate scalars or line separators)

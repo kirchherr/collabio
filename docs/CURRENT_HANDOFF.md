@@ -7,24 +7,24 @@ footers and page/page-total numbering, accessible preview, independent reset and
 Full Python quality, browser regression plus the final affected subset, twelve actual PDFs,
 fresh nonempty recovery and both release gates passed before API-only rollout. Final health at
 16:49:57 UTC is ok, Collabio running(4). All eleven documentation/module/roadmap closeout checks
-passed in 59.69s; health remained ok at 16:53:55 UTC. Only the known Starlette/AnyIO warning remains.
-Documentation log SHA-256: 9444380f92668c9c47576e6ae60c5b1ab5dc06c00e22921542c75ff1e6d6e43d.
+passed initially in 59.69s. After publication metadata was added, all eleven passed again in
+59.31s and health remained ok on 2026-09-28. Only the known Starlette/AnyIO warning remains.
+Final documentation log SHA-256: 48f362cd3f70707db72bfc3b0c321744fc097217a6d43735c76e43f75a028a4e.
 The --no-deps disposable check started no auxiliary service. Root matched downloaded final evidence
-hashes locally. Only explicit GitHub publication approval remains; no further implementation is pending.
+hashes locally. Implementation commit `9892e411f64d3ae464e970a0aded0c6d2a26c58e` is published on
+`origin/kirchherr/kb-write-unit-of-work` and synchronized to dev001. No implementation work remains.
 Continue Office before CRM; next is Roadmap 274 / PLANS 135 first-page header/footer differences.
 Ordinary tenant, pilot, indexing, cloud AI and DOCX/engine admission remain closed.
 
 ## Publication and source state
 
-Both Git HEADs remain 48fba2b6820675c7cfd0408ba93a6d41cc94a056 on
-kirchherr/kb-write-unit-of-work. Implementation and closing documentation are intentional,
-uncommitted working changes. Do not discard them or pull over them. Protected local
-ERP/user files erp_modul.md and review.md remain untouched; do not stage or publish them.
-Automatic approval review rejected the combined commit/GitHub-push operation because transfer
-to github.com/kirchherr/collabio requires explicit authorization. No export was retried.
-Ask for that explicit publication approval only after the concrete, verified closeout is ready.
-The internal transfer to required dev001 was separately approved and checksum-verified under git.lock.
-No subagents were used. Test/build/lifecycle work ran only on dev001 with explicit project collabio.
+Implementation commit `9892e411f64d3ae464e970a0aded0c6d2a26c58e` was published after
+the operator explicitly approved GitHub transfer. Local and dev001 HEADs match that commit on
+`kirchherr/kb-write-unit-of-work`; dev001 was synchronized only after the published tree matched
+the retained implementation and documentation checksums. Protected local ERP/user files
+erp_modul.md and review.md remain untracked, untouched and unpublished. This evidence-only
+closeout update follows the implementation commit. No subagents were used. Test/build/lifecycle
+work ran only on dev001 with explicit project collabio.
 
 The full-run sixteen-file snapshot has manifest SHA-256:
 79f3c7a1b5b6c90a0cba18e1c331ef15971ab72cd92757e853fabec064006362.
@@ -110,8 +110,9 @@ health ok, Collabio running(4), loopback8000/5433/29000/29001 unchanged. Main Po
 MinIO98ce365f455b, Webcut running(7), provider nodes/26443 unchanged; Tricert absent.
 Cleanup log SHA-256: b939f0ec650488df7e71179ff27baa680cb6fe5b45968cc61082f73c95097483.
 All lifecycle operations used fresh inventories and build.lock before docker.lock where both
-were needed. No source sync ran during tests/recovery. No main migration, ordinary content write,
-tenant/pilot/indexing/cloud/DOCX activation or GitHub publication occurred.
+were needed. No source sync ran during tests/recovery. No main migration, ordinary content write or
+tenant/pilot/indexing/cloud/DOCX activation occurred. GitHub publication followed explicit approval
+only after all acceptance, rollout and documentation checks had passed.
 
 ## Previous Roadmap 272 closeout
 Roadmap 272 / PLANS 133 is complete on dev001: document-owned A4/Letter, portrait/landscape and
@@ -1973,7 +1974,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 273 is complete on dev001; GitHub publication still needs explicit approval as described above.
+Item 273 is complete and published as implementation commit `9892e41`.
 Preserve all 367 distinct browser/model cases (303 browser/64 model), final 42-case recheck, full quality,
 twelve PDFs/36 pages and exact document/image/crop/wrap/page-break/page-settings/running-text recovery.
 Continue with Roadmap 274 / PLANS 135 first-page header/footer differences and explicit first-page number

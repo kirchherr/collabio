@@ -1711,13 +1711,13 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      2924 Python-Faelle bestanden; 367 Browser-/Modellfaelle im Gesamtlauf plus 42 betroffene Faelle nach
      einer zusaetzlichen Reset-Korrektur bestanden, kein einzelner Gesamtlauf auf dem letzten Quellstand.
      Zwoelf echte PDFs/36 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
-     Nachweise in CURRENT_HANDOFF.md. GitHub-Veroeffentlichung wartet auf ausdrueckliche Freigabe.
+     Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `9892e41` veroeffentlicht.
 
 274. [ ] Abweichende Kopf-/Fusszeilen fuer die erste Seite und gezieltes Ausblenden ihrer Seitenzahl ergaenzen:
      klare Vorschau und Reset, unveraenderte Altformate, exakte Historie/Kopien, echte mehrseitige PDFs und
      Wiederherstellung nachweisen. Allgemeine Abschnitte, freie Felder, Editor-Pagination und DOCX bleiben separat.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 273 auf dev001 abgeschlossen, 274 als naechster Schritt geplant.
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 273 abgeschlossen und veroeffentlicht, 274 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
