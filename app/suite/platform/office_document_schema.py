@@ -59,7 +59,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     style_ids: set[str] = set()
     style_names: set[str] = set()
     root_attrs = document.get("attrs", {})
-    if not isinstance(root_attrs, dict) or set(root_attrs) - {"styles", "page"}:
+    if not isinstance(root_attrs, dict) or set(root_attrs) - {"styles", "page", "running"}:
         reject()
     if "page" in root_attrs:
         page = root_attrs["page"]
@@ -71,6 +71,28 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             or not isinstance(page["margins"], dict)
             or set(page["margins"]) != {"top", "right", "bottom", "left"}
             or any(type(value) is not int or not 5 <= value <= 50 for value in page["margins"].values())
+        ):
+            reject()
+    if "running" in root_attrs:
+        running = root_attrs["running"]
+        if (
+            not isinstance(running, dict)
+            or set(running) != {"header", "footer", "numbering"}
+            or running["numbering"] not in ("none", "page", "pageOfPages")
+            or any(
+                not isinstance(text, str)
+                or len(text) > 64
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in text
+                )
+                for text in (running["header"], running["footer"])
+            )
+        ):
+            reject()
+        margins = root_attrs.get("page", {}).get("margins", {"top": 18, "bottom": 18})
+        if (running["header"] and margins["top"] < 16) or (
+            (running["footer"] or running["numbering"] != "none") and margins["bottom"] < 16
         ):
             reject()
     styles = root_attrs.get("styles", [])
@@ -176,7 +198,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if attrs.get("colwidth") is not None:
                 reject()
         elif kind == "doc":
-            if depth != 0 or set(attrs) - {"styles", "page"}:
+            if depth != 0 or set(attrs) - {"styles", "page", "running"}:
                 reject()
         elif attrs:
             reject()

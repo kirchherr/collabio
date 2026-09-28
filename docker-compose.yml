@@ -4483,6 +4483,10 @@ services:
         source: ./app/suite/ui/office/office-page.mjs
         target: /work-e2e/office-page.mjs
         read_only: true
+      - type: bind
+        source: ./app/suite/ui/office/office-running.mjs
+        target: /work-e2e/office-running.mjs
+        read_only: true
         bind:
           create_host_path: false
       - type: bind

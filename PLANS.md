@@ -220,18 +220,22 @@ Full Python quality and one complete 345-case browser/model run passed on 800a3a
 fresh four-version recovery, both release gates and API-only rollout passed. Independent PDF QA caught and verified
 the correction of a legacy CSS cascade override. Evidence: CURRENT_HANDOFF.md. Section layouts and pagination remain separate.
 
-134. [ ] Add document-owned headers/footers and page numbers after page-settings acceptance:
-bounded literal text and explicit numbering choices, accessible preview, reset and isolated undo.
-Preserve exact saved-version history/copies, current authorization and confirmed CAS saves; prove actual
-multi-page PDF placement, no body overlap and fresh nonempty recovery. Section-specific layouts,
-arbitrary fields, continuous editor pagination and DOCX interchange remain separate.
+134. [x] Add document-owned headers/footers and page numbers under ADR-0096: bounded literal text,
+page/page-total choices, accessible preview, independent reset and isolated undo. Exact history/copies remain.
+All 2924 Python cases passed; full 367 browser/model cases plus 42 affected cases after a final reset correction
+passed, not a single full run on final source. Twelve PDFs/36 pages, fresh nonempty recovery, both release
+gates and API-only rollout passed. Evidence: CURRENT_HANDOFF.md. GitHub publication awaits explicit approval.
+
+135. [ ] Add first-page header/footer differences and explicit first-page number suppression, with clear
+preview/reset, unchanged legacy content, exact history/copies, actual multi-page PDF and recovery proofs.
+General sections, arbitrary fields, continuous editor pagination and DOCX interchange remain separate.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 272, including document-owned page settings, explicit page breaks, bounded image text wrapping, non-destructive crop, document-owned images/styles, list levels/numbering, format transfer, character/paragraph formatting and whole-document keyboard replacement across rich tables. Preserve the single full 345-case browser/model acceptance, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh document/image/crop/wrap/page-break/page-settings recovery. Continue with Roadmap 273 / PLANS 134 document-owned headers/footers and page numbers before CRM. Arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate work; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete on dev001 through Roadmap 273, including document-owned headers/footers/page numbers, page settings, explicit page breaks, bounded image text wrapping, crop, images/styles, list levels, format transfer and rich-text editing. Preserve the 367-case full evidence plus 42 final affected checks, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Publication remains pending explicit GitHub approval. Continue with Roadmap 274 / PLANS 135 first-page header/footer differences before CRM. General sections, arbitrary floating objects, other objects, continuous tracked changes, live collaboration and DOCX interchange remain separate; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

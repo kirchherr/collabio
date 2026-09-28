@@ -1,3 +1,4 @@
+import { officeRunningSettings, officeRunningDescription, configureOfficeRunningPrint, clearOfficeRunningPrint } from "./office-running.mjs";
 import { Editor, Extension, Mark, Node, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
@@ -54,7 +55,7 @@ const OfficeNamedStyles = Extension.create({
   name: "officeNamedStyles",
   addGlobalAttributes() {
     return [
-      { types: ["doc"], attributes: { styles: { default: [], rendered: false }, page: { default: null, rendered: false } } },
+      { types: ["doc"], attributes: { styles: { default: [], rendered: false }, page: { default: null, rendered: false }, running: { default: null, rendered: false } } },
       { types: ["paragraph", "heading"], attributes: { styleId: { default: null, keepOnSplit: true,
         parseHTML: () => null,
         renderHTML: (attrs) => attrs.styleId == null ? {} : { "data-office-style-id": attrs.styleId },
@@ -272,6 +273,7 @@ function normalizedDocument(document) {
   if (document?.type !== "doc") throw new Error("document-root");
   const result = walk(document);
   if (styles.length) result.attrs = { styles };
+  if (document.attrs?.running != null) result.attrs = { ...result.attrs, running: officeRunningSettings(document.attrs.running, document.attrs.page) };
   if (document.attrs?.page != null) result.attrs = { ...result.attrs, page: officePageSettings(document.attrs.page) };
   return result;
 }
@@ -1583,7 +1585,7 @@ function prepareEditor(content, session) {
       .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true })
       .command(({ tr }) => {
         tr.setDocAttribute("styles", safeContent.attrs?.styles || []);
-        tr.setDocAttribute("page", safeContent.attrs?.page ?? null); return true;
+        tr.setDocAttribute("page", safeContent.attrs?.page ?? null); tr.setDocAttribute("running", safeContent.attrs?.running ?? null); return true;
       }).run();
   } catch (error) { editor.destroy(); throw error; }
   return { editor, editorHost };
@@ -2424,6 +2426,7 @@ function printCurrent(print) {
 function clearPreparedPrint(owner = null) {
   if (owner && state.preparedPrint !== owner) return;
   state.preparedPrint = null;
+  clearOfficeRunningPrint();
   document.body.classList.remove("office-print-ready");
   $("office-print-root").replaceChildren();
   $("office-print-root").className = "";
@@ -2471,7 +2474,7 @@ function updatePrintControls() {
   $("print-document-settings").disabled = !current || busy || !print.content;
   $("print-preview").className = printFormat();
   officePagePreview($("print-preview"), printPage());
-  $("print-page-description").textContent = print.content ? officePageDescription(printPage()) : "";
+  $("print-page-description").textContent = print.content ? `${officePageDescription(printPage())} · ${officeRunningDescription(print.content.attrs?.running)}` : "";
 }
 
 function setPrintModal(print, modal) {
@@ -2535,11 +2538,13 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       // The print surface is made from this fresh response, never from the live
       // editor, the preview DOM, or an older cached authorization result.
       const root = $("office-print-root");
+      state.preparedPrint = print;
       root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images));
       await Promise.all([...root.querySelectorAll("img")].map((image) => image.decode()));
       if (!current()) return;
       root.className = printFormat();
       configureOfficePrintPage(printPage());
+      configureOfficeRunningPrint(content.attrs?.running, printPage());
       print.printing = true;
       state.preparedPrint = print;
       document.body.classList.add("office-print-ready");
@@ -2563,7 +2568,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
     $("print-preview").replaceChildren();
     $("print-version").textContent = "";
     if (denied(error)) { officeAccessDenied(); return; }
-    $("print-status").textContent = "Die Druckansicht ist gerade nicht verfügbar. Bitte erneut laden.";
+    $("print-status").textContent = error.message === "Office running print unsupported" ? "Ihr Browser unterstützt Kopf-/Fußzeilen im Druck nicht. Verwenden Sie einen aktuellen Chromium-Browser und prüfen Sie die Druckvorschau." : "Die Druckansicht ist gerade nicht verfügbar. Bitte erneut laden.";
   } finally {
     if (current()) {
       print.loading = false; print.printing = false;

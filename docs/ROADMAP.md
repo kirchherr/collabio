@@ -1706,13 +1706,18 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Externe PDF-Pruefung deckte eine alte CSS-Uebersteuerung auf und bestaetigte die Korrektur der echten Raender.
      Nachweise in CURRENT_HANDOFF.md. Abschnittslayout und durchgaengige Pagination bleiben separat.
 
-273. [ ] Nach Abnahme der Seiteneinstellungen dokumenteigene Kopf-/Fusszeilen und Seitenzahlen ergaenzen:
-     begrenzte Klartexte und ausdrueckliche Nummerierungsoptionen, bedienbare Vorschau, Reset und isoliertes Undo.
-     Gespeicherte Versionen/Kopien und aktuelle Berechtigungen erhalten; echte mehrseitige PDFs ohne
-     Inhaltsueberlagerung sowie frischen nichtleeren Restore nachweisen. Abschnittslayout, freie Felder,
-     durchgaengige Editor-Pagination und DOCX bleiben separat.
+273. [x] Dokumenteigene Kopf-/Fusszeilen und Seitenzahlen unter ADR-0096 umgesetzt: begrenzte Klartexte,
+     Seite X oder Seite X von Y, Vorschau, unabhaengiger Reset und isoliertes Undo. Historie/Kopien bleiben exakt.
+     2924 Python-Faelle bestanden; 367 Browser-/Modellfaelle im Gesamtlauf plus 42 betroffene Faelle nach
+     einer zusaetzlichen Reset-Korrektur bestanden, kein einzelner Gesamtlauf auf dem letzten Quellstand.
+     Zwoelf echte PDFs/36 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
+     Nachweise in CURRENT_HANDOFF.md. GitHub-Veroeffentlichung wartet auf ausdrueckliche Freigabe.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 272 abgeschlossen, 273 als naechster Schritt geplant.
+274. [ ] Abweichende Kopf-/Fusszeilen fuer die erste Seite und gezieltes Ausblenden ihrer Seitenzahl ergaenzen:
+     klare Vorschau und Reset, unveraenderte Altformate, exakte Historie/Kopien, echte mehrseitige PDFs und
+     Wiederherstellung nachweisen. Allgemeine Abschnitte, freie Felder, Editor-Pagination und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 273 auf dev001 abgeschlossen, 274 als naechster Schritt geplant.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

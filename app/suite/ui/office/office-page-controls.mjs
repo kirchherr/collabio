@@ -1,3 +1,4 @@
+import { OFFICE_RUNNING_DEFAULT, officeRunningSettings, officeRunningNumber } from "./office-running.mjs";
 import { closeHistory } from "@tiptap/pm/history";
 import { OFFICE_PAGE_DEFAULT, OFFICE_PAGE_SIDES, officePageSettings, officePageDescription, officePagePreview } from "./office-page.mjs";
 
@@ -8,19 +9,23 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     const previous = action; action = null;
     $("page-dialog").close(); $("page-form").reset(); $("page-status").textContent = "";
     $("page-description").textContent = ""; $("page-preview").removeAttribute("style");
+    $("page-running-details").open = false; $("page-running-preview").textContent = "";
     if (restoreFocus && previous?.editor === state.editor && sessionCurrent(previous.session)) focus();
   };
   const read = () => officePageSettings({ paper: $("page-paper").value, orientation: $("page-orientation").value,
     margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`page-${side}`).valueAsNumber])) });
+  const readRunning = (page) => officeRunningSettings({ header: $("page-header").value, footer: $("page-footer").value, numbering: $("page-numbering").value }, page);
   const preview = () => {
     if (!actionCurrent(action)) { close(); return; }
     try {
-      const page = read(); officePagePreview($("page-preview"), page);
+      const page = read(), running = readRunning(page);
+      $("page-running-preview").textContent = [running.header || "(keine Kopfzeile)", "— Beispiel für Dokumentinhalt —", running.footer || "(keine Fußzeile)", officeRunningNumber(running)].filter(Boolean).join("\n");
+      officePagePreview($("page-preview"), page);
       $("page-description").textContent = officePageDescription(page);
       $("page-status").textContent = ""; $("page-apply").disabled = false;
     } catch {
       $("page-description").textContent = ""; $("page-apply").disabled = true;
-      $("page-status").textContent = "Geben Sie für jeden Rand eine ganze Zahl von 5 bis 50 mm ein.";
+      $("page-status").textContent = "Ränder: ganze Zahlen von 5 bis 50 mm; mit Kopf-/Fußzeile oder Seitenzahl mindestens 16 mm am jeweiligen Rand. Texte: höchstens 64 Zeichen ohne Zeilenumbrüche.";
     }
   };
   const fill = (page) => {
@@ -45,12 +50,25 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     const editor = state.editor;
     action = { editor, session: state.session, context: state.context, revision: state.session.revision,
       document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks };
+    const running = officeRunningSettings(editor.state.doc.attrs.running ?? undefined);
+    $("page-header").value = running.header; $("page-footer").value = running.footer; $("page-numbering").value = running.numbering;
     fill(officePageSettings(editor.state.doc.attrs.page ?? undefined));
     $("page-dialog").showModal(); $("page-paper").focus();
   });
-  $("page-form").addEventListener("input", () => { if (action) action.reset = false; preview(); });
+  $("page-form").addEventListener("input", (event) => {
+    if (action) {
+      if (["page-header", "page-footer", "page-numbering"].includes(event.target.id)) action.runningReset = false;
+      else action.reset = false;
+    }
+    preview();
+  });
   $("page-reset").addEventListener("click", () => {
     if (actionCurrent(action)) { fill(officePageSettings()); action.reset = true; }
+  });
+  $("page-running-reset").addEventListener("click", () => {
+    if (!actionCurrent(action)) return;
+    $("page-header").value = ""; $("page-footer").value = ""; $("page-numbering").value = "none";
+    action.runningReset = true; preview();
   });
   for (const id of ["page-close", "page-cancel"]) $(id).addEventListener("click", () => close(true));
   $("page-dialog").addEventListener("cancel", (event) => { event.preventDefault(); close(true); });
@@ -61,14 +79,17 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     const editor = action.editor;
     let transaction;
     try {
-      const page = read(), current = editor.state.doc.attrs.page;
+      const page = read(), current = editor.state.doc.attrs.page, running = readRunning(page), currentRunning = editor.state.doc.attrs.running;
+      const samePage = JSON.stringify(page) === JSON.stringify(officePageSettings(current ?? undefined));
+      const sameRunning = JSON.stringify(running) === JSON.stringify(officeRunningSettings(currentRunning ?? undefined));
       // Preserve already stored explicit defaults on a no-op; reset from a custom
       // profile removes optional metadata and returns to legacy canonical content.
-      if (!(action.reset && current != null) && JSON.stringify(page) === JSON.stringify(officePageSettings(current ?? undefined))) {
+      if (!(action.reset && current != null) && !(action.runningReset && currentRunning != null) && samePage && sameRunning) {
         $("page-status").textContent = "Keine Änderung: Diese Seiteneinstellungen gelten bereits."; return;
       }
-      const value = JSON.stringify(page) === JSON.stringify(OFFICE_PAGE_DEFAULT) ? null : page;
-      transaction = editor.state.tr.setDocAttribute("page", value);
+      const value = samePage && !action.reset ? current : JSON.stringify(page) === JSON.stringify(OFFICE_PAGE_DEFAULT) ? null : page;
+      const runningValue = sameRunning && !action.runningReset ? currentRunning : JSON.stringify(running) === JSON.stringify(OFFICE_RUNNING_DEFAULT) ? null : running;
+      transaction = editor.state.tr.setDocAttribute("page", value).setDocAttribute("running", runningValue);
       if (editor.state.storedMarks) transaction.setStoredMarks(editor.state.storedMarks);
       validate(transaction.doc);
     } catch {

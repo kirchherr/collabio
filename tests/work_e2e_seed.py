@@ -17,6 +17,7 @@ from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_syntheti
 from work_e2e_page_breaks import seed_synthetic_office_page_breaks
 from work_e2e_page_settings import seed_synthetic_office_page_settings
 from work_e2e_paragraph import seed_synthetic_office_paragraphs
+from work_e2e_running_text import seed_synthetic_office_running_text
 from work_e2e_styles import seed_synthetic_office_styles
 
 SYNTHETIC_PRINCIPALS = (
@@ -93,6 +94,9 @@ def main() -> int:
         environment=os.environ, client=client
     )
 
+    running_text_document_count, running_text_version_count = seed_synthetic_office_running_text(
+        environment=os.environ, client=client
+    )
     page_settings_document_count, page_settings_version_count = seed_synthetic_office_page_settings(
         environment=os.environ, client=client
     )
@@ -110,13 +114,15 @@ def main() -> int:
                 + character_document_count
                 + style_document_count
                 + page_break_document_count
-                + page_settings_document_count,
+                + page_settings_document_count
+                + running_text_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
                 "synthetic_office_style_version_count": style_version_count,
                 "synthetic_office_page_break_version_count": page_break_version_count,
                 "synthetic_office_page_settings_version_count": page_settings_version_count,
+                "synthetic_office_running_text_version_count": running_text_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

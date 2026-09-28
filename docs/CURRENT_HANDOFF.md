@@ -1,7 +1,119 @@
 # Current Project Handoff
 
-Updated: 2026-09-23
+Updated: 2026-09-24
 
+Roadmap 273 / PLANS 134 is development-complete on dev001: document-owned literal headers,
+footers and page/page-total numbering, accessible preview, independent reset and isolated undo.
+Full Python quality, browser regression plus the final affected subset, twelve actual PDFs,
+fresh nonempty recovery and both release gates passed before API-only rollout. Final health at
+16:49:57 UTC is ok, Collabio running(4). All eleven documentation/module/roadmap closeout checks
+passed in 59.69s; health remained ok at 16:53:55 UTC. Only the known Starlette/AnyIO warning remains.
+Documentation log SHA-256: 9444380f92668c9c47576e6ae60c5b1ab5dc06c00e22921542c75ff1e6d6e43d.
+The --no-deps disposable check started no auxiliary service. Root matched downloaded final evidence
+hashes locally. Only explicit GitHub publication approval remains; no further implementation is pending.
+Continue Office before CRM; next is Roadmap 274 / PLANS 135 first-page header/footer differences.
+Ordinary tenant, pilot, indexing, cloud AI and DOCX/engine admission remain closed.
+
+## Publication and source state
+
+Both Git HEADs remain 48fba2b6820675c7cfd0408ba93a6d41cc94a056 on
+kirchherr/kb-write-unit-of-work. Implementation and closing documentation are intentional,
+uncommitted working changes. Do not discard them or pull over them. Protected local
+ERP/user files erp_modul.md and review.md remain untouched; do not stage or publish them.
+Automatic approval review rejected the combined commit/GitHub-push operation because transfer
+to github.com/kirchherr/collabio requires explicit authorization. No export was retried.
+Ask for that explicit publication approval only after the concrete, verified closeout is ready.
+The internal transfer to required dev001 was separately approved and checksum-verified under git.lock.
+No subagents were used. Test/build/lifecycle work ran only on dev001 with explicit project collabio.
+
+The full-run sixteen-file snapshot has manifest SHA-256:
+79f3c7a1b5b6c90a0cba18e1c331ef15971ab72cd92757e853fabec064006362.
+Final tested implementation manifest SHA-256:
+172fac65d44156bfaa6f6719c755f63554cc57bf80e097a5178498d640510327.
+Only office-page-controls.mjs and its strengthened browser test differ between these snapshots.
+Closing documentation and ADR status updates follow that tested snapshot separately; no runtime
+source changes follow acceptance. Both manifests and reports are retained under ignored
+ e2e/work/artifacts/roadmap-273. Runtime acceptance is not attributed to a nonexistent new commit.
+
+## Roadmap 273 validation evidence
+
+ADR-0096 specifies optional root attrs.running with exactly header/footer strings (64 Unicode
+code points each) and numbering none/page/pageOfPages. Control characters and arbitrary fields,
+HTML or CSS are rejected. Occupied top/bottom regions require at least 16 mm of saved margin.
+Absence preserves canonical legacy bytes; explicit empty metadata survives no-op reads and reset
+removes only running metadata. Geometry and running text apply in one guarded undo transaction;
+reset intent in either group survives edits in the other. Only confirmed CAS Save persists changes.
+History, comparison and independent copies retain exact values. Print reauthorizes the saved
+version and escapes literals into trusted static margin rules; temporary content clears on output,
+failure, close and context invalidation. Unsupported margin-box engines refuse this output.
+
+Final quality passed all 2924 Python cases, Ruff, 784-file formatting and Mypy/584 sources;
+only the known Starlette/AnyIO deprecation warning. Final quality log SHA-256:
+845a6457cc99260341f0da779e82e84e24687f5c24a5d9dce2f02bc41d2280ce.
+Passing browser/model evidence covers all 367 distinct cases (303 browser + 64 model), preserving
+all 345 previous case identities. This is a full run plus final affected recheck, not a single
+full browser run on the final source:
+- Full 367/367: 16:08:46-16:33:48 UTC, 1502.383140s, zero skipped/unexpected/flaky/retries.
+  Report SHA-256: 3c475aee0f8aab6d4168489732d975b4ed5bafaa01987117aa360c60058cfd1a.
+- Additional review found cross-group input cancelling the other group's reset intent. The new
+  regression assertions failed on both desktop and mobile against the unchanged application;
+  report SHA-256: d609c9fddc8ab9bb4d42edea9327eaf0bf858b0373d30c6a7438fa509b715960.
+  Both failure screenshots/traces remain retained; no failure is presented as acceptance.
+- The final isolated handler fix passed all 42 page/running-text cases at 16:35:30-16:38:30 UTC,
+  179.692274s, zero skipped/unexpected/flaky/retries. Report SHA-256:
+  23ab2a99cf8c8a62cc89cfa8d8a971c8be86c158b2caeb163d5f9bbb2c922a49.
+- Aggregate acceptance SHA-256: 5f975d39e5db00409af8f73e8dd9a2b23c881a25b87a2396cf4268d958ad74cc.
+Earlier focused 60/22/42-case reports and source snapshots remain retained. The first quality
+attempt found two import-order issues, corrected before either complete Python acceptance.
+
+Final external PDF QA at 16:41:34 UTC verifies twelve PDFs/36 pages: A4/Letter, both orientations,
+desktop/mobile, explicit and automatic page boundaries, repeated special-character/long literals,
+consecutive page and total counters, margin containment, no body overlap, tagged tables and a
+second reset print in the same browser with no stale text. Root reviewed all 36 rendered pages
+and both responsive dialogs. All final page pixels match those reviewed images exactly.
+QA JSON SHA-256: c883e6d40e2acc23494c38c70b4914d00608108e01dd3312112162055f427e53.
+Reviewed-pixel manifest SHA-256: 4221f8f0d2914631c5e9c29296d32cd165694aa8856ab24eb3a401a7a963abb6.
+No independent-agent or non-Chromium proof is claimed. Continuous editor pagination, sections,
+first-page differences, arbitrary fields and DOCX interchange remain separate work.
+
+Fresh nonempty recovery completed at 16:46:19 UTC into collabio_work_e2e_273_restore:
+523 documents, 1012 Office versions, 159 multiversion documents, 1119 sources, 52 image assets,
+70 saved image references (36 cropped, 44 wrapped). The four designated legacy/header-footer with
+totals/page-only/reset versions match exact JSON, canonical hashes and lineage. Prior page settings,
+breaks, wrap/crop reset and formatting proofs, 10 review threads/18 events, 11 suggestions/7 decisions,
+source bytes/receipts, authoritative read-only access and foreign-tenant denial passed.
+All ten synthetic targets and their dumps/receipts remain retained, confirmed by final inventory.
+- Recovery JSON SHA-256: 586bfedaa1d663d1417e1e9876e83bb7c2018eb02addeee2433e70dfee0b191c.
+- Embedded report SHA-256: b1e00ed3f610fa2c79a79ccac629e4ea967d278c9a984d955cdf09adc8da101c.
+- Dump SHA-256: e93aed0f8920949ba7cddfbca625791ba0460a50acf843ad283126c7f8b93d50.
+- Running-text fixture SHA-256: 1d5f69483bc7e2d05c86f1e31652ac9d27e388a14b0011b012b2e6e0f28577b4.
+
+Main backup collabio-20260924T164656Z.dump was verified before refreshing only the ordinary isolated
+restore target. Foundation seed was explicitly 0; 85 migrations/95 tables and three source objects
+in two tenants passed. Both release gates passed without blockers or business writes:
+- Main backup SHA-256: 3f34e97b48d494e807a047de360339bb9c5f01f134df4d56aff721cf6e597cc8.
+- Ordinary restore SHA-256: ca35989244fc71f0ea24f65083bcc35b9dd7e80268458f493cd9691d0b42d640.
+- Foundation, 16:47:09 UTC: a8ad16d47c6601abc296259574c970399c2368311f8371e528825b1246531ae5.
+- Business, 16:47:58 UTC: 33d2aed6dbef23bd189c56beb66782365835767a4a64ca15271ff89b68ae4643.
+Synthetic running-text markers were absent from normal and both isolated API logs at 16:47:09 UTC.
+
+API-only --no-deps rollout with pilot explicitly 0 reached health ok at 16:48:46 UTC.
+API f3b9274f118e runs image sha256:8fe382e74844115d92da1e0c70da90c90fd82e8219942510aa57d4aa738c6e51.
+Regular decoder30766f16f16a and image/isolation are unchanged: network none, user10001:10001,
+read-only root, ALL capabilities dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only
+its existing socket volume. Live checks verify 15 Office operation definitions, served controls,
+assets/licenses, Work link, no-store and CSP; they do not execute those business operations.
+Office remains unprovisioned/non-cacheable404, features closed, KB write false and pilot0.
+Live JSON SHA-256: b9d139f3fd7d3e9c99e4495657afcb207e313332d93aa2a2c2071c943ca749c8.
+Exact eight E2E services removed; test and both restore services stopped. Final 16:49:57 UTC
+health ok, Collabio running(4), loopback8000/5433/29000/29001 unchanged. Main PostgreSQL87a6b37942c8,
+MinIO98ce365f455b, Webcut running(7), provider nodes/26443 unchanged; Tricert absent.
+Cleanup log SHA-256: b939f0ec650488df7e71179ff27baa680cb6fe5b45968cc61082f73c95097483.
+All lifecycle operations used fresh inventories and build.lock before docker.lock where both
+were needed. No source sync ran during tests/recovery. No main migration, ordinary content write,
+tenant/pilot/indexing/cloud/DOCX activation or GitHub publication occurred.
+
+## Previous Roadmap 272 closeout
 Roadmap 272 / PLANS 133 is complete on dev001: document-owned A4/Letter, portrait/landscape and
 bounded margins with preview/reset/isolated undo, immutable history/copies and saved print geometry.
 Full quality and one complete 345-case browser/model run passed. Eight actual PDFs/16 pages,
@@ -1861,14 +1973,15 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 272 is complete. Preserve the single full 345-case acceptance (285 browser/60 model), full quality,
-actual eight PDFs/16 pages and exact document/image/crop/wrap/page-break/page-settings recovery.
-Continue with Roadmap 273 / PLANS 134 document-owned headers/footers and page numbers: bounded literal text,
-explicit numbering choices, accessible preview/reset/isolated undo, exact saved-version history/copies,
-current authorization and confirmed CAS saves. Prove actual multi-page placement without body overlap
-and fresh nonempty recovery. Section layouts, arbitrary fields, continuous editor pagination and DOCX
-remain separate. Preserve legacy bytes, the effective named print-page rule and asymmetric margins.
-See ADR-0091/0092/0093/0094/0095 and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md.
+Item 273 is complete on dev001; GitHub publication still needs explicit approval as described above.
+Preserve all 367 distinct browser/model cases (303 browser/64 model), final 42-case recheck, full quality,
+twelve PDFs/36 pages and exact document/image/crop/wrap/page-break/page-settings/running-text recovery.
+Continue with Roadmap 274 / PLANS 135 first-page header/footer differences and explicit first-page number
+suppression. Retain bounded literals, accessible preview/reset/isolated undo, exact history/copies,
+current authorization and confirmed CAS saves. Prove actual multi-page placement and fresh recovery.
+General sections, arbitrary fields, continuous editor pagination and DOCX remain separate. Preserve
+legacy bytes, independent reset intents, named print-page rules and asymmetric margins.
+See ADR-0091/0092/0093/0094/0095/0096 and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md.
 Images retain current parent ACLs; independent copies own freshly authorized assets. Keep the isolated
 network-none decoder, source pixels, responsive block fallback and historical manifests intact.
 Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.
