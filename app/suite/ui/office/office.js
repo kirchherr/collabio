@@ -21,6 +21,7 @@ import { officeImageExtension, installOfficeImageControls } from "./office-image
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
+import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -28,7 +29,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -37,7 +38,7 @@ const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak",
 ]);
-const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle"]);
+const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link"]);
 const commandNames = {
   bold: "toggleBold", italic: "toggleItalic", underline: "toggleUnderline", strike: "toggleStrike",
   code: "toggleCode", bulletList: "toggleBulletList", orderedList: "toggleOrderedList",
@@ -106,6 +107,16 @@ const OfficeCharacterFormat = Mark.create({
   },
   parseHTML() { return [{ tag: "span[data-office-font-size]" }, { tag: "span[data-office-text-color]" }]; },
   renderHTML({ HTMLAttributes }) { return ["span", HTMLAttributes, 0]; },
+});
+const OfficeLink = Mark.create({
+  name: "link", inclusive: false, excludes: "code",
+  addAttributes() { return { href: { default: null, rendered: false } }; },
+  parseHTML() {
+    return [{ tag: "a[data-office-link][href]", getAttrs: (element) => {
+      try { return { href: officeLinkHref(element.getAttribute("href")) }; } catch { return false; }
+    } }];
+  },
+  renderHTML({ mark }) { return ["a", officeLinkDOMAttributes(mark.attrs.href), 0]; },
 });
 const OfficeParagraphFormat = Extension.create({
   name: "officeParagraphFormat",
@@ -264,6 +275,7 @@ function normalizedDocument(document) {
       if (value.type !== "text" || types.some((type) => !allowedMarks.has(type)) ||
           new Set(types).size !== types.length || (types.includes("code") && types.length > 1)) throw new Error("document-marks");
       result.marks = value.marks.flatMap((mark) => {
+        if (mark.type === "link") return [{ type: "link", attrs: { href: officeLinkHref(mark.attrs?.href) } }];
         if (mark.type !== "textStyle") return [{ type: mark.type }];
         const attrs = officeCharacterAttributes(mark.attrs);
         return Object.keys(attrs).length ? [{ type: mark.type, attrs }] : [];
@@ -344,6 +356,7 @@ function updateEditorState() {
   updateTableControls();
   updateParagraphControls();
   updateCharacterControls();
+  updateLinkControls();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -970,6 +983,90 @@ function applyCharacterFormat() {
   focusEditor(editor);
   updateEditorState();
   notice(action.selection.empty ? "Zeichenformatierung für die nächste Eingabe gewählt." : "Zeichenformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
+}
+
+function linkCharacters(editor = state.editor) {
+  if (!editor || editor.state.selection.empty) return [];
+  return selectedCharacters(editor);
+}
+
+function commonLink(entries) {
+  const values = new Set(entries.map(({ marks }) => marks.find((mark) => mark.type.name === "link")?.attrs.href || null));
+  return values.size === 1 ? [...values][0] : null;
+}
+
+function linkActionCurrent(action) {
+  return paragraphActionCurrent(action) && action.characters.length > 0;
+}
+
+function closeLinkDialog(restoreFocus = false) {
+  const action = state.linkAction;
+  state.linkAction = null;
+  $("link-dialog").close();
+  $("link-form").reset();
+  $("link-status").textContent = "";
+  if (restoreFocus && action?.editor === state.editor) focusEditor(action.editor);
+}
+
+function updateLinkControls() {
+  if (state.linkAction && !linkActionCurrent(state.linkAction)) closeLinkDialog();
+  const entries = linkCharacters();
+  const enabled = paragraphAllowed() && entries.length > 0;
+  $("link-options").disabled = !enabled;
+  $("link-options").setAttribute("aria-pressed", String(enabled && entries.some(({ marks }) => marks.some((mark) => mark.type.name === "link"))));
+}
+
+function openLinkDialog() {
+  const characters = linkCharacters();
+  if (!characters.length) return;
+  closeLinkDialog();
+  state.linkAction = { session: state.session, editor: state.editor, context: state.context,
+    revision: state.session.revision, document: state.editor.state.doc, selection: state.editor.state.selection, characters };
+  const href = commonLink(characters);
+  $("link-href").value = href || "";
+  $("link-selection").textContent = `${state.editor.state.doc.textBetween(state.editor.state.selection.from, state.editor.state.selection.to, " ").slice(0, 160)}${state.editor.state.selection.to - state.editor.state.selection.from > 160 ? "…" : ""}`;
+  $("link-remove").disabled = !characters.some(({ marks }) => marks.some((mark) => mark.type.name === "link"));
+  $("link-open").disabled = !href;
+  $("link-status").textContent = href ? "Das vorhandene Ziel kann geändert, entfernt oder bewusst geöffnet werden." : "HTTPS-Adresse oder einfache mailto:-Adresse eingeben.";
+  $("link-dialog").showModal();
+  $("link-href").focus();
+}
+
+function commitLink(remove = false) {
+  const action = state.linkAction;
+  if (!linkActionCurrent(action)) { closeLinkDialog(); return; }
+  let href = null;
+  try { if (!remove) href = officeLinkHref($("link-href").value); }
+  catch {
+    $("link-status").textContent = "Nur vollständige HTTPS-Adressen oder einfache mailto:-Adressen sind zulässig.";
+    $("link-status").classList.add("error"); return;
+  }
+  const type = action.editor.schema.marks.link;
+  const transaction = action.editor.state.tr;
+  let changed = false;
+  for (const { marks, from, to } of action.characters) {
+    const prior = marks.find((mark) => mark.type === type)?.attrs.href || null;
+    if (prior === href) continue;
+    changed = true; transaction.removeMark(from, to, type);
+    if (href) transaction.addMark(from, to, type.create({ href }));
+  }
+  if (!changed) { $("link-status").textContent = "Keine Änderung: Die Auswahl verwendet bereits dieses Ziel."; return; }
+  try { validateEditorDocument(transaction.doc); }
+  catch { $("link-status").textContent = "Der Link überschreitet die unterstützte Dokumentgröße oder Struktur."; $("link-status").classList.add("error"); return; }
+  if (!linkActionCurrent(action)) { closeLinkDialog(); return; }
+  closeLinkDialog();
+  action.editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  focusEditor(action.editor); updateEditorState();
+  notice(remove ? "Link entfernt. Der Text bleibt erhalten; gespeichert wird erst mit der nächsten bestätigten Version." :
+    "Link angewendet. Gespeichert wird erst mit der nächsten bestätigten Version.");
+}
+
+function openSelectedLink() {
+  const action = state.linkAction;
+  const href = linkActionCurrent(action) ? commonLink(action.characters) : null;
+  if (!href) return;
+  const opened = window.open(officeLinkHref(href), "_blank", "noopener,noreferrer");
+  if (opened) opened.opener = null;
 }
 
 const transferableMarks = ["bold", "italic", "underline", "strike", "textStyle"];
@@ -1645,6 +1742,7 @@ function contentChanged(session) {
   closeTableDialogs();
   closeParagraphDialog();
   closeCharacterDialog();
+  closeLinkDialog();
   $("table-message").textContent = "";
   closeListDialog();
   closeStyleDialog();
@@ -1672,7 +1770,7 @@ function prepareEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
@@ -4183,6 +4281,15 @@ $("style-dialog").addEventListener("cancel", (event) => { event.preventDefault()
 $("style-dialog").addEventListener("close", () => { if (!$("style-dialog").open && state.styleAction) closeStyleDialog(); });
 $("character-format").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("character-format").addEventListener("click", openCharacterDialog);
+$("link-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("link-options").addEventListener("click", openLinkDialog);
+$("link-form").addEventListener("submit", (event) => { event.preventDefault(); commitLink(); });
+$("link-remove").addEventListener("click", () => commitLink(true));
+$("link-open").addEventListener("click", openSelectedLink);
+$("link-href").addEventListener("input", () => { $("link-status").classList.remove("error"); });
+for (const id of ["link-close", "link-cancel"]) $(id).addEventListener("click", () => closeLinkDialog(true));
+$("link-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeLinkDialog(true); });
+$("link-dialog").addEventListener("close", () => { if (!$("link-dialog").open && state.linkAction) closeLinkDialog(); });
 $("format-transfer").addEventListener("change", (event) => {
   const choice = event.target.value;
   event.target.value = "";

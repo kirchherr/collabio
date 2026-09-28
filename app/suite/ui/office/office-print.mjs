@@ -4,6 +4,7 @@ import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
+import { officeLinkDOMAttributes } from "./office-links.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -37,6 +38,12 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       if (typeof value.text !== "string") throw new Error("Invalid print text");
       let text = dom.createTextNode(value.text);
       for (const mark of [...(value.marks || [])].reverse()) {
+        if (mark.type === "link") {
+          const wrapper = dom.createElement("a");
+          for (const [name, attribute] of Object.entries(officeLinkDOMAttributes(mark.attrs?.href, { printable: true }))) wrapper.setAttribute(name, attribute);
+          wrapper.append(text); text = wrapper;
+          continue;
+        }
         if (mark.type === "textStyle") {
           const wrapper = dom.createElement("span");
           for (const [name, attribute] of Object.entries(officeCharacterDOMAttributes(mark.attrs))) wrapper.setAttribute(name, attribute);

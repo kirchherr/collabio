@@ -4496,6 +4496,12 @@ services:
         bind:
           create_host_path: false
       - type: bind
+        source: ./app/suite/ui/office/office-links.mjs
+        target: /work-e2e/office-links.mjs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: ./app/suite/ui/office/office-styles.mjs
         target: /work-e2e/office-styles.mjs
         read_only: true

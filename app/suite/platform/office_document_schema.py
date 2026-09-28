@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 from suite.ai_control_plane.audit import canonical_json
 from suite.platform.office_image_schema import validate_image_attributes
@@ -30,7 +31,7 @@ BLOCKS = {
     "pageBreak",
     "sectionBreak",
 }
-MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
+MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle", "link"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
@@ -45,6 +46,41 @@ STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {"fontSize": FONT_SIZES, "textColo
 
 class OfficeDocumentInvalidContentError(ValueError):
     pass
+
+
+def _valid_link_href(value: Any) -> bool:
+    if not isinstance(value, str) or not value or len(value) > 2048 or value != value.strip():
+        return False
+    if any(
+        ord(character) < 33 or 127 <= ord(character) <= 159 or character in {"<", ">", '"', "'", "\\"}
+        for character in value
+    ):
+        return False
+    if value.startswith("mailto:"):
+        address = value[7:]
+        return (
+            len(address) <= 320
+            and ".." not in address
+            and re.fullmatch(
+                r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?",
+                address,
+            )
+            is not None
+        )
+    if not value.startswith("https://"):
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
 
 
 def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
@@ -309,6 +345,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 if "textColor" in style and (
                     not isinstance(style["textColor"], str) or style["textColor"] not in TEXT_COLORS
                 ):
+                    reject()
+            elif name == "link":
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"href"}
+                ):
+                    reject()
+                if not _valid_link_href(mark["attrs"]["href"]):
                     reject()
             elif set(mark) != {"type"}:
                 reject()

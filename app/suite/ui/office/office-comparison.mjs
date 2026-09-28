@@ -4,6 +4,7 @@ import { officeParagraphDescription } from "./office-paragraph.mjs";
 import { officeCharacterDescription } from "./office-character.mjs";
 import { officeStyleComparisonDocument, officeStyleDescription } from "./office-styles.mjs";
 import { officePageSettings, officePageDescription } from "./office-page.mjs";
+import { officeLinkDescription } from "./office-links.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -177,7 +178,8 @@ function markedText(node) {
   const marks = [...(node.marks || [])].sort((left, right) => left.type.localeCompare(right.type, "en"));
   let text = node.text;
   for (let index = marks.length - 1; index >= 0; index -= 1) {
-    const label = marks[index].type === "textStyle" ? officeCharacterDescription(marks[index].attrs) : markLabels[marks[index].type];
+    const label = marks[index].type === "textStyle" ? officeCharacterDescription(marks[index].attrs) :
+      marks[index].type === "link" ? officeLinkDescription(marks[index].attrs?.href) : markLabels[marks[index].type];
     text = `⟦${label}⟧${text}⟦/${label}⟧`;
   }
   return text;
