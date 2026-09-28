@@ -1721,9 +1721,16 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout und Live-Checks bestanden. Allgemeine Abschnitte, freie Felder, Editor-Pagination und
      DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `48ae9c9` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 274 abgeschlossen; als naechster Office-Schritt ist ein
-eigenes Konzept fuer allgemeine Abschnitte, Abschnittsumbrueche und abschnittsgebundene Seitenprofile zu schneiden,
-ohne freie Felder, Editor-Pagination oder DOCX-Interchange vorzeitig zu vermischen.
+275. [ ] Allgemeine native Abschnitte unter ADR-0098 umsetzen: Ein root-basierter Abschnittsumbruch startet eine
+     neue Druckseite und besitzt das vollstaendige validierte Seiten- und Kopf-/Fusszeilenprofil des Folgeabschnitts.
+     Einfuegen, Bearbeiten, Entfernen, Vorschau und isoliertes Undo bleiben responsiv; Speichern, Historie, Kopien,
+     Reviews und Vorschlaege behalten exakte Struktur und Positionen. Feste vertrauenswuerdige Druckslots erzeugen
+     echte Mischformat-PDFs mit global fortlaufender Nummerierung. Ein frischer Vier-Versionen-Restore bindet
+     Altformat, einen Abschnitt, zwei Abschnitte und Reset. Freie Felder, abschnittsweise erste Seiten,
+     Nummern-Neustarts, Editor-Pagination, schwebende Objekte und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 275 / PLANS 136 ist in Umsetzung; allgemeine Abschnitte
+bleiben bewusst von freien Feldern, Nummern-Neustarts, Editor-Pagination, schwebenden Objekten und DOCX getrennt.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

@@ -3,6 +3,7 @@
 import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
+import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -22,6 +23,13 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       if (depth !== 1 || Object.keys(value).length !== 1) throw new Error("Invalid page break");
       const marker = dom.createElement("div"); marker.className = "office-page-break";
       marker.setAttribute("role", "separator"); marker.setAttribute("aria-label", "Seitenumbruch");
+      return marker;
+    }
+    if (value.type === "sectionBreak") {
+      if (depth !== 1 || Object.keys(value).sort().join(",") !== "attrs,type") throw new Error("Invalid section break");
+      officeSectionProfile(value.attrs);
+      const marker = dom.createElement("div"); marker.className = "office-section-break";
+      marker.setAttribute("role", "separator"); marker.setAttribute("aria-label", "Abschnittsumbruch");
       return marker;
     }
     if (value.type === "image") return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom);
@@ -89,14 +97,21 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   const heading = dom.createElement("h1"); heading.className = "office-print-title"; heading.textContent = title;
   let body = dom.createElement("div"); body.className = "office-print-content";
   article.append(heading, body);
-  let boundary = false;
+  let boundary = false, section = 0;
   for (const child of content.content) {
-    if (child.type !== "pageBreak" && boundary) {
-      body = dom.createElement("div"); body.className = "office-print-content office-print-page-start";
+    if (!["pageBreak", "sectionBreak"].includes(child.type) && boundary) {
+      body = dom.createElement("div");
+      body.className = `office-print-content office-print-page-start${section ? ` office-print-section-${String(section).padStart(2, "0")}` : ""}`;
+      if (section) body.dataset.officeSection = String(section);
       article.append(body); boundary = false;
     }
     body.append(render(child, 1));
     if (child.type === "pageBreak") boundary = true;
+    if (child.type === "sectionBreak") {
+      section += 1;
+      if (section > OFFICE_SECTION_LIMIT) throw new Error("Office section limit exceeded");
+      boundary = true;
+    }
   }
   return article;
 }

@@ -13,7 +13,7 @@ const nodeLabels = {
   doc: "Dokument", paragraph: "Absatz", heading: "Überschrift", text: "Text", hardBreak: "Zeilenumbruch",
   bulletList: "Aufzählung", orderedList: "Nummerierte Liste", listItem: "Listeneintrag", blockquote: "Zitat",
   codeBlock: "Codeblock", horizontalRule: "Trennlinie", table: "Tabelle", tableRow: "Tabellenzeile",
-  tableCell: "Tabellenzelle", tableHeader: "Tabellenkopf", pageBreak: "Seitenumbruch",
+  tableCell: "Tabellenzelle", tableHeader: "Tabellenkopf", pageBreak: "Seitenumbruch", sectionBreak: "Abschnittsumbruch",
 };
 
 function canonical(value, key = "") {
@@ -193,6 +193,7 @@ function blockText(block, nested = false) {
     case "hardBreak": return "↵\n";
     case "horizontalRule": return "────────";
     case "pageBreak": return "Neue Seite";
+    case "sectionBreak": return "Neuer Abschnitt";
     case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";

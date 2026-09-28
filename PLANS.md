@@ -233,12 +233,19 @@ profiles, hidden/shown first-page numbers and continued pages 2/3; fresh six-ver
 API-only rollout and live checks passed. General sections, arbitrary fields, continuous editor pagination and DOCX
 interchange remain separate. Published as implementation commit `48ae9c9`.
 
+136. [ ] Add native root-level section breaks under ADR-0098. Each marker starts a new printed page and owns the
+complete validated page and running-text profile of the following section. Provide responsive insert/edit/remove,
+preview, isolated undo, exact save/history/copy positions, global continuous numbering, trusted static print slots,
+real mixed-format PDF proof and a four-version legacy/one-section/two-section/reset recovery fixture. Keep arbitrary
+fields, per-section first-page variants, number restarts, continuous editor pagination, floating objects and DOCX
+interchange separate.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 274, including first-page header/footer differences and number suppression, document-owned running text/page settings, explicit page breaks, bounded image text wrapping, crop, images/styles, list levels, format transfer and rich-text editing. Preserve the 372-case full browser/model evidence, 2936 Python cases, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue Office before CRM by scoping general sections and section breaks as their own contract. Arbitrary fields/floating objects, continuous tracked changes, live collaboration and DOCX interchange remain separate; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
+- Native Office is complete through Roadmap 274; Roadmap 275 / PLANS 136 implements bounded general sections and section-owned page profiles under ADR-0098. Preserve the 372-case prior browser/model evidence, 2936 prior Python cases, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Arbitrary fields/floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate; engine/fidelity gates and the prohibition on Word/account/firewall interventions on the original workstation remain in force.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

@@ -1,4 +1,4 @@
-import { officeRunningSettings, officeRunningDescription, configureOfficeRunningPrint, clearOfficeRunningPrint } from "./office-running.mjs";
+import { officeRunningSettings, officeRunningDescription, officeRunningNumber, configureOfficeRunningPrint, clearOfficeRunningPrint } from "./office-running.mjs";
 import { Editor, Extension, Mark, Node, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
@@ -13,8 +13,9 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
-import { officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
+import { OFFICE_PAGE_SIDES, officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
 import { installOfficePageControls } from "./office-page-controls.mjs";
+import { OFFICE_SECTION_LIMIT, clearOfficeSectionPrint, configureOfficeSectionPrint, officeSectionDescription, officeSectionProfile } from "./office-sections.mjs";
 import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
@@ -27,14 +28,14 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, styleAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle"]);
 const commandNames = {
@@ -49,6 +50,13 @@ const OfficePageBreak = Node.create({
   name: "pageBreak", group: "block", atom: true, selectable: true, draggable: false,
   parseHTML: () => [],
   renderHTML: () => ["div", { class: "office-page-break", contenteditable: "false", role: "separator", "aria-label": "Seitenumbruch" }],
+  renderText: () => "",
+});
+const OfficeSectionBreak = Node.create({
+  name: "sectionBreak", group: "block", atom: true, selectable: true, draggable: false,
+  addAttributes() { return { page: { default: null, rendered: false }, running: { default: null, rendered: false } }; },
+  parseHTML: () => [],
+  renderHTML: () => ["div", { class: "office-section-break", contenteditable: "false", role: "separator", "aria-label": "Abschnittsumbruch" }],
   renderText: () => "",
 });
 const OfficeNamedStyles = Extension.create({
@@ -215,10 +223,15 @@ function normalizedDocument(document) {
   let nodes = 0;
   let characters = 0;
   let pageBreaks = 0;
+  let sectionBreaks = 0;
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
     if (value.type === "pageBreak" && (depth !== 1 || Object.keys(value).length !== 1 || ++pageBreaks > 100)) throw new Error("document-page-break");
+    if (value.type === "sectionBreak") {
+      if (depth !== 1 || Object.keys(value).sort().join(",") !== "attrs,type" || ++sectionBreaks > OFFICE_SECTION_LIMIT) throw new Error("document-section-break");
+      result.attrs = officeSectionProfile(value.attrs);
+    }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
@@ -271,6 +284,13 @@ function normalizedDocument(document) {
     return result;
   };
   if (document?.type !== "doc") throw new Error("document-root");
+  if (!Array.isArray(document.content)) throw new Error("document-content");
+  document.content.forEach((entry, index) => {
+    if (entry?.type !== "sectionBreak") return;
+    if (index === 0 || index === document.content.length - 1 ||
+        ["pageBreak", "sectionBreak"].includes(document.content[index - 1]?.type) ||
+        ["pageBreak", "sectionBreak"].includes(document.content[index + 1]?.type)) throw new Error("document-section-boundary");
+  });
   const result = walk(document);
   if (styles.length) result.attrs = { styles };
   if (document.attrs?.running != null) result.attrs = { ...result.attrs, running: officeRunningSettings(document.attrs.running, document.attrs.page) };
@@ -318,6 +338,9 @@ function updateEditorState() {
   $("insert-menu").disabled = !editable;
   $("insert-menu").querySelector('[value="pageBreak"]').disabled = !pageBreakAllowed();
   $("insert-menu").querySelector('[value="removePageBreak"]').disabled = !paragraphAllowed() || pageBreakPosition() === null;
+  $("insert-menu").querySelector('[value="sectionBreak"]').disabled = !sectionBreakAllowed();
+  $("insert-menu").querySelector('[value="editSectionBreak"]').disabled = !paragraphAllowed() || !selectedSectionBreak();
+  $("insert-menu").querySelector('[value="removeSectionBreak"]').disabled = !paragraphAllowed() || !selectedSectionBreak();
   updateTableControls();
   updateParagraphControls();
   updateCharacterControls();
@@ -632,6 +655,122 @@ function handlePageBreakKey(view, event) {
     if (pageBreakPosition(direction) !== null) { event.preventDefault(); changePageBreak(true, direction); return true; }
   }
   return false;
+}
+
+function selectedSectionBreak() {
+  const selection = state.editor?.state.selection;
+  return selection?.node?.type.name === "sectionBreak" ? { position: selection.from, node: selection.node } : null;
+}
+
+function sectionBreakAllowed() {
+  if (!pageBreakAllowed()) return false;
+  let count = 0;
+  state.editor.state.doc.forEach((node) => { if (node.type.name === "sectionBreak") count += 1; });
+  return count < OFFICE_SECTION_LIMIT;
+}
+
+function sectionProfileBefore(position) {
+  const doc = state.editor.state.doc;
+  const rootRunning = officeRunningSettings(doc.attrs.running ?? undefined, doc.attrs.page);
+  let profile = { page: officePageSettings(doc.attrs.page ?? undefined),
+    running: { header: rootRunning.header, footer: rootRunning.footer, numbering: rootRunning.numbering } };
+  doc.forEach((node, offset) => { if (offset < position && node.type.name === "sectionBreak") profile = officeSectionProfile(node.attrs); });
+  return profile;
+}
+
+function closeSectionDialog(restoreFocus = false) {
+  const action = state.sectionAction;
+  state.sectionAction = null;
+  $("section-dialog").close(); $("section-form").reset(); $("section-status").textContent = "";
+  $("section-description").textContent = ""; $("section-running-preview").textContent = "";
+  $("section-preview").removeAttribute("style");
+  if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
+}
+
+function readSectionProfile() {
+  const page = officePageSettings({ paper: $("section-paper").value, orientation: $("section-orientation").value,
+    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`section-${side}`).valueAsNumber])) });
+  return officeSectionProfile({ page, running: { header: $("section-header").value, footer: $("section-footer").value,
+    numbering: $("section-numbering").value } });
+}
+
+function previewSectionProfile() {
+  if (!characterActionCurrent(state.sectionAction)) { closeSectionDialog(); return; }
+  try {
+    const profile = readSectionProfile();
+    officePagePreview($("section-preview"), profile.page);
+    $("section-description").textContent = officeSectionDescription(profile);
+    $("section-running-preview").textContent = [profile.running.header || "(keine Kopfzeile)",
+      "— Beispiel für Abschnittsinhalt —", profile.running.footer || "(keine Fußzeile)",
+      officeRunningNumber(profile.running, 2, 4)].filter(Boolean).join("\n");
+    $("section-status").textContent = ""; $("section-apply").disabled = false;
+  } catch {
+    $("section-description").textContent = ""; $("section-running-preview").textContent = "";
+    $("section-status").textContent = "Ränder: ganze Zahlen von 5 bis 50 mm; mit Kopf-/Fußzeile oder Seitenzahl mindestens 16 mm am jeweiligen Rand. Texte: höchstens 64 Zeichen ohne Zeilenumbrüche.";
+    $("section-apply").disabled = true;
+  }
+}
+
+function openSectionDialog(edit = false) {
+  const selected = selectedSectionBreak();
+  if (!paragraphAllowed() || (edit ? !selected : !sectionBreakAllowed())) return;
+  closeSectionDialog();
+  const editor = state.editor, position = selected?.position ?? editor.state.selection.from;
+  const profile = selected ? officeSectionProfile(selected.node.attrs) : sectionProfileBefore(position);
+  state.sectionAction = { editor, session: state.session, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks,
+    mode: selected ? "edit" : "insert", position };
+  $("section-title").textContent = selected ? "Abschnitt bearbeiten" : "Abschnitt einfügen";
+  $("section-apply").textContent = selected ? "Änderungen übernehmen" : "Abschnitt einfügen";
+  $("section-paper").value = profile.page.paper; $("section-orientation").value = profile.page.orientation;
+  for (const side of OFFICE_PAGE_SIDES) $(`section-${side}`).value = String(profile.page.margins[side]);
+  $("section-header").value = profile.running.header; $("section-footer").value = profile.running.footer;
+  $("section-numbering").value = profile.running.numbering;
+  $("section-dialog").showModal(); previewSectionProfile(); $("section-paper").focus();
+}
+
+function removeSectionBreak() {
+  const selected = selectedSectionBreak();
+  if (!paragraphAllowed() || !selected) return false;
+  const editor = state.editor, transaction = editor.state.tr.delete(selected.position, selected.position + 1);
+  try { validateEditorDocument(transaction.doc); } catch { notice("Der Abschnittsumbruch konnte nicht entfernt werden.", true); return false; }
+  editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+  focusEditor(); updateEditorState(); notice("Abschnittsumbruch entfernt. Gespeichert wird erst mit der nächsten bestätigten Version.");
+  return true;
+}
+
+function applySectionProfile(event) {
+  event.preventDefault();
+  const action = state.sectionAction;
+  if (!characterActionCurrent(action)) { closeSectionDialog(); return; }
+  const editor = action.editor;
+  let profile, transaction = editor.state.tr;
+  try {
+    profile = readSectionProfile();
+    if (action.mode === "edit") transaction.setNodeMarkup(action.position, undefined, profile);
+    else {
+      const { selection } = editor.state, marker = editor.schema.nodes.sectionBreak.create(profile), { $from } = selection;
+      if ($from.depth === 1) {
+        const block = $from.parent, offset = $from.parentOffset, start = $from.before();
+        const left = block.copy(block.content.cut(0, offset)), right = block.copy(block.content.cut(offset));
+        transaction.replaceWith(start, $from.after(), [left, marker, right]);
+        transaction.setSelection(TextSelection.create(transaction.doc, start + left.nodeSize + 2));
+      } else {
+        const position = selection.node ? selection.to : selection.from, atEnd = position === transaction.doc.content.size;
+        transaction.insert(position, atEnd ? [marker, editor.schema.nodes.paragraph.create()] : marker);
+        transaction.setSelection(atEnd ? TextSelection.create(transaction.doc, position + 2) : Selection.near(transaction.doc.resolve(position + 1), 1));
+      }
+    }
+    validateEditorDocument(transaction.doc);
+  } catch {
+    $("section-status").textContent = "Dieser Abschnittsumbruch wäre ungültig, angrenzend an einen anderen Umbruch oder außerhalb der Dokumentgrenzen. Ihr Entwurf bleibt unverändert.";
+    return;
+  }
+  if (transaction.doc.eq(editor.state.doc)) { $("section-status").textContent = "Keine Änderung: Dieses Abschnittsprofil gilt bereits."; return; }
+  if (editor.state.storedMarks) transaction.setStoredMarks(editor.state.storedMarks);
+  closeSectionDialog(); editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr).setStoredMarks(editor.state.storedMarks));
+  focusEditor(); updateEditorState(); notice(`${action.mode === "edit" ? "Abschnitt geändert" : "Abschnitt eingefügt"}. Rückgängig ist möglich; gespeichert wird erst mit der nächsten bestätigten Version.`);
 }
 
 function paragraphActionCurrent(action) {
@@ -1500,6 +1639,7 @@ function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
   pageControls.close();
   imageControls.close();
+  closeSectionDialog();
   closeReuse();
   closePrint();
   closeTableDialogs();
@@ -1533,7 +1673,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat,
-      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak,
+      SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {
@@ -1604,6 +1744,7 @@ function mountEditor(content, session) {
 function clearWorkspace() {
   pageControls.close();
   imageControls.close();
+  closeSectionDialog();
   closeStyleDialog();
   state.formatSample = null;
   closeReuse();
@@ -2427,6 +2568,7 @@ function clearPreparedPrint(owner = null) {
   if (owner && state.preparedPrint !== owner) return;
   state.preparedPrint = null;
   clearOfficeRunningPrint();
+  clearOfficeSectionPrint();
   document.body.classList.remove("office-print-ready");
   $("office-print-root").replaceChildren();
   $("office-print-root").className = "";
@@ -2545,6 +2687,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       root.className = printFormat();
       configureOfficePrintPage(printPage());
       configureOfficeRunningPrint(content.attrs?.running, printPage());
+      configureOfficeSectionPrint(content);
       print.printing = true;
       state.preparedPrint = print;
       document.body.classList.add("office-print-ready");
@@ -4081,12 +4224,20 @@ $("insert-menu").addEventListener("change", () => {
     else if (command === "insertTableCustom") openTableInsert();
     else if (command === "pageBreak") changePageBreak();
     else if (command === "removePageBreak") changePageBreak(true);
+    else if (command === "sectionBreak") openSectionDialog();
+    else if (command === "editSectionBreak") openSectionDialog(true);
+    else if (command === "removeSectionBreak") removeSectionBreak();
     else if (command === "horizontalRule") formatEditor((chain) => chain.setHorizontalRule());
     else if (command === "codeBlock") formatEditor((chain) => chain.toggleCodeBlock());
     else runTableCommand(command);
   }
   $("insert-menu").value = "";
 });
+$("section-form").addEventListener("input", previewSectionProfile);
+$("section-form").addEventListener("submit", applySectionProfile);
+for (const id of ["section-close", "section-cancel"]) $(id).addEventListener("click", () => closeSectionDialog(true));
+$("section-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeSectionDialog(true); });
+$("section-dialog").addEventListener("close", () => { if (!$("section-dialog").open && state.sectionAction) closeSectionDialog(); });
 ["table-row-action", "table-column-action"].forEach((id) => {
   $(id).addEventListener("change", () => { const command = $(id).value; $(id).value = ""; runTableCommand(command); });
 });

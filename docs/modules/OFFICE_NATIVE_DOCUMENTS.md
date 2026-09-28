@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–274 development complete and published; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks; 272 / PLANS 133 document-owned page settings; 273 / PLANS 134 headers/footers and page numbers; 274 / PLANS 135 first-page running-text differences
+Status: Roadmap 252–274 complete and published; Roadmap 275 validation in progress; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks; 272 / PLANS 133 document-owned page settings; 273 / PLANS 134 headers/footers and page numbers; 274 / PLANS 135 first-page running-text differences; 275 / PLANS 136 general sections
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0098-native-office-sections.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,25 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## General sections and section-owned page profiles (Roadmap 275)
+
+**Abschnitt einfuegen** starts a new printed page at the current valid root boundary. Its responsive dialog captures
+the complete following-section profile: A4 or Letter, orientation, four margins, literal header/footer and page-number
+mode. Selecting the visible marker enables editing or removal. Apply, edit and removal each form one isolated undo
+step; only confirmed CAS Save persists the change. A document supports at most twelve markers. Leading, trailing,
+nested, adjacent and page-break-adjacent markers are rejected.
+
+The document root owns the first section and each `sectionBreak.attrs` owns the next one until another marker.
+Profiles are complete rather than inherited, which keeps history, comparison, independent copies and recovery
+deterministic. Page numbering continues across the whole document. The root first-page profile remains limited to the
+document's first page. Per-section first pages and number restarts are separate contracts.
+
+Printing assigns fixed ordinal wrappers to twelve trusted static named-page rules. Only validated enum/dimension
+values, escaped literal text and fixed page counters enter CSSOM. No arbitrary CSS, HTML, URL or field expression is
+accepted. Desktop/mobile tests verify responsive controls and exact save/history behavior. Real PDFs verify an A4
+portrait first page followed by a Letter landscape page with the section header/footer and `Seite 2 von 2`.
+Fresh recovery binds legacy, one-section, two-section and reset versions. See ADR-0098 and CURRENT_HANDOFF.md.
 
 ## First-page headers, footers and page-number visibility (Roadmap 274)
 

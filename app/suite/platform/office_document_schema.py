@@ -28,6 +28,7 @@ BLOCKS = {
     "table",
     "image",
     "pageBreak",
+    "sectionBreak",
 }
 MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
@@ -52,6 +53,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     characters = 0
     images = 0
     page_breaks = 0
+    section_breaks = 0
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -151,8 +153,57 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 if type(value) is not expected_type or value not in values[attribute]:
                     reject()
 
+    def validate_section_profile(value: Any) -> None:
+        if not isinstance(value, dict) or set(value) != {"page", "running"}:
+            reject()
+        page = value["page"]
+        if (
+            not isinstance(page, dict)
+            or set(page) != {"paper", "orientation", "margins"}
+            or page["paper"] not in ("a4", "letter")
+            or page["orientation"] not in ("portrait", "landscape")
+            or not isinstance(page["margins"], dict)
+            or set(page["margins"]) != {"top", "right", "bottom", "left"}
+            or any(type(item) is not int or not 5 <= item <= 50 for item in page["margins"].values())
+        ):
+            reject()
+        running = value["running"]
+        if (
+            not isinstance(running, dict)
+            or set(running) != {"header", "footer", "numbering"}
+            or running["numbering"] not in ("none", "page", "pageOfPages")
+            or any(
+                not isinstance(text, str)
+                or len(text) > 64
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in text
+                )
+                for text in (running["header"], running["footer"])
+            )
+            or (running["header"] and page["margins"]["top"] < 16)
+            or ((running["footer"] or running["numbering"] != "none") and page["margins"]["bottom"] < 16)
+        ):
+            reject()
+
+    content = document.get("content", [])
+    if isinstance(content, list):
+        for index, entry in enumerate(content):
+            if isinstance(entry, dict) and entry.get("type") == "sectionBreak":
+                before = content[index - 1] if index else None
+                after = content[index + 1] if index + 1 < len(content) else None
+                if (
+                    index == 0
+                    or index == len(content) - 1
+                    or not isinstance(before, dict)
+                    or not isinstance(after, dict)
+                    or before.get("type") in {"pageBreak", "sectionBreak"}
+                    or after.get("type") in {"pageBreak", "sectionBreak"}
+                ):
+                    reject()
+
     def visit(node: Any, depth: int) -> None:
-        nonlocal nodes, characters, images, page_breaks
+        nonlocal nodes, characters, images, page_breaks, section_breaks
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -196,6 +247,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             page_breaks += 1
             if depth != 1 or set(node) != {"type"} or page_breaks > 100:
                 reject()
+        elif kind == "sectionBreak":
+            section_breaks += 1
+            if depth != 1 or set(node) != {"type", "attrs"} or section_breaks > 12:
+                reject()
+            validate_section_profile(attrs)
         elif kind == "image":
             images += 1
             if images > 40:

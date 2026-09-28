@@ -18,6 +18,7 @@ from work_e2e_page_breaks import seed_synthetic_office_page_breaks
 from work_e2e_page_settings import seed_synthetic_office_page_settings
 from work_e2e_paragraph import seed_synthetic_office_paragraphs
 from work_e2e_running_text import seed_synthetic_office_running_text
+from work_e2e_sections import seed_synthetic_office_sections
 from work_e2e_styles import seed_synthetic_office_styles
 
 SYNTHETIC_PRINCIPALS = (
@@ -100,6 +101,9 @@ def main() -> int:
     page_settings_document_count, page_settings_version_count = seed_synthetic_office_page_settings(
         environment=os.environ, client=client
     )
+    section_document_count, section_version_count = seed_synthetic_office_sections(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -115,7 +119,8 @@ def main() -> int:
                 + style_document_count
                 + page_break_document_count
                 + page_settings_document_count
-                + running_text_document_count,
+                + running_text_document_count
+                + section_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
@@ -123,6 +128,7 @@ def main() -> int:
                 "synthetic_office_page_break_version_count": page_break_version_count,
                 "synthetic_office_page_settings_version_count": page_settings_version_count,
                 "synthetic_office_running_text_version_count": running_text_version_count,
+                "synthetic_office_section_version_count": section_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,
