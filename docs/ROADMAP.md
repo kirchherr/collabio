@@ -1713,11 +1713,17 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Zwoelf echte PDFs/36 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
      Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `9892e41` veroeffentlicht.
 
-274. [ ] Abweichende Kopf-/Fusszeilen fuer die erste Seite und gezieltes Ausblenden ihrer Seitenzahl ergaenzen:
-     klare Vorschau und Reset, unveraenderte Altformate, exakte Historie/Kopien, echte mehrseitige PDFs und
-     Wiederherstellung nachweisen. Allgemeine Abschnitte, freie Felder, Editor-Pagination und DOCX bleiben separat.
+274. [x] Abweichende Kopf-/Fusszeilen fuer die erste Seite und gezieltes Ausblenden ihrer Seitenzahl unter
+     ADR-0097 umgesetzt: getrennte Vorschau, vollstaendiger Reset, isoliertes Undo und feste Druckregeln.
+     Altformate bleiben bytegleich; Historie/Kopien und sechs Recovery-Versionen bleiben exakt. Alle 2936
+     Python- und 372 Browser-/Modellfaelle bestanden. Vier echte dreiseitige PDFs pruefen getrennte Profile,
+     verborgene/sichtbare erste Seitennummer und fortlaufende Seiten 2/3. Frischer Restore, Release-Gates,
+     API-only-Rollout und Live-Checks bestanden. Allgemeine Abschnitte, freie Felder, Editor-Pagination und
+     DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 273 abgeschlossen und veroeffentlicht, 274 als naechster Schritt geplant.
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 274 abgeschlossen; als naechster Office-Schritt ist ein
+eigenes Konzept fuer allgemeine Abschnitte, Abschnittsumbrueche und abschnittsgebundene Seitenprofile zu schneiden,
+ohne freie Felder, Editor-Pagination oder DOCX-Interchange vorzeitig zu vermischen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

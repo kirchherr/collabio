@@ -229,10 +229,13 @@
             <label>Unten<input id="page-bottom" type="number" min="5" max="50" step="1" required /></label><label>Links<input id="page-left" type="number" min="5" max="50" step="1" required /></label>
           </fieldset>
           <details id="page-running-details"><summary>Kopf-/Fußzeilen und Seitenzahlen</summary>
-            <p id="page-running-help">Jeweils bis zu 64 Zeichen. Für aktive Kopf-/Fußbereiche sind mindestens 16 mm Rand erforderlich. Diese Angaben wiederholen sich auf jeder Druckseite.</p>
+            <p id="page-running-help">Jeweils bis zu 64 Zeichen. Für aktive Kopf-/Fußbereiche sind mindestens 16 mm Rand erforderlich. Optional kann die erste Seite eigene Angaben erhalten.</p>
             <div class="page-fields"><label>Kopfzeile<input id="page-header" type="text" aria-describedby="page-running-help" /></label><label>Fußzeile<input id="page-footer" type="text" aria-describedby="page-running-help" /></label>
               <label>Seitenzahlen<select id="page-numbering"><option value="none">Keine</option><option value="page">Seite X</option><option value="pageOfPages">Seite X von Y</option></select></label></div>
-            <p>Beispielseite 1 von 3:</p><div id="page-running-preview" class="page-running-preview" aria-live="polite"></div>
+            <fieldset class="page-first-fields"><legend>Erste Seite</legend><label class="page-checkbox-label"><input id="page-first-different" type="checkbox" /> Abweichende Kopf-/Fußzeile verwenden</label>
+              <div class="page-fields"><label>Kopfzeile der ersten Seite<input id="page-first-header" type="text" aria-describedby="page-running-help" /></label><label>Fußzeile der ersten Seite<input id="page-first-footer" type="text" aria-describedby="page-running-help" /></label>
+                <label class="page-checkbox-label"><input id="page-first-number" type="checkbox" /> Seitenzahl auf der ersten Seite anzeigen</label></div></fieldset>
+            <div class="page-running-previews"><div><p>Erste Seite:</p><div id="page-running-preview" class="page-running-preview" aria-live="polite"></div></div><div><p>Folgende Seiten:</p><div id="page-running-preview-following" class="page-running-preview"></div></div></div>
             <button class="quiet-button" id="page-running-reset" type="button">Kopf-/Fußzeilen und Seitenzahlen entfernen</button>
           </details>
           <div class="page-preview-canvas"><div id="page-preview" role="img" aria-label="Vorschau von Papierformat und Seitenrändern" aria-describedby="page-description"><div class="page-preview-content" aria-hidden="true"></div></div></div>

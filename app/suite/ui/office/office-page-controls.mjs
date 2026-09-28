@@ -10,16 +10,33 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     $("page-dialog").close(); $("page-form").reset(); $("page-status").textContent = "";
     $("page-description").textContent = ""; $("page-preview").removeAttribute("style");
     $("page-running-details").open = false; $("page-running-preview").textContent = "";
+    $("page-running-preview-following").textContent = "";
     if (restoreFocus && previous?.editor === state.editor && sessionCurrent(previous.session)) focus();
   };
   const read = () => officePageSettings({ paper: $("page-paper").value, orientation: $("page-orientation").value,
     margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`page-${side}`).valueAsNumber])) });
-  const readRunning = (page) => officeRunningSettings({ header: $("page-header").value, footer: $("page-footer").value, numbering: $("page-numbering").value }, page);
+  const readRunning = (page) => officeRunningSettings({ header: $("page-header").value, footer: $("page-footer").value,
+    numbering: $("page-numbering").value, ...($("page-first-different").checked ? { firstPage: {
+      header: $("page-first-header").value, footer: $("page-first-footer").value,
+      showNumber: $("page-first-number").checked,
+    } } : {}) }, page);
+  const previewText = (profile, number) => [profile.header || "(keine Kopfzeile)", "— Beispiel für Dokumentinhalt —",
+    profile.footer || "(keine Fußzeile)", number].filter(Boolean).join("\n");
   const preview = () => {
     if (!actionCurrent(action)) { close(); return; }
     try {
+      const different = $("page-first-different").checked;
+      if (!different) {
+        $("page-first-header").value = $("page-header").value;
+        $("page-first-footer").value = $("page-footer").value;
+        $("page-first-number").checked = $("page-numbering").value !== "none";
+      } else if ($("page-numbering").value === "none") $("page-first-number").checked = false;
+      $("page-first-header").disabled = !different; $("page-first-footer").disabled = !different;
+      $("page-first-number").disabled = !different || $("page-numbering").value === "none";
       const page = read(), running = readRunning(page);
-      $("page-running-preview").textContent = [running.header || "(keine Kopfzeile)", "— Beispiel für Dokumentinhalt —", running.footer || "(keine Fußzeile)", officeRunningNumber(running)].filter(Boolean).join("\n");
+      const first = running.firstPage || running;
+      $("page-running-preview").textContent = previewText(first, officeRunningNumber(running, 1, 3, true));
+      $("page-running-preview-following").textContent = previewText(running, officeRunningNumber(running, 2, 3));
       officePagePreview($("page-preview"), page);
       $("page-description").textContent = officePageDescription(page);
       $("page-status").textContent = ""; $("page-apply").disabled = false;
@@ -52,12 +69,17 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
       document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks };
     const running = officeRunningSettings(editor.state.doc.attrs.running ?? undefined);
     $("page-header").value = running.header; $("page-footer").value = running.footer; $("page-numbering").value = running.numbering;
+    $("page-first-different").checked = Boolean(running.firstPage);
+    $("page-first-header").value = running.firstPage?.header ?? running.header;
+    $("page-first-footer").value = running.firstPage?.footer ?? running.footer;
+    $("page-first-number").checked = running.firstPage?.showNumber ?? (running.numbering !== "none");
     fill(officePageSettings(editor.state.doc.attrs.page ?? undefined));
     $("page-dialog").showModal(); $("page-paper").focus();
   });
   $("page-form").addEventListener("input", (event) => {
     if (action) {
-      if (["page-header", "page-footer", "page-numbering"].includes(event.target.id)) action.runningReset = false;
+      if (["page-header", "page-footer", "page-numbering", "page-first-different", "page-first-header",
+        "page-first-footer", "page-first-number"].includes(event.target.id)) action.runningReset = false;
       else action.reset = false;
     }
     preview();
@@ -68,6 +90,8 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
   $("page-running-reset").addEventListener("click", () => {
     if (!actionCurrent(action)) return;
     $("page-header").value = ""; $("page-footer").value = ""; $("page-numbering").value = "none";
+    $("page-first-different").checked = false; $("page-first-header").value = "";
+    $("page-first-footer").value = ""; $("page-first-number").checked = false;
     action.runningReset = true; preview();
   });
   for (const id of ["page-close", "page-cancel"]) $(id).addEventListener("click", () => close(true));

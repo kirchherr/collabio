@@ -75,9 +75,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             reject()
     if "running" in root_attrs:
         running = root_attrs["running"]
+        first_page = running.get("firstPage") if isinstance(running, dict) else None
         if (
             not isinstance(running, dict)
-            or set(running) != {"header", "footer", "numbering"}
+            or set(running) not in ({"header", "footer", "numbering"}, {"header", "footer", "numbering", "firstPage"})
             or running["numbering"] not in ("none", "page", "pageOfPages")
             or any(
                 not isinstance(text, str)
@@ -88,11 +89,34 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 )
                 for text in (running["header"], running["footer"])
             )
+            or (
+                "firstPage" in running
+                and (
+                    not isinstance(first_page, dict)
+                    or set(first_page) != {"header", "footer", "showNumber"}
+                    or type(first_page["showNumber"]) is not bool
+                    or (first_page["showNumber"] and running["numbering"] == "none")
+                    or any(
+                        not isinstance(text, str)
+                        or len(text) > 64
+                        or any(
+                            ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                            for c in text
+                        )
+                        for text in (first_page["header"], first_page["footer"])
+                    )
+                )
+            )
         ):
             reject()
         margins = root_attrs.get("page", {}).get("margins", {"top": 18, "bottom": 18})
         if (running["header"] and margins["top"] < 16) or (
             (running["footer"] or running["numbering"] != "none") and margins["bottom"] < 16
+        ):
+            reject()
+        if first_page and (
+            (first_page["header"] and margins["top"] < 16)
+            or ((first_page["footer"] or first_page["showNumber"]) and margins["bottom"] < 16)
         ):
             reject()
     styles = root_attrs.get("styles", [])

@@ -92,6 +92,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_271_restore",
         "collabio_work_e2e_272_restore",
         "collabio_work_e2e_273_restore",
+        "collabio_work_e2e_274_restore",
     }:
         raise ValueError("Office recovery database is outside its isolated scope")
     expected["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = ("postgres-restore", target_database, "collabio_owner")
@@ -703,12 +704,15 @@ def verify_restored_running_text_versions(
     documents: OfficeDocumentService,
     readers: Mapping[str, UserContext],
     versions: list[Any],
+    expected_version_count: int = 6,
 ) -> dict[str, Any]:
-    """Bind the designated legacy, two formatted and reset sources to their exact versions."""
+    """Bind the designated legacy, formatted, first-page and reset sources to their exact versions."""
+    if expected_version_count not in (4, 6):
+        raise ValueError("Office recovery running_text version count is invalid")
     evidence: list[dict[str, str]] = []
     object_id: str | None = None
     previous: str | None = None
-    for number in range(1, 4 + 1):
+    for number in range(1, expected_version_count + 1):
         candidates = [
             row for row in versions if row["mutation_reference"] == f"work-e2e-running-text-recovery-{number}"
         ]
@@ -885,11 +889,11 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         bindings=image_bindings,
     )
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
-        ("_269_restore", "_270_restore", "_271_restore", "_272_restore", "_273_restore")
+        ("_269_restore", "_270_restore", "_271_restore", "_272_restore", "_273_restore", "_274_restore")
     ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
-        ("_270_restore", "_271_restore", "_272_restore", "_273_restore")
+        ("_270_restore", "_271_restore", "_272_restore", "_273_restore", "_274_restore")
     ):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
@@ -911,21 +915,24 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         verify_restored_page_break_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
-        if target_dsn.endswith(("_271_restore", "_272_restore", "_273_restore"))
+        if target_dsn.endswith(("_271_restore", "_272_restore", "_273_restore", "_274_restore"))
         else {}
     )
     page_settings_evidence = (
         verify_restored_page_settings_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
-        if target_dsn.endswith(("_272_restore", "_273_restore"))
+        if target_dsn.endswith(("_272_restore", "_273_restore", "_274_restore"))
         else {}
     )
     running_text_evidence = (
         verify_restored_running_text_versions(
-            documents=restored, readers=readers, versions=inventory["document_versions"]
+            documents=restored,
+            readers=readers,
+            versions=inventory["document_versions"],
+            expected_version_count=6 if target_dsn.endswith("_274_restore") else 4,
         )
-        if target_dsn.endswith("_273_restore")
+        if target_dsn.endswith(("_273_restore", "_274_restore"))
         else {}
     )
     review_evidence = verify_restored_reviews(

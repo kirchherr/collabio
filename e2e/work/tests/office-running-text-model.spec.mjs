@@ -3,6 +3,7 @@ import { officeRunningSettings, officeRunningCssString, officeRunningNumber } fr
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches } from "../office-search.mjs";
 const running = () => ({ header: 'Café "quote" \\ 😀', footer: "Internal", numbering: "pageOfPages" });
+const firstPage = () => ({ ...running(), firstPage: { header: "Cover", footer: "First only", showNumber: false } });
 const doc = () => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Café 😀 text" }] }] });
 
 test("running text validates literal shapes Unicode bounds and occupied margins", () => {
@@ -14,6 +15,13 @@ test("running text validates literal shapes Unicode bounds and occupied margins"
   expect(() => officeRunningSettings(running(), { margins: { top: 15, bottom: 18 } })).toThrow();
   expect(() => officeRunningSettings(running(), { margins: { top: 18, bottom: 15 } })).toThrow();
   expect(officeRunningSettings(undefined, { margins: { top: 5, bottom: 5 } }).numbering).toBe("none");
+  expect(officeRunningSettings(firstPage()).firstPage).toEqual({ header: "Cover", footer: "First only", showNumber: false });
+  for (const first of [null, {}, [], { header: "x", footer: "y" },
+    { header: "x", footer: "y", showNumber: "false" }, { header: "x", footer: "y", showNumber: false, extra: 1 }]) {
+    expect(() => officeRunningSettings({ ...running(), firstPage: first })).toThrow();
+  }
+  expect(() => officeRunningSettings({ ...firstPage(), numbering: "none", firstPage: { ...firstPage().firstPage, showNumber: true } })).toThrow();
+  expect(() => officeRunningSettings(firstPage(), { margins: { top: 15, bottom: 16 } })).toThrow();
 });
 test("running text encodes all CSS delimiters literally and exposes fixed numbering examples", () => {
   const text = '";content:url(https://bad.invalid);\\😀';
@@ -22,6 +30,14 @@ test("running text encodes all CSS delimiters literally and exposes fixed number
   expect([...encoded.matchAll(/\\([a-f0-9]+) /g)].map((match) => String.fromCodePoint(parseInt(match[1], 16))).join("")).toBe(text);
   expect(officeRunningNumber(running(), 2, 4)).toBe("Seite 2 von 4");
   expect(officeRunningNumber({ numbering: "page" }, 2, 4)).toBe("Seite 2");
+  expect(officeRunningNumber(firstPage(), 1, 4, true)).toBe("");
+  expect(officeRunningNumber({ ...firstPage(), firstPage: { ...firstPage().firstPage, showNumber: true } }, 1, 4, true)).toBe("Seite 1 von 4");
+});
+test("first-page metadata comparison preserves the unchanged document body", () => {
+  const before = { ...doc(), attrs: { running: running() } }, after = { ...doc(), attrs: { running: firstPage() } };
+  const result = compareOfficeDocuments(before, after);
+  expect(result.counts).toEqual({ equal: 1, changed: 1, added: 0, removed: 0 });
+  expect(describeOfficeBlock(result.rows[1].after).text).toContain("Seitenzahl ausgeblendet");
 });
 test("running metadata comparison includes reset without changing body identity", () => {
   const before = doc(), after = { ...before, attrs: { running: running() } };

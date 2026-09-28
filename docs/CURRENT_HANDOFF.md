@@ -1,22 +1,78 @@
 # Current Project Handoff
 
-Updated: 2026-09-24
+Updated: 2026-09-28
 
-Roadmap 273 / PLANS 134 is development-complete on dev001: document-owned literal headers,
-footers and page/page-total numbering, accessible preview, independent reset and isolated undo.
-Full Python quality, browser regression plus the final affected subset, twelve actual PDFs,
-fresh nonempty recovery and both release gates passed before API-only rollout. Final health at
-16:49:57 UTC is ok, Collabio running(4). All eleven documentation/module/roadmap closeout checks
-passed initially in 59.69s. After publication metadata was added, all eleven passed again in
-59.31s and health remained ok on 2026-09-28. Only the known Starlette/AnyIO warning remains.
-Final documentation log SHA-256: 48f362cd3f70707db72bfc3b0c321744fc097217a6d43735c76e43f75a028a4e.
-The --no-deps disposable check started no auxiliary service. Root matched downloaded final evidence
-hashes locally. Implementation commit `9892e411f64d3ae464e970a0aded0c6d2a26c58e` is published on
-`origin/kirchherr/kb-write-unit-of-work` and synchronized to dev001. No implementation work remains.
-Continue Office before CRM; next is Roadmap 274 / PLANS 135 first-page header/footer differences.
-Ordinary tenant, pilot, indexing, cloud AI and DOCX/engine admission remain closed.
+Roadmap 274 / PLANS 135 is development-complete on dev001 under ADR-0097. Native Office now
+supports an optional exact first-page header/footer profile and explicit first-page number
+visibility, with separate previews, complete reset, isolated undo and trusted static print rules.
+All 2936 Python cases and one complete 372-case browser/model run passed. Four real three-page PDFs,
+fresh nonempty six-version recovery, both release gates and API-only rollout passed. Final health at
+10:26:12 UTC is ok; Collabio runs(4). Only the known Starlette/AnyIO warning remains. Ordinary tenant,
+pilot, indexing, cloud AI and DOCX/engine admission remain closed. Continue Office before CRM; the
+next coherent design slice is general sections and section breaks, kept separate from arbitrary
+fields, continuous editor pagination and DOCX interchange.
 
-## Publication and source state
+## Roadmap 274 source and validation evidence
+
+The optional `attrs.running.firstPage` object contains exactly literal `header`/`footer` strings and
+boolean `showNumber`. Absence inherits the general running profile and preserves ADR-0096 canonical
+bytes. Presence can intentionally clear inherited text. A visible first-page number requires general
+page numbering; hiding it does not renumber later pages. All strings remain bounded to 64 Unicode
+code points with controls/surrogates/line separators rejected. No HTML, URL, field or arbitrary CSS
+is admitted. The page dialog shows first and following pages separately, disables unavailable inputs,
+keeps reset intents independent and persists only through confirmed CAS Save. History, comparison,
+independent copies and recovery retain exact nested metadata.
+
+Printing uses a static trusted `@page office-document:first` rule plus the existing named-page rule.
+Only code-point-escaped literals and fixed counters enter CSSOM; all four margin boxes clear after
+success, cancellation, failure or context invalidation. Missing margin rules refuse visible output.
+The independent PDF checker runs in exact local image
+`sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`
+with no network, read-only root and dropped capabilities.
+
+Final quality passed Ruff, 784-file formatting, Mypy over 585 sources and all 2936 Python cases.
+The complete final browser/model run passed 372/372 in 26.1 minutes with zero skipped, retries or
+flakes; report SHA-256: `ad6588e3be6b9d4898b72a7835f0e3cffc84b49983a26f7b4ed332c7d8d81721`.
+This is one full run on the final behavior source. Focused schema/API/recovery tests passed 61/61;
+final first-page UI and PDF rechecks passed 2/2 on both desktop/mobile matrices.
+
+Independent PDF QA verified four PDFs and twelve pages: desktop/mobile, hidden and visible
+`Seite 1 von 3`, exclusive first-page literals and unchanged `Seite 2 von 3` / `Seite 3 von 3`.
+QA JSON SHA-256: `443304a66409a445a60287b6d574e870df2404699edcd107e2e94f14753819c6`.
+Root reviewed the final desktop/mobile dialogs; a discovered oversized checkbox was corrected and
+guarded by a 24-pixel geometry assertion before the full run.
+
+Fresh recovery completed at 10:18:38 UTC into `collabio_work_e2e_274_restore`: 487 documents,
+954 Office versions, 141 multiversion documents, 1053 source objects, 44 image assets and 62 saved
+image references. All six designated legacy/general/first-hidden/first-visible/first-empty/reset
+versions match exact JSON, canonical hashes and lineage. Prior page/break/style/image/crop/wrap,
+10 review threads/18 events, 11 suggestions/7 decisions, receipts, authoritative read-only access
+and foreign-tenant denial passed. Recovery file SHA-256:
+`4f660e636185b1a5a16aac284ecc88db0c49660103ab1e17b042d0c19d609b80`; embedded report hash:
+`sha256:4cdfaeae767dff2b382c06fbd90ed103de541f6db2d24f18699385fcb4ad0921`;
+dump SHA-256: `ff4207c6776ec34e9ac49b1d321f84499d09794efbd3258f5180fc09c12843cf`.
+All ten numbered synthetic restore targets plus the ordinary synthetic target remain retained.
+
+Main backup `collabio-20260928T102013Z.dump` verified with SHA-256
+`5a25438fcc9097628b3a48a9bde266e8445ca1f0b33b97b9ceeea7e8c60b0c82`; only ordinary
+`collabio_restore` was refreshed. Foundation seed was explicitly 0. Foundation verified 85
+migrations, 95 tables and three restored objects/two tenants; report file SHA-256:
+`1f2088c64416e72a8264425e71a0f347c98ac4254d9f640b374655205621be08`.
+Business release was ready without blockers, business writes or tenant activation; report file
+SHA-256: `08820b4b7aadbd0b533cb02afe25998e2ea63673dc93ed43cc0eb56f782ff336`.
+
+API-only `--no-deps` rollout with pilot explicitly 0 created container `22c1eb82e546` on image
+`sha256:690fdb288fff71b84c98da43e87ed25407cb96b11d2f48c493c3fdb3afea96ed`.
+Live checks verify the first-page HTML, CSS and JS controls, no-store/CSP, health ok and ordinary
+Office still non-cacheable 404. The regular decoder and main stores were unchanged. Exact Work-E2E
+services were removed; test and both restore services stopped. Final Collabio status is running(4),
+with loopback 8000/5433/29000/29001 unchanged; Webcut remains running(7) and provider nodes unchanged.
+All builds/tests/lifecycle work used dev001, explicit project `collabio`, fresh inventories and the
+required locks. No subagents were used. Protected local `erp_modul.md` and `review.md` remain unread,
+untracked and excluded. The implementation is intentionally uncommitted at this point; GitHub
+publication follows the operator's existing explicit authorization after closing checks pass.
+
+## Previous Roadmap 273 publication and source state
 
 Implementation commit `9892e411f64d3ae464e970a0aded0c6d2a26c58e` was published after
 the operator explicitly approved GitHub transfer. Local and dev001 HEADs match that commit on

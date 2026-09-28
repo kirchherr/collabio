@@ -25,7 +25,7 @@ def test_running_text_seed_rejects_normal_environment_before_database_access() -
 def test_running_text_restore_target_requires_matching_fixed_pair() -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
-        env[key] = env[key].replace("/collabio_work_e2e_restore", "/collabio_work_e2e_273_restore")
+        env[key] = env[key].replace("/collabio_work_e2e_restore", "/collabio_work_e2e_274_restore")
     require_office_recovery_environment(env)
     env["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = recovery_environment()["SUITE_POSTGRES_RESTORE_TARGET_DSN"]
     with pytest.raises(ValueError):
@@ -50,7 +50,7 @@ def test_recovery_binds_designated_legacy_and_formatted_sources_without_body_evi
     object_id = created.document.object_id
     user.readable_object_ids.add(object_id)
     current = created
-    for number in (2, 3, 4):
+    for number in (2, 3, 4, 5, 6):
         content = running_text_recovery_document(number)
         if tamper == "format" and number == 2:
             content["attrs"]["running"]["header"] = "Altered header"
@@ -85,7 +85,7 @@ def test_recovery_binds_designated_legacy_and_formatted_sources_without_body_evi
         report = verify_restored_running_text_versions(
             documents=fixture.service, readers={object_id: user}, versions=versions
         )
-        assert report["verified_running_text_fixture_version_count"] == 4
+        assert report["verified_running_text_fixture_version_count"] == 6
         assert report["running_text_and_reset_verified"]
         assert report["legacy_running_text_canonical_hash_verified"]
         assert "Caf" not in canonical_json(report) and "textAlign" not in canonical_json(report)

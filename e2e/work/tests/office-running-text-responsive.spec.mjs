@@ -9,6 +9,7 @@ import { openReuse, submitReuse, expectReuseDraft, openReuseHistory } from "./of
 
 const p = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
 const running = () => ({ header: 'RUNNING-HEADER "quoted" \\ <literal>', footer: "RUNNING-FOOTER internal", numbering: "pageOfPages" });
+const firstPageRunning = () => ({ ...running(), firstPage: { header: "FIRST-PAGE COVER", footer: "FIRST-PAGE ONLY", showNumber: false } });
 async function openSettings(page) {
   await page.locator("#page-options").click(); await expect(page.locator("#page-dialog")).toBeVisible();
   await page.locator("#page-running-details summary").click();
@@ -16,6 +17,12 @@ async function openSettings(page) {
 async function choose(page, value = running()) {
   await page.locator("#page-header").fill(value.header); await page.locator("#page-footer").fill(value.footer);
   await page.locator("#page-numbering").selectOption(value.numbering);
+  if (value.firstPage) {
+    await page.locator("#page-first-different").check();
+    await page.locator("#page-first-header").fill(value.firstPage.header);
+    await page.locator("#page-first-footer").fill(value.firstPage.footer);
+    await page.locator("#page-first-number").setChecked(value.firstPage.showNumber);
+  }
 }
 async function apply(page, value = running()) {
   await openSettings(page); await choose(page, value); await page.locator("#page-apply").click();
@@ -24,8 +31,8 @@ async function apply(page, value = running()) {
 async function cssContents(page) {
   return page.evaluate(() => {
     const sheet = [...document.styleSheets].find((entry) => entry.href && new URL(entry.href).pathname === "/office/assets/office.css");
-    const rule = [...sheet.cssRules].find((entry) => entry.cssText.startsWith("@page office-document"));
-    return [...rule.cssRules].map((entry) => entry.style.content);
+    return [...sheet.cssRules].filter((entry) => entry.cssText.startsWith("@page office-document"))
+      .flatMap((rule) => [...rule.cssRules].map((entry) => entry.style.content));
   });
 }
 const probes = new WeakMap();
@@ -40,7 +47,7 @@ async function printSaved(page, saved, name) {
     if (button === "#document-print") await expect(page.locator("#print-submit")).toBeEnabled();
   }
   await expect.poll(() => calls[index]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);
-  await expect.poll(() => cssContents(page)).toEqual(["none", "none"]);
+  await expect.poll(() => cssContents(page)).toEqual(["none", "none", "none", "none"]);
   await page.locator("#print-close").click();
   await writeFile(`${ARTIFACT_DIR}/${name}`, calls[index].pdf);
   return calls[index].pdf;
@@ -112,7 +119,7 @@ test("Office running text read-only and changed-context boundaries clear literal
   await page.evaluate(() => { document.querySelector("#user-id").value = "work-assignee-e2e"; document.querySelector("#role-ids").value = "office-reader";
     document.querySelector("#context-form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
   await expect(page.locator("#page-dialog")).toBeHidden(); await expect(page.locator("#page-header")).toHaveValue("");
-  await expect(page.locator("#page-running-preview")).toBeEmpty(); expect(await cssContents(page)).toEqual(["none", "none"]);
+  await expect(page.locator("#page-running-preview")).toBeEmpty(); expect(await cssContents(page)).toEqual(["none", "none", "none", "none"]);
 });
 
 test("Office running text automatic pagination and reset print leave no stale margin content", async ({ page }, testInfo) => {
@@ -124,7 +131,32 @@ test("Office running text automatic pagination and reset print leave no stale ma
   const reset = await saveOffice(page, { objectId: first.document.object_id }); expect(reset.content.attrs?.running).toBeUndefined();
   // Same browser document, same stylesheet, new print call: prove sensitive margin cleanup.
   await printSaved(page, reset, `office-running-reset-${testInfo.project.name}.pdf`);
-  await expect(page.locator("#document-save")).toBeDisabled(); expect(await cssContents(page)).toEqual(["none", "none"]);
+  await expect(page.locator("#document-save")).toBeDisabled(); expect(await cssContents(page)).toEqual(["none", "none", "none", "none"]);
+});
+
+test("Office first-page running text previews saves reopens resets and copies exact metadata", async ({ page }, testInfo) => {
+  const first = await styleFixture(page, { type: "doc", content: [p("Cover"), { type: "pageBreak" }, p("Following")] });
+  await openSettings(page); await choose(page, firstPageRunning());
+  await expect(page.locator("#page-running-preview")).toContainText("FIRST-PAGE COVER");
+  await expect(page.locator("#page-running-preview")).not.toContainText("Seite 1");
+  await expect(page.locator("#page-running-preview-following")).toContainText("RUNNING-HEADER");
+  await expect(page.locator("#page-running-preview-following")).toContainText("Seite 2 von 3");
+  await page.locator("#page-first-number").scrollIntoViewIfNeeded();
+  expect(await page.locator("#page-first-number").evaluate((element) => element.getBoundingClientRect().width <= 24)).toBe(true);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-first-page-dialog-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#page-apply").click();
+  const custom = await saveOffice(page, { objectId: first.document.object_id });
+  expect(custom.content.attrs.running).toEqual(firstPageRunning());
+  await openSettings(page); await expect(page.locator("#page-first-different")).toBeChecked();
+  await expect(page.locator("#page-first-header")).toHaveValue("FIRST-PAGE COVER");
+  await page.locator("#page-cancel").click();
+  await openReuse(page, custom, "Independent first page"); await submitReuse(page, custom);
+  await expectReuseDraft(page, "Independent first page");
+  const copied = await saveOffice(page); expect(copied.content).toEqual(custom.content);
+  await openSettings(page); await page.locator("#page-running-reset").click(); await page.locator("#page-apply").click();
+  const reset = await saveOffice(page, { objectId: copied.document.object_id });
+  expect(reset.content.attrs?.running).toBeUndefined();
+  expect((await officeContent(page, first.document.object_id, { versionId: custom.version.version_id })).content).toEqual(custom.content);
 });
 
 test("Office unsupported running print refuses output and clears the prepared body", async ({ page }) => {
@@ -159,3 +191,21 @@ for (const paper of ["a4", "letter"]) for (const orientation of ["portrait", "la
     expect((await officeContent(page, saved.document.object_id)).content).toEqual(content);
   });
 }
+
+test("Office first-page running text actual PDF differs and hides only its page number", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  const content = { type: "doc", attrs: {
+    page: { paper: "a4", orientation: "portrait", margins: { top: 18, bottom: 18, left: 35, right: 35 } },
+    running: firstPageRunning(),
+  }, content: [p("FIRST-PAGE-BODY"), { type: "pageBreak" }, p("SECOND-PAGE-BODY"),
+    { type: "pageBreak" }, p("THIRD-PAGE-BODY")] };
+  const saved = await styleFixture(page, content);
+  const pdf = await printSaved(page, saved, `office-running-first-page-${testInfo.project.name}.pdf`);
+  expect(pdfPageCount(pdf, 595, 842)).toBe(3);
+  expect((await officeContent(page, saved.document.object_id)).content).toEqual(content);
+  await openSettings(page); await page.locator("#page-first-number").check(); await page.locator("#page-apply").click();
+  const numbered = await saveOffice(page, { objectId: saved.document.object_id });
+  expect(numbered.content.attrs.running.firstPage.showNumber).toBe(true);
+  const numberedPdf = await printSaved(page, numbered, `office-running-first-page-numbered-${testInfo.project.name}.pdf`);
+  expect(pdfPageCount(numberedPdf, 595, 842)).toBe(3);
+});

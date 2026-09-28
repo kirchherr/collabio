@@ -17,16 +17,23 @@ RUNNING_TEXT_RECOVERY_TITLE = "Synthetic running text recovery"
 
 
 def running_text_recovery_document(number: int) -> dict[str, Any]:
-    if number not in (1, 2, 3, 4):
+    if number not in (1, 2, 3, 4, 5, 6):
         raise ValueError("Synthetic page settings version is outside the fixture")
     document = page_break_recovery_document(2)
-    if number in (2, 3):
+    if number in (2, 3, 4, 5):
+        running: dict[str, Any] = {
+            "header": 'Quarterly "report" \\ Café' if number != 5 else "",
+            "footer": "Confidential — internal" if number != 5 else "",
+            "numbering": "pageOfPages",
+        }
+        if number in (3, 4, 5):
+            running["firstPage"] = {
+                "header": "Executive cover" if number != 5 else "",
+                "footer": "Board copy" if number != 5 else "",
+                "showNumber": number == 4,
+            }
         document["attrs"] = {
-            "running": {
-                "header": 'Quarterly "report" \\ Café' if number == 2 else "",
-                "footer": "Confidential — internal" if number == 2 else "",
-                "numbering": "pageOfPages" if number == 2 else "page",
-            },
+            "running": running,
             "page": {
                 "paper": "letter",
                 "orientation": "landscape",
@@ -45,7 +52,7 @@ def seed_synthetic_office_running_text(
     directory = PgPrincipalDirectory(database_dsn=dsn)
     user = UserContext(tenant_id=WORK_E2E_TENANT_ID, user_id=WORK_E2E_OFFICE_EDITOR_ID, role_ids={"office-editor"})
     saved = None
-    for number in (1, 2, 3, 4):
+    for number in (1, 2, 3, 4, 5, 6):
         user.readable_object_ids = directory.readable_object_ids(
             tenant_id=user.tenant_id, user_id=user.user_id, role_ids=user.role_ids, group_ids=set()
         )
@@ -64,4 +71,4 @@ def seed_synthetic_office_running_text(
                 write_enabled=True,
                 command=OfficeDocumentSaveCommand(**fields, expected_current_version_id=saved.version.version_id),
             )
-    return 1, 4
+    return 1, 6

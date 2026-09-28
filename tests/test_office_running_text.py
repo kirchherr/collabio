@@ -20,6 +20,16 @@ def running_document() -> dict[str, Any]:
     }
 
 
+def first_page_running_document() -> dict[str, Any]:
+    document = running_document()
+    document["attrs"]["running"]["firstPage"] = {
+        "header": "Cover — first",
+        "footer": "Classification: internal",
+        "showNumber": False,
+    }
+    return document
+
+
 def test_running_text_preserves_legacy_bytes_positions_and_replacement() -> None:
     document = running_document()
     before = canonical_json(document)
@@ -53,7 +63,7 @@ def test_running_text_requires_complete_inert_shape(value: Any) -> None:
         validate_office_document(document)
 
 
-@pytest.mark.parametrize("tamper", ["numbering", "extra", "nested", "top", "bottom"])
+@pytest.mark.parametrize("tamper", ["numbering", "extra", "firstPage", "nested", "top", "bottom"])
 def test_running_text_rejects_before_commit_without_echo(
     office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch, tamper: str
 ) -> None:
@@ -63,6 +73,8 @@ def test_running_text_rejects_before_commit_without_echo(
         document["attrs"]["running"]["numbering"] = "SECRET"
     elif tamper == "extra":
         document["attrs"]["running"]["css"] = "SECRET"
+    elif tamper == "firstPage":
+        document["attrs"]["running"]["firstPage"] = {"header": "SECRET", "footer": "", "showNumber": "yes"}
     elif tamper == "nested":
         document["content"][0]["attrs"] = {"running": document["attrs"]["running"]}
     else:
@@ -89,6 +101,60 @@ def test_running_text_accepts_unicode_bounds_and_preserves_explicit_empty(number
     assert validate_office_document(document) is document
     document["attrs"]["running"] = {"header": "", "footer": "", "numbering": "none"}
     assert "running" in validate_office_document(document)["attrs"]
+
+
+def test_first_page_running_text_is_optional_exact_and_version_owned() -> None:
+    legacy = running_document()
+    legacy_bytes = canonical_json(legacy)
+    assert validate_office_document(legacy) is legacy
+    assert canonical_json(legacy) == legacy_bytes
+    document = first_page_running_document()
+    before = canonical_json(document)
+    assert validate_office_document(document) is document
+    assert canonical_json(document) == before
+    changed = replace_suggestion_text(document, ReviewAnchor.model_validate({"from": 1, "to": 5}), "New")
+    assert changed["attrs"] == document["attrs"]
+
+
+@pytest.mark.parametrize(
+    "first_page",
+    [
+        None,
+        [],
+        True,
+        {},
+        {"header": "x", "footer": "y"},
+        {"header": "x", "footer": "y", "showNumber": False, "extra": "SECRET"},
+        {"header": "x", "footer": "y", "showNumber": "SECRET"},
+        {"header": "x" * 65, "footer": "y", "showNumber": False},
+        {"header": "x", "footer": "\n", "showNumber": False},
+    ],
+)
+def test_first_page_running_text_rejects_invalid_shape(first_page: Any) -> None:
+    document = running_document()
+    document["attrs"]["running"]["firstPage"] = first_page
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_first_page_number_requires_numbering_and_occupied_margins() -> None:
+    document = first_page_running_document()
+    document["attrs"]["running"].update({"header": "", "footer": "", "numbering": "none"})
+    document["attrs"]["running"]["firstPage"]["showNumber"] = True
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+    document["attrs"]["running"].update({"numbering": "page"})
+    document["attrs"]["page"] = {
+        "paper": "a4",
+        "orientation": "portrait",
+        "margins": {"top": 15, "right": 18, "bottom": 16, "left": 18},
+    }
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+    document["attrs"]["running"]["firstPage"]["header"] = ""
+    document["attrs"]["page"]["margins"]["bottom"] = 15
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
 
 
 def test_running_text_versions_replay_reset_and_authorization(office_api: OfficeApiHarness) -> None:
