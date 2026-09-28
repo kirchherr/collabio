@@ -242,18 +242,20 @@ interchange separate. Full quality, one complete 379-case browser/model run, res
 mixed-format PDFs, fresh four-version recovery, main backup/restore, both release gates and API-only rollout passed.
 Published as implementation commit `04d45cd`.
 
-137. [ ] Add safe native hyperlinks under ADR-0099. Store an exact bounded inline target restricted to absolute HTTPS
+137. [x] Add safe native hyperlinks under ADR-0099. Store an exact bounded inline target restricted to absolute HTTPS
 or simple mailto addresses; reject credentials, active/ambiguous schemes and automatic navigation. Provide responsive
 add/edit/remove and deliberate-open controls, isolated undo, exact history/comparison/reuse positions, semantic print
 output and a four-version legacy/add/edit/remove recovery fixture. Keep bookmarks, cross-references, URL previews,
-automatic link recognition, arbitrary fields and DOCX interchange separate.
+automatic link recognition, arbitrary fields and DOCX interchange separate. Full Python quality, one complete 384-case
+browser/model run, responsive visual review, two real PDFs, fresh four-version recovery, main backup/restore, both
+release gates, API-only rollout and live verification passed. Published as implementation commit `12e8fca`.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete and published through Roadmap 275 / PLANS 136. Roadmap 276 / PLANS 137 implements safe explicit hyperlinks under ADR-0099. Preserve the complete 379-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Bookmarks/cross-references, URL previews, automatic recognition, arbitrary fields/floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete and published through Roadmap 276 / PLANS 137. Preserve the complete 384-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Bookmarks/cross-references, URL previews, automatic recognition, arbitrary fields/floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

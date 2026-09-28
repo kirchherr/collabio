@@ -1,6 +1,6 @@
 # Native Office Documents
 
-Status: Roadmap 252–275 complete and published; Roadmap 276 validation in progress; ordinary tenant and production admission remain closed
+Status: Roadmap 252–276 complete and published; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks; 272 / PLANS 133 document-owned page settings; 273 / PLANS 134 headers/footers and page numbers; 274 / PLANS 135 first-page running-text differences; 275 / PLANS 136 general sections; 276 / PLANS 137 safe hyperlinks
 Module: `office_documents` / version 0.1.0
 Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0098-native-office-sections.md`; `ARCHITECTURE_DECISIONS/ADR-0099-native-office-safe-links.md`
@@ -34,7 +34,10 @@ reviews and suggestions preserve exact text and target boundaries; inline code c
 
 Printing creates semantic inert anchors from the saved validated target without a network request. Bookmarks,
 cross-references, automatic recognition, URL metadata, tracking rewrites, arbitrary fields and DOCX interchange remain
-separate. Validation and recovery evidence are recorded in CURRENT_HANDOFF.md after the slice closes.
+separate. Full Python quality and all 384 browser/model cases passed. Desktop/mobile PDFs retain a semantic HTTPS
+annotation without application chrome; independent PDF inspection and responsive dialog review passed. Fresh recovery
+verified the exact legacy/add/edit/remove sequence, all prior fixtures and authoritative ACLs. Main backup/restore,
+both release gates, API-only rollout and live verification passed. See CURRENT_HANDOFF.md for exact hashes and counts.
 
 ## General sections and section-owned page profiles (Roadmap 275)
 

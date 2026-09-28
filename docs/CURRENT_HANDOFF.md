@@ -2,6 +2,54 @@
 
 Updated: 2026-09-28
 
+Roadmap 276 / PLANS 137 is complete and published under ADR-0099. Native Office now supports explicit safe links on
+exact selected text. Only bounded absolute HTTPS and simple `mailto:` targets are accepted. Add, edit, remove and
+deliberate open are responsive and isolated in undo/redo. Save, immutable history, comparison, copies, search,
+reviews and suggestions preserve exact mark boundaries. Loading, selecting and printing never navigate or fetch a
+target. URL previews, autolinking, bookmarks, cross-references, arbitrary fields and DOCX remain separate.
+
+## Roadmap 276 source and validation evidence
+
+Implementation commit `12e8fca5da24c8764060b050c858a972119406ca` is published on
+`kirchherr/kb-write-unit-of-work` and is the exact clean dev001 source. Full quality passed Ruff, formatting for 792
+files, Mypy over 591 sources and complete Pytest; only the known Starlette/AnyIO warning remains. One complete final
+browser/model run passed 384/384 cases in 28.4 minutes with zero skipped, retries or flakes. Result JSON SHA-256:
+`fd7547007de82e13234ab2b7fcb852069c65ad47bd172e9edcee99604652479e`. A final coupled responsive regression passed
+14/14 search, links, print and image-wrap cases. Root reviewed the final desktop/mobile link dialogs; screenshot hashes
+are `ca575f45c93009b2874499310767dd8c831e7aaa4b6e38e80d597a743f56599e` and
+`a5c165faf2d74c841bd5fac4c3a177c7e18d083159f984377f186bfe92074c54`.
+
+Desktop/mobile one-page PDFs preserve the exact HTTPS URI as a semantic link annotation and contain no application
+chrome. PDF SHA-256 values are `38d468fa65f68f22c079992ff6c699f944699573ed55077299fa56793a15b633` and
+`9ba3a4ea5195216bd3b60ed95e4487a78edb49f15a5cde9c28a6787705892160`; independent network-none/read-only QA
+report SHA-256 is `abd54d4f447342c69e047b0a664ede8974611c143bb7f1289c20da4d32a4960f`.
+
+Fresh recovery into `collabio_work_e2e_276_restore` verified 497 documents, 980 exact Office versions, 150
+multi-version documents and 1,080 source objects. The four legacy/add/edit/remove link fixture versions, canonical
+legacy hash, image bytes/receipts, all earlier format fixtures, 11 review threads/19 events and 11 suggestions/seven
+decisions passed with current ACLs and foreign-tenant denial. Dump SHA-256:
+`0ff53f943250c5764ccf2639cf69862a10af6603e0ec248815fb6912e0cd95ff`; recovery report file SHA-256:
+`c80a32aca3c5e06fa2ab704309f470eb910ade59744aa236cb644c8b6220869b`; embedded report hash:
+`sha256:f1211fd5926fe131fd977c0a18c3f8f090cc3bb23b58a9fcda655be26d052715`.
+
+Main backup `collabio-20260928T155845Z.dump` verified with SHA-256
+`ab052c0a6ea601f8e2df8fbff82d11e862f06a4a7f3bd1b06fb2e963eee89d2e`; only ordinary `collabio_restore` was
+refreshed. Foundation seed was explicitly 0 and verified 85 migrations, 95 tables and three restored objects/two
+tenants; gate hash `sha256:16d0611fc45bb6f57ba2b860a985ddb0653da8c391ca9889453fd4600ec33d07`.
+Business release passed 3/3 slices without blockers, writes or tenant activation; gate hash
+`sha256:4ad28a3f55fe22b573b12c14f0029628ee7643e02f63de519072b825be4c60a3`.
+
+API-only `--no-deps` rollout with pilot 0 created container `f2b9b3e0930f` on image
+`sha256:75a86a62a6bfb5e58fd220793c79f65210b54cc27ec4117b1d1c120c471fee10`. Live verification hash
+`cae473264bcfc5ebd90af7929f2f7279233b932f51bd8b81d76596114b2a90b5` confirms health, link controls/runtime
+markers, mobile toolbar bound, 15 Office operation definitions, CSP/no-store and ordinary Office 404. A first custom
+checker attempt assumed unminified function names and failed before cleanup; the corrected content-marker check passed.
+Exact Work-E2E services were removed and test/restore services stopped. Cleanup log SHA-256:
+`63d81b7119e4744a542195296e5e608d992e6c468548469b74ef2c0c08abe1cf`. Final Collabio status is running(4), with
+loopback ports 8000/5433/29000/29001 unchanged. Decoder, main stores, Webcut and provider nodes are unchanged. Ordinary
+Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed. Protected local `erp_modul.md`
+and `review.md` remain unread, untracked and unpublished. No subagents were used.
+
 Roadmap 275 / PLANS 136 is complete and published under ADR-0098. Native Office now supports up to twelve
 root-level section breaks. Each marker starts a printed page and owns the exact complete paper, orientation,
 margin, header, footer and numbering profile of the following section. Insert, edit and remove are responsive,

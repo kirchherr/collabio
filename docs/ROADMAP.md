@@ -1731,14 +1731,17 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      379-Fall-Browser-/Modellmatrix, zwei echte Mischformat-PDFs, frischer Vier-Versionen-Restore, Hauptsicherung,
      beide Release-Gates, API-Rollout und Live-Pruefung sind gruen. Implementierung als Commit `04d45cd` veroeffentlicht.
 
-276. [ ] Sichere native Hyperlinks unter ADR-0099 umsetzen: Exakt markierter Text speichert ein begrenztes absolutes
+276. [x] Sichere native Hyperlinks unter ADR-0099 umgesetzt: Exakt markierter Text speichert ein begrenztes absolutes
      HTTPS- oder einfaches mailto-Ziel. Unsichere/mehrdeutige Protokolle, Zugangsdaten, automatische Erkennung,
      Hintergrundabrufe und automatische Navigation bleiben verboten. Einfuegen, Bearbeiten, Entfernen und bewusstes
      Oeffnen bleiben responsiv; Undo, Speichern, Historie, Vergleich, Kopien, Suche, Reviews und Vorschlaege behalten
      exakte Markierungsgrenzen. Semantischer Druck und ein frischer Altformat/Hinzufuegen/Aendern/Entfernen-Restore
-     schliessen den Slice. Lesezeichen, Querverweise, URL-Vorschauen, freie Felder und DOCX bleiben separat.
+     schliessen den Slice. Lesezeichen, Querverweise, URL-Vorschauen, freie Felder und DOCX bleiben separat. Volle
+     Python-Qualitaet und ein kompletter Lauf mit 384/384 Browser-/Modellfaellen bestanden. Zwei echte PDFs,
+     responsiver Sichttest, frischer Vier-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und
+     Live-Pruefung sind gruen. Implementierung als Commit `12e8fca` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 276 / PLANS 137 ist in Umsetzung. Hyperlinks bleiben bewusst
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 276 / PLANS 137 ist abgeschlossen. Hyperlinks bleiben bewusst
 von Lesezeichen/Querverweisen, URL-Vorschauen, freien Feldern, abschnittsweisen ersten Seiten, Nummern-Neustarts,
 Editor-Pagination, schwebenden Objekten und DOCX getrennt.
 
