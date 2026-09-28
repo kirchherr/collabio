@@ -1719,7 +1719,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Python- und 372 Browser-/Modellfaelle bestanden. Vier echte dreiseitige PDFs pruefen getrennte Profile,
      verborgene/sichtbare erste Seitennummer und fortlaufende Seiten 2/3. Frischer Restore, Release-Gates,
      API-only-Rollout und Live-Checks bestanden. Allgemeine Abschnitte, freie Felder, Editor-Pagination und
-     DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md.
+     DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `48ae9c9` veroeffentlicht.
 
 Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 274 abgeschlossen; als naechster Office-Schritt ist ein
 eigenes Konzept fuer allgemeine Abschnitte, Abschnittsumbrueche und abschnittsgebundene Seitenprofile zu schneiden,

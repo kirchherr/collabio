@@ -231,7 +231,7 @@ Separate previews, complete reset, isolated undo and trusted static print rules 
 history/copies. All 2936 Python and 372 browser/model cases passed. Four real three-page PDFs verify separate
 profiles, hidden/shown first-page numbers and continued pages 2/3; fresh six-version recovery, both release gates,
 API-only rollout and live checks passed. General sections, arbitrary fields, continuous editor pagination and DOCX
-interchange remain separate.
+interchange remain separate. Published as implementation commit `48ae9c9`.
 
 ## Next Engineering Step
 

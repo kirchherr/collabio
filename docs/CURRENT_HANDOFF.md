@@ -69,8 +69,11 @@ services were removed; test and both restore services stopped. Final Collabio st
 with loopback 8000/5433/29000/29001 unchanged; Webcut remains running(7) and provider nodes unchanged.
 All builds/tests/lifecycle work used dev001, explicit project `collabio`, fresh inventories and the
 required locks. No subagents were used. Protected local `erp_modul.md` and `review.md` remain unread,
-untracked and excluded. The implementation is intentionally uncommitted at this point; GitHub
-publication follows the operator's existing explicit authorization after closing checks pass.
+untracked and excluded. Implementation commit `48ae9c9e3cf10a43ae24eb34d78122213175954e` is published
+on `kirchherr/kb-write-unit-of-work`; dev001 advanced to the exact published tree only after the
+working files and retained manifest matched. Eleven closing documentation/module/roadmap checks
+passed in a disposable `--no-deps` container with only the known Starlette/AnyIO warning. This
+evidence-only closeout follows without changing runtime behavior or admission boundaries.
 
 ## Previous Roadmap 273 publication and source state
 

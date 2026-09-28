@@ -1,7 +1,7 @@
 # ADR-0097: First-page headers, footers and page-number visibility
 
 Date: 2026-09-28
-Status: accepted; development validation and dev001 rollout complete; ordinary tenant and production admission remain closed
+Status: accepted; development validation, dev001 rollout and publication complete; ordinary tenant and production admission remain closed
 
 The optional `attrs.running.firstPage` object contains exactly a literal `header`,
 literal `footer` and boolean `showNumber`. Its text follows the same 64-code-point
