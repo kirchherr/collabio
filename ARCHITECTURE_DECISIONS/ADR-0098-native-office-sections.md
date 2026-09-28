@@ -1,7 +1,7 @@
 # ADR-0098: Native Office sections and section-bound page profiles
 
 Date: 2026-09-28
-Status: accepted; development validation in progress; ordinary tenant and production admission remain closed
+Status: accepted; development complete and published; ordinary tenant and production admission remain closed
 
 A root-level `sectionBreak` node starts a new printed page and owns the complete page and running-text profile for
 the following section. Its `attrs` object contains exactly `page` and `running`. Page values reuse the closed

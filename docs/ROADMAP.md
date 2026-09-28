@@ -1721,16 +1721,19 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      API-only-Rollout und Live-Checks bestanden. Allgemeine Abschnitte, freie Felder, Editor-Pagination und
      DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `48ae9c9` veroeffentlicht.
 
-275. [ ] Allgemeine native Abschnitte unter ADR-0098 umsetzen: Ein root-basierter Abschnittsumbruch startet eine
+275. [x] Allgemeine native Abschnitte unter ADR-0098 umsetzen: Ein root-basierter Abschnittsumbruch startet eine
      neue Druckseite und besitzt das vollstaendige validierte Seiten- und Kopf-/Fusszeilenprofil des Folgeabschnitts.
      Einfuegen, Bearbeiten, Entfernen, Vorschau und isoliertes Undo bleiben responsiv; Speichern, Historie, Kopien,
      Reviews und Vorschlaege behalten exakte Struktur und Positionen. Feste vertrauenswuerdige Druckslots erzeugen
      echte Mischformat-PDFs mit global fortlaufender Nummerierung. Ein frischer Vier-Versionen-Restore bindet
      Altformat, einen Abschnitt, zwei Abschnitte und Reset. Freie Felder, abschnittsweise erste Seiten,
-     Nummern-Neustarts, Editor-Pagination, schwebende Objekte und DOCX bleiben separat.
+     Nummern-Neustarts, Editor-Pagination, schwebende Objekte und DOCX bleiben separat. Volle Quality, eine komplette
+     379-Fall-Browser-/Modellmatrix, zwei echte Mischformat-PDFs, frischer Vier-Versionen-Restore, Hauptsicherung,
+     beide Release-Gates, API-Rollout und Live-Pruefung sind gruen. Implementierung als Commit `04d45cd` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 275 / PLANS 136 ist in Umsetzung; allgemeine Abschnitte
-bleiben bewusst von freien Feldern, Nummern-Neustarts, Editor-Pagination, schwebenden Objekten und DOCX getrennt.
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 275 / PLANS 136 ist abgeschlossen und veroeffentlicht.
+Der naechste Office-Slice wird separat entworfen; freie Felder, abschnittsweise erste Seiten, Nummern-Neustarts,
+Editor-Pagination, schwebende Objekte und DOCX bleiben bis dahin geschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

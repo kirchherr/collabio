@@ -350,7 +350,8 @@ After a green matrix, `office-native-recovery-proof` can verify a separately res
 versions. Only that disposable checker joins both the test and restore networks. It accepts only the fixed work-e2e source
 and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `collabio_work_e2e_263_restore`,
 `collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore`,
-`collabio_work_e2e_270_restore`, `collabio_work_e2e_271_restore` or `collabio_work_e2e_272_restore` target,
+`collabio_work_e2e_270_restore`, `collabio_work_e2e_271_restore`, `collabio_work_e2e_272_restore`,
+`collabio_work_e2e_273_restore`, `collabio_work_e2e_274_restore` or `collabio_work_e2e_275_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -369,6 +370,12 @@ before removing the exact test services. Keep the prior synthetic dump under ign
 `e2e/work/artifacts/office-recovery-backup` and the separate 262 dump under
 `e2e/work/artifacts/office-262-recovery-backup`. The character proof uses `e2e/work/artifacts/office-263-recovery-backup`;
 do not overwrite any earlier database, dump or receipt.
+
+Roadmap 275 adds the exact four-version section fixture: legacy content, one section, two sections and reset. The
+proof verifies complete section page/running profiles, canonical legacy bytes, lineage, review/suggestion positions,
+global page-number semantics and unchanged prior formatting/image fixtures. Its separate dump lives under
+`e2e/work/artifacts/office-275-recovery-backup`, and its report under `e2e/work/artifacts/roadmap-275`; both remain
+ignored and must be retained without replacing earlier recovery evidence.
 
 ## Evidence
 

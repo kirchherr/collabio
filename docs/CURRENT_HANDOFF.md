@@ -2,6 +2,68 @@
 
 Updated: 2026-09-28
 
+Roadmap 275 / PLANS 136 is complete and published under ADR-0098. Native Office now supports up to twelve
+root-level section breaks. Each marker starts a printed page and owns the exact complete paper, orientation,
+margin, header, footer and numbering profile of the following section. Insert, edit and remove are responsive,
+previewed and isolated in undo/redo; only confirmed CAS Save persists them. History, comparison, copies,
+reviews and suggestions retain exact section structure and positions. Page numbers remain global; root
+`firstPage` remains document-first only. Per-section first-page variants, number restarts, arbitrary fields,
+floating objects, continuous editor pagination and DOCX remain separate.
+
+## Roadmap 275 source and validation evidence
+
+Implementation commit `04d45cdd98e9ce852635c0be2e30c9d04c7e55cc` is published on
+`kirchherr/kb-write-unit-of-work` and is the exact clean dev001 source. Strict schema validation rejects leading,
+trailing, nested, adjacent, page-break-adjacent or thirteenth markers and rejects partial/extra profile fields.
+Printing uses twelve fixed trusted named-page slots; only validated enums, bounded dimensions, escaped literals and
+fixed counters enter CSSOM. Temporary rules and text are cleared after print and context invalidation.
+
+Final quality passed Ruff, formatting for 788 files, Mypy over 588 sources and the complete Pytest suite; only the
+known Starlette/AnyIO warning remains. One complete final browser/model run passed 379/379 cases in 29.8 minutes,
+with zero skipped, retries or flakes. Result JSON SHA-256:
+`dfe4cfff655e29f1e9c713602c80ff7e0bc57c3bef0d18e4deda271919a6cc82`. Focused final section model and
+responsive checks passed 7/7 and 4/4. Root reviewed the desktop/mobile dialogs and all rendered PDF pages; no
+horizontal overflow, clipping or unreachable action remained.
+
+Two real two-page PDFs prove an A4 portrait first page followed by a Letter landscape section. Page two contains
+the exact section header `Appendix revised`, footer `Internal`, global `Seite 2 von 2`, and following body blocks.
+Desktop PDF SHA-256: `c2afd43e91e1a65f903f57479c4b3aa51301f59985f7e7fd590a6a189102ebf8`;
+mobile PDF SHA-256: `276806493ff214f6553010b36260b95666d912f7afd83d6f338427d4163f8f76`.
+Independent rendering used image `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`
+with no network, read-only root and dropped capabilities.
+
+Fresh recovery into `collabio_work_e2e_275_restore` passed with 266 documents, 530 versions, 22 multi-version
+documents, 572 source objects, 16 image assets/25 references, seven review threads/13 events and eight suggestions/
+five decisions. All four legacy/one-section/two-section/reset fixture versions match exact JSON, canonical hashes and
+lineage. Recovery file SHA-256: `6452362c3ccf3467dc50dbfd7547a90d5c82b0eba8a945dd2479b530456bf4d4`;
+embedded report hash: `sha256:5d8cc042890bc675f7f21c238524cb030100bcb5d18674b427a5dd8eb9bc4194`;
+dump SHA-256: `96b7d3616256442a262b87f1e8ca131cc94014820f909de3f128e4f53653600d`.
+The initial failed-closed recovery report remains retained separately; it exposed missing nonempty image references
+in the fresh seed, which the targeted real-API fixture population corrected before acceptance.
+
+Main backup `collabio-20260928T122200Z.dump` verified with SHA-256
+`3d79b869d0a68700070920aa0b4cdf25a9116c2f5a26a6d2d84755f932e174c3`; only ordinary `collabio_restore`
+was refreshed. Foundation seed was explicitly 0. Foundation verified 85 migrations, 95 tables and three restored
+objects/two tenants; gate hash `sha256:83f474048d68c3cd613fc75a326b03323e49e544f48bb6ecf757903b11c21b70`,
+report file SHA-256 `5381cbd885459cb527b6b0cd1703545d720a9a457456638d7410c35935d61b3b`.
+Business release is ready with no blockers, business writes or tenant activation; gate hash
+`sha256:f1b2b9a5b4682d66862782af93c2cdfdcc28e601219bacdb0a2301bdfd7e1076`, report file SHA-256
+`544ebc78343aee7940b115d55b281229418167020d0c57c9235c4fa1893adbe7`.
+
+API-only `--no-deps` rollout with pilot explicitly 0 created container `7914716e43fc` on image
+`sha256:d14ebc51dbd41f2e248551d02fde0bd2d77a4125156d2e33ab6e55b98cab605a`. Live checks verify
+health `ok`, the section controls/module, strict CSP/no-store and ordinary Office's non-cacheable 404. Exact Work-E2E
+services were removed; test and restore services stopped. Final Collabio status is running(4), with loopback ports
+8000/5433/29000/29001 unchanged. Decoder `30766f16f16a`, main stores, Webcut running(7) and provider nodes are
+unchanged. Ordinary Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed. All work ran
+on dev001 with explicit project `collabio`, fresh inventories and required locks. Protected local `erp_modul.md` and
+`review.md` remain unread, untracked and unpublished. No subagents were used.
+
+Final dependency-free closeout verification passed 31/31 module, roadmap-dashboard, section-schema and recovery
+contract tests with only the known warning. An earlier overbroad `--no-deps` selection produced three setup errors
+because it included PostgreSQL integration fixtures after `postgres-test` had intentionally been stopped; it produced
+no assertion failure, started no dependency and was replaced by the exact dependency-free scope.
+
 Roadmap 274 / PLANS 135 is development-complete on dev001 under ADR-0097. Native Office now
 supports an optional exact first-page header/footer profile and explicit first-page number
 visibility, with separate previews, complete reset, isolated undo and trusted static print rules.
