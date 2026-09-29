@@ -54,6 +54,17 @@ const OfficeTable = Table.extend({
     return ["table", { class: "office-table" },
       ["caption", { hidden: "", "data-office-table-caption": "" }, ""], ["tbody", 0]];
   },
+  addNodeView() {
+    return ({ node: tableNode }) => {
+      const table = document.createElement("table"); table.className = "office-table";
+      const caption = document.createElement("caption"); caption.hidden = true;
+      caption.dataset.officeTableCaption = "";
+      const body = document.createElement("tbody"); table.append(caption, body);
+      return { dom: table, contentDOM: body,
+        update(updated) { return updated.type === tableNode.type; },
+      };
+    };
+  },
 });
 const OfficePageBreak = Node.create({
   name: "pageBreak", group: "block", atom: true, selectable: true, draggable: false,
