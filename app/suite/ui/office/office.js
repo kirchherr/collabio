@@ -1719,9 +1719,13 @@ function currentTable(editor = state.editor) {
 }
 
 function currentTableNode(editor = state.editor) {
-  const rect = currentTable(editor);
-  if (!editor || !rect) return null;
-  return { entry: rect.table, position: rect.tableStart - 1 };
+  if (!editor || !currentTable(editor)) return null;
+  const resolved = editor.state.selection.$from;
+  for (let depth = resolved.depth; depth > 0; depth -= 1) {
+    const entry = resolved.node(depth);
+    if (entry.type.name === "table") return { entry, position: resolved.before(depth) };
+  }
+  return null;
 }
 
 function tableActionSnapshot(kind, command) {
