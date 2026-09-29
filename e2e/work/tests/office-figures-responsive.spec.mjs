@@ -21,23 +21,9 @@ async function upload(page, objectId, color, caption) {
   return { ...(await response.json()).image, alt: `${caption} sample`, caption, decorative: false };
 }
 
-async function selectText(page, from, to) {
-  await officeEditor(page).evaluate(async (root, offsets) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: (entry) => entry.parentElement?.closest("[contenteditable=false]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
-    });
-    let entry, offset = 0, first = null, last = null;
-    while ((entry = walker.nextNode())) {
-      const next = offset + entry.data.length;
-      if (!first && offsets.from >= offset && offsets.from <= next) first = [entry, offsets.from - offset];
-      if (offsets.to >= offset && offsets.to <= next) { last = [entry, offsets.to - offset]; break; }
-      offset = next;
-    }
-    const range = document.createRange(); range.setStart(...first); range.setEnd(...last);
-    const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
-    document.dispatchEvent(new Event("selectionchange"));
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  }, { from, to });
+async function selectReferenceText(page) {
+  await officeEditor(page).locator("p").first().selectText();
+  await expect(page.locator("#cross-reference-options")).toBeEnabled();
 }
 
 async function selectImage(page, index) {
@@ -76,7 +62,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   await officeEditor(page).press("Control+z"); await expect(captions).toHaveText(["Abbildung 1: Overview", "Abbildung 2: Details"]);
   await officeEditor(page).press("Control+Shift+z"); await expect(captions).toHaveText(["Abbildung 1: Details", "Abbildung 2: Overview"]);
 
-  await selectText(page, 0, 16); await page.locator("#cross-reference-options").click();
+  await selectReferenceText(page); await page.locator("#cross-reference-options").click();
   await page.locator("#cross-reference-target").selectOption(ids[1]); await page.locator("#cross-reference-apply").click();
   const saved = await saveOffice(page, { objectId: first.document.object_id });
   const marked = saved.content.content[0].content[0];
@@ -94,7 +80,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
 
   await selectImage(page, 0);
   await page.locator("#image-options").click(); await page.locator("#image-remove").click();
-  await selectText(page, 0, 16); await page.locator("#cross-reference-options").click();
+  await selectReferenceText(page); await page.locator("#cross-reference-options").click();
   await expect(page.locator('#cross-reference-target option[data-broken="true"]')).toHaveValue(ids[1]);
   await expect(page.locator("#cross-reference-status")).toContainText("Ziel nicht verfügbar");
   await expect(page.locator("#cross-reference-jump")).toBeDisabled(); await page.locator("#cross-reference-cancel").click();
