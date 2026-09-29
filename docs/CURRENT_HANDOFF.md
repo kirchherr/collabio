@@ -55,6 +55,12 @@ loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` a
 and unpublished. No subagents were used. Next Office work should add bounded document-local outbound cross-document
 reference records with a fresh authoritative target ACL/version check; global backlinks remain a later separate step.
 
+Published evidence closeout commit `33ecae6` was fast-forwarded to the clean dev001 source. The focused semantic,
+recovery, module-contract and roadmap suite passed 31/31; only the known Starlette/AnyIO warning remains. The live
+roadmap exposes `office-semantics.mjs` and the current guarded Office capability; response SHA-256 is
+`6d86ab9de6b649abbd429d56084f009353de03ef61f3d062fffe2168835c7d30`. Health stayed ok and Collabio stayed
+running(4).
+
 Roadmap 279 / PLANS 140 is complete and published under ADR-0102. Native Office tables can carry a bounded literal
 caption and stable document-local destination ID. Visible `Tabelle N` labels follow the current order of captioned
 tables while figures retain their independent sequence. Caption add/edit/remove, undo, immutable history, comparison,
