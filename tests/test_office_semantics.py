@@ -60,7 +60,7 @@ def test_office_semantic_structures_are_inert_and_version_owned() -> None:
 
 def test_office_fields_and_citations_preserve_explicit_broken_references() -> None:
     value = semantic_document()
-    value["attrs"] = {}  # type: ignore[index]
+    value["attrs"] = {}
     assert validate_office_document(value) == value
 
 
