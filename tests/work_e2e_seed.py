@@ -10,6 +10,7 @@ from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_for_s3_compatible_client
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_character import seed_synthetic_office_characters
+from work_e2e_bookmarks import seed_synthetic_office_bookmarks
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
@@ -106,6 +107,9 @@ def main() -> int:
         environment=os.environ, client=client
     )
     link_document_count, link_version_count = seed_synthetic_office_links(environment=os.environ, client=client)
+    bookmark_document_count, bookmark_version_count = seed_synthetic_office_bookmarks(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -123,7 +127,8 @@ def main() -> int:
                 + page_settings_document_count
                 + running_text_document_count
                 + section_document_count
-                + link_document_count,
+                + link_document_count
+                + bookmark_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
@@ -133,6 +138,7 @@ def main() -> int:
                 "synthetic_office_running_text_version_count": running_text_version_count,
                 "synthetic_office_section_version_count": section_version_count,
                 "synthetic_office_link_version_count": link_version_count,
+                "synthetic_office_bookmark_version_count": bookmark_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

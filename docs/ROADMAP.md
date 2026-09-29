@@ -1745,6 +1745,16 @@ Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 276 / PLANS 137 ist abg
 von Lesezeichen/Querverweisen, URL-Vorschauen, freien Feldern, abschnittsweisen ersten Seiten, Nummern-Neustarts,
 Editor-Pagination, schwebenden Objekten und DOCX getrennt.
 
+277. [ ] Native Lesezeichen und interne Querverweise unter ADR-0100 umsetzen: Stabile dokumentlokale Anker besitzen
+     begrenzte eindeutige Namen; Querverweise markieren expliziten Text und referenzieren nur eine stabile Anker-ID.
+     Einfuegen, Umbenennen, Entfernen, bewusstes Springen und gebrochene Ziele bleiben responsiv und undo-faehig.
+     Speichern, Historie, Vergleich, Kopien, Suche, Reviews und Vorschlaege behalten exakte Struktur und Positionen.
+     Semantischer interner PDF-Druck und ein frischer Altformat/Hinzufuegen/Umbenennen/Gebrochen/Reset-Restore
+     schliessen den Slice. Automatische Beschriftungen, Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise,
+     URL-Vorschauen und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 277 / PLANS 138 ist in Umsetzung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

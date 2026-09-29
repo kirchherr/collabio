@@ -31,7 +31,7 @@ BLOCKS = {
     "pageBreak",
     "sectionBreak",
 }
-MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle", "link"}
+MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference"}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
@@ -90,6 +90,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     images = 0
     page_breaks = 0
     section_breaks = 0
+    bookmarks = 0
+    bookmark_ids: set[str] = set()
+    bookmark_labels: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -239,7 +242,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
 
     def visit(node: Any, depth: int) -> None:
-        nonlocal nodes, characters, images, page_breaks, section_breaks
+        nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -254,6 +257,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             "tableRow",
             "tableCell",
             "tableHeader",
+            "bookmark",
         }:
             reject()
         attrs = node.get("attrs", {})
@@ -296,6 +300,24 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 validate_image_attributes(attrs)
             except ValueError:
                 reject()
+        elif kind == "bookmark":
+            bookmarks += 1
+            identifier, label = attrs.get("id"), attrs.get("label")
+            if (
+                set(attrs) != {"id", "label"}
+                or bookmarks > 100
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", identifier) is None
+                or identifier in bookmark_ids
+                or not isinstance(label, str)
+                or not 1 <= len(label) <= 64
+                or label != label.strip()
+                or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029" for c in label)
+                or label.lower() in bookmark_labels
+            ):
+                reject()
+            bookmark_ids.add(identifier)
+            bookmark_labels.add(label.lower())
         elif kind == "orderedList":
             if (
                 set(attrs) - {"start"}
@@ -355,10 +377,21 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
                 if not _valid_link_href(mark["attrs"]["href"]):
                     reject()
+            elif name == "crossReference":
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"targetId"}
+                    or not isinstance(mark["attrs"]["targetId"], str)
+                    or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", mark["attrs"]["targetId"]) is None
+                ):
+                    reject()
             elif set(mark) != {"type"}:
                 reject()
             seen.add(name)
         if "code" in seen and len(seen) > 1:
+            reject()
+        if "link" in seen and "crossReference" in seen:
             reject()
         if kind == "text":
             value = node.get("text")
@@ -381,7 +414,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if not children or any(child not in BLOCKS for child in child_types):
                 reject()
         elif kind in {"paragraph", "heading"}:
-            if any(child not in {"text", "hardBreak"} for child in child_types):
+            if any(child not in {"text", "hardBreak", "bookmark"} for child in child_types):
                 reject()
         elif kind == "codeBlock":
             if any(child != "text" or children[index].get("marks") for index, child in enumerate(child_types)):

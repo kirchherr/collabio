@@ -5,6 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
+import { officeBookmarkAttributes, officeBookmarkFragment, officeBookmarkInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -18,6 +19,8 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   }
   let count = 0;
   const styles = officeStyles(content.attrs?.styles || []);
+  const bookmarks = officeBookmarkInventory(content);
+  const bookmarkIds = new Set(bookmarks.map(({ id }) => id));
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
     if (value.type === "pageBreak") {
@@ -34,6 +37,12 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       return marker;
     }
     if (value.type === "image") return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom);
+    if (value.type === "bookmark") {
+      const attrs = officeBookmarkAttributes(value.attrs), marker = dom.createElement("span");
+      marker.id = officeBookmarkFragment(attrs.id); marker.className = "office-print-bookmark";
+      marker.setAttribute("data-office-bookmark", attrs.id); marker.setAttribute("aria-label", `Lesezeichen: ${attrs.label}`);
+      return marker;
+    }
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("Invalid print text");
       let text = dom.createTextNode(value.text);
@@ -41,6 +50,15 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         if (mark.type === "link") {
           const wrapper = dom.createElement("a");
           for (const [name, attribute] of Object.entries(officeLinkDOMAttributes(mark.attrs?.href, { printable: true }))) wrapper.setAttribute(name, attribute);
+          wrapper.append(text); text = wrapper;
+          continue;
+        }
+        if (mark.type === "crossReference") {
+          const attrs = officeCrossReferenceAttributes(mark.attrs);
+          const wrapper = dom.createElement(bookmarkIds.has(attrs.targetId) ? "a" : "span");
+          wrapper.setAttribute("data-office-cross-reference", attrs.targetId);
+          if (bookmarkIds.has(attrs.targetId)) wrapper.setAttribute("href", `#${officeBookmarkFragment(attrs.targetId)}`);
+          else wrapper.setAttribute("data-office-cross-reference-broken", "true");
           wrapper.append(text); text = wrapper;
           continue;
         }

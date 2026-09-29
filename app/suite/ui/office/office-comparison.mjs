@@ -5,6 +5,7 @@ import { officeCharacterDescription } from "./office-character.mjs";
 import { officeStyleComparisonDocument, officeStyleDescription } from "./office-styles.mjs";
 import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
+import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -15,6 +16,7 @@ const nodeLabels = {
   bulletList: "Aufzählung", orderedList: "Nummerierte Liste", listItem: "Listeneintrag", blockquote: "Zitat",
   codeBlock: "Codeblock", horizontalRule: "Trennlinie", table: "Tabelle", tableRow: "Tabellenzeile",
   tableCell: "Tabellenzelle", tableHeader: "Tabellenkopf", pageBreak: "Seitenumbruch", sectionBreak: "Abschnittsumbruch",
+  bookmark: "Lesezeichen",
 };
 
 function canonical(value, key = "") {
@@ -179,7 +181,8 @@ function markedText(node) {
   let text = node.text;
   for (let index = marks.length - 1; index >= 0; index -= 1) {
     const label = marks[index].type === "textStyle" ? officeCharacterDescription(marks[index].attrs) :
-      marks[index].type === "link" ? officeLinkDescription(marks[index].attrs?.href) : markLabels[marks[index].type];
+      marks[index].type === "link" ? officeLinkDescription(marks[index].attrs?.href) :
+      marks[index].type === "crossReference" ? officeCrossReferenceDescription(marks[index].attrs) : markLabels[marks[index].type];
     text = `⟦${label}⟧${text}⟦/${label}⟧`;
   }
   return text;
@@ -196,6 +199,7 @@ function blockText(block, nested = false) {
     case "horizontalRule": return "────────";
     case "pageBreak": return "Neue Seite";
     case "sectionBreak": return "Neuer Abschnitt";
+    case "bookmark": return officeBookmarkDescription(block.attrs);
     case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";

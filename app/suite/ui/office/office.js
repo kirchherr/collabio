@@ -2,7 +2,7 @@ import { officeRunningSettings, officeRunningDescription, officeRunningNumber, c
 import { Editor, Extension, Mark, Node, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
-import { AllSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
+import { AllSelection, NodeSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
 import { sinkListItem, liftListItem } from "@tiptap/pm/schema-list";
 import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -22,6 +22,7 @@ import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMA
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
+import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -29,16 +30,16 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak", "bookmark",
 ]);
-const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link"]);
+const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference"]);
 const commandNames = {
   bold: "toggleBold", italic: "toggleItalic", underline: "toggleUnderline", strike: "toggleStrike",
   code: "toggleCode", bulletList: "toggleBulletList", orderedList: "toggleOrderedList",
@@ -109,7 +110,7 @@ const OfficeCharacterFormat = Mark.create({
   renderHTML({ HTMLAttributes }) { return ["span", HTMLAttributes, 0]; },
 });
 const OfficeLink = Mark.create({
-  name: "link", inclusive: false, excludes: "code",
+  name: "link", inclusive: false, excludes: "code crossReference",
   addAttributes() { return { href: { default: null, rendered: false } }; },
   parseHTML() {
     return [{ tag: "a[data-office-link][href]", getAttrs: (element) => {
@@ -117,6 +118,35 @@ const OfficeLink = Mark.create({
     } }];
   },
   renderHTML({ mark }) { return ["a", officeLinkDOMAttributes(mark.attrs.href), 0]; },
+});
+const OfficeBookmark = Node.create({
+  name: "bookmark", group: "inline", inline: true, atom: true, selectable: true,
+  addAttributes() { return { id: { default: null, rendered: false }, label: { default: null, rendered: false } }; },
+  parseHTML() {
+    return [{ tag: "span[data-office-bookmark]", getAttrs: (element) => {
+      try { return officeBookmarkAttributes({ id: element.getAttribute("data-office-bookmark"), label: element.getAttribute("data-office-bookmark-label") }); }
+      catch { return false; }
+    } }];
+  },
+  renderHTML({ node: bookmark }) {
+    const attrs = officeBookmarkAttributes(bookmark.attrs);
+    return ["span", { "data-office-bookmark": attrs.id, "data-office-bookmark-label": attrs.label,
+      "aria-label": officeBookmarkDescription(attrs), contenteditable: "false" }, `🔖 ${attrs.label}`];
+  },
+});
+const OfficeCrossReference = Mark.create({
+  name: "crossReference", inclusive: false, excludes: "code link",
+  addAttributes() { return { targetId: { default: null, rendered: false } }; },
+  parseHTML() {
+    return [{ tag: "span[data-office-cross-reference]", getAttrs: (element) => {
+      try { return officeCrossReferenceAttributes({ targetId: element.getAttribute("data-office-cross-reference") }); }
+      catch { return false; }
+    } }];
+  },
+  renderHTML({ mark }) {
+    const attrs = officeCrossReferenceAttributes(mark.attrs);
+    return ["span", { "data-office-cross-reference": attrs.targetId }, 0];
+  },
 });
 const OfficeParagraphFormat = Extension.create({
   name: "officeParagraphFormat",
@@ -230,6 +260,7 @@ function notice(text = "", error = false) {
 
 function normalizedDocument(document) {
   officeImageReferences(document);
+  officeBookmarkInventory(document);
   const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
@@ -244,6 +275,7 @@ function normalizedDocument(document) {
       result.attrs = officeSectionProfile(value.attrs);
     }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
+    if (value.type === "bookmark") result.attrs = officeBookmarkAttributes(value.attrs);
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
       characters += Array.from(value.text).length;
@@ -273,9 +305,11 @@ function normalizedDocument(document) {
     if (value.marks?.length) {
       const types = value.marks.map((mark) => mark.type);
       if (value.type !== "text" || types.some((type) => !allowedMarks.has(type)) ||
-          new Set(types).size !== types.length || (types.includes("code") && types.length > 1)) throw new Error("document-marks");
+          new Set(types).size !== types.length || (types.includes("code") && types.length > 1) ||
+          (types.includes("link") && types.includes("crossReference"))) throw new Error("document-marks");
       result.marks = value.marks.flatMap((mark) => {
         if (mark.type === "link") return [{ type: "link", attrs: { href: officeLinkHref(mark.attrs?.href) } }];
+        if (mark.type === "crossReference") return [{ type: "crossReference", attrs: officeCrossReferenceAttributes(mark.attrs) }];
         if (mark.type !== "textStyle") return [{ type: mark.type }];
         const attrs = officeCharacterAttributes(mark.attrs);
         return Object.keys(attrs).length ? [{ type: mark.type, attrs }] : [];
@@ -357,6 +391,7 @@ function updateEditorState() {
   updateParagraphControls();
   updateCharacterControls();
   updateLinkControls();
+  updateBookmarkControls();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -1069,6 +1104,180 @@ function openSelectedLink() {
   if (opened) opened.opener = null;
 }
 
+function selectedBookmark(editor = state.editor) {
+  const selection = editor?.state.selection;
+  return selection instanceof NodeSelection && selection.node.type.name === "bookmark" ?
+    { node: selection.node, position: selection.from } : null;
+}
+
+function bookmarkCaretAllowed(editor = state.editor) {
+  const selection = editor?.state.selection;
+  return Boolean(selection?.empty && selection instanceof TextSelection && ["paragraph", "heading"].includes(selection.$from.parent.type.name));
+}
+
+function bookmarkActionCurrent(action) { return paragraphActionCurrent(action); }
+
+function closeBookmarkDialog(restoreFocus = false) {
+  const action = state.bookmarkAction;
+  state.bookmarkAction = null; $("bookmark-dialog").close(); $("bookmark-form").reset(); $("bookmark-status").textContent = "";
+  if (restoreFocus && action?.editor === state.editor) focusEditor(action.editor);
+}
+
+function uniqueBookmarkLabel(inventory) {
+  const labels = new Set(inventory.map(({ label }) => label.toLowerCase()));
+  for (let number = 1; number <= OFFICE_BOOKMARK_LIMIT; number += 1) {
+    const candidate = `Lesezeichen ${number}`;
+    if (!labels.has(candidate.toLowerCase())) return candidate;
+  }
+  return "Lesezeichen";
+}
+
+function updateBookmarkControls() {
+  if (state.bookmarkAction && !bookmarkActionCurrent(state.bookmarkAction)) closeBookmarkDialog();
+  if (state.crossReferenceAction && !bookmarkActionCurrent(state.crossReferenceAction)) closeCrossReferenceDialog();
+  const bookmark = selectedBookmark();
+  let inventory = [];
+  try { if (state.editor) inventory = officeBookmarkInventory(state.editor.getJSON()); } catch { /* Invalid drafts remain disabled. */ }
+  $("bookmark-options").disabled = !paragraphAllowed() || (!bookmark && (!bookmarkCaretAllowed() || inventory.length >= OFFICE_BOOKMARK_LIMIT));
+  $("bookmark-options").setAttribute("aria-pressed", String(Boolean(bookmark)));
+  const entries = linkCharacters();
+  const hasReference = entries.some(({ marks }) => marks.some((mark) => mark.type.name === "crossReference"));
+  $("cross-reference-options").disabled = !paragraphAllowed() || !entries.length || (!inventory.length && !hasReference);
+  $("cross-reference-options").setAttribute("aria-pressed", String(hasReference));
+}
+
+function openBookmarkDialog() {
+  const editor = state.editor, selected = selectedBookmark(editor);
+  if (!paragraphAllowed() || (!selected && !bookmarkCaretAllowed(editor))) return;
+  let inventory;
+  try { inventory = officeBookmarkInventory(editor.getJSON()); } catch { return; }
+  if (!selected && inventory.length >= OFFICE_BOOKMARK_LIMIT) return;
+  closeBookmarkDialog();
+  state.bookmarkAction = { session: state.session, editor, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, selected };
+  $("bookmark-title").textContent = selected ? "Lesezeichen bearbeiten" : "Lesezeichen einfügen";
+  $("bookmark-label").value = selected?.node.attrs.label || uniqueBookmarkLabel(inventory);
+  $("bookmark-remove").hidden = !selected;
+  $("bookmark-apply").textContent = selected ? "Änderung übernehmen" : "Lesezeichen einfügen";
+  $("bookmark-status").textContent = `${inventory.length} von ${OFFICE_BOOKMARK_LIMIT} Lesezeichen im Dokument.`;
+  $("bookmark-dialog").showModal(); $("bookmark-label").select();
+}
+
+function commitBookmark(remove = false) {
+  const action = state.bookmarkAction;
+  if (!bookmarkActionCurrent(action)) { closeBookmarkDialog(); return; }
+  const editor = action.editor, current = action.selected;
+  let attrs, transaction = editor.state.tr;
+  try {
+    if (remove) {
+      if (!current) return;
+      transaction.delete(current.position, current.position + current.node.nodeSize);
+    } else {
+      const existingId = current?.node.attrs.id;
+      const id = existingId || `bookmark-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+      attrs = officeBookmarkAttributes({ id, label: $("bookmark-label").value });
+      const inventory = officeBookmarkInventory(editor.getJSON());
+      if (inventory.some((entry) => entry.id !== existingId && entry.label.toLowerCase() === attrs.label.toLowerCase())) {
+        throw new Error("duplicate-label");
+      }
+      if (current) transaction.setNodeMarkup(current.position, undefined, attrs);
+      else {
+        transaction.replaceSelectionWith(editor.schema.nodes.bookmark.create(attrs));
+        transaction.setSelection(NodeSelection.create(transaction.doc, action.selection.from));
+      }
+    }
+    validateEditorDocument(transaction.doc);
+  } catch (error) {
+    $("bookmark-status").textContent = error.message === "duplicate-label" ? "Dieser Lesezeichenname ist bereits vergeben." :
+      "Der Name muss 1 bis 64 sichtbare Zeichen enthalten und im Dokument eindeutig sein.";
+    $("bookmark-status").classList.add("error"); return;
+  }
+  closeBookmarkDialog(); editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  editor.view.dispatch(closeHistory(editor.state.tr)); focusEditor(editor); updateEditorState();
+  notice(remove ? "Lesezeichen entfernt. Vorhandene Querverweise zeigen das fehlende Ziel an." :
+    `${current ? "Lesezeichen umbenannt" : "Lesezeichen eingefügt"}. Gespeichert wird erst mit der nächsten bestätigten Version.`);
+}
+
+function commonCrossReference(entries) {
+  const values = new Set(entries.map(({ marks }) => marks.find((mark) => mark.type.name === "crossReference")?.attrs.targetId || null));
+  return values.size === 1 ? [...values][0] : null;
+}
+
+function closeCrossReferenceDialog(restoreFocus = false) {
+  const action = state.crossReferenceAction;
+  state.crossReferenceAction = null; $("cross-reference-dialog").close(); $("cross-reference-form").reset();
+  $("cross-reference-status").textContent = ""; $("cross-reference-target").replaceChildren();
+  if (restoreFocus && action?.editor === state.editor) focusEditor(action.editor);
+}
+
+function openCrossReferenceDialog() {
+  const editor = state.editor, characters = linkCharacters(editor);
+  if (!characters.length) return;
+  let inventory;
+  try { inventory = officeBookmarkInventory(editor.getJSON()); } catch { return; }
+  const existing = commonCrossReference(characters);
+  if (!inventory.length && !existing) return;
+  closeCrossReferenceDialog();
+  state.crossReferenceAction = { session: state.session, editor, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, characters };
+  const targets = $("cross-reference-target");
+  for (const entry of inventory) { const option = node("option", entry.label); option.value = entry.id; targets.append(option); }
+  if (existing && !inventory.some(({ id }) => id === existing)) {
+    const option = node("option", `Ziel nicht verfügbar (${existing})`); option.value = existing; option.dataset.broken = "true"; targets.prepend(option);
+  }
+  targets.value = existing || inventory[0]?.id || "";
+  $("cross-reference-selection").textContent = editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, " ").slice(0, 160);
+  $("cross-reference-remove").disabled = !characters.some(({ marks }) => marks.some((mark) => mark.type.name === "crossReference"));
+  $("cross-reference-jump").disabled = !inventory.some(({ id }) => id === targets.value);
+  $("cross-reference-status").textContent = officeCrossReferenceDescription({ targetId: targets.value }, inventory);
+  $("cross-reference-dialog").showModal(); targets.focus();
+}
+
+function commitCrossReference(remove = false) {
+  const action = state.crossReferenceAction;
+  if (!bookmarkActionCurrent(action) || !action.characters.length) { closeCrossReferenceDialog(); return; }
+  const targetId = remove ? null : $("cross-reference-target").value;
+  let attrs = null, transaction = action.editor.state.tr, changed = false;
+  try {
+    const inventory = officeBookmarkInventory(action.editor.getJSON());
+    if (!remove) {
+      attrs = officeCrossReferenceAttributes({ targetId });
+      if (!inventory.some(({ id }) => id === attrs.targetId)) throw new Error("missing-target");
+      if (action.characters.some(({ marks }) => marks.some((mark) => ["link", "code"].includes(mark.type.name)))) throw new Error("incompatible-mark");
+    }
+    const type = action.editor.schema.marks.crossReference;
+    for (const { from, to, marks } of action.characters) {
+      const prior = marks.find((mark) => mark.type === type)?.attrs.targetId || null;
+      if (prior === targetId) continue;
+      changed = true; transaction.removeMark(from, to, type);
+      if (attrs) transaction.addMark(from, to, type.create(attrs));
+    }
+    if (!changed) { $("cross-reference-status").textContent = "Keine Änderung: Die Auswahl verwendet bereits dieses Ziel."; return; }
+    validateEditorDocument(transaction.doc);
+  } catch (error) {
+    $("cross-reference-status").textContent = error.message === "incompatible-mark" ?
+      "Entfernen Sie zuerst Link- oder Codeformatierung aus der Auswahl." : "Wählen Sie ein vorhandenes Lesezeichen als Ziel.";
+    $("cross-reference-status").classList.add("error"); return;
+  }
+  closeCrossReferenceDialog(); action.editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  action.editor.view.dispatch(closeHistory(action.editor.state.tr)); focusEditor(action.editor); updateEditorState();
+  notice(remove ? "Querverweis entfernt. Der Text bleibt erhalten." : "Querverweis angewendet. Gespeichert wird erst mit der nächsten bestätigten Version.");
+}
+
+function jumpToCrossReference() {
+  const action = state.crossReferenceAction;
+  if (!bookmarkActionCurrent(action)) { closeCrossReferenceDialog(); return; }
+  const targetId = $("cross-reference-target").value;
+  let targetPosition = null;
+  action.editor.state.doc.descendants((entry, position) => {
+    if (targetPosition === null && entry.type.name === "bookmark" && entry.attrs.id === targetId) targetPosition = position;
+  });
+  if (targetPosition === null) return;
+  closeCrossReferenceDialog();
+  action.editor.view.dispatch(action.editor.state.tr.setSelection(NodeSelection.create(action.editor.state.doc, targetPosition)).scrollIntoView());
+  focusEditor(action.editor); updateEditorState(); notice("Zum Lesezeichen gesprungen.");
+}
+
 const transferableMarks = ["bold", "italic", "underline", "strike", "textStyle"];
 
 function transferMarks(marks) {
@@ -1743,6 +1952,8 @@ function contentChanged(session) {
   closeParagraphDialog();
   closeCharacterDialog();
   closeLinkDialog();
+  closeBookmarkDialog();
+  closeCrossReferenceDialog();
   $("table-message").textContent = "";
   closeListDialog();
   closeStyleDialog();
@@ -1770,7 +1981,7 @@ function prepareEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
@@ -4290,6 +4501,28 @@ $("link-href").addEventListener("input", () => { $("link-status").classList.remo
 for (const id of ["link-close", "link-cancel"]) $(id).addEventListener("click", () => closeLinkDialog(true));
 $("link-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeLinkDialog(true); });
 $("link-dialog").addEventListener("close", () => { if (!$("link-dialog").open && state.linkAction) closeLinkDialog(); });
+$("bookmark-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("bookmark-options").addEventListener("click", openBookmarkDialog);
+$("bookmark-form").addEventListener("submit", (event) => { event.preventDefault(); commitBookmark(); });
+$("bookmark-remove").addEventListener("click", () => commitBookmark(true));
+$("bookmark-label").addEventListener("input", () => $("bookmark-status").classList.remove("error"));
+for (const id of ["bookmark-close", "bookmark-cancel"]) $(id).addEventListener("click", () => closeBookmarkDialog(true));
+$("bookmark-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeBookmarkDialog(true); });
+$("bookmark-dialog").addEventListener("close", () => { if (!$("bookmark-dialog").open && state.bookmarkAction) closeBookmarkDialog(); });
+$("cross-reference-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("cross-reference-options").addEventListener("click", openCrossReferenceDialog);
+$("cross-reference-form").addEventListener("submit", (event) => { event.preventDefault(); commitCrossReference(); });
+$("cross-reference-remove").addEventListener("click", () => commitCrossReference(true));
+$("cross-reference-jump").addEventListener("click", jumpToCrossReference);
+$("cross-reference-target").addEventListener("change", () => {
+  const inventory = officeBookmarkInventory(state.editor.getJSON()), targetId = $("cross-reference-target").value;
+  $("cross-reference-jump").disabled = !inventory.some(({ id }) => id === targetId);
+  $("cross-reference-status").textContent = officeCrossReferenceDescription({ targetId }, inventory);
+  $("cross-reference-status").classList.remove("error");
+});
+for (const id of ["cross-reference-close", "cross-reference-cancel"]) $(id).addEventListener("click", () => closeCrossReferenceDialog(true));
+$("cross-reference-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeCrossReferenceDialog(true); });
+$("cross-reference-dialog").addEventListener("close", () => { if (!$("cross-reference-dialog").open && state.crossReferenceAction) closeCrossReferenceDialog(); });
 $("format-transfer").addEventListener("change", (event) => {
   const choice = event.target.value;
   event.target.value = "";
