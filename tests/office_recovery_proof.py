@@ -951,11 +951,7 @@ def verify_restored_table_caption_versions(
     object_id: str | None = None
     previous: str | None = None
     for number in range(1, 6):
-        candidates = [
-            row
-            for row in versions
-            if row["mutation_reference"] == f"work-e2e-table-caption-recovery-{number}"
-        ]
+        candidates = [row for row in versions if row["mutation_reference"] == f"work-e2e-table-caption-recovery-{number}"]
         if len(candidates) != 1:
             raise ValueError("Office recovery table caption fixtures are missing or ambiguous")
         version = candidates[0]
