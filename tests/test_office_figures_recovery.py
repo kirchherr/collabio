@@ -85,16 +85,12 @@ def test_recovery_binds_exact_figure_add_reorder_broken_and_reset(tamper: str | 
         versions[1]["previous_version_id"] = None
     documents = Mock()
     documents.read_content.side_effect = lambda **kwargs: reads[kwargs["version_id"]]
-    arguments = {
-        "documents": documents,
-        "readers": {"office-doc-" + "a" * 32: Mock()},
-        "versions": versions,
-    }
+    readers = {"office-doc-" + "a" * 32: Mock()}
     if tamper is not None:
         with pytest.raises(ValueError):
-            verify_restored_figure_versions(**arguments)
+            verify_restored_figure_versions(documents=documents, readers=readers, versions=versions)
     else:
-        report = verify_restored_figure_versions(**arguments)
+        report = verify_restored_figure_versions(documents=documents, readers=readers, versions=versions)
         assert report["verified_figure_fixture_version_count"] == 5
         assert report["figures_reorder_broken_and_reset_verified"]
         assert report["legacy_figure_canonical_hash_verified"]

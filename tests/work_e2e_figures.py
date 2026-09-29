@@ -80,7 +80,7 @@ def seed_synthetic_office_figures(
             ),
         )
 
-    fields = {
+    fields: dict[str, Any] = {
         "title": FIGURE_RECOVERY_TITLE,
         "document": figure_recovery_document(1),
         "mutation_reference": "work-e2e-figure-recovery-1",
