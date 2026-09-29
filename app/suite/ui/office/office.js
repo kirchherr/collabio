@@ -62,6 +62,10 @@ const OfficeTable = Table.extend({
       const body = document.createElement("tbody"); table.append(caption, body);
       return { dom: table, contentDOM: body,
         update(updated) { return updated.type === tableNode.type; },
+        ignoreMutation(mutation) {
+          return mutation.target === caption || caption.contains(mutation.target) ||
+            (mutation.type === "attributes" && mutation.target === table);
+        },
       };
     };
   },
