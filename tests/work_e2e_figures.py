@@ -43,7 +43,11 @@ def figure_recovery_document(number: int, images: Sequence[dict[str, Any]] = ())
     if number == 5:
         return {
             "type": "doc",
-            "content": [_paragraph(referenced=False), {"type": "image", "attrs": overview}, {"type": "image", "attrs": details}],
+            "content": [
+                _paragraph(referenced=False),
+                {"type": "image", "attrs": overview},
+                {"type": "image", "attrs": details},
+            ],
         }
     overview["figureId"] = OVERVIEW_FIGURE_ID
     details["figureId"] = DETAILS_FIGURE_ID
@@ -90,8 +94,12 @@ def seed_synthetic_office_figures(
     if not isinstance(repository, PgOfficeDocumentRepository):
         raise RuntimeError("Synthetic figure recovery requires PostgreSQL Office storage")
     images = (
-        store_uploaded_image(repository, user, saved.document.object_id, png_from_pixels(1, 1, b"\x25\x63\xeb\xff"), 1, 1),
-        store_uploaded_image(repository, user, saved.document.object_id, png_from_pixels(1, 1, b"\xf9\x73\x16\xff"), 1, 1),
+        store_uploaded_image(
+            repository, user, saved.document.object_id, png_from_pixels(1, 1, b"\x25\x63\xeb\xff"), 1, 1
+        ),
+        store_uploaded_image(
+            repository, user, saved.document.object_id, png_from_pixels(1, 1, b"\xf9\x73\x16\xff"), 1, 1
+        ),
     )
     for number in range(2, FIGURE_RECOVERY_VERSION_COUNT + 1):
         saved = service.save(

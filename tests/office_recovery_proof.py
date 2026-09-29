@@ -1147,7 +1147,15 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
         if target_dsn.endswith(
-            ("_272_restore", "_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore")
+            (
+                "_272_restore",
+                "_273_restore",
+                "_274_restore",
+                "_275_restore",
+                "_276_restore",
+                "_277_restore",
+                "_278_restore",
+            )
         )
         else {}
     )
@@ -1157,10 +1165,16 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             readers=readers,
             versions=inventory["document_versions"],
             expected_version_count=(
-                6 if target_dsn.endswith(("_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore")) else 4
+                6
+                if target_dsn.endswith(
+                    ("_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore")
+                )
+                else 4
             ),
         )
-        if target_dsn.endswith(("_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore"))
+        if target_dsn.endswith(
+            ("_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore")
+        )
         else {}
     )
     section_evidence = (
