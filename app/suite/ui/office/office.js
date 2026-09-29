@@ -1,4 +1,4 @@
-import { officeRunningSettings, officeRunningDescription, officeRunningNumber, configureOfficeRunningPrint, clearOfficeRunningPrint } from "./office-running.mjs";
+import { officeRunningSettings, officeRunningDescription, officeRunningNumber, officeResolveRunningFields, configureOfficeRunningPrint, clearOfficeRunningPrint } from "./office-running.mjs";
 import { Editor, Extension, Mark, Node, textblockTypeInputRule } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Table, TableKit } from "@tiptap/extension-table";
@@ -24,6 +24,7 @@ import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor,
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
+import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -31,7 +32,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -39,6 +40,7 @@ const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak", "bookmark",
+  "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference"]);
 const commandNames = {
@@ -170,6 +172,68 @@ const OfficeCrossReference = Mark.create({
     return ["span", { "data-office-cross-reference": attrs.targetId }, 0];
   },
 });
+const semanticAtom = (name, group, inline, attributes, label) => Node.create({
+  name, group, inline, atom: true, selectable: true, draggable: false,
+  addAttributes() { return Object.fromEntries(attributes.map((key) => [key, { default: key === "locator" ? "" : null, rendered: false }])); },
+  parseHTML: () => [],
+  renderHTML({ node }) { return [inline ? "span" : "div", { class: `office-semantic office-${name}`, contenteditable: "false", [`data-office-${name}`]: "" }, label(node.attrs)]; },
+});
+const OfficeDocumentField = semanticAtom("documentField", "inline", true, ["key"], (attrs) => `Feld · ${attrs.key || "?"}`);
+const OfficeNoteReference = semanticAtom("noteReference", "inline", true, ["id", "kind", "text"], (attrs) => attrs.kind === "endnote" ? "Endnote" : "Fußnote");
+const OfficeCitationReference = semanticAtom("citationReference", "inline", true, ["sourceId", "locator"], () => "Quelle");
+const OfficeTableOfContents = semanticAtom("tableOfContents", "block", false, ["maxLevel"], () => "Inhaltsverzeichnis");
+const OfficeBibliography = semanticAtom("bibliography", "block", false, [], () => "Literaturverzeichnis");
+const OfficeEquation = semanticAtom("equation", "block", false, ["id", "source", "alt"], (attrs) => attrs.source || "Formel");
+const OfficeReferenceIndex = semanticAtom("referenceIndex", "block", false, [], () => "Referenznavigator");
+const OfficeSemantics = Extension.create({
+  name: "officeSemantics",
+  addGlobalAttributes() {
+    return [{ types: ["doc"], attributes: {
+      documentFields: { default: [], rendered: false }, citationSources: { default: [], rendered: false },
+    } }];
+  },
+  addProseMirrorPlugins() {
+    return [new Plugin({ view: (view) => {
+      const refresh = () => {
+        const inventory = officeSemanticInventory(view.state.doc.toJSON());
+        view.dom.querySelectorAll("[data-office-documentField]").forEach((element) => {
+          const position = view.posAtDOM(element, 0), node = view.state.doc.nodeAt(position);
+          if (!node) return;
+          const field = officeFieldAttributes(node.attrs, inventory.fieldMap);
+          element.textContent = field.value; element.dataset.officeFieldKey = field.key;
+          element.toggleAttribute("data-office-broken", !field.field);
+        });
+        let footnote = 0, endnote = 0;
+        view.dom.querySelectorAll("[data-office-noteReference]").forEach((element) => {
+          const position = view.posAtDOM(element, 0), node = view.state.doc.nodeAt(position);
+          if (!node) return;
+          const note = officeNoteAttributes(node.attrs), number = note.kind === "footnote" ? ++footnote : ++endnote;
+          element.textContent = `${note.kind === "footnote" ? "Fußnote" : "Endnote"} ${number}`;
+          element.title = note.text;
+        });
+        view.dom.querySelectorAll("[data-office-citationReference]").forEach((element) => {
+          const position = view.posAtDOM(element, 0), node = view.state.doc.nodeAt(position);
+          if (!node) return;
+          const citation = officeCitationAttributes(node.attrs, inventory.sourceMap);
+          element.textContent = officeCitationLabel(citation.source, citation.locator);
+          element.toggleAttribute("data-office-broken", !citation.source);
+        });
+        view.dom.querySelectorAll("[data-office-tableOfContents]").forEach((element) => {
+          const position = view.posAtDOM(element, 0), node = view.state.doc.nodeAt(position);
+          const entries = inventory.headings.filter((heading) => heading.level <= (node?.attrs.maxLevel || 3));
+          element.textContent = entries.length ? entries.map((entry) => `${"  ".repeat(entry.level - 1)}${entry.text}`).join("\n") : "Inhaltsverzeichnis · noch keine Überschriften";
+        });
+        view.dom.querySelectorAll("[data-office-bibliography]").forEach((element) => {
+          element.textContent = inventory.sources.length ? inventory.sources.map(officeBibliographyLabel).join("\n") : "Literaturverzeichnis · noch keine Quellen";
+        });
+        view.dom.querySelectorAll("[data-office-referenceIndex]").forEach((element) => {
+          element.textContent = inventory.references.length ? inventory.references.map((entry) => `${entry.kind}: ${entry.label}${entry.broken ? " (fehlt)" : ""}`).join("\n") : "Referenznavigator · noch keine Referenzen";
+        });
+      };
+      refresh(); return { update: refresh };
+    } })];
+  },
+});
 const OfficeParagraphFormat = Extension.create({
   name: "officeParagraphFormat",
   priority: 1000,
@@ -285,6 +349,7 @@ function normalizedDocument(document) {
   officeBookmarkInventory(document);
   officeReferenceInventory(document);
   officeTableInventory(document);
+  officeSemanticInventory(document);
   const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
@@ -300,6 +365,21 @@ function normalizedDocument(document) {
     }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "bookmark") result.attrs = officeBookmarkAttributes(value.attrs);
+    if (value.type === "documentField") result.attrs = { key: officeFieldAttributes(value.attrs, new Map()).key };
+    if (value.type === "noteReference") result.attrs = officeNoteAttributes(value.attrs);
+    if (value.type === "citationReference") {
+      const citation = officeCitationAttributes(value.attrs, new Map());
+      result.attrs = { sourceId: citation.sourceId, locator: citation.locator };
+    }
+    if (value.type === "tableOfContents") {
+      if (depth !== 1 || ![1, 2, 3].includes(value.attrs?.maxLevel)) throw new Error("document-toc");
+      result.attrs = { maxLevel: value.attrs.maxLevel };
+    }
+    if (["bibliography", "referenceIndex"].includes(value.type) && depth !== 1) throw new Error("document-generated-block");
+    if (value.type === "equation") {
+      if (depth !== 1) throw new Error("document-equation");
+      result.attrs = officeEquationAttributes(value.attrs);
+    }
     if (value.type === "table") {
       const attributes = officeTableAttributes(value.attrs);
       if (attributes.tableId) result.attrs = attributes;
@@ -369,6 +449,10 @@ function normalizedDocument(document) {
   if (styles.length) result.attrs = { styles };
   if (document.attrs?.running != null) result.attrs = { ...result.attrs, running: officeRunningSettings(document.attrs.running, document.attrs.page) };
   if (document.attrs?.page != null) result.attrs = { ...result.attrs, page: officePageSettings(document.attrs.page) };
+  const fields = officeDocumentFields(document.attrs?.documentFields || []);
+  const sources = officeCitationSources(document.attrs?.citationSources || []);
+  if (fields.length) result.attrs = { ...result.attrs, documentFields: fields };
+  if (sources.length) result.attrs = { ...result.attrs, citationSources: sources };
   return result;
 }
 
@@ -432,6 +516,7 @@ function updateEditorState() {
   });
   $("text-style").disabled = !editable;
   $("insert-menu").disabled = !editable;
+  $("semantic-options").disabled = !editable || !paragraphAllowed();
   $("insert-menu").querySelector('[value="pageBreak"]').disabled = !pageBreakAllowed();
   $("insert-menu").querySelector('[value="removePageBreak"]').disabled = !paragraphAllowed() || pageBreakPosition() === null;
   $("insert-menu").querySelector('[value="sectionBreak"]').disabled = !sectionBreakAllowed();
@@ -1335,6 +1420,105 @@ function jumpToCrossReference() {
   focusEditor(action.editor); updateEditorState(); notice("Zum Verweisziel gesprungen.");
 }
 
+function semanticActionCurrent(action = state.semanticAction) {
+  return Boolean(action && action.editor === state.editor && action.session === state.session &&
+    action.context === state.context && sessionCurrent(action.session) && action.revision === action.session.revision);
+}
+
+function updateSemanticFields() {
+  const kind = $("semantic-kind").value;
+  $("semantic-field-fields").hidden = kind !== "field";
+  $("semantic-toc-fields").hidden = kind !== "toc";
+  $("semantic-note-fields").hidden = !["footnote", "endnote"].includes(kind);
+  $("semantic-source-fields").hidden = !["source", "citation"].includes(kind);
+  $("semantic-citation-fields").hidden = kind !== "citation";
+  $("semantic-equation-fields").hidden = kind !== "equation";
+  $("semantic-remove").hidden = !["field", "source", "citation"].includes(kind);
+  $("semantic-apply").textContent = kind === "source" ? "Quelle anlegen" : "Einfügen";
+}
+
+function closeSemanticDialog(restoreFocus = false) {
+  const action = state.semanticAction; state.semanticAction = null;
+  $("semantic-dialog").close(); $("semantic-form").reset(); $("semantic-status").textContent = "";
+  updateSemanticFields(); if (restoreFocus && action?.editor === state.editor) focusEditor(action.editor);
+}
+
+function openSemanticDialog() {
+  if (!paragraphAllowed()) return;
+  closeSemanticDialog();
+  const editor = state.editor, inventory = officeSemanticInventory(editor.getJSON());
+  state.semanticAction = { editor, session: state.session, context: state.context, revision: state.session.revision };
+  const select = $("semantic-source-id"); select.replaceChildren(new Option("Neue Quelle", ""));
+  for (const source of inventory.sources) select.append(new Option(officeBibliographyLabel(source), source.id));
+  updateSemanticFields(); $("semantic-dialog").showModal(); $("semantic-kind").focus();
+}
+
+function commitSemanticElement() {
+  const action = state.semanticAction;
+  if (!semanticActionCurrent(action)) { closeSemanticDialog(); return; }
+  const editor = action.editor, kind = $("semantic-kind").value;
+  try {
+    let transaction = editor.state.tr;
+    const rootAttrs = { ...editor.state.doc.attrs };
+    let inserted = null;
+    if (kind === "field") {
+      const field = { key: $("semantic-field-key").value.trim(), label: $("semantic-field-label").value.trim(), value: $("semantic-field-value").value };
+      const fields = officeDocumentFields(rootAttrs.documentFields || []), index = fields.findIndex((entry) => entry.key === field.key);
+      if (index < 0) fields.push(field); else fields[index] = field;
+      rootAttrs.documentFields = officeDocumentFields(fields);
+      transaction.setNodeMarkup(0, undefined, rootAttrs);
+      inserted = editor.schema.nodes.documentField.create({ key: field.key });
+    } else if (["footnote", "endnote"].includes(kind)) {
+      inserted = editor.schema.nodes.noteReference.create(officeNoteAttributes({ id: officeOpaqueId("note"), kind, text: $("semantic-note-text").value.trim() }));
+    } else if (kind === "source") {
+      const source = { id: officeOpaqueId("source"), author: $("semantic-source-author").value.trim(), title: $("semantic-source-title").value.trim(), year: $("semantic-source-year").value.trim(), locator: $("semantic-source-locator").value.trim() };
+      rootAttrs.citationSources = officeCitationSources([...(rootAttrs.citationSources || []), source]);
+      transaction.setNodeMarkup(0, undefined, rootAttrs);
+    } else if (kind === "citation") {
+      const sourceId = $("semantic-source-id").value;
+      if (!sourceId) throw new Error("Wählen Sie zuerst eine vorhandene Quelle oder legen Sie eine Quelle an.");
+      inserted = editor.schema.nodes.citationReference.create({ sourceId, locator: $("semantic-citation-locator").value.trim() });
+    } else if (kind === "toc") inserted = editor.schema.nodes.tableOfContents.create({ maxLevel: Number($("semantic-toc-level").value) });
+    else if (kind === "bibliography") inserted = editor.schema.nodes.bibliography.create();
+    else if (kind === "equation") inserted = editor.schema.nodes.equation.create(officeEquationAttributes({ id: officeOpaqueId("equation"), source: $("semantic-equation-source").value.trim(), alt: $("semantic-equation-alt").value.trim() }));
+    else if (kind === "index") inserted = editor.schema.nodes.referenceIndex.create();
+    if (inserted) transaction.replaceSelectionWith(inserted, false);
+    validateEditorDocument(transaction.doc); closeSemanticDialog();
+    editor.view.dispatch(transaction.scrollIntoView()); focusEditor(editor); updateEditorState();
+    notice(kind === "source" ? "Quelle im Dokumentkatalog angelegt." : "Strukturelement eingefügt. Gespeichert wird erst mit der nächsten bestätigten Version.");
+  } catch (error) {
+    $("semantic-status").textContent = error instanceof Error ? error.message : "Das Element ist ungültig.";
+    $("semantic-status").classList.add("error");
+  }
+}
+
+function removeSemanticCatalogEntry() {
+  const action = state.semanticAction;
+  if (!semanticActionCurrent(action)) { closeSemanticDialog(); return; }
+  const editor = action.editor, kind = $("semantic-kind").value, rootAttrs = { ...editor.state.doc.attrs };
+  try {
+    if (kind === "field") {
+      const key = $("semantic-field-key").value.trim();
+      if (!key) throw new Error("Geben Sie den zu entfernenden Feldschlüssel ein.");
+      const fields = officeDocumentFields(rootAttrs.documentFields || []), remaining = fields.filter((field) => field.key !== key);
+      if (remaining.length === fields.length) throw new Error("Dieses Feld ist nicht im Katalog vorhanden.");
+      rootAttrs.documentFields = remaining;
+    } else {
+      const sourceId = $("semantic-source-id").value;
+      if (!sourceId) throw new Error("Wählen Sie die zu entfernende Quelle.");
+      const sources = officeCitationSources(rootAttrs.citationSources || []), remaining = sources.filter((source) => source.id !== sourceId);
+      if (remaining.length === sources.length) throw new Error("Diese Quelle ist nicht im Katalog vorhanden.");
+      rootAttrs.citationSources = remaining;
+    }
+    const transaction = editor.state.tr.setNodeMarkup(0, undefined, rootAttrs);
+    validateEditorDocument(transaction.doc); closeSemanticDialog(); editor.view.dispatch(transaction); focusEditor(editor); updateEditorState();
+    notice("Katalogeintrag entfernt. Vorhandene Verweise bleiben als fehlend sichtbar und rückgängig machbar.");
+  } catch (error) {
+    $("semantic-status").textContent = error instanceof Error ? error.message : "Der Katalogeintrag konnte nicht entfernt werden.";
+    $("semantic-status").classList.add("error");
+  }
+}
+
 const transferableMarks = ["bold", "italic", "underline", "strike", "textStyle"];
 
 function transferMarks(marks) {
@@ -2071,6 +2255,7 @@ function contentChanged(session) {
   closeLinkDialog();
   closeBookmarkDialog();
   closeCrossReferenceDialog();
+  closeSemanticDialog();
   $("table-message").textContent = "";
   closeListDialog();
   closeStyleDialog();
@@ -2099,6 +2284,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference,
+      OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
@@ -3112,7 +3298,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       if (!current()) return;
       root.className = printFormat();
       configureOfficePrintPage(printPage());
-      configureOfficeRunningPrint(content.attrs?.running, printPage());
+      configureOfficeRunningPrint(officeResolveRunningFields(content.attrs?.running, content.attrs?.documentFields || []), printPage());
       configureOfficeSectionPrint(content);
       print.printing = true;
       state.preparedPrint = print;
@@ -4640,6 +4826,14 @@ $("cross-reference-target").addEventListener("change", () => {
 for (const id of ["cross-reference-close", "cross-reference-cancel"]) $(id).addEventListener("click", () => closeCrossReferenceDialog(true));
 $("cross-reference-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeCrossReferenceDialog(true); });
 $("cross-reference-dialog").addEventListener("close", () => { if (!$("cross-reference-dialog").open && state.crossReferenceAction) closeCrossReferenceDialog(); });
+$("semantic-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("semantic-options").addEventListener("click", openSemanticDialog);
+$("semantic-kind").addEventListener("change", updateSemanticFields);
+$("semantic-form").addEventListener("submit", (event) => { event.preventDefault(); commitSemanticElement(); });
+$("semantic-remove").addEventListener("click", removeSemanticCatalogEntry);
+for (const id of ["semantic-close", "semantic-cancel"]) $(id).addEventListener("click", () => closeSemanticDialog(true));
+$("semantic-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeSemanticDialog(true); });
+$("semantic-dialog").addEventListener("close", () => { if (!$("semantic-dialog").open && state.semanticAction) closeSemanticDialog(); });
 $("format-transfer").addEventListener("change", (event) => {
   const choice = event.target.value;
   event.target.value = "";

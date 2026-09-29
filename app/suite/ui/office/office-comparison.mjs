@@ -7,6 +7,7 @@ import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { officeTableAttributes } from "./office-tables.mjs";
+import { officeBibliographyLabel, officeCitationLabel, officeSemanticInventory } from "./office-semantics.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -17,7 +18,8 @@ const nodeLabels = {
   bulletList: "Aufzählung", orderedList: "Nummerierte Liste", listItem: "Listeneintrag", blockquote: "Zitat",
   codeBlock: "Codeblock", horizontalRule: "Trennlinie", table: "Tabelle", tableRow: "Tabellenzeile",
   tableCell: "Tabellenzelle", tableHeader: "Tabellenkopf", pageBreak: "Seitenumbruch", sectionBreak: "Abschnittsumbruch",
-  bookmark: "Lesezeichen",
+  bookmark: "Lesezeichen", documentField: "Dokumentfeld", noteReference: "Note", citationReference: "Quellenverweis",
+  tableOfContents: "Inhaltsverzeichnis", bibliography: "Literaturverzeichnis", equation: "Formel", referenceIndex: "Referenznavigator",
 };
 
 function canonical(value, key = "") {
@@ -78,7 +80,10 @@ export function compareOfficeDocuments(leftDoc, rightDoc) {
   const includePage = leftDoc.attrs?.page != null || rightDoc.attrs?.page != null;
   const blocks = (document) => {
     const expanded = officeStyleComparisonDocument(document);
+    const semantics = officeSemanticInventory(document);
     return [...(expanded.content || []), ...(expanded.attrs?.styles?.length ? [{ type: "styleCatalog", styles: expanded.attrs.styles }] : []),
+      ...(semantics.fields.length ? [{ type: "fieldCatalog", fields: semantics.fields }] : []),
+      ...(semantics.sources.length ? [{ type: "sourceCatalog", sources: semantics.sources }] : []),
       ...(includePage ? [{ type: "pageSettings", page: officePageSettings(document.attrs?.page) }] : []),
       ...(includeRunning ? [{ type: "runningText", running: officeRunningSettings(document.attrs?.running) }] : [])];
   };
@@ -193,6 +198,8 @@ function blockText(block, nested = false) {
   const children = block.content || [];
   switch (block.type) {
     case "styleCatalog": return block.styles.map(officeStyleDescription).join("\n");
+    case "fieldCatalog": return block.fields.map((field) => `${field.label} (${field.key}): ${field.value}`).join("\n");
+    case "sourceCatalog": return block.sources.map(officeBibliographyLabel).join("\n");
     case "runningText": return officeRunningDescription(block.running);
     case "pageSettings": return officePageDescription(block.page);
     case "text": return markedText(block);
@@ -201,6 +208,13 @@ function blockText(block, nested = false) {
     case "pageBreak": return "Neue Seite";
     case "sectionBreak": return "Neuer Abschnitt";
     case "bookmark": return officeBookmarkDescription(block.attrs);
+    case "documentField": return `Feld: ${block.attrs.key}`;
+    case "noteReference": return `${block.attrs.kind === "footnote" ? "Fußnote" : "Endnote"}: ${block.attrs.text}`;
+    case "citationReference": return officeCitationLabel(null, block.attrs.locator);
+    case "tableOfContents": return `Automatisch bis Ebene ${block.attrs.maxLevel}`;
+    case "bibliography": return "Automatisches Literaturverzeichnis";
+    case "equation": return `${block.attrs.source}\n${block.attrs.alt}`;
+    case "referenceIndex": return "Automatischer Referenznavigator";
     case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.figureId ? `Nummerierte Abbildung · ${block.attrs.figureId}\n` : ""}${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
@@ -241,7 +255,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : nodeLabels[block.type];
+  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

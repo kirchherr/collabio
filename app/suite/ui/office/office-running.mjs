@@ -39,6 +39,17 @@ export function officeRunningNumber(value, page = 1, total = 3, first = false) {
   return value.numbering === "none" || (first && value.firstPage && !value.firstPage.showNumber) ? "" :
     `Seite ${page}${value.numbering === "pageOfPages" ? ` von ${total}` : ""}`;
 }
+export function officeResolveRunningFields(value, fields = []) {
+  const running = officeRunningSettings(value), catalog = new Map(fields.map((field) => [field.key, field.value]));
+  const resolve = (text) => {
+    const result = text.replace(/\{\{field:([a-z][a-z0-9-]{0,47})\}\}/g,
+      (_, key) => catalog.has(key) ? catalog.get(key) : `⟦Fehlendes Feld: ${key}⟧`);
+    if ([...result].length > 64) throw new TypeError("Resolved running field exceeds 64 characters");
+    return result;
+  };
+  return { header: resolve(running.header), footer: resolve(running.footer), numbering: running.numbering,
+    ...(running.firstPage ? { firstPage: { header: resolve(running.firstPage.header), footer: resolve(running.firstPage.footer), showNumber: running.firstPage.showNumber } } : {}) };
+}
 // Encode every code point as a terminated CSS escape inside a quoted string.
 // Quotes, backslashes, brackets and text resembling CSS remain literal glyphs.
 export function officeRunningCssString(text) {

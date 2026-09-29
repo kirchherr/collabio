@@ -134,6 +134,15 @@
 @container office-image-flow (max-width: 480px) {
   :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { float: none; width: auto; margin: 1rem 0; }
 }
+
+.office-semantic { border: 1px solid #a8b3c7; border-radius: .35rem; background: #f4f7fb; color: #24324a; padding: .1rem .35rem; white-space: pre-wrap; }
+div.office-semantic { display: block; margin: .75rem 0; padding: .65rem .8rem; font-family: inherit; }
+.office-equation { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; text-align: center; }
+.office-semantic[data-office-broken], .office-print-field[data-office-broken], .office-print-citation[data-office-broken] { border-color: #b42318; color: #8a1c13; }
+.office-print-toc li[data-office-heading-level="2"] { margin-left: 1.5rem; }
+.office-print-toc li[data-office-heading-level="3"] { margin-left: 3rem; }
+.office-print-equation { text-align: center; margin: 1rem 0; }
+.office-print-equation code { display: block; white-space: pre-wrap; }
 /* Explicit page boundaries stay selectable on screen and contain preceding floats. */
 .office-page-break{display:block;clear:both;position:relative;margin:18px 0;padding:8px;border-block:1px dashed #94a3b8;text-align:center;color:#475569;cursor:pointer;user-select:none;font:12px/1.4 system-ui,sans-serif}
 .office-page-break::before{content:"Seitenumbruch"}

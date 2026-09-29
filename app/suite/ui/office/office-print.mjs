@@ -7,6 +7,7 @@ import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mj
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
 import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
+import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -22,6 +23,8 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   const styles = officeStyles(content.attrs?.styles || []);
   const targets = officeReferenceInventory(content);
   const targetsById = new Map(targets.map((entry) => [entry.id, entry]));
+  const semantics = officeSemanticInventory(content);
+  let footnote = 0, endnote = 0;
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
     if (value.type === "pageBreak") {
@@ -46,6 +49,54 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       marker.id = officeBookmarkFragment(attrs.id); marker.className = "office-print-bookmark";
       marker.setAttribute("data-office-bookmark", attrs.id); marker.setAttribute("aria-label", `Lesezeichen: ${attrs.label}`);
       return marker;
+    }
+    if (value.type === "documentField") {
+      const field = officeFieldAttributes(value.attrs, semantics.fieldMap), marker = dom.createElement("span");
+      marker.className = "office-print-field"; marker.dataset.officeField = field.key;
+      if (!field.field) marker.dataset.officeBroken = "true";
+      marker.textContent = field.value; return marker;
+    }
+    if (value.type === "noteReference") {
+      const note = officeNoteAttributes(value.attrs), number = note.kind === "footnote" ? ++footnote : ++endnote;
+      const marker = dom.createElement("sup"); marker.className = `office-print-${note.kind}`;
+      marker.textContent = String(number); marker.setAttribute("aria-label", `${note.kind === "footnote" ? "Fußnote" : "Endnote"} ${number}: ${note.text}`);
+      return marker;
+    }
+    if (value.type === "citationReference") {
+      const citation = officeCitationAttributes(value.attrs, semantics.sourceMap), marker = dom.createElement("span");
+      marker.className = "office-print-citation"; marker.textContent = officeCitationLabel(citation.source, citation.locator);
+      if (!citation.source) marker.dataset.officeBroken = "true";
+      return marker;
+    }
+    if (value.type === "tableOfContents") {
+      const section = dom.createElement("nav"); section.className = "office-print-toc"; section.setAttribute("aria-label", "Inhaltsverzeichnis");
+      const heading = dom.createElement("h2"); heading.textContent = "Inhaltsverzeichnis"; section.append(heading);
+      const list = dom.createElement("ol");
+      for (const entry of semantics.headings.filter((item) => item.level <= value.attrs.maxLevel)) {
+        const item = dom.createElement("li"); item.textContent = entry.text; item.dataset.officeHeadingLevel = String(entry.level); list.append(item);
+      }
+      section.append(list); return section;
+    }
+    if (value.type === "bibliography") {
+      const section = dom.createElement("section"); section.className = "office-print-bibliography";
+      const heading = dom.createElement("h2"); heading.textContent = "Literaturverzeichnis"; section.append(heading);
+      const list = dom.createElement("ol");
+      for (const source of semantics.sources) { const item = dom.createElement("li"); item.textContent = officeBibliographyLabel(source); list.append(item); }
+      section.append(list); return section;
+    }
+    if (value.type === "equation") {
+      const equation = officeEquationAttributes(value.attrs), figure = dom.createElement("figure"); figure.className = "office-print-equation";
+      const code = dom.createElement("code"); code.textContent = equation.source; code.setAttribute("aria-label", equation.alt);
+      const caption = dom.createElement("figcaption");
+      const number = semantics.equations.find((item) => item.id === equation.id)?.number; caption.textContent = `Formel ${number}: ${equation.alt}`;
+      figure.append(code, caption); return figure;
+    }
+    if (value.type === "referenceIndex") {
+      const section = dom.createElement("section"); section.className = "office-print-reference-index";
+      const heading = dom.createElement("h2"); heading.textContent = "Referenznavigator"; section.append(heading);
+      const list = dom.createElement("ul");
+      for (const reference of semantics.references) { const item = dom.createElement("li"); item.textContent = `${reference.kind}: ${reference.label}${reference.broken ? " (fehlt)" : ""}`; list.append(item); }
+      section.append(list); return section;
     }
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("Invalid print text");
@@ -150,6 +201,14 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       if (section > OFFICE_SECTION_LIMIT) throw new Error("Office section limit exceeded");
       boundary = true;
     }
+  }
+  for (const kind of ["footnote", "endnote"]) {
+    const notes = semantics.notes.filter((note) => note.kind === kind);
+    if (!notes.length) continue;
+    const sectionElement = dom.createElement("section"); sectionElement.className = `office-print-${kind}s`;
+    const titleElement = dom.createElement("h2"); titleElement.textContent = kind === "footnote" ? "Fußnoten" : "Endnoten"; sectionElement.append(titleElement);
+    const list = dom.createElement("ol"); for (const note of notes) { const item = dom.createElement("li"); item.textContent = note.text; list.append(item); }
+    sectionElement.append(list); article.append(sectionElement);
   }
   return article;
 }
