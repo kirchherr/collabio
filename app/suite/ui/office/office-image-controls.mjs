@@ -8,7 +8,10 @@ import { officeFigureInventory } from "./office-figures.mjs";
 export function officeImageExtension(context, accessDenied) {
   return Node.create({
     name: "image", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(officeImageKeys.map((key) => [key, { default: null, rendered: false }])),
+    addAttributes: () => ({
+      ...Object.fromEntries(officeImageKeys.filter((key) => key !== "figureId").map((key) => [key, { default: null, rendered: false }])),
+      figureId: { default: null, rendered: false },
+    }),
     parseHTML: () => [],
     renderHTML: () => ["figure", { class: "office-image" }, "Bild"],
     addNodeView() {
