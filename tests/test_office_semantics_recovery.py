@@ -45,11 +45,20 @@ def test_recovery_binds_all_semantic_structures_and_broken_reset_versions(tamper
     for number in range(1, SEMANTIC_RECOVERY_VERSION_COUNT + 1):
         version_id = f"version-{number}"
         digest = stable_hash(canonical_json(contents[number]))
-        versions.append({"object_id": "office-doc-" + "a" * 32, "version_id": version_id,
-            "previous_version_id": previous, "content_hash": digest,
-            "mutation_reference": f"work-e2e-semantic-recovery-{number}"})
-        reads[version_id] = SimpleNamespace(content=contents[number], version=SimpleNamespace(
-            version_id=version_id, title=SEMANTIC_RECOVERY_TITLE, content_hash=digest), can_write=False)
+        versions.append(
+            {
+                "object_id": "office-doc-" + "a" * 32,
+                "version_id": version_id,
+                "previous_version_id": previous,
+                "content_hash": digest,
+                "mutation_reference": f"work-e2e-semantic-recovery-{number}",
+            }
+        )
+        reads[version_id] = SimpleNamespace(
+            content=contents[number],
+            version=SimpleNamespace(version_id=version_id, title=SEMANTIC_RECOVERY_TITLE, content_hash=digest),
+            can_write=False,
+        )
         previous = version_id
     if tamper == "missing":
         versions.pop()

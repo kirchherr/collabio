@@ -114,7 +114,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     style_names: set[str] = set()
     root_attrs = document.get("attrs", {})
     if not isinstance(root_attrs, dict) or set(root_attrs) - {
-        "styles", "page", "running", "documentFields", "citationSources"
+        "styles",
+        "page",
+        "running",
+        "documentFields",
+        "citationSources",
     }:
         reject()
     fields = root_attrs.get("documentFields", [])
@@ -132,7 +136,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             or field["label"] != field["label"].strip()
             or not isinstance(field["value"], str)
             or len(field["value"]) > 1000
-            or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in field["label"] + field["value"])
+            or any(
+                ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                for c in field["label"] + field["value"]
+            )
         ):
             reject()
         document_fields.add(field["key"])
@@ -153,7 +160,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             or len(source["title"]) > 500
             or len(source["year"]) > 20
             or len(source["locator"]) > 1000
-            or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for key in ("author", "title", "year", "locator") for c in source[key])
+            or any(
+                ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                for key in ("author", "title", "year", "locator")
+                for c in source[key]
+            )
         ):
             reject()
         citation_sources.add(source["id"])
@@ -388,7 +399,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if identifier in figure_ids or identifier in table_ids:
                 reject()
         elif kind == "documentField":
-            if set(attrs) != {"key"} or not isinstance(attrs.get("key"), str) or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", attrs["key"]) is None:
+            if (
+                set(attrs) != {"key"}
+                or not isinstance(attrs.get("key"), str)
+                or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", attrs["key"]) is None
+            ):
                 reject()
         elif kind == "noteReference":
             identifier, note_kind, text = attrs.get("id"), attrs.get("kind"), attrs.get("text")
@@ -409,7 +424,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if len(note_ids) > 200:
                 reject()
         elif kind == "citationReference":
-            if set(attrs) != {"sourceId", "locator"} or not isinstance(attrs.get("sourceId"), str) or re.fullmatch(r"source-[a-f0-9]{24}", attrs["sourceId"]) is None:
+            if (
+                set(attrs) != {"sourceId", "locator"}
+                or not isinstance(attrs.get("sourceId"), str)
+                or re.fullmatch(r"source-[a-f0-9]{24}", attrs["sourceId"]) is None
+            ):
                 reject()
             locator = attrs.get("locator")
             if (
@@ -420,14 +439,16 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             ):
                 reject()
         elif kind == "tableOfContents":
-            if depth != 1 or set(attrs) != {"maxLevel"} or type(attrs.get("maxLevel")) is not int or attrs["maxLevel"] not in {1, 2, 3} or kind in generated_blocks:
+            if (
+                depth != 1
+                or set(attrs) != {"maxLevel"}
+                or type(attrs.get("maxLevel")) is not int
+                or attrs["maxLevel"] not in {1, 2, 3}
+                or kind in generated_blocks
+            ):
                 reject()
             generated_blocks.add(kind)
-        elif kind == "bibliography":
-            if depth != 1 or attrs or kind in generated_blocks:
-                reject()
-            generated_blocks.add(kind)
-        elif kind == "referenceIndex":
+        elif kind == "bibliography" or kind == "referenceIndex":
             if depth != 1 or attrs or kind in generated_blocks:
                 reject()
             generated_blocks.add(kind)
@@ -444,7 +465,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not 1 <= len(attrs["source"]) <= 1000
                 or not isinstance(attrs.get("alt"), str)
                 or not 1 <= len(attrs["alt"]) <= 500
-                or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in attrs["source"] + attrs["alt"])
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                    for c in attrs["source"] + attrs["alt"]
+                )
             ):
                 reject()
             equation_ids.add(attrs["id"])
@@ -567,7 +591,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if not children or any(child not in BLOCKS for child in child_types):
                 reject()
         elif kind in {"paragraph", "heading"}:
-            if any(child not in {"text", "hardBreak", "bookmark", "documentField", "noteReference", "citationReference"} for child in child_types):
+            if any(
+                child not in {"text", "hardBreak", "bookmark", "documentField", "noteReference", "citationReference"}
+                for child in child_types
+            ):
                 reject()
         elif kind == "codeBlock":
             if any(child != "text" or children[index].get("marks") for index, child in enumerate(child_types)):

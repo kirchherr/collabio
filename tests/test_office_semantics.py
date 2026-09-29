@@ -6,7 +6,6 @@ import pytest
 
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError, validate_office_document
 
-
 FIELD = {"key": "project", "label": "Project", "value": "Apollo"}
 SOURCE = {
     "id": "source-111111111111111111111111",
@@ -29,13 +28,26 @@ def semantic_document() -> dict[str, object]:
                 "content": [
                     {"type": "text", "text": "Project: "},
                     {"type": "documentField", "attrs": {"key": "project"}},
-                    {"type": "noteReference", "attrs": {"id": "note-222222222222222222222222", "kind": "footnote", "text": "Primary note"}},
-                    {"type": "noteReference", "attrs": {"id": "note-333333333333333333333333", "kind": "endnote", "text": "Closing note"}},
+                    {
+                        "type": "noteReference",
+                        "attrs": {"id": "note-222222222222222222222222", "kind": "footnote", "text": "Primary note"},
+                    },
+                    {
+                        "type": "noteReference",
+                        "attrs": {"id": "note-333333333333333333333333", "kind": "endnote", "text": "Closing note"},
+                    },
                     {"type": "citationReference", "attrs": {"sourceId": SOURCE["id"], "locator": "p. 12"}},
                 ],
             },
             {"type": "bibliography"},
-            {"type": "equation", "attrs": {"id": "equation-444444444444444444444444", "source": "E = mc^2", "alt": "Energy equals mass times the speed of light squared"}},
+            {
+                "type": "equation",
+                "attrs": {
+                    "id": "equation-444444444444444444444444",
+                    "source": "E = mc^2",
+                    "alt": "Energy equals mass times the speed of light squared",
+                },
+            },
             {"type": "referenceIndex"},
         ],
     }

@@ -1001,12 +1001,20 @@ def verify_restored_semantic_versions(
         if version["object_id"] != object_id or version["previous_version_id"] != previous:
             raise ValueError("Office recovery semantic fixture lineage is invalid")
         expected = semantic_recovery_document(number)
-        read = documents.read_content(user_context=readers[object_id], object_id=object_id, version_id=version["version_id"])
-        if (read.content != expected or read.version.title != SEMANTIC_RECOVERY_TITLE or
-                read.version.content_hash != stable_hash(canonical_json(expected)) or
-                read.version.content_hash != version["content_hash"] or read.can_write):
+        read = documents.read_content(
+            user_context=readers[object_id], object_id=object_id, version_id=version["version_id"]
+        )
+        if (
+            read.content != expected
+            or read.version.title != SEMANTIC_RECOVERY_TITLE
+            or read.version.content_hash != stable_hash(canonical_json(expected))
+            or read.version.content_hash != version["content_hash"]
+            or read.can_write
+        ):
             raise ValueError("Office recovery semantic content or canonical hash is invalid")
-        evidence.append({"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash})
+        evidence.append(
+            {"object_id": object_id, "version_id": read.version.version_id, "content_hash": read.version.content_hash}
+        )
         previous = read.version.version_id
     return {
         "semantic_evidence_hash": stable_hash(canonical_json(evidence)),
@@ -1253,7 +1261,15 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             expected_version_count=(
                 6
                 if target_dsn.endswith(
-                    ("_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore", "_279_restore", "_286_restore")
+                    (
+                        "_274_restore",
+                        "_275_restore",
+                        "_276_restore",
+                        "_277_restore",
+                        "_278_restore",
+                        "_279_restore",
+                        "_286_restore",
+                    )
                 )
                 else 4
             ),
@@ -1278,7 +1294,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             readers=readers,
             versions=inventory["document_versions"],
         )
-        if target_dsn.endswith(("_275_restore", "_276_restore", "_277_restore", "_278_restore", "_279_restore", "_286_restore"))
+        if target_dsn.endswith(
+            ("_275_restore", "_276_restore", "_277_restore", "_278_restore", "_279_restore", "_286_restore")
+        )
         else {}
     )
     link_evidence = (

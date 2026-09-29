@@ -115,7 +115,9 @@ def main() -> int:
     )
     figure_document_count, figure_version_count = seed_synthetic_office_figures(environment=os.environ, client=client)
     table_document_count, table_version_count = seed_synthetic_office_tables(environment=os.environ, client=client)
-    semantic_document_count, semantic_version_count = seed_synthetic_office_semantics(environment=os.environ, client=client)
+    semantic_document_count, semantic_version_count = seed_synthetic_office_semantics(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
