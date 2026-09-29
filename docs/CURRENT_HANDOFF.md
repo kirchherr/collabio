@@ -51,6 +51,10 @@ Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpu
 Roadmap 279 / PLANS 140, native table captions with a separate deterministic numbering sequence and stable table
 references.
 
+Published evidence closeout commit `1b1f14fa3379c967ffb6f79ff6448339793f4457` was fast-forwarded to the clean
+dev001 source. The dependency-free figure schema/image/recovery selection passed in full after publication; health
+stayed ok and Collabio stayed running(4).
+
 Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
 document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove
 and deliberate jump are responsive and isolated in undo/redo. Removing a destination leaves a visible inert broken
