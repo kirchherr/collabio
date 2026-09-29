@@ -13,6 +13,7 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
   await openOffice(page);
   await newOfficeDraft(page, "Synthetic semantic document", { text: "Overview" });
+  await page.locator("#text-style").selectOption("heading-1");
   await officeEditor(page).press("Control+End");
 
   await openStructure(page, "field");
