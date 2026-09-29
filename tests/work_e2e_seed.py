@@ -14,6 +14,7 @@ from work_e2e_character import seed_synthetic_office_characters
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
+from work_e2e_figures import seed_synthetic_office_figures
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
 from work_e2e_links import seed_synthetic_office_links
 from work_e2e_page_breaks import seed_synthetic_office_page_breaks
@@ -110,6 +111,9 @@ def main() -> int:
     bookmark_document_count, bookmark_version_count = seed_synthetic_office_bookmarks(
         environment=os.environ, client=client
     )
+    figure_document_count, figure_version_count = seed_synthetic_office_figures(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -128,7 +132,8 @@ def main() -> int:
                 + running_text_document_count
                 + section_document_count
                 + link_document_count
-                + bookmark_document_count,
+                + bookmark_document_count
+                + figure_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
@@ -139,6 +144,7 @@ def main() -> int:
                 "synthetic_office_section_version_count": section_version_count,
                 "synthetic_office_link_version_count": link_version_count,
                 "synthetic_office_bookmark_version_count": bookmark_version_count,
+                "synthetic_office_figure_version_count": figure_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,
