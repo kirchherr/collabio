@@ -312,7 +312,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not isinstance(label, str)
                 or not 1 <= len(label) <= 64
                 or label != label.strip()
-                or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029" for c in label)
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in label
+                )
                 or label.lower() in bookmark_labels
             ):
                 reject()

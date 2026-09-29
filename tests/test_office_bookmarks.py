@@ -52,9 +52,13 @@ def test_office_bookmarks_require_unique_ids_and_casefolded_labels() -> None:
 
 
 def test_office_bookmarks_enforce_count_and_exact_node_shape() -> None:
-    validate_office_document(document(bookmarks=[(f"bookmark-{number}", f"Bookmark {number}") for number in range(100)]))
+    validate_office_document(
+        document(bookmarks=[(f"bookmark-{number}", f"Bookmark {number}") for number in range(100)])
+    )
     with pytest.raises(OfficeDocumentInvalidContentError):
-        validate_office_document(document(bookmarks=[(f"bookmark-{number}", f"Bookmark {number}") for number in range(101)]))
+        validate_office_document(
+            document(bookmarks=[(f"bookmark-{number}", f"Bookmark {number}") for number in range(101)])
+        )
     malformed = document(bookmarks=[("bookmark-one", "One")])
     malformed["content"][0]["content"][0]["attrs"]["extra"] = True  # type: ignore[index]
     with pytest.raises(OfficeDocumentInvalidContentError):

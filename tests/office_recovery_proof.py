@@ -56,8 +56,8 @@ from suite.storage.source_objects import (
     build_source_object_write_receipt_hash,
     source_object_content_bytes,
 )
-from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 from work_e2e_bookmarks import BOOKMARK_RECOVERY_TITLE, bookmark_recovery_document
+from work_e2e_character import CHARACTER_RECOVERY_TITLE, character_recovery_document
 from work_e2e_links import LINK_RECOVERY_TITLE, link_recovery_document
 from work_e2e_page_breaks import PAGE_BREAK_RECOVERY_TITLE, page_break_recovery_document
 from work_e2e_page_settings import PAGE_SETTINGS_RECOVERY_TITLE, page_settings_recovery_document
@@ -1039,7 +1039,16 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith(
-        ("_270_restore", "_271_restore", "_272_restore", "_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore")
+        (
+            "_270_restore",
+            "_271_restore",
+            "_272_restore",
+            "_273_restore",
+            "_274_restore",
+            "_275_restore",
+            "_276_restore",
+            "_277_restore",
+        )
     ):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
@@ -1062,7 +1071,15 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
         if target_dsn.endswith(
-            ("_271_restore", "_272_restore", "_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore")
+            (
+                "_271_restore",
+                "_272_restore",
+                "_273_restore",
+                "_274_restore",
+                "_275_restore",
+                "_276_restore",
+                "_277_restore",
+            )
         )
         else {}
     )
@@ -1070,7 +1087,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         verify_restored_page_settings_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
-        if target_dsn.endswith(("_272_restore", "_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore"))
+        if target_dsn.endswith(
+            ("_272_restore", "_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore")
+        )
         else {}
     )
     running_text_evidence = (
@@ -1078,7 +1097,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             documents=restored,
             readers=readers,
             versions=inventory["document_versions"],
-            expected_version_count=6 if target_dsn.endswith(("_274_restore", "_275_restore", "_276_restore", "_277_restore")) else 4,
+            expected_version_count=(
+                6 if target_dsn.endswith(("_274_restore", "_275_restore", "_276_restore", "_277_restore")) else 4
+            ),
         )
         if target_dsn.endswith(("_273_restore", "_274_restore", "_275_restore", "_276_restore", "_277_restore"))
         else {}

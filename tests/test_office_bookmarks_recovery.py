@@ -69,7 +69,9 @@ def test_recovery_binds_exact_bookmark_targets_rename_broken_and_reset(tamper: s
             ),
         )
     fixture.service.writes_available = False
-    versions = [record.model_dump() for record in fixture.repository.saved_versions.values() if record.object_id == object_id]
+    versions = [
+        record.model_dump() for record in fixture.repository.saved_versions.values() if record.object_id == object_id
+    ]
     if tamper == "missing":
         versions.pop()
     elif tamper == "hash":
