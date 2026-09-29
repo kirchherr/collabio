@@ -50,11 +50,9 @@ const OfficeTable = Table.extend({
   addAttributes() {
     return { ...(this.parent?.() || {}), caption: { default: null, rendered: false }, tableId: { default: null, rendered: false } };
   },
-  renderHTML({ node: table }) {
-    const attrs = officeTableAttributes(table.attrs);
-    if (!attrs.tableId) return ["table", { class: "office-table" }, ["tbody", 0]];
-    return ["table", { class: "office-table", id: officeTableFragment(attrs.tableId), "data-office-table": attrs.tableId },
-      ["caption", {}, officeTableCaption(attrs, 1)], ["tbody", 0]];
+  renderHTML() {
+    return ["table", { class: "office-table" },
+      ["caption", { hidden: "", "data-office-table-caption": "" }, ""], ["tbody", 0]];
   },
 });
 const OfficePageBreak = Node.create({
@@ -376,9 +374,22 @@ function updateEditorState() {
   if (editor) {
     try {
       const labels = new Map(officeTableInventory(editor.getJSON()).map(({ id, label }) => [id, label]));
-      editor.view.dom.querySelectorAll("table[data-office-table]").forEach((table) => {
-        const caption = table.querySelector("caption"), label = labels.get(table.dataset.officeTable);
-        if (caption && label) caption.textContent = label;
+      const attributes = [];
+      const collect = (value) => {
+        if (value.type === "table") attributes.push(officeTableAttributes(value.attrs));
+        for (const child of value.content || []) collect(child);
+      };
+      collect(editor.getJSON());
+      editor.view.dom.querySelectorAll("table.office-table").forEach((table, index) => {
+        const attrs = attributes[index] || {}, caption = table.querySelector("caption[data-office-table-caption]");
+        if (!caption) return;
+        if (attrs.tableId) {
+          table.id = officeTableFragment(attrs.tableId); table.dataset.officeTable = attrs.tableId;
+          caption.hidden = false; caption.textContent = labels.get(attrs.tableId) || officeTableCaption(attrs, index + 1);
+        } else {
+          table.removeAttribute("id"); delete table.dataset.officeTable;
+          caption.hidden = true; caption.textContent = "";
+        }
       });
     } catch { /* Invalid drafts remain blocked by the shared document guard. */ }
   }
