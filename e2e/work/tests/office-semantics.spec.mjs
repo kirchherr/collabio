@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { monitorPage, BASE_URL } from "./support.mjs";
 import { newOfficeDraft, officeContent, officeEditor, officeVersions, openOffice, openOfficeDocument, saveOffice } from "./office-support.mjs";
+import { expectPdfStructure, installPrintProbe, pdfPageCount, submitOfficePrint } from "./office-print-support.mjs";
 
 async function openStructure(page, kind) {
   await page.locator("#semantic-options").click();
@@ -69,12 +70,27 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   await expect(officeEditor(page).locator(".office-tableOfContents")).toContainText("Overview");
   await expect(officeEditor(page).locator(".office-bibliography")).toContainText("Notes on the Analytical Engine");
   await expect(officeEditor(page).locator(".office-referenceIndex")).toContainText("equation");
+  await openStructure(page, "field"); await page.locator("#semantic-field-key").fill("project");
+  await page.locator("#semantic-remove").click();
+  await expect(officeEditor(page).locator(".office-documentField")).toHaveAttribute("data-office-broken", "");
+  await page.locator('[data-command="undo"]').click();
+  await expect(officeEditor(page).locator(".office-documentField")).toHaveText("Apollo");
+  await openStructure(page, "citation"); await page.locator("#semantic-source-id").selectOption({ index: 1 });
+  await page.locator("#semantic-remove").click();
+  await expect(officeEditor(page).locator(".office-citationReference")).toHaveAttribute("data-office-broken", "");
+  await page.locator('[data-command="undo"]').click();
+  await expect(officeEditor(page).locator(".office-citationReference")).toContainText("Ada Lovelace");
+  const printCalls = await installPrintProbe(page, { pdfName: "office-semantics-a4.pdf" });
   await page.locator("#document-print").click(); await expect(page.locator("#print-dialog")).toBeVisible();
   await expect(page.locator("#print-preview .office-print-toc")).toContainText("Overview");
   await expect(page.locator("#print-preview .office-print-footnotes")).toContainText("Primary evidence");
   await expect(page.locator("#print-preview .office-print-endnotes")).toContainText("Closing evidence");
   await expect(page.locator("#print-preview .office-print-bibliography")).toContainText("Notes on the Analytical Engine");
   await expect(page.locator("#print-preview .office-print-equation")).toContainText("E = mc^2");
+  await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
+  expect(printCalls).toHaveLength(1); expect(printCalls[0].pdf).not.toBeNull();
+  expect(pdfPageCount(printCalls[0].pdf, 595.28, 841.89)).toBeGreaterThan(0);
+  expectPdfStructure(printCalls[0].pdf, ["H1", "H2", "L", "LI", "Code", "Figure"]);
   await page.locator("#print-close").click();
   expect((await officeContent(page, saved.document.object_id)).content).toEqual(saved.content);
   expect(await officeVersions(page, saved.document.object_id)).toHaveLength(1);
