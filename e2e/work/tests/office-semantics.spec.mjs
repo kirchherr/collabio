@@ -26,6 +26,11 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   await page.locator("#semantic-note-text").fill("Primary evidence");
   await page.locator("#semantic-apply").click();
   await expect(officeEditor(page).locator(".office-noteReference")).toHaveText("Fußnote 1");
+  await openStructure(page, "endnote");
+  await page.locator("#semantic-note-text").fill("Closing evidence");
+  await page.locator("#semantic-apply").click();
+  await expect(officeEditor(page).locator(".office-noteReference")).toHaveCount(2);
+  await expect(officeEditor(page).locator(".office-noteReference").last()).toHaveText("Endnote 1");
 
   await openStructure(page, "source");
   await page.locator("#semantic-source-author").fill("Ada Lovelace");
@@ -48,12 +53,21 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   await expect(officeEditor(page).locator(".office-equation")).toHaveCount(0);
   await page.locator('[data-command="redo"]').click();
 
+  for (const [kind, selector] of [["toc", ".office-tableOfContents"], ["bibliography", ".office-bibliography"], ["index", ".office-referenceIndex"]]) {
+    await officeEditor(page).press("Control+End"); await officeEditor(page).press("Enter");
+    await openStructure(page, kind); await page.locator("#semantic-apply").click();
+    await expect(officeEditor(page).locator(selector)).toHaveCount(1);
+  }
+
   const saved = await saveOffice(page);
   expect(saved.content.attrs.documentFields).toEqual([{ key: "project", label: "Project", value: "Apollo" }]);
   expect(saved.content.attrs.citationSources).toHaveLength(1);
   await page.locator("#document-close").click(); await openOfficeDocument(page, saved.document.object_id);
   await expect(officeEditor(page).locator(".office-documentField")).toHaveText("Apollo");
   await expect(officeEditor(page).locator(".office-equation")).toHaveText("E = mc^2");
+  await expect(officeEditor(page).locator(".office-tableOfContents")).toContainText("Overview");
+  await expect(officeEditor(page).locator(".office-bibliography")).toContainText("Notes on the Analytical Engine");
+  await expect(officeEditor(page).locator(".office-referenceIndex")).toContainText("equation");
   expect((await officeContent(page, saved.document.object_id)).content).toEqual(saved.content);
   expect(await officeVersions(page, saved.document.object_id)).toHaveLength(1);
   verifyBrowser();
