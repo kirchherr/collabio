@@ -77,13 +77,12 @@ def validate_image_attributes(attrs: dict[str, Any]) -> None:
             raise ValueError("Invalid image description")
     if (attrs["decorative"] and attrs["alt"]) or (not attrs["decorative"] and not attrs["alt"].strip()):
         raise ValueError("Image requires alternative text or an explicit decorative choice")
-    if "figureId" in attrs:
-        if (
-            not isinstance(attrs["figureId"], str)
-            or re.fullmatch(r"figure-[a-f0-9]{24}", attrs["figureId"]) is None
-            or not attrs["caption"].strip()
-        ):
-            raise ValueError("A numbered figure requires a stable ID and caption")
+    if "figureId" in attrs and (
+        not isinstance(attrs["figureId"], str)
+        or re.fullmatch(r"figure-[a-f0-9]{24}", attrs["figureId"]) is None
+        or not attrs["caption"].strip()
+    ):
+        raise ValueError("A numbered figure requires a stable ID and caption")
 
 
 def image_references(document: dict[str, Any]) -> list[dict[str, Any]]:

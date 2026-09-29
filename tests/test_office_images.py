@@ -143,7 +143,10 @@ def test_numbered_figures_require_captions_and_unique_unambiguous_targets() -> N
         validate_office_document(document)
     document["content"].pop(1)
     document["content"].append(
-        {"type": "paragraph", "content": [{"type": "bookmark", "attrs": {"id": attrs["figureId"], "label": "Collision"}}]}
+        {
+            "type": "paragraph",
+            "content": [{"type": "bookmark", "attrs": {"id": attrs["figureId"], "label": "Collision"}}],
+        }
     )
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(document)
