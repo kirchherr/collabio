@@ -1466,14 +1466,14 @@ function commitSemanticElement() {
       const fields = officeDocumentFields(rootAttrs.documentFields || []), index = fields.findIndex((entry) => entry.key === field.key);
       if (index < 0) fields.push(field); else fields[index] = field;
       rootAttrs.documentFields = officeDocumentFields(fields);
-      transaction.setNodeMarkup(0, undefined, rootAttrs);
+      transaction.setDocAttribute("documentFields", rootAttrs.documentFields);
       inserted = editor.schema.nodes.documentField.create({ key: field.key });
     } else if (["footnote", "endnote"].includes(kind)) {
       inserted = editor.schema.nodes.noteReference.create(officeNoteAttributes({ id: officeOpaqueId("note"), kind, text: $("semantic-note-text").value.trim() }));
     } else if (kind === "source") {
       const source = { id: officeOpaqueId("source"), author: $("semantic-source-author").value.trim(), title: $("semantic-source-title").value.trim(), year: $("semantic-source-year").value.trim(), locator: $("semantic-source-locator").value.trim() };
       rootAttrs.citationSources = officeCitationSources([...(rootAttrs.citationSources || []), source]);
-      transaction.setNodeMarkup(0, undefined, rootAttrs);
+      transaction.setDocAttribute("citationSources", rootAttrs.citationSources);
     } else if (kind === "citation") {
       const sourceId = $("semantic-source-id").value;
       if (!sourceId) throw new Error("Wählen Sie zuerst eine vorhandene Quelle oder legen Sie eine Quelle an.");
@@ -1510,7 +1510,9 @@ function removeSemanticCatalogEntry() {
       if (remaining.length === sources.length) throw new Error("Diese Quelle ist nicht im Katalog vorhanden.");
       rootAttrs.citationSources = remaining;
     }
-    const transaction = editor.state.tr.setNodeMarkup(0, undefined, rootAttrs);
+    let transaction = editor.state.tr;
+    transaction = transaction.setDocAttribute("documentFields", rootAttrs.documentFields || []);
+    transaction = transaction.setDocAttribute("citationSources", rootAttrs.citationSources || []);
     validateEditorDocument(transaction.doc); closeSemanticDialog(); editor.view.dispatch(transaction); focusEditor(editor); updateEditorState();
     notice("Katalogeintrag entfernt. Vorhandene Verweise bleiben als fehlend sichtbar und rückgängig machbar.");
   } catch (error) {
@@ -2337,7 +2339,9 @@ function prepareEditor(content, session) {
       .setContent(safeContent, { emitUpdate: false, errorOnInvalidContent: true })
       .command(({ tr }) => {
         tr.setDocAttribute("styles", safeContent.attrs?.styles || []);
-        tr.setDocAttribute("page", safeContent.attrs?.page ?? null); tr.setDocAttribute("running", safeContent.attrs?.running ?? null); return true;
+        tr.setDocAttribute("page", safeContent.attrs?.page ?? null); tr.setDocAttribute("running", safeContent.attrs?.running ?? null);
+        tr.setDocAttribute("documentFields", safeContent.attrs?.documentFields || []);
+        tr.setDocAttribute("citationSources", safeContent.attrs?.citationSources || []); return true;
       }).run();
   } catch (error) { editor.destroy(); throw error; }
   return { editor, editorHost };

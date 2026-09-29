@@ -1256,6 +1256,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",
         "table_removal_requires_explicit_confirmation",
+        "semantic_catalogs_are_bounded_document_owned_and_version_exact",
+        "generated_navigation_and_numbering_are_order_derived_not_persisted",
+        "formulas_are_literal_inert_and_never_executed",
+        "missing_field_and_citation_targets_remain_visible_without_external_resolution",
         "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
         "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
         "review_events_append_only_with_exact_comment_sources_and_receipts",
@@ -1275,6 +1279,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "e2e/work/tests/office-tables-responsive.spec.mjs" in office_native["evidence_refs"]
     assert "tests/test_office_table_captions.py" in office_native["evidence_refs"]
     assert "e2e/work/tests/office-table-captions-responsive.spec.mjs" in office_native["evidence_refs"]
+    assert "tests/test_office_semantics.py" in office_native["evidence_refs"]
+    assert "e2e/work/tests/office-semantics-responsive.spec.mjs" in office_native["evidence_refs"]
     assert "table_captions_use_stable_unique_local_ids_and_order_derived_numbers" in office_native["guardrails"]
     assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
     registered_routes = {

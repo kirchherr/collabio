@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–279 complete and published; Roadmap 280 free-document-field work planned; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks; 272 / PLANS 133 document-owned page settings; 273 / PLANS 134 headers/footers and page numbers; 274 / PLANS 135 first-page running-text differences; 275 / PLANS 136 general sections; 276 / PLANS 137 safe hyperlinks; 277 / PLANS 138 bookmarks and internal cross-references; 278 / PLANS 139 figure captions and numbering; 279 / PLANS 140 table captions and numbering
+Status: Roadmap 252–286 implemented under validation; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 279 / PLANS 140 table captions; 280–286 / PLANS 141–147 native semantic fields, generated navigation, notes, citations, formulas and reference overview
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0098-native-office-sections.md`; `ARCHITECTURE_DECISIONS/ADR-0099-native-office-safe-links.md`; `ARCHITECTURE_DECISIONS/ADR-0100-native-office-bookmarks-and-cross-references.md`; `ARCHITECTURE_DECISIONS/ADR-0101-native-office-figure-captions.md`; `ARCHITECTURE_DECISIONS/ADR-0102-native-office-table-captions.md`
+Decisions: ADR-0079 through ADR-0103; current semantic structures: `ARCHITECTURE_DECISIONS/ADR-0103-native-office-semantic-structures.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,29 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Native semantic document structures (Roadmap 280–286)
+
+**Struktur …** provides one responsive, keyboard-reachable workflow for document-owned fields, generated tables of
+contents, footnotes, endnotes, citation sources and references, bibliographies, inert formulas and a local reference
+navigator. Catalog data and explicit atoms are stored in the exact native version. Numbers and generated lists follow
+current document order and are never saved as stale rendered text.
+
+Fields use bounded keys and literal values. Reusing a key updates the catalog while inserting an explicit field atom;
+`{{field:key}}` is the corresponding explicit token in a header or footer. Print resolves only the same version-owned
+catalog and keeps the existing 64-character running-text boundary. Removing a field leaves uses visible as broken.
+
+Footnotes and endnotes have separate order-derived sequences and stable local IDs. Citation sources are bounded
+literal metadata and are never fetched. A bibliography is generated from the local catalog. Removing a source leaves
+its citations visibly broken. Formula source and accessible text are stored as inert literals; no parser, macro,
+script, external engine or calculated write exists. The reference navigator derives a read-only overview from the
+current document.
+
+Server and browser independently enforce exact shapes, limits, unique identities and control-character exclusions.
+All operations remain ordinary undoable draft transactions and use the existing confirmed CAS save. History,
+comparison, independent copies and semantic print retain the exact structures. A ten-version recovery lineage covers
+legacy, each additive structure, broken catalog targets and a final legacy reset. Cross-document references, global
+backlinks, mathematical evaluation and DOCX interchange remain separate authorization and fidelity work.
 
 ## Native table captions, numbering and references (Roadmap 279)
 

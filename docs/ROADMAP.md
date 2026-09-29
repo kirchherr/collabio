@@ -1775,8 +1775,27 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Aufloesung oder stilles Umschreiben. Undo, Speichern, Historie, Vergleich, Kopien, Druck und gebrochene Felder
      muessen exakt bleiben. Dokumentuebergreifende Verweise, Rueckverweise, Formeln und DOCX bleiben separat.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 279 / PLANS 140 ist abgeschlossen; als Naechstes folgt
-Roadmap 280 / PLANS 141 mit nativen freien Dokumentfeldern.
+281. [ ] Ein natives generiertes Inhaltsverzeichnis umsetzen: Ein expliziter Block leitet seine Eintraege bis zur
+     gewaehlten Ebene aus der aktuellen Ueberschriftenreihenfolge ab, ohne gerenderten Altstand zu speichern.
+
+282. [ ] Native Fussnoten umsetzen: Begrenzte literale Noten mit stabilen lokalen IDs und dokumentreihenfolgeabhaengiger
+     Nummerierung muessen in Editor, Versionen, Vergleich, Kopien und semantischem Druck exakt bleiben.
+
+283. [ ] Native Endnoten umsetzen: Eine von Fussnoten getrennte Nummernfolge und ein eigener Druckabschnitt muessen
+     dieselben Inertheits-, Undo-, Versions- und Recovery-Grenzen einhalten.
+
+284. [ ] Native Quellenverweise und Literaturverzeichnis umsetzen: Ein begrenzter dokumenteigener Quellenkatalog,
+     explizite Verweise, sichere fehlende Quellen und ein abgeleitetes Verzeichnis duerfen keine externe Aufloesung
+     oder Netzwerkanfrage ausloesen.
+
+285. [ ] Native Formeln umsetzen: Begrenzter Quelltext und barrierefreie Beschreibung werden als literale inerte
+     Daten gespeichert und semantisch gedruckt; Auswertung, Makros und externe Formel-Engines bleiben geschlossen.
+
+286. [ ] Einen nativen lokalen Referenznavigator umsetzen: Eine abgeleitete Uebersicht zeigt Felder, Noten, Quellen
+     und Formeln samt gebrochenen Zielen, ohne persistierte Rueckverweise oder dokumentuebergreifende Suche.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 279 / PLANS 140 ist abgeschlossen; Roadmap 280–286 /
+PLANS 141–147 werden als gemeinsamer semantischer Dokumentzug unter ADR-0103 validiert.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

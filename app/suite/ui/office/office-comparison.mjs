@@ -7,7 +7,7 @@ import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { officeTableAttributes } from "./office-tables.mjs";
-import { officeBibliographyLabel, officeCitationLabel, officeSemanticInventory } from "./office-semantics.mjs";
+import { officeBibliographyLabel, officeSemanticInventory } from "./office-semantics.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -210,7 +210,7 @@ function blockText(block, nested = false) {
     case "bookmark": return officeBookmarkDescription(block.attrs);
     case "documentField": return `Feld: ${block.attrs.key}`;
     case "noteReference": return `${block.attrs.kind === "footnote" ? "Fußnote" : "Endnote"}: ${block.attrs.text}`;
-    case "citationReference": return officeCitationLabel(null, block.attrs.locator);
+    case "citationReference": return `Quelle ${block.attrs.sourceId}${block.attrs.locator ? ` · ${block.attrs.locator}` : ""}`;
     case "tableOfContents": return `Automatisch bis Ebene ${block.attrs.maxLevel}`;
     case "bibliography": return "Automatisches Literaturverzeichnis";
     case "equation": return `${block.attrs.source}\n${block.attrs.alt}`;
