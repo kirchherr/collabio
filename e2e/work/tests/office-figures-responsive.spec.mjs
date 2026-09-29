@@ -33,6 +33,12 @@ async function selectText(locator, from, to) {
   }, { from, to });
 }
 
+async function selectImage(page, index) {
+  const node = officeEditor(page).locator(".office-image-node").nth(index);
+  await node.click();
+  await expect(node).toHaveClass(/ProseMirror-selectednode/);
+}
+
 test("Office figure captions renumber on reorder and remain stable cross-reference targets", async ({ page }, testInfo) => {
   await openOffice(page);
   const first = await createOfficeDocument(page, "Figure numbering proof", "See first figure");
@@ -46,10 +52,10 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   expect(fixture.status()).toBe(200); await page.locator("#document-reload").click();
   const images = officeEditor(page).locator("img"); await expect(images).toHaveCount(2);
   for (const index of [0, 1]) {
-    await images.nth(index).click(); await page.locator("#image-options").click();
+    await selectImage(page, index); await page.locator("#image-options").click();
     await page.locator("#image-numbered").check(); await page.locator("#image-apply").click();
     await expect(officeEditor(page).locator("figure[data-office-figure]")).toHaveCount(index + 1);
-    await images.nth(index).click(); await page.locator("#image-options").click();
+    await selectImage(page, index); await page.locator("#image-options").click();
     await expect(page.locator("#image-numbered")).toBeChecked(); await page.locator("#image-cancel").click();
   }
   const captions = officeEditor(page).locator("figcaption");
@@ -57,7 +63,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   const ids = await officeEditor(page).locator("figure[data-office-figure]").evaluateAll((entries) => entries.map((entry) => entry.dataset.officeFigure));
   expect(new Set(ids).size).toBe(2);
 
-  await images.nth(1).click(); await page.locator("#image-options").click(); await page.locator("#image-up").click();
+  await selectImage(page, 1); await page.locator("#image-options").click(); await page.locator("#image-up").click();
   await expect(captions).toHaveText(["Abbildung 1: Details", "Abbildung 2: Overview"]);
   await officeEditor(page).press("Control+z"); await expect(captions).toHaveText(["Abbildung 1: Overview", "Abbildung 2: Details"]);
   await officeEditor(page).press("Control+Shift+z"); await expect(captions).toHaveText(["Abbildung 1: Details", "Abbildung 2: Overview"]);
@@ -78,7 +84,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1); expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Link");
 
-  await officeEditor(page).locator(`figure[data-office-figure="${ids[1]}"] img`).click();
+  await selectImage(page, 0);
   await page.locator("#image-options").click(); await page.locator("#image-remove").click();
   await selectText(officeEditor(page).locator("p").first(), 0, 16); await page.locator("#cross-reference-options").click();
   await expect(page.locator('#cross-reference-target option[data-broken="true"]')).toHaveValue(ids[1]);
