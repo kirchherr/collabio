@@ -88,6 +88,7 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   await expect(page.locator("#print-preview .office-print-bibliography")).toContainText("Notes on the Analytical Engine");
   await expect(page.locator("#print-preview .office-print-equation")).toContainText("E = mc^2");
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
+  await expect.poll(() => printCalls[0]?.pdf?.length || 0).toBeGreaterThan(1000);
   expect(printCalls).toHaveLength(1); expect(printCalls[0].pdf).not.toBeNull();
   expect(pdfPageCount(printCalls[0].pdf, 595.28, 841.89)).toBeGreaterThan(0);
   expectPdfStructure(printCalls[0].pdf, ["H1", "H2", "L", "LI", "Code", "Figure"]);
