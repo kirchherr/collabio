@@ -69,6 +69,13 @@ test("Office semantic structures save exact catalogs, nodes, derived labels and 
   await expect(officeEditor(page).locator(".office-tableOfContents")).toContainText("Overview");
   await expect(officeEditor(page).locator(".office-bibliography")).toContainText("Notes on the Analytical Engine");
   await expect(officeEditor(page).locator(".office-referenceIndex")).toContainText("equation");
+  await page.locator("#document-print").click(); await expect(page.locator("#print-dialog")).toBeVisible();
+  await expect(page.locator("#print-preview .office-print-toc")).toContainText("Overview");
+  await expect(page.locator("#print-preview .office-print-footnotes")).toContainText("Primary evidence");
+  await expect(page.locator("#print-preview .office-print-endnotes")).toContainText("Closing evidence");
+  await expect(page.locator("#print-preview .office-print-bibliography")).toContainText("Notes on the Analytical Engine");
+  await expect(page.locator("#print-preview .office-print-equation")).toContainText("E = mc^2");
+  await page.locator("#print-close").click();
   expect((await officeContent(page, saved.document.object_id)).content).toEqual(saved.content);
   expect(await officeVersions(page, saved.document.object_id)).toHaveLength(1);
   verifyBrowser();
